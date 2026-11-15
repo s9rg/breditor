@@ -912,3 +912,21 @@ pass it directly to `SharedReviewPersistentSession.restoreBackup` in a fresh
 store. Original credentials, current live policies, and the writer's separate
 upload archive remain host inputs. Independent-delivery proposal and revision
 outboxes continue to use their own archives.
+
+An `IndependentDelivery` pin can retain the exact JSON returned by the SDK's
+`SharedIndependentDeliverySession.exportRecovery()`. This closed recovery
+record includes separate document and review lanes, relay progress, named
+local versions and the selected proposal, decision, revision and version
+stores. It accepts the original or segmented native history family for each
+lane. Review and document receipts must match original accepted sequences and
+native prefixes. The original packet readers validate every retained
+proposal, revision and version, including their raster requirements. A
+saved final outcome or cached accepted packet must agree with the actual
+relay records. An unanswered retry remains in the original queue.
+
+The host reads the exact retained record via `read_client_journal` and
+restores it with `SharedIndependentDeliverySession.restoreRecovery` using
+the separately supplied factory, original writer credentials and fresh
+application policy. The same handover still selects the writer's whole
+upload archive separately. It verifies the union of server, native
+client-history and retained client-packet raster bindings before approval.

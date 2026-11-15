@@ -1,8 +1,6 @@
 //! One synced, length-delimited file holds all original bytes. A canonical manifest binds the
 //! source identities and their ordered byte ranges to the exact replacement directory.
-use super::{
-    MAX_FILE, MAX_TOTAL, RelaySegmentClientJournal, RelaySegmentClientJournalPin, check_pins,
-};
+use super::{MAX_TOTAL, RelaySegmentClientJournal, RelaySegmentClientJournalPin, check_pins};
 use crate::{
     Error, Result,
     archive_input::ArchiveInput,
@@ -136,7 +134,7 @@ impl RetainedJournals {
         self.check()?;
         let pin = &self.pins[index];
         let part = self.data.all().section(self.offsets[index], pin.bytes)?;
-        let bytes = part.read(MAX_FILE)?;
+        let bytes = part.read(pin.owner.byte_limit())?;
         if <[u8; 32]>::from(Sha256::digest(&bytes)) != pin.sha256 {
             return Err(Error::Contract("retained client journal digest differs"));
         }

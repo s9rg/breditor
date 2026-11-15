@@ -13,6 +13,7 @@ use std::collections::{BTreeMap, BTreeSet};
 pub(super) enum DocumentInput<'a> {
     Native(RelaySegmentDocumentJournalFamily),
     Paired(&'a RecoveryReviewRegistration),
+    Delivery(&'a RecoveryReviewRegistration),
 }
 
 pub(super) struct DocumentSource<'a> {
@@ -76,14 +77,22 @@ impl<'a> SelectedSources<'a> {
                         input: DocumentInput::Native(*family),
                     });
                 }
-                RelaySegmentJournalOwner::PairedSession { writer, actor } => {
+                RelaySegmentJournalOwner::PairedSession { writer, actor }
+                | RelaySegmentJournalOwner::IndependentDelivery { writer, actor } => {
                     let row = take_document(&mut missing, writer)?;
                     let review =
                         selected.review_row(&mut declared_review, actor, row.principal.as_str())?;
                     selected.documents.push(DocumentSource {
                         index,
                         row,
-                        input: DocumentInput::Paired(review),
+                        input: if matches!(
+                            pin.owner,
+                            RelaySegmentJournalOwner::PairedSession { .. }
+                        ) {
+                            DocumentInput::Paired(review)
+                        } else {
+                            DocumentInput::Delivery(review)
+                        },
                     });
                 }
                 RelaySegmentJournalOwner::Review { actor, document_writer, family } => {

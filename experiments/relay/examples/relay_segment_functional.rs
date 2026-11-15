@@ -161,6 +161,14 @@ async fn main() -> Result {
                 Some(&id),
             )?;
             storage::write_new(&parent.join("profile.json"), configuration.as_bytes())?;
+            storage::write_new(
+                &parent.join("delivery-lanes.json"),
+                &serde_json::to_vec(&serde_json::json!({
+                    "suggestions": room.document_suggestions_descriptor("owner")?,
+                    "revisions": room.document_suggestion_revisions_descriptor("owner")?,
+                    "versions": room.document_versions_descriptor("owner")?,
+                }))?,
+            )?;
             for i in 2..64 {
                 room.grant("owner", "reader", Some(breditor_collab_relay::Role::Reader))?;
                 room.rotate_log_generation("owner", &format!("file-{i}"))?;

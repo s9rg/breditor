@@ -209,7 +209,8 @@ fn prepare_and_commit(
         "clientArchives": uploads.len(),
         "missingArchiveRefusals": incomplete.missing_upload_writers.len(),
         "nativeJournals": verified_journals.journals.len() + 1,
-        "pairedBackups": 1,
+        "pairedBackups": usize::from(matches!(journals[0].owner, breditor_collab_relay::RelaySegmentJournalOwner::PairedSession { .. })),
+        "independentDeliveries": usize::from(matches!(journals[0].owner, breditor_collab_relay::RelaySegmentJournalOwner::IndependentDelivery { .. })),
         "wrongReceiptRefusals": 1,
         "clientJournalRasterBindings": verified_journals.asset_references.len(),
         "missingJournalRefusals": incomplete_journals.missing_document_writers.len()

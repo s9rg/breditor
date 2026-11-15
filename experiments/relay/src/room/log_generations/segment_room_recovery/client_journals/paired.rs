@@ -38,21 +38,21 @@ struct Identity {
 
 #[derive(Clone, Copy, PartialEq, Eq, Deserialize, Serialize)]
 #[serde(rename_all = "kebab-case")]
-enum History {
+pub(super) enum History {
     Explicit,
     TypingV1,
 }
 
 #[derive(Clone, Copy, PartialEq, Eq, Deserialize, Serialize)]
 #[serde(rename_all = "kebab-case")]
-enum RangePolicy {
+pub(super) enum RangePolicy {
     Original,
     GeneralV1,
 }
 
 #[derive(Clone, Copy, PartialEq, Eq, Deserialize, Serialize)]
 #[serde(rename_all = "kebab-case")]
-enum Selection {
+pub(super) enum Selection {
     Original,
     DocumentV1,
 }
@@ -85,49 +85,49 @@ pub(super) struct PairedRecord {
 
 #[derive(Deserialize)]
 #[serde(rename_all = "camelCase", deny_unknown_fields)]
-struct RelayBinding {
-    endpoint: String,
-    principal: String,
-    room: String,
-    actor: String,
-    binding: String,
-    document_writer: String,
+pub(super) struct RelayBinding {
+    pub endpoint: String,
+    pub principal: String,
+    pub room: String,
+    pub actor: String,
+    pub binding: String,
+    pub document_writer: String,
     #[serde(default, deserialize_with = "present")]
-    writer_transport: Option<WriterTransport>,
+    pub writer_transport: Option<WriterTransport>,
     #[serde(default, deserialize_with = "present")]
-    review_editing: Option<ReviewEditing>,
+    pub review_editing: Option<ReviewEditing>,
 }
 
 #[derive(Deserialize)]
 #[serde(rename_all = "kebab-case")]
-enum WriterTransport {
+pub(super) enum WriterTransport {
     AtomicV2,
 }
 
 #[derive(Deserialize)]
 #[serde(rename_all = "snake_case")]
-enum ReviewEditing {
+pub(super) enum ReviewEditing {
     ReadOnly,
 }
 
 #[derive(Deserialize)]
 #[serde(deny_unknown_fields)]
-struct Progress {
+pub(super) struct Progress {
     #[serde(deserialize_with = "required_nullable")]
-    cursor: Option<ReviewCursor>,
+    pub cursor: Option<ReviewCursor>,
     #[serde(deserialize_with = "required_nullable")]
-    accepted: Option<ReviewWriterClock>,
+    pub accepted: Option<ReviewWriterClock>,
     #[serde(deserialize_with = "required_nullable")]
-    sequence: Option<String>,
+    pub sequence: Option<String>,
 }
 
-fn required_nullable<'de, D: Deserializer<'de>, T: Deserialize<'de>>(
+pub(super) fn required_nullable<'de, D: Deserializer<'de>, T: Deserialize<'de>>(
     deserializer: D,
 ) -> std::result::Result<Option<T>, D::Error> {
     Option::<T>::deserialize(deserializer)
 }
 
-fn present<'de, D: Deserializer<'de>, T: Deserialize<'de>>(
+pub(super) fn present<'de, D: Deserializer<'de>, T: Deserialize<'de>>(
     deserializer: D,
 ) -> std::result::Result<Option<T>, D::Error> {
     T::deserialize(deserializer).map(Some)
@@ -195,31 +195,11 @@ impl PairedRecord {
         {
             return Err(Error::Contract("paired client backup binding or policy differs"));
         }
-        let endpoint: axum::http::Uri =
-            relay.endpoint.parse().map_err(|_| Error::Contract("paired client backup endpoint"))?;
-        if !matches!(endpoint.scheme_str(), Some("ws" | "wss"))
-            || endpoint.authority().is_none_or(|authority| authority.as_str().contains('@'))
-            || endpoint.query().is_some()
-            || relay.endpoint.contains('#')
-        {
-            return Err(Error::Contract("paired client backup endpoint"));
-        }
-        Ok(())
+        check_endpoint(&relay.endpoint)
     }
 
     pub fn family(&self) -> Result<Family> {
-        use {History as H, RangePolicy as R, Selection as S};
-        match (self.history, self.range_editing, self.selection_editing) {
-            (H::Explicit, R::Original, S::Original) => Ok(Family::Original),
-            (H::TypingV1, R::Original, S::Original) => Ok(Family::Typing),
-            (H::Explicit, R::GeneralV1, S::Original) => Ok(Family::General),
-            (H::TypingV1, R::GeneralV1, S::Original) => Ok(Family::GeneralTyping),
-            (H::Explicit, R::GeneralV1, S::DocumentV1) => Ok(Family::Document),
-            (H::TypingV1, R::GeneralV1, S::DocumentV1) => Ok(Family::DocumentTyping),
-            (_, R::Original, S::DocumentV1) => {
-                Err(Error::Contract("paired client backup selection policy"))
-            }
-        }
+        document_family(self.history, self.range_editing, self.selection_editing)
     }
 
     pub fn check_progress(
@@ -228,7 +208,50 @@ impl PairedRecord {
         local: &ReviewSession,
         own: &RecoveryReviewRegistration,
     ) -> Result<()> {
-        if let Some(cursor) = &self.progress.cursor {
+        self.progress.check(room, local, own)
+    }
+}
+
+pub(super) fn document_family(
+    history: History,
+    range: RangePolicy,
+    selection: Selection,
+) -> Result<Family> {
+    use {History as H, RangePolicy as R, Selection as S};
+    match (history, range, selection) {
+        (H::Explicit, R::Original, S::Original) => Ok(Family::Original),
+        (H::TypingV1, R::Original, S::Original) => Ok(Family::Typing),
+        (H::Explicit, R::GeneralV1, S::Original) => Ok(Family::General),
+        (H::TypingV1, R::GeneralV1, S::Original) => Ok(Family::GeneralTyping),
+        (H::Explicit, R::GeneralV1, S::DocumentV1) => Ok(Family::Document),
+        (H::TypingV1, R::GeneralV1, S::DocumentV1) => Ok(Family::DocumentTyping),
+        (_, R::Original, S::DocumentV1) => {
+            Err(Error::Contract("paired client backup selection policy"))
+        }
+    }
+}
+
+pub(super) fn check_endpoint(value: &str) -> Result<()> {
+    let endpoint: axum::http::Uri =
+        value.parse().map_err(|_| Error::Contract("paired client backup endpoint"))?;
+    if !matches!(endpoint.scheme_str(), Some("ws" | "wss"))
+        || endpoint.authority().is_none_or(|authority| authority.as_str().contains('@'))
+        || endpoint.query().is_some()
+        || value.contains('#')
+    {
+        return Err(Error::Contract("paired client backup endpoint"));
+    }
+    Ok(())
+}
+
+impl Progress {
+    pub fn check(
+        &self,
+        room: &Room,
+        local: &ReviewSession,
+        own: &RecoveryReviewRegistration,
+    ) -> Result<()> {
+        if let Some(cursor) = &self.cursor {
             for prefix in room.review_cursor_proof(&room.owner, cursor)?.prefixes {
                 if local.writer_clock_at(
                     &prefix.clock.actor,
@@ -242,8 +265,8 @@ impl PairedRecord {
                 }
             }
         }
-        let Some(saved) = &self.progress.accepted else {
-            if self.progress.sequence.is_some() {
+        let Some(saved) = &self.accepted else {
+            if self.sequence.is_some() {
                 return Err(Error::Contract("paired client review sequence lacks a receipt"));
             }
             return Ok(());
@@ -262,7 +285,7 @@ impl PairedRecord {
         {
             return Err(Error::Contract("paired client review acknowledgement differs"));
         }
-        if let Some(sequence) = &self.progress.sequence
+        if let Some(sequence) = &self.sequence
             && room.recovery_review_acceptance_sequence(&saved.actor, through)?
                 != position(sequence)?
         {

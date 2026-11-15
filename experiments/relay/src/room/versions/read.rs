@@ -13,6 +13,43 @@ impl Room {
         }
         Ok(sequence)
     }
+    #[cfg(feature = "server")]
+    pub(in crate::room) fn recovery_version_entry(
+        &self,
+        id: &str,
+    ) -> Result<Option<serde_json::Value>> {
+        self.versions_state()?
+            .entries
+            .get(id)
+            .map(|row| serde_json::to_value(&row.entry))
+            .transpose()
+            .map_err(Into::into)
+    }
+
+    #[cfg(feature = "server")]
+    pub(in crate::room) fn check_recovery_version_catalog(
+        &self,
+        through: &str,
+        entries: &[serde_json::Value],
+    ) -> Result<()> {
+        let through = self.version_sequence(through)?;
+        let state = self.versions_state()?;
+        let mut rows = state.order.range(..=through).map(|(_, id)| id);
+        for expected in entries {
+            let id = rows
+                .next()
+                .ok_or(Error::Contract("client delivery catalog snapshot extent differs"))?;
+            let actual = state.entries.get(id).ok_or(Error::NeedsRecovery)?;
+            if serde_json::to_value(&actual.entry)? != *expected {
+                return Err(Error::Contract("client delivery catalog snapshot differs"));
+            }
+        }
+        if rows.next().is_some() {
+            return Err(Error::Contract("client delivery catalog snapshot extent differs"));
+        }
+        Ok(())
+    }
+
     /// List at most 64 metadata entries under a frozen terminal acceptance. New later publications
     /// appear only on the next refresh, not unexpectedly inside a partially consumed interval.
     /// # Errors

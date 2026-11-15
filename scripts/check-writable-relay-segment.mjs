@@ -56,8 +56,8 @@ function writeJournal(parent, name, owner, journal) {
   return {owner, bytes: bytes.length, sha256: [...Buffer.from(sha(bytes), 'hex')]};
 }
 
-function selectClientJournals(parent, identity, pairedBackup, peerWriter, peerCheckpoint) {
-  const paired = {kind: 'pairedSession', writer: identity.documentWriter, actor: identity.actor};
+function selectClientJournals(parent, identity, pairedBackup, peerWriter, peerCheckpoint, independentDelivery) {
+  const paired = {kind: independentDelivery ? 'independentDelivery' : 'pairedSession', writer: identity.documentWriter, actor: identity.actor};
   const peer = {kind: 'document', writer: peerWriter, family: 'original'};
   return [
     writeJournal(parent, 'journal-0.json', paired, pairedBackup),
@@ -82,7 +82,7 @@ function readRetainedClientJournals(parent, expected) {
   return originals;
 }
 
-async function run(mode, {distribution, rich}, executable, parent) {
+async function run(mode, {distribution, rich}, executable, parent, independentDelivery) {
   const runtime = join(distribution, 'runtime');
   const api = await import(pathToFileURL(join(distribution, 'index.js')).href);
   const richApi = await import(pathToFileURL(rich).href);
@@ -133,13 +133,81 @@ async function run(mode, {distribution, rich}, executable, parent) {
       create: () => profile.join_frame('room', binding.documentWriter, comment.frame),
       restore: input => profile.restore('room', input),
     };
+    const {credential: _documentSecret, ...documentBinding} = registered.identity;
+    const lanes = JSON.parse(readFileSync(join(parent, 'delivery-lanes.json'), 'utf8'));
+    const {writer: _writer, ...retainedIdentity} = documentBinding;
+    const deliveryOptions = {
+      database: persisted.database, room: persisted.room, writer: persisted.writer,
+      review: persisted.review, richLanguage: 3, history: 'explicit', rangeEditing: 'original',
+      selectionEditing: 'original', searchHistory: null, reviewedHistory: null, readOnly: false,
+      create: persisted.create,
+      documentHistory: {kind: 'segmented-v1', initialGenerations: {root: 'root', active: 'one'},
+        restoreSegmented: input => profile.restore_segmented('room', input)},
+      reviewHistory: {kind: 'segmented-v1', initialGenerations: {root: 'root', active: 'one'}},
+      binding: {document: documentBinding, review: binding},
+      retained: {
+        suggestions: {identity: {...retainedIdentity, documentWriter: persisted.writer,
+          binding: lanes.suggestions.binding, effectWriter: lanes.suggestions.effectWriter}, ownedHistory: null},
+        revisions: {binding: lanes.revisions.binding},
+        versions: {...retainedIdentity, documentWriter: persisted.writer, binding: lanes.versions.binding},
+      },
+    };
+    const open = () => independentDelivery
+      ? api.SharedIndependentDeliverySession.open(deliveryOptions)
+      : api.SharedReviewPersistentSession.open(persisted);
+    const attachOutboxes = async (owner, getToken = () => { throw new Error('Outbox inspection must stay offline'); }) => {
+      const queue = await owner.openSuggestionQueue();
+      const transport = api.createSharedIndependentRelaySync(owner, {
+        identity: registered.identity, autoConnect: false, getToken,
+        suggestions: {binding: lanes.suggestions.binding, effectWriter: lanes.suggestions.effectWriter},
+        suggestionRevisions: {binding: lanes.revisions.binding},
+      });
+      const revisions = await owner.openSuggestionRevisions({transport});
+      const versions = await owner.openVersionCatalog({getToken});
+      return {queue, revisions, versions, transport};
+    };
+    const queueWork = async () => {
+      const {queue, revisions, versions, transport} = await attachOutboxes(session);
+      try {
+        const draft = text => ({scope: 'commands', edit: {kind: 'commands', data: [
+          {kind: 'insert_text', data: {block: 'p', offset: 0, text}},
+        ]}});
+        const before = session.core.documentJson();
+        const proposal = queue.propose('Pending original', '1', {scope: 'commands',
+          edit: {kind: 'commands', data: [{kind: 'replace_image', data: {
+            block: 'image-block', asset: secondAsset, generation: 'queued-proposal-image',
+          }}]}});
+
+        const revision = revisions.revise({previousSuggestionId: proposal.id,
+          title: 'Pending revision', createdAtMs: '2', draft: draft('Revised ')});
+        const decision = queue.propose('Pending decision', '3', draft('Must stay unaccepted '));
+        queue.queueDecision(decision.id, 'reject', '4');
+        const version = versions.saveVersion('Queued catalog version', '5');
+        await revisions.flush();
+        await versions.flush();
+        await queue.flush();
+        assert.equal(session.core.documentJson(), before);
+        return {proposal: proposal.id, decision: decision.id, revision: revision.id, version: version.id,
+          packets: [queue.packet(proposal.id), queue.packet(decision.id), revisions.packet(revision.id), versions.versionPacket(version.id)]};
+      } finally {
+        transport.dispose();
+        await transport.waitForDisconnected();
+      }
+    };
     const attach = async () => {
-      document = new api.SharedRelaySync(session.core, {
-        ...connect, identity: registered.identity, persistLocal: () => session.flush(),
-      });
-      review = new api.SharedReviewRelaySync({
-        ...connect, identity: comment.identity, storage: session, flushDocument: () => document.flush(),
-      });
+      if (independentDelivery) {
+        document = api.createSharedIndependentRelaySync(session, {...connect, identity: registered.identity});
+        review = api.createSharedIndependentReviewRelaySync(session, {
+          ...connect, identity: comment.identity, flushDocument: () => document.flush(),
+        });
+      } else {
+        document = new api.SharedRelaySync(session.core, {
+          ...connect, identity: registered.identity, persistLocal: () => session.flush(),
+        });
+        review = new api.SharedReviewRelaySync({
+          ...connect, identity: comment.identity, storage: session, flushDocument: () => document.flush(),
+        });
+      }
       await document.connect();
       await document.flush();
       await review.connect();
@@ -153,7 +221,7 @@ async function run(mode, {distribution, rich}, executable, parent) {
         anchorJson: session.core.captureReviewAnchor({kind: 'document'}), body,
       },
     }).kind, 'committed');
-    session = await api.SharedReviewPersistentSession.open(persisted);
+    session = await open();
     await attach();
     edit('Accepted before segment ');
     post('Accepted comment before segment');
@@ -184,7 +252,7 @@ async function run(mode, {distribution, rich}, executable, parent) {
     await session.flush();
     const offline = session.exportRecovery();
     await session.close();
-    session = await api.SharedReviewPersistentSession.open(persisted);
+    session = await open();
     assert.deepEqual(session.exportRecovery(), offline);
 
     const handoff = command => {
@@ -227,22 +295,33 @@ async function run(mode, {distribution, rich}, executable, parent) {
       block: 'image-block', asset: secondAsset, generation: 'offline-image-replacement',
     }}]});
     assert.equal(session.core.documentJson().includes(secondAsset), true);
-    session.saveVersion('Offline image version', '1794681000000');
+    if (independentDelivery) {
+      await session.retainVersion(session.core.captureVersion('Offline image version', 'owner', '1794681000000'));
+    } else {
+      session.saveVersion('Offline image version', '1794681000000');
+    }
     assert.equal(session.core.undo(), true);
     assert.equal(session.core.documentJson().includes(secondAsset), false);
+    const pending = independentDelivery ? await queueWork() : null;
+    if (independentDelivery) {
+      await session.sealDocumentGeneration('two');
+      await session.sealReviewGeneration('two');
+    }
     await session.flush();
     const queuedAcrossTakeover = session.exportRecovery();
-    assert.equal(queuedAcrossTakeover.versions.length, 1);
+    const localVersions = independentDelivery ? queuedAcrossTakeover.source.versions : queuedAcrossTakeover.versions;
+    assert.equal(localVersions.length, 1);
     const peerDocument = profile.join_frame('room', peer.identity.writer, peer.frame);
-    const pairedBackup = await session.exportBackup();
-    const journalPins = selectClientJournals(parent, binding, pairedBackup,
-      peer.identity.writer, peerDocument.checkpoint());
-    assert.ok(queuedAcrossTakeover.progress.sequence);
-    assert.ok(queuedAcrossTakeover.progress.accepted);
-    const wrongProgress = {...queuedAcrossTakeover.progress,
-      sequence: (BigInt(queuedAcrossTakeover.progress.sequence) + 1n).toString()};
-    const wrongBackup = await api.encodeSharedPairedSessionBackup(JSON.parse(pairedBackup).identity,
-      {...queuedAcrossTakeover, progress: wrongProgress});
+    const archive = independentDelivery ? JSON.stringify(queuedAcrossTakeover) : await session.exportBackup();
+    const journalPins = selectClientJournals(parent, binding, archive,
+      peer.identity.writer, peerDocument.checkpoint(), independentDelivery);
+    const progress = independentDelivery ? queuedAcrossTakeover.relay.review : queuedAcrossTakeover.progress;
+    assert.ok(progress.sequence);
+    assert.ok(progress.accepted);
+    const wrongProgress = {...progress, sequence: (BigInt(progress.sequence) + 1n).toString()};
+    const wrongBackup = independentDelivery
+      ? JSON.stringify({...queuedAcrossTakeover, relay: {...queuedAcrossTakeover.relay, review: wrongProgress}})
+      : await api.encodeSharedPairedSessionBackup(JSON.parse(archive).identity, {...queuedAcrossTakeover, progress: wrongProgress});
     const wrongReceipt = writeJournal(parent, 'wrong-receipt.json', journalPins[0].owner, wrongBackup);
     peerDocument.free();
     const uploads = [
@@ -257,13 +336,14 @@ async function run(mode, {distribution, rich}, executable, parent) {
       uploads.map(upload => upload.pin), journalPins, wrongReceipt);
     assert.equal(captured.registrationRefusals, 3);
     assert.equal(captured.providerRasters, 2);
-    assert.equal(captured.clientJournalRasterBindings, 2);
+    assert.equal(captured.clientJournalRasterBindings, independentDelivery ? 3 : 2);
     assert.equal(captured.retainedPackets, 1);
     assert.equal(captured.clientRasters, 2);
     assert.equal(captured.clientArchives, 2);
     assert.equal(captured.missingArchiveRefusals, 1);
     assert.equal(captured.nativeJournals, 3);
-    assert.equal(captured.pairedBackups, 1);
+    assert.equal(captured.pairedBackups, independentDelivery ? 0 : 1);
+    assert.equal(captured.independentDeliveries, independentDelivery ? 1 : 0);
     assert.equal(captured.wrongReceiptRefusals, 1);
     assert.equal(captured.missingJournalRefusals, 2);
     assert.deepEqual(session.exportRecovery(), queuedAcrossTakeover);
@@ -281,11 +361,15 @@ async function run(mode, {distribution, rich}, executable, parent) {
     session = undefined;
     host = await startSegmentHandoverHost(executable, [parent, 'restore', address], token);
     const [backupJson] = readRetainedClientJournals(parent, journalPins);
-    assert.equal(backupJson, pairedBackup);
-    session = await api.SharedReviewPersistentSession.restoreBackup({
-      ...persisted, database: persisted.database + '-retained-journals',
-      backupJson, writerRecovery: 'host-reacquired',
-    });
+    assert.equal(backupJson, archive);
+    const database = persisted.database + '-retained-journals';
+    session = independentDelivery
+      ? await api.SharedIndependentDeliverySession.restoreRecovery({
+        ...deliveryOptions, database, recovery: JSON.parse(backupJson), writerRecovery: 'host-reacquired',
+      })
+      : await api.SharedReviewPersistentSession.restoreBackup({
+        ...persisted, database, backupJson, writerRecovery: 'host-reacquired',
+      });
     assert.deepEqual(session.exportRecovery(), queuedAcrossTakeover);
     await attach();
     assert.equal(document.state().pending, false);
@@ -327,6 +411,50 @@ async function run(mode, {distribution, rich}, executable, parent) {
     const retainedPacket = await fetch(packetUrl, {headers: catalogHeaders});
     assert.equal(retainedPacket.status, 200);
     assert.equal(await retainedPacket.text(), packet);
+    if (pending) {
+      await stopClients();
+      let mayDeliverOutboxes = false;
+      const {queue, revisions, versions, transport} = await attachOutboxes(session, () => {
+        if (!mayDeliverOutboxes) throw new Error('Outbox recovery must stay offline');
+        return token;
+      });
+      assert.deepEqual([queue.packet(pending.proposal), queue.packet(pending.decision),
+        revisions.packet(pending.revision), versions.versionPacket(pending.version)], pending.packets);
+      assert.equal(queue.status(pending.proposal).publish, true);
+      assert.equal(queue.status(pending.decision).intent.retry, true);
+      assert.equal(revisions.status(pending.revision).retry, true);
+      assert.equal(versions.versionStatus(pending.version).queued, true);
+      const originalFetch = globalThis.fetch;
+      globalThis.fetch = (input, options) => {
+        if (!String(input).startsWith(catalog)) return originalFetch(input, options);
+        const headers = new Headers(options?.headers);
+        headers.set('Origin', origin);
+        return originalFetch(input, {...options, headers});
+      };
+      const before = session.core.documentJson();
+      const suggestions = new api.SharedSuggestionSync(queue, transport, {autoStart: false});
+      try {
+        mayDeliverOutboxes = true;
+        await suggestions.connect();
+        await suggestions.flushShared();
+        assert.ok(queue.status(pending.proposal).publication);
+        assert.equal(queue.status(pending.decision).decision?.decision, 'reject');
+        await revisions.connect();
+        assert.ok(revisions.status(pending.revision).receipt);
+        await versions.connect();
+        await versions.flushShared();
+        assert.ok(versions.versionStatus(pending.version).accepted);
+        assert.equal(session.core.documentJson(), before);
+        await session.flush();
+      } finally {
+        suggestions.dispose();
+        revisions.disconnect();
+        versions.disconnect();
+        transport.dispose();
+        await transport.waitForDisconnected();
+        globalThis.fetch = originalFetch;
+      }
+    }
     return {mode, handoffs: 2, portableRestores: 1, restoredOfflineLanes: 6, undoRedoLanes: 2, rasterReads: 2,
       processExits: 4, authenticatedTakeovers: 1, oldServingRefusals: 1, coldResumes: 2,
       registrationRefusals: captured.registrationRefusals, providerRasters: captured.providerRasters,
@@ -336,7 +464,8 @@ async function run(mode, {distribution, rich}, executable, parent) {
       missingJournalRefusals: captured.missingJournalRefusals, coldJournalPairs: 1,
       clientJournalRasterBindings: captured.clientJournalRasterBindings, offlineImageRedo: 1,
       pairedBackups: captured.pairedBackups, wrongReceiptRefusals: captured.wrongReceiptRefusals,
-      retainedLocalVersions: queuedAcrossTakeover.versions.length,
+      retainedLocalVersions: localVersions.length, independentDeliveries: captured.independentDeliveries,
+      retainedOutboxPendings: pending ? 4 : 0, deliveredOutboxEntries: pending ? 4 : 0,
       retainedAbsolutePositions: true, runtimeSha256: sha(wasmBytes)};
   } finally {
     await stopClients();
@@ -350,6 +479,8 @@ async function run(mode, {distribution, rich}, executable, parent) {
 }
 
 const executable = resolve(process.argv[2]);
+const independentDelivery = process.argv[3] === '--independent-delivery';
+assert.ok(process.argv.length === 3 || process.argv.length === 4 && independentDelivery);
 const source = sourceEvidence(root);
 assert.equal(source.dirty, false);
 const sandbox = mkdtempSync(join(tmpdir(), 'breditor-writable-segment-'));
@@ -363,7 +494,7 @@ try {
     const path = join(sandbox, mode);
     mkdirSync(path, {mode: 0o700});
     reports[mode] = {
-      ...await run(mode, distribution, executable, path), proof: distribution.proof,
+      ...await run(mode, distribution, executable, path, independentDelivery), proof: distribution.proof,
     };
   }
   assert.equal(reports.source.runtimeSha256, reports.installed.runtimeSha256);
@@ -372,7 +503,8 @@ try {
     format: 'breditor/writable-relay-segment-qualification', formatVersion: 1,
     source, relaySha256: sha(readFileSync(executable)), reports,
   };
-  saveEvidence(join(root, 'target/qualified-writable-relay-segment.json'), report);
+  saveEvidence(join(root, independentDelivery ? 'target/qualified-independent-delivery-segment.json'
+    : 'target/qualified-writable-relay-segment.json'), report);
   console.log(JSON.stringify(report, null, 2));
 } finally {
   rmSync(sandbox, {recursive: true, force: true});

@@ -2,6 +2,7 @@
 use super::{
     RelaySegmentClientJournalPin, RelaySegmentDocumentJournalFamily,
     RelaySegmentReviewJournalFamily, RetainedJournals,
+    delivery::DeliveryRecord,
     paired::PairedRecord,
     selected::{DocumentInput, SelectedSources},
 };
@@ -67,6 +68,11 @@ impl RecoveredRelaySegmentRoom {
     }
 }
 
+enum PairedInput<'a> {
+    Original(Box<PairedRecord>),
+    Delivery(Box<DeliveryRecord<'a>>),
+}
+
 fn verify(
     room: &Room,
     participants: &RoomParticipantInventoryMetadata,
@@ -92,7 +98,11 @@ fn verify(
                 let pair = PairedRecord::read(&input, participants, writer, row)?;
                 let document =
                     restore_document(room, pair.family()?, &pair.document_checkpoint_json)?;
-                (document, Some((row, pair)))
+                (document, Some((row, PairedInput::Original(Box::new(pair)))))
+            }
+            DocumentInput::Delivery(row) => {
+                let record = DeliveryRecord::read(&input, participants, source.row, row)?;
+                (record.document(room)?, Some((row, PairedInput::Delivery(Box::new(record)))))
             }
         };
         if local.writer() != writer || local.document_id() != room.replica.document_id() {
@@ -157,18 +167,28 @@ fn verify_paired_review(
     document: &RichReplica,
     accepted: &BTreeMap<&str, &RecoveryReviewRegistration>,
     owner: &RecoveryReviewRegistration,
-    pair: &PairedRecord,
+    pair: &PairedInput<'_>,
     assets: &mut BTreeSet<VersionAssetReference>,
 ) -> Result<String> {
-    let review = restore_review(
-        document,
-        owner,
-        RelaySegmentReviewJournalFamily::Original,
-        &pair.review_checkpoint_json,
-    )?;
+    let (family, json) = match pair {
+        PairedInput::Original(pair) => {
+            (RelaySegmentReviewJournalFamily::Original, pair.review_checkpoint_json.as_str())
+        }
+        PairedInput::Delivery(record) => record.review(),
+    };
+    let review = restore_review(document, owner, family, json)?;
     let through = verify_review(room, &review, accepted, owner)?;
-    pair.check_progress(room, &review, owner)?;
-    retain_version_assets(document, &pair.versions, assets)?;
+    let versions = match pair {
+        PairedInput::Original(pair) => {
+            pair.check_progress(room, &review, owner)?;
+            &pair.versions
+        }
+        PairedInput::Delivery(record) => {
+            record.verify(room, document, &review, owner, assets)?;
+            record.versions()
+        }
+    };
+    retain_version_assets(document, versions, assets)?;
     Ok(through)
 }
 
@@ -205,7 +225,7 @@ fn retain_assets(local: &RichReplica, assets: &mut BTreeSet<VersionAssetReferenc
     )
 }
 
-fn insert_assets(
+pub(super) fn insert_assets(
     assets: &mut BTreeSet<VersionAssetReference>,
     references: impl IntoIterator<Item = VersionAssetReference>,
 ) -> Result<()> {
@@ -218,7 +238,7 @@ fn insert_assets(
     Ok(())
 }
 
-fn restore_document(
+pub(super) fn restore_document(
     room: &Room,
     family: RelaySegmentDocumentJournalFamily,
     json: &str,

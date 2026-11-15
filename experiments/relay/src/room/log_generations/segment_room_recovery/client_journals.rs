@@ -1,6 +1,8 @@
 //! Retain original client-native document and review journals without adopting their edits.
 mod custody;
 #[cfg(feature = "server")]
+mod delivery;
+#[cfg(feature = "server")]
 mod paired;
 #[cfg(feature = "server")]
 mod selected;
@@ -20,6 +22,7 @@ use breditor_collab_feasibility::review::ReviewActorId;
 use serde::{Deserialize, Serialize};
 use std::fs::File;
 
+const MAX_DELIVERY_FILE: u64 = 352 * 1024 * 1024 + 64 * 1024;
 const MAX_FILE: u64 = 256 * 1024 * 1024;
 const MAX_TOTAL: u64 = 1024 * 1024 * 1024;
 const MAX_JOURNALS: usize = 2047;
@@ -85,6 +88,13 @@ pub enum RelaySegmentJournalOwner {
         /// Original registered review actor.
         actor: String,
     },
+    /// Exact original independent-delivery recovery containing both native lanes and outboxes.
+    IndependentDelivery {
+        /// Original registered document writer.
+        writer: String,
+        /// Original registered review actor.
+        actor: String,
+    },
     /// One independent review actor bound to an accompanying document checkpoint.
     Review {
         /// Original review actor ID.
@@ -109,9 +119,18 @@ pub struct RelaySegmentClientJournalPin {
 }
 
 impl RelaySegmentJournalOwner {
+    fn byte_limit(&self) -> u64 {
+        match self {
+            Self::IndependentDelivery { .. } => MAX_DELIVERY_FILE,
+            _ => MAX_FILE,
+        }
+    }
+
     pub(super) fn key(&self) -> (u8, &str) {
         match self {
-            Self::Document { writer, .. } | Self::PairedSession { writer, .. } => (0, writer),
+            Self::Document { writer, .. }
+            | Self::PairedSession { writer, .. }
+            | Self::IndependentDelivery { writer, .. } => (0, writer),
             Self::Review { actor, .. } => (1, actor),
         }
     }
@@ -126,14 +145,15 @@ impl RelaySegmentClientJournalPin {
         };
         let registered_shape = match &self.owner {
             RelaySegmentJournalOwner::Document { writer, .. } => valid_writer(writer),
-            RelaySegmentJournalOwner::PairedSession { writer, actor } => {
+            RelaySegmentJournalOwner::PairedSession { writer, actor }
+            | RelaySegmentJournalOwner::IndependentDelivery { writer, actor } => {
                 valid_writer(writer) && ReviewActorId::try_new(actor).is_ok()
             }
             RelaySegmentJournalOwner::Review { actor, document_writer, .. } => {
                 ReviewActorId::try_new(actor).is_ok() && valid_writer(document_writer)
             }
         };
-        if !registered_shape || self.bytes == 0 || self.bytes > MAX_FILE {
+        if !registered_shape || self.bytes == 0 || self.bytes > self.owner.byte_limit() {
             return Err(Error::Contract("client journal pin"));
         }
         Ok(())
@@ -153,7 +173,7 @@ impl RelaySegmentClientJournal {
     /// Refuses invalid identities, implausible lengths, file changes and wrong digests.
     pub fn open(file: File, pin: RelaySegmentClientJournalPin) -> Result<Self> {
         pin.check()?;
-        let file = ArchiveInput::new(file, MAX_FILE)?;
+        let file = ArchiveInput::new(file, pin.owner.byte_limit())?;
         if file.all().len() != pin.bytes || file.all().digest()? != pin.sha256 {
             return Err(Error::Contract("client journal differs from selected file"));
         }
