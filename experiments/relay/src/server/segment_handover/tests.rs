@@ -28,6 +28,7 @@ mod client_uploads;
 mod discussion_backup;
 mod portable_activation;
 mod portable_backup;
+mod portable_seal_custody;
 mod provider_commit;
 mod retained_backup;
 mod verified_inputs;
