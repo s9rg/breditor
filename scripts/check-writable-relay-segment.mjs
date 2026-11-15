@@ -10,7 +10,7 @@ import {WebSocket as Socket} from 'undici';
 import {environment} from './fixtures/room-participant-inventory/environment.mjs';
 import {pixel, proposalAsset, proposalPixel, secondAsset, secondPixel} from './fixtures/review-assets/pixels.mjs';
 import {startSegmentHandoverHost} from './fixtures/relay-segment-handover-host.mjs';
-import {captureParticipant, reopenParticipant, withWrongReviewReceipt} from './fixtures/relay-segment-participant.mjs';
+import {captureParticipant, proposalAlias, reopenParticipant, withWrongReviewReceipt} from './fixtures/relay-segment-participant.mjs';
 import {captureClientRaster, resumeClientRaster} from './fixtures/relay-segment-client-raster.mjs';
 import {searchConsumerLock, verifySearchConsumerRegistry} from './search-consumer-lock.mjs';
 import {sourceEvidence, saveEvidence} from './candidate-release/evidence.mjs';
@@ -83,8 +83,9 @@ function readRetainedClientJournals(parent, expected) {
   return originals;
 }
 
-async function run(mode, {distribution, rich}, executable, parent, journalKind, terminalReceipts) {
+async function run(mode, {distribution, rich}, executable, parent, journalKind, terminalReceipts, opaque) {
   const participant = journalKind === 'independentParticipant';
+  const archiveImage = opaque ? proposalAlias : proposalAsset;
   const independentDelivery = journalKind !== 'pairedSession';
   const runtime = join(distribution, 'runtime');
   const api = await import(pathToFileURL(join(distribution, 'index.js')).href);
@@ -372,7 +373,7 @@ async function run(mode, {distribution, rich}, executable, parent, journalKind, 
     assert.equal(session.core.undo(), true);
     assert.equal(session.core.documentJson().includes(secondAsset), false);
     const pending = independentDelivery
-      ? await queueWork('Pending', participant ? proposalAsset : secondAsset, 'queued-proposal-image')
+      ? await queueWork('Pending', participant ? archiveImage : secondAsset, 'queued-proposal-image')
       : null;
     if (independentDelivery) {
       await session.sealDocumentGeneration('two');
@@ -387,7 +388,7 @@ async function run(mode, {distribution, rich}, executable, parent, journalKind, 
       await captureClientRaster(richApi, parent, registered.identity.writer, 'pending'),
       await captureClientRaster(richApi, parent, peer.identity.writer, 'cancelled'),
     ];
-    const portable = participant ? await captureParticipant(api, richApi, session, uploads[0]) : null;
+    const portable = participant ? await captureParticipant(api, richApi, session, uploads[0], archiveImage) : null;
     const archive = portable?.archive ?? (independentDelivery
       ? JSON.stringify(queuedAcrossTakeover) : await session.exportBackup());
     const journalPins = selectClientJournals(parent, binding, archive,
@@ -413,8 +414,14 @@ async function run(mode, {distribution, rich}, executable, parent, journalKind, 
       await missing.arrayBuffer();
     }
     const selectedUploads = participant ? uploads.slice(1) : uploads;
+    const assetMapping = opaque ? {
+      asset: archiveImage, generation: 'queued-proposal-image',
+      selectedContent: proposalAsset, differentContent: 'sha256:' + sha(pixel),
+    } : undefined;
     const captured = await host.handover(token, registered.identity, comment.identity, peer.identity,
-      selectedUploads.map(upload => upload.pin), journalPins, wrongReceipt);
+      selectedUploads.map(upload => upload.pin), journalPins, wrongReceipt, assetMapping);
+    assert.equal(captured.participantUnmapped, opaque ? 1 : 0);
+    assert.equal(captured.participantMappingRefusals, opaque ? 2 : 0);
     assert.equal(captured.registrationRefusals, 3);
     assert.equal(captured.providerRasters, participant ? 3 : 2);
     assert.equal(captured.clientJournalRasterBindings, terminal ? 4 : independentDelivery ? 3 : 2);
@@ -454,7 +461,7 @@ async function run(mode, {distribution, rich}, executable, parent, journalKind, 
     const database = persisted.database + '-retained-journals';
     if (portable) {
       const restored = await reopenParticipant(
-        api, {...deliveryOptions, database}, backup, portable.selection, uploads[0],
+        api, {...deliveryOptions, database}, backup, portable.selection, uploads[0], archiveImage,
       );
       session = restored.session;
       portableUploads = restored.uploads;
@@ -544,6 +551,10 @@ async function run(mode, {distribution, rich}, executable, parent, journalKind, 
         archiveOnlyRasterReads: 1,
       } : {}),
       ...(terminal ? {retainedTerminalReceipts: 4} : {}),
+      ...(opaque ? {
+        unresolvedProviderMappings: captured.participantUnmapped,
+        changedProviderRefusals: captured.participantMappingRefusals,
+      } : {}),
       retainedOutboxPendings: pending ? 4 : 0, deliveredOutboxEntries: pending ? 4 : 0,
       retainedAbsolutePositions: true, runtimeSha256: sha(wasmBytes)};
   } catch (error) {
@@ -567,9 +578,10 @@ async function run(mode, {distribution, rich}, executable, parent, journalKind, 
 const executable = resolve(process.argv[2]);
 const option = process.argv[3];
 const terminalReceipts = option === '--participant-terminal-receipts';
+const opaque = option === '--participant-opaque';
 assert.ok(process.argv.length === 3 || process.argv.length === 4 &&
-  ['--independent-delivery', '--participant-archive', '--participant-terminal-receipts'].includes(option));
-const journalKind = terminalReceipts || option === '--participant-archive' ? 'independentParticipant'
+  ['--independent-delivery', '--participant-archive', '--participant-terminal-receipts', '--participant-opaque'].includes(option));
+const journalKind = terminalReceipts || opaque || option === '--participant-archive' ? 'independentParticipant'
   : option === '--independent-delivery' ? 'independentDelivery' : 'pairedSession';
 const source = sourceEvidence(root);
 assert.equal(source.dirty, false);
@@ -584,7 +596,7 @@ try {
     const path = join(sandbox, mode);
     mkdirSync(path, {mode: 0o700});
     reports[mode] = {
-      ...await run(mode, distribution, executable, path, journalKind, terminalReceipts), proof: distribution.proof,
+      ...await run(mode, distribution, executable, path, journalKind, terminalReceipts, opaque), proof: distribution.proof,
     };
   }
   assert.equal(reports.source.runtimeSha256, reports.installed.runtimeSha256);
@@ -593,7 +605,8 @@ try {
     format: 'breditor/writable-relay-segment-qualification', formatVersion: 1,
     source, relaySha256: sha(readFileSync(executable)), reports,
   };
-  const reportFile = terminalReceipts ? 'qualified-participant-terminal-receipts.json'
+  const reportFile = opaque ? 'qualified-participant-opaque.json'
+    : terminalReceipts ? 'qualified-participant-terminal-receipts.json'
     : journalKind === 'independentParticipant' ? 'qualified-participant-archive-segment.json'
     : journalKind === 'independentDelivery' ? 'qualified-independent-delivery-segment.json'
       : 'qualified-writable-relay-segment.json';

@@ -1,0 +1,115 @@
+{
+  "format": "breditor/linked-handover-participant-opaque-qualification",
+  "formatVersion": 1,
+  "date": "2026-11-14",
+  "sdkReportSha256": "f552c8790ac4f13b2e967c3dae2f83f58115ab60af12a180061b330600580bde",
+  "source": {
+    "commit": "65e6bb6cfad0088498e65425571ed9b19dff4893",
+    "dirty": false,
+    "sha256": "19896e41297e64891932bd2d37282331057af48ba423c101bd3c4ec19a999273",
+    "files": 8842,
+    "bytes": 75203733
+  },
+  "relaySha256": "472e6f121f57fcbde42d599dbf025a537fe0ca0607dda126d06a8d5c3b282cda",
+  "reports": {
+    "source": {
+      "mode": "source",
+      "handoffs": 2,
+      "portableRestores": 1,
+      "restoredOfflineLanes": 6,
+      "undoRedoLanes": 2,
+      "rasterReads": 2,
+      "processExits": 4,
+      "authenticatedTakeovers": 1,
+      "oldServingRefusals": 1,
+      "coldResumes": 2,
+      "registrationRefusals": 3,
+      "providerRasters": 3,
+      "retainedPackets": 1,
+      "stagedClientRasters": 3,
+      "clientUploadReceipts": 1,
+      "clientUploadArchives": 2,
+      "missingArchiveRefusals": 1,
+      "preservedCancelledUploads": 1,
+      "nativeJournals": 3,
+      "missingJournalRefusals": 2,
+      "coldJournalPairs": 1,
+      "clientJournalRasterBindings": 3,
+      "offlineImageRedo": 1,
+      "pairedBackups": 0,
+      "wrongReceiptRefusals": 1,
+      "retainedLocalVersions": 1,
+      "independentDeliveries": 0,
+      "participantArchives": 1,
+      "participantRasterBindings": 3,
+      "archiveOnlyRasterReads": 1,
+      "unresolvedProviderMappings": 1,
+      "changedProviderRefusals": 2,
+      "retainedOutboxPendings": 4,
+      "deliveredOutboxEntries": 4,
+      "retainedAbsolutePositions": true,
+      "runtimeSha256": "373fa3eaff1317bec901efb053b2bf0e25cbe051102de3069dfcf16119997c56",
+      "proof": null
+    },
+    "installed": {
+      "mode": "installed",
+      "handoffs": 2,
+      "portableRestores": 1,
+      "restoredOfflineLanes": 6,
+      "undoRedoLanes": 2,
+      "rasterReads": 2,
+      "processExits": 4,
+      "authenticatedTakeovers": 1,
+      "oldServingRefusals": 1,
+      "coldResumes": 2,
+      "registrationRefusals": 3,
+      "providerRasters": 3,
+      "retainedPackets": 1,
+      "stagedClientRasters": 3,
+      "clientUploadReceipts": 1,
+      "clientUploadArchives": 2,
+      "missingArchiveRefusals": 1,
+      "preservedCancelledUploads": 1,
+      "nativeJournals": 3,
+      "missingJournalRefusals": 2,
+      "coldJournalPairs": 1,
+      "clientJournalRasterBindings": 3,
+      "offlineImageRedo": 1,
+      "pairedBackups": 0,
+      "wrongReceiptRefusals": 1,
+      "retainedLocalVersions": 1,
+      "independentDeliveries": 0,
+      "participantArchives": 1,
+      "participantRasterBindings": 3,
+      "archiveOnlyRasterReads": 1,
+      "unresolvedProviderMappings": 1,
+      "changedProviderRefusals": 2,
+      "retainedOutboxPendings": 4,
+      "deliveredOutboxEntries": 4,
+      "retainedAbsolutePositions": true,
+      "runtimeSha256": "373fa3eaff1317bec901efb053b2bf0e25cbe051102de3069dfcf16119997c56",
+      "proof": {
+        "registryArtifacts": 45,
+        "archives": [
+          {
+            "name": "@breditor/browser",
+            "sha256": "79f5b486d3742d1234e4eb21c18822e0a494551d49a73039f5b856908c124f3f"
+          },
+          {
+            "name": "@breditor/experimental-rich-content",
+            "sha256": "c181984cc8f737861adf4886398d00413af6a42178d8542d789710c5b3faf371"
+          },
+          {
+            "name": "@breditor/collaboration",
+            "sha256": "da76219169eb0b14e2124ca82a4c26827dfd200047ddc65b53565b91f623c8c6"
+          }
+        ]
+      }
+    }
+  },
+  "scope": [
+    "An image in a pending proposal uses the opaque identity sha256:opaque-proposal and its original binding generation. Its immutable raster was supplied exclusively by the SDK binary archive. It was absent from the predecessor relay and both upload archives.",
+    "An absent live provider mapping produced a pending result. Mapping the original binding to a different, valid raster already in the room refused verification; changing the provider after approval to the same alternative refused commit and left the original epoch unchanged.",
+    "Under the exact live mapping, the cold relay returned the original raster by content digest and both SDK consumers recovered the original alias and bytes. The proposal and three independent pending actions then completed through the normal authenticated relay."
+  ]
+}

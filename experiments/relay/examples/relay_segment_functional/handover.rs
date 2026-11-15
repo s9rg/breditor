@@ -18,6 +18,9 @@ use std::{
     sync::Arc,
 };
 
+#[path = "handover/provider.rs"]
+mod provider;
+
 const POLICY: RoomRecoveryPolicy = RoomRecoveryPolicy::HostReacquired;
 
 #[derive(Deserialize)]
@@ -35,6 +38,7 @@ enum Command {
         uploads: Vec<RelaySegmentClientUploadPin>,
         journals: Vec<RelaySegmentClientJournalPin>,
         wrong_receipt: RelaySegmentClientJournalPin,
+        asset_mapping: Option<provider::Selection>,
     },
     Resume {
         token: String,
@@ -59,6 +63,7 @@ fn prepare_and_commit(
     uploads: &[RelaySegmentClientUploadPin],
     journals: &[RelaySegmentClientJournalPin],
     wrong_receipt: RelaySegmentClientJournalPin,
+    asset_mapping: Option<provider::Selection>,
 ) -> Result<Value> {
     let (backup, previous) =
         handle.capture_relay_segment("owner", token, &parent.join("capture"))?;
@@ -125,6 +130,13 @@ fn prepare_and_commit(
         assert!(target.copy_client_archive(&journals[0], &mut copy)?);
         assert_eq!(copy, std::fs::read(parent.join("journal-0.json"))?);
     }
+    let mapped = asset_mapping
+        .map(|selection| {
+            provider::Provider::prepare(selection, &mut target, &authentication, token, credentials)
+        })
+        .transpose()?;
+    let provider: Arc<dyn ServerRecoveryAssetProvider> =
+        mapped.as_ref().map_or(provider, |selected| selected.clone());
     let pending = target.verify_handover_inputs(
         &authentication,
         "owner",
@@ -203,7 +215,25 @@ fn prepare_and_commit(
     let review = document.paired_review.as_ref().ok_or("paired review head")?;
     assert!(review.local_through.parse::<u64>()? > review.accepted_through.parse::<u64>()?);
     assert!(verified_journals.journals[1].paired_review.is_none());
-    let approval = RelaySegmentHandoverApproval::select_verified(&target, &inputs, previous)?;
+    let approval =
+        RelaySegmentHandoverApproval::select_verified(&target, &inputs, previous.clone())?;
+    if let Some(mapping) = &mapped {
+        mapping.select(false);
+        let refused = handle.commit_verified_relay_segment_handover(
+            "owner",
+            token,
+            target,
+            configured_auth(parent)?,
+            &approval,
+            &inputs,
+        );
+        if !provider::Provider::is_disagreement(&refused) {
+            return Err("the changed mapped raster was accepted at the commit boundary".into());
+        }
+        assert_eq!(deployment(parent)?.current_selection()?, previous);
+        mapping.select(true);
+        target = backup.reopen(&parent.join("restored"), POLICY)?;
+    }
     storage::write_new(&parent.join("approval.json"), &serde_json::to_vec(&approval)?)?;
     File::open(parent)?.sync_all()?;
     let (router, handle, selected) = handle.commit_verified_relay_segment_handover(
@@ -229,6 +259,8 @@ fn prepare_and_commit(
         "pairedBackups": usize::from(matches!(journals[0].owner, breditor_collab_relay::RelaySegmentJournalOwner::PairedSession { .. })),
         "independentDeliveries": usize::from(matches!(journals[0].owner, breditor_collab_relay::RelaySegmentJournalOwner::IndependentDelivery { .. })),
         "participantArchives": usize::from(participant),
+        "participantUnmapped": usize::from(mapped.is_some()),
+        "participantMappingRefusals": 2 * usize::from(mapped.is_some()),
         "participantRasterBindings": verified_journals.participant_raster_bindings.len(),
         "wrongReceiptRefusals": 1,
         "clientJournalRasterBindings": verified_journals.asset_references.len(),
@@ -254,6 +286,7 @@ pub(super) fn serve_control(
             uploads,
             journals,
             wrong_receipt,
+            asset_mapping,
         } = serde_json::from_slice(&input()?)?
         else {
             return Err("expected private handover command".into());
@@ -285,6 +318,7 @@ pub(super) fn serve_control(
             &uploads,
             &journals,
             wrong_receipt,
+            asset_mapping,
         )?;
         {
             let mut stdout = std::io::stdout().lock();

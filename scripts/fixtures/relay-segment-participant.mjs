@@ -6,9 +6,10 @@ import {restoreParticipantThroughRecovery} from './independent-delivery-recovery
 import {proposalAsset, proposalPixel} from './review-assets/pixels.mjs';
 
 const sha = bytes => createHash('sha256').update(bytes).digest('hex');
+export const proposalAlias = 'sha256:opaque-proposal';
 const magic = Buffer.from('BREDITOR-INDEPENDENT-DELIVERY-PARTICIPANT1\n');
 
-export async function captureParticipant(api, rich, session, upload) {
+export async function captureParticipant(api, rich, session, upload, assetKey) {
   const uploadBackup = readFileSync(upload.path);
   const store = await rich.RichAssetStore.restoreBackup(
     'handover-participant-assets', new Blob([uploadBackup]), {uploadState: 'preserve'},
@@ -18,9 +19,9 @@ export async function captureParticipant(api, rich, session, upload) {
       participant: 'archived-writer', principal: 'owner', source: {session},
       assets: store, checkAuthority() {},
       resolveAsset(reference) {
-        if (reference.asset !== proposalAsset) return undefined;
+        if (reference.asset !== assetKey) return undefined;
         return {
-          ...reference, identity: 'content-addressed',
+          ...reference, identity: assetKey === proposalAsset ? 'content-addressed' : 'host-verified',
           blob: new Blob([proposalPixel], {type: 'image/png'}), check() {},
         };
       },
@@ -31,6 +32,9 @@ export async function captureParticipant(api, rich, session, upload) {
       assert.deepEqual(backup.uploadEntries(), upload.rows);
       assert.deepEqual(Buffer.from(await backup.uploadBackup().arrayBuffer()), uploadBackup);
       assert.ok(backup.metadata().assets.some(asset => asset.contentAsset === proposalAsset));
+      const binding = backup.metadata().bindings.find(({asset}) => asset === assetKey);
+      assert.equal(binding.contentAsset, proposalAsset);
+      assert.equal(binding.identity, assetKey === proposalAsset ? 'content-addressed' : 'host-verified');
       assert.equal(backup.uploadBlob(proposalAsset), undefined);
       return {
         archive: Buffer.from(await backup.file().arrayBuffer()),
@@ -44,12 +48,12 @@ export async function captureParticipant(api, rich, session, upload) {
   }
 }
 
-export async function reopenParticipant(api, options, bytes, selection, upload) {
+export async function reopenParticipant(api, options, bytes, selection, upload, assetKey) {
   const backup = await api.readSharedIndependentDeliveryParticipant(new Blob([bytes]), selection);
   try {
     assert.deepEqual(backup.uploadEntries(), upload.rows);
     assert.equal(sha(Buffer.from(await backup.uploadBackup().arrayBuffer())), upload.pin.sha256);
-    const image = backup.blob(proposalAsset, 'queued-proposal-image');
+    const image = backup.blob(assetKey, 'queued-proposal-image');
     assert.deepEqual(Buffer.from(await image.arrayBuffer()), proposalPixel);
     return await restoreParticipantThroughRecovery({
       api, options, backup, uploadsDatabase: options.database + '-participant-uploads',
