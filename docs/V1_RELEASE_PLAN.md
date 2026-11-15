@@ -2,6 +2,17 @@
 
 ## November 15 collaboration recovery
 
+[Sealed portable relocation](qualification/2026-11-15-relay-sealed-portable-relocation.json)
+checks the exact live cut before fencing the source. A fresh process restores
+the moved bundle with four native predecessors and verifies the two document
+and two review registrations and current provider assets. The source and
+clean-installed workflows park seven original paths, then preserve offline work,
+upload state, native Undo/Redo, review packets and the 40-event archived
+discussion across activation and restart. A focused native test also covers a
+lost source-seal reply and refusal of a stale portable cut. Both candidate
+profiles require relocation and legacy handover. Strict relay-library Clippy
+still reports seven findings in earlier code.
+
 [Portable native predecessor backup](qualification/2026-11-15-relay-portable-native-lineage.json)
 includes the exact archive and checkpoint of each earlier native segment.
 The source and clean-installed workflow verifies all three original
