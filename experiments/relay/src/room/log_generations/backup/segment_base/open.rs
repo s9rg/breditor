@@ -62,6 +62,22 @@ impl RelaySegmentBaseFile {
         expected: &RelaySegmentBaseIdentity,
         parent: Option<Arc<Self>>,
     ) -> Result<Self> {
+        let archive = ArchiveInput::new(archive, crate::MAX_SERVER_LOG_GENERATION_BACKUP_BYTES)?;
+        let checkpoint = ArchiveInput::new(checkpoint, MAX_CHECKPOINT_BYTES as u64)?;
+        Self::open_inputs(archive, checkpoint, expected, parent)
+    }
+
+    pub(crate) fn open_inputs(
+        archive: ArchiveInput,
+        checkpoint: ArchiveInput,
+        expected: &RelaySegmentBaseIdentity,
+        parent: Option<Arc<Self>>,
+    ) -> Result<Self> {
+        if archive.all().len() > crate::MAX_SERVER_LOG_GENERATION_BACKUP_BYTES
+            || checkpoint.all().len() > MAX_CHECKPOINT_BYTES as u64
+        {
+            return Err(Error::Contract("relay segment base input budget"));
+        }
         if expected.predecessor.source != expected.checkpoint.source
             || expected.predecessor.manifest != expected.checkpoint.manifest
         {
@@ -70,7 +86,6 @@ impl RelaySegmentBaseFile {
         if let Some(prior) = &parent {
             prior.check()?;
         }
-        let archive = ArchiveInput::new(archive, crate::MAX_SERVER_LOG_GENERATION_BACKUP_BYTES)?;
         let origin = parent.as_deref().map(|base| SegmentArchiveOrigin { base });
         let (sections, root_generation) = super::super::disk::admit_generation_file(
             archive.all(),
@@ -91,7 +106,6 @@ impl RelaySegmentBaseFile {
                 }
             }
         }
-        let checkpoint = ArchiveInput::new(checkpoint, MAX_CHECKPOINT_BYTES as u64)?;
         let result = Self {
             identity: expected.clone(),
             binding: segment_history_digest(parent.as_deref(), expected)?,
@@ -118,9 +132,13 @@ impl RelaySegmentBaseFile {
     }
 
     pub(crate) fn check(&self) -> Result<()> {
-        for base in self.lineage() {
-            base.archive.check()?;
-            base.checkpoint.check()?;
+        let mut checked = None;
+        for input in self.lineage().flat_map(|base| [&base.archive, &base.checkpoint]) {
+            if checked.is_some_and(|previous| input.shares_handle(previous)) {
+                continue;
+            }
+            input.check()?;
+            checked = Some(input);
         }
         Ok(())
     }

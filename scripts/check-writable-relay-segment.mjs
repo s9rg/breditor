@@ -693,6 +693,9 @@ async function run(mode, {distribution, rich}, executable, parent, journalKind, 
       }
       if (portableSeal) {
         assert.equal(result.portableSeal.nativePredecessors, 4);
+        const packed = join(parent, 'portable-relocation-source', 'native-lineage');
+        assert.ok(readFileSync(join(packed, 'packed.bin')).subarray(0, 8).equals(Buffer.from('BRLINE1\n')));
+        assert.throws(() => readFileSync(join(packed, '0.archive')), {code:'ENOENT'});
         assert.equal(result.portableSeal.sealedSelection.identity.formatVersion, 2);
         assertOrdinaryStartupRefused(executable, parent, 'claim-unverified', address);
         const originalPaths = [
@@ -727,6 +730,7 @@ async function run(mode, {distribution, rich}, executable, parent, journalKind, 
           unservedActivationResumes: 1,
           sealedCaptureRefusals: 1,
           sealedNativePredecessors: result.portableSeal.nativePredecessors,
+          packedNativeLineages: 1,
           retiredOriginalPaths: originalPaths.length,
           freshlyVerifiedProtectedRegistrations: documents.length + reviews.length,
         };

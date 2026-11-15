@@ -24,7 +24,7 @@ pub(super) fn seal(
 ) -> Result<serde_json::Value> {
     let path = parent.join("portable-relocation-source");
     let intent = RelaySegmentPortableSeal::select(
-        handle.capture_portable_relay_segment("owner", token, &path)?,
+        handle.capture_packed_portable_relay_segment("owner", token, &path)?,
     )?;
     storage::write_new(&parent.join(SEAL), &serde_json::to_vec(&intent)?)?;
     File::open(parent)?.sync_all()?;

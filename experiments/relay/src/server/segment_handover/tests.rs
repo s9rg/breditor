@@ -27,6 +27,8 @@ mod client_rasters;
 mod client_uploads;
 mod coordinated;
 mod discussion_backup;
+#[cfg(any(target_os = "macos", target_os = "linux"))]
+mod packed_lineage;
 mod portable_activation;
 mod portable_backup;
 mod portable_seal_custody;

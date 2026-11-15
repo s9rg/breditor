@@ -6,11 +6,18 @@ use std::{
     borrow::Cow,
     fs::File,
     io::{self, Read},
+    sync::Arc,
 };
 
-pub(crate) struct ArchiveInput {
+struct HeldArchiveFile {
     file: File,
     stamp: GenerationFileStamp,
+    bytes: u64,
+}
+
+pub(crate) struct ArchiveInput {
+    held: Arc<HeldArchiveFile>,
+    start: u64,
     bytes: u64,
 }
 
@@ -41,7 +48,16 @@ impl ArchiveInput {
             return Err(Error::Contract("backup input file type or size"));
         }
         stamp.guard(&file)?;
-        Ok(Self { file, stamp, bytes: metadata.len() })
+        let bytes = metadata.len();
+        Ok(Self { held: Arc::new(HeldArchiveFile { file, stamp, bytes }), start: 0, bytes })
+    }
+
+    /// Own a bounded logical input without opening another descriptor. All public read offsets
+    /// remain relative to this input, so existing archive section indexes still start at zero.
+    #[cfg(feature = "server")]
+    pub(crate) fn retained_section(&self, offset: u64, bytes: u64) -> Result<Self> {
+        self.all().section(offset, bytes)?;
+        Ok(Self { held: self.held.clone(), start: self.start + offset, bytes })
     }
 
     pub(crate) fn all(&self) -> ArchiveSlice<'_> {
@@ -49,11 +65,15 @@ impl ArchiveInput {
     }
 
     pub(crate) fn check(&self) -> Result<()> {
-        self.stamp.guard(&self.file)?;
-        if self.file.metadata()?.len() != self.bytes {
+        self.held.stamp.guard(&self.held.file)?;
+        if self.held.file.metadata()?.len() != self.held.bytes {
             return Err(Error::Contract("backup input file length changed"));
         }
         Ok(())
+    }
+
+    pub(crate) fn shares_handle(&self, other: &Self) -> bool {
+        Arc::ptr_eq(&self.held, &other.held)
     }
 
     pub(crate) fn check_named(
@@ -61,7 +81,7 @@ impl ArchiveInput {
         witness: &crate::log::generations::GenerationFileWitness,
         path: &std::path::Path,
     ) -> Result<()> {
-        witness.guard(&self.file, path)?;
+        witness.guard(&self.held.file, path)?;
         self.check()
     }
 }
@@ -196,7 +216,11 @@ impl Read for ArchiveRange<'_> {
             if length == 0 {
                 return Ok(0);
             }
-            let read = self.input.file.read_at(&mut buffer[..length], self.offset)?;
+            let read = self
+                .input
+                .held
+                .file
+                .read_at(&mut buffer[..length], self.input.start + self.offset)?;
             self.offset += read as u64;
             self.bytes -= read as u64;
             Ok(read)

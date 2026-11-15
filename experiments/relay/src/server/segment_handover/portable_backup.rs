@@ -1,7 +1,7 @@
 //! A portable backup includes each linked native component needed to open the retained cut.
 use super::{
     capture::begin_capture,
-    native_lineage::NativeLineage,
+    native_lineage::{LineageLayout, NativeLineage},
     retained_backup::{
         RelaySegmentRetainedBackup, RelaySegmentRetainedBackupIdentity, RetainedBackupCopies,
         RetainedCopies,
@@ -21,7 +21,8 @@ pub struct RelaySegmentPortableBackupIdentity {
     /// Latest native and raster cut with all retained client input pins.
     pub retained: RelaySegmentRetainedBackupIdentity,
     /// Oldest to newest. Each pair is named `native-lineage/{index}.archive` and
-    /// `native-lineage/{index}.checkpoint`.
+    /// `native-lineage/{index}.checkpoint` in a split backup. A packed backup
+    /// stores the same ordered bytes in `native-lineage/packed.bin`.
     pub native_predecessors: Vec<RelaySegmentBaseIdentity>,
 }
 
@@ -82,12 +83,49 @@ impl ServerBackupHandle {
         token: &str,
         destination: &Path,
     ) -> Result<RelaySegmentPortableBackupIdentity> {
+        self.capture_portable_relay_segment_with_layout(
+            principal,
+            token,
+            destination,
+            LineageLayout::Split,
+        )
+    }
+
+    /// Capture the same selected room and predecessors as a split portable backup.
+    /// Store all native predecessor pairs in one file. Opening the bundle holds
+    /// one descriptor for that file regardless of the number of predecessors.
+    /// Older readers require the split layout. Run off async I/O workers.
+    ///
+    /// # Errors
+    /// Refuses invalid owner authentication, a superseded epoch, changed inputs,
+    /// occupied destinations and I/O failures. Retry at another absent path.
+    pub fn capture_packed_portable_relay_segment(
+        &self,
+        principal: &str,
+        token: &str,
+        destination: &Path,
+    ) -> Result<RelaySegmentPortableBackupIdentity> {
+        self.capture_portable_relay_segment_with_layout(
+            principal,
+            token,
+            destination,
+            LineageLayout::Packed,
+        )
+    }
+
+    fn capture_portable_relay_segment_with_layout(
+        &self,
+        principal: &str,
+        token: &str,
+        destination: &Path,
+        layout: LineageLayout,
+    ) -> Result<RelaySegmentPortableBackupIdentity> {
         let host = &self.host;
         host.authentication.authenticate(principal, token)?;
         let (captured, source_epoch) = begin_capture(host, principal, destination)?;
         let (retained, client_copies) = RetainedCopies::capture(host, &captured, source_epoch)?;
         let (native_predecessors, lineage) =
-            NativeLineage::export(&captured.directory, captured.parent.as_deref())?;
+            NativeLineage::export(&captured.directory, captured.parent.as_deref(), layout)?;
         captured.confirm(host, &retained.source_epoch, || {
             if let Some(parent) = &captured.parent {
                 parent.check()?;
