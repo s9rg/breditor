@@ -9,8 +9,8 @@ use crate::{
     },
 };
 use serde_json::json;
-use std::{sync::Arc, time::Duration};
-use tokio::sync::{Semaphore, oneshot};
+use std::time::Duration;
+use tokio::sync::oneshot;
 
 type TestResult<T = ()> = std::result::Result<T, Box<dyn std::error::Error>>;
 const DEADLINE: Duration = Duration::from_secs(10);
@@ -59,7 +59,7 @@ impl Fixture {
 async fn archive_work_leaves_the_room_open_and_a_superseded_epoch_cannot_commit() -> TestResult {
     let fixture = Fixture::new()?;
     let host = fixture.host.clone();
-    let permit = host.discussion_operations.clone().try_acquire_owned()?;
+    let permit = host.discussion_publications.clone().try_acquire_owned()?;
     let (started, waiting) = oneshot::channel();
     let (release, parked) = std::sync::mpsc::channel();
     let job = tokio::spawn(async move {
@@ -103,7 +103,8 @@ async fn archive_work_leaves_the_room_open_and_a_superseded_epoch_cannot_commit(
 async fn abandoning_the_request_retains_quota_until_the_archive_worker_finishes() -> TestResult {
     let fixture = Fixture::new()?;
     let host = fixture.host.clone();
-    let quota = Arc::new(Semaphore::new(1));
+    let quota = host.discussion_publications.clone();
+    let _other = quota.clone().try_acquire_owned()?;
     let permit = quota.clone().try_acquire_owned()?;
     let (started, waiting) = oneshot::channel();
     let (release, parked) = std::sync::mpsc::channel();
@@ -125,6 +126,7 @@ async fn abandoning_the_request_retains_quota_until_the_archive_worker_finishes(
     job.abort();
     assert!(job.await.is_err_and(|error| error.is_cancelled()));
     assert!(quota.clone().try_acquire_owned().is_err());
+    let _read = fixture.host.discussion_operations.clone().try_acquire_owned()?;
     release.send(())?;
     let _available = tokio::time::timeout(DEADLINE, quota.acquire_owned()).await??;
     assert!(!fixture.has_reader("abandoned-archive")?);

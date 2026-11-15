@@ -36,7 +36,7 @@ pub(in crate::server) async fn publish(
         if header(&parts.headers, "content-type")? != CONTENT_TYPE {
             return Err(Error::Contract("recovered discussion content type"));
         }
-        let Ok(permit) = host.discussion_operations.clone().try_acquire_owned() else {
+        let Ok(permit) = host.discussion_publications.clone().try_acquire_owned() else {
             return Ok(StatusCode::SERVICE_UNAVAILABLE.into_response());
         };
         let principal = access.principal.clone();

@@ -358,3 +358,4 @@ relay reacquires the serving epoch and file custody, checks the exact live birth
 and current accepted writer prefixes, and appends the same verified packet.
 Exact retries still return the original acceptance. The worker retains its quota
 until it finishes, including when a client disconnects during verification.
+Attachment reads have their own quota.

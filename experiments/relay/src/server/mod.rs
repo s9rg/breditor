@@ -116,6 +116,7 @@ pub(super) struct Host {
     versions_changed: watch::Sender<u64>,
     version_operations: Arc<Semaphore>,
     discussion_operations: Arc<Semaphore>,
+    discussion_publications: Arc<Semaphore>,
     suggestions_changed: watch::Sender<u64>,
     generation_custody: Option<Arc<crate::room::GenerationOperationCustody>>,
     generation_serving:
@@ -229,6 +230,7 @@ fn create_host(
         versions_changed,
         version_operations: Arc::new(Semaphore::new(4)),
         discussion_operations: Arc::new(Semaphore::new(2)),
+        discussion_publications: Arc::new(Semaphore::new(2)),
         suggestions_changed,
         generation_custody: None,
         generation_serving: Arc::new(std::sync::OnceLock::new()),
