@@ -380,10 +380,9 @@ The live predecessor stays selected when a restore omits a required source.
 For a single capture, call
 `ServerBackupHandle::capture_relay_segment_with_discussion_sources`. The
 handle takes the archive dependency list at the exact native and raster
-cut. It copies and syncs the originals in `discussion-sources` under the
-same serving epoch while releasing the room lock for other operations.
-Retain the returned `RelaySegmentDiscussionBackupIdentity` independently
-of the directory.
+cut. It releases the room lock, then copies and syncs the originals in
+`discussion-sources` under the same serving permit. Retain the returned
+`RelaySegmentDiscussionBackupIdentity` independently of the directory.
 
 `RelaySegmentDiscussionBackup::open` checks the native archive, checkpoint,
 rasters and original participant files against that identity. For a linked

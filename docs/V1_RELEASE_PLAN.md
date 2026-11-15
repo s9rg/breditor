@@ -2,6 +2,17 @@
 
 ## November 15 collaboration recovery
 
+[Bundled discussion backups](qualification/2026-11-15-relay-discussion-bundle.json)
+capture the native archive, checkpoint, raster data and the exact published
+discussion originals under one current serving epoch. The copy releases the
+room lock and retains the serving permit for the duration. Source and clean
+installs reopen the bundle from its independently saved identity, refuse a
+missing original, incomplete pin roster and occupied destination, and use the
+original in the authenticated handover. A fresh Reader verifies the two
+authors' 40 archived events after restart. The earlier alternate-only capture
+and handover pass through the original API. Other participant journals and
+upload inputs follow the existing handover contract.
+
 [Portable discussion provenance](qualification/2026-11-15-published-discussion-sources.json)
 requires the exact participant archives referenced by published discussions in
 a portable relay-segment restore. Both the selected and alternate cohorts can
