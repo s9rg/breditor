@@ -86,6 +86,10 @@ impl RelaySegmentClientUploadArchive {
     /// Refuses changed bytes, unsupported framing, noncanonical metadata and incomplete ranges.
     pub fn open(file: File, expected: RelaySegmentClientUploadPin) -> Result<Self> {
         let file = ArchiveInput::new(file, codec::MAX_FILE)?;
+        Self::admit(file, expected)
+    }
+
+    pub(crate) fn admit(file: ArchiveInput, expected: RelaySegmentClientUploadPin) -> Result<Self> {
         let layout = UploadLayout::read(file.all(), &expected)?;
         Ok(Self { pin: expected, file, layout })
     }

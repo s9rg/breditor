@@ -1,8 +1,12 @@
 //! The exact named portable backup must still exist when the serving source is fenced.
 use super::{Barrier, Interruption, Point, Source, TestResult, auth};
-use crate::{Error, Role, server::RelaySegmentPortableSeal};
+use crate::{
+    Error, Role,
+    server::{RelaySegmentPortableBackupIdentity, RelaySegmentPortableSeal, ServerBackupHandle},
+};
 use std::{
     fs,
+    path::Path,
     sync::{Mutex, mpsc},
     thread,
     time::Duration,
@@ -10,15 +14,36 @@ use std::{
 
 #[tokio::test]
 async fn seal_refuses_a_displaced_backup_root() -> TestResult {
-    protect_named_backup("portable").await
+    protect_named_backup("portable", ServerBackupHandle::capture_portable_relay_segment).await
 }
 
 #[tokio::test]
 async fn seal_refuses_a_displaced_native_lineage() -> TestResult {
-    protect_named_backup("portable/native-lineage").await
+    protect_named_backup(
+        "portable/native-lineage",
+        ServerBackupHandle::capture_portable_relay_segment,
+    )
+    .await
 }
 
-async fn protect_named_backup(named_component: &str) -> TestResult {
+#[tokio::test]
+async fn seal_refuses_a_displaced_packed_client_archive() -> TestResult {
+    protect_named_backup(
+        "portable/client-inputs.bin",
+        ServerBackupHandle::capture_fully_packed_portable_relay_segment,
+    )
+    .await
+}
+
+async fn protect_named_backup(
+    named_component: &str,
+    capture: fn(
+        &ServerBackupHandle,
+        &str,
+        &str,
+        &Path,
+    ) -> crate::Result<RelaySegmentPortableBackupIdentity>,
+) -> TestResult {
     let source = Source::open()?;
     let base = source.capture("base-input")?;
     let (target, approval) = source.approve(&base, &source.parent.join("live-successor"))?;
@@ -30,11 +55,7 @@ async fn protect_named_backup(named_component: &str) -> TestResult {
         &approval,
     )?;
     let path = source.parent.join("portable");
-    let intent = RelaySegmentPortableSeal::select(live.capture_portable_relay_segment(
-        "owner",
-        &source.token,
-        &path,
-    )?)?;
+    let intent = RelaySegmentPortableSeal::select(capture(&live, "owner", &source.token, &path)?)?;
     assert_eq!(intent.backup().native_predecessors.len(), 1);
     let named = source.parent.join(named_component);
     let parked = source.parent.join("parked");
@@ -70,11 +91,7 @@ async fn protect_named_backup(named_component: &str) -> TestResult {
     live.host.transaction(|room| room.grant("owner", "still-writable", Some(Role::Reader))).await?;
 
     let retry = source.parent.join("fresh-portable");
-    let fresh = RelaySegmentPortableSeal::select(live.capture_portable_relay_segment(
-        "owner",
-        &source.token,
-        &retry,
-    )?)?;
+    let fresh = RelaySegmentPortableSeal::select(capture(&live, "owner", &source.token, &retry)?)?;
     let sealed = live.seal_portable_relay_segment("owner", &source.token, &retry, &fresh)?;
     assert_eq!(sealed, fresh.planned_selection()?);
     assert_eq!(source.authority.current_selection()?, sealed);

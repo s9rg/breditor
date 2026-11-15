@@ -3,8 +3,8 @@ use super::{
     capture::begin_capture,
     native_lineage::{LineageLayout, NativeLineage},
     retained_backup::{
-        RelaySegmentRetainedBackup, RelaySegmentRetainedBackupIdentity, RetainedBackupCopies,
-        RetainedCopies,
+        ClientLayout, RelaySegmentRetainedBackup, RelaySegmentRetainedBackupIdentity,
+        RetainedBackupCopies, RetainedCopies,
     },
 };
 use crate::{
@@ -94,6 +94,7 @@ impl ServerBackupHandle {
             token,
             destination,
             LineageLayout::Split,
+            ClientLayout::Split,
         )
     }
 
@@ -116,6 +117,29 @@ impl ServerBackupHandle {
             token,
             destination,
             LineageLayout::Packed,
+            ClientLayout::Split,
+        )
+    }
+
+    /// Capture a portable room with one file for native predecessors and another for
+    /// retained client inputs. The independent selection and exact original bytes
+    /// match the split capture at the same source cut. Run off async I/O workers.
+    ///
+    /// # Errors
+    /// Refuses invalid owner authentication, a superseded epoch, changed inputs,
+    /// occupied destinations and I/O failures. Retry at another absent path.
+    pub fn capture_fully_packed_portable_relay_segment(
+        &self,
+        principal: &str,
+        token: &str,
+        destination: &Path,
+    ) -> Result<RelaySegmentPortableBackupIdentity> {
+        self.capture_portable_relay_segment_with_layout(
+            principal,
+            token,
+            destination,
+            LineageLayout::Packed,
+            ClientLayout::Packed,
         )
     }
 
@@ -124,20 +148,22 @@ impl ServerBackupHandle {
         principal: &str,
         token: &str,
         destination: &Path,
-        layout: LineageLayout,
+        lineage_layout: LineageLayout,
+        client_layout: ClientLayout,
     ) -> Result<RelaySegmentPortableBackupIdentity> {
         let host = &self.host;
         host.authentication.authenticate(principal, token)?;
         let (captured, source_epoch) = begin_capture(host, principal, destination)?;
-        let (retained, client_copies) = RetainedCopies::capture(host, &captured, source_epoch)?;
+        let (retained, client_copies) =
+            RetainedCopies::capture(host, &captured, source_epoch, client_layout)?;
         let (native_predecessors, lineage) =
-            NativeLineage::export(&captured.directory, captured.parent.as_deref(), layout)?;
+            NativeLineage::export(&captured.directory, captured.parent.as_deref(), lineage_layout)?;
         captured.confirm(host, &retained.source_epoch, || {
             if let Some(parent) = &captured.parent {
                 parent.check()?;
             }
             lineage.check()?;
-            client_copies.check()
+            client_copies.check(&captured.directory)
         })?;
         Ok(RelaySegmentPortableBackupIdentity { retained, native_predecessors })
     }

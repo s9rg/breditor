@@ -116,6 +116,30 @@ impl RelaySegmentServingCustody {
         Ok(pins)
     }
 
+    pub(crate) fn write_portable_inputs(
+        &self,
+        output: &mut impl std::io::Write,
+        selection: &mut RelaySegmentRetainedBackupIdentity,
+    ) -> Result<()> {
+        self.check()?;
+        for (cohort, pins) in [
+            (self.journals.as_ref(), &mut selection.selected_journals),
+            (self.alternatives.as_ref(), &mut selection.alternate_journals),
+        ] {
+            if let Some(cohort) = cohort {
+                for (index, pin) in cohort.pins().iter().enumerate() {
+                    cohort.copy(index, output)?;
+                    pins.push(pin.clone());
+                }
+            }
+        }
+        if let Some(uploads) = &self.uploads {
+            selection.standalone_uploads = uploads
+                .write_standalone(output, &embedded_upload_writers(&selection.selected_journals))?;
+        }
+        self.check()
+    }
+
     pub(crate) fn export_recovered_discussion_sources(
         &self,
         requested: &BTreeSet<[u8; 32]>,

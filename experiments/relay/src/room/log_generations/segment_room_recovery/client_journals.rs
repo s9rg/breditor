@@ -193,8 +193,12 @@ impl RelaySegmentClientJournal {
     /// # Errors
     /// Refuses invalid identities, implausible lengths, file changes and wrong digests.
     pub fn open(file: File, pin: RelaySegmentClientJournalPin) -> Result<Self> {
-        pin.check()?;
         let file = ArchiveInput::new(file, pin.owner.byte_limit())?;
+        Self::admit(file, pin)
+    }
+
+    pub(crate) fn admit(file: ArchiveInput, pin: RelaySegmentClientJournalPin) -> Result<Self> {
+        pin.check()?;
         if file.all().len() != pin.bytes || file.all().digest()? != pin.sha256 {
             return Err(Error::Contract("client journal differs from selected file"));
         }

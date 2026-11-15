@@ -119,17 +119,37 @@ impl RetainedUploads {
     }
 
     #[cfg(feature = "server")]
+    fn standalone<'a>(
+        &'a self,
+        embedded_writers: &'a std::collections::BTreeSet<&str>,
+    ) -> impl Iterator<Item = &'a HeldArchive> {
+        self.archives.iter().filter(|entry| !embedded_writers.contains(entry.pin.writer.as_str()))
+    }
+
+    #[cfg(feature = "server")]
+    pub fn write_standalone(
+        &self,
+        output: &mut impl std::io::Write,
+        embedded_writers: &std::collections::BTreeSet<&str>,
+    ) -> Result<Vec<RelaySegmentClientUploadPin>> {
+        self.check()?;
+        let mut pins = Vec::new();
+        for entry in self.standalone(embedded_writers) {
+            entry.copy_to(output)?;
+            pins.push(entry.pin.clone());
+        }
+        self.check()?;
+        Ok(pins)
+    }
+
+    #[cfg(feature = "server")]
     pub fn export_standalone(
         &self,
         destination: &std::path::Path,
         embedded_writers: &std::collections::BTreeSet<&str>,
     ) -> Result<Vec<RelaySegmentClientUploadPin>> {
         self.check()?;
-        let mut entries = self
-            .archives
-            .iter()
-            .filter(|entry| !embedded_writers.contains(entry.pin.writer.as_str()))
-            .peekable();
+        let mut entries = self.standalone(embedded_writers).peekable();
         if entries.peek().is_none() {
             return Ok(Vec::new());
         }
@@ -138,9 +158,7 @@ impl RetainedUploads {
         for (index, entry) in entries.enumerate() {
             let name = format!("{index}.uploads");
             let mut output = directory.create_file(&name, &[])?;
-            if io::copy(&mut entry.file.all().reader(), &mut output)? != entry.pin.bytes {
-                return Err(Error::Contract("retained upload export truncated"));
-            }
+            entry.copy_to(&mut output)?;
             output.sync_all()?;
             GenerationFileWitness::of(&output)?.guard(&output, &directory.path.join(&name))?;
             pins.push(entry.pin.clone());
@@ -153,6 +171,15 @@ impl RetainedUploads {
 }
 
 impl HeldArchive {
+    #[cfg(feature = "server")]
+    fn copy_to(&self, output: &mut impl std::io::Write) -> Result<()> {
+        self.file.check()?;
+        if io::copy(&mut self.file.all().reader(), output)? != self.pin.bytes {
+            return Err(Error::Contract("retained upload export truncated"));
+        }
+        self.file.check()
+    }
+
     fn open(file: File, pin: RelaySegmentClientUploadPin) -> Result<Self> {
         let witness = GenerationFileWitness::of(&file)?;
         let file = ArchiveInput::new(file, codec::MAX_FILE)?;

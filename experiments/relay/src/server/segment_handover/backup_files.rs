@@ -146,6 +146,28 @@ pub(super) fn copy_group(
     destination.sync()
 }
 
+pub(super) fn write_group(
+    root: &GenerationDirectory,
+    output: &mut impl Write,
+    folder: &str,
+    extension: &str,
+    lengths: impl ExactSizeIterator<Item = u64>,
+) -> Result<()> {
+    if lengths.len() == 0 {
+        return Ok(());
+    }
+    let source = GenerationDirectory::open(&root.path.join(folder))?;
+    for (index, length) in lengths.enumerate() {
+        let name = entry_name(index, extension);
+        let input = BackupCopyInput::open(&source, &name, length)?;
+        if input.len() != length {
+            return Err(Error::Contract("retained client archive length differs"));
+        }
+        input.write(output)?;
+    }
+    source.guard()
+}
+
 fn entry_name(index: usize, extension: &str) -> String {
     format!("{index}.{extension}")
 }

@@ -2,6 +2,7 @@
 use super::{
     backup_files::{BackupCopies, RoomBackupCopies, copy_group},
     capture::{CapturedSegment, begin_capture},
+    packed_clients::{self, PackedClients},
 };
 use crate::{
     RecoveredRelaySegmentRoom, RelaySegmentBaseFile, RelaySegmentClientJournal,
@@ -13,9 +14,15 @@ use crate::{
 use serde::{Deserialize, Serialize};
 use std::{collections::BTreeSet, path::Path, sync::Arc};
 
-const SELECTED: &str = "selected-journals";
-const ALTERNATES: &str = "alternate-journals";
-const UPLOADS: &str = "standalone-uploads";
+pub(super) const SELECTED: &str = "selected-journals";
+pub(super) const ALTERNATES: &str = "alternate-journals";
+pub(super) const UPLOADS: &str = "standalone-uploads";
+
+#[derive(Clone, Copy)]
+pub(super) enum ClientLayout {
+    Split,
+    Packed,
+}
 
 /// An independently retained selection of the room cut and the original inputs in its backup.
 #[derive(Clone, Debug, Deserialize, Eq, PartialEq, Serialize)]
@@ -52,6 +59,9 @@ impl RelaySegmentRetainedBackupIdentity {
         source: &GenerationDirectory,
         destination: &GenerationDirectory,
     ) -> Result<()> {
+        if packed_clients::present(source)? {
+            return packed_clients::copy(source, destination, self);
+        }
         copy_group(
             source,
             destination,
@@ -79,9 +89,13 @@ impl RelaySegmentRetainedBackupIdentity {
 /// Verified portable backup of the room and its already-retained inputs.
 pub struct RelaySegmentRetainedBackup {
     backup: RelaySegmentRoomBackupFiles,
-    selected: Vec<RelaySegmentClientJournal>,
-    alternates: Vec<RelaySegmentClientJournal>,
-    uploads: Vec<RelaySegmentClientUploadArchive>,
+    clients: ClientArchives,
+}
+
+pub(super) struct ClientArchives {
+    pub(super) selected: Vec<RelaySegmentClientJournal>,
+    pub(super) alternates: Vec<RelaySegmentClientJournal>,
+    pub(super) uploads: Vec<RelaySegmentClientUploadArchive>,
 }
 
 impl RelaySegmentRetainedBackup {
@@ -115,24 +129,24 @@ impl RelaySegmentRetainedBackup {
         active_generation: &str,
         policy: RoomRecoveryPolicy,
     ) -> Result<RecoveredRelaySegmentRoom> {
-        if self.selected.is_empty() {
-            if self.uploads.is_empty() {
+        if self.clients.selected.is_empty() {
+            if self.clients.uploads.is_empty() {
                 return self.backup.restore(destination, active_generation, policy);
             }
             return self.backup.restore_with_client_upload_archives(
                 destination,
                 active_generation,
                 policy,
-                &self.uploads,
+                &self.clients.uploads,
             );
         }
         self.backup.restore_with_client_journal_alternatives(
             destination,
             active_generation,
             policy,
-            &self.uploads,
-            &self.selected,
-            &self.alternates,
+            &self.clients.uploads,
+            &self.clients.selected,
+            &self.clients.alternates,
         )
     }
 }
@@ -158,21 +172,24 @@ impl RetainedBackupCopies {
     }
 
     pub(super) fn check(&self, directory: &GenerationDirectory) -> Result<()> {
-        self.clients.check()?;
+        self.clients.check(directory)?;
         self.room.check(directory)
     }
 
     pub(super) fn into_backup(self) -> RelaySegmentRetainedBackup {
         RelaySegmentRetainedBackup {
             backup: self.room.backup,
-            selected: self.clients.selected.into_values(),
-            alternates: self.clients.alternates.into_values(),
-            uploads: self.clients.uploads.into_values(),
+            clients: self.clients.into_archives(),
         }
     }
 }
 
-pub(super) struct RetainedCopies {
+pub(super) enum RetainedCopies {
+    Split(Box<SplitCopies>),
+    Packed(PackedClients),
+}
+
+pub(super) struct SplitCopies {
     selected: BackupCopies<RelaySegmentClientJournal>,
     alternates: BackupCopies<RelaySegmentClientJournal>,
     uploads: BackupCopies<RelaySegmentClientUploadArchive>,
@@ -183,28 +200,74 @@ impl RetainedCopies {
         host: &Host,
         captured: &CapturedSegment,
         source_epoch: RoomDeploymentSelection,
+        layout: ClientLayout,
     ) -> Result<(RelaySegmentRetainedBackupIdentity, Self)> {
-        let (selected_journals, alternate_journals, standalone_uploads) =
-            match &host.relay_segment_custody {
-                Some(custody) => (
-                    custody.export_selected_journals(&captured.directory.path.join(SELECTED))?,
-                    custody.export_alternates(&captured.directory.path.join(ALTERNATES))?,
-                    custody.export_standalone_uploads(&captured.directory.path.join(UPLOADS))?,
-                ),
-                None => (Vec::new(), Vec::new(), Vec::new()),
-            };
-        let expected = RelaySegmentRetainedBackupIdentity {
+        let mut expected = RelaySegmentRetainedBackupIdentity {
             backup: captured.backup.clone(),
             source_epoch,
-            selected_journals,
-            alternate_journals,
-            standalone_uploads,
+            selected_journals: Vec::new(),
+            alternate_journals: Vec::new(),
+            standalone_uploads: Vec::new(),
         };
+        match layout {
+            ClientLayout::Split => {
+                if let Some(custody) = &host.relay_segment_custody {
+                    expected.selected_journals = custody
+                        .export_selected_journals(&captured.directory.path.join(SELECTED))?;
+                    expected.alternate_journals =
+                        custody.export_alternates(&captured.directory.path.join(ALTERNATES))?;
+                    expected.standalone_uploads = custody
+                        .export_standalone_uploads(&captured.directory.path.join(UPLOADS))?;
+                }
+            }
+            ClientLayout::Packed => {
+                let mut output = packed_clients::create(&captured.directory)?;
+                if let Some(custody) = &host.relay_segment_custody {
+                    custody.write_portable_inputs(&mut output, &mut expected)?;
+                }
+                output.sync_all()?;
+            }
+        }
         expected.verify_pins(&captured.discussion_sources)?;
         let copies = Self::open(&captured.directory, &expected)?;
         Ok((expected, copies))
     }
 
+    fn open(
+        directory: &GenerationDirectory,
+        expected: &RelaySegmentRetainedBackupIdentity,
+    ) -> Result<Self> {
+        if let Some(clients) = PackedClients::open(directory, expected)? {
+            return Ok(Self::Packed(clients));
+        }
+        Ok(Self::Split(Box::new(SplitCopies::open(directory, expected)?)))
+    }
+
+    pub(super) fn check(&self, directory: &GenerationDirectory) -> Result<()> {
+        match self {
+            Self::Split(clients) => {
+                if packed_clients::present(directory)? {
+                    return Err(crate::Error::Contract("portable backup client layout changed"));
+                }
+                clients.check()
+            }
+            Self::Packed(clients) => clients.check(directory),
+        }
+    }
+
+    fn into_archives(self) -> ClientArchives {
+        match self {
+            Self::Split(clients) => ClientArchives {
+                selected: clients.selected.into_values(),
+                alternates: clients.alternates.into_values(),
+                uploads: clients.uploads.into_values(),
+            },
+            Self::Packed(clients) => clients.archives,
+        }
+    }
+}
+
+impl SplitCopies {
     fn open(
         directory: &GenerationDirectory,
         expected: &RelaySegmentRetainedBackupIdentity,
@@ -237,7 +300,7 @@ impl RetainedCopies {
         })
     }
 
-    pub(super) fn check(&self) -> Result<()> {
+    fn check(&self) -> Result<()> {
         self.selected.check()?;
         self.alternates.check()?;
         self.uploads.check()
@@ -262,8 +325,9 @@ impl ServerBackupHandle {
         let host = &self.host;
         host.authentication.authenticate(principal, token)?;
         let (captured, source_epoch) = begin_capture(host, principal, destination)?;
-        let (expected, retained) = RetainedCopies::capture(host, &captured, source_epoch)?;
-        captured.confirm(host, &expected.source_epoch, || retained.check())?;
+        let (expected, retained) =
+            RetainedCopies::capture(host, &captured, source_epoch, ClientLayout::Split)?;
+        captured.confirm(host, &expected.source_epoch, || retained.check(&captured.directory))?;
         Ok(expected)
     }
 }

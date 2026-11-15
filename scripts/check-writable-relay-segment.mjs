@@ -700,6 +700,11 @@ async function run(mode, {distribution, rich}, executable, parent, journalKind, 
         const packed = join(parent, 'portable-relocation-source', 'native-lineage');
         assert.ok(readFileSync(join(packed, 'packed.bin')).subarray(0, 8).equals(Buffer.from('BRLINE1\n')));
         assert.throws(() => readFileSync(join(packed, '0.archive')), {code:'ENOENT'});
+        const converted = join(parent, 'portable-relocation-source');
+        assert.ok(readFileSync(join(converted, 'client-inputs.bin')).subarray(0, 8).equals(Buffer.from('BRCLNT1\n')));
+        for (const folder of ['selected-journals', 'alternate-journals', 'standalone-uploads']) {
+          assert.throws(() => statSync(join(converted, folder)), {code:'ENOENT'});
+        }
         assert.equal(result.portableSeal.sealedSelection.identity.formatVersion, 2);
         assertOrdinaryStartupRefused(executable, parent, 'claim-unverified', address);
         const originalPaths = [
@@ -736,6 +741,7 @@ async function run(mode, {distribution, rich}, executable, parent, journalKind, 
           sealedNativePredecessors: result.portableSeal.nativePredecessors,
           packedNativeLineages: 1,
           packedCopiesOfExistingSplit: 1,
+          packedClientCohorts: 1,
           retiredOriginalPaths: originalPaths.length,
           freshlyVerifiedProtectedRegistrations: documents.length + reviews.length,
         };
