@@ -531,6 +531,7 @@ async function run(mode, {distribution, rich}, executable, parent, journalKind, 
       assert.deepEqual(Buffer.from(await restored.arrayBuffer()), proposalPixel);
     }
     const database = persisted.database + '-retained-journals';
+    let liveSourceDatabase = database;
     if (portable) {
       const restored = await reopenParticipant(
         api, {...deliveryOptions, database}, backup, portable.selection, uploads[0], archiveImage,
@@ -615,7 +616,8 @@ async function run(mode, {distribution, rich}, executable, parent, journalKind, 
       }
       const [currentBytes] = readRetainedClientJournals(parent, updatedPins, 'client-journals', restoredRoot);
       assert.deepEqual(currentBytes, current.archive);
-      const restored = await reopenParticipant(api, {...deliveryOptions, database: database + '-carried'},
+      liveSourceDatabase = database + '-carried';
+      const restored = await reopenParticipant(api, {...deliveryOptions, database: liveSourceDatabase},
         currentBytes, current.selection, uploads[0], archiveImage);
       session = restored.session;
       portableUploads = restored.uploads;
@@ -707,7 +709,7 @@ async function run(mode, {distribution, rich}, executable, parent, journalKind, 
       }
       assert.equal(visibleThreads().length, 4);
       const intentPath = join(parent, 'recovered-comment-intent.json');
-      let recoveryRequest;
+      let recoveryRequest, durableSourceAfterLoss;
       if (recoverComment) {
         await attach();
         const result = await recoverArchivedComment({
@@ -719,6 +721,7 @@ async function run(mode, {distribution, rich}, executable, parent, journalKind, 
         assert.equal(visibleThreads().length, 5);
         await stopClients();
         if (loss) {
+          durableSourceAfterLoss = session.exportRecovery();
           await session.close();
           session = undefined;
         }
@@ -727,8 +730,12 @@ async function run(mode, {distribution, rich}, executable, parent, journalKind, 
       host = undefined;
       host = await startSegmentHandoverHost(executable, [parent, restoredRoot, address], token);
       if (loss) {
-        session = await open();
+        session = await api.SharedIndependentDeliverySession.open({
+          ...deliveryOptions, database: liveSourceDatabase,
+          create() { throw new Error('Reopen the exact durable review owner after the lost reply'); },
+        });
         assert.equal(session.recovered, true);
+        assert.deepEqual(session.exportRecovery(), durableSourceAfterLoss);
         const intent = JSON.parse(readFileSync(intentPath, 'utf8'));
         assert.deepEqual(api.inspectSharedRecoveredBranchReviewIntent(session, intent), {kind: 'local', event: recoveredComment});
         await assert.rejects(api.prepareSharedRecoveredBranchReviewIntent(recoveryRequest(session), intent),
