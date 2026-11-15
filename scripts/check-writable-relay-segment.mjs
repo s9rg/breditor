@@ -12,6 +12,7 @@ import {pixel, proposalAsset, proposalPixel, secondAsset, secondPixel} from './f
 import {startSegmentHandoverHost} from './fixtures/relay-segment-handover-host.mjs';
 import {captureParticipant, proposalAlias, reopenParticipant, withWrongReviewReceipt} from './fixtures/relay-segment-participant.mjs';
 import {captureClientRaster, resumeClientRaster} from './fixtures/relay-segment-client-raster.mjs';
+import {recoveryFactory} from './fixtures/independent-delivery-recovery/session.mjs';
 import {installCollaborationConsumer} from './fixtures/installed-collaboration-consumer.mjs';
 import {sourceEvidence, saveEvidence} from './candidate-release/evidence.mjs';
 
@@ -51,7 +52,7 @@ function readRetainedClientJournals(parent, expected) {
   return originals;
 }
 
-async function run(mode, {distribution, rich}, executable, parent, journalKind, terminalReceipts, opaque) {
+async function run(mode, {distribution, rich}, executable, parent, journalKind, terminalReceipts, opaque, competing) {
   const participant = journalKind === 'independentParticipant';
   const archiveImage = opaque ? proposalAlias : proposalAsset;
   const independentDelivery = journalKind !== 'pairedSession';
@@ -327,6 +328,16 @@ async function run(mode, {distribution, rich}, executable, parent, journalKind, 
       ? await deliverWork(await queueWork('Already delivered', 'sha256:' + sha(pixel),
         'terminal-proposal-image'), admission.entry.version.id)
       : null;
+    const competingSeed = competing ? session.exportRecovery() : null;
+    if (competingSeed) {
+      edit('Accepted branch text ');
+      post('Accepted branch comment');
+      assert.equal(session.core.undoReview().kind, 'committed');
+      await attach();
+      assert.equal(document.state().pending, false);
+      assert.equal(review.state().pending, false);
+      await stopClients();
+    }
     edit('Offline before portable restore ');
     post('Offline comment before portable restore');
     session.core.dispatch({commands: [{kind: 'replace_image', data: {
@@ -361,6 +372,39 @@ async function run(mode, {distribution, rich}, executable, parent, journalKind, 
       ? JSON.stringify(queuedAcrossTakeover) : await session.exportBackup());
     const journalPins = selectClientJournals(parent, binding, archive,
       peer.identity.writer, peerDocument.checkpoint(), journalKind);
+    let incomingBranch, retainedBranches;
+    if (competingSeed) {
+      await session.close();
+      session = await api.SharedIndependentDeliverySession.restoreRecovery({
+        ...deliveryOptions, database: deliveryOptions.database + '-competing', recovery: competingSeed,
+        writerRecovery: 'host-reacquired',
+      });
+      edit('Competing branch text ');
+      post('Competing branch comment');
+      await session.flush();
+      const competingFile = await captureParticipant(
+        api, richApi, session, uploads[0], undefined, 'handover-competing-assets',
+      );
+      await session.close();
+      session = await open();
+      assert.deepEqual(session.exportRecovery(), queuedAcrossTakeover);
+      const readPolicy = {wasm, session: recoveryFactory(deliveryOptions), checkAuthority() {}};
+      const branches = await api.buildSharedIndependentDeliveryBranchArchive({
+        ...readPolicy,
+        current: {file: new Blob([portable.archive]), selection: portable.selection},
+        incoming: {file: new Blob([competingFile.archive]), selection: competingFile.selection},
+      });
+      writeFileSync(join(parent, 'retained-branches.bin'), Buffer.from(await branches.file.arrayBuffer()), {
+        flag: 'wx', mode: 0o600,
+      });
+      retainedBranches = {selection: branches.selection, readPolicy, incoming: competingFile.archive};
+      const cold = await api.readSharedIndependentDeliveryBranchArchive(branches.file, branches.selection, readPolicy);
+      assert.equal(cold.comparison.document.relation, 'diverged');
+      assert.equal(cold.comparison.review.relation, 'diverged');
+      const retained = Buffer.from(await cold.incoming.file.arrayBuffer());
+      assert.deepEqual(retained, competingFile.archive);
+      incomingBranch = writeJournal(parent, 'incoming-branch.bin', journalPins[0].owner, retained);
+    }
     const progress = independentDelivery ? queuedAcrossTakeover.relay.review : queuedAcrossTakeover.progress;
     assert.ok(progress.sequence);
     assert.ok(progress.accepted);
@@ -387,7 +431,12 @@ async function run(mode, {distribution, rich}, executable, parent, journalKind, 
       selectedContent: proposalAsset, differentContent: 'sha256:' + sha(pixel),
     } : undefined;
     const captured = await host.handover(token, registered.identity, comment.identity, peer.identity,
-      selectedUploads.map(upload => upload.pin), journalPins, wrongReceipt, assetMapping);
+      selectedUploads.map(upload => upload.pin), journalPins, wrongReceipt, assetMapping, incomingBranch);
+    if (competing) {
+      assert.equal(captured.branchAdmissions, 2);
+      assert.equal(captured.branchCutRefusals, 3);
+      assert.equal(captured.incomingBranchRefusals, 1);
+    }
     assert.equal(captured.participantUnmapped, opaque ? 1 : 0);
     assert.equal(captured.participantMappingRefusals, opaque ? 2 : 0);
     assert.equal(captured.registrationRefusals, 3);
@@ -413,12 +462,20 @@ async function run(mode, {distribution, rich}, executable, parent, journalKind, 
     host = undefined;
     for (const directory of ['source-native', 'successor', 'final', 'rasters',
       ...uploads.map(upload => 'client-' + upload.pin.writer + '.backup'),
-      ...journalPins.map((_, index) => `journal-${index}.json`), 'wrong-receipt.json']) {
+      ...journalPins.map((_, index) => `journal-${index}.json`), 'wrong-receipt.json',
+      ...(competing ? ['incoming-branch.bin'] : [])]) {
       renameSync(join(parent, directory), join(parent, 'offline-' + directory));
     }
     await session.close();
     session = undefined;
     host = await startSegmentHandoverHost(executable, [parent, 'restore', address], token);
+    if (retainedBranches) {
+      const surviving = await api.readSharedIndependentDeliveryBranchArchive(
+        new Blob([readFileSync(join(parent, 'retained-branches.bin'))]),
+        retainedBranches.selection, retainedBranches.readPolicy,
+      );
+      assert.deepEqual(Buffer.from(await surviving.incoming.file.arrayBuffer()), retainedBranches.incoming);
+    }
     const [backup] = readRetainedClientJournals(parent, journalPins);
     assert.deepEqual(backup, archive);
     if (portable) {
@@ -519,6 +576,11 @@ async function run(mode, {distribution, rich}, executable, parent, journalKind, 
         archiveOnlyRasterReads: 1,
       } : {}),
       ...(terminal ? {retainedTerminalReceipts: 4} : {}),
+      ...(competing ? {
+        branchAdmissions: captured.branchAdmissions,
+        branchCutRefusals: captured.branchCutRefusals,
+        incomingBranchRefusals: captured.incomingBranchRefusals,
+      } : {}),
       ...(opaque ? {
         unresolvedProviderMappings: captured.participantUnmapped,
         changedProviderRefusals: captured.participantMappingRefusals,
@@ -547,9 +609,10 @@ const executable = resolve(process.argv[2]);
 const option = process.argv[3];
 const terminalReceipts = option === '--participant-terminal-receipts';
 const opaque = option === '--participant-opaque';
+const competing = option === '--participant-accepted-branch';
 assert.ok(process.argv.length === 3 || process.argv.length === 4 &&
-  ['--independent-delivery', '--participant-archive', '--participant-terminal-receipts', '--participant-opaque'].includes(option));
-const journalKind = terminalReceipts || opaque || option === '--participant-archive' ? 'independentParticipant'
+  ['--independent-delivery', '--participant-archive', '--participant-terminal-receipts', '--participant-opaque', '--participant-accepted-branch'].includes(option));
+const journalKind = terminalReceipts || opaque || competing || option === '--participant-archive' ? 'independentParticipant'
   : option === '--independent-delivery' ? 'independentDelivery' : 'pairedSession';
 const source = sourceEvidence(root);
 assert.equal(source.dirty, false);
@@ -564,7 +627,7 @@ try {
     const path = join(sandbox, mode);
     mkdirSync(path, {mode: 0o700});
     reports[mode] = {
-      ...await run(mode, distribution, executable, path, journalKind, terminalReceipts, opaque), proof: distribution.proof,
+      ...await run(mode, distribution, executable, path, journalKind, terminalReceipts, opaque, competing), proof: distribution.proof,
     };
   }
   assert.equal(reports.source.runtimeSha256, reports.installed.runtimeSha256);
@@ -573,7 +636,8 @@ try {
     format: 'breditor/writable-relay-segment-qualification', formatVersion: 1,
     source, relaySha256: sha(readFileSync(executable)), reports,
   };
-  const reportFile = opaque ? 'qualified-participant-opaque.json'
+  const reportFile = competing ? 'qualified-accepted-participant-branch.json'
+    : opaque ? 'qualified-participant-opaque.json'
     : terminalReceipts ? 'qualified-participant-terminal-receipts.json'
     : journalKind === 'independentParticipant' ? 'qualified-participant-archive-segment.json'
     : journalKind === 'independentDelivery' ? 'qualified-independent-delivery-segment.json'

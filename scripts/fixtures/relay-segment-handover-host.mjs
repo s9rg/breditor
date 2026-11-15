@@ -44,10 +44,10 @@ export async function startSegmentHandoverHost(executable, args, token) {
     const {address} = await next('listening');
     return {
       address,
-      async handover(token, document, review, peer, uploads, journals, wrongReceipt, assetMapping) {
+      async handover(token, document, review, peer, uploads, journals, wrongReceipt, assetMapping, incomingBranch) {
         send({kind: 'handover', token, writer: document.writer, documentCredential: document.credential,
           actor: review.actor, reviewCredential: review.credential, peerWriter: peer.writer,
-          peerCredential: peer.credential, uploads, journals, wrongReceipt, assetMapping});
+          peerCredential: peer.credential, uploads, journals, wrongReceipt, assetMapping, incomingBranch});
         return next('committed');
       },
       async crash() {

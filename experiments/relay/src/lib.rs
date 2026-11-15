@@ -93,13 +93,14 @@ pub use room::{
     RecoveredLogGenerationRoom, ServerLogGenerationRecovery, ServerLogGenerationRecoveryProgress,
 };
 pub use room::{RelayCheckpoint, RelayCheckpointIdentity};
+#[cfg(feature = "server")]
+pub use room::{
+    RelaySegmentBranchClock, RelaySegmentClientJournalCoverage, RelaySegmentClientJournalHead,
+    RelaySegmentPairedReviewHead, RelaySegmentParticipantBranch,
+};
 pub use room::{
     RelaySegmentClientJournal, RelaySegmentClientJournalPin, RelaySegmentDocumentJournalFamily,
     RelaySegmentJournalOwner, RelaySegmentReviewJournalFamily,
-};
-#[cfg(feature = "server")]
-pub use room::{
-    RelaySegmentClientJournalCoverage, RelaySegmentClientJournalHead, RelaySegmentPairedReviewHead,
 };
 pub use room::{
     ServerNativeHistoryBoundary, ServerNativeHistoryDescriptor, ServerNativeHistoryFamily,

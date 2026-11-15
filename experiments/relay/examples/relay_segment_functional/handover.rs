@@ -18,6 +18,8 @@ use std::{
     sync::Arc,
 };
 
+#[path = "handover/branches.rs"]
+mod branches;
 #[path = "handover/provider.rs"]
 mod provider;
 
@@ -39,6 +41,7 @@ enum Command {
         journals: Vec<RelaySegmentClientJournalPin>,
         wrong_receipt: RelaySegmentClientJournalPin,
         asset_mapping: Option<provider::Selection>,
+        incoming_branch: Option<RelaySegmentClientJournalPin>,
     },
     Resume {
         token: String,
@@ -64,10 +67,11 @@ fn prepare_and_commit(
     journals: &[RelaySegmentClientJournalPin],
     wrong_receipt: RelaySegmentClientJournalPin,
     asset_mapping: Option<provider::Selection>,
+    incoming_branch: Option<RelaySegmentClientJournalPin>,
 ) -> Result<Value> {
-    let (backup, previous) =
+    let (expected, previous) =
         handle.capture_relay_segment("owner", token, &parent.join("capture"))?;
-    storage::write_new(&parent.join("restore.json"), &serde_json::to_vec(&backup)?)?;
+    storage::write_new(&parent.join("restore.json"), &serde_json::to_vec(&expected)?)?;
     if journals.len() != 2 || wrong_receipt.owner != journals[0].owner {
         return Err("expected one paired SDK archive and one independent document".into());
     }
@@ -94,6 +98,24 @@ fn prepare_and_commit(
         .collect::<std::result::Result<Vec<_>, _>>()?;
     let backup = restored_backup(parent)?;
     let authentication = configured_auth(parent)?;
+    let branch_report = incoming_branch
+        .map(|incoming| {
+            branches::inspect(
+                parent,
+                handle,
+                &authentication,
+                token,
+                credentials,
+                &expected,
+                &previous,
+                &backup,
+                &archives,
+                &originals,
+                &journals[1],
+                incoming,
+            )
+        })
+        .transpose()?;
     let provider: Arc<dyn ServerRecoveryAssetProvider> = Arc::new(ContentAddressedServerAssets);
     {
         let wrong = RelaySegmentClientJournal::open(
@@ -259,6 +281,9 @@ fn prepare_and_commit(
         "pairedBackups": usize::from(matches!(journals[0].owner, breditor_collab_relay::RelaySegmentJournalOwner::PairedSession { .. })),
         "independentDeliveries": usize::from(matches!(journals[0].owner, breditor_collab_relay::RelaySegmentJournalOwner::IndependentDelivery { .. })),
         "participantArchives": usize::from(participant),
+        "branchAdmissions": branch_report.as_ref().map(|row| &row["admissions"]),
+        "branchCutRefusals": branch_report.as_ref().map(|row| &row["refusedCuts"]),
+        "incomingBranchRefusals": branch_report.as_ref().map(|row| &row["refusedIncoming"]),
         "participantUnmapped": usize::from(mapped.is_some()),
         "participantMappingRefusals": 2 * usize::from(mapped.is_some()),
         "participantRasterBindings": verified_journals.participant_raster_bindings.len(),
@@ -287,6 +312,7 @@ pub(super) fn serve_control(
             journals,
             wrong_receipt,
             asset_mapping,
+            incoming_branch,
         } = serde_json::from_slice(&input()?)?
         else {
             return Err("expected private handover command".into());
@@ -319,6 +345,7 @@ pub(super) fn serve_control(
             &journals,
             wrong_receipt,
             asset_mapping,
+            incoming_branch,
         )?;
         {
             let mut stdout = std::io::stdout().lock();

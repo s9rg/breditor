@@ -1,8 +1,9 @@
 //! Admit exact native replay under the selected room's grammar, registrations and prefix clocks.
+pub(super) mod clocks;
 use super::{
     RelaySegmentClientJournalPin, RelaySegmentDocumentJournalFamily,
     RelaySegmentReviewJournalFamily, RetainedJournals,
-    delivery::{DeliveryRecord, DeliverySections},
+    delivery::DeliveryRecord,
     paired::PairedRecord,
     participant::ParticipantArchive,
     selected::{DocumentInput, DocumentSource, SelectedSources},
@@ -115,7 +116,9 @@ fn verify(
         for source in reviews.remove(source.row.clock.writer.as_str()).into_iter().flatten() {
             let review =
                 restore_review(&local, source.row, source.family, &originals.read(source.index)?)?;
-            let local_through = verify_review(room, &review, &review_rows, source.row)?;
+            let local_through =
+                clocks::compare_review(room, &review, &review_rows, source.row, false)?
+                    .local_through;
             missing_reviews.remove(source.row.clock.actor.as_str());
             verified.push((
                 source.index,
@@ -181,33 +184,25 @@ fn verify_document_source(
             let (archive, slice) =
                 archive.as_ref().ok_or(Error::Contract("participant archive absent"))?;
             let native = archive.read_records(*slice)?;
-            let identity = archive.source();
             stores = native.stores;
-            let record = DeliveryRecord::from_sections(
-                DeliverySections {
-                    identity: &identity.history,
-                    binding: &identity.binding,
-                    retained_binding: &identity.retained,
-                    document: native.document,
-                    review: native.review,
-                    versions: native.versions,
-                    relay: &stores.relay,
-                    suggestions: stores.suggestions.as_deref(),
-                    revisions: stores.revisions.as_deref(),
-                    version_store: stores.versions.as_deref(),
-                },
-                participants,
-                source.row,
-                row,
-            )?;
+            let sections =
+                archive.delivery_sections(native.document, native.review, native.versions, &stores);
+            let record = DeliveryRecord::from_sections(sections, participants, source.row, row)?;
             (record.document(room)?, Some((row, PairedInput::Delivery(Box::new(record)))))
         }
     };
     if local.writer() != writer || local.document_id() != room.replica.document_id() {
         return Err(Error::Contract("client journal document binding differs"));
     }
-    let local_through =
-        verify_document(room, &local, document_clocks, &source.row.clock, source.row.observer)?;
+    let local_through = clocks::compare_document(
+        room,
+        &local,
+        document_clocks,
+        &source.row.clock,
+        source.row.observer,
+        false,
+    )?
+    .local_through;
     let mut document_assets = BTreeSet::new();
     retain_assets(&local, &mut document_assets)?;
     let paired_review = if let Some((row, pair)) = paired {
@@ -269,7 +264,7 @@ fn verify_paired_review(
         PairedInput::Delivery(record) => record.review(),
     };
     let review = restore_review(document, owner, family, json)?;
-    let through = verify_review(room, &review, accepted, owner)?;
+    let through = clocks::compare_review(room, &review, accepted, owner, false)?.local_through;
     let versions = match pair {
         PairedInput::Original(pair) => {
             pair.check_progress(room, &review, owner)?;
@@ -352,64 +347,7 @@ pub(super) fn restore_document(
     }?)
 }
 
-fn verify_document(
-    room: &Room,
-    local: &RichReplica,
-    accepted: &BTreeMap<&str, &RecoveryDocumentClock>,
-    own: &RecoveryDocumentClock,
-    observer: bool,
-) -> Result<String> {
-    let head = if room.atomic_transport_v2 {
-        RichReplica::writer_clock_v2
-    } else {
-        RichReplica::writer_clock
-    };
-    let at = if room.atomic_transport_v2 {
-        RichReplica::writer_clock_at_v2
-    } else {
-        RichReplica::writer_clock_at
-    };
-    let mut authors = local.applied_writer_ids();
-    // A joined journal has the exact immutable seed even if its expected writer has never edited.
-    if !authors.iter().any(|writer| writer == "1") {
-        return Err(Error::Contract("client journal is missing document genesis"));
-    }
-    if !authors.contains(&own.writer) {
-        authors.push(own.writer.clone());
-    }
-    let mut own_through = String::new();
-    for writer in authors {
-        let server = accepted
-            .get(writer.as_str())
-            .ok_or(Error::Contract("client journal has unregistered document author"))?;
-        let client = head(local, &writer)?;
-        let order = position(&client.through)?.cmp(&position(&server.through)?);
-        if writer == "1" && !order.is_eq() {
-            return Err(Error::Contract("client journal document genesis differs"));
-        }
-        if order.is_gt() && (writer != own.writer || observer) {
-            return Err(Error::Contract("client journal has foreign document suffix"));
-        }
-        let same = match order {
-            std::cmp::Ordering::Equal => client.prefix_digest == server.prefix_digest,
-            std::cmp::Ordering::Less => {
-                client.prefix_digest == at(&room.replica, &writer, &client.through)?.prefix_digest
-            }
-            std::cmp::Ordering::Greater => {
-                at(local, &writer, &server.through)?.prefix_digest == server.prefix_digest
-            }
-        };
-        if !same {
-            return Err(Error::Contract("client journal document prefix diverged"));
-        }
-        if writer == own.writer {
-            own_through = client.through;
-        }
-    }
-    Ok(own_through)
-}
-
-fn restore_review(
+pub(super) fn restore_review(
     document: &RichReplica,
     own: &RecoveryReviewRegistration,
     family: RelaySegmentReviewJournalFamily,
@@ -426,52 +364,6 @@ fn restore_review(
         Family::Segmented => document.restore_segmented_review_session(policy, json),
         Family::Continued => document.restore_continued_review_session(policy, json),
     }?)
-}
-
-fn verify_review(
-    room: &Room,
-    local: &ReviewSession,
-    accepted: &BTreeMap<&str, &RecoveryReviewRegistration>,
-    own: &RecoveryReviewRegistration,
-) -> Result<String> {
-    let server_review =
-        &room.review.as_ref().ok_or(Error::Contract("room review is absent"))?.session;
-    let mut actors = local.retained_actor_ids();
-    if !actors.contains(&own.clock.actor) {
-        actors.push(own.clock.actor.clone());
-    }
-    let mut own_through = String::new();
-    for actor in actors {
-        let row = accepted
-            .get(actor.as_str())
-            .ok_or(Error::Contract("client journal has unregistered review actor"))?;
-        let principal = ReviewPrincipalId::try_new(&row.principal)?;
-        let client = local.writer_clock(&actor, &principal)?;
-        let server = &row.clock;
-        let local_end = position(&client.through)?;
-        let accepted_end = position(&server.through)?;
-        if local_end > accepted_end && (actor != own.clock.actor || own.observer) {
-            return Err(Error::Contract("client journal has foreign review suffix"));
-        }
-        let common = local_end.min(accepted_end);
-        let local_prefix = if common == local_end {
-            client
-        } else {
-            local.writer_clock_at(&actor, &principal, common)?
-        };
-        let server_prefix = if common == accepted_end {
-            server.prefix_digest.clone()
-        } else {
-            server_review.writer_clock_at(&actor, &principal, common)?.prefix_digest
-        };
-        if local_prefix.prefix_digest != server_prefix {
-            return Err(Error::Contract("client journal review prefix diverged"));
-        }
-        if actor == own.clock.actor {
-            own_through = local_end.to_string();
-        }
-    }
-    Ok(own_through)
 }
 
 pub(super) fn position(through: &str) -> Result<u64> {

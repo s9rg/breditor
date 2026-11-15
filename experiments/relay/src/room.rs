@@ -46,13 +46,14 @@ pub use log_generations::{
 pub use log_generations::{
     RecoveredLogGenerationRoom, ServerLogGenerationRecovery, ServerLogGenerationRecoveryProgress,
 };
+#[cfg(feature = "server")]
+pub use log_generations::{
+    RelaySegmentBranchClock, RelaySegmentClientJournalCoverage, RelaySegmentClientJournalHead,
+    RelaySegmentPairedReviewHead, RelaySegmentParticipantBranch,
+};
 pub use log_generations::{
     RelaySegmentClientJournal, RelaySegmentClientJournalPin, RelaySegmentDocumentJournalFamily,
     RelaySegmentJournalOwner, RelaySegmentReviewJournalFamily,
-};
-#[cfg(feature = "server")]
-pub use log_generations::{
-    RelaySegmentClientJournalCoverage, RelaySegmentClientJournalHead, RelaySegmentPairedReviewHead,
 };
 #[cfg(all(feature = "server", test, unix))]
 pub(crate) use log_generations::{SegmentHandoverTestFiles, segment_handover_test_source};

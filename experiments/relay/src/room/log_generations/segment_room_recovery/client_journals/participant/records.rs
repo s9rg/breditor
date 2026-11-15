@@ -1,5 +1,5 @@
 //! Read the original split records into the existing native delivery verifier.
-use super::{ParticipantArchive, RecordKind};
+use super::{super::delivery::DeliverySections, ParticipantArchive, RecordKind};
 use crate::{Error, Result, archive_input::ArchiveSlice};
 
 #[derive(Default)]
@@ -18,6 +18,28 @@ pub(in super::super) struct ArchiveRecords {
 }
 
 impl ParticipantArchive {
+    pub fn delivery_sections<'a>(
+        &'a self,
+        document: String,
+        review: String,
+        versions: Vec<String>,
+        stores: &'a ArchiveStores,
+    ) -> DeliverySections<'a> {
+        let identity = &self.metadata.identity.source;
+        DeliverySections {
+            identity: &identity.history,
+            binding: &identity.binding,
+            retained_binding: &identity.retained,
+            document,
+            review,
+            versions,
+            relay: &stores.relay,
+            suggestions: stores.suggestions.as_deref(),
+            revisions: stores.revisions.as_deref(),
+            version_store: stores.versions.as_deref(),
+        }
+    }
+
     pub fn read_records(&self, input: ArchiveSlice<'_>) -> Result<ArchiveRecords> {
         let mut records = ArchiveRecords {
             document: String::new(),

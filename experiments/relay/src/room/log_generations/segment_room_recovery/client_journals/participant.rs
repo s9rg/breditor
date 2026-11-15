@@ -192,11 +192,6 @@ impl ParticipantArchive {
     }
 
     #[cfg(feature = "server")]
-    pub fn source(&self) -> &Source {
-        &self.metadata.identity.source
-    }
-
-    #[cfg(feature = "server")]
     pub fn bindings(&self) -> &[Binding] {
         &self.metadata.bindings
     }

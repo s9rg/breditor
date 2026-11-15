@@ -9,10 +9,10 @@ const sha = bytes => createHash('sha256').update(bytes).digest('hex');
 export const proposalAlias = 'sha256:opaque-proposal';
 const magic = Buffer.from('BREDITOR-INDEPENDENT-DELIVERY-PARTICIPANT1\n');
 
-export async function captureParticipant(api, rich, session, upload, assetKey) {
+export async function captureParticipant(api, rich, session, upload, assetKey, database = 'handover-participant-assets') {
   const uploadBackup = readFileSync(upload.path);
   const store = await rich.RichAssetStore.restoreBackup(
-    'handover-participant-assets', new Blob([uploadBackup]), {uploadState: 'preserve'},
+    database, new Blob([uploadBackup]), {uploadState: 'preserve'},
   );
   try {
     const result = await api.captureSharedIndependentDeliveryParticipant({
@@ -31,11 +31,13 @@ export async function captureParticipant(api, rich, session, upload, assetKey) {
     try {
       assert.deepEqual(backup.uploadEntries(), upload.rows);
       assert.deepEqual(Buffer.from(await backup.uploadBackup().arrayBuffer()), uploadBackup);
-      assert.ok(backup.metadata().assets.some(asset => asset.contentAsset === proposalAsset));
-      const binding = backup.metadata().bindings.find(({asset}) => asset === assetKey);
-      assert.equal(binding.contentAsset, proposalAsset);
-      assert.equal(binding.identity, assetKey === proposalAsset ? 'content-addressed' : 'host-verified');
-      assert.equal(backup.uploadBlob(proposalAsset), undefined);
+      if (assetKey !== undefined) {
+        assert.ok(backup.metadata().assets.some(asset => asset.contentAsset === proposalAsset));
+        const binding = backup.metadata().bindings.find(({asset}) => asset === assetKey);
+        assert.equal(binding.contentAsset, proposalAsset);
+        assert.equal(binding.identity, assetKey === proposalAsset ? 'content-addressed' : 'host-verified');
+        assert.equal(backup.uploadBlob(proposalAsset), undefined);
+      }
       return {
         archive: Buffer.from(await backup.file().arrayBuffer()),
         selection: backup.selection(),

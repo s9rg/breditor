@@ -47,3 +47,26 @@ For a clean offline-installed consumer check, run
 `node scripts/check-participant-branch-archive.mjs` from a clean checkout
 after building the package. The check packs the matching local SDK and
 runs the same fixture against the workspace and the independent install.
+
+## Compare both originals against the live relay
+
+A host using linked segment handover can call
+`ServerBackupHandle::inspect_relay_segment_participant_branches` before
+choosing an original for the replacement. Supply the independently
+captured predecessor cut and serving epoch, current owner authentication,
+and both exact participant file pins. The inspection checks the actual
+predecessor while holding its epoch and room, then privately replays each
+copy under the real writer and actor registrations. It compares prefixes
+in both directions, including when a client's local head is behind.
+
+Each candidate reports the local, accepted, and compared positions for its
+owned document and review streams. A conflicting owned prefix survives in
+the report so the host can evaluate the other candidate. Foreign forks,
+unknown registrations, invalid observer suffixes, and changed cut or
+archive files refuse the inspection. Retain the complete branch archive
+alongside this report. A successful comparison carries no serving
+authority. Use ordinary verified handover for the chosen original to
+admit receipts, check provider and asset state, and switch epochs.
+
+Run the source and offline-installed SDK scenario with
+`node scripts/check-writable-relay-segment.mjs <relay-executable> --participant-accepted-branch`.

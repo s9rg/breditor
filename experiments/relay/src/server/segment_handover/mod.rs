@@ -1,5 +1,6 @@
 //! Host-local control of authenticated linked-room takeover. No control routes are registered.
 mod approval;
+mod branches;
 mod capture;
 mod commit;
 mod inputs;
@@ -9,6 +10,7 @@ mod tests;
 mod upload_coverage;
 
 pub use approval::RelaySegmentHandoverApproval;
+pub use branches::RelaySegmentParticipantBranchInspection;
 pub use inputs::{
     RelaySegmentHandoverInputCoverage, RelaySegmentHandoverInputReport,
     VerifiedRelaySegmentHandoverInputs,

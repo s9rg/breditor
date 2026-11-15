@@ -1,13 +1,14 @@
 //! Bind a complete native segment chain to its exact raster archive and a new local owner.
 mod capture;
 mod client_journals;
+#[cfg(feature = "server")]
+pub use client_journals::{
+    RelaySegmentBranchClock, RelaySegmentClientJournalCoverage, RelaySegmentClientJournalHead,
+    RelaySegmentPairedReviewHead, RelaySegmentParticipantBranch,
+};
 pub use client_journals::{
     RelaySegmentClientJournal, RelaySegmentClientJournalPin, RelaySegmentDocumentJournalFamily,
     RelaySegmentJournalOwner, RelaySegmentReviewJournalFamily,
-};
-#[cfg(feature = "server")]
-pub use client_journals::{
-    RelaySegmentClientJournalCoverage, RelaySegmentClientJournalHead, RelaySegmentPairedReviewHead,
 };
 mod client_rasters;
 pub use client_rasters::RelaySegmentClientRaster;

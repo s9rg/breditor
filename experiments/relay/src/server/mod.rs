@@ -95,7 +95,8 @@ pub use generation_recovery::{
 pub(crate) use segment_handover::router_with_recovered_segment;
 pub use segment_handover::{
     RelaySegmentHandoverApproval, RelaySegmentHandoverInputCoverage,
-    RelaySegmentHandoverInputReport, VerifiedRelaySegmentHandoverInputs,
+    RelaySegmentHandoverInputReport, RelaySegmentParticipantBranchInspection,
+    VerifiedRelaySegmentHandoverInputs,
 };
 use std::sync::{Arc, Mutex};
 use tokio::sync::{Semaphore, watch};

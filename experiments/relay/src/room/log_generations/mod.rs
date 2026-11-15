@@ -48,13 +48,14 @@ pub use segment_room_recovery::{
     RecoveredRelaySegmentRoom, RelaySegmentClientRaster, RelaySegmentClientUploadArchive,
     RelaySegmentClientUploadPin, RelaySegmentRoomBackupFiles, RelaySegmentRoomBackupIdentity,
 };
+#[cfg(feature = "server")]
+pub use segment_room_recovery::{
+    RelaySegmentBranchClock, RelaySegmentClientJournalCoverage, RelaySegmentClientJournalHead,
+    RelaySegmentPairedReviewHead, RelaySegmentParticipantBranch,
+};
 pub use segment_room_recovery::{
     RelaySegmentClientJournal, RelaySegmentClientJournalPin, RelaySegmentDocumentJournalFamily,
     RelaySegmentJournalOwner, RelaySegmentReviewJournalFamily,
-};
-#[cfg(feature = "server")]
-pub use segment_room_recovery::{
-    RelaySegmentClientJournalCoverage, RelaySegmentClientJournalHead, RelaySegmentPairedReviewHead,
 };
 #[cfg(test)]
 pub(in crate::room) mod tests;

@@ -1,4 +1,6 @@
 //! Retain original client-native document and review journals without adopting their edits.
+#[cfg(feature = "server")]
+mod branches;
 mod custody;
 #[cfg(feature = "server")]
 mod delivery;
@@ -11,6 +13,9 @@ mod selected;
 mod tests;
 #[cfg(feature = "server")]
 mod verify;
+
+#[cfg(feature = "server")]
+pub use branches::{RelaySegmentBranchClock, RelaySegmentParticipantBranch};
 
 pub(super) use custody::{JournalSelection, RetainedJournals};
 #[cfg(feature = "server")]
