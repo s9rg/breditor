@@ -43,8 +43,11 @@ enum Command {
         asset_mapping: Option<provider::Selection>,
         incoming_branch: Option<RelaySegmentClientJournalPin>,
     },
+    #[serde(rename_all = "camelCase")]
     Resume {
         token: String,
+        #[serde(default)]
+        export_alternates: bool,
     },
 }
 
@@ -390,7 +393,7 @@ pub(super) fn resumed_router(
     parent: &Path,
     authentication: Authentication,
 ) -> Result<axum::Router> {
-    let Command::Resume { token } = serde_json::from_slice(&input()?)? else {
+    let Command::Resume { token, export_alternates } = serde_json::from_slice(&input()?)? else {
         return Err("expected private resume command".into());
     };
     let authority = deployment(parent)?;
@@ -398,5 +401,16 @@ pub(super) fn resumed_router(
         serde_json::from_str(&read(&parent.join("approval.json"), 32 * 1024)?)?;
     let target = restored_backup(parent)?.reopen(&parent.join("restored"), POLICY)?;
     let selected = authority.current_selection()?;
-    Ok(target.resume_handover(authentication, "owner", &token, &authority, &approval, &selected)?.0)
+    let (router, handle, epoch) = target.resume_handover(
+        authentication,
+        "owner",
+        &token,
+        &authority,
+        &approval,
+        &selected,
+    )?;
+    if export_alternates {
+        branches::export(parent, &handle, &token, &selected, &epoch)?;
+    }
+    Ok(router)
 }

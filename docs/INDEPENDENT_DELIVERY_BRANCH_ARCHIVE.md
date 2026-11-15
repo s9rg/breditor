@@ -93,6 +93,9 @@ handover approval as in the ordinary resume flow.
 A host can enumerate `client_alternate_pins` and export an exact original
 through `copy_client_alternative` under local recovery ownership. The same
 participant SDK can reopen that copy in an independent store without
-transport. To move into another handover, explicitly pass the alternate
-again. An overlapping fork still needs a conflict-resolution step before
+transport. While the replacement is serving, its owner can call
+`ServerBackupHandle::export_relay_segment_participant_alternates` with
+the exact current epoch and an absent destination. It writes individually
+openable participant files and returns their ordered pins. To move into
+another handover, explicitly pass those original alternate files again. An overlapping fork still needs a conflict-resolution step before
 its edits can join the live history.

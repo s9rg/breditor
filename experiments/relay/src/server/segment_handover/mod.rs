@@ -1,4 +1,5 @@
 //! Host-local control of authenticated linked-room takeover. No control routes are registered.
+mod alternates;
 mod approval;
 mod branches;
 mod capture;

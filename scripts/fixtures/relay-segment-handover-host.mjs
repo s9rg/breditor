@@ -4,7 +4,7 @@ import {spawn} from 'node:child_process';
 import {createInterface} from 'node:readline';
 import {once} from 'node:events';
 
-export async function startSegmentHandoverHost(executable, args, token) {
+export async function startSegmentHandoverHost(executable, args, token, exportAlternates = false) {
   const mode = args[1];
   const child = spawn(executable, args, {stdio: ['pipe', 'pipe', 'pipe']});
   const closed = new Promise(resolve => child.once('close', (code, signal) => resolve({code, signal})));
@@ -36,7 +36,7 @@ export async function startSegmentHandoverHost(executable, args, token) {
   try {
     await spawned;
     if (token) {
-      send({kind: 'resume', token});
+      send({kind: 'resume', token, exportAlternates});
       child.stdin.end();
     } else if (mode !== 'final') {
       child.stdin.end();

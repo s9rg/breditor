@@ -139,3 +139,40 @@ pub(super) fn check_retention(
     ));
     Ok(())
 }
+
+pub(super) fn export(
+    parent: &Path,
+    handle: &ServerBackupHandle,
+    token: &str,
+    stale: &RoomDeploymentSelection,
+    epoch: &RoomDeploymentSelection,
+) -> Result<()> {
+    let destination = parent.join("exported-alternates");
+    assert!(matches!(
+        handle.export_relay_segment_participant_alternates(
+            "owner",
+            &"0".repeat(64),
+            epoch,
+            &destination,
+        ),
+        Err(Error::Permission)
+    ));
+    assert!(matches!(
+        handle.export_relay_segment_participant_alternates("owner", token, stale, &destination),
+        Err(Error::Lease)
+    ));
+    assert!(!destination.exists());
+    let pins =
+        handle.export_relay_segment_participant_alternates("owner", token, epoch, &destination)?;
+    assert_eq!(pins.len(), 1);
+    assert!(
+        handle
+            .export_relay_segment_participant_alternates("owner", token, epoch, &destination)
+            .is_err()
+    );
+    super::storage::write_new(
+        &parent.join("exported-alternate-pins.json"),
+        &serde_json::to_vec(&pins)?,
+    )?;
+    Ok(())
+}

@@ -474,7 +474,7 @@ async function run(mode, {distribution, rich}, executable, parent, journalKind, 
     }
     await session.close();
     session = undefined;
-    host = await startSegmentHandoverHost(executable, [parent, 'restore', address], token);
+    host = await startSegmentHandoverHost(executable, [parent, 'restore', address], token, competing);
     if (retainedBranches) {
       const surviving = await api.readSharedIndependentDeliveryBranchArchive(
         new Blob([readFileSync(join(parent, 'retained-branches.bin'))]),
@@ -482,6 +482,9 @@ async function run(mode, {distribution, rich}, executable, parent, journalKind, 
       );
       const [alternate] = readRetainedClientJournals(parent, [incomingBranch], 'client-alternatives');
       assert.deepEqual(alternate, retainedBranches.incoming);
+      assert.deepEqual(JSON.parse(readFileSync(join(parent, 'exported-alternate-pins.json'), 'utf8')),
+        [incomingBranch]);
+      assert.deepEqual(readFileSync(join(parent, 'exported-alternates', '0.participant')), alternate);
       assert.deepEqual(Buffer.from(await surviving.incoming.file.arrayBuffer()), alternate);
       recoveredAlternateHistoryLanes = await checkRecoveredAlternate(
         api, {...deliveryOptions, database: deliveryOptions.database + '-retained-alternate'},
@@ -596,6 +599,7 @@ async function run(mode, {distribution, rich}, executable, parent, journalKind, 
         preservedAlternateArchives: captured.preservedAlternateArchives,
         alteredAlternateRefusals: captured.alteredAlternateRefusals,
         recoveredAlternateHistoryLanes,
+        exportedAlternateArchives: 1,
       } : {}),
       ...(opaque ? {
         unresolvedProviderMappings: captured.participantUnmapped,
