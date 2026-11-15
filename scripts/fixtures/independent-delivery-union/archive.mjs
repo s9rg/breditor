@@ -51,6 +51,16 @@ export async function participantUnionFixture(api,rich,profile,config={}){
    ]});
   }
   const archivedReview = config.archivedReview ? authorArchivedReviewHistory(source.core) : null;
+  if (config.multiAuthorDiscussion) {
+   await peer.receiveFrame(source.core.updateFrame());
+   peer.receiveReview(source.core.exportReview('0'), {...chosen.options.review, access: 'moderate'});
+   const before = peer.localReviewClock().through;
+   const reply = peer.dispatchReview({kind: 'reply', data: {thread: archivedReview.thread, body: 'Bob’s archived reply'}});
+   assert.equal(reply.kind, 'committed');
+   assert.equal(peer.dispatchReview({kind: 'edit_message', data: {message: reply.event, body: 'Bob’s edited reply'}}).kind, 'committed');
+   const incoming = peer.exportReviewThrough(before, peer.localReviewClock().through);
+   assert.equal(source.core.receiveReview(incoming, {actor: 'peer-comments', principal: 'bob', access: 'comment'}).kind, 'applied');
+  }
   const sourceParts=await attachDelivery(api,source,chosen.options);await drafts(source,sourceParts,'Incoming','30');const incoming=await capture(source,sourceAssets,config.incomingAliasPixel??pixel),clock=peer.localReviewClock(),authorizations=[{source:{actor:clock.actor,principal:'bob',access:'comment'},from:'1',through:clock.through,prefixDigest:clock.prefixDigest}];assert.equal(peer.redo(),true);const futurePeerFrame=peer.updateFrame();peer.dispose();peer=undefined;await source.close();sourceAssets.close();
   const current=await open(baseRecovery),currentAssets=await rich.RichAssetStore.restoreBackup(tag+'-current-assets',baseUploads,{uploadState:'preserve'});stores.push(currentAssets);await currentAssets.cancel(pixelAsset);await currentAssets.ingest(new Blob([secondPixel],{type:'image/png'}));insert(current.core,'Local Redo ');current.core.undo();current.core.dispatchReview({kind:'create_thread',data:{anchorJson:current.core.captureReviewAnchor({kind:'document'}),body:'Local comment Redo'}});current.core.undoReview();const currentParts=await attachDelivery(api,current,chosen.options);await drafts(current,currentParts,'Current','50');const currentBackup=await capture(current,currentAssets),saved=current.exportRecovery(),depths={document:[current.core.view().undoDepth,current.core.view().redoDepth],review:[current.core.reviewSnapshot().view.undoDepth,current.core.reviewSnapshot().view.redoDepth]},layout={database:tag+'-union-intent',recoveryDatabase:tag+'-recovery-attempt',sourceDatabase:tag+'-replacement-source',uploadsDatabase:tag+'-replacement-uploads'},choices=[{asset:pixelAsset,keep:'current'},{asset:secondAsset,keep:'original'}],read={wasm:config.wasm,session:recoveryFactory(chosen.options),authorizations,checkAuthority(){}},options={...read,layout,choices,current:{selection:currentBackup.selection(),file:currentBackup.file()},incoming:{selection:incoming.selection(),file:incoming.file()}};
   return{tag,chosen,current,currentAssets,currentParts,currentBackup,incoming,saved,common,depths,layout,choices,read,options,futurePeerFrame,archivedReview,async close(){peer?.dispose();for(const s of sessions.toReversed())await s.discardAndClose();for(const store of stores)store.close();for(const backup of backups)backup.dispose();restore();}};

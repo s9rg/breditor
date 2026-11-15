@@ -260,3 +260,37 @@ for older runtimes.
 Run `node scripts/check-writable-relay-segment.mjs <relay-executable>
 --participant-recovered-comment-intent` to exercise a relay restart after a
 durable review reply was dropped at the client.
+
+## Continue a whole archived discussion
+
+Use `prepareSharedRecoveredDiscussion` with a chosen thread in an exact
+participant archive, a current review guard, and a live anchor. Supply the
+current account's own text for the new discussion link. The SDK reads all
+pages of the archived native thread and makes one selected attachment with
+its projected state, original author identities, individual versions, and
+complete event timeline. The attachment leaves unrelated discussions,
+participant credentials, document snapshots, and raster payloads in their
+original stores.
+
+Retain the returned file, its independently selected digest and byte length,
+and the recovery intent in host storage. Then call `commit()` for the ordinary
+live discussion under current permissions. Its exact future birth is part of
+the attachment. Use the shared review intent inspection after restart and
+pass the retained intent when retrying the same operation. Replies to the
+live discussion use the ordinary review lane under the replying accounts.
+
+The application decides who can receive the selected attachment and provides
+the file and independently retained selection to authorized readers.
+`readSharedRecoveredDiscussion` verifies the file against that selection
+under the host read policy and checks the selected room,
+native document seed, and exact original birth of the live link. Native
+author attribution comes from the original archive at capture. The Reader
+uses the attachment alone and its own live review history to open it.
+Historical messages and Undo/Redo remain in the original archive. The relay
+persists the ordinary link event. The host supplies attachment storage and
+discovery across sessions.
+
+Run `node scripts/check-writable-relay-segment.mjs <relay-executable>
+--participant-recovered-discussion` to exercise two authenticated authors,
+their archived history, two handovers, relay restart, and a new read-only
+client.

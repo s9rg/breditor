@@ -300,6 +300,9 @@ export {prepareSharedRecoveredBranchRichSuggestion} from './independent_delivery
 export {readSharedRecoveredBranchReview,readSharedRecoveredBranchReviewThread} from './independent_delivery_branch_archive/read_review_thread.js';
 export {prepareSharedRecoveredBranchReviewMessage} from './independent_delivery_branch_archive/recover_review_message.js';
 export {prepareSharedRecoveredBranchReviewIntent,inspectSharedRecoveredBranchReviewIntent} from './independent_delivery_branch_archive/recover_review_intent.js';
+export {prepareSharedRecoveredDiscussion} from './independent_delivery_branch_archive/attach_discussion.js';
+export {readSharedRecoveredDiscussion} from './independent_delivery_branch_archive/read_discussion.js';
+export type * from './independent_delivery_branch_archive/discussion_types.js';
 export type * from './independent_delivery_branch_archive/review_contract.js';
 export type {
  SharedIndependentDeliveryBranchArchive,

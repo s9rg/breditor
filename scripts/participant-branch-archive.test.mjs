@@ -471,3 +471,69 @@ test('retains the exact predicted review event across cold owners and refuses a 
   await f.close();
  }
 });
+
+test('attaches one complete multi-author archived discussion to an exact ordinary live link', async () => {
+ const f = await participantUnionFixture(api, rich, profile, {
+  wasm: native, branchFork: true, relaySeed: true, archivedReview: true,
+  multiAuthorDiscussion: true, documentSegmented: true, reviewSegmented: true,
+ });
+ let cold;
+ try {
+  const source = f.options.incoming;
+  const thread = f.archivedReview.thread;
+  const host = options(f), target = f.current, before = target.exportRecovery();
+  const prepared = await api.prepareSharedRecoveredDiscussion({
+   ...host, source, thread, target, guard: target.core.reviewSnapshot(),
+   anchor: {kind: 'document'}, body: 'Continue this archived discussion here',
+  });
+  assert.deepEqual(target.exportRecovery(), before);
+  assert.equal(api.inspectSharedRecoveredBranchReviewIntent(target, prepared.intent).kind, 'unapplied');
+  const read = {...host, target};
+  const policy = {wasm: read.wasm, target, checkAuthority() {}};
+  await assert.rejects(api.readSharedRecoveredDiscussion(prepared.file, prepared.selection, policy));
+  const bytes = await fileBytes(prepared.file);
+  const altered = Buffer.from(bytes);
+  altered[altered.length - 1] ^= 1;
+  await assert.rejects(api.readSharedRecoveredDiscussion(new Blob([altered]), prepared.selection, policy),
+   /retained digest/);
+  await assert.rejects(api.readSharedRecoveredDiscussion(prepared.file, prepared.selection, {
+   ...policy, async checkAuthority() {},
+  }));
+  const result = prepared.commit();
+  assert.equal(result.kind, 'committed');
+  const attachment = await api.readSharedRecoveredDiscussion(new Blob([bytes]), prepared.selection, policy);
+  assert.deepEqual(attachment.link.id, result.event);
+  assert.equal(attachment.link.principal, 'alice');
+  const wrongLink = JSON.parse(bytes);
+  wrongLink.link.digest = 'sha256:' + '0'.repeat(64);
+  const candidate = Buffer.from(JSON.stringify(wrongLink));
+  await assert.rejects(api.readSharedRecoveredDiscussion(new Blob([candidate]), {
+   bytes: candidate.byteLength, sha256: sha(candidate),
+  }, policy), /original live discussion link/);
+  assert.equal(attachment.original.archiveSha256, source.selection.sha256);
+  assert.equal(attachment.thread.author, 'alice');
+  assert.deepEqual([...new Set(attachment.events.map(event => event.principal))].sort(), ['alice', 'bob']);
+  assert.equal(attachment.events.length, 25);
+  assert.ok(attachment.events.some(event => event.payload.kind === 'visibility'));
+  assert.ok(attachment.events.some(event => event.principal === 'bob' && event.payload.data.data.body === 'Bob’s archived reply'));
+  assert.ok(attachment.thread.messages.some(message =>
+   message.author === 'bob' && message.versions[0].text === 'Bob’s edited reply'));
+  assert.doesNotMatch(bytes.toString(), /Unrelated discussion|Peer image discussion/);
+  const live = target.core.reviewSnapshot().view.threads.find(item =>
+   item.thread.id.actor === result.event.actor && item.thread.id.counter === result.event.counter);
+  assert.equal(live.thread.messages[0].versions[0].text, 'Continue this archived discussion here');
+  assert.equal(live.thread.messages.length, 1);
+  assert.deepEqual(target.exportRecovery().source.documentCheckpoint, before.source.documentCheckpoint);
+  await target.flush();
+  const recovery = target.exportRecovery();
+  await target.close();
+  cold = await api.SharedIndependentDeliverySession.restoreRecovery({
+   ...f.chosen.options, database: f.tag + '-attachment-cold', recovery, writerRecovery: 'host-reacquired',
+  });
+  assert.deepEqual(await api.readSharedRecoveredDiscussion(new Blob([bytes]), prepared.selection, {...policy, target: cold}), attachment);
+  assert.throws(() => prepared.commit());
+ } finally {
+  await cold?.discardAndClose();
+  await f.close();
+ }
+});

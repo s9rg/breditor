@@ -183,6 +183,14 @@ async fn main() -> Result {
                     "versions": room.document_versions_descriptor("owner")?,
                 }))?,
             )?;
+            if parent.join("fixture-discussion-peer").is_file() {
+                room.grant("owner", "discussion-peer", Some(breditor_collab_relay::Role::Reader))?;
+                room.grant_review(
+                    "owner",
+                    "discussion-peer",
+                    Some(breditor_collab_relay::ReviewRole::Comment),
+                )?;
+            }
             for i in 2..64 {
                 room.grant("owner", "reader", Some(breditor_collab_relay::Role::Reader))?;
                 room.rotate_log_generation("owner", &format!("file-{i}"))?;

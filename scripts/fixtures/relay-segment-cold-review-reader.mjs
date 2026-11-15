@@ -3,9 +3,10 @@ import assert from 'node:assert/strict';
 import {recoveredPixel} from './review-assets/pixels.mjs';
 import {assertRecoveredRich} from './relay-segment-recovered-rich.mjs';
 import {assertRecoveredComment} from './relay-segment-recovered-comment.mjs';
+import {openAttachedDiscussion} from './relay-segment-discussion.mjs';
 
 export async function checkColdReviewReader({
-  api, options, origin, database, profile, assetUrl, recovered, threads, delivered, originalVersion, recoveredComment,
+  api, wasm, options, origin, database, profile, assetUrl, recovered, threads, delivered, originalVersion, recoveredComment, attachedDiscussion,
 }) {
   const originalFetch = globalThis.fetch;
   const endpoint = new URL(options.endpoint);
@@ -69,6 +70,7 @@ export async function checkColdReviewReader({
     assertRecoveredRich(session.core.documentJson(), recovered.generation);
     assert.deepEqual(session.core.reviewSnapshot().view.threads, threads);
     if (recoveredComment) assertRecoveredComment(session.core.reviewSnapshot().view.threads, recoveredComment);
+    if (attachedDiscussion) await openAttachedDiscussion({api, target: session, wasm, ...attachedDiscussion});
     for (const [id, packet, decision] of [
       [recovered.id, recovered.packet, recovered.decision],
       [delivered.pending.decision, delivered.pending.packets[1], delivered.decision],
@@ -114,13 +116,15 @@ export async function checkColdReviewReader({
     assertRecoveredRich(session.core.documentJson(), recovered.generation);
     assert.deepEqual(session.core.reviewSnapshot().view.threads, threads);
     if (recoveredComment) assertRecoveredComment(session.core.reviewSnapshot().view.threads, recoveredComment);
+    if (attachedDiscussion) await openAttachedDiscussion({api, target: session, wasm, ...attachedDiscussion});
     queue = await session.openSuggestionQueue();
     assert.deepEqual(queue.status(recovered.id).decision, recovered.decision);
     assert.equal(queue.packet(recovered.id), recovered.packet);
     await queue.close();
     return {coldReaderReopens: 1, coldReaderThreads: threads.length, coldReaderReviewReceipts: 3,
       coldReaderVersionPackets: 2, coldReaderRevisionPackets: 1,
-      ...(recoveredComment ? {coldRecoveredCommentReads: 1} : {})};
+      ...(recoveredComment ? {coldRecoveredCommentReads: 1} : {}),
+      ...(attachedDiscussion ? {coldRecoveredDiscussions: 1, archivedDiscussionAuthors: 2} : {})};
   } finally {
     sync?.dispose();
     observer?.dispose();
