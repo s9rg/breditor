@@ -22,7 +22,11 @@ export async function recoverArchivedComment({api, session, review, policy, sour
   const [original] = page.events;
   assert.equal(original.principal, 'owner');
   assert.equal(original.payload.data.data.body, body);
-  const point = offset => ({block: 'p', offset, affinity: 'after'});
+  const paragraph = JSON.parse(accepted).root.children.find(node => node.type === 'breditor/paragraph' &&
+    node.children.some(run => run.kind === 'text' && run.text.startsWith('Competing branch text')));
+  assert.ok(paragraph, 'The accepted recovered paragraph is available to anchor the comment');
+  const block = paragraph.properties['breditor/block-id'];
+  const point = offset => ({block, offset, affinity: 'after'});
   const context = await api.prepareSharedRecoveredBranchReviewMessage({
     ...policy, source, event: {thread, index: original.index, id: original.id, digest: original.digest},
     target: session, guard: session.core.reviewSnapshot(),
