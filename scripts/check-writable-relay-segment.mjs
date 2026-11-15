@@ -640,6 +640,18 @@ async function run(mode, {distribution, rich}, executable, parent, journalKind, 
         assert.equal(result.publishedDiscussionSourceRefusals, 2);
         assert.deepEqual(readFileSync(join(parent, 'published-discussion-sources', '0.participant')),
           retainedBranches.incoming);
+      }
+      assert.ok(BigInt(result.records) > BigInt(captured.records));
+      const superseded = await fetch(rasterUrl, {headers});
+      assert.equal(superseded.status, 403);
+      await superseded.arrayBuffer();
+      await host.crash();
+      host = undefined;
+      await session.close();
+      session = undefined;
+      portableUploads.close();
+      portableUploads = undefined;
+      if (relayDiscussion) {
         const recoveredRoot = 'retained-room-restored';
         const [selectedBytes] = readRetainedClientJournals(parent, journalPins, 'client-journals', recoveredRoot);
         assert.deepEqual(selectedBytes, portable.archive);
@@ -657,16 +669,6 @@ async function run(mode, {distribution, rich}, executable, parent, journalKind, 
         );
         retainedBackupHistory = {selectedHistoryLanes, alternateHistoryLanes};
       }
-      assert.ok(BigInt(result.records) > BigInt(captured.records));
-      const superseded = await fetch(rasterUrl, {headers});
-      assert.equal(superseded.status, 403);
-      await superseded.arrayBuffer();
-      await host.crash();
-      host = undefined;
-      await session.close();
-      session = undefined;
-      portableUploads.close();
-      portableUploads = undefined;
       for (const name of [restoredRoot, 'exported-alternates', 'retained-branches.bin',
         'carry-journal-0.json', 'carry-journal-1.json', 'carry-peer.uploads',
         ...(additionalAlternate ? ['additional-alternate.bin'] : [])]) {
