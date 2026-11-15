@@ -3,9 +3,9 @@ use super::{
     RecoveredRelaySegmentRoom, RelaySegmentClientJournal, RelaySegmentClientJournalPin,
     RelaySegmentClientRaster, RelaySegmentClientUploadArchive, RelaySegmentClientUploadPin,
     RelaySegmentRoomBackupFiles, RelaySegmentRoomBackupIdentity,
-    client_journals::{JournalSelection, RetainedJournals},
+    client_journals::{self, JournalSelection, RetainedJournals},
     client_rasters::{self, SelectedRaster},
-    client_uploads::{self, RetainedUploadSelection, RetainedUploads},
+    client_uploads::{self, RetainedUploadSelection, RetainedUploads, UploadSource},
 };
 use crate::{
     Error, Result, Room, RoomRecoveryPolicy,
@@ -100,8 +100,10 @@ impl RelaySegmentRoomBackupFiles {
         policy: RoomRecoveryPolicy,
         archives: &[RelaySegmentClientUploadArchive],
     ) -> Result<RecoveredRelaySegmentRoom> {
-        let rasters = client_uploads::select(archives)?;
-        self.restore_selected(path, active_generation, policy, &rasters, Some(archives), None)
+        let sources: Vec<_> =
+            archives.iter().map(RelaySegmentClientUploadArchive::source).collect();
+        let rasters = client_uploads::select(&sources)?;
+        self.restore_selected(path, active_generation, policy, &rasters, Some(&sources), None)
     }
 
     /// Restore uploaded assets and every selected original client-native journal to a new
@@ -117,13 +119,33 @@ impl RelaySegmentRoomBackupFiles {
         archives: &[RelaySegmentClientUploadArchive],
         journals: &[RelaySegmentClientJournal],
     ) -> Result<RecoveredRelaySegmentRoom> {
-        let rasters = client_uploads::select(archives)?;
+        let mut sources: Vec<_> =
+            archives.iter().map(RelaySegmentClientUploadArchive::source).collect();
+        client_uploads::check_pins(
+            &sources.iter().map(|source| source.pin.clone()).collect::<Vec<_>>(),
+        )?;
+        client_journals::check_sources(journals)?;
+        for journal in journals {
+            if let Some(source) = journal.participant_upload()? {
+                sources.push(source);
+            }
+        }
+        sources.sort_unstable_by_key(|source| source.pin.writer.as_str());
+        let rasters = client_uploads::select(&sources)?;
+        let mut selected = rasters
+            .into_iter()
+            .map(|raster| (raster.info.asset.as_str(), raster))
+            .collect::<std::collections::BTreeMap<_, _>>();
+        for journal in journals {
+            journal.add_participant_rasters(&mut selected)?;
+        }
+        let rasters: Vec<_> = selected.into_values().collect();
         self.restore_selected(
             path,
             active_generation,
             policy,
             &rasters,
-            Some(archives),
+            Some(&sources),
             Some(journals),
         )
     }
@@ -134,7 +156,7 @@ impl RelaySegmentRoomBackupFiles {
         active_generation: &str,
         policy: RoomRecoveryPolicy,
         rasters: &[SelectedRaster<'_>],
-        archives: Option<&[RelaySegmentClientUploadArchive]>,
+        archives: Option<&[UploadSource<'_>]>,
         originals: Option<&[RelaySegmentClientJournal]>,
     ) -> Result<RecoveredRelaySegmentRoom> {
         let RoomRecoveryPolicy::HostReacquired = policy;
@@ -347,7 +369,8 @@ impl RecoveredRelaySegmentRoom {
     pub fn open_client_upload_archive(&self, writer: &str) -> Result<Option<fs::File>> {
         self.uploads.as_ref().map_or(Ok(None), |uploads| uploads.read(writer))
     }
-    /// Read one exact retained native journal selected by the trusted recovery host.
+    /// Read one exact retained UTF-8 journal selected by the trusted recovery host.
+    /// Use [`Self::copy_client_archive`] for binary participant originals.
     /// This file exports history but grants no registration or authoring rights.
     ///
     /// # Errors
@@ -366,6 +389,27 @@ impl RecoveredRelaySegmentRoom {
             .position(|retained| retained == pin)
             .map(|index| journals.read(index))
             .transpose()
+    }
+
+    /// Copy one selected original client archive to a trusted host-owned output.
+    /// Only publish the destination after this call succeeds. No authority or receipt is granted.
+    ///
+    /// # Errors
+    /// Refuses changed custody, wrong retained bytes and output I/O errors.
+    pub fn copy_client_archive(
+        &self,
+        pin: &RelaySegmentClientJournalPin,
+        output: &mut impl std::io::Write,
+    ) -> Result<bool> {
+        self.check_custody()?;
+        let Some(journals) = &self.journals else {
+            return Ok(false);
+        };
+        let Some(index) = journals.pins().iter().position(|retained| retained == pin) else {
+            return Ok(false);
+        };
+        journals.copy(index, output)?;
+        Ok(true)
     }
 
     /// Borrow the exact native and raster components under local recovery ownership.

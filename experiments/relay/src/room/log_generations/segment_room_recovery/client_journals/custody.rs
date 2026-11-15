@@ -1,9 +1,12 @@
 //! One synced, length-delimited file holds all original bytes. A canonical manifest binds the
 //! source identities and their ordered byte ranges to the exact replacement directory.
-use super::{MAX_TOTAL, RelaySegmentClientJournal, RelaySegmentClientJournalPin, check_pins};
+use super::{
+    MAX_TOTAL, RelaySegmentClientJournal, RelaySegmentClientJournalPin, RelaySegmentJournalOwner,
+    check_pins,
+};
 use crate::{
     Error, Result,
-    archive_input::ArchiveInput,
+    archive_input::{ArchiveInput, ArchiveSlice},
     log::generations::{GenerationDirectory, GenerationDirectoryWitness, GenerationFileWitness},
     room::log_generations::recovery::files,
 };
@@ -130,15 +133,32 @@ impl RetainedJournals {
         self.directory.guard()
     }
 
-    pub fn read(&self, index: usize) -> Result<String> {
+    pub fn part(&self, index: usize) -> Result<ArchiveSlice<'_>> {
         self.check()?;
         let pin = &self.pins[index];
         let part = self.data.all().section(self.offsets[index], pin.bytes)?;
-        let bytes = part.read(pin.owner.byte_limit())?;
-        if <[u8; 32]>::from(Sha256::digest(&bytes)) != pin.sha256 {
+        if part.digest()? != pin.sha256 {
             return Err(Error::Contract("retained client journal digest differs"));
         }
         self.check()?;
+        Ok(part)
+    }
+
+    pub fn read(&self, index: usize) -> Result<String> {
+        let owner = &self.pins[index].owner;
+        if matches!(owner, RelaySegmentJournalOwner::IndependentParticipant { .. }) {
+            return Err(Error::Contract("binary participant archive requires copy_client_archive"));
+        }
+        let bytes = self.part(index)?.read(owner.byte_limit())?;
+        self.check()?;
         String::from_utf8(bytes.into_owned()).map_err(|_| Error::Contract("client journal UTF-8"))
+    }
+
+    pub fn copy(&self, index: usize, output: &mut impl std::io::Write) -> Result<()> {
+        let part = self.part(index)?;
+        if io::copy(&mut part.reader(), output)? != part.len() {
+            return Err(Error::Contract("retained client archive export truncated"));
+        }
+        self.check()
     }
 }

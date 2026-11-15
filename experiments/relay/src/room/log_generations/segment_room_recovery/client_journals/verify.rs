@@ -2,13 +2,15 @@
 use super::{
     RelaySegmentClientJournalPin, RelaySegmentDocumentJournalFamily,
     RelaySegmentReviewJournalFamily, RetainedJournals,
-    delivery::DeliveryRecord,
+    delivery::{DeliveryRecord, DeliverySections},
     paired::PairedRecord,
-    selected::{DocumentInput, SelectedSources},
+    participant::ParticipantArchive,
+    selected::{DocumentInput, DocumentSource, SelectedSources},
 };
 use crate::{
     Error, MAX_SERVER_ASSET_REFERENCE_PAIRS, RecoveredRelaySegmentRoom, RecoveryDocumentClock,
     RecoveryReviewRegistration, Result, Room, RoomParticipantInventoryMetadata,
+    server::ServerAssetResolution,
 };
 use breditor_collab_feasibility::{
     review::{ReviewAccess, ReviewActorPolicy, ReviewPrincipalId, ReviewSession},
@@ -54,6 +56,9 @@ pub struct RelaySegmentClientJournalCoverage {
     pub missing_review_actors: Vec<String>,
     /// Unique retained document bindings, including offline work, undone images and Redo.
     pub asset_references: Vec<VersionAssetReference>,
+    /// Exact raster mappings captured by complete SDK participant originals.
+    #[serde(skip_serializing_if = "Vec::is_empty")]
+    pub participant_raster_bindings: Vec<ServerAssetResolution>,
 }
 
 impl RecoveredRelaySegmentRoom {
@@ -88,55 +93,26 @@ fn verify(
     let mut missing_reviews = review_rows.keys().copied().collect::<BTreeSet<_>>();
     let mut verified = Vec::new();
     let mut assets = BTreeSet::new();
+    let mut participant_bindings = BTreeMap::new();
     for source in documents {
-        let index = source.index;
-        let writer = &source.row.clock.writer;
-        let input = originals.read(index)?;
-        let (local, paired) = match source.input {
-            DocumentInput::Native(family) => (restore_document(room, family, &input)?, None),
-            DocumentInput::Paired(row) => {
-                let pair = PairedRecord::read(&input, participants, writer, row)?;
-                let document =
-                    restore_document(room, pair.family()?, &pair.document_checkpoint_json)?;
-                (document, Some((row, PairedInput::Original(Box::new(pair)))))
-            }
-            DocumentInput::Delivery(row) => {
-                let record = DeliveryRecord::read(&input, participants, source.row, row)?;
-                (record.document(room)?, Some((row, PairedInput::Delivery(Box::new(record)))))
-            }
-        };
-        if local.writer() != writer || local.document_id() != room.replica.document_id() {
-            return Err(Error::Contract("client journal document binding differs"));
-        }
-        let local_through = verify_document(
+        let (local, head, document_assets) = verify_document_source(
             room,
-            &local,
+            participants,
+            originals,
             &document_clocks,
-            &source.row.clock,
-            source.row.observer,
+            &review_rows,
+            &source,
+            &mut participant_bindings,
         )?;
-        retain_assets(&local, &mut assets)?;
-        let paired_review = if let Some((row, pair)) = paired {
-            let local_through =
-                verify_paired_review(room, &local, &review_rows, row, &pair, &mut assets)?;
+        if let DocumentInput::Paired(row)
+        | DocumentInput::Delivery(row)
+        | DocumentInput::Participant(row) = source.input
+        {
             missing_reviews.remove(row.clock.actor.as_str());
-            Some(RelaySegmentPairedReviewHead {
-                local_through,
-                accepted_through: row.clock.through.clone(),
-            })
-        } else {
-            None
-        };
-        verified.push((
-            index,
-            RelaySegmentClientJournalHead {
-                pin: originals.pins()[index].clone(),
-                local_through,
-                accepted_through: source.row.clock.through.clone(),
-                paired_review,
-            },
-        ));
-        for source in reviews.remove(writer.as_str()).into_iter().flatten() {
+        }
+        insert_assets(&mut assets, document_assets)?;
+        verified.push((source.index, head));
+        for source in reviews.remove(source.row.clock.writer.as_str()).into_iter().flatten() {
             let review =
                 restore_review(&local, source.row, source.family, &originals.read(source.index)?)?;
             let local_through = verify_review(room, &review, &review_rows, source.row)?;
@@ -159,7 +135,123 @@ fn verify(
         missing_document_writers,
         missing_review_actors: missing_reviews.into_iter().map(str::to_owned).collect(),
         asset_references: assets.into_iter().collect(),
+        participant_raster_bindings: participant_bindings
+            .into_iter()
+            .map(|(reference, content_asset)| ServerAssetResolution { reference, content_asset })
+            .collect(),
     })
+}
+
+fn verify_document_source(
+    room: &Room,
+    participants: &RoomParticipantInventoryMetadata,
+    originals: &RetainedJournals,
+    document_clocks: &BTreeMap<&str, &RecoveryDocumentClock>,
+    review_rows: &BTreeMap<&str, &RecoveryReviewRegistration>,
+    source: &DocumentSource<'_>,
+    participant_bindings: &mut BTreeMap<VersionAssetReference, String>,
+) -> Result<(RichReplica, RelaySegmentClientJournalHead, BTreeSet<VersionAssetReference>)> {
+    let index = source.index;
+    let writer = &source.row.clock.writer;
+    let pin = &originals.pins()[index];
+    let archive = if matches!(source.input, DocumentInput::Participant(_)) {
+        let slice = originals.part(index)?;
+        Some((ParticipantArchive::open(slice, &pin.owner)?, slice))
+    } else {
+        None
+    };
+    let input;
+    let stores;
+    let (local, paired) = match source.input {
+        DocumentInput::Native(family) => {
+            (restore_document(room, family, &originals.read(index)?)?, None)
+        }
+        DocumentInput::Paired(row) => {
+            input = originals.read(index)?;
+            let pair = PairedRecord::read(&input, participants, writer, row)?;
+            let document = restore_document(room, pair.family()?, &pair.document_checkpoint_json)?;
+            (document, Some((row, PairedInput::Original(Box::new(pair)))))
+        }
+        DocumentInput::Delivery(row) => {
+            input = originals.read(index)?;
+            let record = DeliveryRecord::read(&input, participants, source.row, row)?;
+            (record.document(room)?, Some((row, PairedInput::Delivery(Box::new(record)))))
+        }
+        DocumentInput::Participant(row) => {
+            let (archive, slice) =
+                archive.as_ref().ok_or(Error::Contract("participant archive absent"))?;
+            let native = archive.read_records(*slice)?;
+            let identity = archive.source();
+            stores = native.stores;
+            let record = DeliveryRecord::from_sections(
+                DeliverySections {
+                    identity: &identity.history,
+                    binding: &identity.binding,
+                    retained_binding: &identity.retained,
+                    document: native.document,
+                    review: native.review,
+                    versions: native.versions,
+                    relay: &stores.relay,
+                    suggestions: stores.suggestions.as_deref(),
+                    revisions: stores.revisions.as_deref(),
+                    version_store: stores.versions.as_deref(),
+                },
+                participants,
+                source.row,
+                row,
+            )?;
+            (record.document(room)?, Some((row, PairedInput::Delivery(Box::new(record)))))
+        }
+    };
+    if local.writer() != writer || local.document_id() != room.replica.document_id() {
+        return Err(Error::Contract("client journal document binding differs"));
+    }
+    let local_through =
+        verify_document(room, &local, document_clocks, &source.row.clock, source.row.observer)?;
+    let mut document_assets = BTreeSet::new();
+    retain_assets(&local, &mut document_assets)?;
+    let paired_review = if let Some((row, pair)) = paired {
+        let local_through =
+            verify_paired_review(room, &local, review_rows, row, &pair, &mut document_assets)?;
+        Some(RelaySegmentPairedReviewHead {
+            local_through,
+            accepted_through: row.clock.through.clone(),
+        })
+    } else {
+        None
+    };
+    if let Some((archive, _)) = &archive {
+        check_participant_raster_bindings(archive, &document_assets, participant_bindings)?;
+    }
+    let head = RelaySegmentClientJournalHead {
+        pin: pin.clone(),
+        local_through,
+        accepted_through: source.row.clock.through.clone(),
+        paired_review,
+    };
+    Ok((local, head, document_assets))
+}
+
+fn check_participant_raster_bindings(
+    archive: &ParticipantArchive,
+    required: &BTreeSet<VersionAssetReference>,
+    covered: &mut BTreeMap<VersionAssetReference, String>,
+) -> Result<()> {
+    if archive.bindings().len() != required.len() {
+        return Err(Error::Contract("participant archive raster dependencies differ"));
+    }
+    for (entry, reference) in archive.bindings().iter().zip(required) {
+        if entry.asset != reference.asset || entry.generation != reference.generation {
+            return Err(Error::Contract("participant archive raster dependencies differ"));
+        }
+        if covered
+            .insert(reference.clone(), entry.content_asset.clone())
+            .is_some_and(|before| before != entry.content_asset)
+        {
+            return Err(Error::Contract("participant archives disagree on a raster binding"));
+        }
+    }
+    Ok(())
 }
 
 fn verify_paired_review(

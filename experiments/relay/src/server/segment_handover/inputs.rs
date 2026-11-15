@@ -72,6 +72,23 @@ impl RelaySegmentHandoverInputReport {
         }
         Ok(Some(Cow::Owned(merged.into_iter().cloned().collect())))
     }
+
+    fn check_participant_bindings(&self, resolutions: &[ServerAssetResolution]) -> Result<()> {
+        let Some(journals) = &self.client_journal_coverage else {
+            return Ok(());
+        };
+        for expected in &journals.participant_raster_bindings {
+            if let Ok(i) =
+                resolutions.binary_search_by(|row| row.reference.cmp(&expected.reference))
+                && resolutions[i].content_asset != expected.content_asset
+            {
+                return Err(Error::Contract(
+                    "participant archive and live raster mapping disagree",
+                ));
+            }
+        }
+        Ok(())
+    }
 }
 
 /// Coverage of protected registrations and accepted server asset inputs.
@@ -127,6 +144,7 @@ impl VerifiedRelaySegmentHandoverInputs {
             .ok_or(Error::Contract("relay segment handover provider released"))?;
         let references = self.report.required_assets()?.ok_or(Error::NeedsRecovery)?;
         let current = resolve_server_assets(target.components().1, &references, provider.as_ref())?;
+        self.report.check_participant_bindings(&current.resolutions)?;
         if !current.missing.is_empty()
             || current.resolutions != self.report.resolutions
             || current.assets != self.report.assets
@@ -196,6 +214,7 @@ impl RecoveredRelaySegmentRoom {
         });
         let packet_pending = if let Some(references) = report.required_assets()? {
             let resolved = resolve_server_assets(assets, &references, provider.as_ref())?;
+            report.check_participant_bindings(&resolved.resolutions)?;
             report.missing_assets = resolved.missing;
             report.resolutions = resolved.resolutions;
             report.assets = resolved.assets;

@@ -9,7 +9,8 @@ const MAGIC: &[u8] = b"BREDITOR-ASSETS1\n";
 const PREFIX: u64 = MAGIC.len() as u64 + 4;
 const MAX_HEADER: u64 = 16 * 1024 * 1024;
 const MAX_PAYLOAD: u64 = 100 * 1024 * 1024;
-pub(super) const MAX_FILE: u64 = PREFIX + MAX_HEADER + MAX_PAYLOAD;
+pub(in crate::room::log_generations::segment_room_recovery) const MAX_FILE: u64 =
+    PREFIX + MAX_HEADER + MAX_PAYLOAD;
 const MAX_JS_INTEGER: u64 = (1 << 53) - 1;
 
 #[derive(Deserialize, Serialize)]

@@ -14,6 +14,7 @@ pub(super) enum DocumentInput<'a> {
     Native(RelaySegmentDocumentJournalFamily),
     Paired(&'a RecoveryReviewRegistration),
     Delivery(&'a RecoveryReviewRegistration),
+    Participant(&'a RecoveryReviewRegistration),
 }
 
 pub(super) struct DocumentSource<'a> {
@@ -78,20 +79,22 @@ impl<'a> SelectedSources<'a> {
                     });
                 }
                 RelaySegmentJournalOwner::PairedSession { writer, actor }
-                | RelaySegmentJournalOwner::IndependentDelivery { writer, actor } => {
+                | RelaySegmentJournalOwner::IndependentDelivery { writer, actor }
+                | RelaySegmentJournalOwner::IndependentParticipant { writer, actor } => {
                     let row = take_document(&mut missing, writer)?;
                     let review =
                         selected.review_row(&mut declared_review, actor, row.principal.as_str())?;
                     selected.documents.push(DocumentSource {
                         index,
                         row,
-                        input: if matches!(
-                            pin.owner,
-                            RelaySegmentJournalOwner::PairedSession { .. }
-                        ) {
-                            DocumentInput::Paired(review)
-                        } else {
-                            DocumentInput::Delivery(review)
+                        input: match pin.owner {
+                            RelaySegmentJournalOwner::PairedSession { .. } => {
+                                DocumentInput::Paired(review)
+                            }
+                            RelaySegmentJournalOwner::IndependentParticipant { .. } => {
+                                DocumentInput::Participant(review)
+                            }
+                            _ => DocumentInput::Delivery(review),
                         },
                     });
                 }

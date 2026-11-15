@@ -88,6 +88,19 @@ struct ReviewIdentity {
     principal: String,
 }
 
+pub(super) struct DeliverySections<'a> {
+    pub identity: &'a RawValue,
+    pub binding: &'a RawValue,
+    pub retained_binding: &'a RawValue,
+    pub document: String,
+    pub review: String,
+    pub versions: Vec<String>,
+    pub relay: &'a str,
+    pub suggestions: Option<&'a str>,
+    pub revisions: Option<&'a str>,
+    pub version_store: Option<&'a str>,
+}
+
 impl<'a> DeliveryRecord<'a> {
     pub fn read(
         input: &'a str,
@@ -99,6 +112,55 @@ impl<'a> DeliveryRecord<'a> {
             return Err(Error::Contract("client delivery recovery byte budget"));
         }
         let value: Self = serde_json::from_str(input)?;
+        value.check(participants, document, review)?;
+        Ok(value)
+    }
+
+    pub fn from_sections(
+        sections: DeliverySections<'a>,
+        participants: &RoomParticipantInventoryMetadata,
+        document: &RecoveryDocumentRegistration,
+        review: &RecoveryReviewRegistration,
+    ) -> Result<Self> {
+        #[derive(Deserialize)]
+        struct Relay<'a> {
+            #[serde(borrow)]
+            binding: &'a RawValue,
+        }
+        let relay: Relay<'_> = serde_json::from_str(sections.relay)?;
+        if relay.binding.get() != sections.binding.get() {
+            return Err(Error::Contract("participant archive relay identity differs"));
+        }
+        let value = Self {
+            format: "breditor/shared-independent-delivery-recovery".into(),
+            format_version: 1,
+            source: NativeSource {
+                format: "breditor/shared-independent-history-recovery".into(),
+                format_version: 1,
+                identity: serde_json::from_str(sections.identity.get())?,
+                document_checkpoint: sections.document,
+                review_checkpoint: sections.review,
+                versions: sections.versions,
+            },
+            relay: serde_json::from_str(sections.relay)?,
+            retained_binding: serde_json::from_str(sections.retained_binding.get())?,
+            retained: outboxes::Stores::from_sections(
+                sections.suggestions,
+                sections.revisions,
+                sections.version_store,
+            )?,
+        };
+        value.check(participants, document, review)?;
+        Ok(value)
+    }
+
+    fn check(
+        &self,
+        participants: &RoomParticipantInventoryMetadata,
+        document: &RecoveryDocumentRegistration,
+        review: &RecoveryReviewRegistration,
+    ) -> Result<()> {
+        let value = self;
         let identity = &value.source.identity;
         let native = &identity.native;
         if value.format != "breditor/shared-independent-delivery-recovery"
@@ -123,7 +185,7 @@ impl<'a> DeliveryRecord<'a> {
             participants,
             native.reviewed_history.as_ref(),
         )?;
-        Ok(value)
+        Ok(())
     }
 
     pub fn document(&self, room: &Room) -> Result<RichReplica> {

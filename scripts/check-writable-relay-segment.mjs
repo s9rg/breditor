@@ -8,8 +8,9 @@ import {join, resolve} from 'node:path';
 import {fileURLToPath, pathToFileURL} from 'node:url';
 import {WebSocket as Socket} from 'undici';
 import {environment} from './fixtures/room-participant-inventory/environment.mjs';
-import {pixel, secondAsset, secondPixel} from './fixtures/review-assets/pixels.mjs';
+import {pixel, proposalAsset, proposalPixel, secondAsset, secondPixel} from './fixtures/review-assets/pixels.mjs';
 import {startSegmentHandoverHost} from './fixtures/relay-segment-handover-host.mjs';
+import {captureParticipant, reopenParticipant, withWrongReviewReceipt} from './fixtures/relay-segment-participant.mjs';
 import {captureClientRaster, resumeClientRaster} from './fixtures/relay-segment-client-raster.mjs';
 import {searchConsumerLock, verifySearchConsumerRegistry} from './search-consumer-lock.mjs';
 import {sourceEvidence, saveEvidence} from './candidate-release/evidence.mjs';
@@ -56,8 +57,8 @@ function writeJournal(parent, name, owner, journal) {
   return {owner, bytes: bytes.length, sha256: [...Buffer.from(sha(bytes), 'hex')]};
 }
 
-function selectClientJournals(parent, identity, pairedBackup, peerWriter, peerCheckpoint, independentDelivery) {
-  const paired = {kind: independentDelivery ? 'independentDelivery' : 'pairedSession', writer: identity.documentWriter, actor: identity.actor};
+function selectClientJournals(parent, identity, pairedBackup, peerWriter, peerCheckpoint, kind) {
+  const paired = {kind, writer: identity.documentWriter, actor: identity.actor};
   const peer = {kind: 'document', writer: peerWriter, family: 'original'};
   return [
     writeJournal(parent, 'journal-0.json', paired, pairedBackup),
@@ -76,13 +77,15 @@ function readRetainedClientJournals(parent, expected) {
     offset += pin.bytes;
     assert.equal(part.length, pin.bytes);
     assert.equal(sha(part), Buffer.from(pin.sha256).toString('hex'));
-    return part.toString('utf8');
+    return pin.owner.kind === 'independentParticipant' ? part : part.toString('utf8');
   });
   assert.equal(offset, stream.length);
   return originals;
 }
 
-async function run(mode, {distribution, rich}, executable, parent, independentDelivery) {
+async function run(mode, {distribution, rich}, executable, parent, journalKind) {
+  const participant = journalKind === 'independentParticipant';
+  const independentDelivery = journalKind !== 'pairedSession';
   const runtime = join(distribution, 'runtime');
   const api = await import(pathToFileURL(join(distribution, 'index.js')).href);
   const richApi = await import(pathToFileURL(rich).href);
@@ -103,7 +106,7 @@ async function run(mode, {distribution, rich}, executable, parent, independentDe
     accounts: [{principal: 'owner', tokenHash: [...createHash('sha256').update(token).digest()]}],
   }), {mode: 0o600});
   writeFileSync(join(parent, 'asset.png'), pixel, {mode: 0o600});
-  let host, profile, session, document, review;
+  let host, profile, session, document, review, portableUploads, failure;
   const connect = {getToken: () => token, autoConnect: false, requestTimeoutMs: 15_000};
   const stopClients = async () => {
     document?.dispose();
@@ -175,7 +178,7 @@ async function run(mode, {distribution, rich}, executable, parent, independentDe
         const before = session.core.documentJson();
         const proposal = queue.propose('Pending original', '1', {scope: 'commands',
           edit: {kind: 'commands', data: [{kind: 'replace_image', data: {
-            block: 'image-block', asset: secondAsset, generation: 'queued-proposal-image',
+            block: 'image-block', asset: participant ? proposalAsset : secondAsset, generation: 'queued-proposal-image',
           }}]}});
 
         const revision = revisions.revise({previousSuggestionId: proposal.id,
@@ -312,38 +315,50 @@ async function run(mode, {distribution, rich}, executable, parent, independentDe
     const localVersions = independentDelivery ? queuedAcrossTakeover.source.versions : queuedAcrossTakeover.versions;
     assert.equal(localVersions.length, 1);
     const peerDocument = profile.join_frame('room', peer.identity.writer, peer.frame);
-    const archive = independentDelivery ? JSON.stringify(queuedAcrossTakeover) : await session.exportBackup();
-    const journalPins = selectClientJournals(parent, binding, archive,
-      peer.identity.writer, peerDocument.checkpoint(), independentDelivery);
-    const progress = independentDelivery ? queuedAcrossTakeover.relay.review : queuedAcrossTakeover.progress;
-    assert.ok(progress.sequence);
-    assert.ok(progress.accepted);
-    const wrongProgress = {...progress, sequence: (BigInt(progress.sequence) + 1n).toString()};
-    const wrongBackup = independentDelivery
-      ? JSON.stringify({...queuedAcrossTakeover, relay: {...queuedAcrossTakeover.relay, review: wrongProgress}})
-      : await api.encodeSharedPairedSessionBackup(JSON.parse(archive).identity, {...queuedAcrossTakeover, progress: wrongProgress});
-    const wrongReceipt = writeJournal(parent, 'wrong-receipt.json', journalPins[0].owner, wrongBackup);
-    peerDocument.free();
     const uploads = [
       await captureClientRaster(richApi, parent, registered.identity.writer, 'pending'),
       await captureClientRaster(richApi, parent, peer.identity.writer, 'cancelled'),
     ];
+    const portable = participant ? await captureParticipant(api, richApi, session, uploads[0]) : null;
+    const archive = portable?.archive ?? (independentDelivery
+      ? JSON.stringify(queuedAcrossTakeover) : await session.exportBackup());
+    const journalPins = selectClientJournals(parent, binding, archive,
+      peer.identity.writer, peerDocument.checkpoint(), journalKind);
+    const progress = independentDelivery ? queuedAcrossTakeover.relay.review : queuedAcrossTakeover.progress;
+    assert.ok(progress.sequence);
+    assert.ok(progress.accepted);
+    const wrongProgress = {...progress, sequence: (BigInt(progress.sequence) + 1n).toString()};
+    const wrongBackup = participant
+      ? withWrongReviewReceipt(archive, wrongProgress)
+      : independentDelivery ? JSON.stringify({...queuedAcrossTakeover, relay: {...queuedAcrossTakeover.relay, review: wrongProgress}})
+      : await api.encodeSharedPairedSessionBackup(JSON.parse(archive).identity, {...queuedAcrossTakeover, progress: wrongProgress});
+    const wrongReceipt = writeJournal(parent, 'wrong-receipt.json', journalPins[0].owner, wrongBackup);
+    peerDocument.free();
     const localUrl = 'http://' + address + '/assets/' + encodeURIComponent(secondAsset);
     const absent = await fetch(localUrl, {headers});
     assert.equal(absent.status, 404);
     await absent.arrayBuffer();
+    const proposalRasterUrl = 'http://' + address + '/assets/' + encodeURIComponent(proposalAsset);
+    if (participant) {
+      const missing = await fetch(proposalRasterUrl, {headers});
+      assert.equal(missing.status, 404);
+      await missing.arrayBuffer();
+    }
+    const selectedUploads = participant ? uploads.slice(1) : uploads;
     const captured = await host.handover(token, registered.identity, comment.identity, peer.identity,
-      uploads.map(upload => upload.pin), journalPins, wrongReceipt);
+      selectedUploads.map(upload => upload.pin), journalPins, wrongReceipt);
     assert.equal(captured.registrationRefusals, 3);
-    assert.equal(captured.providerRasters, 2);
+    assert.equal(captured.providerRasters, participant ? 3 : 2);
     assert.equal(captured.clientJournalRasterBindings, independentDelivery ? 3 : 2);
     assert.equal(captured.retainedPackets, 1);
-    assert.equal(captured.clientRasters, 2);
+    assert.equal(captured.clientRasters, participant ? 3 : 2);
     assert.equal(captured.clientArchives, 2);
     assert.equal(captured.missingArchiveRefusals, 1);
     assert.equal(captured.nativeJournals, 3);
     assert.equal(captured.pairedBackups, independentDelivery ? 0 : 1);
-    assert.equal(captured.independentDeliveries, independentDelivery ? 1 : 0);
+    assert.equal(captured.independentDeliveries, journalKind === 'independentDelivery' ? 1 : 0);
+    assert.equal(captured.participantArchives, participant ? 1 : 0);
+    assert.equal(captured.participantRasterBindings, participant ? 3 : 0);
     assert.equal(captured.wrongReceiptRefusals, 1);
     assert.equal(captured.missingJournalRefusals, 2);
     assert.deepEqual(session.exportRecovery(), queuedAcrossTakeover);
@@ -360,16 +375,29 @@ async function run(mode, {distribution, rich}, executable, parent, independentDe
     await session.close();
     session = undefined;
     host = await startSegmentHandoverHost(executable, [parent, 'restore', address], token);
-    const [backupJson] = readRetainedClientJournals(parent, journalPins);
-    assert.equal(backupJson, archive);
+    const [backup] = readRetainedClientJournals(parent, journalPins);
+    assert.deepEqual(backup, archive);
+    if (portable) {
+      const restored = await fetch(proposalRasterUrl, {headers});
+      assert.equal(restored.status, 200);
+      assert.deepEqual(Buffer.from(await restored.arrayBuffer()), proposalPixel);
+    }
     const database = persisted.database + '-retained-journals';
-    session = independentDelivery
-      ? await api.SharedIndependentDeliverySession.restoreRecovery({
-        ...deliveryOptions, database, recovery: JSON.parse(backupJson), writerRecovery: 'host-reacquired',
-      })
-      : await api.SharedReviewPersistentSession.restoreBackup({
-        ...persisted, database, backupJson, writerRecovery: 'host-reacquired',
+    if (portable) {
+      const restored = await reopenParticipant(
+        api, {...deliveryOptions, database}, backup, portable.selection, uploads[0],
+      );
+      session = restored.session;
+      portableUploads = restored.uploads;
+    } else if (independentDelivery) {
+      session = await api.SharedIndependentDeliverySession.restoreRecovery({
+        ...deliveryOptions, database, recovery: JSON.parse(backup), writerRecovery: 'host-reacquired',
       });
+    } else {
+      session = await api.SharedReviewPersistentSession.restoreBackup({
+        ...persisted, database, backupJson: backup, writerRecovery: 'host-reacquired',
+      });
+    }
     assert.deepEqual(session.exportRecovery(), queuedAcrossTakeover);
     await attach();
     assert.equal(document.state().pending, false);
@@ -384,7 +412,10 @@ async function run(mode, {distribution, rich}, executable, parent, independentDe
     await stopClients();
     await host.crash();
     host = await startSegmentHandoverHost(executable, [parent, 'restored', address], token);
-    const clientUploadReceipts = await resumeClientRaster(richApi, api, parent, address, origin, token, uploads[0]);
+    const clientUploadReceipts = await resumeClientRaster(
+      richApi, api, parent, address, origin, token, uploads[0], portableUploads,
+    );
+    portableUploads = undefined;
     const cancelledUploadReceipts = await resumeClientRaster(richApi, api, parent, address, origin, token, uploads[1]);
     assert.equal(cancelledUploadReceipts, 0);
     await attach();
@@ -465,13 +496,25 @@ async function run(mode, {distribution, rich}, executable, parent, independentDe
       clientJournalRasterBindings: captured.clientJournalRasterBindings, offlineImageRedo: 1,
       pairedBackups: captured.pairedBackups, wrongReceiptRefusals: captured.wrongReceiptRefusals,
       retainedLocalVersions: localVersions.length, independentDeliveries: captured.independentDeliveries,
+      ...(participant ? {
+        participantArchives: captured.participantArchives,
+        participantRasterBindings: captured.participantRasterBindings,
+        archiveOnlyRasterReads: 1,
+      } : {}),
       retainedOutboxPendings: pending ? 4 : 0, deliveredOutboxEntries: pending ? 4 : 0,
       retainedAbsolutePositions: true, runtimeSha256: sha(wasmBytes)};
+  } catch (error) {
+    failure = error;
+    throw error;
   } finally {
     await stopClients();
+    portableUploads?.close();
     await session?.discardAndClose();
     profile?.free();
-    await host?.stop();
+    await host?.stop().catch(error => {
+      if (failure) throw new AggregateError([failure, error], 'Relay workflow and cleanup failed');
+      throw error;
+    });
     if (previousSocket) Object.defineProperty(globalThis, 'WebSocket', previousSocket);
     else delete globalThis.WebSocket;
     reset();
@@ -479,8 +522,11 @@ async function run(mode, {distribution, rich}, executable, parent, independentDe
 }
 
 const executable = resolve(process.argv[2]);
-const independentDelivery = process.argv[3] === '--independent-delivery';
-assert.ok(process.argv.length === 3 || process.argv.length === 4 && independentDelivery);
+const option = process.argv[3];
+assert.ok(process.argv.length === 3 || process.argv.length === 4 &&
+  ['--independent-delivery', '--participant-archive'].includes(option));
+const journalKind = option === '--participant-archive' ? 'independentParticipant'
+  : option === '--independent-delivery' ? 'independentDelivery' : 'pairedSession';
 const source = sourceEvidence(root);
 assert.equal(source.dirty, false);
 const sandbox = mkdtempSync(join(tmpdir(), 'breditor-writable-segment-'));
@@ -494,7 +540,7 @@ try {
     const path = join(sandbox, mode);
     mkdirSync(path, {mode: 0o700});
     reports[mode] = {
-      ...await run(mode, distribution, executable, path, independentDelivery), proof: distribution.proof,
+      ...await run(mode, distribution, executable, path, journalKind), proof: distribution.proof,
     };
   }
   assert.equal(reports.source.runtimeSha256, reports.installed.runtimeSha256);
@@ -503,8 +549,10 @@ try {
     format: 'breditor/writable-relay-segment-qualification', formatVersion: 1,
     source, relaySha256: sha(readFileSync(executable)), reports,
   };
-  saveEvidence(join(root, independentDelivery ? 'target/qualified-independent-delivery-segment.json'
-    : 'target/qualified-writable-relay-segment.json'), report);
+  const reportFile = journalKind === 'independentParticipant' ? 'qualified-participant-archive-segment.json'
+    : journalKind === 'independentDelivery' ? 'qualified-independent-delivery-segment.json'
+      : 'qualified-writable-relay-segment.json';
+  saveEvidence(join(root, 'target', reportFile), report);
   console.log(JSON.stringify(report, null, 2));
 } finally {
   rmSync(sandbox, {recursive: true, force: true});

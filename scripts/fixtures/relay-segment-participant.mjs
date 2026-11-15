@@ -1,0 +1,87 @@
+/** Capture and reopen the unchanged SDK binary in the real relay handover fixture. */
+import assert from 'node:assert/strict';
+import {createHash} from 'node:crypto';
+import {readFileSync} from 'node:fs';
+import {restoreParticipantThroughRecovery} from './independent-delivery-recovery/session.mjs';
+import {proposalAsset, proposalPixel} from './review-assets/pixels.mjs';
+
+const sha = bytes => createHash('sha256').update(bytes).digest('hex');
+const magic = Buffer.from('BREDITOR-INDEPENDENT-DELIVERY-PARTICIPANT1\n');
+
+export async function captureParticipant(api, rich, session, upload) {
+  const uploadBackup = readFileSync(upload.path);
+  const store = await rich.RichAssetStore.restoreBackup(
+    'handover-participant-assets', new Blob([uploadBackup]), {uploadState: 'preserve'},
+  );
+  try {
+    const result = await api.captureSharedIndependentDeliveryParticipant({
+      participant: 'archived-writer', principal: 'owner', source: {session},
+      assets: store, checkAuthority() {},
+      resolveAsset(reference) {
+        if (reference.asset !== proposalAsset) return undefined;
+        return {
+          ...reference, identity: 'content-addressed',
+          blob: new Blob([proposalPixel], {type: 'image/png'}), check() {},
+        };
+      },
+    });
+    assert.equal(result.kind, 'ready', JSON.stringify(result.pending));
+    const backup = result.backup;
+    try {
+      assert.deepEqual(backup.uploadEntries(), upload.rows);
+      assert.deepEqual(Buffer.from(await backup.uploadBackup().arrayBuffer()), uploadBackup);
+      assert.ok(backup.metadata().assets.some(asset => asset.contentAsset === proposalAsset));
+      assert.equal(backup.uploadBlob(proposalAsset), undefined);
+      return {
+        archive: Buffer.from(await backup.file().arrayBuffer()),
+        selection: backup.selection(),
+      };
+    } finally {
+      backup.dispose();
+    }
+  } finally {
+    store.close();
+  }
+}
+
+export async function reopenParticipant(api, options, bytes, selection, upload) {
+  const backup = await api.readSharedIndependentDeliveryParticipant(new Blob([bytes]), selection);
+  try {
+    assert.deepEqual(backup.uploadEntries(), upload.rows);
+    assert.equal(sha(Buffer.from(await backup.uploadBackup().arrayBuffer())), upload.pin.sha256);
+    const image = backup.blob(proposalAsset, 'queued-proposal-image');
+    assert.deepEqual(Buffer.from(await image.arrayBuffer()), proposalPixel);
+    return await restoreParticipantThroughRecovery({
+      api, options, backup, uploadsDatabase: options.database + '-participant-uploads',
+    });
+  } finally {
+    backup.dispose();
+  }
+}
+
+// Reseal the outer envelope so the test exercises native receipt admission.
+export function withWrongReviewReceipt(archive, review) {
+  assert.deepEqual(archive.subarray(0, magic.length), magic);
+  const start = magic.length + 4;
+  const bodyOffset = start + archive.readUInt32BE(magic.length);
+  const header = JSON.parse(archive.subarray(start, bodyOffset));
+  const body = archive.subarray(bodyOffset);
+  const row = header.records.find(row => row.kind === 'relay');
+  const relay = JSON.parse(body.subarray(row.offset, row.offset + row.bytes));
+  const changed = Buffer.from(JSON.stringify({...relay, review}));
+  const tail = row.offset + row.bytes;
+  const delta = changed.length - row.bytes;
+  for (const record of [...header.records, ...header.assets, header.uploads]) {
+    if (record.offset >= tail) record.offset += delta;
+  }
+  row.bytes = changed.length;
+  row.sha256 = sha(changed);
+  header.metadata.sourceBytes += delta;
+  delete header.sha256;
+  header.sha256 = sha(JSON.stringify(header));
+  const encoded = Buffer.from(JSON.stringify(header));
+  const prefix = Buffer.alloc(start);
+  magic.copy(prefix);
+  prefix.writeUInt32BE(encoded.length, magic.length);
+  return Buffer.concat([prefix, encoded, body.subarray(0, row.offset), changed, body.subarray(tail)]);
+}

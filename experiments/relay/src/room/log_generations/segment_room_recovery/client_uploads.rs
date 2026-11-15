@@ -1,5 +1,5 @@
 //! Admit and retain complete original upload archives, one per selected registered writer.
-mod codec;
+pub(super) mod codec;
 mod retained;
 pub(super) use retained::{RetainedUploadSelection, RetainedUploads};
 
@@ -54,8 +54,28 @@ impl RelaySegmentClientUploadPin {
 pub struct RelaySegmentClientUploadArchive {
     pin: RelaySegmentClientUploadPin,
     file: ArchiveInput,
+    layout: UploadLayout,
+}
+
+pub(super) struct UploadLayout {
     body_offset: u64,
     entries: Vec<codec::Payload>,
+}
+
+pub(super) struct UploadSource<'a> {
+    pub pin: &'a RelaySegmentClientUploadPin,
+    pub bytes: ArchiveSlice<'a>,
+    pub layout: &'a UploadLayout,
+}
+
+impl UploadLayout {
+    pub fn read(bytes: ArchiveSlice<'_>, pin: &RelaySegmentClientUploadPin) -> Result<Self> {
+        pin.check()?;
+        pin.check_file(bytes)?;
+        let (body_offset, entries) = codec::read(bytes)?;
+        bytes.check()?;
+        Ok(Self { body_offset, entries })
+    }
 }
 
 impl RelaySegmentClientUploadArchive {
@@ -65,12 +85,13 @@ impl RelaySegmentClientUploadArchive {
     /// # Errors
     /// Refuses changed bytes, unsupported framing, noncanonical metadata and incomplete ranges.
     pub fn open(file: File, expected: RelaySegmentClientUploadPin) -> Result<Self> {
-        expected.check()?;
         let file = ArchiveInput::new(file, codec::MAX_FILE)?;
-        expected.check_file(file.all())?;
-        let (body_offset, entries) = codec::read(file.all())?;
-        file.check()?;
-        Ok(Self { pin: expected, file, body_offset, entries })
+        let layout = UploadLayout::read(file.all(), &expected)?;
+        Ok(Self { pin: expected, file, layout })
+    }
+
+    pub(super) fn source(&self) -> UploadSource<'_> {
+        UploadSource { pin: &self.pin, bytes: self.file.all(), layout: &self.layout }
     }
 }
 
@@ -95,36 +116,41 @@ pub(super) fn check_pins(pins: &[RelaySegmentClientUploadPin]) -> Result<()> {
 }
 
 /// Canonical union for server storage; original per-writer queue histories stay independent.
-pub(super) fn select(
-    archives: &[RelaySegmentClientUploadArchive],
-) -> Result<Vec<SelectedRaster<'_>>> {
+pub(super) fn select<'a>(archives: &[UploadSource<'a>]) -> Result<Vec<SelectedRaster<'a>>> {
     if archives.len() > MAX_CLIENTS {
         return Err(Error::Contract("client upload archive count budget"));
     }
     let pins: Vec<_> = archives.iter().map(|archive| archive.pin.clone()).collect();
     check_pins(&pins)?;
-    let mut selected = BTreeMap::<&str, SelectedRaster<'_>>::new();
+    let mut selected = BTreeMap::new();
     for archive in archives {
-        archive.file.check()?;
-        for entry in &archive.entries {
+        archive.bytes.check()?;
+        for entry in &archive.layout.entries {
             let raster = SelectedRaster {
                 info: &entry.info,
                 bytes: archive
-                    .file
-                    .all()
-                    .section(archive.body_offset + entry.offset, entry.info.bytes)?,
+                    .bytes
+                    .section(archive.layout.body_offset + entry.offset, entry.info.bytes)?,
             };
-            // Every original queue's payload must agree, including duplicates not written again.
-            raster.check_digest()?;
-            if let Some(prior) = selected.get(entry.info.asset.as_str()) {
-                if prior.info != raster.info {
-                    return Err(Error::Contract("client upload raster metadata conflict"));
-                }
-            } else {
-                selected.insert(&entry.info.asset, raster);
-            }
+            add_raster(&mut selected, raster)?;
         }
-        archive.file.check()?;
+        archive.bytes.check()?;
     }
     Ok(selected.into_values().collect())
+}
+
+pub(super) fn add_raster<'a>(
+    selected: &mut BTreeMap<&'a str, SelectedRaster<'a>>,
+    raster: SelectedRaster<'a>,
+) -> Result<()> {
+    // Every offered payload must agree, including duplicates not written again.
+    raster.check_digest()?;
+    if let Some(prior) = selected.get(raster.info.asset.as_str()) {
+        if prior.info != raster.info {
+            return Err(Error::Contract("client raster metadata conflict"));
+        }
+    } else {
+        selected.insert(&raster.info.asset, raster);
+    }
+    Ok(())
 }

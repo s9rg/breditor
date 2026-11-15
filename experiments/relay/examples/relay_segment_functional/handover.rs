@@ -3,7 +3,7 @@ use super::{Result, configured_auth, deployment, read, restored_backup, storage}
 use breditor_collab_relay::{
     RecoveryDocumentCredential, RecoveryRegistrationCredentials, RecoveryReviewCredential,
     RelaySegmentClientJournal, RelaySegmentClientJournalPin, RelaySegmentClientUploadArchive,
-    RelaySegmentClientUploadPin, RoomRecoveryPolicy,
+    RelaySegmentClientUploadPin, RelaySegmentJournalOwner, RoomRecoveryPolicy,
     server::{
         Authentication, ContentAddressedServerAssets, RelaySegmentHandoverApproval,
         RelaySegmentHandoverInputCoverage, ServerBackupHandle, ServerRecoveryAssetProvider,
@@ -63,8 +63,13 @@ fn prepare_and_commit(
     let (backup, previous) =
         handle.capture_relay_segment("owner", token, &parent.join("capture"))?;
     storage::write_new(&parent.join("restore.json"), &serde_json::to_vec(&backup)?)?;
-    if uploads.len() != 2 {
-        return Err("expected two selected client uploads".into());
+    if journals.len() != 2 || wrong_receipt.owner != journals[0].owner {
+        return Err("expected one paired SDK archive and one independent document".into());
+    }
+    let participant =
+        matches!(journals[0].owner, RelaySegmentJournalOwner::IndependentParticipant { .. });
+    if uploads.len() != 2 - usize::from(participant) {
+        return Err("expected both writer uploads, including any nested archive".into());
     }
     let mut archives = Vec::new();
     for pin in uploads {
@@ -73,9 +78,6 @@ fn prepare_and_commit(
         }
         let file = File::open(parent.join(format!("client-{}.backup", pin.writer)))?;
         archives.push(RelaySegmentClientUploadArchive::open(file, pin.clone())?);
-    }
-    if journals.len() != 2 || wrong_receipt.owner != journals[0].owner {
-        return Err("expected one paired SDK archive and one independent document".into());
     }
     let originals = journals
         .iter()
@@ -118,6 +120,11 @@ fn prepare_and_commit(
         &archives,
         &originals,
     )?;
+    if participant {
+        let mut copy = Vec::new();
+        assert!(target.copy_client_archive(&journals[0], &mut copy)?);
+        assert_eq!(copy, std::fs::read(parent.join("journal-0.json"))?);
+    }
     let pending = target.verify_handover_inputs(
         &authentication,
         "owner",
@@ -133,7 +140,7 @@ fn prepare_and_commit(
         &parent.join("incomplete-uploads"),
         "unused-one",
         POLICY,
-        &archives[..1],
+        &archives[..archives.len() - 1],
         &originals,
     )?;
     let incomplete = incomplete.verify_handover_inputs(
@@ -146,7 +153,7 @@ fn prepare_and_commit(
     let RelaySegmentHandoverInputCoverage::Pending(incomplete) = incomplete else {
         return Err("missing client upload archive was accepted".into());
     };
-    assert_eq!(incomplete.missing_upload_writers, [uploads[1].writer.clone()]);
+    assert_eq!(incomplete.missing_upload_writers, [credentials.documents[1].writer.clone()]);
     assert!(
         incomplete
             .client_journal_coverage
@@ -166,12 +173,22 @@ fn prepare_and_commit(
     else {
         return Err("missing native journals were accepted".into());
     };
-    assert!(missing_journals.missing_upload_writers.is_empty());
+    if participant {
+        assert_eq!(
+            missing_journals.missing_upload_writers,
+            [credentials.documents[0].writer.clone()]
+        );
+    } else {
+        assert!(missing_journals.missing_upload_writers.is_empty());
+    }
     assert!(missing_journals.missing_registrations.is_empty());
     assert!(missing_journals.missing_assets.is_empty());
     let incomplete_journals =
         missing_journals.client_journal_coverage.as_ref().ok_or("incomplete journal report")?;
-    assert_eq!(incomplete_journals.missing_document_writers, [uploads[0].writer.clone()]);
+    assert_eq!(
+        incomplete_journals.missing_document_writers,
+        [credentials.documents[0].writer.clone()]
+    );
     assert_eq!(incomplete_journals.missing_review_actors, [credentials.reviews[0].actor.clone()]);
     let coverage =
         target.verify_handover_inputs(&authentication, "owner", token, credentials, &provider)?;
@@ -206,11 +223,13 @@ fn prepare_and_commit(
         "providerRasters": inputs.report().assets.len(),
         "retainedPackets": inputs.report().references.sources.len(),
         "clientRasters": inputs.report().client_rasters.len(),
-        "clientArchives": uploads.len(),
+        "clientArchives": inputs.report().client_upload_archives.as_ref().ok_or("upload cohort")?.len(),
         "missingArchiveRefusals": incomplete.missing_upload_writers.len(),
         "nativeJournals": verified_journals.journals.len() + 1,
         "pairedBackups": usize::from(matches!(journals[0].owner, breditor_collab_relay::RelaySegmentJournalOwner::PairedSession { .. })),
         "independentDeliveries": usize::from(matches!(journals[0].owner, breditor_collab_relay::RelaySegmentJournalOwner::IndependentDelivery { .. })),
+        "participantArchives": usize::from(participant),
+        "participantRasterBindings": verified_journals.participant_raster_bindings.len(),
         "wrongReceiptRefusals": 1,
         "clientJournalRasterBindings": verified_journals.asset_references.len(),
         "missingJournalRefusals": incomplete_journals.missing_document_writers.len()

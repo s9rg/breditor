@@ -935,3 +935,38 @@ Run the source and clean installed recovery workflows against the built
 `relay_segment_functional` fixture with
 `node scripts/check-writable-relay-segment.mjs <relay-executable> --independent-delivery`.
 The paired baseline uses the same command without the flag.
+
+### Enroll a complete independent-delivery participant archive
+
+Select an `IndependentParticipant` pin for the binary returned by
+`captureSharedIndependentDeliveryParticipant`. The host pins the original
+writer and actor, complete file size and SHA-256. The two registrations
+must belong to the same principal. Supply that writer's upload archive
+through the participant file. Supply a separate upload archive for each
+other document writer without a complete participant file. Two upload
+selections for the same writer refuse.
+
+The relay checks the original binary framing and the exact record and
+payload digests. It replays the native journals and compares retained
+delivery progress with accepted receipts on both lanes. It also recomputes
+the participant's raster dependencies from native history, named versions
+and the outboxes. Every declared binding must match that replay and the
+current provider's resolution at approval and commit. The binary may
+supply rasters outside the embedded upload queue. The restore syncs those
+payloads into the same private target before the serving epoch changes.
+
+The host can stream the original file with `copy_client_archive` into a
+private output, then publish the export once the copy succeeds. In the SDK,
+read that output with `readSharedIndependentDeliveryParticipant` using the
+original selection. `SharedIndependentDeliveryParticipantRecovery` restores
+the native session and uploads together into fresh stores. Supply the
+original credentials and current application policy separately. The relay
+also retains the nested upload file in the existing upload archive layout
+for hosts that recover upload queues independently. This stores a second
+copy of those upload bytes until a future storage lifecycle change.
+
+Run the source and clean installed checks with
+`node scripts/check-writable-relay-segment.mjs <relay-executable> --participant-archive`.
+The fixture checks recovery from the exact retained binary after moving away
+the input files, delivery of queued review work, and a proposal raster that
+exists only in the binary's portable payload section.

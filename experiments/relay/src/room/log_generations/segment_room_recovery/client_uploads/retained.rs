@@ -1,5 +1,5 @@
 //! No-overwrite retention and real file custody for each complete original queue.
-use super::{RelaySegmentClientUploadArchive, RelaySegmentClientUploadPin, check_pins, codec};
+use super::{RelaySegmentClientUploadPin, UploadSource, check_pins, codec};
 use crate::{
     Error, Result,
     archive_input::ArchiveInput,
@@ -33,23 +33,20 @@ pub(in crate::room::log_generations::segment_room_recovery) struct RetainedUploa
 }
 
 impl RetainedUploads {
-    pub fn create(
-        root: &GenerationDirectory,
-        sources: &[RelaySegmentClientUploadArchive],
-    ) -> Result<Self> {
+    pub fn create(root: &GenerationDirectory, sources: &[UploadSource<'_>]) -> Result<Self> {
         let directory = GenerationDirectory::create(&root.path.join(ROOT))?;
         let pins = sources.iter().map(|source| source.pin.clone()).collect::<Vec<_>>();
         let manifest = files::encode(&pins)?;
         let mut archives = Vec::with_capacity(sources.len());
         for source in sources {
-            source.file.check()?;
+            source.bytes.check()?;
             let mut file = directory.create_file(&source.pin.name(), &[])?;
-            if io::copy(&mut source.file.all().reader(), &mut file)? != source.pin.bytes {
+            if io::copy(&mut source.bytes.reader(), &mut file)? != source.pin.bytes {
                 return Err(Error::Contract("client upload archive truncated during retention"));
             }
             file.sync_all()?;
             let held = HeldArchive::open(file, source.pin.clone())?;
-            source.file.check()?;
+            source.bytes.check()?;
             archives.push(held);
         }
         let selection = RetainedUploadSelection {

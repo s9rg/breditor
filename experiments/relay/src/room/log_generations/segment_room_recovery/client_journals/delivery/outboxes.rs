@@ -159,7 +159,19 @@ struct VersionRow {
     accepted: Option<Value>,
 }
 
-impl Stores<'_> {
+impl<'a> Stores<'a> {
+    pub fn from_sections(
+        suggestions: Option<&'a str>,
+        revisions: Option<&'a str>,
+        versions: Option<&'a str>,
+    ) -> Result<Self> {
+        Ok(Self {
+            suggestions: suggestions.map(serde_json::from_str).transpose()?,
+            revisions: revisions.map(serde_json::from_str).transpose()?,
+            versions: versions.map(serde_json::from_str).transpose()?,
+        })
+    }
+
     pub fn check_bindings(
         &self,
         selected: &StoreBindings<'_>,

@@ -4,6 +4,7 @@ mod custody;
 mod delivery;
 #[cfg(feature = "server")]
 mod paired;
+mod participant;
 #[cfg(feature = "server")]
 mod selected;
 #[cfg(all(test, feature = "server", unix))]
@@ -17,10 +18,12 @@ pub use verify::{
     RelaySegmentClientJournalCoverage, RelaySegmentClientJournalHead, RelaySegmentPairedReviewHead,
 };
 
+use super::{client_rasters::SelectedRaster, client_uploads::UploadSource};
 use crate::{Error, Result, archive_input::ArchiveInput};
 use breditor_collab_feasibility::review::ReviewActorId;
+use participant::ParticipantArchive;
 use serde::{Deserialize, Serialize};
-use std::fs::File;
+use std::{collections::BTreeMap, fs::File};
 
 const MAX_DELIVERY_FILE: u64 = 352 * 1024 * 1024 + 64 * 1024;
 const MAX_FILE: u64 = 256 * 1024 * 1024;
@@ -95,6 +98,13 @@ pub enum RelaySegmentJournalOwner {
         /// Original registered review actor.
         actor: String,
     },
+    /// Whole original binary participant archive, including provider rasters and upload state.
+    IndependentParticipant {
+        /// Original registered document writer.
+        writer: String,
+        /// Original registered review actor.
+        actor: String,
+    },
     /// One independent review actor bound to an accompanying document checkpoint.
     Review {
         /// Original review actor ID.
@@ -122,6 +132,7 @@ impl RelaySegmentJournalOwner {
     fn byte_limit(&self) -> u64 {
         match self {
             Self::IndependentDelivery { .. } => MAX_DELIVERY_FILE,
+            Self::IndependentParticipant { .. } => participant::MAX_PARTICIPANT_FILE,
             _ => MAX_FILE,
         }
     }
@@ -130,7 +141,8 @@ impl RelaySegmentJournalOwner {
         match self {
             Self::Document { writer, .. }
             | Self::PairedSession { writer, .. }
-            | Self::IndependentDelivery { writer, .. } => (0, writer),
+            | Self::IndependentDelivery { writer, .. }
+            | Self::IndependentParticipant { writer, .. } => (0, writer),
             Self::Review { actor, .. } => (1, actor),
         }
     }
@@ -146,7 +158,8 @@ impl RelaySegmentClientJournalPin {
         let registered_shape = match &self.owner {
             RelaySegmentJournalOwner::Document { writer, .. } => valid_writer(writer),
             RelaySegmentJournalOwner::PairedSession { writer, actor }
-            | RelaySegmentJournalOwner::IndependentDelivery { writer, actor } => {
+            | RelaySegmentJournalOwner::IndependentDelivery { writer, actor }
+            | RelaySegmentJournalOwner::IndependentParticipant { writer, actor } => {
                 valid_writer(writer) && ReviewActorId::try_new(actor).is_ok()
             }
             RelaySegmentJournalOwner::Review { actor, document_writer, .. } => {
@@ -164,6 +177,7 @@ impl RelaySegmentClientJournalPin {
 pub struct RelaySegmentClientJournal {
     pin: RelaySegmentClientJournalPin,
     file: ArchiveInput,
+    participant: Option<ParticipantArchive>,
 }
 
 impl RelaySegmentClientJournal {
@@ -178,8 +192,34 @@ impl RelaySegmentClientJournal {
             return Err(Error::Contract("client journal differs from selected file"));
         }
         file.check()?;
-        Ok(Self { pin, file })
+        let participant = match pin.owner {
+            RelaySegmentJournalOwner::IndependentParticipant { .. } => {
+                Some(ParticipantArchive::open(file.all(), &pin.owner)?)
+            }
+            _ => None,
+        };
+        Ok(Self { pin, file, participant })
     }
+
+    pub(super) fn participant_upload(&self) -> Result<Option<UploadSource<'_>>> {
+        self.participant.as_ref().map(|archive| archive.upload(self.file.all())).transpose()
+    }
+
+    pub(super) fn add_participant_rasters<'a>(
+        &'a self,
+        selected: &mut BTreeMap<&'a str, SelectedRaster<'a>>,
+    ) -> Result<()> {
+        if let Some(participant) = &self.participant {
+            participant.add_rasters(self.file.all(), selected)?;
+        }
+        Ok(())
+    }
+}
+
+pub(super) fn check_sources(sources: &[RelaySegmentClientJournal]) -> Result<()> {
+    let pins: Vec<_> = sources.iter().map(|source| source.pin.clone()).collect();
+    check_pins(&pins)?;
+    Ok(())
 }
 
 fn check_pins(pins: &[RelaySegmentClientJournalPin]) -> Result<u64> {

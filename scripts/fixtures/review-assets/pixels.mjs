@@ -1,4 +1,4 @@
-/** Two exact, valid 1×1 PNGs. This decoder intentionally admits only these test bytes. */
+/** Exact 1×1 PNG fixtures. This decoder intentionally admits only these test bytes. */
 import assert from "node:assert/strict";
 import {createHash} from "node:crypto";
 import {deflateSync,inflateSync} from "node:zlib";
@@ -10,7 +10,10 @@ const header=Buffer.alloc(13);header.writeUInt32BE(1,0);header.writeUInt32BE(1,4
 const scanline=Buffer.from([0,210,70,35,255]);
 export const secondPixel=Buffer.concat([pixel.subarray(0,8),chunk("IHDR",header),chunk("IDAT",deflateSync(scanline)),chunk("IEND",Buffer.alloc(0))]);
 export const secondAsset=`sha256:${createHash("sha256").update(secondPixel).digest("hex")}`;
+const proposalScanline=Buffer.from([0,70,104,220,255]);
+export const proposalPixel=Buffer.concat([pixel.subarray(0,8),chunk("IHDR",header),chunk("IDAT",deflateSync(proposalScanline)),chunk("IEND",Buffer.alloc(0))]);
+export const proposalAsset=`sha256:${createHash("sha256").update(proposalPixel).digest("hex")}`;
 export class ReviewFixtureImage {
  naturalWidth=0;naturalHeight=0;src="";
- async decode(){const bytes=Buffer.from(await(await fetch(this.src)).arrayBuffer());assert.ok(bytes.equals(pixel)||bytes.equals(secondPixel),"Only the two exact fixture PNGs are decoded");const at=33;assert.equal(bytes.toString("ascii",at+4,at+8),"IDAT");assert.deepEqual(inflateSync(bytes.subarray(at+8,at+8+bytes.readUInt32BE(at)),{maxOutputLength:5}),bytes.equals(pixel)?Buffer.from([0,35,155,120,255]):scanline);this.naturalWidth=1;this.naturalHeight=1;}
+ async decode(){const bytes=Buffer.from(await(await fetch(this.src)).arrayBuffer());assert.ok(bytes.equals(pixel)||bytes.equals(secondPixel)||bytes.equals(proposalPixel),"Only exact fixture PNGs are decoded");const at=33;assert.equal(bytes.toString("ascii",at+4,at+8),"IDAT");assert.deepEqual(inflateSync(bytes.subarray(at+8,at+8+bytes.readUInt32BE(at)),{maxOutputLength:5}),bytes.equals(pixel)?Buffer.from([0,35,155,120,255]):bytes.equals(secondPixel)?scanline:proposalScanline);this.naturalWidth=1;this.naturalHeight=1;}
 }
