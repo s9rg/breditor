@@ -1,13 +1,16 @@
 //! Explicit authenticated reference serving under a genuine host-selected deployment epoch.
 use super::{
-    GenerationDirectory, RasterCustody, RecoveredRelaySegmentRoom,
+    GenerationDirectory, RasterCustody, RecoveredRelaySegmentRoom, RelaySegmentClientJournalPin,
     client_journals::RetainedJournals, client_uploads::RetainedUploads,
 };
 use crate::{
     Error, Result, Room,
     assets::AssetStore,
+    log::generations::GenerationFileWitness,
     server::{Authentication, RoomDeploymentLease, router_with_recovered_segment},
 };
+
+use std::path::Path;
 
 pub(crate) struct RelaySegmentServingCustody {
     directory: GenerationDirectory,
@@ -25,6 +28,29 @@ impl RelaySegmentServingCustody {
             journals.check()?;
         }
         Ok(())
+    }
+
+    pub(crate) fn export_alternates(
+        &self,
+        destination: &Path,
+    ) -> Result<Vec<RelaySegmentClientJournalPin>> {
+        self.check()?;
+        let Some(alternates) = &self.alternatives else {
+            return Ok(Vec::new());
+        };
+        let directory = GenerationDirectory::create(destination)?;
+        for index in 0..alternates.pins().len() {
+            let name = format!("{index}.participant");
+            let mut file = directory.create_file(&name, &[])?;
+            let witness = GenerationFileWitness::of(&file)?;
+            alternates.copy(index, &mut file)?;
+            file.sync_all()?;
+            witness.guard(&file, &directory.path.join(name))?;
+        }
+        directory.sync()?;
+        directory.guard()?;
+        self.check()?;
+        Ok(alternates.pins().to_vec())
     }
 }
 
