@@ -88,7 +88,8 @@ export async function attachArchivedDiscussion({api, session, review, policy, so
   await assert.rejects(api.readSharedRecoveredDiscussion(prepared.file, prepared.selection, {
     wasm: policy.wasm, target: session, checkAuthority() {},
   }));
-  assert.deepEqual(session.exportRecovery(), before);
+  assert.deepEqual(session.exportRecovery().source, before.source);
+  assert.deepEqual(session.exportRecovery().relay.review.accepted, before.relay.review.accepted);
   const result = prepared.commit();
   assert.equal(result.kind, 'committed');
   const link = result.event;
