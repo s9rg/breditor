@@ -92,6 +92,17 @@ impl RelaySegmentRetainedBackup {
         &self.backup
     }
 
+    pub(in crate::server) fn check_files(&self) -> Result<()> {
+        self.backup.check()?;
+        for journal in self.selected.iter().chain(&self.alternates) {
+            journal.check_file()?;
+        }
+        for upload in &self.uploads {
+            upload.check_file()?;
+        }
+        self.backup.check()
+    }
+
     /// Restore the exact cut and its retained clients into a new, unselected room.
     /// Live takeover still requires ordinary authenticated handover and current client/provider checks.
     ///

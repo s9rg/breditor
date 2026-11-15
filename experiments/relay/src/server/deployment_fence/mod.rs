@@ -18,6 +18,8 @@ mod observation;
 mod open;
 mod open_selected;
 mod permit;
+mod portable_activation;
+mod portable_seal;
 mod read;
 mod seal;
 mod seal_generation;
@@ -36,6 +38,8 @@ pub(super) use handover_epoch::{
 };
 pub use identity::{RoomDeploymentIdentity, RoomDeploymentSelection};
 pub use lease::RoomDeploymentLease;
+pub(super) use portable_activation::activate_portable_segment;
+pub(super) use portable_seal::seal_portable_segment;
 pub(super) use seal::seal;
 pub(super) use seal_generation::seal_log_generation;
 pub(super) use seal_prepared_generation::{

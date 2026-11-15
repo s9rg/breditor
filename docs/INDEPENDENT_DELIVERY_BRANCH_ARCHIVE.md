@@ -428,3 +428,25 @@ Retain the returned `RelaySegmentPortableBackupIdentity` separately.
 the bundle itself. Call `restore` for a new, unselected room. Use the ordinary
 authenticated handover and native client verification to select a serving
 room.
+
+### Relocate from a sealed portable cut
+
+While the source is reachable, capture the complete portable bundle and
+retain a `RelaySegmentPortableSeal` independently. Call
+`ServerBackupHandle::seal_portable_relay_segment` with the saved choice.
+The authenticated owner reopens the selected bundle. Under exclusive epoch
+custody, the relay verifies the exact current native and raster cut and
+all retained client pins. A live change after capture requires a fresh
+capture and seal choice. The seal advances the authority to a fenced
+selection. If the reply is lost, inspect the seal against the actual
+authority before proceeding.
+
+Move the bundle to the recovery location, reopen it with the saved
+identity, and restore it into an absent directory. Verify its protected
+client streams and provider inputs under fresh owner authentication.
+Retain a `RelaySegmentHandoverApproval` for that actual target with the
+seal as its previous selection. Then call
+`RecoveredRelaySegmentRoom::activate_sealed_portable_relay` against the
+same host-controlled authority. If activation already committed, reopen
+the exact target and use the existing handover restart path with its
+saved approval and actual current epoch.

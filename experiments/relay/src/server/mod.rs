@@ -98,8 +98,9 @@ pub use segment_handover::{
     RelaySegmentDiscussionBackup, RelaySegmentDiscussionBackupIdentity,
     RelaySegmentHandoverApproval, RelaySegmentHandoverInputCoverage,
     RelaySegmentHandoverInputReport, RelaySegmentParticipantBranchInspection,
-    RelaySegmentPortableBackupIdentity, RelaySegmentRetainedBackup,
-    RelaySegmentRetainedBackupIdentity, VerifiedRelaySegmentHandoverInputs,
+    RelaySegmentPortableBackupIdentity, RelaySegmentPortableSeal, RelaySegmentRetainedBackup,
+    RelaySegmentRetainedBackupIdentity, SealedRelaySegmentActivation,
+    VerifiedRelaySegmentHandoverInputs,
 };
 use std::sync::{Arc, Mutex};
 use tokio::sync::{Semaphore, watch};

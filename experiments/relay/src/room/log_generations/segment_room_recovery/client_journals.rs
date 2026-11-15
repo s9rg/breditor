@@ -221,6 +221,11 @@ impl RelaySegmentClientJournal {
         self.file.check_named(witness, path)
     }
 
+    #[cfg(feature = "server")]
+    pub(crate) fn check_file(&self) -> Result<()> {
+        self.file.check()
+    }
+
     pub(super) fn participant_upload(&self) -> Result<Option<UploadSource<'_>>> {
         self.participant.as_ref().map(|archive| archive.upload(self.file.all())).transpose()
     }

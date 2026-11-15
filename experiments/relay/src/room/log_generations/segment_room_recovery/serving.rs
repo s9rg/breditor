@@ -10,7 +10,10 @@ use crate::{
     Error, Result, Room,
     assets::AssetStore,
     log::generations::GenerationFileWitness,
-    server::{Authentication, RoomDeploymentLease, router_with_recovered_segment},
+    server::{
+        Authentication, RelaySegmentRetainedBackupIdentity, RoomDeploymentLease,
+        router_with_recovered_segment,
+    },
 };
 
 use std::{
@@ -27,6 +30,19 @@ pub(crate) struct RelaySegmentServingCustody {
 }
 
 impl RelaySegmentServingCustody {
+    pub(crate) fn check_portable_input_roster(
+        &self,
+        selected: &RelaySegmentRetainedBackupIdentity,
+    ) -> Result<()> {
+        self.check()?;
+        check_portable_input_roster(
+            self.journals.as_ref(),
+            self.alternatives.as_ref(),
+            self.uploads.as_ref(),
+            selected,
+        )
+    }
+
     pub(crate) fn check(&self) -> Result<()> {
         self.directory.guard()?;
         self.raster.guard_root()?;
@@ -146,6 +162,31 @@ impl RelaySegmentServingCustody {
         self.check()?;
         Ok(pins)
     }
+}
+
+pub(super) fn check_portable_input_roster(
+    journals: Option<&RetainedJournals>,
+    alternates: Option<&RetainedJournals>,
+    uploads: Option<&RetainedUploads>,
+    expected: &RelaySegmentRetainedBackupIdentity,
+) -> Result<()> {
+    let selected = journals.map_or(&[][..], RetainedJournals::pins);
+    let alternatives = alternates.map_or(&[][..], RetainedJournals::pins);
+    let embedded = embedded_upload_writers(selected);
+    if let Some(uploads) = uploads {
+        uploads.check()?;
+    }
+    if selected != expected.selected_journals
+        || alternatives != expected.alternate_journals
+        || !uploads
+            .into_iter()
+            .flat_map(RetainedUploads::pins)
+            .filter(|pin| !embedded.contains(pin.writer.as_str()))
+            .eq(expected.standalone_uploads.iter())
+    {
+        return Err(Error::Contract("portable relay retained inputs differ"));
+    }
+    Ok(())
 }
 
 fn embedded_upload_writers(journals: &[RelaySegmentClientJournalPin]) -> BTreeSet<&str> {

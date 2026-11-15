@@ -4,6 +4,19 @@ use crate::{Error, Result, assets::AssetBackupStream};
 use sha2::{Digest, Sha256};
 
 impl RecoveredRelaySegmentRoom {
+    pub(crate) fn check_portable_input_roster(
+        &self,
+        selected: &crate::server::RelaySegmentRetainedBackupIdentity,
+    ) -> Result<()> {
+        self.check_custody()?;
+        super::serving::check_portable_input_roster(
+            self.journals.as_ref(),
+            self.alternatives.as_ref(),
+            self.uploads.as_ref(),
+            selected,
+        )
+    }
+
     pub(crate) fn check_handover_owner(&self, principal: &str) -> Result<()> {
         self.room.recovery_inventory_owner(principal)
     }

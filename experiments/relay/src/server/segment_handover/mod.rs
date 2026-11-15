@@ -9,7 +9,9 @@ mod discussion_backup;
 mod discussion_sources;
 mod inputs;
 mod native_lineage;
+mod portable_activation;
 mod portable_backup;
+mod portable_seal;
 mod resume;
 mod retained_backup;
 #[cfg(all(test, unix))]
@@ -23,7 +25,9 @@ pub use inputs::{
     RelaySegmentHandoverInputCoverage, RelaySegmentHandoverInputReport,
     VerifiedRelaySegmentHandoverInputs,
 };
+pub use portable_activation::SealedRelaySegmentActivation;
 pub use portable_backup::RelaySegmentPortableBackupIdentity;
+pub use portable_seal::RelaySegmentPortableSeal;
 pub use retained_backup::{RelaySegmentRetainedBackup, RelaySegmentRetainedBackupIdentity};
 
 use super::{Authentication, RoomDeploymentLease, ServerBackupHandle, routes};

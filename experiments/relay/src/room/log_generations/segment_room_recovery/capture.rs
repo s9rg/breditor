@@ -102,7 +102,7 @@ impl RelaySegmentRoomBackupFiles {
         &self.identity
     }
 
-    pub(super) fn check(&self) -> Result<()> {
+    pub(crate) fn check(&self) -> Result<()> {
         self.native.check()?;
         self.rasters.check()
     }
