@@ -1,5 +1,29 @@
 # Breditor V1 release preparation
 
+## November 15 collaboration recovery
+
+[Rich recovery qualification](qualification/2026-11-15-recovered-rich-review.json)
+covers review of selected content from exact alternate offline archives after
+two authenticated handovers. The source and independently installed SDKs
+preserve inline formatting and table structure in native clipboard proposals.
+The live workflows stage exact archived image bytes through the existing
+provider, apply authenticated Accept once, and verify the accepted content
+after relay restart. Both previous and rebuilt relay binaries pass the rich
+and plain review workflows. The rebuilt relay passes 527 native cases and the
+separate physical cross-volume archive case. Native collaboration passes 149.
+
+[New Reader qualification](qualification/2026-11-15-cold-review-reader.json)
+covers a fresh read-only client after the second handover and relay restart.
+The client discovers the review, suggestion, revision and version bindings
+through authenticated SDK calls. It reads the same document and comment
+projection, verified suggestion decisions, exact revision and version packets,
+and exact image bytes. It authors no document or comment events. A local cold
+reopen uses its persisted state and retains the downloaded suggestion and
+decision. The same workflow passes from source and independent packages.
+
+These checks use a real Rust relay and controlled Node storage. The full V1
+release and browser qualification remain open.
+
 ## November 4 completed integration
 
 The [completed restart composition](qualification/2026-11-04-native-joint-reassociation-composition.json)
