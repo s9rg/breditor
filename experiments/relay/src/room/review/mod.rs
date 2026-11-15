@@ -5,6 +5,7 @@ mod checkpoint;
 mod enable;
 mod grant;
 mod original_authorizations;
+mod recovered_discussion;
 mod recovery_inventory;
 mod register;
 mod register_observer;

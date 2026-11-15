@@ -103,6 +103,7 @@ impl Checkpoint {
             receipts: BTreeMap::new(),
             presence: crate::presence::Presence::default(),
             review: None,
+            discussions: super::super::recovered_discussion::Discussions::default(),
             versions: None,
             suggestions: None,
             seed_writer_through: self.seed_writer_through,
@@ -135,6 +136,7 @@ impl Checkpoint {
         if let Some(checkpoint) = self.review {
             checkpoint.restore(&mut room, records)?;
         }
+        room.restore_recovered_discussions(self.discussions, records)?;
         room.versions = self.versions.map(|value| value.restore(records)).transpose()?;
         room.suggestions =
             self.suggestions.map(|value| value.restore(&room, records)).transpose()?;

@@ -120,6 +120,11 @@ pub(crate) enum Event {
         frame: String,
         receipt: breditor_collab_feasibility::review::ReviewBatchReceipt,
     },
+    PublishRecoveredDiscussionV1 {
+        principal: String,
+        archive: [u8; 32],
+        packet: String,
+    },
     EnableDocumentVersionsV1 {
         actor: String,
         binding: String,

@@ -36,3 +36,14 @@ export interface SharedPreparedRecoveredDiscussion {
 export interface SharedRecoveredDiscussionReadOptions extends SharedArchiveIntegrityOptions {
   readonly target: SharedIndependentDeliverySession;
 }
+
+/** Authenticated discovery and exact-packet transport for one selected live thread. */
+export interface SharedRecoveredDiscussionRelayOptions extends SharedRecoveredDiscussionReadOptions {
+  readonly getToken: (signal: AbortSignal) => string | Promise<string>;
+  readonly requestTimeoutMs?: number;
+}
+
+export interface SharedRecoveredDiscussionRelayEntry extends SharedArchiveFileDigest {
+  readonly link: SharedRecoveredDiscussionAttachment['link'];
+  readonly sequence: string;
+}

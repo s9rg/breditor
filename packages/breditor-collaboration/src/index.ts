@@ -302,6 +302,7 @@ export {prepareSharedRecoveredBranchReviewMessage} from './independent_delivery_
 export {prepareSharedRecoveredBranchReviewIntent,inspectSharedRecoveredBranchReviewIntent} from './independent_delivery_branch_archive/recover_review_intent.js';
 export {prepareSharedRecoveredDiscussion} from './independent_delivery_branch_archive/attach_discussion.js';
 export {readSharedRecoveredDiscussion} from './independent_delivery_branch_archive/read_discussion.js';
+export {discoverSharedRecoveredDiscussion,loadSharedRecoveredDiscussion,publishSharedRecoveredDiscussion} from './independent_delivery_branch_archive/discussion_relay.js';
 export type * from './independent_delivery_branch_archive/discussion_types.js';
 export type * from './independent_delivery_branch_archive/review_contract.js';
 export type {

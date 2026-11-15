@@ -5,6 +5,8 @@ mod custody;
 #[cfg(feature = "server")]
 mod delivery;
 #[cfg(feature = "server")]
+mod discussion;
+#[cfg(feature = "server")]
 mod paired;
 mod participant;
 #[cfg(feature = "server")]

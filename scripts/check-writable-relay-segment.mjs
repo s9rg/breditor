@@ -17,7 +17,7 @@ import {assertRecoveredRich, authorRecoveredRich, reviewRecoveredRich} from './f
 import {checkColdReviewReader} from './fixtures/relay-segment-cold-review-reader.mjs';
 import {recoverArchivedComment} from './fixtures/relay-segment-recovered-comment.mjs';
 import {recoveryReviewReplySocket} from './fixtures/recovery-review-reply-loss.mjs';
-import {attachArchivedDiscussion, authorAlternateDiscussionReply, authorPeerReply} from './fixtures/relay-segment-discussion.mjs';
+import {attachArchivedDiscussion, authorAlternateDiscussionReply, authorPeerReply, publishAttachedDiscussion} from './fixtures/relay-segment-discussion.mjs';
 import {recoveryFactory} from './fixtures/independent-delivery-recovery/session.mjs';
 import {installCollaborationConsumer} from './fixtures/installed-collaboration-consumer.mjs';
 import {sourceEvidence, saveEvidence} from './candidate-release/evidence.mjs';
@@ -59,7 +59,7 @@ function readRetainedClientJournals(parent, expected, directory = 'client-journa
   return originals;
 }
 
-async function run(mode, {distribution, rich}, executable, parent, journalKind, terminalReceipts, opaque, competing, carryForward, multipleAlternates, reviewRecovered, richRecovered, coldReviewReader, recoverComment, recoverCommentIntent, recoverDiscussion) {
+async function run(mode, {distribution, rich}, executable, parent, journalKind, terminalReceipts, opaque, competing, carryForward, multipleAlternates, reviewRecovered, richRecovered, coldReviewReader, recoverComment, recoverCommentIntent, recoverDiscussion, relayDiscussion) {
   const participant = journalKind === 'independentParticipant';
   const archiveImage = opaque ? proposalAlias : proposalAsset;
   const independentDelivery = journalKind !== 'pairedSession';
@@ -574,7 +574,16 @@ async function run(mode, {distribution, rich}, executable, parent, journalKind, 
     if (competing) assert.doesNotMatch(session.core.documentJson(), /Competing branch text/);
     let restoredRoot = 'restored';
     let retainedAlternatePins = competing ? [incomingBranch] : [];
-    let carryEvidence;
+    let carryEvidence, attachedDiscussion;
+    if (relayDiscussion) {
+      const source = {file: new Blob([retainedBranches.incoming]), selection: retainedBranches.incomingSelection};
+      attachedDiscussion = await publishAttachedDiscussion({
+        api, session, review, policy: retainedBranches.readPolicy, source, original: originalDiscussion,
+        directory: parent, origin, headers, binding: binding.binding, endpoint: 'http://' + address,
+        archiveSha256: Buffer.from(incomingBranch.sha256).toString('hex'), readerToken,
+      });
+      assert.equal(visibleThreads().length, 5);
+    }
     if (carryForward) {
       await stopClients();
       await session.flush();
@@ -643,7 +652,7 @@ async function run(mode, {distribution, rich}, executable, parent, journalKind, 
       await attach();
       assert.equal(document.state().pending, false);
       assert.equal(review.state().pending, false);
-      assert.equal(visibleThreads().length, 4);
+      assert.equal(visibleThreads().length, 4 + Number(relayDiscussion));
       assert.doesNotMatch(session.core.documentJson(), /Competing branch text/);
       carryEvidence = {alternateOmissionRefusals: result.alternateOmissionRefusals,
         carriedAlternateArchives: result.carriedAlternateArchives, carriedAlternateHistoryLanes: alternateHistoryLanes,
@@ -670,13 +679,13 @@ async function run(mode, {distribution, rich}, executable, parent, journalKind, 
     assert.doesNotMatch(session.core.documentJson(), /Offline before portable restore/);
     assert.match(session.core.documentJson(), /Offline over second handoff/);
     assert.match(session.core.documentJson(), /Offline over handoff/);
-    assert.equal(visibleThreads().length, 3);
+    assert.equal(visibleThreads().length, 3 + Number(relayDiscussion));
     assert.equal(session.core.redo(), true);
     assert.equal(session.core.redoReview().kind, 'committed');
     await document.flush();
     await review.flush();
     assert.equal(session.core.documentJson(), accepted);
-    assert.equal(visibleThreads().length, 4);
+    assert.equal(visibleThreads().length, 4 + Number(relayDiscussion));
     assert.equal(session.core.redo(), true);
     assert.equal(session.core.documentJson().includes(secondAsset), true);
     await document.flush();
@@ -707,7 +716,7 @@ async function run(mode, {distribution, rich}, executable, parent, journalKind, 
       }
     }
     const delivered = pending ? await deliverWork(pending) : undefined;
-    let coldReaderEvidence, recoveredComment, attachedDiscussion;
+    let coldReaderEvidence, recoveredComment;
     if (reviewRecovered) {
       const retained = readRetainedClientJournals(parent, retainedAlternatePins, 'client-alternatives', restoredRoot);
       const sourceIndex = retainedAlternatePins.findIndex(pin => Buffer.from(pin.sha256).equals(Buffer.from(incomingBranch.sha256)));
@@ -725,8 +734,8 @@ async function run(mode, {distribution, rich}, executable, parent, journalKind, 
       } finally {
         await closeOutboxes(parts);
       }
-      assert.equal(visibleThreads().length, 4);
-      if (recoverDiscussion) {
+      assert.equal(visibleThreads().length, 4 + Number(relayDiscussion));
+      if (recoverDiscussion && !relayDiscussion) {
         await attach();
         attachedDiscussion = await attachArchivedDiscussion({
           api, session, review, policy: retainedBranches.readPolicy, source, original: originalDiscussion, directory: parent,
@@ -808,6 +817,8 @@ async function run(mode, {distribution, rich}, executable, parent, journalKind, 
       ...coldReaderEvidence,
       ...(recoveredComment ? {committedRecoveredComments: 1} : {}),
       ...(attachedDiscussion ? {committedDiscussionLinks: 1} : {}),
+      ...(relayDiscussion ? {relayDiscussionAttachments: 1, attachmentHandover: 1,
+        attachmentPublicationRefusals: 5, idempotentAttachmentPublication: 1} : {}),
       ...(loss ? {discardedDurableReviewReplies: 1, coldAcknowledgedReviewIntents: 1, recoveredReviewSubmissions: loss.submissions} : {}),
       registrationRefusals: captured.registrationRefusals, providerRasters: captured.providerRasters,
       retainedPackets: captured.retainedPackets, stagedClientRasters: captured.clientRasters, clientUploadReceipts,
@@ -862,7 +873,8 @@ const executable = resolve(process.argv[2]);
 const option = process.argv[3];
 const terminalReceipts = option === '--participant-terminal-receipts';
 const opaque = option === '--participant-opaque';
-const recoverDiscussion = option === '--participant-recovered-discussion';
+const relayDiscussion = option === '--participant-relay-discussion';
+const recoverDiscussion = relayDiscussion || option === '--participant-recovered-discussion';
 const recoverCommentIntent = option === '--participant-recovered-comment-intent';
 const recoverComment = recoverCommentIntent || option === '--participant-recovered-comment';
 const coldReviewReader = recoverDiscussion || recoverComment || option === '--participant-cold-review-reader';
@@ -874,7 +886,7 @@ const reviewRecovered = multipleReviewed || option === '--participant-reviewed-t
 const competing = carryForward || reviewRecovered || option === '--participant-accepted-branch';
 assert.ok(process.argv.length === 3 || process.argv.length === 4 &&
   ['--independent-delivery', '--participant-archive', '--participant-terminal-receipts', '--participant-opaque',
-    '--participant-accepted-branch', '--participant-carried-alternate', '--participant-multiple-alternates', '--participant-reviewed-text', '--participant-multiple-reviewed', '--participant-multiple-rich-review', '--participant-cold-review-reader', '--participant-recovered-comment', '--participant-recovered-comment-intent', '--participant-recovered-discussion'].includes(option));
+    '--participant-accepted-branch', '--participant-carried-alternate', '--participant-multiple-alternates', '--participant-reviewed-text', '--participant-multiple-reviewed', '--participant-multiple-rich-review', '--participant-cold-review-reader', '--participant-recovered-comment', '--participant-recovered-comment-intent', '--participant-recovered-discussion', '--participant-relay-discussion'].includes(option));
 const journalKind = terminalReceipts || opaque || competing || option === '--participant-archive' ? 'independentParticipant'
   : option === '--independent-delivery' ? 'independentDelivery' : 'pairedSession';
 const source = sourceEvidence(root);
@@ -891,7 +903,7 @@ try {
     mkdirSync(path, {mode: 0o700});
     reports[mode] = {
       ...await run(mode, distribution, executable, path, journalKind, terminalReceipts, opaque, competing,
-        carryForward, multipleAlternates, reviewRecovered, richRecovered, coldReviewReader, recoverComment, recoverCommentIntent, recoverDiscussion),
+        carryForward, multipleAlternates, reviewRecovered, richRecovered, coldReviewReader, recoverComment, recoverCommentIntent, recoverDiscussion, relayDiscussion),
       proof: distribution.proof,
     };
   }
@@ -901,7 +913,8 @@ try {
     format: 'breditor/writable-relay-segment-qualification', formatVersion: 1,
     source, relaySha256: sha(readFileSync(executable)), reports,
   };
-  const reportFile = recoverDiscussion ? 'qualified-recovered-discussion.json'
+  const reportFile = relayDiscussion ? 'qualified-relay-discussion.json'
+    : recoverDiscussion ? 'qualified-recovered-discussion.json'
     : recoverCommentIntent ? 'qualified-recovered-comment-intent.json'
     : recoverComment ? 'qualified-recovered-comment.json'
     : coldReviewReader ? 'qualified-cold-review-reader.json'

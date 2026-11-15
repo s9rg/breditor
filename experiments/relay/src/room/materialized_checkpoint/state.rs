@@ -4,8 +4,8 @@ use crate::{
     DurableReceipt, Error, Result, Role, Room, RoomBackupIdentity, ServerNativeHistoryBoundary,
     ServerNativeHistoryLane,
     room::{
-        native_history::checkpoint::document_checkpoint, review::ReviewCheckpoint,
-        suggestions::SuggestionCheckpoint, versions::VersionCheckpoint,
+        native_history::checkpoint::document_checkpoint, recovered_discussion::StoredDiscussion,
+        review::ReviewCheckpoint, suggestions::SuggestionCheckpoint, versions::VersionCheckpoint,
     },
 };
 use serde::{Deserialize, Serialize};
@@ -26,6 +26,8 @@ pub(in crate::room) struct Checkpoint {
     pub(super) receipts: Vec<DurableReceipt>,
     pub(super) boundaries: Vec<BoundaryCheckpoint>,
     pub(super) review: Option<ReviewCheckpoint>,
+    #[serde(default, skip_serializing_if = "Vec::is_empty")]
+    pub(super) discussions: Vec<StoredDiscussion>,
     pub(super) versions: Option<VersionCheckpoint>,
     pub(super) suggestions: Option<SuggestionCheckpoint>,
 }
@@ -130,6 +132,7 @@ impl Checkpoint {
                 })
                 .collect(),
             review: room.review.as_ref().map(ReviewCheckpoint::capture).transpose()?,
+            discussions: room.discussions.checkpoint(),
             versions: room.versions.as_ref().map(VersionCheckpoint::capture),
             suggestions: room
                 .suggestions

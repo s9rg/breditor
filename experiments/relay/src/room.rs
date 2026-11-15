@@ -63,6 +63,7 @@ pub(crate) mod metadata_receipts;
 mod native_history;
 mod observers;
 mod participant_inventory;
+pub(crate) mod recovered_discussion;
 mod recovery;
 mod review;
 mod source_boundaries;
@@ -158,6 +159,7 @@ pub struct Room {
     receipts: BTreeMap<(String, String, String), DurableReceipt>,
     presence: crate::presence::Presence,
     review: Option<review::ReviewState>,
+    discussions: recovered_discussion::Discussions,
     versions: Option<versions::VersionsState>,
     suggestions: Option<suggestions::SuggestionsState>,
     /// Immutable seed boundary; later service-authored actions must not redefine genesis.
@@ -317,6 +319,7 @@ impl Room {
             receipts: BTreeMap::new(),
             presence: crate::presence::Presence::default(),
             review: None,
+            discussions: recovered_discussion::Discussions::default(),
             versions: None,
             suggestions: None,
             seed_writer_through,
@@ -441,6 +444,7 @@ impl Room {
             receipts: BTreeMap::new(),
             presence: crate::presence::Presence::default(),
             review: None,
+            discussions: recovered_discussion::Discussions::default(),
             versions: None,
             suggestions: None,
             seed_writer_through,
@@ -531,6 +535,9 @@ impl Room {
             | Event::RegisterReviewV1 { .. }
             | Event::RegisterReviewObserverV1 { .. }
             | Event::CommitReviewV1 { .. }) => self.replay_review(record.sequence, event)?,
+            Event::PublishRecoveredDiscussionV1 { principal, archive, packet } => {
+                self.replay_recovered_discussion(record.sequence, &principal, archive, packet)?;
+            }
             event @ (Event::EnableDocumentVersionsV1 { .. }
             | Event::PublishDocumentVersionV1 { .. }) => {
                 self.replay_document_versions(record.sequence, event)?;

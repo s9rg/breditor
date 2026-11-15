@@ -95,6 +95,17 @@ fn inspect_part(
     archive: &ParticipantArchive,
     part: ArchiveSlice<'_>,
 ) -> Result<RelaySegmentParticipantBranch> {
+    inspect_original(room, participants, pin, archive, part, |_| Ok(()))
+}
+
+pub(super) fn inspect_original(
+    room: &Room,
+    participants: &RoomParticipantInventoryMetadata,
+    pin: &RelaySegmentClientJournalPin,
+    archive: &ParticipantArchive,
+    part: ArchiveSlice<'_>,
+    verify: impl FnOnce(&breditor_collab_feasibility::review::ReviewSession) -> Result<()>,
+) -> Result<RelaySegmentParticipantBranch> {
     let selected = SelectedSources::read(participants, std::slice::from_ref(pin))?;
     let document = selected.documents.first().ok_or(Error::NeedsRecovery)?;
     let DocumentInput::Participant(review) = document.input else {
@@ -112,6 +123,7 @@ fn inspect_part(
     }
     let (family, json) = record.review();
     let comments = restore_review(&local, review, family, json)?;
+    verify(&comments)?;
     Ok(RelaySegmentParticipantBranch {
         pin: pin.clone(),
         document: clocks::compare_document(

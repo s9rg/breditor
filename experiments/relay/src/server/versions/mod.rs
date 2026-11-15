@@ -10,7 +10,7 @@ use super::{
     http::{cors, failure, origin},
 };
 use crate::{DocumentVersionsDescriptor, Error, Result, Room};
-use account::account;
+pub(super) use account::account;
 use axum::{
     body::{Body, to_bytes},
     http::{HeaderMap, StatusCode},
@@ -37,7 +37,7 @@ fn bound(room: &Room, principal: &str, binding: &str) -> Result<DocumentVersions
     }
     Ok(descriptor)
 }
-async fn body(body: Body, limit: usize) -> std::result::Result<Vec<u8>, StatusCode> {
+pub(super) async fn body(body: Body, limit: usize) -> std::result::Result<Vec<u8>, StatusCode> {
     match tokio::time::timeout(Duration::from_secs(10), to_bytes(body, limit)).await {
         Ok(Ok(bytes)) => Ok(bytes.to_vec()),
         Ok(Err(_)) => Err(StatusCode::PAYLOAD_TOO_LARGE),

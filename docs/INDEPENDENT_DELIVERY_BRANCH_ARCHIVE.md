@@ -295,3 +295,46 @@ Run `node scripts/check-writable-relay-segment.mjs <relay-executable>
 --participant-recovered-discussion` to exercise two authenticated authors,
 their archived history, two handovers, relay restart, and a new read-only
 client.
+
+### Publish a recovered discussion in the relay
+
+A recovered-segment room owner can publish the exact prepared attachment after
+the new live review thread has been durably acknowledged. Call
+`publishSharedRecoveredDiscussion(file, selection, archiveSha256, options)`
+with the **whole-file** lowercase SHA-256 of the retained alternate participant
+archive. The published packet already includes a separate participant manifest
+digest. Keep the prepared file, intent and original whole-file pin until the
+publication receipt is obtained. Exact retries return the original sequence
+and file pin. A different file or source pin cannot replace an attachment.
+
+The reference relay verifies the current room, review binding and native seed,
+the accepted live creation event and its owner, and the complete projection and
+ordered native events in the retained alternate. It appends the verified exact
+bytes before making the attachment discoverable. The immutable attachment is
+included in materialized room checkpoints and may be discovered after handover
+under the existing room Reader permission. Its content follows the same
+room-wide read policy as an ordinary review thread. Publication explicitly
+shares the complete selected historical discussion, including hidden actions.
+
+Call `discoverSharedRecoveredDiscussion(thread, options)` with the current live
+thread ID. It returns the exact file pin or `null`. Pass the returned entry to
+`loadSharedRecoveredDiscussion(entry, options)` after review catch-up. Loading
+checks the returned bytes, the local native room and the original live link.
+The SDK uses the independent delivery session's registered review endpoint and
+principal with an explicit account token provider. It sends no actor or resume
+credential through the attachment transport.
+
+The reference endpoints are GET and POST
+`/recovered-discussions/v1/threads/{actor}/{counter}` and GET
+`/recovered-discussions/v1/threads/{actor}/{counter}/file`. All requests use
+the relay's exact Origin and account headers plus `X-Breditor-Review`. POST
+also sends `X-Breditor-Archive` and the original
+`application/vnd.breditor.recovered-discussion+json` body. GET discovery returns
+a versioned entry with the link, acceptance sequence, byte count and SHA-256.
+The reference catalog bounds each attachment at 8 MiB and the room at 64 MiB
+and 4,096 attachments. Application-managed attachment storage remains
+available through the prepare/read APIs.
+
+Run `node scripts/check-writable-relay-segment.mjs <relay-executable>
+--participant-relay-discussion` for source and clean installed test coverage
+through an authenticated handover, a relay restart and a new read-only client.

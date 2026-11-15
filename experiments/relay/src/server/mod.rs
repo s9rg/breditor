@@ -10,6 +10,7 @@ mod generation_backup;
 mod generation_recovery;
 mod http;
 mod publication_connections;
+mod recovered_discussions;
 mod segment_handover;
 mod versions;
 mod wire;
@@ -114,6 +115,7 @@ pub(super) struct Host {
     review_changed: watch::Sender<u64>,
     versions_changed: watch::Sender<u64>,
     version_operations: Arc<Semaphore>,
+    discussion_operations: Arc<Semaphore>,
     suggestions_changed: watch::Sender<u64>,
     generation_custody: Option<Arc<crate::room::GenerationOperationCustody>>,
     generation_serving:
@@ -226,6 +228,7 @@ fn create_host(
         review_changed,
         versions_changed,
         version_operations: Arc::new(Semaphore::new(4)),
+        discussion_operations: Arc::new(Semaphore::new(2)),
         suggestions_changed,
         generation_custody: None,
         generation_serving: Arc::new(std::sync::OnceLock::new()),
@@ -253,6 +256,16 @@ fn routes(host: Host) -> Router {
         .route(
             "/document-versions/v1/packets/{id}",
             get(versions::download).options(versions::preflight),
+        )
+        .route(
+            "/recovered-discussions/v1/threads/{actor}/{counter}",
+            get(recovered_discussions::discover)
+                .post(recovered_discussions::publish)
+                .options(recovered_discussions::preflight),
+        )
+        .route(
+            "/recovered-discussions/v1/threads/{actor}/{counter}/file",
+            get(recovered_discussions::download).options(recovered_discussions::preflight),
         )
         .route(
             "/assets/{asset}",

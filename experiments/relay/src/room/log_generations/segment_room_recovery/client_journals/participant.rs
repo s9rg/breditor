@@ -140,6 +140,8 @@ struct Part {
 
 pub(super) struct ParticipantArchive {
     #[cfg(feature = "server")]
+    pub(super) manifest_sha256: String,
+    #[cfg(feature = "server")]
     records: Vec<Record>,
     #[cfg(feature = "server")]
     metadata: Metadata,
@@ -179,6 +181,8 @@ impl ParticipantArchive {
             UploadLayout::read(body_bytes.section(upload_offset, upload_pin.bytes)?, &upload_pin)?;
         input.check()?;
         Ok(Self {
+            #[cfg(feature = "server")]
+            manifest_sha256: header.sha256,
             #[cfg(feature = "server")]
             records: header.records,
             #[cfg(feature = "server")]

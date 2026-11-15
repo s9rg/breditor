@@ -17,7 +17,7 @@ pub(crate) struct RelaySegmentServingCustody {
     raster: RasterCustody,
     _uploads: Option<RetainedUploads>,
     journals: Option<RetainedJournals>,
-    alternatives: Option<RetainedJournals>,
+    pub(super) alternatives: Option<RetainedJournals>,
 }
 
 impl RelaySegmentServingCustody {

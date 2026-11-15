@@ -31,7 +31,7 @@ fn decoded(value: &str) -> Result<String> {
     }
     Ok(principal)
 }
-pub(super) fn account(host: &Host, headers: &HeaderMap) -> Result<String> {
+pub(in crate::server) fn account(host: &Host, headers: &HeaderMap) -> Result<String> {
     let Some(encoded) = headers.get("x-breditor-principal-utf8") else {
         return super::super::http::account(host, headers);
     };
