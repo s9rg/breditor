@@ -32,6 +32,16 @@ returns a genuine `RoomDeploymentLease`. A stale choice writes nothing. Busy
 transactions return `Locked`; a takeover must obtain a new exact choice and
 retry after contention settles.
 
+Use `RoomDeploymentAuthority::create_with_coordinated_recovery` for a new
+deployment that must refuse an ordinary restart after a verified handover.
+The returned identity has revision two. Ordinary claims can initialize and
+restart the original deployment before its first coordinated transition.
+Once a coordinated seal or takeover commits, `claim` refuses even with the
+exact current selection. Continue through the selected recovery or handover
+approval. The legacy capture-and-seal calls require revision one because
+they lack a coordinated continuation. The original `create` provisions
+revision-one authority with its existing claim policy.
+
 All participating hosts must select the same authority and use the fenced
 constructors. Ordinary constructors remain unfenced. This reference backend
 requires cooperating processes on a filesystem with working shared/exclusive
@@ -108,12 +118,18 @@ backup identity, local approval or provider availability report.
 
 ## Storage and failure contract
 
-The authority family has a closed revision-one identity header and fixed
-104-byte epoch records. Each record binds its ordinal, random owner nonce,
-previous digest and header digest. Operator reads, opens and claims replay the
-complete bounded lineage. There are at most 1,048,576 claims; this is a takeover
-budget, not an editing-operation budget. Exhaustion refuses without rotating or
-resetting authority. Existing editor, journal and relay limits are unchanged.
+Both authority revisions use fixed 104-byte epoch records. Each record binds
+its ordinal, owner nonce, previous digest and header digest. Revision two has
+its own header and records the switch to coordinated recovery in the same
+synced epoch as the handover. Replay refuses a later ordinary record after
+that switch. The serialized selection continues to expose the ordinary
+decimal epoch and the exact authority identity. Retain the latest selection
+independently and use `open_at_least` on a cold restart to reject a complete
+older prefix.
+
+Operator reads, opens and claims replay the complete bounded lineage.
+There are at most 1,048,576 claims. Exhausting that takeover budget refuses
+without rotating or resetting authority.
 
 Hot serving checks read the fixed header, exact current length, witnessed
 prefix anchor and leased tail record; they do not replay a growing takeover ledger on each keystroke. The
