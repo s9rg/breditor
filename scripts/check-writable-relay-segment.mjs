@@ -15,6 +15,7 @@ import {captureClientRaster, resumeClientRaster} from './fixtures/relay-segment-
 import {recoveredText, reviewRecoveredText} from './fixtures/relay-segment-recovered-text.mjs';
 import {assertRecoveredRich, authorRecoveredRich, reviewRecoveredRich} from './fixtures/relay-segment-recovered-rich.mjs';
 import {checkColdReviewReader} from './fixtures/relay-segment-cold-review-reader.mjs';
+import {recoverArchivedComment} from './fixtures/relay-segment-recovered-comment.mjs';
 import {recoveryFactory} from './fixtures/independent-delivery-recovery/session.mjs';
 import {installCollaborationConsumer} from './fixtures/installed-collaboration-consumer.mjs';
 import {sourceEvidence, saveEvidence} from './candidate-release/evidence.mjs';
@@ -55,7 +56,7 @@ function readRetainedClientJournals(parent, expected, directory = 'client-journa
   return originals;
 }
 
-async function run(mode, {distribution, rich}, executable, parent, journalKind, terminalReceipts, opaque, competing, carryForward, multipleAlternates, reviewRecovered, richRecovered, coldReviewReader) {
+async function run(mode, {distribution, rich}, executable, parent, journalKind, terminalReceipts, opaque, competing, carryForward, multipleAlternates, reviewRecovered, richRecovered, coldReviewReader, recoverComment) {
   const participant = journalKind === 'independentParticipant';
   const archiveImage = opaque ? proposalAlias : proposalAsset;
   const independentDelivery = journalKind !== 'pairedSession';
@@ -203,11 +204,15 @@ async function run(mode, {distribution, rich}, executable, parent, journalKind, 
     const edit = text => session.core.dispatch({commands: [
       {kind: 'insert_text', data: {block: 'p', offset: 0, text}},
     ]});
-    const post = body => assert.equal(session.core.dispatchReview({
-      kind: 'create_thread', data: {
-        anchorJson: session.core.captureReviewAnchor({kind: 'document'}), body,
-      },
-    }).kind, 'committed');
+    const post = body => {
+      const result = session.core.dispatchReview({
+        kind: 'create_thread', data: {
+          anchorJson: session.core.captureReviewAnchor({kind: 'document'}), body,
+        },
+      });
+      assert.equal(result.kind, 'committed');
+      return result.event;
+    };
     session = await open();
     await attach();
     edit('Accepted before segment ');
@@ -386,7 +391,7 @@ async function run(mode, {distribution, rich}, executable, parent, journalKind, 
       });
       if (richRecovered) authorRecoveredRich(session.core);
       else edit(reviewRecovered ? recoveredText : 'Competing branch text ');
-      post('Competing branch comment');
+      const archivedComment = post('Competing branch comment');
       await session.flush();
       const competingRecovery = session.exportRecovery();
       const competingFile = await captureParticipant(
@@ -425,7 +430,7 @@ async function run(mode, {distribution, rich}, executable, parent, journalKind, 
       });
       retainedBranches = {
         selection: branches.selection, readPolicy, incoming: competingFile.archive,
-        incomingSelection: competingFile.selection, competingRecovery,
+        incomingSelection: competingFile.selection, competingRecovery, archivedComment,
       };
       const cold = await api.readSharedIndependentDeliveryBranchArchive(branches.file, branches.selection, readPolicy);
       assert.equal(cold.comparison.document.relation, 'diverged');
@@ -680,18 +685,18 @@ async function run(mode, {distribution, rich}, executable, parent, journalKind, 
       }
     }
     const delivered = pending ? await deliverWork(pending) : undefined;
-    let coldReaderEvidence;
+    let coldReaderEvidence, recoveredComment;
     if (reviewRecovered) {
       const retained = readRetainedClientJournals(parent, retainedAlternatePins, 'client-alternatives', restoredRoot);
       const sourceIndex = retainedAlternatePins.findIndex(pin => Buffer.from(pin.sha256).equals(Buffer.from(incomingBranch.sha256)));
       assert.ok(sourceIndex >= 0);
-      const sourceBytes = retained[sourceIndex];
+      const source = {file: new Blob([retained[sourceIndex]]), selection: retainedBranches.incomingSelection};
       const parts = await attachOutboxes(session, () => token);
       const assetUrl = new URL('/assets/' + encodeURIComponent(recoveredAsset), rasterUrl);
       let recovered;
       try {
         const context = {api, session, queue: parts.queue, transport: parts.transport,
-          source: {file: new Blob([sourceBytes]), selection: retainedBranches.incomingSelection},
+          source,
           policy: retainedBranches.readPolicy};
         if (richRecovered) recovered = await reviewRecoveredRich({...context, assetUrl, headers});
         else await reviewRecoveredText(context);
@@ -699,6 +704,14 @@ async function run(mode, {distribution, rich}, executable, parent, journalKind, 
         await closeOutboxes(parts);
       }
       assert.equal(visibleThreads().length, 4);
+      if (recoverComment) {
+        await attach();
+        recoveredComment = await recoverArchivedComment({
+          api, session, review, policy: retainedBranches.readPolicy, source, thread: retainedBranches.archivedComment,
+        });
+        assert.equal(visibleThreads().length, 5);
+        await stopClients();
+      }
       await host.crash();
       host = undefined;
       host = await startSegmentHandoverHost(executable, [parent, restoredRoot, address], token);
@@ -722,7 +735,7 @@ async function run(mode, {distribution, rich}, executable, parent, journalKind, 
         coldReaderEvidence = await checkColdReviewReader({
           api, options: {...options, principal: 'reader', getToken: () => readerToken},
           origin, database: persisted.database + '-fresh-reader', profile, assetUrl, recovered,
-          threads: session.core.reviewSnapshot().view.threads, delivered,
+          threads: session.core.reviewSnapshot().view.threads, delivered, recoveredComment,
           originalVersion: {id: admission.entry.version.id, packet},
         });
       }
@@ -734,6 +747,7 @@ async function run(mode, {distribution, rich}, executable, parent, journalKind, 
       oldServingRefusals: 1 + extra, coldResumes: 2 + extra + Number(reviewRecovered),
       ...carryEvidence,
       ...coldReaderEvidence,
+      ...(recoveredComment ? {committedRecoveredComments: 1} : {}),
       registrationRefusals: captured.registrationRefusals, providerRasters: captured.providerRasters,
       retainedPackets: captured.retainedPackets, stagedClientRasters: captured.clientRasters, clientUploadReceipts,
       clientUploadArchives: captured.clientArchives, missingArchiveRefusals: captured.missingArchiveRefusals,
@@ -787,7 +801,8 @@ const executable = resolve(process.argv[2]);
 const option = process.argv[3];
 const terminalReceipts = option === '--participant-terminal-receipts';
 const opaque = option === '--participant-opaque';
-const coldReviewReader = option === '--participant-cold-review-reader';
+const recoverComment = option === '--participant-recovered-comment';
+const coldReviewReader = recoverComment || option === '--participant-cold-review-reader';
 const richRecovered = coldReviewReader || option === '--participant-multiple-rich-review';
 const multipleReviewed = richRecovered || option === '--participant-multiple-reviewed';
 const multipleAlternates = multipleReviewed || option === '--participant-multiple-alternates';
@@ -796,7 +811,7 @@ const reviewRecovered = multipleReviewed || option === '--participant-reviewed-t
 const competing = carryForward || reviewRecovered || option === '--participant-accepted-branch';
 assert.ok(process.argv.length === 3 || process.argv.length === 4 &&
   ['--independent-delivery', '--participant-archive', '--participant-terminal-receipts', '--participant-opaque',
-    '--participant-accepted-branch', '--participant-carried-alternate', '--participant-multiple-alternates', '--participant-reviewed-text', '--participant-multiple-reviewed', '--participant-multiple-rich-review', '--participant-cold-review-reader'].includes(option));
+    '--participant-accepted-branch', '--participant-carried-alternate', '--participant-multiple-alternates', '--participant-reviewed-text', '--participant-multiple-reviewed', '--participant-multiple-rich-review', '--participant-cold-review-reader', '--participant-recovered-comment'].includes(option));
 const journalKind = terminalReceipts || opaque || competing || option === '--participant-archive' ? 'independentParticipant'
   : option === '--independent-delivery' ? 'independentDelivery' : 'pairedSession';
 const source = sourceEvidence(root);
@@ -813,7 +828,7 @@ try {
     mkdirSync(path, {mode: 0o700});
     reports[mode] = {
       ...await run(mode, distribution, executable, path, journalKind, terminalReceipts, opaque, competing,
-        carryForward, multipleAlternates, reviewRecovered, richRecovered, coldReviewReader),
+        carryForward, multipleAlternates, reviewRecovered, richRecovered, coldReviewReader, recoverComment),
       proof: distribution.proof,
     };
   }
@@ -823,7 +838,8 @@ try {
     format: 'breditor/writable-relay-segment-qualification', formatVersion: 1,
     source, relaySha256: sha(readFileSync(executable)), reports,
   };
-  const reportFile = coldReviewReader ? 'qualified-cold-review-reader.json'
+  const reportFile = recoverComment ? 'qualified-recovered-comment.json'
+    : coldReviewReader ? 'qualified-cold-review-reader.json'
     : richRecovered ? 'qualified-rich-review-after-multiple-handover.json'
     : multipleReviewed ? 'qualified-review-after-multiple-handover.json'
     : reviewRecovered ? 'qualified-reviewed-recovered-text.json'

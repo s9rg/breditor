@@ -301,3 +301,100 @@ test('restores inline marks and a selected table with independently verified arc
   await f.close();
  }
 });
+
+test('reads exactly one archived discussion through edits, hidden contributions and bounded pages', async () => {
+ const f = await participantUnionFixture(api, rich, profile, {
+  wasm: native, branchFork: true, relaySeed: true, archivedReview: true, reviewSegmented: true,
+ });
+ try {
+  const host = options(f), source = f.options.incoming;
+  const {thread, reply, edited} = f.archivedReview;
+  const input = {...host, source, thread};
+  const before = f.current.exportRecovery();
+  const first = await api.readSharedRecoveredBranchReviewThread(input);
+  assert.equal(first.page.events.length, 16);
+  assert.equal(first.page.nextOffset, 16);
+  assert.deepEqual(first.page.thread, thread);
+  assert.deepEqual(first.source, source.selection);
+  assert.equal(first.page.events[0].payload.data.data.body, 'Originally authored offline');
+  assert.ok(Object.isFrozen(first.page.events[0].payload.data.data));
+  const last = await api.readSharedRecoveredBranchReviewThread({...input, offset: first.page.nextOffset});
+  assert.equal(last.page.nextOffset, null);
+  const events = [...first.page.events, ...last.page.events];
+  assert.equal(events.length, 23);
+  assert.deepEqual(events.map(entry => entry.index), Array.from({length: 23}, (_, index) => index));
+  assert.ok(events.every(entry => entry.principal === 'alice'));
+  assert.equal(new Set(events.map(entry => entry.digest)).size, events.length);
+  assert.deepEqual(events[17].id, edited);
+  assert.equal(events[17].payload.data.data.body, 'Edited archived reply');
+  assert.deepEqual(events[18].payload.data.data.message, reply);
+  assert.deepEqual(events.slice(-2).map(entry => entry.payload.data.visible), [false, true]);
+  assert.equal(events.some(entry => JSON.stringify(entry).includes('Unrelated discussion')), false);
+  await assert.rejects(api.readSharedRecoveredBranchReviewThread({...input, offset: 24}));
+  await assert.rejects(api.readSharedRecoveredBranchReviewThread({...input, thread: reply}));
+  assert.deepEqual(f.current.exportRecovery(), before);
+ } finally { await f.close(); }
+});
+
+test('recovers a hidden original as a fresh authored message and rejects substitutions or stale live state', async () => {
+ const f = await participantUnionFixture(api, rich, profile, {
+  wasm: native, branchFork: true, relaySeed: true, documentSegmented: true, reviewSegmented: true,
+ });
+ try {
+  const source = f.options.incoming;
+  const own = f.chosen.options.review.actor;
+  const thread = {actor: own, counter: '2'};
+  const request = {...options(f), source, thread};
+  const {page} = await api.readSharedRecoveredBranchReviewThread(request);
+  const [birth, undo] = page.events;
+  assert.deepEqual(birth.id, thread);
+  assert.equal(birth.payload.data.data.body, 'Incoming comment Redo');
+  assert.deepEqual(undo.payload, {kind: 'visibility', data: {target: thread, visible: false}});
+  const local = f.current.core.readReviewThreadHistory(thread).events[0];
+  assert.deepEqual(local.id, birth.id);
+  assert.notEqual(local.digest, birth.digest);
+  assert.equal(local.payload.data.data.body, 'Local comment Redo');
+
+  const core = f.current.core;
+  const guard = core.reviewSnapshot();
+  const event = {thread, index: birth.index, id: birth.id, digest: birth.digest};
+  const input = {...options(f), source, event, target: f.current, guard,
+   destination: {kind: 'new_thread', target: {kind: 'document'}}};
+  const before = f.current.exportRecovery(), bytes = await fileBytes(source.file);
+  await assert.rejects(api.prepareSharedRecoveredBranchReviewMessage({...input, event: {...event, digest: local.digest}}),
+   /differs from the original archive/);
+  const visibility = {...event, index: undo.index, id: undo.id, digest: undo.digest};
+  await assert.rejects(api.prepareSharedRecoveredBranchReviewMessage({...input, event: visibility}), /message body/);
+  const peerThread = {actor: 'peer-comments', counter: '1'};
+  const peer = (await api.readSharedRecoveredBranchReviewThread({...request, thread: peerThread})).page.events[0];
+  await assert.rejects(api.prepareSharedRecoveredBranchReviewMessage({...input,
+   event: {thread: peerThread, index: peer.index, id: peer.id, digest: peer.digest}}), /same account/);
+
+  const prepared = await api.prepareSharedRecoveredBranchReviewMessage(input);
+  assert.deepEqual(f.current.exportRecovery(), before);
+  assert.equal(prepared.principal, 'alice');
+  assert.equal(prepared.body, 'Incoming comment Redo');
+  const stale = await api.prepareSharedRecoveredBranchReviewMessage({...input,
+   destination: {kind: 'reply', thread: {actor: own, counter: '1'}}});
+  const result = prepared.commit();
+  assert.equal(result.kind, 'committed');
+  assert.notDeepEqual(result.event, birth.id);
+  assert.throws(() => prepared.commit(), /already committed/);
+  assert.throws(() => stale.commit(), /changed during recovery/);
+  const snapshot = core.reviewSnapshot();
+  const restored = snapshot.view.threads.find(item => item.thread.id.counter === result.event.counter &&
+   item.thread.id.actor === result.event.actor);
+  assert.equal(restored.thread.author, 'alice');
+  assert.equal(restored.thread.messages[0].versions[0].text, 'Incoming comment Redo');
+  assert.equal(core.undoReview().kind, 'committed');
+  assert.equal(core.redoReview().kind, 'committed');
+
+  const reply = await api.prepareSharedRecoveredBranchReviewMessage({...input, guard: core.reviewSnapshot(),
+   destination: {kind: 'reply', thread: {actor: own, counter: '1'}}});
+  assert.equal(reply.commit().kind, 'committed');
+  const common = core.reviewSnapshot().view.threads.find(item => item.thread.id.counter === '1');
+  assert.equal(common.thread.messages.at(-1).versions[0].text, 'Incoming comment Redo');
+  assert.deepEqual(f.current.exportRecovery().source.documentCheckpoint, before.source.documentCheckpoint);
+  assert.deepEqual(await fileBytes(source.file), bytes);
+ } finally { await f.close(); }
+});

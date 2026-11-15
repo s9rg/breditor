@@ -3,22 +3,20 @@ import {SharedRichEditor} from '../core.js';
 import {coreReadStamp} from '../core_read_stamp.js';
 import {coreReadState} from '../core_read_state.js';
 import {independentDeliverySource} from '../independent_delivery_source/admission.js';
-import {SharedIndependentDeliveryParticipantBackup as Participant} from '../independent_delivery_participant/backup.js';
-import {replayPortableRecovery} from '../independent_operation/portable_replay.js';
+import type {SharedIndependentDeliveryParticipantBackup as Participant} from '../independent_delivery_participant/backup.js';
 import {fields} from '../physical_room_record_cut/policy.js';
-import {clock,decimal} from '../relay/validation.js';
+import {decimal} from '../relay/validation.js';
 import type {SharedDocumentSuggestionDraft} from '../suggestion_types.js';
 import type {RichPoint,RichSelection,SharedSelectionPolicy} from '../types.js';
 import type {
  SharedRecoveredBranchRichSuggestionOptions,SharedRecoveredBranchTextSuggestion,SharedRecoveredBranchTextSuggestionOptions,
 } from './contract.js';
 import {branchFile} from './framing.js';
-import {BranchArchiveScope} from './scope.js';
+import {sameBranchDocumentOrigin} from './document_origin.js';
+import {withArchivedBranch} from './read_native.js';
 
 const editor=SharedRichEditor.prototype;
-const {captureReviewAnchor,descriptor,writerClockV2,captureSuggestion}=editor;
-const participantRead=Participant.read;
-const {sourceRecovery,dispose}=Participant.prototype;
+const {captureReviewAnchor,captureSuggestion}=editor;
 
 function string(value:unknown):string{
  if(typeof value!=='string')throw new Error('Recovered text suggestion fields must be strings');
@@ -53,14 +51,6 @@ function sourceSelection(input:unknown):RichSelection{
   return {kind,anchor:cell(value['anchor']),focus:cell(value['focus'])};
  }
  return textRange(input);
-}
-
-function checkOrigin(source:SharedRichEditor<SharedSelectionPolicy>,target:SharedRichEditor<SharedSelectionPolicy>):void{
- const a=clock(writerClockV2.call(source,'1'),'1'),b=clock(writerClockV2.call(target,'1'),'1');
- if(a.through==='0'||a.through!==b.through||a.prefixDigest!==b.prefixDigest||
-    descriptor.call(source).schemaFingerprint!==descriptor.call(target).schemaFingerprint){
-  throw new Error('Recovered text belongs to a different native document');
- }
 }
 
 interface RecoveredSuggestionSource {
@@ -100,28 +90,13 @@ export async function prepareRecoveredSuggestion<T>(
   }
  };
  checkTarget();
- const scope=new BranchArchiveScope(value as unknown as SharedRecoveredBranchTextSuggestionOptions);
- try{
-  const check=()=>{scope.check();checkTarget();};
-  check();
-  const backup=await participantRead.call(Participant,source.file,source.selection,{signal:scope.signal,limits:scope.limits});
-  try{
-   check();
-   const recovery=sourceRecovery.call(backup);
-   const selected=await replayPortableRecovery(scope.session(source.selection.identity.source),recovery,check);
-   try{
-    selected.check();
-    checkOrigin(selected.core,target.core);
-    const anchorJson=captureReviewAnchor.call(selected.core,{kind:'selection',selection:originalRange});
-    const result=prepare({
-     backup,core:selected.core,target:target.core,targetRange,namespace,revision,
-     source:Object.freeze({selection:source.selection,anchorJson}),
-     capture(draft){checkTarget();return captureSuggestion.call(target.core,title,destination.principal,createdAtMs,draft,revision);},
-    });
-    selected.check();
-    checkTarget();
-    return result;
-   }finally{selected.dispose();}
-  }finally{dispose.call(backup);}
- }finally{scope.close();}
+ return withArchivedBranch(source,value as unknown as SharedRecoveredBranchTextSuggestionOptions,(core,backup)=>{
+  if(!sameBranchDocumentOrigin(core,target.core))throw new Error('Recovered text belongs to a different native document');
+  const anchorJson=captureReviewAnchor.call(core,{kind:'selection',selection:originalRange});
+  return prepare({
+   backup,core,target:target.core,targetRange,namespace,revision,
+   source:Object.freeze({selection:source.selection,anchorJson}),
+   capture(draft){checkTarget();return captureSuggestion.call(target.core,title,destination.principal,createdAtMs,draft,revision);},
+  });
+ },checkTarget);
 }

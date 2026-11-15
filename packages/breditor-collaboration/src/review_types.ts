@@ -22,6 +22,17 @@ export type SharedReviewAction=
  |{kind:"retract_message";data:{message:SharedReviewId}}
  |{kind:"set_thread_state";data:{thread:SharedReviewId;resolved:boolean}}
  |{kind:"reanchor_thread";data:{thread:SharedReviewId;anchorJson:string}};
+/** Original events within the exact supplied native thread observation. */
+export interface SharedReviewThreadHistoryEntry {
+ readonly index:number;readonly id:SharedReviewId;readonly principal:string;readonly digest:string;
+ readonly payload:
+  |{readonly kind:"action";readonly data:SharedReviewAction}
+  |{readonly kind:"visibility";readonly data:{readonly target:SharedReviewId;readonly visible:boolean}};
+}
+export interface SharedReviewThreadHistoryPage {
+ readonly thread:SharedReviewId;readonly events:readonly SharedReviewThreadHistoryEntry[];
+ readonly nextOffset:number|null;
+}
 export type SharedReviewOutcome={kind:"unchanged"}|{kind:"committed";event:SharedReviewId};
 export type SharedReviewImportOutcome={kind:"unchanged"|"applied"}|{kind:"pending";missing:readonly SharedReviewId[]};
 export interface SharedReviewMessage {id:SharedReviewId;author:string;versions:readonly {event:SharedReviewId;principal:string;text:string|null}[]}
@@ -57,6 +68,8 @@ export interface SharedReviewRustCapability {
  /** Independent native clipboard capability. Original review quote support stays available. */
  review_clipboard_version?():string;
  read_review_clipboard?(packet:string):string;
+ review_thread_history_version?():string;
+ read_review_thread_history?(observation:unknown,input:string):string;
  review_view_json?(observation:unknown):string;
  dispatch_review?(observation:unknown,input:string):string;
  undo_review?(observation:unknown):string;

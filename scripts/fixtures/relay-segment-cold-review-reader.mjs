@@ -2,9 +2,10 @@
 import assert from 'node:assert/strict';
 import {recoveredPixel} from './review-assets/pixels.mjs';
 import {assertRecoveredRich} from './relay-segment-recovered-rich.mjs';
+import {assertRecoveredComment} from './relay-segment-recovered-comment.mjs';
 
 export async function checkColdReviewReader({
-  api, options, origin, database, profile, assetUrl, recovered, threads, delivered, originalVersion,
+  api, options, origin, database, profile, assetUrl, recovered, threads, delivered, originalVersion, recoveredComment,
 }) {
   const originalFetch = globalThis.fetch;
   const endpoint = new URL(options.endpoint);
@@ -67,6 +68,7 @@ export async function checkColdReviewReader({
 
     assertRecoveredRich(session.core.documentJson(), recovered.generation);
     assert.deepEqual(session.core.reviewSnapshot().view.threads, threads);
+    if (recoveredComment) assertRecoveredComment(session.core.reviewSnapshot().view.threads, recoveredComment);
     for (const [id, packet, decision] of [
       [recovered.id, recovered.packet, recovered.decision],
       [delivered.pending.decision, delivered.pending.packets[1], delivered.decision],
@@ -111,12 +113,14 @@ export async function checkColdReviewReader({
     assert.deepEqual(session.exportRecovery(), exact);
     assertRecoveredRich(session.core.documentJson(), recovered.generation);
     assert.deepEqual(session.core.reviewSnapshot().view.threads, threads);
+    if (recoveredComment) assertRecoveredComment(session.core.reviewSnapshot().view.threads, recoveredComment);
     queue = await session.openSuggestionQueue();
     assert.deepEqual(queue.status(recovered.id).decision, recovered.decision);
     assert.equal(queue.packet(recovered.id), recovered.packet);
     await queue.close();
     return {coldReaderReopens: 1, coldReaderThreads: threads.length, coldReaderReviewReceipts: 3,
-      coldReaderVersionPackets: 2, coldReaderRevisionPackets: 1};
+      coldReaderVersionPackets: 2, coldReaderRevisionPackets: 1,
+      ...(recoveredComment ? {coldRecoveredCommentReads: 1} : {})};
   } finally {
     sync?.dispose();
     observer?.dispose();

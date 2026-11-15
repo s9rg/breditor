@@ -187,3 +187,36 @@ archive stays with its recovery owner.
 Run `node scripts/check-writable-relay-segment.mjs <relay-executable>
 --participant-cold-review-reader` to exercise a Reader first registered after two
 handovers and a relay restart.
+
+## Inspect and recover an archived comment
+
+Use `readSharedRecoveredBranchReviewThread` with an exact participant archive
+and thread birth identity. Follow `nextOffset` to read further pages from that
+same archive. The native reader returns each original event's account,
+identity, digest, and literal action or visibility change. It includes hidden
+births, retracted messages, edits, replies, anchor changes and Undo/Redo. The
+same actor and counter can describe different original events in two archives.
+Keep the particular archive selection and event digest with the selected
+message.
+
+Use `prepareSharedRecoveredBranchReviewMessage` with the chosen event key,
+the current live review snapshot, and an explicit destination. Choose a new
+thread anchored to a current document target, or a reply to a selected live
+thread. Creation, reply, and edit bodies can be selected. The original event
+author must match the live account. Preparation reads the archive again,
+checks the original native document and review room, and leaves both owners
+untouched.
+
+Call the prepared result's `commit()` to issue one ordinary native comment.
+The exact live document and review observations must still match. The new
+comment has a fresh identity and follows ordinary comment Undo/Redo and
+authenticated delivery. Retain the returned source reference with that new
+identity for an application audit trail. The prepared command is bound to
+the current session and can commit once. A new request after a restart is a
+new authoring decision. Historical edits, retractions and state decisions
+remain in the original archive. Messages by other authors can be read and
+inspected there.
+
+Run `node scripts/check-writable-relay-segment.mjs <relay-executable>
+--participant-recovered-comment` for the authenticated workflow through two
+handovers, relay restart and a fresh read-only client.

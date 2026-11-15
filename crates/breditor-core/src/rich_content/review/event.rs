@@ -12,9 +12,17 @@ pub(super) const MAX_FRAME_BYTES: usize = 1024 * 1024;
 
 #[derive(Clone, Debug, Eq, PartialEq, Serialize, Deserialize)]
 #[serde(tag = "kind", content = "data", rename_all = "snake_case", deny_unknown_fields)]
-pub(super) enum Payload {
+/// The literal retained review action or an Undo/Redo visibility change.
+pub enum Payload {
+    /// An original attributed review action.
     Action(ReviewAction),
-    Visibility { target: ReviewEventId, visible: bool },
+    /// An authenticated visibility operation referencing an earlier authored action.
+    Visibility {
+        /// Original action changed by this event.
+        target: ReviewEventId,
+        /// Whether the original contribution is visible again.
+        visible: bool,
+    },
 }
 #[derive(Clone, Debug, Eq, PartialEq, Serialize, Deserialize)]
 #[serde(deny_unknown_fields, rename_all = "camelCase")]

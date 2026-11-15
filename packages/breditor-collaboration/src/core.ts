@@ -12,7 +12,7 @@ import type {RichRetainedAssetReferencesRead} from "@breditor/experimental-rich-
 import {RichRetainedAssetReferenceRegistry} from "@breditor/experimental-rich-content/rendering";
 import {SharedPacketAssetReferenceRegistry,type SharedPacketAssetReferencesRead} from "./packet_asset_references.js";
 import {parseRichWritingTools} from "@breditor/experimental-rich-content/rendering";
-import type {SharedReviewAccess,SharedReviewAction,SharedReviewGuard,SharedReviewImportOutcome,SharedReviewOutcome,SharedReviewPolicy,SharedReviewResolution,SharedReviewSnapshot,SharedReviewTarget,SharedReviewView,SharedReviewWriterClock,SharedReviewBatchReceipt,SharedReviewQuote,SharedReviewClipboard} from "./review_types.js";
+import type {SharedReviewAccess,SharedReviewAction,SharedReviewGuard,SharedReviewImportOutcome,SharedReviewOutcome,SharedReviewPolicy,SharedReviewResolution,SharedReviewSnapshot,SharedReviewTarget,SharedReviewView,SharedReviewWriterClock,SharedReviewBatchReceipt,SharedReviewQuote,SharedReviewClipboard,SharedReviewId,SharedReviewThreadHistoryPage} from "./review_types.js";
 import type {SharedDocumentVersionInfo,SharedVersionComparison,SharedDocumentVersionSource} from "./version_types.js";
 import {SharedDocumentVersionRestorePlan,nativeVersionPlan} from "./version_plan.js";
 import type {SharedDocumentSuggestionDraft,SharedDocumentSuggestionInfo,SharedDocumentSuggestionPreparation,SharedDocumentSuggestionSource,SharedSuggestionPreparationSummary,SharedWriterReceiptV2,SharedWriterReceiptRetention,SharedSuggestionRevisionInfo,SharedSuggestionRevisionSource,SharedSuggestionFormatRebase,SharedSuggestionTextRebase,SharedSuggestionTextRebasePolicy,SharedSuggestionClipboardPlan} from "./suggestion_types.js";
@@ -416,6 +416,13 @@ export class SharedRichEditor<P extends SharedSelectionPolicy="original"> {
   const raw=this.#live();
   if(raw.review_clipboard_version?.()!=="1"||typeof raw.read_review_clipboard!=="function")throw new SharedEditorError("review_clipboard_unavailable","Use a matching native historical clipboard runtime");
   return JSON.parse(raw.read_review_clipboard(packet)) as SharedReviewClipboard;
+ }
+ /** Read attributed comment events, including visibility changes, at this exact publication. */
+ readReviewThreadHistory(thread:SharedReviewId,offset=0,guard?:SharedReviewGuard):SharedReviewThreadHistoryPage{
+  this.#checkReview(guard);
+  const raw=this.#requireReview();
+  if(raw.review_thread_history_version?.()!=="1"||typeof raw.read_review_thread_history!=="function")throw new SharedEditorError("review_thread_history_unavailable","Use a matching native review history runtime");
+  return JSON.parse(raw.read_review_thread_history(this.#observation,JSON.stringify({thread,offset}))) as SharedReviewThreadHistoryPage;
  }
  dispatchReview(action:SharedReviewAction,guard?:SharedReviewGuard):SharedReviewOutcome{this.#checkReview(guard);return this.#run("local",(raw,o)=>{const result=JSON.parse(raw.dispatch_review!(o,JSON.stringify(action))) as SharedReviewOutcome;if(result.kind==="committed")this.#reviewRevision++;return result;},guard?.documentRevision,false);}
  undoReview(guard?:SharedReviewGuard):SharedReviewOutcome{return this.#performReviewHistory(false,guard);}

@@ -13,16 +13,19 @@ mod materialize;
 mod recovery_origin;
 mod retained_branch;
 mod session;
+mod thread_history;
 mod types;
 
 pub use codec::{
     PreparedReviewBatch, ReviewBatchPreparation, ReviewBatchReceipt, ReviewWriterClock,
 };
+pub use event::Payload as ReviewThreadHistoryPayload;
 pub use identity::{
     ReviewActorId, ReviewEventId, ReviewMessageId, ReviewPrincipalId, ReviewThreadId,
 };
 pub use retained_branch::PreparedReviewBranch;
 pub use session::{ReviewImportOutcome, ReviewObservation, ReviewSession};
+pub use thread_history::{ReviewThreadHistoryEntry, ReviewThreadHistoryPage};
 pub use types::{
     ReviewAccess, ReviewActorPolicy, ReviewBinding, ReviewError, ReviewMessageView, ReviewOutcome,
     ReviewTextVersion, ReviewThreadState, ReviewThreadView, ReviewView,
