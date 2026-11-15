@@ -70,5 +70,6 @@ pub struct RecoveredRelaySegmentRoom {
     #[cfg(feature = "server")]
     restored_assets: crate::assets::AssetBackupIdentity,
     journals: Option<client_journals::RetainedJournals>,
+    alternatives: Option<client_journals::RetainedJournals>,
     uploads: Option<client_uploads::RetainedUploads>,
 }

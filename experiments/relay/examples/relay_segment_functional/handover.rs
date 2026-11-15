@@ -99,6 +99,7 @@ fn prepare_and_commit(
     let backup = restored_backup(parent)?;
     let authentication = configured_auth(parent)?;
     let branch_report = incoming_branch
+        .as_ref()
         .map(|incoming| {
             branches::inspect(
                 parent,
@@ -112,10 +113,23 @@ fn prepare_and_commit(
                 &archives,
                 &originals,
                 &journals[1],
-                incoming,
+                incoming.clone(),
             )
         })
         .transpose()?;
+    let alternative = incoming_branch
+        .as_ref()
+        .map(|pin| {
+            RelaySegmentClientJournal::open(
+                File::open(parent.join("incoming-branch.bin"))?,
+                pin.clone(),
+            )
+        })
+        .transpose()?;
+    let alternatives = alternative.as_slice();
+    if let Some(pin) = &incoming_branch {
+        branches::check_retention(parent, &backup, &archives, &originals, alternatives, pin)?;
+    }
     let provider: Arc<dyn ServerRecoveryAssetProvider> = Arc::new(ContentAddressedServerAssets);
     {
         let wrong = RelaySegmentClientJournal::open(
@@ -140,12 +154,13 @@ fn prepare_and_commit(
             return Err("a fabricated paired review receipt sequence was not refused".into());
         }
     }
-    let mut target = backup.restore_with_client_journals(
+    let mut target = backup.restore_with_client_journal_alternatives(
         &parent.join("restored"),
         "restored-one",
         POLICY,
         &archives,
         &originals,
+        alternatives,
     )?;
     if participant {
         let mut copy = Vec::new();
@@ -229,6 +244,17 @@ fn prepare_and_commit(
     let RelaySegmentHandoverInputCoverage::Verified(inputs) = coverage else {
         return Err("original protected or provider inputs are incomplete".into());
     };
+    let alternate_branches = &inputs.report().alternate_branches;
+    if let Some(pin) = &incoming_branch {
+        assert_eq!(inputs.report().format_version, 4);
+        assert_eq!(alternate_branches.len(), 1);
+        assert_eq!(alternate_branches[0].pin, *pin);
+        assert!(!alternate_branches[0].document.prefix_matches);
+        assert!(!alternate_branches[0].review.prefix_matches);
+    } else {
+        assert!(alternate_branches.is_empty());
+        assert_eq!(inputs.report().format_version, 3);
+    }
     let verified_journals =
         inputs.report().client_journal_coverage.as_ref().ok_or("verified journal report")?;
     assert_eq!(verified_journals.journals.len(), 2);
@@ -284,6 +310,8 @@ fn prepare_and_commit(
         "branchAdmissions": branch_report.as_ref().map(|row| &row["admissions"]),
         "branchCutRefusals": branch_report.as_ref().map(|row| &row["refusedCuts"]),
         "incomingBranchRefusals": branch_report.as_ref().map(|row| &row["refusedIncoming"]),
+        "preservedAlternateArchives": alternate_branches.len(),
+        "alteredAlternateRefusals": usize::from(incoming_branch.is_some()),
         "participantUnmapped": usize::from(mapped.is_some()),
         "participantMappingRefusals": 2 * usize::from(mapped.is_some()),
         "participantRasterBindings": verified_journals.participant_raster_bindings.len(),

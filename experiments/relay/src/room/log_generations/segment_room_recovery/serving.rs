@@ -14,13 +14,14 @@ pub(crate) struct RelaySegmentServingCustody {
     raster: RasterCustody,
     _uploads: Option<RetainedUploads>,
     journals: Option<RetainedJournals>,
+    alternatives: Option<RetainedJournals>,
 }
 
 impl RelaySegmentServingCustody {
     pub(crate) fn check(&self) -> Result<()> {
         self.directory.guard()?;
         self.raster.guard_root()?;
-        if let Some(journals) = &self.journals {
+        for journals in [&self.journals, &self.alternatives].into_iter().flatten() {
             journals.check()?;
         }
         Ok(())
@@ -51,11 +52,17 @@ impl RecoveredRelaySegmentRoom {
         self,
     ) -> Result<(Room, AssetStore, RelaySegmentServingCustody)> {
         self.check_custody()?;
-        let Self { room, assets, directory, raster, uploads, journals, .. } = self;
+        let Self { room, assets, directory, raster, uploads, journals, alternatives, .. } = self;
         Ok((
             room,
             assets,
-            RelaySegmentServingCustody { directory, raster, _uploads: uploads, journals },
+            RelaySegmentServingCustody {
+                directory,
+                raster,
+                _uploads: uploads,
+                journals,
+                alternatives,
+            },
         ))
     }
 }

@@ -14,7 +14,19 @@ use serde::{Deserialize, Serialize};
 use sha2::{Digest, Sha256};
 use std::{fs::File, io};
 
-const ROOT: &str = "client-journals";
+pub(in super::super) enum JournalDirectory {
+    Selected,
+    Alternatives,
+}
+
+impl JournalDirectory {
+    fn name(self) -> &'static str {
+        match self {
+            Self::Selected => "client-journals",
+            Self::Alternatives => "client-alternatives",
+        }
+    }
+}
 const DATA: &str = "journals.bin";
 const MANIFEST: &str = "manifest.json";
 const MAX_MANIFEST: u64 = 1024 * 1024;
@@ -41,6 +53,7 @@ impl RetainedJournals {
     pub fn create(
         root: &GenerationDirectory,
         sources: &[RelaySegmentClientJournal],
+        location: JournalDirectory,
     ) -> Result<Self> {
         let pins = sources.iter().map(|source| source.pin.clone()).collect::<Vec<_>>();
         check_pins(&pins)?;
@@ -48,7 +61,7 @@ impl RetainedJournals {
         if manifest.len() as u64 > MAX_MANIFEST {
             return Err(Error::Contract("client journal manifest budget"));
         }
-        let directory = GenerationDirectory::create(&root.path.join(ROOT))?;
+        let directory = GenerationDirectory::create(&root.path.join(location.name()))?;
         let mut data = directory.create_file(DATA, &[])?;
         for source in sources {
             source.file.check()?;
@@ -66,8 +79,12 @@ impl RetainedJournals {
         Self::admit(directory, selection, data)
     }
 
-    pub fn reopen(root: &GenerationDirectory, selected: &JournalSelection) -> Result<Self> {
-        let directory = GenerationDirectory::open(&root.path.join(ROOT))?;
+    pub fn reopen(
+        root: &GenerationDirectory,
+        selected: &JournalSelection,
+        location: JournalDirectory,
+    ) -> Result<Self> {
+        let directory = GenerationDirectory::open(&root.path.join(location.name()))?;
         directory.guard_witness(&selected.directory)?;
         let data = files::open(&directory.path.join(DATA))?;
         Self::admit(directory, selected.clone(), data)
