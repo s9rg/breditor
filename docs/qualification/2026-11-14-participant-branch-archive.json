@@ -45,5 +45,28 @@
     "The fixture creates two independently edited copies of one original writer and review actor. It verifies the native common-prefix digest, byte-identical branch files, and live document and review Redo after separate cold restoration for all four original/segmented history combinations.",
     "Original pending packets, asset payloads and conflicting upload states survive the round trip. The test also checks equal and extending heads, allows distinct device labels, and refuses both changed component bytes and independently rehashed false comparison metadata.",
     "The installed SDK uses the same Wasm bytes as the workspace. The fixture uses controlled browser storage. This qualification covers preservation and inspection of both original branches; reconciliation of their competing changes into one live room remains separate."
-  ]
+  ],
+  "relayCompatibility": {
+    "source": {
+      "commit": "f2e7a535a28da4884b4164f1a9a26e0be89bd969",
+      "dirty": false,
+      "sha256": "27033b0843336c12f6f423acbe445c245efe1603d4d5227888b8854110ad6c72",
+      "files": 8855,
+      "bytes": 75264335
+    },
+    "relaySha256": "5de0eac98659e88081a48387c128e14250cce7da482c98edc4cda9c9e7ccf9b2",
+    "sdkReportSha256": "e08e0ca37049bd7bd062d8714ddd52521050caa3df0622c08f3feea76ffc2e08",
+    "runs": {
+      "source": {
+        "changedProviderRefusals": 2,
+        "archiveOnlyRasterReads": 1,
+        "deliveredOutboxEntries": 4
+      },
+      "installed": {
+        "changedProviderRefusals": 2,
+        "archiveOnlyRasterReads": 1,
+        "deliveredOutboxEntries": 4
+      }
+    }
+  }
 }
