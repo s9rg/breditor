@@ -43,6 +43,8 @@ struct Carry {
     additional_alternate: Option<RelaySegmentClientJournalPin>,
     #[serde(default)]
     discussion_backup: bool,
+    #[serde(default)]
+    seal_portable: bool,
 }
 
 pub(super) fn backup(parent: &Path) -> Result<RelaySegmentRoomBackupFiles> {
@@ -304,7 +306,7 @@ impl Carry {
         let approval = RelaySegmentHandoverApproval::select_verified(&target, &inputs, old_epoch)?;
         storage::write_new(&parent.join("carry-approval.json"), &serde_json::to_vec(&approval)?)?;
         File::open(parent)?.sync_all()?;
-        let (_, _, epoch) = handle.commit_verified_relay_segment_handover(
+        let (_, carried, epoch) = handle.commit_verified_relay_segment_handover(
             principal,
             &self.token,
             target,
@@ -313,6 +315,10 @@ impl Carry {
             &inputs,
         )?;
         assert_eq!(epoch, approval.planned_selection()?);
+        let portable_seal = self
+            .seal_portable
+            .then(|| super::portable_relocation::seal(parent, &carried, &self.token))
+            .transpose()?;
         Ok(json!({
             "kind": "carried",
             "records": captured.native.predecessor.source.records,
@@ -328,6 +334,7 @@ impl Carry {
                 "standaloneUploads": identity.retained.standalone_uploads.len(),
             })),
             "retainedBackupNativePredecessors": retained_backup.as_ref().map(|identity| identity.native_predecessors.len()),
+            "portableSeal": portable_seal,
         }))
     }
 }

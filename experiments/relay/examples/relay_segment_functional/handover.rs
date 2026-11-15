@@ -22,6 +22,8 @@ use std::{
 mod branches;
 #[path = "handover/carry.rs"]
 mod carry;
+#[path = "handover/portable_relocation.rs"]
+pub(super) mod portable_relocation;
 #[path = "handover/provider.rs"]
 mod provider;
 #[path = "handover/retained_backup.rs"]

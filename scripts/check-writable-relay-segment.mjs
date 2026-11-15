@@ -59,7 +59,7 @@ function readRetainedClientJournals(parent, expected, directory = 'client-journa
   return originals;
 }
 
-async function run(mode, {distribution, rich}, executable, parent, journalKind, terminalReceipts, opaque, competing, carryForward, multipleAlternates, reviewRecovered, richRecovered, coldReviewReader, recoverComment, recoverCommentIntent, recoverDiscussion, relayDiscussion) {
+async function run(mode, {distribution, rich}, executable, parent, journalKind, terminalReceipts, opaque, competing, carryForward, multipleAlternates, reviewRecovered, richRecovered, coldReviewReader, recoverComment, recoverCommentIntent, recoverDiscussion, relayDiscussion, portableSeal) {
   const participant = journalKind === 'independentParticipant';
   const archiveImage = opaque ? proposalAlias : proposalAsset;
   const independentDelivery = journalKind !== 'pairedSession';
@@ -578,7 +578,7 @@ async function run(mode, {distribution, rich}, executable, parent, journalKind, 
     if (competing) assert.doesNotMatch(session.core.documentJson(), /Competing branch text/);
     let restoredRoot = 'restored';
     let retainedAlternatePins = competing ? [incomingBranch] : [];
-    let carryEvidence, attachedDiscussion;
+    let carryEvidence, relocationEvidence, attachedDiscussion;
     if (relayDiscussion) {
       const source = {file: new Blob([retainedBranches.incoming]), selection: retainedBranches.incomingSelection};
       attachedDiscussion = await publishAttachedDiscussion({
@@ -623,7 +623,8 @@ async function run(mode, {distribution, rich}, executable, parent, journalKind, 
       writeFileSync(join(parent, 'carry-peer.uploads'), peerUpload, {flag: 'wx', mode: 0o600});
 
       const result = await host.carry(token, registered.identity, comment.identity, peer.identity,
-        uploads[1].pin, updatedPins, incomingBranch, additionalAlternate?.pin, protectedPeerReview, relayDiscussion);
+        uploads[1].pin, updatedPins, incomingBranch, additionalAlternate?.pin, protectedPeerReview,
+        relayDiscussion, portableSeal);
       assert.equal(result.alternateOmissionRefusals, 1);
       let retainedBackupHistory;
       if (relayDiscussion) {
@@ -675,8 +676,38 @@ async function run(mode, {distribution, rich}, executable, parent, journalKind, 
         ...(additionalAlternate ? ['additional-alternate.bin'] : [])]) {
         renameSync(join(parent, name), join(parent, 'retired-' + name));
       }
-      restoredRoot = 'carried';
-      host = await startSegmentHandoverHost(executable, [parent, restoredRoot, address], token);
+      if (portableSeal) {
+        assert.equal(result.portableSeal.nativePredecessors, 4);
+        const originalPaths = [
+          'carried', 'carry-capture', 'capture', 'base.archive', 'base.checkpoint',
+          'linked.archive', 'linked.checkpoint',
+        ];
+        for (const name of originalPaths) {
+          renameSync(join(parent, name), join(parent, 'relocation-retired-' + name));
+        }
+        renameSync(join(parent, 'portable-relocation-source'), join(parent, 'portable-relocation-arrived'));
+        restoredRoot = 'relocated';
+        const documents = [
+          {principal: 'owner', writer: registered.identity.writer, credential: registered.identity.credential},
+          {principal: peer.identity.principal, writer: peer.identity.writer, credential: peer.identity.credential},
+        ];
+        const reviews = [
+          {principal: 'owner', actor: comment.identity.actor, credential: comment.identity.credential},
+          {principal: peer.identity.principal, ...protectedPeerReview},
+        ];
+        host = await startSegmentHandoverHost(executable, [parent, restoredRoot, address], token,
+          false, false, {documents, reviews});
+        relocationEvidence = {
+          sealedPortableActivations: 1,
+          sealedCaptureRefusals: 1,
+          sealedNativePredecessors: result.portableSeal.nativePredecessors,
+          retiredOriginalPaths: originalPaths.length,
+          freshlyVerifiedProtectedRegistrations: documents.length + reviews.length,
+        };
+      } else {
+        restoredRoot = 'carried';
+        host = await startSegmentHandoverHost(executable, [parent, restoredRoot, address], token);
+      }
       const carriedAlternates = [{pin: incomingBranch, bytes: retainedBranches.incoming,
         selection: retainedBranches.incomingSelection, recovery: retainedBranches.competingRecovery}];
       if (additionalAlternate) carriedAlternates.push(additionalAlternate);
@@ -871,10 +902,12 @@ async function run(mode, {distribution, rich}, executable, parent, journalKind, 
       assert.deepEqual(readRetainedClientJournals(parent, retainedAlternatePins, 'client-alternatives', restoredRoot), retained);
     }
     const extra = Number(carryForward);
-    return {mode, handoffs: 2, portableRestores: 1 + extra, restoredOfflineLanes: 6, undoRedoLanes: 2, rasterReads: 2,
-      processExits: 4 + extra + Number(reviewRecovered) + Number(relayDiscussion), authenticatedTakeovers: 1 + extra,
-      oldServingRefusals: 1 + extra, coldResumes: 2 + extra + Number(reviewRecovered) + Number(relayDiscussion),
+    const relocated = Number(portableSeal);
+    return {mode, handoffs: 2, portableRestores: 1 + extra + relocated, restoredOfflineLanes: 6, undoRedoLanes: 2, rasterReads: 2,
+      processExits: 4 + extra + Number(reviewRecovered) + Number(relayDiscussion), authenticatedTakeovers: 1 + extra + relocated,
+      oldServingRefusals: 1 + extra, coldResumes: 2 + extra + Number(reviewRecovered) + Number(relayDiscussion) - relocated,
       ...carryEvidence,
+      ...relocationEvidence,
       ...coldReaderEvidence,
       ...(recoveredComment ? {committedRecoveredComments: 1} : {}),
       ...(attachedDiscussion ? {committedDiscussionLinks: 1} : {}),
@@ -936,7 +969,8 @@ const executable = resolve(process.argv[2]);
 const option = process.argv[3];
 const terminalReceipts = option === '--participant-terminal-receipts';
 const opaque = option === '--participant-opaque';
-const relayDiscussion = option === '--participant-relay-discussion';
+const portableSeal = option === '--participant-portable-seal';
+const relayDiscussion = portableSeal || option === '--participant-relay-discussion';
 const recoverDiscussion = relayDiscussion || option === '--participant-recovered-discussion';
 const recoverCommentIntent = option === '--participant-recovered-comment-intent';
 const recoverComment = recoverCommentIntent || option === '--participant-recovered-comment';
@@ -949,7 +983,7 @@ const reviewRecovered = multipleReviewed || option === '--participant-reviewed-t
 const competing = carryForward || reviewRecovered || option === '--participant-accepted-branch';
 assert.ok(process.argv.length === 3 || process.argv.length === 4 &&
   ['--independent-delivery', '--participant-archive', '--participant-terminal-receipts', '--participant-opaque',
-    '--participant-accepted-branch', '--participant-carried-alternate', '--participant-multiple-alternates', '--participant-reviewed-text', '--participant-multiple-reviewed', '--participant-multiple-rich-review', '--participant-cold-review-reader', '--participant-recovered-comment', '--participant-recovered-comment-intent', '--participant-recovered-discussion', '--participant-relay-discussion'].includes(option));
+    '--participant-accepted-branch', '--participant-carried-alternate', '--participant-multiple-alternates', '--participant-reviewed-text', '--participant-multiple-reviewed', '--participant-multiple-rich-review', '--participant-cold-review-reader', '--participant-recovered-comment', '--participant-recovered-comment-intent', '--participant-recovered-discussion', '--participant-relay-discussion', '--participant-portable-seal'].includes(option));
 const journalKind = terminalReceipts || opaque || competing || option === '--participant-archive' ? 'independentParticipant'
   : option === '--independent-delivery' ? 'independentDelivery' : 'pairedSession';
 const source = sourceEvidence(root);
@@ -966,7 +1000,7 @@ try {
     mkdirSync(path, {mode: 0o700});
     reports[mode] = {
       ...await run(mode, distribution, executable, path, journalKind, terminalReceipts, opaque, competing,
-        carryForward, multipleAlternates, reviewRecovered, richRecovered, coldReviewReader, recoverComment, recoverCommentIntent, recoverDiscussion, relayDiscussion),
+        carryForward, multipleAlternates, reviewRecovered, richRecovered, coldReviewReader, recoverComment, recoverCommentIntent, recoverDiscussion, relayDiscussion, portableSeal),
       proof: distribution.proof,
     };
   }
@@ -976,7 +1010,8 @@ try {
     format: 'breditor/writable-relay-segment-qualification', formatVersion: 1,
     source, relaySha256: sha(readFileSync(executable)), reports,
   };
-  const reportFile = relayDiscussion ? 'qualified-relay-discussion.json'
+  const reportFile = portableSeal ? 'qualified-portable-relocation.json'
+    : relayDiscussion ? 'qualified-relay-discussion.json'
     : recoverDiscussion ? 'qualified-recovered-discussion.json'
     : recoverCommentIntent ? 'qualified-recovered-comment-intent.json'
     : recoverComment ? 'qualified-recovered-comment.json'

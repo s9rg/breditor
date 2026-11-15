@@ -4,7 +4,7 @@ import {spawn} from 'node:child_process';
 import {createInterface} from 'node:readline';
 import {once} from 'node:events';
 
-export async function startSegmentHandoverHost(executable, args, token, exportAlternates = false, carryControl = false) {
+export async function startSegmentHandoverHost(executable, args, token, exportAlternates = false, carryControl = false, relocation) {
   const mode = args[1];
   const child = spawn(executable, args, {stdio: ['pipe', 'pipe', 'pipe']});
   const closed = new Promise(resolve => child.once('close', (code, signal) => resolve({code, signal})));
@@ -35,7 +35,10 @@ export async function startSegmentHandoverHost(executable, args, token, exportAl
   };
   try {
     await spawned;
-    if (token) {
+    if (mode === 'relocated') {
+      send(relocation ? {kind: 'activate', token, ...relocation} : {kind: 'resume', token});
+      child.stdin.end();
+    } else if (token) {
       send({kind: 'resume', token, exportAlternates, ...(carryControl ? {carryControl} : {})});
       if (!carryControl) child.stdin.end();
     } else if (mode !== 'final') {
@@ -51,11 +54,11 @@ export async function startSegmentHandoverHost(executable, args, token, exportAl
           uploads, journals, wrongReceipt, assetMapping, incomingBranch});
         return next('committed');
       },
-      async carry(token, document, review, peer, peerUpload, journals, alternate, additionalAlternate, peerReview, discussionBackup) {
+      async carry(token, document, review, peer, peerUpload, journals, alternate, additionalAlternate, peerReview, discussionBackup, sealPortable) {
         send({token, writer: document.writer, documentCredential: document.credential,
           actor: review.actor, reviewCredential: review.credential, peerWriter: peer.writer,
           peerCredential: peer.credential, peerPrincipal: peer.principal, peerReview,
-          peerUpload, journals, alternate, additionalAlternate, discussionBackup});
+          peerUpload, journals, alternate, additionalAlternate, discussionBackup, sealPortable});
         return next('carried');
       },
       async crash() {
