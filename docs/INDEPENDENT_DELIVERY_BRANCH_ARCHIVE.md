@@ -332,8 +332,10 @@ also sends `X-Breditor-Archive` and the original
 `application/vnd.breditor.recovered-discussion+json` body. GET discovery returns
 a versioned entry with the link, acceptance sequence, byte count and SHA-256.
 The reference catalog bounds each attachment at 8 MiB and the room at 64 MiB
-and 4,096 attachments. Application-managed attachment storage remains
-available through the prepare/read APIs.
+and 4,096 attachments. A relay opening a cut that contains a published
+attachment needs the recovered-discussion WAL and checkpoint readers.
+Application-managed attachment storage remains available through the
+prepare/read APIs.
 
 Run `node scripts/check-writable-relay-segment.mjs <relay-executable>
 --participant-relay-discussion` for source and clean installed test coverage

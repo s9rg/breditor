@@ -2,6 +2,15 @@
 
 ## November 15 collaboration recovery
 
+[Relay-owned recovered discussions](qualification/2026-11-15-relay-recovered-discussion.json)
+let the room owner publish an exact prepared attachment. The relay verifies the
+live thread's accepted birth and the complete discussion against the retained
+alternate participant archive before writing it to the WAL. A restart replays
+the original acceptance and a second authenticated handover carries it in the
+materialized checkpoint. A fresh Reader discovers and opens the two authors'
+complete archived timeline after restart and local cold reopen. Source and clean
+installed SDKs pass the same workflow with the application-held bytes removed.
+
 [Whole discussion recovery](qualification/2026-11-15-recovered-discussion.json)
 attaches a selected archived discussion to an exact new native review thread.
 Original authors, versions, and history remain readable in the immutable
@@ -10,8 +19,7 @@ records through both handovers. Source and clean installs verify the archive
 from a new Reader after relay restart and local cold reopen. The same run
 preserves the accepted rich document, revision packets and versions. The
 existing lost-reply workflow also passes with the rebuilt relay example.
-Applications currently retain the attachment and provide it to authorized
-readers. Relay-owned attachment storage and discovery remain open.
+The original application-managed attachment workflow remains available.
 
 [Restartable archived comment recovery](qualification/2026-11-15-archived-comment-intent.json)
 adds a portable intent for the exact next native review event. The application's
