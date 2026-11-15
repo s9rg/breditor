@@ -63,7 +63,10 @@ impl RelaySegmentDiscussionBackup {
         if !required.iter().copied().eq(expected.discussion_sources.iter().map(|pin| pin.sha256)) {
             return Err(Error::Contract("relay discussion backup source roster differs"));
         }
-        let discussion_sources = open_sources(&directory, &expected.discussion_sources)?;
+        let discussion_sources = match open_sources(&directory, &expected.discussion_sources)? {
+            Some(sources) => sources.files.into_iter().map(|source| source.journal).collect(),
+            None => Vec::new(),
+        };
         directory.guard()?;
         Ok(Self { backup, discussion_sources })
     }
@@ -80,12 +83,33 @@ fn read_owned(directory: &GenerationDirectory, name: &str) -> Result<File> {
     Ok(file)
 }
 
+struct OpenedSource {
+    name: String,
+    witness: GenerationFileWitness,
+    journal: RelaySegmentClientJournal,
+}
+
+struct OpenedSources {
+    directory: GenerationDirectory,
+    files: Vec<OpenedSource>,
+}
+
+impl OpenedSources {
+    fn check(&self) -> Result<()> {
+        self.directory.guard()?;
+        for source in &self.files {
+            source.journal.check_named(&source.witness, &self.directory.path.join(&source.name))?;
+        }
+        self.directory.guard()
+    }
+}
+
 fn open_sources(
     directory: &GenerationDirectory,
     pins: &[RelaySegmentClientJournalPin],
-) -> Result<Vec<RelaySegmentClientJournal>> {
+) -> Result<Option<OpenedSources>> {
     if pins.is_empty() {
-        return Ok(Vec::new());
+        return Ok(None);
     }
     let sources = GenerationDirectory::open(&directory.path.join(SOURCES))?;
     let files = pins
@@ -98,15 +122,20 @@ fn open_sources(
                 ));
             }
             let name = format!("{index}.participant");
-            RelaySegmentClientJournal::open(read_owned(&sources, &name)?, pin.clone())
+            let file = read_owned(&sources, &name)?;
+            let witness = GenerationFileWitness::of(&file)?;
+            let journal = RelaySegmentClientJournal::open(file, pin.clone())?;
+            Ok(OpenedSource { name, witness, journal })
         })
         .collect::<Result<Vec<_>>>()?;
-    sources.guard()?;
-    Ok(files)
+    let opened = OpenedSources { directory: sources, files };
+    opened.check()?;
+    Ok(Some(opened))
 }
 
 impl ServerBackupHandle {
     /// Capture the native archive, checkpoint, raster store and every required discussion original under one serving epoch.
+    /// Ordinary writes may proceed while the immutable companion archives are copied.
     /// The operator supplies any other selected or alternate journals required for the ordinary handover.
     /// Keep the returned identity independently. Run this blocking operation off async I/O workers.
     ///
@@ -131,26 +160,35 @@ impl ServerBackupHandle {
     ) -> Result<RelaySegmentDiscussionBackupIdentity> {
         let host = &self.host;
         host.authentication.authenticate(principal, token)?;
-        host.deployment.fenced(|lease| {
+        let (captured, source_epoch) = host.deployment.fenced(|lease| {
             deployment_fence::transaction(Some(lease), || {
-                let captured = capture(host, principal, destination)?;
-                after_cut()?;
-                let discussion_sources = if captured.discussion_sources.is_empty() {
-                    Vec::new()
-                } else {
-                    let custody =
-                        host.relay_segment_custody.as_ref().ok_or(Error::NeedsRecovery)?;
-                    custody.export_recovered_discussion_sources(
-                        &captured.discussion_sources,
-                        &captured.directory.path.join(SOURCES),
-                    )?
-                };
-                let _verified = open_sources(&captured.directory, &discussion_sources)?;
-                captured.directory.sync()?;
+                Ok((capture(host, principal, destination)?, lease.selection()))
+            })
+        })?;
+        after_cut()?;
+        let discussion_sources = if captured.discussion_sources.is_empty() {
+            Vec::new()
+        } else {
+            let custody = host.relay_segment_custody.as_ref().ok_or(Error::NeedsRecovery)?;
+            custody.export_recovered_discussion_sources(
+                &captured.discussion_sources,
+                &captured.directory.path.join(SOURCES),
+            )?
+        };
+        let verified = open_sources(&captured.directory, &discussion_sources)?;
+        captured.directory.sync()?;
+        host.deployment.fenced(|lease| {
+            if lease.selection() != source_epoch {
+                return Err(Error::Lease);
+            }
+            deployment_fence::transaction(Some(lease), || {
+                if let Some(verified) = &verified {
+                    verified.check()?;
+                }
                 captured.check(host)?;
                 Ok(RelaySegmentDiscussionBackupIdentity {
                     backup: captured.backup,
-                    source_epoch: lease.selection(),
+                    source_epoch,
                     discussion_sources,
                 })
             })

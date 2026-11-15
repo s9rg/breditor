@@ -1,9 +1,12 @@
 //! Held inode custody. A matching content hash cannot replace the actually locked source.
 use crate::{Error, Result};
 use serde::{Deserialize, Serialize};
+#[cfg(not(unix))]
+use std::io::{Read, Seek, SeekFrom};
+#[cfg(unix)]
+use std::os::unix::fs::FileExt;
 use std::{
     fs::{File, Metadata},
-    io::{Read, Seek, SeekFrom},
     path::Path,
 };
 
@@ -92,12 +95,39 @@ pub(super) fn read(file: &File, budget: u64) -> Result<Vec<u8>> {
     if length > budget {
         return Err(Error::Contract("log generation file byte budget"));
     }
-    let mut reader = file.try_clone()?;
-    reader.seek(SeekFrom::Start(0))?;
     let mut bytes = vec![0; usize::try_from(length).map_err(|_| Error::Contract("log byte size"))?];
-    reader.read_exact(&mut bytes)?;
-    if reader.metadata()?.len() != length {
+    // Clones share a cursor. Independent custody checks must read from their own offset.
+    #[cfg(unix)]
+    file.read_exact_at(&mut bytes, 0)?;
+    #[cfg(not(unix))]
+    {
+        let mut reader = file.try_clone()?;
+        reader.seek(SeekFrom::Start(0))?;
+        reader.read_exact(&mut bytes)?;
+    }
+    if file.metadata()?.len() != length {
         return Err(Error::Contract("log generation file changed while reading"));
     }
     Ok(bytes)
+}
+
+#[cfg(all(test, unix))]
+mod tests {
+    use super::read;
+    use crate::log::framing_tests::Files;
+    use std::io::{Seek, SeekFrom, Write};
+
+    #[test]
+    fn custody_read_leaves_the_shared_descriptor_position_unchanged()
+    -> Result<(), Box<dyn std::error::Error>> {
+        let files = Files::new()?;
+        let mut file = crate::log::options().create_new(true).open(files.log())?;
+        let contents = b"BREDITOR-LOG-GENERATIONS1\nfixture\n";
+        file.write_all(contents)?;
+        let mut observation = file.try_clone()?;
+        observation.seek(SeekFrom::Start(7))?;
+        assert_eq!(read(&file, 256)?, contents);
+        assert_eq!(observation.stream_position()?, 7);
+        Ok(())
+    }
 }

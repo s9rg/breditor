@@ -212,6 +212,15 @@ impl RelaySegmentClientJournal {
         &self.pin
     }
 
+    #[cfg(feature = "server")]
+    pub(crate) fn check_named(
+        &self,
+        witness: &crate::log::generations::GenerationFileWitness,
+        path: &std::path::Path,
+    ) -> Result<()> {
+        self.file.check_named(witness, path)
+    }
+
     pub(super) fn participant_upload(&self) -> Result<Option<UploadSource<'_>>> {
         self.participant.as_ref().map(|archive| archive.upload(self.file.all())).transpose()
     }

@@ -67,3 +67,17 @@ async fn a_live_write_can_finish_during_backup_copy_and_stays_outside_the_cut() 
     source.handle.host.transaction(|room| room.catchup("post-backup-cut")).await?;
     Ok(())
 }
+
+#[test]
+fn an_epoch_replacement_can_proceed_during_copy_and_prevents_backup_confirmation() -> TestResult {
+    let source = Source::open()?;
+    let path = source.parent.join("interrupted-backup");
+    let result = source.handle.capture_discussion_backup("owner", &source.token, &path, || {
+        let prior = source.authority.current_selection()?;
+        source.authority.claim(&prior)?.check()
+    });
+    assert!(matches!(result, Err(Error::Lease)));
+    assert_ne!(source.authority.current_selection()?, source.lease.selection());
+    assert!(path.join("native.archive").is_file());
+    Ok(())
+}
