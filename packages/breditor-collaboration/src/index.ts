@@ -295,6 +295,7 @@ export type {SharedServerLogGenerationRecoveryRasterRead} from './generation_rec
 
 export {buildSharedIndependentDeliveryBranchArchive,readSharedIndependentDeliveryBranchArchive} from './independent_delivery_branch_archive/archive.js';
 export {prepareSharedRecoveredBranchTextSuggestion} from './independent_delivery_branch_archive/recover_text.js';
+export {prepareSharedRecoveredBranchRichSuggestion} from './independent_delivery_branch_archive/recover_rich.js';
 export type {
  SharedIndependentDeliveryBranchArchive,
  SharedIndependentDeliveryBranchArchiveBuildOptions,
@@ -303,6 +304,9 @@ export type {
  SharedIndependentDeliveryBranchComparison,
  SharedIndependentDeliveryBranchFile,
  SharedIndependentDeliveryBranchLane,
+ SharedRecoveredBranchRichSuggestion,
+ SharedRecoveredBranchRichSuggestionOptions,
+ SharedRecoveredBranchSuggestionAsset,
  SharedRecoveredBranchTextSuggestion,
  SharedRecoveredBranchTextSuggestionOptions,
 } from './independent_delivery_branch_archive/contract.js';

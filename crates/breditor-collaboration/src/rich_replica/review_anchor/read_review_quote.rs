@@ -1,9 +1,6 @@
 //! Original plain text is derived from retained native history, never a current-coordinate guess.
-use crate::{
-    Error,
-    rich_replica::{ReviewAnchorResolution, ReviewAnchorTarget, RichReplica},
-};
-use breditor_core::rich_content::RichClipboardFragment;
+use super::historical_clipboard::HistoricalClipboard;
+use crate::{Error, rich_replica::RichReplica};
 use serde::Serialize;
 
 /// Why a valid original target does not supply a bounded quote.
@@ -41,27 +38,11 @@ impl RichReplica {
     /// # Errors
     /// Invalid binding, non-closed causal cuts, targets invalid at capture or projection errors reject.
     pub fn read_review_quote(&self, input: &str) -> Result<ReviewAnchorQuote, Error> {
-        let Some(source) = self.historical_review_document(input)? else {
-            return Ok(ReviewAnchorQuote::Pending);
+        let fragment = match self.historical_clipboard(input)? {
+            HistoricalClipboard::Pending => return Ok(ReviewAnchorQuote::Pending),
+            HistoricalClipboard::Document => return Ok(ReviewAnchorQuote::Document),
+            HistoricalClipboard::Selection(fragment) => fragment,
         };
-        let ReviewAnchorResolution::Resolved { target } = super::resolve_review_anchor::resolve_at(
-            &source.packet,
-            &source.doc,
-            &source.document,
-        )?
-        else {
-            return Err(Error::Contract("review quote target was invalid at its captured cut"));
-        };
-        let ReviewAnchorTarget::Selection(selection) = target else {
-            return Ok(ReviewAnchorQuote::Document);
-        };
-        let context = super::super::paragraphs::context(&self.codec);
-        let fragment = RichClipboardFragment::copy_general_selection(
-            &context,
-            &source.document,
-            &selection.admit(&source.document)?,
-        )
-        .map_err(|_| Error::Contract("review historical quote projection"))?;
         let plain_text = fragment
             .map_or_else(|| Ok(String::new()), |fragment| fragment.plain_text())
             .map_err(|_| Error::Contract("review historical quote plain text"))?;

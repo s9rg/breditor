@@ -1,6 +1,7 @@
 //! Pure proposal capture/preview and retained native receipts. No browser-side Accept executor.
 mod capture;
 mod check_preview;
+mod plan_clipboard;
 mod plan_general_text;
 mod prepare;
 mod read;

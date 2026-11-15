@@ -8,11 +8,12 @@ import {join, resolve} from 'node:path';
 import {fileURLToPath, pathToFileURL} from 'node:url';
 import {WebSocket as Socket} from 'undici';
 import {environment} from './fixtures/room-participant-inventory/environment.mjs';
-import {pixel, proposalAsset, proposalPixel, secondAsset, secondPixel} from './fixtures/review-assets/pixels.mjs';
+import {pixel, proposalAsset, proposalPixel, secondAsset, secondPixel, recoveredAsset, recoveredPixel} from './fixtures/review-assets/pixels.mjs';
 import {startSegmentHandoverHost} from './fixtures/relay-segment-handover-host.mjs';
 import {captureParticipant, checkRecoveredAlternate, proposalAlias, reopenParticipant, withWrongReviewReceipt} from './fixtures/relay-segment-participant.mjs';
 import {captureClientRaster, resumeClientRaster} from './fixtures/relay-segment-client-raster.mjs';
 import {recoveredText, reviewRecoveredText} from './fixtures/relay-segment-recovered-text.mjs';
+import {assertRecoveredRich, authorRecoveredRich, reviewRecoveredRich} from './fixtures/relay-segment-recovered-rich.mjs';
 import {recoveryFactory} from './fixtures/independent-delivery-recovery/session.mjs';
 import {installCollaborationConsumer} from './fixtures/installed-collaboration-consumer.mjs';
 import {sourceEvidence, saveEvidence} from './candidate-release/evidence.mjs';
@@ -53,7 +54,7 @@ function readRetainedClientJournals(parent, expected, directory = 'client-journa
   return originals;
 }
 
-async function run(mode, {distribution, rich}, executable, parent, journalKind, terminalReceipts, opaque, competing, carryForward, multipleAlternates, reviewRecovered) {
+async function run(mode, {distribution, rich}, executable, parent, journalKind, terminalReceipts, opaque, competing, carryForward, multipleAlternates, reviewRecovered, richRecovered) {
   const participant = journalKind === 'independentParticipant';
   const archiveImage = opaque ? proposalAlias : proposalAsset;
   const independentDelivery = journalKind !== 'pairedSession';
@@ -380,12 +381,14 @@ async function run(mode, {distribution, rich}, executable, parent, journalKind, 
         ...deliveryOptions, database: deliveryOptions.database + '-competing', recovery: competingSeed,
         writerRecovery: 'host-reacquired',
       });
-      edit(reviewRecovered ? recoveredText : 'Competing branch text ');
+      if (richRecovered) authorRecoveredRich(session.core);
+      else edit(reviewRecovered ? recoveredText : 'Competing branch text ');
       post('Competing branch comment');
       await session.flush();
       const competingRecovery = session.exportRecovery();
       const competingFile = await captureParticipant(
-        api, richApi, session, uploads[0], undefined, 'handover-competing-assets',
+        api, richApi, session, uploads[0], richRecovered ? recoveredAsset : undefined,
+        'handover-competing-assets', richRecovered ? recoveredPixel : undefined,
       );
       await session.close();
       if (multipleAlternates) {
@@ -680,10 +683,14 @@ async function run(mode, {distribution, rich}, executable, parent, journalKind, 
       assert.ok(sourceIndex >= 0);
       const sourceBytes = retained[sourceIndex];
       const parts = await attachOutboxes(session, () => token);
+      const assetUrl = new URL('/assets/' + encodeURIComponent(recoveredAsset), rasterUrl);
+      let generation;
       try {
-        await reviewRecoveredText({api, session, queue: parts.queue, transport: parts.transport,
+        const context = {api, session, queue: parts.queue, transport: parts.transport,
           source: {file: new Blob([sourceBytes]), selection: retainedBranches.incomingSelection},
-          policy: retainedBranches.readPolicy});
+          policy: retainedBranches.readPolicy};
+        if (richRecovered) generation = await reviewRecoveredRich({...context, assetUrl, headers});
+        else await reviewRecoveredText(context);
       } finally {
         await closeOutboxes(parts);
       }
@@ -694,7 +701,15 @@ async function run(mode, {distribution, rich}, executable, parent, journalKind, 
       const fresh = await api.registerSharedRelayWriter(options);
       const core = new api.SharedRichEditor(profile.join_frame('room', fresh.identity.writer, fresh.frame));
       try {
-        assert.equal(core.documentJson().split(recoveredText).length, 2);
+        if (richRecovered) {
+          assert.ok(generation);
+          assertRecoveredRich(core.documentJson(), generation);
+          const raster = await fetch(assetUrl, {headers});
+          assert.equal(raster.status, 200);
+          assert.deepEqual(Buffer.from(await raster.arrayBuffer()), recoveredPixel);
+        } else {
+          assert.equal(core.documentJson().split(recoveredText).length, 2);
+        }
       } finally {
         core.dispose();
       }
@@ -728,7 +743,8 @@ async function run(mode, {distribution, rich}, executable, parent, journalKind, 
         recoveredAlternateHistoryLanes,
         exportedAlternateArchives: 1,
       } : {}),
-      ...(reviewRecovered ? {recoveredTextAccepts: 1, coldAcceptedTextReads: 1} : {}),
+      ...(richRecovered ? {recoveredRichAccepts: 1, coldAcceptedRichReads: 1, stagedArchivedImageBytes: 1}
+        : reviewRecovered ? {recoveredTextAccepts: 1, coldAcceptedTextReads: 1} : {}),
       ...(opaque ? {
         unresolvedProviderMappings: captured.participantUnmapped,
         changedProviderRefusals: captured.participantMappingRefusals,
@@ -757,14 +773,15 @@ const executable = resolve(process.argv[2]);
 const option = process.argv[3];
 const terminalReceipts = option === '--participant-terminal-receipts';
 const opaque = option === '--participant-opaque';
-const multipleReviewed = option === '--participant-multiple-reviewed';
+const richRecovered = option === '--participant-multiple-rich-review';
+const multipleReviewed = richRecovered || option === '--participant-multiple-reviewed';
 const multipleAlternates = multipleReviewed || option === '--participant-multiple-alternates';
 const carryForward = multipleAlternates || option === '--participant-carried-alternate';
 const reviewRecovered = multipleReviewed || option === '--participant-reviewed-text';
 const competing = carryForward || reviewRecovered || option === '--participant-accepted-branch';
 assert.ok(process.argv.length === 3 || process.argv.length === 4 &&
   ['--independent-delivery', '--participant-archive', '--participant-terminal-receipts', '--participant-opaque',
-    '--participant-accepted-branch', '--participant-carried-alternate', '--participant-multiple-alternates', '--participant-reviewed-text', '--participant-multiple-reviewed'].includes(option));
+    '--participant-accepted-branch', '--participant-carried-alternate', '--participant-multiple-alternates', '--participant-reviewed-text', '--participant-multiple-reviewed', '--participant-multiple-rich-review'].includes(option));
 const journalKind = terminalReceipts || opaque || competing || option === '--participant-archive' ? 'independentParticipant'
   : option === '--independent-delivery' ? 'independentDelivery' : 'pairedSession';
 const source = sourceEvidence(root);
@@ -781,7 +798,7 @@ try {
     mkdirSync(path, {mode: 0o700});
     reports[mode] = {
       ...await run(mode, distribution, executable, path, journalKind, terminalReceipts, opaque, competing,
-        carryForward, multipleAlternates, reviewRecovered),
+        carryForward, multipleAlternates, reviewRecovered, richRecovered),
       proof: distribution.proof,
     };
   }
@@ -791,7 +808,8 @@ try {
     format: 'breditor/writable-relay-segment-qualification', formatVersion: 1,
     source, relaySha256: sha(readFileSync(executable)), reports,
   };
-  const reportFile = multipleReviewed ? 'qualified-review-after-multiple-handover.json'
+  const reportFile = richRecovered ? 'qualified-rich-review-after-multiple-handover.json'
+    : multipleReviewed ? 'qualified-review-after-multiple-handover.json'
     : reviewRecovered ? 'qualified-reviewed-recovered-text.json'
     : multipleAlternates ? 'qualified-multiple-participant-alternates.json'
     : carryForward ? 'qualified-carried-participant-alternate.json'

@@ -6,7 +6,6 @@ export const recoveredText = 'Competing branch text 🙂 ';
 export async function reviewRecoveredText({api, session, queue, transport, source, policy}) {
   const point = offset => ({block: 'p', offset: String(offset), affinity: 'after'});
   const range = end => ({kind: 'text', anchor: point(0), focus: point(end)});
-  const before = session.core.documentJson();
   const prepared = await api.prepareSharedRecoveredBranchTextSuggestion({
     ...policy, source, sourceRange: range(recoveredText.length),
     target: session, targetRange: range(0), targetRevision: session.core.view().revision,
@@ -14,6 +13,13 @@ export async function reviewRecoveredText({api, session, queue, transport, sourc
   });
   assert.equal(prepared.plainText, recoveredText);
   assert.deepEqual(prepared.source.selection, source.selection);
+  await publishRecoveredSuggestion({api,session,queue,transport,prepared,verify:document=>{
+    assert.equal(document.split(recoveredText).length,2);
+  }});
+}
+
+export async function publishRecoveredSuggestion({api,session,queue,transport,prepared,verify}) {
+  const before=session.core.documentJson();
   const info = queue.queuePacket(prepared.packet);
   assert.equal(queue.queuePacket(prepared.packet).id, info.id);
   await queue.flush();
@@ -30,7 +36,7 @@ export async function reviewRecoveredText({api, session, queue, transport, sourc
     const preview = session.core.prepareSuggestion(prepared.packet);
     assert.equal(preview.kind, 'ready');
     try {
-      assert.ok(preview.preview.documentJson().includes(recoveredText));
+      verify(preview.preview.documentJson());
       assert.equal(queue.queueDecision(info.id, 'accept', '81', preview.preview), true);
       assert.equal(session.core.documentJson(), before);
     } finally {
@@ -38,7 +44,7 @@ export async function reviewRecoveredText({api, session, queue, transport, sourc
     }
     await sync.flushShared();
     assert.equal(queue.status(info.id).decision.decision, 'accept');
-    assert.equal(session.core.documentJson().split(recoveredText).length, 2);
+    verify(session.core.documentJson());
     await session.flush();
   } finally {
     sync.dispose();

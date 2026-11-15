@@ -8,6 +8,7 @@ mod check_suggestion_preview;
 mod commit_suggestion_effect;
 mod evaluate_commands;
 mod packet;
+mod plan_suggestion_clipboard;
 mod plan_suggestion_general_text;
 mod prepare_suggestion_effect;
 mod prepare_suggestion_preview;
@@ -32,6 +33,7 @@ pub use packet::{
     DocumentSuggestionDraft, DocumentSuggestionEdit, DocumentSuggestionInfo,
     DocumentSuggestionScope,
 };
+pub use plan_suggestion_clipboard::{DocumentSuggestionClipboardPlan, SuggestionAssetRelocation};
 pub use prepare_suggestion_effect::{DocumentSuggestionEffect, PreparedDocumentSuggestionEffect};
 pub use prepare_suggestion_preview::{DocumentSuggestionPreparation, DocumentSuggestionPreview};
 pub use read_set::SuggestionConflictTarget;

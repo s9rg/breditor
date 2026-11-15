@@ -1,4 +1,4 @@
-import type {RichSelection} from "./types.js";
+import type {ClipboardContent,RichSelection} from "./types.js";
 /** Authenticated host policy supplied separately from event content. Writer leasing remains host-owned. */
 export interface SharedReviewPolicy {actor:string;principal:string;access:SharedReviewAccess}
 export type SharedReviewAccess="read_only"|"comment"|"moderate";
@@ -11,6 +11,10 @@ export type SharedReviewResolution=
  |{kind:"orphaned";reason:"target_deleted"|"hidden_table"|"range_collapsed"|"target_kind_changed"};
 /** Original native text at capture, not today's text at old numeric coordinates. */
 export type SharedReviewQuote={kind:"document"}|{kind:"pending"}|{kind:"quoted";plainText:string}|{kind:"unavailable";reason:"too_large"};
+/** Complete semantic content captured at the original review anchor. */
+export type SharedReviewClipboard=
+ |{kind:"document"|"pending"|"empty"}
+ |{kind:"copied";clipboard:ClipboardContent};
 export type SharedReviewAction=
  |{kind:"create_thread";data:{anchorJson:string;body:string}}
  |{kind:"reply";data:{thread:SharedReviewId;body:string}}
@@ -50,6 +54,9 @@ export interface SharedReviewRustCapability {
  resolve_review_anchor?(packet:string):string;
  review_quote_version?():string;
  read_review_quote?(packet:string):string;
+ /** Independent native clipboard capability. Original review quote support stays available. */
+ review_clipboard_version?():string;
+ read_review_clipboard?(packet:string):string;
  review_view_json?(observation:unknown):string;
  dispatch_review?(observation:unknown,input:string):string;
  undo_review?(observation:unknown):string;

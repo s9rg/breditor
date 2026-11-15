@@ -38,25 +38,13 @@ impl RichReplica {
         let clip = RichClipboardJsonCodec::new(context)
             .decode(&r.clipboard_json)
             .map_err(|_| Error::Contract("general flow clipboard admission"))?;
-        let plan = RichGeneralRangePlan::capture(
-            &self.document,
-            &r.selection.admit(&self.document)?,
-            &TextFragment::empty(),
-        )
-        .map_err(|_| Error::Contract("general flow replacement plan"))?;
-        let empty = allocate_general_range_paragraphs(&r.prefix, plan.empty_blocks().len())
-            .map_err(|_| Error::Contract("general flow floor namespace"))?;
+        let deletion = self.plan_clipboard_flow_deletion(&r.selection, &r.prefix)?;
         let nodes =
             self.fresh_clipboard_nodes(&clip, &mut ClipboardNamespace::try_new(&r.prefix)?)?;
-        let range =
-            super::general_range_plan::request(&self.codec, &r.selection, &TextFragment::empty())?;
         let point = TextPoint { block: r.right.clone(), offset: 0, affinity: Affinity::After };
         self.apply_with_state(
             vec![Command::PasteGeneralFlowAtTextV1(PasteGeneralFlowAtTextV1 {
-                deletion: ReplaceGeneralTextRangeV1 {
-                    range,
-                    empty: empty.iter().map(|id| id.as_str().into()).collect(),
-                },
+                deletion,
                 right: r.right,
                 nodes,
             })],
@@ -66,5 +54,22 @@ impl RichReplica {
             })),
             PendingFormatsUpdate::Set(None),
         )
+    }
+
+    pub(super) fn plan_clipboard_flow_deletion(
+        &self,
+        selection: &Selection,
+        prefix: &str,
+    ) -> Result<ReplaceGeneralTextRangeV1, Error> {
+        let text = TextFragment::empty();
+        let plan =
+            RichGeneralRangePlan::capture(&self.document, &selection.admit(&self.document)?, &text)
+                .map_err(|_| Error::Contract("general flow replacement plan"))?;
+        let empty = allocate_general_range_paragraphs(prefix, plan.empty_blocks().len())
+            .map_err(|_| Error::Contract("general flow floor namespace"))?;
+        Ok(ReplaceGeneralTextRangeV1 {
+            range: super::general_range_plan::request(&self.codec, selection, &text)?,
+            empty: empty.iter().map(|id| id.as_str().into()).collect(),
+        })
     }
 }

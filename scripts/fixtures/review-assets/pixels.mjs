@@ -13,7 +13,10 @@ export const secondAsset=`sha256:${createHash("sha256").update(secondPixel).dige
 const proposalScanline=Buffer.from([0,70,104,220,255]);
 export const proposalPixel=Buffer.concat([pixel.subarray(0,8),chunk("IHDR",header),chunk("IDAT",deflateSync(proposalScanline)),chunk("IEND",Buffer.alloc(0))]);
 export const proposalAsset=`sha256:${createHash("sha256").update(proposalPixel).digest("hex")}`;
+const recoveredScanline=Buffer.from([0,210,105,180,255]);
+export const recoveredPixel=Buffer.concat([pixel.subarray(0,8),chunk("IHDR",header),chunk("IDAT",deflateSync(recoveredScanline)),chunk("IEND",Buffer.alloc(0))]);
+export const recoveredAsset=`sha256:${createHash("sha256").update(recoveredPixel).digest("hex")}`;
 export class ReviewFixtureImage {
  naturalWidth=0;naturalHeight=0;src="";
- async decode(){const bytes=Buffer.from(await(await fetch(this.src)).arrayBuffer());assert.ok(bytes.equals(pixel)||bytes.equals(secondPixel)||bytes.equals(proposalPixel),"Only exact fixture PNGs are decoded");const at=33;assert.equal(bytes.toString("ascii",at+4,at+8),"IDAT");assert.deepEqual(inflateSync(bytes.subarray(at+8,at+8+bytes.readUInt32BE(at)),{maxOutputLength:5}),bytes.equals(pixel)?Buffer.from([0,35,155,120,255]):bytes.equals(secondPixel)?scanline:proposalScanline);this.naturalWidth=1;this.naturalHeight=1;}
+ async decode(){const bytes=Buffer.from(await(await fetch(this.src)).arrayBuffer());assert.ok(bytes.equals(pixel)||bytes.equals(secondPixel)||bytes.equals(proposalPixel)||bytes.equals(recoveredPixel),"Only exact fixture PNGs are decoded");const at=33;assert.equal(bytes.toString("ascii",at+4,at+8),"IDAT");assert.deepEqual(inflateSync(bytes.subarray(at+8,at+8+bytes.readUInt32BE(at)),{maxOutputLength:5}),bytes.equals(pixel)?Buffer.from([0,35,155,120,255]):bytes.equals(secondPixel)?scanline:bytes.equals(proposalPixel)?proposalScanline:recoveredScanline);this.naturalWidth=1;this.naturalHeight=1;}
 }

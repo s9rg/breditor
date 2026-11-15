@@ -1,13 +1,16 @@
 //! Durable review targets have strict orphan laws, independent of ephemeral caret relocation.
 mod capture_review_anchor;
 mod check_source_cut;
+mod historical_clipboard;
 mod historical_document;
 mod missing_review_dependencies;
 mod packet;
+mod read_review_clipboard;
 mod read_review_quote;
 mod resolve_review_anchor;
 pub(super) use check_source_cut::check_source_cut;
 
+pub use read_review_clipboard::ReviewAnchorClipboard;
 pub use read_review_quote::{ReviewAnchorQuote, ReviewQuoteLoss};
 
 use super::selection::Selection;

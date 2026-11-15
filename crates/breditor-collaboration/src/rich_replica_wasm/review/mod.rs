@@ -11,6 +11,7 @@ mod enable_review;
 mod enable_review_segmented_history;
 mod enable_segmented_review;
 mod export_review;
+mod read_clipboard;
 mod read_quote;
 mod receive_review;
 mod redo_review;

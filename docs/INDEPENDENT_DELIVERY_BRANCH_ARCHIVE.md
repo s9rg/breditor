@@ -143,3 +143,24 @@ comments, and Undo/Redo for further recovery decisions.
 
 The source and independently installed relay scenario is
 `node scripts/check-writable-relay-segment.mjs <relay-executable> --participant-reviewed-text`.
+
+## Propose recovered formatting or structure
+
+Use `prepareSharedRecoveredBranchRichSuggestion` with the same verified
+participant file and current target inputs. Pass a native text, node, or
+grid selection as `sourceSelection`. Native clipboard semantics preserve
+inline marks, selected structure, and the selected portion of tables
+and captions. Destination IDs are freshly allocated from the host's
+reserved namespace. The ordinary suggestion preview validates the
+complete edit against the target and supplies the data for review.
+
+For each copied image, the result includes the original binding, the
+fresh destination binding, its independently verified content asset,
+and the exact original Blob. Resolve the fresh binding through your
+existing provider or content-addressed upload before publishing or
+accepting the packet. Preserve the returned original provenance with
+the packet if the application needs an audit trail. Preparation leaves
+publication and acceptance to the ordinary review lane.
+
+The source and installed fixture for a rich proposal after two handovers is
+`node scripts/check-writable-relay-segment.mjs <relay-executable> --participant-multiple-rich-review`.

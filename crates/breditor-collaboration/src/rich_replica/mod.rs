@@ -157,8 +157,8 @@ pub use presence::{DocumentPresenceResolution, DocumentPresenceSelection};
 pub use profile::SharedRichProfile;
 pub use retained_asset_references::SHARED_ASSET_REFERENCE_MAX_CAUSAL_ATOMS;
 pub use review_anchor::{
-    ReviewAnchorLoss, ReviewAnchorQuote, ReviewAnchorResolution, ReviewAnchorTarget,
-    ReviewQuoteLoss,
+    ReviewAnchorClipboard, ReviewAnchorLoss, ReviewAnchorQuote, ReviewAnchorResolution,
+    ReviewAnchorTarget, ReviewQuoteLoss,
 };
 pub use review_comments::{
     DocumentReviewBatchPreparation, PreparedDocumentReviewBatch, ResolvedReviewAnchor,
@@ -170,13 +170,14 @@ pub use search::SharedSearchResults;
 pub use segmented_history::SegmentedHistoryInfo;
 pub use session::RichReplica;
 pub use suggestions::{
-    DocumentSuggestionDraft, DocumentSuggestionEdit, DocumentSuggestionEffect,
-    DocumentSuggestionEffectVerification, DocumentSuggestionFormatRebase,
+    DocumentSuggestionClipboardPlan, DocumentSuggestionDraft, DocumentSuggestionEdit,
+    DocumentSuggestionEffect, DocumentSuggestionEffectVerification, DocumentSuggestionFormatRebase,
     DocumentSuggestionFormatRebaseConflict, DocumentSuggestionInfo, DocumentSuggestionPreparation,
     DocumentSuggestionPreview, DocumentSuggestionRevisionInfo, DocumentSuggestionRevisionSource,
     DocumentSuggestionScope, DocumentSuggestionSource, DocumentSuggestionTextRebase,
     DocumentSuggestionTextRebaseConflict, DocumentSuggestionTextRebasePolicy,
-    PreparedDocumentSuggestionEffect, SuggestionConflictTarget, VerifiedDocumentSuggestionEffect,
+    PreparedDocumentSuggestionEffect, SuggestionAssetRelocation, SuggestionConflictTarget,
+    VerifiedDocumentSuggestionEffect,
 };
 pub use ui_state::{PendingFormatsUpdate, SelectionUpdate};
 pub use writer_transport::{

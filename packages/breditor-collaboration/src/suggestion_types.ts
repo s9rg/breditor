@@ -23,6 +23,11 @@ type DocumentOnlyCommand=Extract<SharedSuggestionCommand,{kind:"replace_document
 export type SharedDocumentSuggestionDraft=
  |{scope:"commands";edit:{kind:"commands";data:readonly Exclude<SharedSuggestionCommand,DocumentOnlyCommand>[]}|{kind:"general_text";data:SharedSuggestionGeneralRange}}
  |{scope:"document";edit:{kind:"commands";data:readonly SharedSuggestionCommand[]}|{kind:"general_text";data:SharedSuggestionGeneralRange}};
+/** Existing suggestion draft with exact native source and destination image bindings. */
+export interface SharedSuggestionClipboardPlan {
+ readonly draft:SharedDocumentSuggestionDraft;
+ readonly assets:readonly Readonly<{source:SharedVersionAsset;target:SharedVersionAsset}>[];
+}
 export type SharedDocumentSuggestionSource=
  |{kind:"pending";missing:readonly SharedSuggestionDependency[]}
  |{kind:"verified";info:SharedDocumentSuggestionInfo;clocks:readonly SharedSuggestionDependency[]};
@@ -74,6 +79,9 @@ export interface SharedSuggestionsRustCapability {
  /** Additive pure namespace planner. Older complete suggestion runtimes keep their V1 meanings. */
  suggestion_general_text_version?():string;
  plan_suggestion_general_text?(observed:unknown,input:string):string;
+ /** Separately negotiated rich clipboard planner. No accepted edit occurs. */
+ suggestion_clipboard_version?():string;
+ plan_suggestion_clipboard?(observed:unknown,selection:string,clipboard:string,prefix:string):string;
  /** Separate complete pure revision pair. Existing proposal V1 capability stays unchanged. */
  document_suggestion_revisions_version?():string;
  capture_document_suggestion_revision?(observed:unknown,input:string):string;

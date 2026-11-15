@@ -9,7 +9,8 @@ const sha = bytes => createHash('sha256').update(bytes).digest('hex');
 export const proposalAlias = 'sha256:opaque-proposal';
 const magic = Buffer.from('BREDITOR-INDEPENDENT-DELIVERY-PARTICIPANT1\n');
 
-export async function captureParticipant(api, rich, session, upload, assetKey, database = 'handover-participant-assets') {
+export async function captureParticipant(api, rich, session, upload, assetKey, database = 'handover-participant-assets', raster = proposalPixel) {
+  const contentAsset = raster === proposalPixel ? proposalAsset : 'sha256:' + sha(raster);
   const uploadBackup = readFileSync(upload.path);
   const store = await rich.RichAssetStore.restoreBackup(
     database, new Blob([uploadBackup]), {uploadState: 'preserve'},
@@ -21,8 +22,8 @@ export async function captureParticipant(api, rich, session, upload, assetKey, d
       resolveAsset(reference) {
         if (reference.asset !== assetKey) return undefined;
         return {
-          ...reference, identity: assetKey === proposalAsset ? 'content-addressed' : 'host-verified',
-          blob: new Blob([proposalPixel], {type: 'image/png'}), check() {},
+          ...reference, identity: assetKey === contentAsset ? 'content-addressed' : 'host-verified',
+          blob: new Blob([raster], {type: 'image/png'}), check() {},
         };
       },
     });
@@ -32,11 +33,11 @@ export async function captureParticipant(api, rich, session, upload, assetKey, d
       assert.deepEqual(backup.uploadEntries(), upload.rows);
       assert.deepEqual(Buffer.from(await backup.uploadBackup().arrayBuffer()), uploadBackup);
       if (assetKey !== undefined) {
-        assert.ok(backup.metadata().assets.some(asset => asset.contentAsset === proposalAsset));
+        assert.ok(backup.metadata().assets.some(asset => asset.contentAsset === contentAsset));
         const binding = backup.metadata().bindings.find(({asset}) => asset === assetKey);
-        assert.equal(binding.contentAsset, proposalAsset);
-        assert.equal(binding.identity, assetKey === proposalAsset ? 'content-addressed' : 'host-verified');
-        assert.equal(backup.uploadBlob(proposalAsset), undefined);
+        assert.equal(binding.contentAsset, contentAsset);
+        assert.equal(binding.identity, assetKey === contentAsset ? 'content-addressed' : 'host-verified');
+        assert.equal(backup.uploadBlob(contentAsset), undefined);
       }
       return {
         archive: Buffer.from(await backup.file().arrayBuffer()),

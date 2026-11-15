@@ -12,10 +12,10 @@ import type {RichRetainedAssetReferencesRead} from "@breditor/experimental-rich-
 import {RichRetainedAssetReferenceRegistry} from "@breditor/experimental-rich-content/rendering";
 import {SharedPacketAssetReferenceRegistry,type SharedPacketAssetReferencesRead} from "./packet_asset_references.js";
 import {parseRichWritingTools} from "@breditor/experimental-rich-content/rendering";
-import type {SharedReviewAccess,SharedReviewAction,SharedReviewGuard,SharedReviewImportOutcome,SharedReviewOutcome,SharedReviewPolicy,SharedReviewResolution,SharedReviewSnapshot,SharedReviewTarget,SharedReviewView,SharedReviewWriterClock,SharedReviewBatchReceipt,SharedReviewQuote} from "./review_types.js";
+import type {SharedReviewAccess,SharedReviewAction,SharedReviewGuard,SharedReviewImportOutcome,SharedReviewOutcome,SharedReviewPolicy,SharedReviewResolution,SharedReviewSnapshot,SharedReviewTarget,SharedReviewView,SharedReviewWriterClock,SharedReviewBatchReceipt,SharedReviewQuote,SharedReviewClipboard} from "./review_types.js";
 import type {SharedDocumentVersionInfo,SharedVersionComparison,SharedDocumentVersionSource} from "./version_types.js";
 import {SharedDocumentVersionRestorePlan,nativeVersionPlan} from "./version_plan.js";
-import type {SharedDocumentSuggestionDraft,SharedDocumentSuggestionInfo,SharedDocumentSuggestionPreparation,SharedDocumentSuggestionSource,SharedSuggestionPreparationSummary,SharedWriterReceiptV2,SharedWriterReceiptRetention,SharedSuggestionRevisionInfo,SharedSuggestionRevisionSource,SharedSuggestionFormatRebase,SharedSuggestionTextRebase,SharedSuggestionTextRebasePolicy} from "./suggestion_types.js";
+import type {SharedDocumentSuggestionDraft,SharedDocumentSuggestionInfo,SharedDocumentSuggestionPreparation,SharedDocumentSuggestionSource,SharedSuggestionPreparationSummary,SharedWriterReceiptV2,SharedWriterReceiptRetention,SharedSuggestionRevisionInfo,SharedSuggestionRevisionSource,SharedSuggestionFormatRebase,SharedSuggestionTextRebase,SharedSuggestionTextRebasePolicy,SharedSuggestionClipboardPlan} from "./suggestion_types.js";
 import {SharedDocumentSuggestionPreview,nativeSuggestionPreview} from "./suggestion_preview.js";
 import {SharedDocumentSuggestionEffectProof,nativeSuggestionEffectProof} from "./suggestion_effect_proof.js";
 import {reviewedHistoryIdentity,sameReviewedHistory} from "./reviewed_history_validation.js";
@@ -411,6 +411,12 @@ export class SharedRichEditor<P extends SharedSelectionPolicy="original"> {
  /** Optional lazy read: older comment runtimes remain supported without fabricating historical text. */
  supportsReviewQuotes():boolean{const r=this.#live();return this.supportsReview()&&r.review_quote_version?.()==="1"&&typeof r.read_review_quote==="function";}
  readReviewQuote(packet:string):SharedReviewQuote{if(!this.supportsReviewQuotes())throw new SharedEditorError("review_quotes_unavailable","Use matching native historical review quotes");return JSON.parse(this.#live().read_review_quote!(packet)) as SharedReviewQuote;}
+ /** Read the complete semantic clipboard at an original native review anchor. */
+ readReviewClipboard(packet:string):SharedReviewClipboard{
+  const raw=this.#live();
+  if(raw.review_clipboard_version?.()!=="1"||typeof raw.read_review_clipboard!=="function")throw new SharedEditorError("review_clipboard_unavailable","Use a matching native historical clipboard runtime");
+  return JSON.parse(raw.read_review_clipboard(packet)) as SharedReviewClipboard;
+ }
  dispatchReview(action:SharedReviewAction,guard?:SharedReviewGuard):SharedReviewOutcome{this.#checkReview(guard);return this.#run("local",(raw,o)=>{const result=JSON.parse(raw.dispatch_review!(o,JSON.stringify(action))) as SharedReviewOutcome;if(result.kind==="committed")this.#reviewRevision++;return result;},guard?.documentRevision,false);}
  undoReview(guard?:SharedReviewGuard):SharedReviewOutcome{return this.#performReviewHistory(false,guard);}
  redoReview(guard?:SharedReviewGuard):SharedReviewOutcome{return this.#performReviewHistory(true,guard);}
@@ -451,6 +457,13 @@ export class SharedRichEditor<P extends SharedSelectionPolicy="original"> {
  /** Native protected-range draft with exact host-reserved floors, including read-only sources.
   * Prefixes stay consumed on refusal/discard; capture this result against the same revision. */
  planSuggestionGeneralText(selection:Extract<RichSelection,{kind:"text"}>,runs:readonly {text:string;formatsJson:string}[],prefix:string,revision?:string):SharedDocumentSuggestionDraft{this.#check(revision);if(!this.supportsSuggestionGeneralText())throw new SharedEditorError("suggestion_general_text_unavailable","Use matching native pure protected-range proposal planning");return JSON.parse(this.#live().plan_suggestion_general_text!(this.#observation,JSON.stringify({selection,runs,prefix}))) as SharedDocumentSuggestionDraft;}
+ /** Pure native planning with fresh namespace IDs and exact image generation relocations. */
+ planSuggestionClipboard(selection:Extract<RichSelection,{kind:"text"}>,clipboard:string,prefix:string,revision?:string):SharedSuggestionClipboardPlan{
+  this.#check(revision);
+  const raw=this.#suggestionOwner();
+  if(raw.suggestion_clipboard_version?.()!=="1"||typeof raw.plan_suggestion_clipboard!=="function")throw new SharedEditorError("suggestion_clipboard_unavailable","Use a matching native rich suggestion runtime");
+  return JSON.parse(raw.plan_suggestion_clipboard(this.#observation,JSON.stringify(selection),clipboard,prefix)) as SharedSuggestionClipboardPlan;
+ }
  readSuggestion(packet:string):SharedDocumentSuggestionInfo{return JSON.parse(this.#suggestionOwner().read_document_suggestion!(packet)) as SharedDocumentSuggestionInfo;}
  verifySuggestionSource(packet:string):SharedDocumentSuggestionSource{return JSON.parse(this.#suggestionOwner().verify_document_suggestion_source!(packet)) as SharedDocumentSuggestionSource;}
  /** Optional immutable revisions never change the old complete proposal capability. */

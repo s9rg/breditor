@@ -251,3 +251,53 @@ test('refuses substituted bytes, empty ranges, foreign native origins and target
   await f.close();
  }
 });
+
+test('restores inline marks and a selected table with independently verified archived image bytes',async()=>{
+ const f=await participantUnionFixture(api,rich,profile,{
+  wasm:native,branchFork:true,relaySeed:true,archivedRich:true,
+  documentSegmented:true,reviewSegmented:true,
+ });
+ try{
+  const original=proposalOptions(f);
+  const {sourceRange,...request}=original;
+  const before=f.current.exportRecovery();
+  const bytes=await fileBytes(request.source.file);
+  const inline=await api.prepareSharedRecoveredBranchRichSuggestion({...request,sourceSelection:sourceRange});
+  assert.equal(inline.plainText,'Peer text ');
+  assert.deepEqual(inline.assets,[]);
+  const styled=f.current.core.prepareSuggestion(inline.packet);
+  assert.equal(styled.kind,'ready');
+  try{
+   const {children}=JSON.parse(styled.preview.documentJson()).root;
+   assert.ok(children[0].children.some(run=>run.text==='Peer text '&&run.formats.some(mark=>mark.type==='breditor/strong')));
+  }finally{styled.preview.dispose();}
+
+  const point=column=>({table:'recovered-grid',row:'recovered-row',column});
+  const table=await api.prepareSharedRecoveredBranchRichSuggestion({
+   ...request,namespace:'recovered-table-proposal',
+   sourceSelection:{kind:'grid',anchor:point('recovered-a'),focus:point('recovered-b')},
+  });
+  assert.equal(table.assets.length,1);
+  const [asset]=table.assets;
+  assert.equal(asset.source.generation,'recovered-generation');
+  assert.notEqual(asset.target.generation,asset.source.generation);
+  assert.equal(asset.target.asset,asset.source.asset);
+  assert.equal('sha256:'+sha(Buffer.from(await asset.blob.arrayBuffer())),asset.contentAsset);
+  const selected=f.current.core.prepareSuggestion(table.packet);
+  assert.equal(selected.kind,'ready');
+  try{
+   const {children}=JSON.parse(selected.preview.documentJson()).root;
+   const grid=children.find(child=>child.type==='breditor/table');
+   assert.deepEqual(grid.properties['breditor/columns'].map(column=>column.width),[104,156]);
+   assert.equal(grid.children[0].children[1].children[0].children[0].text,'Right cell');
+   const recovered=grid.children[0].children[0].children[1];
+   assert.equal(recovered.properties['breditor/asset-id'],asset.target.asset);
+   assert.equal(recovered.properties['breditor/asset-generation'],asset.target.generation);
+   assert.equal(recovered.children[0].children[0].text,'Retained image caption 🙂');
+  }finally{selected.preview.dispose();}
+  assert.deepEqual(f.current.exportRecovery(),before);
+  assert.deepEqual(await fileBytes(request.source.file),bytes);
+ }finally{
+  await f.close();
+ }
+});

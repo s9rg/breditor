@@ -1,6 +1,7 @@
 import type {AssetLimits} from '@breditor/experimental-rich-content';
 import type {SharedIndependentDeliverySession} from '../independent_delivery/session.js';
 import type {RichSelection} from '../types.js';
+import type {SharedVersionAsset} from '../version_types.js';
 import type {SharedArchiveIntegrityOptions} from '../archive_integrity/contract.js';
 import type {SharedIndependentDeliveryParticipantSelection} from '../independent_delivery_participant/contract.js';
 import type {SharedIndependentDeliveryUnionReadFactory} from '../independent_delivery_union/contract.js';
@@ -69,4 +70,21 @@ export interface SharedRecoveredBranchTextSuggestion {
  readonly packet:string;
  readonly plainText:string;
  readonly source:Readonly<{selection:SharedIndependentDeliveryParticipantSelection;anchorJson:string}>;
+}
+
+/** Preserve the native semantic clipboard content of an archived text, node or grid selection. */
+export interface SharedRecoveredBranchRichSuggestionOptions extends Omit<SharedRecoveredBranchTextSuggestionOptions,'sourceRange'> {
+ readonly sourceSelection:RichSelection;
+}
+
+/** Original verified bytes and the exact fresh destination generation to resolve before acceptance. */
+export interface SharedRecoveredBranchSuggestionAsset {
+ readonly source:Readonly<SharedVersionAsset>;
+ readonly target:Readonly<SharedVersionAsset>;
+ readonly contentAsset:string;
+ readonly blob:Blob;
+}
+
+export interface SharedRecoveredBranchRichSuggestion extends SharedRecoveredBranchTextSuggestion {
+ readonly assets:readonly SharedRecoveredBranchSuggestionAsset[];
 }

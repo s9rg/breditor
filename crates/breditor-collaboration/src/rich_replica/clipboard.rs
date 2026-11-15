@@ -167,13 +167,27 @@ impl RichReplica {
         fragment: &RichClipboardFragment,
         allocator: &mut dyn RichClipboardIdAllocator,
     ) -> Result<Vec<Value>, Error> {
-        let context = super::paragraphs::context(&self.codec);
+        let fresh = self.rekey_clipboard_flow(fragment, allocator)?;
+        self.clipboard_flow_nodes(&fresh)
+    }
+
+    pub(super) fn rekey_clipboard_flow(
+        &self,
+        fragment: &RichClipboardFragment,
+        allocator: &mut dyn RichClipboardIdAllocator,
+    ) -> Result<RichClipboardFragment, Error> {
         if fragment.kind() == RichClipboardKind::Text {
             return Err(Error::Contract("shared flow clipboard kind"));
         }
-        let fresh = fragment
-            .rekeyed(&context, allocator)
-            .map_err(|_| Error::Contract("shared clipboard allocation"))?;
+        fragment
+            .rekeyed(&super::paragraphs::context(&self.codec), allocator)
+            .map_err(|_| Error::Contract("shared clipboard allocation"))
+    }
+
+    pub(super) fn clipboard_flow_nodes(
+        &self,
+        fresh: &RichClipboardFragment,
+    ) -> Result<Vec<Value>, Error> {
         let raw: Value = serde_json::from_str(
             &self
                 .codec
