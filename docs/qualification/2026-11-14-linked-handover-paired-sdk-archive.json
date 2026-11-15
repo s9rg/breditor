@@ -1,0 +1,119 @@
+{
+  "format": "breditor/linked-handover-paired-sdk-archive-qualification",
+  "formatVersion": 1,
+  "date": "2026-11-14",
+  "source": {
+    "commit": "7c1b1f6b8a81034f5d88f0263ed9873292ee3e63",
+    "dirty": false,
+    "sha256": "354972e6f62e042eb5051ab7c886d039fa67dcedb09b073d435f0d7797048520",
+    "files": 8832,
+    "bytes": 75093858
+  },
+  "tree": "b953e55cd934fd41b603db37e1021b08493ba8c7",
+  "localMainPredecessor": "605ff00a0d66ca98ff8eef0d4f293d47a46495fb",
+  "relaySha256": "9f9cd6e778657f0a19442b9cff10e44a6e0549630b8af052deb59a15ada27195",
+  "rustExecutableSha256": "90d3a693276aa8837e1dff861517797b164e29c41a836fd11dc05da30b169bcb",
+  "journalTests": {
+    "passed": 4,
+    "failed": 0,
+    "logSha256": "2ddff861715bd4afe203805006502b9691b256c184b28bfa8774a1f990244dfc"
+  },
+  "handoverTests": {
+    "passed": 7,
+    "failed": 0,
+    "logSha256": "c346983aefe02072f10ee0844e8750f89b587d47d272ac328a7df49ed71a8c35"
+  },
+  "crossVolume": {
+    "passed": 1,
+    "failed": 0,
+    "logSha256": "94c078aa2de3f9975a0996c60cf5131902b20caa077eaac9106d7531ae01b162"
+  },
+  "clippyLibraryLogSha256": "010ccd0a3853d4e930587cd7a65428228d5f7b4e73dc337a2147c0fab42341a1",
+  "noServerLogSha256": "48a41b83bb72519c0ca5a9abe6df9b1d6e59c50a29b6f25b924c288a40b1081c",
+  "sdkReportSha256": "eba6b8a6a61c795dd72903733ba150ca804a92412b7d4c14eb5d18a5d38e9281",
+  "modes": {
+    "source": {
+      "mode": "source",
+      "handoffs": 2,
+      "portableRestores": 1,
+      "restoredOfflineLanes": 6,
+      "undoRedoLanes": 2,
+      "rasterReads": 2,
+      "processExits": 4,
+      "authenticatedTakeovers": 1,
+      "oldServingRefusals": 1,
+      "coldResumes": 2,
+      "registrationRefusals": 3,
+      "providerRasters": 2,
+      "retainedPackets": 1,
+      "stagedClientRasters": 2,
+      "clientUploadReceipts": 1,
+      "clientUploadArchives": 2,
+      "missingArchiveRefusals": 1,
+      "preservedCancelledUploads": 1,
+      "nativeJournals": 3,
+      "missingJournalRefusals": 2,
+      "coldJournalPairs": 1,
+      "clientJournalRasterBindings": 2,
+      "offlineImageRedo": 1,
+      "pairedBackups": 1,
+      "wrongReceiptRefusals": 1,
+      "retainedLocalVersions": 1,
+      "retainedAbsolutePositions": true,
+      "runtimeSha256": "373fa3eaff1317bec901efb053b2bf0e25cbe051102de3069dfcf16119997c56",
+      "proof": null
+    },
+    "installed": {
+      "mode": "installed",
+      "handoffs": 2,
+      "portableRestores": 1,
+      "restoredOfflineLanes": 6,
+      "undoRedoLanes": 2,
+      "rasterReads": 2,
+      "processExits": 4,
+      "authenticatedTakeovers": 1,
+      "oldServingRefusals": 1,
+      "coldResumes": 2,
+      "registrationRefusals": 3,
+      "providerRasters": 2,
+      "retainedPackets": 1,
+      "stagedClientRasters": 2,
+      "clientUploadReceipts": 1,
+      "clientUploadArchives": 2,
+      "missingArchiveRefusals": 1,
+      "preservedCancelledUploads": 1,
+      "nativeJournals": 3,
+      "missingJournalRefusals": 2,
+      "coldJournalPairs": 1,
+      "clientJournalRasterBindings": 2,
+      "offlineImageRedo": 1,
+      "pairedBackups": 1,
+      "wrongReceiptRefusals": 1,
+      "retainedLocalVersions": 1,
+      "retainedAbsolutePositions": true,
+      "runtimeSha256": "373fa3eaff1317bec901efb053b2bf0e25cbe051102de3069dfcf16119997c56",
+      "proof": {
+        "registryArtifacts": 45,
+        "archives": [
+          {
+            "name": "@breditor/browser",
+            "sha256": "79f5b486d3742d1234e4eb21c18822e0a494551d49a73039f5b856908c124f3f"
+          },
+          {
+            "name": "@breditor/experimental-rich-content",
+            "sha256": "c181984cc8f737861adf4886398d00413af6a42178d8542d789710c5b3faf371"
+          },
+          {
+            "name": "@breditor/collaboration",
+            "sha256": "da76219169eb0b14e2124ca82a4c26827dfd200047ddc65b53565b91f623c8c6"
+          }
+        ]
+      }
+    }
+  },
+  "scope": [
+    "Cold SDK restoration took the byte-exact original ordinary paired backup directly from the replacement relay's private archive after the original files and relay folders were moved away. The destination kept the named local version, nonsecret review progress, both offline journals and future Undo/Redo. Credentials and live policies were supplied separately.",
+    "The native test rejects a saved cursor whose underlying accepted events are absent. Both SDK runs rehash a backup with a wrong review receipt sequence under the known actor and prove the authenticated relay verification refuses it.",
+    "The archive format retains original relay and observer record meanings. The installed workflow uses an ordinary writing actor with controlled storage. Broader observer qualification, proposal/revision outbox enrollment and same-writer branch reconciliation remain open."
+  ]
+}
