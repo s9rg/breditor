@@ -18,7 +18,13 @@ pub(crate) struct FileStamp {
 }
 impl FileStamp {
     pub(crate) fn of(file: &File) -> Result<Self> {
-        let metadata = file.metadata()?;
+        Self::of_metadata(&file.metadata()?)
+    }
+    #[cfg_attr(
+        unix,
+        expect(clippy::unnecessary_wraps, reason = "non-Unix refuses change witnesses")
+    )]
+    pub(crate) fn of_metadata(metadata: &Metadata) -> Result<Self> {
         #[cfg(unix)]
         {
             use std::os::unix::fs::MetadataExt;
@@ -53,9 +59,9 @@ impl FileIdentity {
     }
 
     pub(crate) fn of(file: &File) -> Result<Self> {
-        Self::metadata(&file.metadata()?)
+        Self::of_metadata(&file.metadata()?)
     }
-    fn metadata(metadata: &Metadata) -> Result<Self> {
+    pub(crate) fn of_metadata(metadata: &Metadata) -> Result<Self> {
         if !metadata.is_file() {
             return Err(Error::Contract("log custody requires a regular inode"));
         }
@@ -75,7 +81,7 @@ impl FileIdentity {
     }
     pub(crate) fn guard(&self, file: &File, path: &Path) -> Result<()> {
         let named = std::fs::symlink_metadata(path)?;
-        if !named.is_file() || Self::of(file)? != *self || Self::metadata(&named)? != *self {
+        if !named.is_file() || Self::of(file)? != *self || Self::of_metadata(&named)? != *self {
             return Err(Error::Contract("log generation file custody differs"));
         }
         Ok(())

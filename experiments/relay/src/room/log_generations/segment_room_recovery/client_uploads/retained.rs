@@ -1,14 +1,20 @@
-//! No-overwrite retention and real file custody for each complete original queue.
+//! No-overwrite retention of exact queue files under one exclusively held directory.
 use super::{RelaySegmentClientUploadPin, UploadSource, check_pins, codec};
 use crate::{
     Error, Result,
     archive_input::ArchiveInput,
-    log::generations::{GenerationDirectory, GenerationDirectoryWitness, GenerationFileWitness},
+    log::generations::{
+        GenerationDirectory, GenerationDirectoryWitness, GenerationFileStamp, GenerationFileWitness,
+    },
     room::log_generations::recovery::files,
 };
 use serde::{Deserialize, Serialize};
 use sha2::{Digest, Sha256};
-use std::{fs::File, io};
+use std::{
+    fs::{self, File, Metadata},
+    io,
+    path::Path,
+};
 
 const ROOT: &str = "client-uploads";
 const MANIFEST: &str = "manifest.json";
@@ -20,16 +26,18 @@ pub(in crate::room::log_generations::segment_room_recovery) struct RetainedUploa
     sha256: [u8; 32],
 }
 
-struct HeldArchive {
+// The directory owner serializes recovery. Check the admitted file identity and
+// change stamp under that custody, and verify the exact digest on every byte read.
+struct RetainedArchive {
     witness: GenerationFileWitness,
-    file: ArchiveInput,
+    stamp: GenerationFileStamp,
     pin: RelaySegmentClientUploadPin,
 }
 
 pub(in crate::room::log_generations::segment_room_recovery) struct RetainedUploads {
     directory: GenerationDirectory,
     selection: RetainedUploadSelection,
-    archives: Vec<HeldArchive>,
+    archives: Vec<RetainedArchive>,
 }
 
 impl RetainedUploads {
@@ -40,14 +48,16 @@ impl RetainedUploads {
         let mut archives = Vec::with_capacity(sources.len());
         for source in sources {
             source.bytes.check()?;
-            let mut file = directory.create_file(&source.pin.name(), &[])?;
+            let name = source.pin.name();
+            let mut file = directory.create_file(&name, &[])?;
             if io::copy(&mut source.bytes.reader(), &mut file)? != source.pin.bytes {
                 return Err(Error::Contract("client upload archive truncated during retention"));
             }
             file.sync_all()?;
-            let held = HeldArchive::open(file, source.pin.clone())?;
+            let retained =
+                RetainedArchive::admit(file, &directory.path.join(name), source.pin.clone())?;
             source.bytes.check()?;
-            archives.push(held);
+            archives.push(retained);
         }
         let selection = RetainedUploadSelection {
             directory: directory.witness()?,
@@ -69,8 +79,10 @@ impl RetainedUploads {
         }
         let mut archives = Vec::with_capacity(pins.len());
         for pin in pins {
-            let file = files::open(&directory.path.join(pin.name()))?;
-            archives.push(HeldArchive::open(file, pin)?);
+            let path = directory.path.join(pin.name());
+            GenerationFileWitness::of_metadata(&fs::symlink_metadata(&path)?)?;
+            let file = files::open(&path)?;
+            archives.push(RetainedArchive::admit(file, &path, pin)?);
         }
         let selection =
             RetainedUploadSelection { directory: directory.witness()?, sha256: expected.sha256 };
@@ -98,7 +110,7 @@ impl RetainedUploads {
         }
         for entry in &self.archives {
             let path = self.directory.path.join(entry.pin.name());
-            entry.file.check_named(&entry.witness, &path)?;
+            entry.check_path(&path)?;
         }
         self.directory.guard()
     }
@@ -110,10 +122,7 @@ impl RetainedUploads {
         };
         let path = self.directory.path.join(entry.pin.name());
         let file = File::open(&path)?;
-        entry.witness.guard(&file, &path)?;
-        let compare = ArchiveInput::new(file.try_clone()?, codec::MAX_FILE)?;
-        entry.pin.check_file(compare.all())?;
-        compare.check()?;
+        entry.open_bytes(file.try_clone()?, &path)?;
         self.check()?;
         Ok(Some(file))
     }
@@ -122,7 +131,7 @@ impl RetainedUploads {
     fn standalone<'a>(
         &'a self,
         embedded_writers: &'a std::collections::BTreeSet<&str>,
-    ) -> impl Iterator<Item = &'a HeldArchive> {
+    ) -> impl Iterator<Item = &'a RetainedArchive> {
         self.archives.iter().filter(|entry| !embedded_writers.contains(entry.pin.writer.as_str()))
     }
 
@@ -135,7 +144,7 @@ impl RetainedUploads {
         self.check()?;
         let mut pins = Vec::new();
         for entry in self.standalone(embedded_writers) {
-            entry.copy_to(output)?;
+            entry.copy_to(&self.directory.path.join(entry.pin.name()), output)?;
             pins.push(entry.pin.clone());
         }
         self.check()?;
@@ -145,7 +154,7 @@ impl RetainedUploads {
     #[cfg(feature = "server")]
     pub fn export_standalone(
         &self,
-        destination: &std::path::Path,
+        destination: &Path,
         embedded_writers: &std::collections::BTreeSet<&str>,
     ) -> Result<Vec<RelaySegmentClientUploadPin>> {
         self.check()?;
@@ -158,7 +167,7 @@ impl RetainedUploads {
         for (index, entry) in entries.enumerate() {
             let name = format!("{index}.uploads");
             let mut output = directory.create_file(&name, &[])?;
-            entry.copy_to(&mut output)?;
+            entry.copy_to(&self.directory.path.join(entry.pin.name()), &mut output)?;
             output.sync_all()?;
             GenerationFileWitness::of(&output)?.guard(&output, &directory.path.join(&name))?;
             pins.push(entry.pin.clone());
@@ -170,21 +179,49 @@ impl RetainedUploads {
     }
 }
 
-impl HeldArchive {
+impl RetainedArchive {
     #[cfg(feature = "server")]
-    fn copy_to(&self, output: &mut impl std::io::Write) -> Result<()> {
-        self.file.check()?;
-        if io::copy(&mut self.file.all().reader(), output)? != self.pin.bytes {
+    fn copy_to(&self, path: &Path, output: &mut impl std::io::Write) -> Result<()> {
+        self.check_path(path)?;
+        let file = self.open_bytes(File::open(path)?, path)?;
+        if io::copy(&mut file.all().reader(), output)? != self.pin.bytes {
             return Err(Error::Contract("retained upload export truncated"));
         }
-        self.file.check()
+        file.check_named(&self.witness, path)?;
+        self.check_path(path)
     }
 
-    fn open(file: File, pin: RelaySegmentClientUploadPin) -> Result<Self> {
-        let witness = GenerationFileWitness::of(&file)?;
+    fn admit(file: File, path: &Path, pin: RelaySegmentClientUploadPin) -> Result<Self> {
+        let metadata = file.metadata()?;
+        let retained = Self {
+            witness: GenerationFileWitness::of_metadata(&metadata)?,
+            stamp: GenerationFileStamp::of_metadata(&metadata)?,
+            pin,
+        };
+        retained.open_bytes(file, path)?;
+        Ok(retained)
+    }
+
+    fn check_path(&self, path: &Path) -> Result<()> {
+        self.check_metadata(&fs::symlink_metadata(path)?)
+    }
+
+    fn check_metadata(&self, metadata: &Metadata) -> Result<()> {
+        if GenerationFileWitness::of_metadata(metadata)? != self.witness
+            || GenerationFileStamp::of_metadata(metadata)? != self.stamp
+            || metadata.len() != self.pin.bytes
+        {
+            return Err(Error::Contract("retained client upload archive custody changed"));
+        }
+        Ok(())
+    }
+
+    fn open_bytes(&self, file: File, path: &Path) -> Result<ArchiveInput> {
+        self.check_metadata(&file.metadata()?)?;
         let file = ArchiveInput::new(file, codec::MAX_FILE)?;
-        pin.check_file(file.all())?;
-        file.check()?;
-        Ok(Self { witness, file, pin })
+        self.pin.check_file(file.all())?;
+        file.check_named(&self.witness, path)?;
+        self.check_path(path)?;
+        Ok(file)
     }
 }

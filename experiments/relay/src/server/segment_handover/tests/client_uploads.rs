@@ -141,10 +141,25 @@ async fn incomplete_roster_and_changed_archive_custody_never_authorize_takeover(
     let changed = source.parent.join("renamed-archive");
     fs::rename(&retained_path, &changed)?;
     assert!(target.client_upload_pins().is_err());
+    fs::copy(&changed, &retained_path)?;
+    assert!(target.open_client_upload_archive("3").is_err());
+    assert!(target.client_upload_pins().is_err());
+    fs::remove_file(&retained_path)?;
     drop(target);
     assert!(backup.reopen(&path, POLICY).is_err());
     assert!(!retained_path.exists());
     fs::rename(changed, retained_path)?;
+    let target = backup.reopen(&path, POLICY)?;
+    assert_eq!(target.client_upload_pins()?.ok_or("coverage")?.len(), 2);
+    let retained_path = path.join("client-uploads/3.uploads");
+    let mut altered = bytes.clone();
+    *altered.last_mut().ok_or("queue bytes")? ^= 1;
+    fs::write(&retained_path, altered)?;
+    assert!(target.open_client_upload_archive("3").is_err());
+    assert!(target.client_upload_pins().is_err());
+    drop(target);
+    assert!(backup.reopen(&path, POLICY).is_err());
+    fs::write(&retained_path, bytes)?;
     assert_eq!(backup.reopen(&path, POLICY)?.client_upload_pins()?.ok_or("coverage")?.len(), 2);
     assert_eq!(source.authority.current_selection()?, source.lease.selection());
     Ok(())
