@@ -42,6 +42,15 @@ approval. The legacy capture-and-seal calls require revision one because
 they lack a coordinated continuation. The original `create` provisions
 revision-one authority with its existing claim policy.
 
+For a linked-room restart under revision two, reopen the authority with
+`open_at_least` using the latest independently retained selection for the
+approved target. An identity-only open or a selection earlier than that
+target's activation cannot resume it. Retain the planned activation selection
+before committing and retain the returned selection after each acknowledged
+restart. Keep these selections outside the authority directory and room
+backup. An older complete ledger must contain the retained exact epoch to
+reopen it.
+
 All participating hosts must select the same authority and use the fenced
 constructors. Ordinary constructors remain unfenced. This reference backend
 requires cooperating processes on a filesystem with working shared/exclusive

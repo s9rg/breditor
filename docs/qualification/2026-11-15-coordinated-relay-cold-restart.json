@@ -1,0 +1,83 @@
+{
+  "format": "breditor/coordinated-relay-cold-restart-qualification",
+  "formatVersion": 1,
+  "date": "2026-11-15",
+  "source": {
+    "commit": "6eb9f83ac3698d5f45f5a052636c9a849b8c669e",
+    "dirty": false,
+    "sha256": "e6a76db0c5d89835e41ef7d6d14675cfccf6c7b9ae929bc3bc2279ac1e638998",
+    "files": 8954,
+    "bytes": 76060773
+  },
+  "relaySha256": "681c9b440a842f2de7e74e6e16f93bc03aace10ec3b5f40928241508838c3664",
+  "runtimeSha256": "38b17b58126858fd4ef014e877e85806c323c675e88cd191222badbe9a36a6d5",
+  "before": {
+    "source": "cc5d3e0b275b3382ebc3dee10d5ce3fef1f10b03",
+    "relaySha256": "d88aee598dea78fe704b75d30823facddec23b3268a37991d72ec7520887ba7e",
+    "listenedWithOlderCompleteLedger": true,
+    "logSha256": "315d09b5c4a9f69e699edbdf45aaad9a25c95e071a051126f9331dea6ef44a58"
+  },
+  "native": {
+    "passed": 62,
+    "failed": 0,
+    "executableSha256": "9c1cae89a6f106ce911356bf00b2f22bccc97b661bbb9d2ebff0aa6019d3678f",
+    "logSha256": "57f94240b1b2c8549b83cc7552d34ce70231f4bb128d5aadca9b6ce0c8a093f6"
+  },
+  "sdkAndCandidateContracts": {
+    "passed": 105,
+    "failed": 0,
+    "logSha256": "971c4fc3b678d4178d0915ee4cfeb8b8814596cc39e2895ca8e36f22cfd01353"
+  },
+  "strictServerLibraryLint": {
+    "passed": true,
+    "logSha256": "6f51c9953e17e9aeeded08ea84d61f042dcf6adc4540560e6a4cdfc8b25d997e"
+  },
+  "restart": {
+    "reportSha256": "6e80fd44e89e927cfae65a9e7740e7b5409faa2da149beb75262a363095c4be6",
+    "runs": {
+      "source": {
+        "olderLedgerRefusals": 1,
+        "coldResumes": 5,
+        "offlineLanes": 6,
+        "undoRedoLanes": 2,
+        "archivedDiscussionEvents": 40,
+        "proof": null
+      },
+      "installed": {
+        "olderLedgerRefusals": 1,
+        "coldResumes": 5,
+        "offlineLanes": 6,
+        "undoRedoLanes": 2,
+        "archivedDiscussionEvents": 40,
+        "proof": {
+          "registryArtifacts": 45,
+          "archives": [
+            {
+              "name": "@breditor/browser",
+              "sha256": "79f5b486d3742d1234e4eb21c18822e0a494551d49a73039f5b856908c124f3f"
+            },
+            {
+              "name": "@breditor/experimental-rich-content",
+              "sha256": "c181984cc8f737861adf4886398d00413af6a42178d8542d789710c5b3faf371"
+            },
+            {
+              "name": "@breditor/collaboration",
+              "sha256": "c5d79a56da7f48c4e4e10a298bfc2bca5cb9cee46642c0c0586df828396ed7b8"
+            }
+          ]
+        }
+      }
+    }
+  },
+  "legacyHandover": {
+    "reportSha256": "9b5ed921c9d35b7f4533cecbb6b1280d35212525ffe119ed8ba490022f223398",
+    "matchesPreviousSourceAndInstalledResults": true
+  },
+  "scope": [
+    "A separate process reopens the completed portable target while its authority log contains a real older complete prefix. The old relay binary listened. The repaired binary refuses and leaves the older bytes intact.",
+    "The fixture retains its approved first epoch independently of the authority directory before committing. It also retains the new epoch before exposing each coordinated restarted listener.",
+    "Both modes resume on the genuine ledger after the refusal and preserve offline edits, native Undo/Redo, upload state and the archived discussion.",
+    "The linked-room Rust handover requires verified client and provider inputs for newly coordinated approvals. Its cold continuation refuses an identity-only authority and an outside floor older than the target activation.",
+    "Cold continuity depends on an independently retained epoch. Operators must preserve the outside witness when restoring authority storage."
+  ]
+}

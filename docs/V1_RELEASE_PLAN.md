@@ -2,6 +2,15 @@
 
 ## November 15 collaboration recovery
 
+[Coordinated relay cold restart](qualification/2026-11-15-coordinated-relay-cold-restart.json)
+requires an independently retained epoch at or after the target's activation.
+The previous relay started listening with an older complete ledger. The
+repaired source and clean-installed workflows refuse that ledger, resume with
+the genuine ledger, and preserve document and review history and pending
+uploads. New coordinated linked-room approvals require verification of
+protected registrations and provider inputs. All 62 native fencing, handover
+and restart tests pass.
+
 [Coordinated relay recovery](qualification/2026-11-15-coordinated-relay-recovery.json)
 adds an opt-in deployment authority that refuses ordinary claims after the
 first committed handover or seal. Source and clean-installed runs each refuse

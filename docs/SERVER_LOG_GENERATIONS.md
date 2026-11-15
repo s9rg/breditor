@@ -726,6 +726,15 @@ target-bound epoch and preserves later complete target work. A newer
 unrelated selection, a copied target directory, or an incomplete on-disk
 tail requires separate operator recovery. No control endpoint is exposed.
 
+For a revision-two coordinated authority, use `select_verified` and
+`commit_verified_relay_segment_handover` even if the restore includes no
+client archives. Save the planned activation epoch independently before
+committing. On cold restart, open the authority with `open_at_least` using the
+latest independently retained epoch for the approved target, then pass the
+actual current selection to `resume_handover`. Retain the returned selection
+before exposing service. A ledger that omits the independently retained epoch
+refuses cold admission.
+
 These are blocking host operations. They require participating hosts to
 share one actual authority journal, the private completed target directory
 to stay at its selected location, and the original owner to authenticate
