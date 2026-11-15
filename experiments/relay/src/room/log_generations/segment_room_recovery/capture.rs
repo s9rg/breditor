@@ -9,6 +9,11 @@ use crate::{
 };
 use std::{cell::Cell, fs::File, io::Write, sync::Arc};
 
+#[cfg(feature = "server")]
+use crate::log::generations::GenerationFileWitness;
+#[cfg(feature = "server")]
+use std::path::Path;
+
 impl Room {
     /// Stream the current physical log segment, its native checkpoint and exact raster store.
     /// Keep all earlier native archives for a continued room. Retain the returned identity
@@ -105,5 +110,16 @@ impl RelaySegmentRoomBackupFiles {
     pub(crate) fn check(&self) -> Result<()> {
         self.native.check()?;
         self.rasters.check()
+    }
+
+    #[cfg(feature = "server")]
+    pub(crate) fn check_named(
+        &self,
+        native: (&GenerationFileWitness, &Path),
+        checkpoint: (&GenerationFileWitness, &Path),
+        rasters: (&GenerationFileWitness, &Path),
+    ) -> Result<()> {
+        self.native.check_named_pair(native, checkpoint)?;
+        self.rasters.check_named(rasters.0, rasters.1)
     }
 }

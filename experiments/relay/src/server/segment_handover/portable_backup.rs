@@ -3,12 +3,13 @@ use super::{
     capture::begin_capture,
     native_lineage::NativeLineage,
     retained_backup::{
-        RelaySegmentRetainedBackup, RelaySegmentRetainedBackupIdentity, RetainedCopies,
+        RelaySegmentRetainedBackup, RelaySegmentRetainedBackupIdentity, RetainedBackupCopies,
+        RetainedCopies,
     },
 };
 use crate::{
-    RelaySegmentBaseIdentity, Result, log::generations::GenerationDirectory,
-    server::ServerBackupHandle,
+    RelaySegmentBaseIdentity, RelaySegmentRoomBackupIdentity, Result,
+    log::generations::GenerationDirectory, server::ServerBackupHandle,
 };
 use serde::{Deserialize, Serialize};
 use std::path::Path;
@@ -34,12 +35,35 @@ impl RelaySegmentRetainedBackup {
         path: &Path,
         expected: &RelaySegmentPortableBackupIdentity,
     ) -> Result<Self> {
+        Ok(NamedPortableBackup::open(path, expected)?.copies.into_backup())
+    }
+}
+
+/// The path-bound witnesses stay held while the portable seal is committed.
+pub(in crate::server) struct NamedPortableBackup {
+    directory: GenerationDirectory,
+    lineage: NativeLineage,
+    copies: RetainedBackupCopies,
+}
+
+impl NamedPortableBackup {
+    pub(super) fn open(path: &Path, expected: &RelaySegmentPortableBackupIdentity) -> Result<Self> {
         let directory = GenerationDirectory::open(path)?;
         let lineage = NativeLineage::open(&directory, &expected.native_predecessors)?;
-        let backup = Self::open_at(&directory, lineage.parent(), &expected.retained)?;
-        lineage.check()?;
-        directory.guard()?;
+        let copies = RetainedBackupCopies::open(&directory, lineage.parent(), &expected.retained)?;
+        let backup = Self { directory, lineage, copies };
+        backup.check_files()?;
         Ok(backup)
+    }
+
+    pub(in crate::server) fn identity(&self) -> &RelaySegmentRoomBackupIdentity {
+        self.copies.room.backup.identity()
+    }
+
+    pub(in crate::server) fn check_files(&self) -> Result<()> {
+        self.directory.guard()?;
+        self.lineage.check()?;
+        self.copies.check(&self.directory)
     }
 }
 

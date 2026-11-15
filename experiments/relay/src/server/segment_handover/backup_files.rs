@@ -12,15 +12,53 @@ pub(super) fn open_room(
     parent: Option<Arc<RelaySegmentBaseFile>>,
     expected: &RelaySegmentRoomBackupIdentity,
 ) -> Result<RelaySegmentRoomBackupFiles> {
-    let native = read_owned(directory, NATIVE)?;
-    let checkpoint = read_owned(directory, CHECKPOINT)?;
-    let base = match parent {
-        Some(parent) => {
-            RelaySegmentBaseFile::open_linked(native, checkpoint, &expected.native, parent)?
-        }
-        None => RelaySegmentBaseFile::open(native, checkpoint, &expected.native)?,
-    };
-    RelaySegmentRoomBackupFiles::open(Arc::new(base), read_owned(directory, RASTERS)?, expected)
+    Ok(RoomBackupCopies::open(directory, parent, expected)?.backup)
+}
+
+pub(super) struct RoomBackupCopies {
+    pub(super) backup: RelaySegmentRoomBackupFiles,
+    native: GenerationFileWitness,
+    checkpoint: GenerationFileWitness,
+    rasters: GenerationFileWitness,
+}
+
+impl RoomBackupCopies {
+    pub(super) fn open(
+        directory: &GenerationDirectory,
+        parent: Option<Arc<RelaySegmentBaseFile>>,
+        expected: &RelaySegmentRoomBackupIdentity,
+    ) -> Result<Self> {
+        let native = read_owned(directory, NATIVE)?;
+        let checkpoint = read_owned(directory, CHECKPOINT)?;
+        let rasters = read_owned(directory, RASTERS)?;
+        let native_witness = GenerationFileWitness::of(&native)?;
+        let checkpoint_witness = GenerationFileWitness::of(&checkpoint)?;
+        let raster_witness = GenerationFileWitness::of(&rasters)?;
+        let base = match parent {
+            Some(parent) => {
+                RelaySegmentBaseFile::open_linked(native, checkpoint, &expected.native, parent)?
+            }
+            None => RelaySegmentBaseFile::open(native, checkpoint, &expected.native)?,
+        };
+        let copies = Self {
+            backup: RelaySegmentRoomBackupFiles::open(Arc::new(base), rasters, expected)?,
+            native: native_witness,
+            checkpoint: checkpoint_witness,
+            rasters: raster_witness,
+        };
+        copies.check(directory)?;
+        Ok(copies)
+    }
+
+    pub(super) fn check(&self, directory: &GenerationDirectory) -> Result<()> {
+        directory.guard()?;
+        self.backup.check_named(
+            (&self.native, &directory.path.join(NATIVE)),
+            (&self.checkpoint, &directory.path.join(CHECKPOINT)),
+            (&self.rasters, &directory.path.join(RASTERS)),
+        )?;
+        directory.guard()
+    }
 }
 
 pub(super) fn read_owned(directory: &GenerationDirectory, name: &str) -> Result<File> {

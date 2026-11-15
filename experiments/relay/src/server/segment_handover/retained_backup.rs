@@ -1,6 +1,6 @@
 //! Capture native state and the exact client inputs already held by the relay.
 use super::{
-    backup_files::{BackupCopies, open_room},
+    backup_files::{BackupCopies, RoomBackupCopies},
     capture::{CapturedSegment, begin_capture},
 };
 use crate::{
@@ -64,43 +64,13 @@ impl RelaySegmentRetainedBackup {
         expected: &RelaySegmentRetainedBackupIdentity,
     ) -> Result<Self> {
         let directory = GenerationDirectory::open(path)?;
-        Self::open_at(&directory, parent, expected)
-    }
-
-    pub(super) fn open_at(
-        directory: &GenerationDirectory,
-        parent: Option<Arc<RelaySegmentBaseFile>>,
-        expected: &RelaySegmentRetainedBackupIdentity,
-    ) -> Result<Self> {
-        let backup = open_room(directory, parent, &expected.backup)?;
-        let required = backup.required_recovered_discussion_sources()?.into_iter().collect();
-        expected.verify_pins(&required)?;
-        let retained = RetainedCopies::open(directory, expected)?;
-        retained.check()?;
-        directory.guard()?;
-        Ok(Self {
-            backup,
-            selected: retained.selected.into_values(),
-            alternates: retained.alternates.into_values(),
-            uploads: retained.uploads.into_values(),
-        })
+        Ok(RetainedBackupCopies::open(&directory, parent, expected)?.into_backup())
     }
 
     /// Inspect the exact native and raster selection.
     #[must_use]
     pub fn backup(&self) -> &RelaySegmentRoomBackupFiles {
         &self.backup
-    }
-
-    pub(in crate::server) fn check_files(&self) -> Result<()> {
-        self.backup.check()?;
-        for journal in self.selected.iter().chain(&self.alternates) {
-            journal.check_file()?;
-        }
-        for upload in &self.uploads {
-            upload.check_file()?;
-        }
-        self.backup.check()
     }
 
     /// Restore the exact cut and its retained clients into a new, unselected room.
@@ -133,6 +103,41 @@ impl RelaySegmentRetainedBackup {
             &self.selected,
             &self.alternates,
         )
+    }
+}
+
+pub(super) struct RetainedBackupCopies {
+    pub(super) room: RoomBackupCopies,
+    clients: RetainedCopies,
+}
+
+impl RetainedBackupCopies {
+    pub(super) fn open(
+        directory: &GenerationDirectory,
+        parent: Option<Arc<RelaySegmentBaseFile>>,
+        expected: &RelaySegmentRetainedBackupIdentity,
+    ) -> Result<Self> {
+        let room = RoomBackupCopies::open(directory, parent, &expected.backup)?;
+        let required = room.backup.required_recovered_discussion_sources()?.into_iter().collect();
+        expected.verify_pins(&required)?;
+        let clients = RetainedCopies::open(directory, expected)?;
+        let copies = Self { room, clients };
+        copies.check(directory)?;
+        Ok(copies)
+    }
+
+    pub(super) fn check(&self, directory: &GenerationDirectory) -> Result<()> {
+        self.clients.check()?;
+        self.room.check(directory)
+    }
+
+    pub(super) fn into_backup(self) -> RelaySegmentRetainedBackup {
+        RelaySegmentRetainedBackup {
+            backup: self.room.backup,
+            selected: self.clients.selected.into_values(),
+            alternates: self.clients.alternates.into_values(),
+            uploads: self.clients.uploads.into_values(),
+        }
     }
 }
 

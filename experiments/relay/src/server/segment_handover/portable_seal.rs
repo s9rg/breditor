@@ -1,10 +1,11 @@
 //! Host-selected source seal for a complete portable backup.
+use super::portable_backup::NamedPortableBackup;
 use crate::{
     Error, Result, credentials,
     server::{
-        LogGenerationHandoverStatus, RelaySegmentPortableBackupIdentity,
-        RelaySegmentRetainedBackup, RoomDeploymentAuthority, RoomDeploymentSelection,
-        ServerBackupHandle, deployment_fence, generation_backup::durable::Interruption,
+        LogGenerationHandoverStatus, RelaySegmentPortableBackupIdentity, RoomDeploymentAuthority,
+        RoomDeploymentSelection, ServerBackupHandle, deployment_fence,
+        generation_backup::durable::Interruption,
     },
 };
 use serde::{Deserialize, Serialize};
@@ -72,11 +73,13 @@ impl RelaySegmentPortableSeal {
 
 impl ServerBackupHandle {
     /// After the owner has saved the intent, verify the portable bundle and seal the exact live cut.
+    /// Keep the backup at its selected path until this call returns, then move or reopen it.
     /// A seal fences the old host and issues no usable serving lease.
     /// Inspect the actual authority after an interrupted result. Run off async I/O workers.
     ///
     /// # Errors
-    /// Refuses changed source or bundle, incomplete inputs, incorrect owner authentication and stale epochs.
+    /// Refuses changed source or named backup custody, incomplete inputs, incorrect owner authentication
+    /// and stale epochs.
     pub fn seal_portable_relay_segment(
         &self,
         principal: &str,
@@ -115,7 +118,7 @@ impl ServerBackupHandle {
                     .recovery_inventory_owner(principal)
             })
         })?;
-        let bundle = RelaySegmentRetainedBackup::open_portable(path, intent.backup())?;
+        let bundle = NamedPortableBackup::open(path, intent.backup())?;
         deployment_fence::seal_portable_segment(host, principal, intent, &bundle, stop)
     }
 }

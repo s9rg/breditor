@@ -3,8 +3,9 @@ use super::{RoomDeploymentSelection, permit::Permit};
 use crate::{
     Error, Result,
     server::{
-        Host, RelaySegmentPortableSeal, RelaySegmentRetainedBackup,
+        Host, RelaySegmentPortableSeal,
         generation_backup::durable::{Interruption, Point},
+        segment_handover::NamedPortableBackup,
     },
 };
 use std::io::sink;
@@ -13,7 +14,7 @@ pub(in crate::server) fn seal_portable_segment(
     host: &Host,
     principal: &str,
     intent: &RelaySegmentPortableSeal,
-    bundle: &RelaySegmentRetainedBackup,
+    bundle: &NamedPortableBackup,
     stop: &Interruption,
 ) -> Result<RoomDeploymentSelection> {
     let expected = &intent.backup().retained;
@@ -26,7 +27,7 @@ pub(in crate::server) fn seal_portable_segment(
         let mut epoch = Permit::try_acquire(&authority.state, true)?;
         old.check_held(&mut epoch)?;
         bundle.check_files()?;
-        if bundle.backup().identity() != &expected.backup {
+        if bundle.identity() != &expected.backup {
             return Err(Error::Contract("portable relay seal backup differs"));
         }
         if let Some(custody) = &host.relay_segment_custody {
