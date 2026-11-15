@@ -1,0 +1,530 @@
+{
+  "format": "breditor/relay-segment-final-provider-qualification",
+  "formatVersion": 1,
+  "date": "2026-11-15",
+  "source": {
+    "commit": "665d9681e958680fc38a6f7ba74513673a6d436b",
+    "dirty": false,
+    "sha256": "f6b07fec669c2cbf4e9b52862e40abf1b69c6e402035c96aec7c430462d5362c",
+    "files": 8845,
+    "bytes": 75229539
+  },
+  "tree": "596630cfe02556c328709bf66a9f419354798958",
+  "predecessor": "47caec9bf60a9708deb9db96eb819f771a6fe71b",
+  "relaySha256": "5de0eac98659e88081a48387c128e14250cce7da482c98edc4cda9c9e7ccf9b2",
+  "rustExecutableSha256": "eb317a4d685a1821d4151f61dc670602dc5f60611a5db1ac59de1bc8af91679a",
+  "reproductions": {
+    "revokedAuthority": {
+      "unexpectedEpoch": "2",
+      "expectedEpoch": "1",
+      "logSha256": "000171f9180325686af2bd49963b4bdfd05effa2d2968ec827bba71afed884a4"
+    },
+    "changedOpaqueMapping": {
+      "unexpectedEpoch": "2",
+      "expectedEpoch": "1",
+      "logSha256": "f1a4bd06327df6763dbff676d85fb563bf8f6d341be4e8a32806ca06a65c9c8a"
+    }
+  },
+  "handoverTests": {
+    "passed": 9,
+    "failed": 0,
+    "ignored": 0,
+    "logSha256": "257291fa36071ecb83ab13a269bc6ce598ec1c0462a232651c04bae98bdcddb0"
+  },
+  "journalTests": {
+    "passed": 4,
+    "failed": 0,
+    "ignored": 0,
+    "logSha256": "5435fe7bc170cb5e277ba01b551ca934d423de7df06b93257fc88de7ca52e444"
+  },
+  "crossVolume": {
+    "passed": 1,
+    "failed": 0,
+    "ignored": 0,
+    "logSha256": "9722cfd4b8404cc183bf6729d3dd9b44de59876b04959828ffeb2e3833880fd9"
+  },
+  "clippyLibraryLogSha256": "e20f8d3bb04dc0418f93a551d9316d3a9c2567277d716ece3e6e2483f4aba230",
+  "noServerLogSha256": "0d94ef8a493eab40552bc6cc2c1149b200c8dc6c0a8661493fb1c24235980a8f",
+  "sdkReports": {
+    "opaqueBinding": {
+      "sha256": "b8aed5bd1f8165fe4626d12b5e58c931eb3ed8b7564a359ffd764e67d27245ce",
+      "runs": {
+        "source": {
+          "mode": "source",
+          "handoffs": 2,
+          "portableRestores": 1,
+          "restoredOfflineLanes": 6,
+          "undoRedoLanes": 2,
+          "rasterReads": 2,
+          "processExits": 4,
+          "authenticatedTakeovers": 1,
+          "oldServingRefusals": 1,
+          "coldResumes": 2,
+          "registrationRefusals": 3,
+          "providerRasters": 3,
+          "retainedPackets": 1,
+          "stagedClientRasters": 3,
+          "clientUploadReceipts": 1,
+          "clientUploadArchives": 2,
+          "missingArchiveRefusals": 1,
+          "preservedCancelledUploads": 1,
+          "nativeJournals": 3,
+          "missingJournalRefusals": 2,
+          "coldJournalPairs": 1,
+          "clientJournalRasterBindings": 3,
+          "offlineImageRedo": 1,
+          "pairedBackups": 0,
+          "wrongReceiptRefusals": 1,
+          "retainedLocalVersions": 1,
+          "independentDeliveries": 0,
+          "participantArchives": 1,
+          "participantRasterBindings": 3,
+          "archiveOnlyRasterReads": 1,
+          "unresolvedProviderMappings": 1,
+          "changedProviderRefusals": 2,
+          "retainedOutboxPendings": 4,
+          "deliveredOutboxEntries": 4,
+          "retainedAbsolutePositions": true,
+          "runtimeSha256": "373fa3eaff1317bec901efb053b2bf0e25cbe051102de3069dfcf16119997c56",
+          "proof": null
+        },
+        "installed": {
+          "mode": "installed",
+          "handoffs": 2,
+          "portableRestores": 1,
+          "restoredOfflineLanes": 6,
+          "undoRedoLanes": 2,
+          "rasterReads": 2,
+          "processExits": 4,
+          "authenticatedTakeovers": 1,
+          "oldServingRefusals": 1,
+          "coldResumes": 2,
+          "registrationRefusals": 3,
+          "providerRasters": 3,
+          "retainedPackets": 1,
+          "stagedClientRasters": 3,
+          "clientUploadReceipts": 1,
+          "clientUploadArchives": 2,
+          "missingArchiveRefusals": 1,
+          "preservedCancelledUploads": 1,
+          "nativeJournals": 3,
+          "missingJournalRefusals": 2,
+          "coldJournalPairs": 1,
+          "clientJournalRasterBindings": 3,
+          "offlineImageRedo": 1,
+          "pairedBackups": 0,
+          "wrongReceiptRefusals": 1,
+          "retainedLocalVersions": 1,
+          "independentDeliveries": 0,
+          "participantArchives": 1,
+          "participantRasterBindings": 3,
+          "archiveOnlyRasterReads": 1,
+          "unresolvedProviderMappings": 1,
+          "changedProviderRefusals": 2,
+          "retainedOutboxPendings": 4,
+          "deliveredOutboxEntries": 4,
+          "retainedAbsolutePositions": true,
+          "runtimeSha256": "373fa3eaff1317bec901efb053b2bf0e25cbe051102de3069dfcf16119997c56",
+          "proof": {
+            "registryArtifacts": 45,
+            "archives": [
+              {
+                "name": "@breditor/browser",
+                "sha256": "79f5b486d3742d1234e4eb21c18822e0a494551d49a73039f5b856908c124f3f"
+              },
+              {
+                "name": "@breditor/experimental-rich-content",
+                "sha256": "c181984cc8f737861adf4886398d00413af6a42178d8542d789710c5b3faf371"
+              },
+              {
+                "name": "@breditor/collaboration",
+                "sha256": "da76219169eb0b14e2124ca82a4c26827dfd200047ddc65b53565b91f623c8c6"
+              }
+            ]
+          }
+        }
+      }
+    },
+    "terminalReceipts": {
+      "sha256": "3cfffcd9767741080bce21e2a65ce7996d0ad46bf7657a28cb60b10aa8a397bc",
+      "runs": {
+        "source": {
+          "mode": "source",
+          "handoffs": 2,
+          "portableRestores": 1,
+          "restoredOfflineLanes": 6,
+          "undoRedoLanes": 2,
+          "rasterReads": 2,
+          "processExits": 4,
+          "authenticatedTakeovers": 1,
+          "oldServingRefusals": 1,
+          "coldResumes": 2,
+          "registrationRefusals": 3,
+          "providerRasters": 3,
+          "retainedPackets": 5,
+          "stagedClientRasters": 3,
+          "clientUploadReceipts": 1,
+          "clientUploadArchives": 2,
+          "missingArchiveRefusals": 1,
+          "preservedCancelledUploads": 1,
+          "nativeJournals": 3,
+          "missingJournalRefusals": 2,
+          "coldJournalPairs": 1,
+          "clientJournalRasterBindings": 4,
+          "offlineImageRedo": 1,
+          "pairedBackups": 0,
+          "wrongReceiptRefusals": 1,
+          "retainedLocalVersions": 1,
+          "independentDeliveries": 0,
+          "participantArchives": 1,
+          "participantRasterBindings": 4,
+          "archiveOnlyRasterReads": 1,
+          "retainedTerminalReceipts": 4,
+          "retainedOutboxPendings": 4,
+          "deliveredOutboxEntries": 4,
+          "retainedAbsolutePositions": true,
+          "runtimeSha256": "373fa3eaff1317bec901efb053b2bf0e25cbe051102de3069dfcf16119997c56",
+          "proof": null
+        },
+        "installed": {
+          "mode": "installed",
+          "handoffs": 2,
+          "portableRestores": 1,
+          "restoredOfflineLanes": 6,
+          "undoRedoLanes": 2,
+          "rasterReads": 2,
+          "processExits": 4,
+          "authenticatedTakeovers": 1,
+          "oldServingRefusals": 1,
+          "coldResumes": 2,
+          "registrationRefusals": 3,
+          "providerRasters": 3,
+          "retainedPackets": 5,
+          "stagedClientRasters": 3,
+          "clientUploadReceipts": 1,
+          "clientUploadArchives": 2,
+          "missingArchiveRefusals": 1,
+          "preservedCancelledUploads": 1,
+          "nativeJournals": 3,
+          "missingJournalRefusals": 2,
+          "coldJournalPairs": 1,
+          "clientJournalRasterBindings": 4,
+          "offlineImageRedo": 1,
+          "pairedBackups": 0,
+          "wrongReceiptRefusals": 1,
+          "retainedLocalVersions": 1,
+          "independentDeliveries": 0,
+          "participantArchives": 1,
+          "participantRasterBindings": 4,
+          "archiveOnlyRasterReads": 1,
+          "retainedTerminalReceipts": 4,
+          "retainedOutboxPendings": 4,
+          "deliveredOutboxEntries": 4,
+          "retainedAbsolutePositions": true,
+          "runtimeSha256": "373fa3eaff1317bec901efb053b2bf0e25cbe051102de3069dfcf16119997c56",
+          "proof": {
+            "registryArtifacts": 45,
+            "archives": [
+              {
+                "name": "@breditor/browser",
+                "sha256": "79f5b486d3742d1234e4eb21c18822e0a494551d49a73039f5b856908c124f3f"
+              },
+              {
+                "name": "@breditor/experimental-rich-content",
+                "sha256": "c181984cc8f737861adf4886398d00413af6a42178d8542d789710c5b3faf371"
+              },
+              {
+                "name": "@breditor/collaboration",
+                "sha256": "da76219169eb0b14e2124ca82a4c26827dfd200047ddc65b53565b91f623c8c6"
+              }
+            ]
+          }
+        }
+      }
+    },
+    "participantArchive": {
+      "sha256": "c1754e4d09016f29a66bed8161f345c39735d964abce46f8b8a132dcfb6f36cf",
+      "runs": {
+        "source": {
+          "mode": "source",
+          "handoffs": 2,
+          "portableRestores": 1,
+          "restoredOfflineLanes": 6,
+          "undoRedoLanes": 2,
+          "rasterReads": 2,
+          "processExits": 4,
+          "authenticatedTakeovers": 1,
+          "oldServingRefusals": 1,
+          "coldResumes": 2,
+          "registrationRefusals": 3,
+          "providerRasters": 3,
+          "retainedPackets": 1,
+          "stagedClientRasters": 3,
+          "clientUploadReceipts": 1,
+          "clientUploadArchives": 2,
+          "missingArchiveRefusals": 1,
+          "preservedCancelledUploads": 1,
+          "nativeJournals": 3,
+          "missingJournalRefusals": 2,
+          "coldJournalPairs": 1,
+          "clientJournalRasterBindings": 3,
+          "offlineImageRedo": 1,
+          "pairedBackups": 0,
+          "wrongReceiptRefusals": 1,
+          "retainedLocalVersions": 1,
+          "independentDeliveries": 0,
+          "participantArchives": 1,
+          "participantRasterBindings": 3,
+          "archiveOnlyRasterReads": 1,
+          "retainedOutboxPendings": 4,
+          "deliveredOutboxEntries": 4,
+          "retainedAbsolutePositions": true,
+          "runtimeSha256": "373fa3eaff1317bec901efb053b2bf0e25cbe051102de3069dfcf16119997c56",
+          "proof": null
+        },
+        "installed": {
+          "mode": "installed",
+          "handoffs": 2,
+          "portableRestores": 1,
+          "restoredOfflineLanes": 6,
+          "undoRedoLanes": 2,
+          "rasterReads": 2,
+          "processExits": 4,
+          "authenticatedTakeovers": 1,
+          "oldServingRefusals": 1,
+          "coldResumes": 2,
+          "registrationRefusals": 3,
+          "providerRasters": 3,
+          "retainedPackets": 1,
+          "stagedClientRasters": 3,
+          "clientUploadReceipts": 1,
+          "clientUploadArchives": 2,
+          "missingArchiveRefusals": 1,
+          "preservedCancelledUploads": 1,
+          "nativeJournals": 3,
+          "missingJournalRefusals": 2,
+          "coldJournalPairs": 1,
+          "clientJournalRasterBindings": 3,
+          "offlineImageRedo": 1,
+          "pairedBackups": 0,
+          "wrongReceiptRefusals": 1,
+          "retainedLocalVersions": 1,
+          "independentDeliveries": 0,
+          "participantArchives": 1,
+          "participantRasterBindings": 3,
+          "archiveOnlyRasterReads": 1,
+          "retainedOutboxPendings": 4,
+          "deliveredOutboxEntries": 4,
+          "retainedAbsolutePositions": true,
+          "runtimeSha256": "373fa3eaff1317bec901efb053b2bf0e25cbe051102de3069dfcf16119997c56",
+          "proof": {
+            "registryArtifacts": 45,
+            "archives": [
+              {
+                "name": "@breditor/browser",
+                "sha256": "79f5b486d3742d1234e4eb21c18822e0a494551d49a73039f5b856908c124f3f"
+              },
+              {
+                "name": "@breditor/experimental-rich-content",
+                "sha256": "c181984cc8f737861adf4886398d00413af6a42178d8542d789710c5b3faf371"
+              },
+              {
+                "name": "@breditor/collaboration",
+                "sha256": "da76219169eb0b14e2124ca82a4c26827dfd200047ddc65b53565b91f623c8c6"
+              }
+            ]
+          }
+        }
+      }
+    },
+    "independentDelivery": {
+      "sha256": "6d23f0523cc3597ece22ec524393c3b31fd9365bb69e5938e46d37fe8e388d01",
+      "runs": {
+        "source": {
+          "mode": "source",
+          "handoffs": 2,
+          "portableRestores": 1,
+          "restoredOfflineLanes": 6,
+          "undoRedoLanes": 2,
+          "rasterReads": 2,
+          "processExits": 4,
+          "authenticatedTakeovers": 1,
+          "oldServingRefusals": 1,
+          "coldResumes": 2,
+          "registrationRefusals": 3,
+          "providerRasters": 2,
+          "retainedPackets": 1,
+          "stagedClientRasters": 2,
+          "clientUploadReceipts": 1,
+          "clientUploadArchives": 2,
+          "missingArchiveRefusals": 1,
+          "preservedCancelledUploads": 1,
+          "nativeJournals": 3,
+          "missingJournalRefusals": 2,
+          "coldJournalPairs": 1,
+          "clientJournalRasterBindings": 3,
+          "offlineImageRedo": 1,
+          "pairedBackups": 0,
+          "wrongReceiptRefusals": 1,
+          "retainedLocalVersions": 1,
+          "independentDeliveries": 1,
+          "retainedOutboxPendings": 4,
+          "deliveredOutboxEntries": 4,
+          "retainedAbsolutePositions": true,
+          "runtimeSha256": "373fa3eaff1317bec901efb053b2bf0e25cbe051102de3069dfcf16119997c56",
+          "proof": null
+        },
+        "installed": {
+          "mode": "installed",
+          "handoffs": 2,
+          "portableRestores": 1,
+          "restoredOfflineLanes": 6,
+          "undoRedoLanes": 2,
+          "rasterReads": 2,
+          "processExits": 4,
+          "authenticatedTakeovers": 1,
+          "oldServingRefusals": 1,
+          "coldResumes": 2,
+          "registrationRefusals": 3,
+          "providerRasters": 2,
+          "retainedPackets": 1,
+          "stagedClientRasters": 2,
+          "clientUploadReceipts": 1,
+          "clientUploadArchives": 2,
+          "missingArchiveRefusals": 1,
+          "preservedCancelledUploads": 1,
+          "nativeJournals": 3,
+          "missingJournalRefusals": 2,
+          "coldJournalPairs": 1,
+          "clientJournalRasterBindings": 3,
+          "offlineImageRedo": 1,
+          "pairedBackups": 0,
+          "wrongReceiptRefusals": 1,
+          "retainedLocalVersions": 1,
+          "independentDeliveries": 1,
+          "retainedOutboxPendings": 4,
+          "deliveredOutboxEntries": 4,
+          "retainedAbsolutePositions": true,
+          "runtimeSha256": "373fa3eaff1317bec901efb053b2bf0e25cbe051102de3069dfcf16119997c56",
+          "proof": {
+            "registryArtifacts": 45,
+            "archives": [
+              {
+                "name": "@breditor/browser",
+                "sha256": "79f5b486d3742d1234e4eb21c18822e0a494551d49a73039f5b856908c124f3f"
+              },
+              {
+                "name": "@breditor/experimental-rich-content",
+                "sha256": "c181984cc8f737861adf4886398d00413af6a42178d8542d789710c5b3faf371"
+              },
+              {
+                "name": "@breditor/collaboration",
+                "sha256": "da76219169eb0b14e2124ca82a4c26827dfd200047ddc65b53565b91f623c8c6"
+              }
+            ]
+          }
+        }
+      }
+    },
+    "pairedSession": {
+      "sha256": "f82a43a5118a9f95f8d610f78dcc2416f8d44b841b5309d9be791aba304c28e4",
+      "runs": {
+        "source": {
+          "mode": "source",
+          "handoffs": 2,
+          "portableRestores": 1,
+          "restoredOfflineLanes": 6,
+          "undoRedoLanes": 2,
+          "rasterReads": 2,
+          "processExits": 4,
+          "authenticatedTakeovers": 1,
+          "oldServingRefusals": 1,
+          "coldResumes": 2,
+          "registrationRefusals": 3,
+          "providerRasters": 2,
+          "retainedPackets": 1,
+          "stagedClientRasters": 2,
+          "clientUploadReceipts": 1,
+          "clientUploadArchives": 2,
+          "missingArchiveRefusals": 1,
+          "preservedCancelledUploads": 1,
+          "nativeJournals": 3,
+          "missingJournalRefusals": 2,
+          "coldJournalPairs": 1,
+          "clientJournalRasterBindings": 2,
+          "offlineImageRedo": 1,
+          "pairedBackups": 1,
+          "wrongReceiptRefusals": 1,
+          "retainedLocalVersions": 1,
+          "independentDeliveries": 0,
+          "retainedOutboxPendings": 0,
+          "deliveredOutboxEntries": 0,
+          "retainedAbsolutePositions": true,
+          "runtimeSha256": "373fa3eaff1317bec901efb053b2bf0e25cbe051102de3069dfcf16119997c56",
+          "proof": null
+        },
+        "installed": {
+          "mode": "installed",
+          "handoffs": 2,
+          "portableRestores": 1,
+          "restoredOfflineLanes": 6,
+          "undoRedoLanes": 2,
+          "rasterReads": 2,
+          "processExits": 4,
+          "authenticatedTakeovers": 1,
+          "oldServingRefusals": 1,
+          "coldResumes": 2,
+          "registrationRefusals": 3,
+          "providerRasters": 2,
+          "retainedPackets": 1,
+          "stagedClientRasters": 2,
+          "clientUploadReceipts": 1,
+          "clientUploadArchives": 2,
+          "missingArchiveRefusals": 1,
+          "preservedCancelledUploads": 1,
+          "nativeJournals": 3,
+          "missingJournalRefusals": 2,
+          "coldJournalPairs": 1,
+          "clientJournalRasterBindings": 2,
+          "offlineImageRedo": 1,
+          "pairedBackups": 1,
+          "wrongReceiptRefusals": 1,
+          "retainedLocalVersions": 1,
+          "independentDeliveries": 0,
+          "retainedOutboxPendings": 0,
+          "deliveredOutboxEntries": 0,
+          "retainedAbsolutePositions": true,
+          "runtimeSha256": "373fa3eaff1317bec901efb053b2bf0e25cbe051102de3069dfcf16119997c56",
+          "proof": {
+            "registryArtifacts": 45,
+            "archives": [
+              {
+                "name": "@breditor/browser",
+                "sha256": "79f5b486d3742d1234e4eb21c18822e0a494551d49a73039f5b856908c124f3f"
+              },
+              {
+                "name": "@breditor/experimental-rich-content",
+                "sha256": "c181984cc8f737861adf4886398d00413af6a42178d8542d789710c5b3faf371"
+              },
+              {
+                "name": "@breditor/collaboration",
+                "sha256": "da76219169eb0b14e2124ca82a4c26827dfd200047ddc65b53565b91f623c8c6"
+              }
+            ]
+          }
+        }
+      }
+    }
+  },
+  "scope": [
+    "Both failure cases suspended the authenticated epoch transition after the predecessor cut comparison, then revoked the provider or substituted another valid admitted image under the selected opaque binding. In each original reproduction the stale attempt appended the next epoch.",
+    "The corrected native regressions require refusal before the append, verify the original lease and serving selection remain current, and then commit the same selected cut after independent provider re-verification.",
+    "Source and offline-installed SDKs also refuse missing and mismatched live mappings, preserve original receipts and client-only image bytes, and deliver pending work after a cold takeover. Controlled client storage and explicit authenticated local relay fixtures are used."
+  ],
+  "fullRelayRegression": {
+    "passed": 527,
+    "failed": 0,
+    "ignored": 1,
+    "logSha256": "56da1896b07ed0b903f0adab7455e3f6e0afa9093a269b217afb4a3193e1aa69"
+  }
+}
