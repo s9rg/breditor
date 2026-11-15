@@ -5,7 +5,7 @@ import {createHash} from 'node:crypto';
 import {readFileSync} from 'node:fs';
 import {join,resolve} from 'node:path';
 import {fileURLToPath,pathToFileURL} from 'node:url';
-import {participantUnionFixture,fileBytes} from './fixtures/independent-delivery-union/archive.mjs';
+import {participantUnionFixture,fileBytes,joinRelaySeed} from './fixtures/independent-delivery-union/archive.mjs';
 import {nativeProfile} from './fixtures/owned-core-cleanup/session.mjs';
 
 const root=fileURLToPath(new URL('..',import.meta.url));
@@ -155,6 +155,99 @@ test('compares extensions in both directions and equal heads across distinct dev
   }
  }finally{
   replica?.dispose();
+  await f.close();
+ }
+});
+
+function proposalOptions(f) {
+ const point=offset=>({block:'p',offset:String(offset),affinity:'after'});
+ const range=(start,end)=>({kind:'text',anchor:point(start),focus:point(end)});
+ return {...options(f),source:f.options.incoming,sourceRange:range(0,10),target:f.current,
+  targetRange:range(0,0),targetRevision:f.current.core.view().revision,
+  namespace:'recovered-branch-text',title:'Recover selected text',createdAtMs:'80'};
+}
+
+test('projects exact native archived text into a separately queued proposal and cold reopens the packet',async()=>{
+ const f=await participantUnionFixture(api,rich,profile,{wasm:native,branchFork:true,relaySeed:true,
+  documentSegmented:true,reviewSegmented:true});
+ let restored,queue;
+ try{
+  const before=f.current.exportRecovery(),input=proposalOptions(f),bytes=await fileBytes(input.source.file);
+  const names=await indexedDB.databases();
+  const prepared=await api.prepareSharedRecoveredBranchTextSuggestion(input);
+  assert.equal(prepared.plainText,'Peer text ');
+  assert.deepEqual(prepared.source.selection,input.source.selection);
+  assert.ok(prepared.source.anchorJson);
+  assert.equal(f.current.core.readSuggestion(prepared.packet).author,'alice');
+  assert.equal(f.current.core.verifySuggestionSource(prepared.packet).kind,'verified');
+  const preview=f.current.core.prepareSuggestion(prepared.packet);
+  assert.equal(preview.kind,'ready');
+  try{assert.match(preview.preview.documentJson(),/Peer text Common seed/);}
+  finally{preview.preview.dispose();}
+  assert.deepEqual(await indexedDB.databases(),names);
+  assert.deepEqual(f.current.exportRecovery(),before);
+  assert.deepEqual(await fileBytes(input.source.file),bytes);
+
+  const info=f.currentParts.queue.queuePacket(prepared.packet);
+  assert.equal(f.currentParts.queue.queuePacket(prepared.packet).id,info.id);
+  await f.currentParts.queue.flush();
+  assert.equal(f.currentParts.queue.status(info.id).publication,null);
+  assert.deepEqual(f.current.exportRecovery().source,before.source);
+  const recovery=f.current.exportRecovery();
+  await f.current.close();
+  restored=await api.SharedIndependentDeliverySession.restoreRecovery({
+   ...f.chosen.options,database:f.tag+'-recovered-proposal-target',recovery,writerRecovery:'host-reacquired',
+  });
+  queue=await restored.openSuggestionQueue();
+  assert.equal(queue.packet(info.id),prepared.packet);
+  assert.equal(queue.status(info.id).publish,true);
+  assert.deepEqual(restored.exportRecovery().source,before.source);
+ }finally{
+  await queue?.close();
+  await restored?.discardAndClose();
+  await f.close();
+ }
+});
+
+test('refuses substituted bytes, empty ranges, foreign native origins and target edits during preparation',async()=>{
+ const f=await participantUnionFixture(api,rich,profile,{wasm:native,branchFork:true,relaySeed:true});
+ let foreign;
+ try{
+  const input=proposalOptions(f),before=f.current.exportRecovery();
+  const changed=await fileBytes(input.source.file);
+  changed[changed.length-1]^=1;
+  await assert.rejects(api.prepareSharedRecoveredBranchTextSuggestion({
+   ...input,source:{...input.source,file:new Blob([changed])},
+  }));
+  await assert.rejects(api.prepareSharedRecoveredBranchTextSuggestion({
+   ...input,sourceRange:{...input.sourceRange,focus:input.sourceRange.anchor},
+  }),/complete native quote/);
+  assert.deepEqual(f.current.exportRecovery(),before);
+
+  let changedTarget=false;
+  await assert.rejects(api.prepareSharedRecoveredBranchTextSuggestion({
+   ...input,checkAuthority(){
+    if(changedTarget)return;
+    changedTarget=true;
+    f.current.core.dispatch({commands:[{kind:'insert_text',data:{block:'p',offset:0,text:'Later target '}}]});
+   },
+  }),/Target document changed/);
+  assert.match(f.current.core.documentJson(),/Later target Common seed/);
+  assert.doesNotMatch(f.current.core.documentJson(),/Peer text/);
+  assert.deepEqual(f.current.exportRecovery().retained,before.retained);
+  const unrelatedDocument=f.current.core.documentJson();
+  await f.current.close();
+  const unrelated=unrelatedDocument.replace('Common seed','Separate native seed');
+  assert.match(unrelated,/Separate native seed/);
+  foreign=await api.SharedIndependentDeliverySession.open({
+   ...f.chosen.options,database:f.tag+'-foreign-proposal-target',
+   create:()=>joinRelaySeed(api,profile,unrelated,f.chosen.options.writer),
+  });
+  await assert.rejects(api.prepareSharedRecoveredBranchTextSuggestion({
+   ...input,target:foreign,targetRevision:foreign.core.view().revision,
+  }),/different native document/);
+ }finally{
+  await foreign?.discardAndClose();
   await f.close();
  }
 });

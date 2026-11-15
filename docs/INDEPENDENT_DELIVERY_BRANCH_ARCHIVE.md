@@ -99,3 +99,27 @@ the exact current epoch and an absent destination. It writes individually
 openable participant files and returns their ordered pins. To move into
 another handover, explicitly pass those original alternate files again. An overlapping fork still needs a conflict-resolution step before
 its edits can join the live history.
+
+## Propose selected text from a recovered original
+
+Use `prepareSharedRecoveredBranchTextSuggestion` with one exact original
+participant file, its independently retained selection, and an explicit
+text range from that copy. Use scalar-aligned UTF-16 offsets. Choose a
+target range and the current `targetRevision` in a live independent delivery session. The helper checks
+the relay room, native seed, and schema. Native review anchors project
+the archived selection to plain text, and the native proposal planner
+preserves the surrounding target structure. The host reserves the
+proposal namespace using its normal allocation policy, including on
+refusal or discard.
+
+The result holds an ordinary immutable suggestion packet and detached
+provenance identifying the archived file and original native anchor.
+Retain that provenance with the packet when the application needs an
+audit trail. Use `prepareSuggestion` to preview it and `queuePacket` to
+publish through the ordinary review workflow. The authenticated Accept
+decision applies the proposed edit. This path imports selected plain
+text. The separate archives retain their complete formatting, assets,
+comments, and Undo/Redo for further recovery decisions.
+
+The source and independently installed relay scenario is
+`node scripts/check-writable-relay-segment.mjs <relay-executable> --participant-reviewed-text`.

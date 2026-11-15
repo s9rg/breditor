@@ -12,6 +12,7 @@ import {pixel, proposalAsset, proposalPixel, secondAsset, secondPixel} from './f
 import {startSegmentHandoverHost} from './fixtures/relay-segment-handover-host.mjs';
 import {captureParticipant, checkRecoveredAlternate, proposalAlias, reopenParticipant, withWrongReviewReceipt} from './fixtures/relay-segment-participant.mjs';
 import {captureClientRaster, resumeClientRaster} from './fixtures/relay-segment-client-raster.mjs';
+import {recoveredText, reviewRecoveredText} from './fixtures/relay-segment-recovered-text.mjs';
 import {recoveryFactory} from './fixtures/independent-delivery-recovery/session.mjs';
 import {installCollaborationConsumer} from './fixtures/installed-collaboration-consumer.mjs';
 import {sourceEvidence, saveEvidence} from './candidate-release/evidence.mjs';
@@ -52,7 +53,7 @@ function readRetainedClientJournals(parent, expected, directory = 'client-journa
   return originals;
 }
 
-async function run(mode, {distribution, rich}, executable, parent, journalKind, terminalReceipts, opaque, competing) {
+async function run(mode, {distribution, rich}, executable, parent, journalKind, terminalReceipts, opaque, competing, reviewRecovered) {
   const participant = journalKind === 'independentParticipant';
   const archiveImage = opaque ? proposalAlias : proposalAsset;
   const independentDelivery = journalKind !== 'pairedSession';
@@ -379,7 +380,7 @@ async function run(mode, {distribution, rich}, executable, parent, journalKind, 
         ...deliveryOptions, database: deliveryOptions.database + '-competing', recovery: competingSeed,
         writerRecovery: 'host-reacquired',
       });
-      edit('Competing branch text ');
+      edit(reviewRecovered ? recoveredText : 'Competing branch text ');
       post('Competing branch comment');
       await session.flush();
       const competingRecovery = session.exportRecovery();
@@ -576,8 +577,32 @@ async function run(mode, {distribution, rich}, executable, parent, journalKind, 
       }
     }
     if (pending) await deliverWork(pending);
+    if (reviewRecovered) {
+      const [sourceBytes] = readRetainedClientJournals(parent, [incomingBranch], 'client-alternatives');
+      const parts = await attachOutboxes(session, () => token);
+      try {
+        await reviewRecoveredText({api, session, queue: parts.queue, transport: parts.transport,
+          source: {file: new Blob([sourceBytes]), selection: retainedBranches.incomingSelection},
+          policy: retainedBranches.readPolicy});
+      } finally {
+        await closeOutboxes(parts);
+      }
+      assert.equal(visibleThreads().length, 4);
+      await host.crash();
+      host = undefined;
+      host = await startSegmentHandoverHost(executable, [parent, 'restored', address], token);
+      const fresh = await api.registerSharedRelayWriter(options);
+      const core = new api.SharedRichEditor(profile.join_frame('room', fresh.identity.writer, fresh.frame));
+      try {
+        assert.equal(core.documentJson().split(recoveredText).length, 2);
+      } finally {
+        core.dispose();
+      }
+      assert.deepEqual(readRetainedClientJournals(parent, [incomingBranch], 'client-alternatives'), [sourceBytes]);
+    }
     return {mode, handoffs: 2, portableRestores: 1, restoredOfflineLanes: 6, undoRedoLanes: 2, rasterReads: 2,
-      processExits: 4, authenticatedTakeovers: 1, oldServingRefusals: 1, coldResumes: 2,
+      processExits: 4 + Number(reviewRecovered), authenticatedTakeovers: 1, oldServingRefusals: 1,
+      coldResumes: 2 + Number(reviewRecovered),
       registrationRefusals: captured.registrationRefusals, providerRasters: captured.providerRasters,
       retainedPackets: captured.retainedPackets, stagedClientRasters: captured.clientRasters, clientUploadReceipts,
       clientUploadArchives: captured.clientArchives, missingArchiveRefusals: captured.missingArchiveRefusals,
@@ -601,6 +626,7 @@ async function run(mode, {distribution, rich}, executable, parent, journalKind, 
         recoveredAlternateHistoryLanes,
         exportedAlternateArchives: 1,
       } : {}),
+      ...(reviewRecovered ? {recoveredTextAccepts: 1, coldAcceptedTextReads: 1} : {}),
       ...(opaque ? {
         unresolvedProviderMappings: captured.participantUnmapped,
         changedProviderRefusals: captured.participantMappingRefusals,
@@ -629,9 +655,10 @@ const executable = resolve(process.argv[2]);
 const option = process.argv[3];
 const terminalReceipts = option === '--participant-terminal-receipts';
 const opaque = option === '--participant-opaque';
-const competing = option === '--participant-accepted-branch';
+const reviewRecovered = option === '--participant-reviewed-text';
+const competing = reviewRecovered || option === '--participant-accepted-branch';
 assert.ok(process.argv.length === 3 || process.argv.length === 4 &&
-  ['--independent-delivery', '--participant-archive', '--participant-terminal-receipts', '--participant-opaque', '--participant-accepted-branch'].includes(option));
+  ['--independent-delivery', '--participant-archive', '--participant-terminal-receipts', '--participant-opaque', '--participant-accepted-branch', '--participant-reviewed-text'].includes(option));
 const journalKind = terminalReceipts || opaque || competing || option === '--participant-archive' ? 'independentParticipant'
   : option === '--independent-delivery' ? 'independentDelivery' : 'pairedSession';
 const source = sourceEvidence(root);
@@ -647,7 +674,8 @@ try {
     const path = join(sandbox, mode);
     mkdirSync(path, {mode: 0o700});
     reports[mode] = {
-      ...await run(mode, distribution, executable, path, journalKind, terminalReceipts, opaque, competing), proof: distribution.proof,
+      ...await run(mode, distribution, executable, path, journalKind, terminalReceipts, opaque, competing,
+        reviewRecovered), proof: distribution.proof,
     };
   }
   assert.equal(reports.source.runtimeSha256, reports.installed.runtimeSha256);
@@ -656,7 +684,8 @@ try {
     format: 'breditor/writable-relay-segment-qualification', formatVersion: 1,
     source, relaySha256: sha(readFileSync(executable)), reports,
   };
-  const reportFile = competing ? 'qualified-accepted-participant-branch.json'
+  const reportFile = reviewRecovered ? 'qualified-reviewed-recovered-text.json'
+    : competing ? 'qualified-accepted-participant-branch.json'
     : opaque ? 'qualified-participant-opaque.json'
     : terminalReceipts ? 'qualified-participant-terminal-receipts.json'
     : journalKind === 'independentParticipant' ? 'qualified-participant-archive-segment.json'

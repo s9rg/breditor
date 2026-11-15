@@ -1,4 +1,6 @@
 import type {AssetLimits} from '@breditor/experimental-rich-content';
+import type {SharedIndependentDeliverySession} from '../independent_delivery/session.js';
+import type {RichSelection} from '../types.js';
 import type {SharedArchiveIntegrityOptions} from '../archive_integrity/contract.js';
 import type {SharedIndependentDeliveryParticipantSelection} from '../independent_delivery_participant/contract.js';
 import type {SharedIndependentDeliveryUnionReadFactory} from '../independent_delivery_union/contract.js';
@@ -47,4 +49,24 @@ export interface SharedIndependentDeliveryBranchArchiveReadOptions extends Share
 export interface SharedIndependentDeliveryBranchArchiveBuildOptions extends SharedIndependentDeliveryBranchArchiveReadOptions {
  readonly current:SharedIndependentDeliveryBranchFile;
  readonly incoming:SharedIndependentDeliveryBranchFile;
+}
+
+/** Exact archived source and explicit text ranges in the recovered and current publications. */
+export interface SharedRecoveredBranchTextSuggestionOptions extends SharedIndependentDeliveryBranchArchiveReadOptions {
+ readonly source:SharedIndependentDeliveryBranchFile;
+ readonly sourceRange:Extract<RichSelection,{kind:'text'}>;
+ readonly target:SharedIndependentDeliverySession;
+ readonly targetRange:Extract<RichSelection,{kind:'text'}>;
+ readonly targetRevision:string;
+ /** Fresh namespace permanently reserved by the application for any required native floors. */
+ readonly namespace:string;
+ readonly title:string;
+ readonly createdAtMs:string;
+}
+
+/** Original provenance is detached from the ordinary immutable suggestion packet. */
+export interface SharedRecoveredBranchTextSuggestion {
+ readonly packet:string;
+ readonly plainText:string;
+ readonly source:Readonly<{selection:SharedIndependentDeliveryParticipantSelection;anchorJson:string}>;
 }
