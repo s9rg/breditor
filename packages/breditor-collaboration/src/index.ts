@@ -292,3 +292,14 @@ export {RoomActivationIntentError,MAX_ROOM_ACTIVATION_INTENT_BYTES,MAX_ROOM_ACTI
 
 export {MAX_SERVER_GENERATION_RECOVERY_RASTER_REQUEST_BYTES,MAX_SERVER_GENERATION_RECOVERY_RASTER_RESPONSE_BYTES,MAX_SERVER_GENERATION_RECOVERY_RASTER_BYTES} from './generation_recovery_control/raster_contract.js';
 export type {SharedServerLogGenerationRecoveryRasterRead} from './generation_recovery_control/raster_contract.js';
+
+export {buildSharedIndependentDeliveryBranchArchive,readSharedIndependentDeliveryBranchArchive} from './independent_delivery_branch_archive/archive.js';
+export type {
+ SharedIndependentDeliveryBranchArchive,
+ SharedIndependentDeliveryBranchArchiveBuildOptions,
+ SharedIndependentDeliveryBranchArchiveReadOptions,
+ SharedIndependentDeliveryBranchArchiveSelection,
+ SharedIndependentDeliveryBranchComparison,
+ SharedIndependentDeliveryBranchFile,
+ SharedIndependentDeliveryBranchLane,
+} from './independent_delivery_branch_archive/contract.js';

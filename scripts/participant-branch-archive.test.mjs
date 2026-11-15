@@ -1,0 +1,160 @@
+/** Retain two genuinely divergent offline replicas using their original bytes. */
+import test,{before,after} from 'node:test';
+import assert from 'node:assert/strict';
+import {createHash} from 'node:crypto';
+import {readFileSync} from 'node:fs';
+import {join,resolve} from 'node:path';
+import {fileURLToPath,pathToFileURL} from 'node:url';
+import {participantUnionFixture,fileBytes} from './fixtures/independent-delivery-union/archive.mjs';
+import {nativeProfile} from './fixtures/owned-core-cleanup/session.mjs';
+
+const root=fileURLToPath(new URL('..',import.meta.url));
+const packages=process.env.BREDITOR_BRANCH_TEST_PACKAGES
+ ? resolve(process.env.BREDITOR_BRANCH_TEST_PACKAGES) : join(root,'packages');
+const installed=Boolean(process.env.BREDITOR_BRANCH_TEST_PACKAGES);
+const collaboration=join(packages,installed?'collaboration':'breditor-collaboration','dist');
+const raster=join(packages,installed?'experimental-rich-content':'breditor-experimental-rich-content','index.js');
+const load=path=>import(pathToFileURL(path).href);
+const api=await load(join(collaboration,'index.js')),rich=await load(raster);
+const native=await load(join(collaboration,'runtime','breditor_shared.js'));
+const sha=bytes=>createHash('sha256').update(bytes).digest('hex');
+let profile;
+before(async()=>{
+ const wasm=readFileSync(join(collaboration,'runtime','breditor_shared_bg.wasm'));
+ if(process.env.BREDITOR_BRANCH_TEST_WASM_SHA256)assert.equal(sha(wasm),process.env.BREDITOR_BRANCH_TEST_WASM_SHA256);
+ await native.default({module_or_path:wasm});
+ profile=nativeProfile(native,3,true);
+});
+after(()=>profile?.free());
+
+function options(f){
+ const {wasm,session,checkAuthority}=f.read;
+ return {wasm,session,checkAuthority};
+}
+
+for(const documentSegmented of [false,true])for(const reviewSegmented of [false,true]){
+ test(`keeps both exact originals, native common clocks, and Redo in ${documentSegmented}/${reviewSegmented}`,async()=>{
+  const f=await participantUnionFixture(api,rich,profile,{wasm:native,branchFork:true,documentSegmented,reviewSegmented});
+  let left,right,assetLeft,assetRight,sessionLeft,sessionRight;
+  try{
+   const host=options(f),names=await indexedDB.databases();
+   const original=[f.options.current,f.options.incoming];
+   const archive=await api.buildSharedIndependentDeliveryBranchArchive({...host,current:original[0],incoming:original[1]});
+   const saved=Buffer.from(await archive.file.arrayBuffer()),selection=structuredClone(archive.selection);
+   const reopened=await api.readSharedIndependentDeliveryBranchArchive(new Blob([saved]),selection,host);
+   assert.deepEqual(reopened.comparison,archive.comparison);
+   assert.deepEqual(await indexedDB.databases(),names);
+   assert.deepEqual(f.current.exportRecovery(),f.saved);
+   assert.equal(reopened.comparison.document.relation,'diverged');
+   assert.equal(reopened.comparison.review.relation,'diverged');
+   assert.equal(reopened.comparison.document.commonThrough,f.common.document.through);
+   assert.equal(reopened.comparison.document.commonPrefixDigest,f.common.document.prefixDigest);
+   assert.equal(reopened.comparison.review.commonThrough,f.common.review.through);
+   assert.equal(reopened.comparison.review.commonPrefixDigest,f.common.review.prefixDigest);
+   for(const [index,branch] of [reopened.current,reopened.incoming].entries()){
+    assert.deepEqual(branch.selection,original[index].selection);
+    assert.deepEqual(await fileBytes(branch.file),await fileBytes(original[index].file));
+   }
+
+   left=await api.readSharedIndependentDeliveryParticipant(reopened.current.file,reopened.current.selection);
+   right=await api.readSharedIndependentDeliveryParticipant(reopened.incoming.file,reopened.incoming.selection);
+   assert.equal(left.uploadEntries().find(row=>row.status==='cancelled')?.status,'cancelled');
+   assert.equal(right.uploadEntries().find(row=>row.status==='failed')?.status,'failed');
+   await f.current.close();
+   const restore=async (backup,label)=>{
+    const database=f.tag+'-recovered-'+label;
+    const source=await api.SharedIndependentDeliverySession.restoreRecovery({
+     ...f.chosen.options,database,recovery:backup.sourceRecovery(),writerRecovery:'host-reacquired',
+    });
+    try{
+     const assets=await rich.RichAssetStore.restoreBackup(database+'-assets',backup.uploadBackup(),{uploadState:'preserve'});
+     return [source,assets];
+    }catch(error){
+     await source.discardAndClose();
+     throw error;
+    }
+   };
+   // Close the selected writer before opening the alternative with the same original identity.
+   [sessionLeft,assetLeft]=await restore(left,'left');
+   assert.deepEqual(sessionLeft.exportRecovery(),left.sourceRecovery());
+   assert.equal(sessionLeft.core.redo(),true);
+   assert.equal(sessionLeft.core.redoReview().kind,'committed');
+   assert.ok(sessionLeft.core.documentJson().includes('Local Redo'));
+   assert.ok(JSON.stringify(sessionLeft.core.reviewSnapshot()).includes('Local comment Redo'));
+   await sessionLeft.close();
+   [sessionRight,assetRight]=await restore(right,'right');
+   assert.deepEqual(sessionRight.exportRecovery(),right.sourceRecovery());
+   assert.equal(sessionRight.core.redo(),true);
+   assert.equal(sessionRight.core.redoReview().kind,'committed');
+   assert.ok(sessionRight.core.documentJson().includes('Incoming Redo'));
+   assert.ok(JSON.stringify(sessionRight.core.reviewSnapshot()).includes('Incoming comment Redo'));
+  }finally{
+   left?.dispose();right?.dispose();assetLeft?.close();assetRight?.close();
+   await sessionLeft?.discardAndClose();await sessionRight?.discardAndClose();await f.close();
+  }
+ });
+}
+
+test('verified framing refuses changed branch bytes, fabricated common clocks and reused original selection',async()=>{
+ const f=await participantUnionFixture(api,rich,profile,{wasm:native,branchFork:true});
+ try{
+  const host=options(f);
+  const archive=await api.buildSharedIndependentDeliveryBranchArchive({...host,current:f.options.current,incoming:f.options.incoming});
+  const bytes=await fileBytes(archive.file);
+  const changed=Buffer.from(bytes);
+  changed[changed.length-1]^=1;
+  await assert.rejects(api.readSharedIndependentDeliveryBranchArchive(new Blob([changed]),archive.selection,host));
+  const magic=Buffer.from('BREDITOR-INDEPENDENT-DELIVERY-BRANCHES-1\n');
+  const start=magic.length+4,length=bytes.readUInt32LE(magic.length);
+  const manifest=JSON.parse(bytes.subarray(start,start+length));
+  manifest.comparison.review.relation='equal';
+  const encoded=Buffer.from(JSON.stringify(manifest));
+  const prefix=Buffer.from(bytes.subarray(0,start));
+  prefix.writeUInt32LE(encoded.length,magic.length);
+  const forged=new Blob([prefix,encoded,bytes.subarray(start+length)]);
+  await assert.rejects(api.readSharedIndependentDeliveryBranchArchive(
+   forged,{bytes:forged.size,manifestSha256:sha(encoded)},host,
+  ),/native histories/);
+  await assert.rejects(api.buildSharedIndependentDeliveryBranchArchive(
+   {...host,current:f.options.current,incoming:f.options.current},
+  ),/independently retained/);
+  await assert.rejects(api.readSharedIndependentDeliveryBranchArchive(
+   archive.file,archive.selection,{...host,checkAuthority(){throw Error('Read revoked');}},
+  ));
+  assert.deepEqual(f.current.exportRecovery(),f.saved);
+ }finally{
+  await f.close();
+ }
+});
+
+test('compares extensions in both directions and equal heads across distinct device files',async()=>{
+ const f=await participantUnionFixture(api,rich,profile,{wasm:native});
+ let replica;
+ try{
+  const host=options(f),current=f.options.current,incoming=f.options.incoming;
+  const forward=await api.buildSharedIndependentDeliveryBranchArchive({...host,current,incoming});
+  const reverse=await api.buildSharedIndependentDeliveryBranchArchive({...host,current:incoming,incoming:current});
+  for(const lane of ['document','review']){
+   assert.equal(forward.comparison[lane].relation,'current-ahead');
+   assert.equal(reverse.comparison[lane].relation,'incoming-ahead');
+   assert.equal(forward.comparison[lane].commonThrough,f.common[lane].through);
+   assert.equal(forward.comparison[lane].commonPrefixDigest,reverse.comparison[lane].commonPrefixDigest);
+  }
+  const capture=await api.captureSharedIndependentDeliveryParticipant({
+   participant:'second-device',principal:'alice',source:{session:f.current},assets:f.currentAssets,checkAuthority(){},
+  });
+  assert.equal(capture.kind,'ready');
+  replica=capture.backup;
+  const equal=await api.buildSharedIndependentDeliveryBranchArchive({
+   ...host,current,incoming:{selection:replica.selection(),file:replica.file()},
+  });
+  assert.notEqual(equal.current.selection.identity.participant,equal.incoming.selection.identity.participant);
+  for(const lane of ['document','review']){
+   assert.equal(equal.comparison[lane].relation,'equal');
+   assert.equal(equal.comparison[lane].currentThrough,equal.comparison[lane].commonThrough);
+  }
+ }finally{
+  replica?.dispose();
+  await f.close();
+ }
+});
