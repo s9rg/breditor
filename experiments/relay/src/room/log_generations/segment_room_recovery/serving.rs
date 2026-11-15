@@ -1,7 +1,9 @@
 //! Explicit authenticated reference serving under a genuine host-selected deployment epoch.
 use super::{
     GenerationDirectory, RasterCustody, RecoveredRelaySegmentRoom, RelaySegmentClientJournalPin,
-    client_journals::RetainedJournals, client_uploads::RetainedUploads,
+    RelaySegmentClientUploadPin, RelaySegmentJournalOwner, RelaySegmentRoomBackupFiles,
+    client_journals::{self, JournalDirectory, RetainedJournals},
+    client_uploads::{self, RetainedUploads},
     discussion_sources::is_participant,
 };
 use crate::{
@@ -19,7 +21,7 @@ use std::{
 pub(crate) struct RelaySegmentServingCustody {
     directory: GenerationDirectory,
     raster: RasterCustody,
-    _uploads: Option<RetainedUploads>,
+    uploads: Option<RetainedUploads>,
     journals: Option<RetainedJournals>,
     pub(super) alternatives: Option<RetainedJournals>,
 }
@@ -65,8 +67,37 @@ impl RelaySegmentServingCustody {
         };
         self.export_journals(
             destination,
+            "participant",
             (0..alternates.pins().len()).map(|index| (alternates, index)),
         )
+    }
+
+    pub(crate) fn export_selected_journals(
+        &self,
+        destination: &Path,
+    ) -> Result<Vec<RelaySegmentClientJournalPin>> {
+        let Some(journals) = &self.journals else {
+            return Ok(Vec::new());
+        };
+        self.export_journals(
+            destination,
+            "journal",
+            (0..journals.pins().len()).map(|index| (journals, index)),
+        )
+    }
+
+    pub(crate) fn export_standalone_uploads(
+        &self,
+        destination: &Path,
+    ) -> Result<Vec<RelaySegmentClientUploadPin>> {
+        self.check()?;
+        let Some(uploads) = &self.uploads else {
+            return Ok(Vec::new());
+        };
+        let selected = self.journals.as_ref().map_or(&[][..], |journals| journals.pins());
+        let pins = uploads.export_standalone(destination, &embedded_upload_writers(selected))?;
+        self.check()?;
+        Ok(pins)
     }
 
     pub(crate) fn export_recovered_discussion_sources(
@@ -85,12 +116,13 @@ impl RelaySegmentServingCustody {
         if selected.len() != requested.len() {
             return Err(Error::Contract("relay segment is missing a recovered discussion source"));
         }
-        self.export_journals(destination, selected.into_values())
+        self.export_journals(destination, "participant", selected.into_values())
     }
 
     fn export_journals<'a>(
         &self,
         destination: &Path,
+        extension: &str,
         sources: impl Iterator<Item = (&'a RetainedJournals, usize)>,
     ) -> Result<Vec<RelaySegmentClientJournalPin>> {
         self.check()?;
@@ -101,7 +133,7 @@ impl RelaySegmentServingCustody {
         let directory = GenerationDirectory::create(destination)?;
         let mut pins = Vec::new();
         for (position, (journals, index)) in sources.enumerate() {
-            let name = format!("{position}.participant");
+            let name = format!("{position}.{extension}");
             let mut file = directory.create_file(&name, &[])?;
             let witness = GenerationFileWitness::of(&file)?;
             journals.copy(index, &mut file)?;
@@ -113,6 +145,40 @@ impl RelaySegmentServingCustody {
         directory.guard()?;
         self.check()?;
         Ok(pins)
+    }
+}
+
+fn embedded_upload_writers(journals: &[RelaySegmentClientJournalPin]) -> BTreeSet<&str> {
+    journals
+        .iter()
+        .filter_map(|pin| match &pin.owner {
+            RelaySegmentJournalOwner::IndependentParticipant { writer, .. } => {
+                Some(writer.as_str())
+            }
+            _ => None,
+        })
+        .collect()
+}
+
+impl RelaySegmentRoomBackupFiles {
+    pub(crate) fn check_retained_client_backup_pins(
+        required_discussion_sources: &BTreeSet<[u8; 32]>,
+        selected: &[RelaySegmentClientJournalPin],
+        alternates: &[RelaySegmentClientJournalPin],
+        uploads: &[RelaySegmentClientUploadPin],
+    ) -> Result<()> {
+        client_journals::check_pins(selected, JournalDirectory::Selected)?;
+        client_journals::check_pins(alternates, JournalDirectory::Alternatives)?;
+        client_journals::check_alternatives(selected, alternates)?;
+        client_uploads::check_pins(uploads)?;
+        let embedded = embedded_upload_writers(selected);
+        if uploads.iter().any(|pin| embedded.contains(pin.writer.as_str())) {
+            return Err(Error::Contract("retained room backup repeats an embedded upload archive"));
+        }
+        super::discussion_sources::check_sources(
+            required_discussion_sources,
+            selected.iter().chain(alternates),
+        )
     }
 }
 
@@ -144,13 +210,7 @@ impl RecoveredRelaySegmentRoom {
         Ok((
             room,
             assets,
-            RelaySegmentServingCustody {
-                directory,
-                raster,
-                _uploads: uploads,
-                journals,
-                alternatives,
-            },
+            RelaySegmentServingCustody { directory, raster, uploads, journals, alternatives },
         ))
     }
 }

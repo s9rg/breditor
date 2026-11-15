@@ -1,13 +1,16 @@
 //! One fenced native and raster cut together with its required original discussion archives.
-use super::capture::{CHECKPOINT, NATIVE, RASTERS, capture};
+use super::{
+    backup_files::{BackupCopies, open_room},
+    capture::begin_capture,
+};
 use crate::{
     Error, RelaySegmentBaseFile, RelaySegmentClientJournal, RelaySegmentClientJournalPin,
     RelaySegmentJournalOwner, RelaySegmentRoomBackupFiles, RelaySegmentRoomBackupIdentity, Result,
-    log::generations::{GenerationDirectory, GenerationFileWitness},
-    server::{RoomDeploymentSelection, ServerBackupHandle, deployment_fence},
+    log::generations::GenerationDirectory,
+    server::{RoomDeploymentSelection, ServerBackupHandle},
 };
 use serde::{Deserialize, Serialize};
-use std::{fs::File, path::Path, sync::Arc};
+use std::{path::Path, sync::Arc};
 
 const SOURCES: &str = "discussion-sources";
 
@@ -43,94 +46,36 @@ impl RelaySegmentDiscussionBackup {
         expected: &RelaySegmentDiscussionBackupIdentity,
     ) -> Result<Self> {
         let directory = GenerationDirectory::open(path)?;
-        let native = read_owned(&directory, NATIVE)?;
-        let checkpoint = read_owned(&directory, CHECKPOINT)?;
-        let base = match parent {
-            Some(parent) => RelaySegmentBaseFile::open_linked(
-                native,
-                checkpoint,
-                &expected.backup.native,
-                parent,
-            )?,
-            None => RelaySegmentBaseFile::open(native, checkpoint, &expected.backup.native)?,
-        };
-        let backup = RelaySegmentRoomBackupFiles::open(
-            Arc::new(base),
-            read_owned(&directory, RASTERS)?,
-            &expected.backup,
-        )?;
+        let backup = open_room(&directory, parent, &expected.backup)?;
         let required = backup.required_recovered_discussion_sources()?;
         if !required.iter().copied().eq(expected.discussion_sources.iter().map(|pin| pin.sha256)) {
             return Err(Error::Contract("relay discussion backup source roster differs"));
         }
-        let discussion_sources = match open_sources(&directory, &expected.discussion_sources)? {
-            Some(sources) => sources.files.into_iter().map(|source| source.journal).collect(),
-            None => Vec::new(),
-        };
+        let discussion_sources =
+            open_sources(&directory, &expected.discussion_sources)?.into_values();
         directory.guard()?;
         Ok(Self { backup, discussion_sources })
-    }
-}
-
-fn read_owned(directory: &GenerationDirectory, name: &str) -> Result<File> {
-    directory.guard()?;
-    let path = directory.path.join(name);
-    if !std::fs::symlink_metadata(&path)?.is_file() {
-        return Err(Error::Contract("relay discussion backup requires a regular file"));
-    }
-    let file = File::open(&path)?;
-    GenerationFileWitness::of(&file)?.guard(&file, &path)?;
-    Ok(file)
-}
-
-struct OpenedSource {
-    name: String,
-    witness: GenerationFileWitness,
-    journal: RelaySegmentClientJournal,
-}
-
-struct OpenedSources {
-    directory: GenerationDirectory,
-    files: Vec<OpenedSource>,
-}
-
-impl OpenedSources {
-    fn check(&self) -> Result<()> {
-        self.directory.guard()?;
-        for source in &self.files {
-            source.journal.check_named(&source.witness, &self.directory.path.join(&source.name))?;
-        }
-        self.directory.guard()
     }
 }
 
 fn open_sources(
     directory: &GenerationDirectory,
     pins: &[RelaySegmentClientJournalPin],
-) -> Result<Option<OpenedSources>> {
-    if pins.is_empty() {
-        return Ok(None);
-    }
-    let sources = GenerationDirectory::open(&directory.path.join(SOURCES))?;
-    let files = pins
+) -> Result<BackupCopies<RelaySegmentClientJournal>> {
+    if pins
         .iter()
-        .enumerate()
-        .map(|(index, pin)| {
-            if !matches!(&pin.owner, RelaySegmentJournalOwner::IndependentParticipant { .. }) {
-                return Err(Error::Contract(
-                    "relay discussion backup requires original participant files",
-                ));
-            }
-            let name = format!("{index}.participant");
-            let file = read_owned(&sources, &name)?;
-            let witness = GenerationFileWitness::of(&file)?;
-            let journal = RelaySegmentClientJournal::open(file, pin.clone())?;
-            Ok(OpenedSource { name, witness, journal })
-        })
-        .collect::<Result<Vec<_>>>()?;
-    let opened = OpenedSources { directory: sources, files };
-    opened.check()?;
-    Ok(Some(opened))
+        .any(|pin| !matches!(&pin.owner, RelaySegmentJournalOwner::IndependentParticipant { .. }))
+    {
+        return Err(Error::Contract("relay discussion backup requires original participant files"));
+    }
+    BackupCopies::open(
+        directory,
+        SOURCES,
+        "participant",
+        pins,
+        RelaySegmentClientJournal::open,
+        RelaySegmentClientJournal::check_named,
+    )
 }
 
 impl ServerBackupHandle {
@@ -160,11 +105,7 @@ impl ServerBackupHandle {
     ) -> Result<RelaySegmentDiscussionBackupIdentity> {
         let host = &self.host;
         host.authentication.authenticate(principal, token)?;
-        let (captured, source_epoch) = host.deployment.fenced(|lease| {
-            deployment_fence::transaction(Some(lease), || {
-                Ok((capture(host, principal, destination)?, lease.selection()))
-            })
-        })?;
+        let (captured, source_epoch) = begin_capture(host, principal, destination)?;
         after_cut()?;
         let discussion_sources = if captured.discussion_sources.is_empty() {
             Vec::new()
@@ -176,22 +117,11 @@ impl ServerBackupHandle {
             )?
         };
         let verified = open_sources(&captured.directory, &discussion_sources)?;
-        captured.directory.sync()?;
-        host.deployment.fenced(|lease| {
-            if lease.selection() != source_epoch {
-                return Err(Error::Lease);
-            }
-            deployment_fence::transaction(Some(lease), || {
-                if let Some(verified) = &verified {
-                    verified.check()?;
-                }
-                captured.check(host)?;
-                Ok(RelaySegmentDiscussionBackupIdentity {
-                    backup: captured.backup,
-                    source_epoch,
-                    discussion_sources,
-                })
-            })
+        captured.confirm(host, &source_epoch, || verified.check())?;
+        Ok(RelaySegmentDiscussionBackupIdentity {
+            backup: captured.backup,
+            source_epoch,
+            discussion_sources,
         })
     }
 }

@@ -1,6 +1,7 @@
 //! Host-local control of authenticated linked-room takeover. No control routes are registered.
 mod alternates;
 mod approval;
+mod backup_files;
 mod branches;
 mod capture;
 mod commit;
@@ -8,6 +9,7 @@ mod discussion_backup;
 mod discussion_sources;
 mod inputs;
 mod resume;
+mod retained_backup;
 #[cfg(all(test, unix))]
 mod tests;
 mod upload_coverage;
@@ -19,6 +21,7 @@ pub use inputs::{
     RelaySegmentHandoverInputCoverage, RelaySegmentHandoverInputReport,
     VerifiedRelaySegmentHandoverInputs,
 };
+pub use retained_backup::{RelaySegmentRetainedBackup, RelaySegmentRetainedBackupIdentity};
 
 use super::{Authentication, RoomDeploymentLease, ServerBackupHandle, routes};
 use crate::{RecoveredRelaySegmentRoom, Result};

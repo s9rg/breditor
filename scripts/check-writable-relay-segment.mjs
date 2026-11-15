@@ -10,7 +10,7 @@ import {WebSocket as Socket} from 'undici';
 import {environment} from './fixtures/room-participant-inventory/environment.mjs';
 import {pixel, proposalAsset, proposalPixel, secondAsset, secondPixel, recoveredAsset, recoveredPixel} from './fixtures/review-assets/pixels.mjs';
 import {startSegmentHandoverHost} from './fixtures/relay-segment-handover-host.mjs';
-import {captureParticipant, checkRecoveredAlternate, proposalAlias, reopenParticipant, withWrongReviewReceipt} from './fixtures/relay-segment-participant.mjs';
+import {captureParticipant, checkRecoveredAlternate, checkRetainedSelected, proposalAlias, reopenParticipant, withWrongReviewReceipt} from './fixtures/relay-segment-participant.mjs';
 import {captureClientRaster, resumeClientRaster} from './fixtures/relay-segment-client-raster.mjs';
 import {recoveredText, reviewRecoveredText} from './fixtures/relay-segment-recovered-text.mjs';
 import {assertRecoveredRich, authorRecoveredRich, reviewRecoveredRich} from './fixtures/relay-segment-recovered-rich.mjs';
@@ -625,15 +625,37 @@ async function run(mode, {distribution, rich}, executable, parent, journalKind, 
       const result = await host.carry(token, registered.identity, comment.identity, peer.identity,
         uploads[1].pin, updatedPins, incomingBranch, additionalAlternate?.pin, protectedPeerReview, relayDiscussion);
       assert.equal(result.alternateOmissionRefusals, 1);
+      let retainedBackupHistory;
       if (relayDiscussion) {
         assert.equal(result.discussionBackup, true);
         assert.equal(result.incompleteDiscussionBackupRefusals, 2);
         assert.equal(result.publishedDiscussionSources, 1);
+        assert.deepEqual(result.retainedBackup, {
+          selectedJournals: 2,
+          alternateJournals: 1,
+          standaloneUploads: 1,
+        });
         assert.deepEqual(readFileSync(join(parent, 'carry-capture', 'discussion-sources', '0.participant')),
           retainedBranches.incoming);
         assert.equal(result.publishedDiscussionSourceRefusals, 2);
         assert.deepEqual(readFileSync(join(parent, 'published-discussion-sources', '0.participant')),
           retainedBranches.incoming);
+        const recoveredRoot = 'retained-room-restored';
+        const [selectedBytes] = readRetainedClientJournals(parent, journalPins, 'client-journals', recoveredRoot);
+        assert.deepEqual(selectedBytes, portable.archive);
+        const [alternateBytes] = readRetainedClientJournals(parent, [incomingBranch], 'client-alternatives', recoveredRoot);
+        assert.deepEqual(alternateBytes, retainedBranches.incoming);
+        const selectedHistoryLanes = await checkRetainedSelected(
+          api, {...deliveryOptions, database: database + '-retained-selected'}, {
+            bytes: selectedBytes, selection: portable.selection, upload: uploads[0],
+            assetKey: archiveImage, redoImage: secondAsset,
+          }, queuedAcrossTakeover,
+        );
+        const alternateHistoryLanes = await checkRecoveredAlternate(
+          api, {...deliveryOptions, database: database + '-retained-alternate'},
+          alternateBytes, retainedBranches.incomingSelection, retainedBranches.competingRecovery,
+        );
+        retainedBackupHistory = {selectedHistoryLanes, alternateHistoryLanes};
       }
       assert.ok(BigInt(result.records) > BigInt(captured.records));
       const superseded = await fetch(rasterUrl, {headers});
@@ -687,6 +709,8 @@ async function run(mode, {distribution, rich}, executable, parent, journalKind, 
           incompleteDiscussionBackupRefusals: result.incompleteDiscussionBackupRefusals,
           publishedDiscussionSources: result.publishedDiscussionSources,
           publishedDiscussionSourceRefusals: result.publishedDiscussionSourceRefusals,
+          retainedBackup: result.retainedBackup,
+          retainedBackupHistory,
         } : {}),
         carriedAlternateArchives: result.carriedAlternateArchives, carriedAlternateHistoryLanes: alternateHistoryLanes,
         ...(additionalAlternate ? {sameOwnerSubstitutionRefusals: result.alternateOmissionRefusals} : {}),

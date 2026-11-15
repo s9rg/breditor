@@ -393,3 +393,22 @@ capture, supply the previously verified native parent. A missing original
 or an incomplete pin roster fails admission. Add the verified originals to
 the normal selected or alternate inputs for restore. Other participant
 journals and upload inputs follow the existing verified handover contract.
+
+### Back up all retained client originals
+
+Call `ServerBackupHandle::capture_relay_segment_with_retained_clients` to
+capture the native and raster cut with every original already retained by
+the serving relay. The backup includes selected journals, alternate participant
+archives and standalone upload archives. Upload queues embedded in selected
+participant files are recovered from those files, so each original queue
+enters restore once. The capture copies the immutable client files outside
+the room and serving locks, then verifies the files and the same serving
+epoch before returning its identity.
+
+Retain the returned `RelaySegmentRetainedBackupIdentity` independently and
+keep any earlier linked native segment. Open with
+`RelaySegmentRetainedBackup::open`, then call `restore` at an absent path.
+The restored room retains the original client histories and upload states.
+Newer offline work that has never reached this relay remains in the clients'
+own durable stores or exports. To make a restored room serve, use the existing
+authenticated handover with fresh client, asset and provider verification.

@@ -90,6 +90,15 @@ impl RelaySegmentClientUploadArchive {
         Ok(Self { pin: expected, file, layout })
     }
 
+    #[cfg(feature = "server")]
+    pub(crate) fn check_named(
+        &self,
+        witness: &crate::log::generations::GenerationFileWitness,
+        path: &std::path::Path,
+    ) -> Result<()> {
+        self.file.check_named(witness, path)
+    }
+
     pub(super) fn source(&self) -> UploadSource<'_> {
         UploadSource { pin: &self.pin, bytes: self.file.all(), layout: &self.layout }
     }

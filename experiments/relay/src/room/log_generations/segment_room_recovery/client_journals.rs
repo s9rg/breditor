@@ -272,7 +272,10 @@ pub(super) fn check_alternatives(
     Ok(())
 }
 
-fn check_pins(pins: &[RelaySegmentClientJournalPin], location: JournalDirectory) -> Result<u64> {
+pub(super) fn check_pins(
+    pins: &[RelaySegmentClientJournalPin],
+    location: JournalDirectory,
+) -> Result<u64> {
     if pins.len() > MAX_JOURNALS {
         return Err(Error::Contract("client journal count budget"));
     }

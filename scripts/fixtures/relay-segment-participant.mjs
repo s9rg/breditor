@@ -66,6 +66,31 @@ export async function reopenParticipant(api, options, bytes, selection, upload, 
   }
 }
 
+/** Reopen the selected original with its offline edits, review packets and upload queue. */
+export async function checkRetainedSelected(api, options, original, recovery) {
+  const {bytes, selection, upload, assetKey, redoImage} = original;
+  const {session, uploads} = await reopenParticipant(api, options, bytes, selection, upload, assetKey);
+  try {
+    assert.deepEqual(session.exportRecovery(), recovery);
+    const document = () => session.core.documentJson();
+    const threads = () => session.core.reviewSnapshot().view.threads.filter(({thread}) => !thread.hidden);
+    assert.match(document(), /Offline before portable restore/);
+    assert.ok(!document().includes(redoImage));
+    assert.equal(session.core.redo(), true);
+    assert.ok(document().includes(redoImage));
+    assert.equal(session.core.undo(), true);
+    assert.ok(!document().includes(redoImage));
+    const visible = threads().length;
+    assert.equal(session.core.undoReview().kind, 'committed');
+    assert.equal(threads().length, visible - 1);
+    assert.equal(session.core.redoReview().kind, 'committed');
+    assert.equal(threads().length, visible);
+    return 2;
+  } finally {
+    try { await session.close(); } finally { uploads.close(); }
+  }
+}
+
 /** Recover the retained fork offline, under the original native writer and actor. */
 export async function checkRecoveredAlternate(api, options, bytes, selection, expected) {
   const backup = await api.readSharedIndependentDeliveryParticipant(new Blob([bytes]), selection);

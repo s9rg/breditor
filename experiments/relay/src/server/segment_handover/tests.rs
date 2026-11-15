@@ -27,6 +27,7 @@ mod client_rasters;
 mod client_uploads;
 mod discussion_backup;
 mod provider_commit;
+mod retained_backup;
 mod verified_inputs;
 
 struct Source {

@@ -98,6 +98,7 @@ pub use segment_handover::{
     RelaySegmentDiscussionBackup, RelaySegmentDiscussionBackupIdentity,
     RelaySegmentHandoverApproval, RelaySegmentHandoverInputCoverage,
     RelaySegmentHandoverInputReport, RelaySegmentParticipantBranchInspection,
+    RelaySegmentRetainedBackup, RelaySegmentRetainedBackupIdentity,
     VerifiedRelaySegmentHandoverInputs,
 };
 use std::sync::{Arc, Mutex};

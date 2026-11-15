@@ -24,6 +24,8 @@ mod branches;
 mod carry;
 #[path = "handover/provider.rs"]
 mod provider;
+#[path = "handover/retained_backup.rs"]
+mod retained_backup;
 
 const POLICY: RoomRecoveryPolicy = RoomRecoveryPolicy::HostReacquired;
 

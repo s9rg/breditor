@@ -34,6 +34,24 @@ impl CapturedFile {
 }
 
 impl CapturedSegment {
+    pub(super) fn confirm(
+        &self,
+        host: &Host,
+        source_epoch: &RoomDeploymentSelection,
+        check_copies: impl FnOnce() -> Result<()>,
+    ) -> Result<()> {
+        self.directory.sync()?;
+        host.deployment.fenced(|lease| {
+            if &lease.selection() != source_epoch {
+                return Err(Error::Lease);
+            }
+            deployment_fence::transaction(Some(lease), || {
+                check_copies()?;
+                self.check(host)
+            })
+        })
+    }
+
     pub(super) fn check(&self, host: &Host) -> Result<()> {
         self.directory.guard()?;
         for file in &self.files {
@@ -45,6 +63,18 @@ impl CapturedSegment {
         }
         Ok(())
     }
+}
+
+pub(super) fn begin_capture(
+    host: &Host,
+    principal: &str,
+    destination: &Path,
+) -> Result<(CapturedSegment, RoomDeploymentSelection)> {
+    host.deployment.fenced(|lease| {
+        deployment_fence::transaction(Some(lease), || {
+            Ok((capture(host, principal, destination)?, lease.selection()))
+        })
+    })
 }
 
 pub(super) fn capture(host: &Host, principal: &str, destination: &Path) -> Result<CapturedSegment> {

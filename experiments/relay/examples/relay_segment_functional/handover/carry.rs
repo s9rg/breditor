@@ -89,6 +89,14 @@ impl Carry {
         } else {
             handle.capture_relay_segment(principal, &self.token, &capture_path)?
         };
+        let retained_backup = self
+            .discussion_backup
+            .then(|| super::retained_backup::verify(parent, handle, &self.token, &self.peer_upload))
+            .transpose()?;
+        if let Some(identity) = &retained_backup {
+            assert_eq!(identity.backup, captured);
+            assert_eq!(identity.source_epoch, old_epoch);
+        }
         storage::write_new(&parent.join("carry-restore.json"), &serde_json::to_vec(&captured)?)?;
         let mut credentials = RecoveryRegistrationCredentials {
             documents: vec![
@@ -314,6 +322,11 @@ impl Carry {
             "publishedDiscussionSourceRefusals": published_source_refusals,
             "discussionBackup": bundle.is_some(),
             "incompleteDiscussionBackupRefusals": if bundle.is_some() {2} else {0},
+            "retainedBackup": retained_backup.as_ref().map(|identity| json!({
+                "selectedJournals": identity.selected_journals.len(),
+                "alternateJournals": identity.alternate_journals.len(),
+                "standaloneUploads": identity.standalone_uploads.len(),
+            })),
         }))
     }
 }
