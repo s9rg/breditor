@@ -2,7 +2,8 @@
 use super::{POLICY, Result, read, storage};
 use crate::original_capture;
 use breditor_collab_relay::{
-    Error, RelaySegmentClientJournalPin, RelaySegmentClientUploadPin, RelaySegmentJournalOwner,
+    Error, RelaySegmentBaseIdentity, RelaySegmentClientJournalPin, RelaySegmentClientUploadPin,
+    RelaySegmentJournalOwner,
     server::{RelaySegmentPortableBackupIdentity, RelaySegmentRetainedBackup, ServerBackupHandle},
 };
 use std::{fs, io::Read, path::Path};
@@ -42,7 +43,13 @@ pub(super) fn verify(
     assert!(uploads.iter().any(|pin| &pin.writer == embedded));
 
     let (prior, _) = original_capture(parent)?;
-    assert_eq!(portable.native_predecessors, [prior.identity().clone()]);
+    let read_base = |name: &str| -> Result<RelaySegmentBaseIdentity> {
+        Ok(serde_json::from_str(&read(&parent.join(name), 32 * 1024)?)?)
+    };
+    assert_eq!(
+        portable.native_predecessors,
+        [read_base("base.json")?, read_base("linked.json")?, prior.identity().clone()]
+    );
     let mut incomplete = portable.clone();
     incomplete.retained.alternate_journals.clear();
     assert!(matches!(
