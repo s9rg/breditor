@@ -25,6 +25,7 @@ const POLICY: RoomRecoveryPolicy = RoomRecoveryPolicy::HostReacquired;
 
 mod client_rasters;
 mod client_uploads;
+mod provider_commit;
 mod verified_inputs;
 
 struct Source {

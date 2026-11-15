@@ -1,6 +1,6 @@
 //! Local target identity covers the actual completed restore and both of its owners.
 use super::RecoveredRelaySegmentRoom;
-use crate::{Error, Result};
+use crate::{Error, Result, assets::AssetBackupStream};
 use sha2::{Digest, Sha256};
 
 impl RecoveredRelaySegmentRoom {
@@ -55,11 +55,17 @@ impl RecoveredRelaySegmentRoom {
     }
 
     pub(crate) fn check_fresh_handover_target(&self) -> Result<()> {
+        self.fresh_handover_rasters().map(|_| ())
+    }
+
+    pub(crate) fn fresh_handover_rasters(&self) -> Result<AssetBackupStream<'_>> {
         self.room.log.check_fresh_segment_restoration(&self.active)?;
-        if self.assets.prepare_backup_stream()?.identity != self.restored_assets {
+        let rasters = self.assets.prepare_backup_stream()?;
+        if rasters.identity != self.restored_assets {
             return Err(Error::Contract("relay segment handover target asset cut advanced"));
         }
-        self.check_custody()
+        self.check_custody()?;
+        Ok(rasters)
     }
 
     pub(crate) fn handover_backup(&self) -> &crate::RelaySegmentRoomBackupIdentity {

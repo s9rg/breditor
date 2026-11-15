@@ -4,7 +4,7 @@ use crate::{
     Error, RelaySegmentBaseFile, Result, Room,
     archive_digest::ArchiveDigest,
     archive_input::ArchiveInput,
-    assets::{AssetStore, MAX_SERVER_ASSET_BACKUP_BYTES, admit_asset_file},
+    assets::{AssetBackupStream, AssetStore, MAX_SERVER_ASSET_BACKUP_BYTES, admit_asset_file},
     room::log_generations::backup::{BackupOutput, segment_history_digest},
 };
 use std::{cell::Cell, fs::File, io::Write, sync::Arc};
@@ -25,6 +25,24 @@ impl Room {
         checkpoint: &mut impl Write,
         raster_archive: &mut impl Write,
     ) -> Result<RelaySegmentRoomBackupIdentity> {
+        self.write_relay_segment_room_backup_with_custody(
+            principal,
+            assets,
+            archive,
+            checkpoint,
+            raster_archive,
+        )
+        .map(|(identity, _)| identity)
+    }
+
+    pub(crate) fn write_relay_segment_room_backup_with_custody<'a>(
+        &mut self,
+        principal: &str,
+        assets: &'a AssetStore,
+        archive: &mut impl Write,
+        checkpoint: &mut impl Write,
+        raster_archive: &mut impl Write,
+    ) -> Result<(RelaySegmentRoomBackupIdentity, AssetBackupStream<'a>)> {
         self.recovery_inventory_owner(principal)?;
         if assets.binding() != self.asset_binding() {
             return Err(Error::Contract("relay segment room asset binding differs"));
@@ -45,7 +63,12 @@ impl Room {
         let native = self.write_relay_segment_base(principal, archive, checkpoint)?;
         rasters.check()?;
         let history_sha256 = segment_history_digest(self.log.segment_base(), &native)?;
-        Ok(RelaySegmentRoomBackupIdentity { native, history_sha256, assets: rasters.identity })
+        let identity = RelaySegmentRoomBackupIdentity {
+            native,
+            history_sha256,
+            assets: rasters.identity.clone(),
+        };
+        Ok((identity, rasters))
     }
 }
 

@@ -6,7 +6,7 @@ use crate::{
     RoomParticipantInventoryMetadata, ServerAssetReferenceOutcome,
     ServerRelaySegmentAssetReferences,
     archive_digest::ArchiveDigest,
-    assets::AssetInfo,
+    assets::{AssetBackupStream, AssetInfo},
     server::{
         Authentication, MAX_SERVER_ASSET_AVAILABILITY_BYTES, ServerAssetAvailabilityMissing,
         ServerAssetResolution, ServerRecoveryAssetProvider,
@@ -109,6 +109,18 @@ pub struct VerifiedRelaySegmentHandoverInputs {
     digest: [u8; 32],
 }
 
+pub(in crate::server) struct HandoverProviderCheck<'a> {
+    provider: Arc<dyn ServerRecoveryAssetProvider>,
+    rasters: AssetBackupStream<'a>,
+}
+
+impl HandoverProviderCheck<'_> {
+    pub fn check(&self) -> Result<()> {
+        check_server_asset_provider(self.provider.as_ref())?;
+        self.rasters.check()
+    }
+}
+
 impl VerifiedRelaySegmentHandoverInputs {
     /// Inspect the complete checked server inputs.
     #[must_use]
@@ -129,11 +141,11 @@ impl VerifiedRelaySegmentHandoverInputs {
         Ok(())
     }
 
-    pub(in crate::server) fn recheck(
+    pub(in crate::server) fn recheck<'a>(
         &self,
         principal: &str,
-        target: &RecoveredRelaySegmentRoom,
-    ) -> Result<Arc<dyn ServerRecoveryAssetProvider>> {
+        target: &'a RecoveredRelaySegmentRoom,
+    ) -> Result<HandoverProviderCheck<'a>> {
         if self.principal != principal {
             return Err(Error::Permission);
         }
@@ -151,10 +163,10 @@ impl VerifiedRelaySegmentHandoverInputs {
         {
             return Err(Error::Contract("relay segment handover provider inputs changed"));
         }
-        // No external callback follows this actual native and raster cut comparison.
+        // Hold the verified raster files for the final provider check at epoch commit.
         self.check_target(target)?;
-        target.check_fresh_handover_target()?;
-        Ok(provider)
+        let rasters = target.fresh_handover_rasters()?;
+        Ok(HandoverProviderCheck { provider, rasters })
     }
 }
 

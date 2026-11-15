@@ -28,7 +28,7 @@ pub(in crate::server) fn commit_segment_handover(
         let mut epoch = Permit::try_acquire(&authority.state, true)?;
         old.check_held(&mut epoch)?;
         approval.check_target(target)?;
-        let _provider = if let Some(inputs) = inputs {
+        let provider = if let Some(inputs) = inputs {
             Some(inputs.recheck(principal, target)?)
         } else {
             target.check_fresh_handover_target()?;
@@ -40,7 +40,7 @@ pub(in crate::server) fn commit_segment_handover(
         let mut room = host.room.lock().map_err(|_| Error::NeedsRecovery)?;
         let assets = host.assets.as_ref().ok_or(Error::NeedsRecovery)?;
         let assets = assets.lock().map_err(|_| Error::NeedsRecovery)?;
-        let current = room.write_relay_segment_room_backup(
+        let (current, source_rasters) = room.write_relay_segment_room_backup_with_custody(
             principal,
             &assets,
             &mut sink(),
@@ -55,6 +55,18 @@ pub(in crate::server) fn commit_segment_handover(
         }
         old.check_held(&mut epoch)?;
         stop.after(Point::SourceChecked)?;
+        if let Some(provider) = &provider {
+            // Comparing the predecessor can take time. Check current provider authority again
+            // before appending, then recheck both native/raster owners without callbacks.
+            provider.check()?;
+            source_rasters.check()?;
+            room.recovery_inventory_owner(principal)?;
+            if let Some(custody) = &host.relay_segment_custody {
+                custody.check()?;
+            }
+            approval.check_target(target)?;
+            old.check_held(&mut epoch)?;
+        }
         let lease = authority.claim_activation_held(
             &mut epoch,
             approval.previous_selection(),
