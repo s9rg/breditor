@@ -1,0 +1,113 @@
+{
+  "format": "breditor/linked-handover-participant-terminal-receipts-qualification",
+  "formatVersion": 1,
+  "date": "2026-11-14",
+  "sdkReportSha256": "da456f15ba3749fff3856a2c76a50868bb16316a7a03e51b4c80686b4b2edad1",
+  "scope": [
+    "Both source and offline-installed SDKs created actual authenticated publication, rejection, revision and catalog receipts before the old relay was replaced. The original participant archive simultaneously carried an independent set of four pending actions.",
+    "The cold SDK reopened the original archive, compared each terminal receipt to the original value and checked that terminal entries did not have retry flags. The pending entries were delivered afterward and received their own receipts without changing the accepted document.",
+    "The source harness also verifies an archive-only proposal raster and refusal of a wrong saved review acknowledgement. The native relay executable is the implementation built for the participant archive checkpoint, with no Rust changes in this fixture revision."
+  ],
+  "source": {
+    "commit": "ba8f4dd936363cea0c4c65598ab64b01cb03f466",
+    "dirty": false,
+    "sha256": "c39f1b4cf4ab812b982d0376a49676cbdb702cc5038951c81c12584a0d8197f2",
+    "files": 8840,
+    "bytes": 75191964
+  },
+  "relaySha256": "a740ba5331e03a2ea3a7757b05ddbc85abe02b88e3511228adc00ce988f60c62",
+  "reports": {
+    "source": {
+      "mode": "source",
+      "handoffs": 2,
+      "portableRestores": 1,
+      "restoredOfflineLanes": 6,
+      "undoRedoLanes": 2,
+      "rasterReads": 2,
+      "processExits": 4,
+      "authenticatedTakeovers": 1,
+      "oldServingRefusals": 1,
+      "coldResumes": 2,
+      "registrationRefusals": 3,
+      "providerRasters": 3,
+      "retainedPackets": 5,
+      "stagedClientRasters": 3,
+      "clientUploadReceipts": 1,
+      "clientUploadArchives": 2,
+      "missingArchiveRefusals": 1,
+      "preservedCancelledUploads": 1,
+      "nativeJournals": 3,
+      "missingJournalRefusals": 2,
+      "coldJournalPairs": 1,
+      "clientJournalRasterBindings": 4,
+      "offlineImageRedo": 1,
+      "pairedBackups": 0,
+      "wrongReceiptRefusals": 1,
+      "retainedLocalVersions": 1,
+      "independentDeliveries": 0,
+      "participantArchives": 1,
+      "participantRasterBindings": 4,
+      "archiveOnlyRasterReads": 1,
+      "retainedTerminalReceipts": 4,
+      "retainedOutboxPendings": 4,
+      "deliveredOutboxEntries": 4,
+      "retainedAbsolutePositions": true,
+      "runtimeSha256": "373fa3eaff1317bec901efb053b2bf0e25cbe051102de3069dfcf16119997c56",
+      "proof": null
+    },
+    "installed": {
+      "mode": "installed",
+      "handoffs": 2,
+      "portableRestores": 1,
+      "restoredOfflineLanes": 6,
+      "undoRedoLanes": 2,
+      "rasterReads": 2,
+      "processExits": 4,
+      "authenticatedTakeovers": 1,
+      "oldServingRefusals": 1,
+      "coldResumes": 2,
+      "registrationRefusals": 3,
+      "providerRasters": 3,
+      "retainedPackets": 5,
+      "stagedClientRasters": 3,
+      "clientUploadReceipts": 1,
+      "clientUploadArchives": 2,
+      "missingArchiveRefusals": 1,
+      "preservedCancelledUploads": 1,
+      "nativeJournals": 3,
+      "missingJournalRefusals": 2,
+      "coldJournalPairs": 1,
+      "clientJournalRasterBindings": 4,
+      "offlineImageRedo": 1,
+      "pairedBackups": 0,
+      "wrongReceiptRefusals": 1,
+      "retainedLocalVersions": 1,
+      "independentDeliveries": 0,
+      "participantArchives": 1,
+      "participantRasterBindings": 4,
+      "archiveOnlyRasterReads": 1,
+      "retainedTerminalReceipts": 4,
+      "retainedOutboxPendings": 4,
+      "deliveredOutboxEntries": 4,
+      "retainedAbsolutePositions": true,
+      "runtimeSha256": "373fa3eaff1317bec901efb053b2bf0e25cbe051102de3069dfcf16119997c56",
+      "proof": {
+        "registryArtifacts": 45,
+        "archives": [
+          {
+            "name": "@breditor/browser",
+            "sha256": "79f5b486d3742d1234e4eb21c18822e0a494551d49a73039f5b856908c124f3f"
+          },
+          {
+            "name": "@breditor/experimental-rich-content",
+            "sha256": "c181984cc8f737861adf4886398d00413af6a42178d8542d789710c5b3faf371"
+          },
+          {
+            "name": "@breditor/collaboration",
+            "sha256": "da76219169eb0b14e2124ca82a4c26827dfd200047ddc65b53565b91f623c8c6"
+          }
+        ]
+      }
+    }
+  }
+}
