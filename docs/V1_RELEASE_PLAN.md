@@ -2,6 +2,17 @@
 
 ## November 15 collaboration recovery
 
+[Restartable archived comment recovery](qualification/2026-11-15-archived-comment-intent.json)
+adds a portable intent for the exact next native review event. The application's
+saved intent can distinguish an unused event counter, the locally retained
+event, relay acknowledgement, and divergent history. An exact retry must
+preserve the original action and causal dependencies. In source and independently
+installed tests the relay commits once, the client loses the durable reply,
+and both owners reopen. The authenticated relay clock confirms the original
+event without a second submission. Both relay builds pass, and the previous
+ordinary recovery workflow also passes on the rebuilt relay. Recovering an
+entire multi-author discussion remains open.
+
 [Archived comment recovery](qualification/2026-11-15-archived-comment-recovery.json)
 reads exact native thread events and brings one selected original author's
 message into a new live thread or as a reply under the same account. Original
@@ -9,9 +20,7 @@ forks, hidden events and Undo/Redo stay readable in their archives. Both the
 compatible and rebuilt relays accept the ordinary authenticated comment after
 two handovers. A new Reader verifies the exact body and current anchor after
 relay restart and local cold reopen. Source and independently installed
-packages pass the same workflow. Recovery of other authors' contributions at
-once and a durable association between original and recovered events across
-retries remain open.
+packages pass the same workflow.
 
 [Rich recovery qualification](qualification/2026-11-15-recovered-rich-review.json)
 covers review of selected content from exact alternate offline archives after
