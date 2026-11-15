@@ -1,0 +1,52 @@
+{
+  "format": "breditor/relay-library-lint-qualification",
+  "formatVersion": 1,
+  "date": "2026-11-15",
+  "source": {
+    "commit": "bd2d1e4c10c212a0f617f1a70e64b3db4bf5106e",
+    "dirty": false,
+    "sha256": "a7e379d3e6faab51fe23235b062378b994dfb851a19b5cfc101e31a86f7c4968",
+    "files": 8947,
+    "bytes": 76025671
+  },
+  "lint": {
+    "server": {
+      "passed": true,
+      "logSha256": "64a13a68175664b7804c8e91cac55591f131af359a854d03f50f377ef2131cea"
+    },
+    "noDefaultFeatures": {
+      "passed": true,
+      "logSha256": "9de505dc5910aa1b9336600e367562caa3a0ca68aa57a15a5a72f4e2f524e2ba"
+    }
+  },
+  "native": {
+    "server": {
+      "passed": 537,
+      "failed": 0,
+      "ignored": 1,
+      "executableSha256": "158657b77525e4706d9f6f9189edc6e84a13d1ce78d40e3f93fd535ae31c3535",
+      "logSha256": "3cc430aeea293d335135534bdefce808dd632856810e93d51d24441aa99a2f73"
+    },
+    "noDefaultFeatures": {
+      "passed": 216,
+      "failed": 0,
+      "ignored": 1,
+      "executableSha256": "030b792d3d051cb3103eea7677b1d9c699d34836ce1c9cb435a56466b8032201",
+      "logSha256": "6da910d3117dffbbc9e198ec78f1c8a811f400984b1a32f21af8149497c5559f"
+    }
+  },
+  "workflows": {
+    "portableRelocationReportSha256": "27987a9802a99a128f41d218acae9f75507a9eaa8a176f50893afc48ed28e6b0",
+    "legacyHandoverReportSha256": "7b395c7c1dd538c171d41e73394b1c894ffc6e5c5954adc863bbcab7ee01357f",
+    "relaySha256": "14d035f3b02d23bce9277e662ac991a46214734255661cec8bc484f500add433",
+    "runtimeSha256": "38b17b58126858fd4ef014e877e85806c323c675e88cd191222badbe9a36a6d5",
+    "sourceAndInstalledMatchPriorWorkflowResults": true
+  },
+  "scope": [
+    "Strict release-profile Clippy checks the relay library in both feature configurations with dependencies excluded from the lint gate.",
+    "The verified sealed restart coverage variant keeps its existing public shape through a scoped Clippy allowance.",
+    "The server suite runs with local socket access. Both native suites retain the existing opt-in cross-volume test.",
+    "The fresh source and independently installed pre-listen relocation and legacy handover exercise the same observed counts and installed package hashes as the prior qualification.",
+    "All-target Clippy, including examples and test code, remains a separate release gate."
+  ]
+}

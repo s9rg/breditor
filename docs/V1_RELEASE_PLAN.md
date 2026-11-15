@@ -2,6 +2,12 @@
 
 ## November 15 collaboration recovery
 
+[Relay library lint](qualification/2026-11-15-relay-library-lint.json)
+passes strict Clippy with and without the server feature. All 537 enabled
+server tests and 216 enabled non-server tests pass. Source and clean-installed
+packages reproduce the pre-listen recovery and earlier handover on the rebuilt
+relay. The existing all-target lint gate covers examples and test code separately.
+
 [Portable activation before listening](qualification/2026-11-15-portable-relay-unserved-activation.json)
 exits the relocated process after durable activation and before it binds a
 listener. A fresh process checks that the current authority matches the exact
