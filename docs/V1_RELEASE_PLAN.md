@@ -2,6 +2,15 @@
 
 ## November 15 collaboration recovery
 
+[Portable discussion provenance](qualification/2026-11-15-published-discussion-sources.json)
+requires the exact participant archives referenced by published discussions in
+a portable relay-segment restore. Both the selected and alternate cohorts can
+supply them. An authenticated host can export the exact files requested by the
+portable backup without holding the room lock during copy. Source and installed
+tests use that export for an authenticated handover. A missing file and a
+different file from the same participant both fail before creating a target.
+The earlier alternate-only handover also passes.
+
 [Concurrent archive verification](qualification/2026-11-15-recovered-discussion-publication.json)
 moves archive reads, native restore and transcript comparison outside the live
 room and deployment locks. Publication reacquires the current epoch and file
