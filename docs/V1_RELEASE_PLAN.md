@@ -2,6 +2,17 @@
 
 ## November 15 collaboration recovery
 
+[Archived comment recovery](qualification/2026-11-15-archived-comment-recovery.json)
+reads exact native thread events and brings one selected original author's
+message into a new live thread or as a reply under the same account. Original
+forks, hidden events and Undo/Redo stay readable in their archives. Both the
+compatible and rebuilt relays accept the ordinary authenticated comment after
+two handovers. A new Reader verifies the exact body and current anchor after
+relay restart and local cold reopen. Source and independently installed
+packages pass the same workflow. Recovery of other authors' contributions at
+once and a durable association between original and recovered events across
+retries remain open.
+
 [Rich recovery qualification](qualification/2026-11-15-recovered-rich-review.json)
 covers review of selected content from exact alternate offline archives after
 two authenticated handovers. The source and independently installed SDKs

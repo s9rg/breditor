@@ -1,0 +1,351 @@
+{
+  "format": "breditor/archived-comment-recovery-qualification",
+  "formatVersion": 1,
+  "date": "2026-11-15",
+  "source": {
+    "commit": "68af0f15576b4370e387e2932e00056b16c4e4fd",
+    "dirty": false,
+    "sha256": "9e56ba7cfaa167f488cd5d106b88bfa9b8282d2111e9509c551fbd24ce0d5f52",
+    "files": 8893,
+    "bytes": 75618934
+  },
+  "nativeSource": "2901d65f1f1f957e14bdfb64f239df7c1fa385d4",
+  "tree": "9e481f957f8f1b82e35fe45e72cec489f4b9c248",
+  "predecessor": "d71de69e79d6abb0509f54076931b0e8eda1e792",
+  "runtimeSha256": "d0abb16b7eb70b9c4860db7a5f99a395fd33121e71249470c6f45b6d5eb56d5a",
+  "rust": {
+    "core": {
+      "passed": 703,
+      "failed": 0,
+      "ignored": 0,
+      "logSha256": "9cba7bc64f029b7b6e3f52577bbeb7b275e82165a69e4d72149f216da90509a8"
+    },
+    "collaboration": {
+      "passed": 149,
+      "failed": 0,
+      "ignored": 1,
+      "logSha256": "e8a7458b8e9c7daa0531d5a4f634beed6f2548605507d5c80131351a57ce8865"
+    },
+    "clippyLogSha256": "5dfde13214c46ebccc49b5e2454a4a3485600a474717c2c34ad05ae4b43253b9"
+  },
+  "sdk": {
+    "passed": 56,
+    "failed": 0,
+    "logSha256": "e587bcd856902b5d8819a4aa0a62d27e7ed016c602035ee07a4de13e3fe11853"
+  },
+  "archive": {
+    "sha256": "5f667ac322e30f77c28024c948cc43f43105cdb61b33cf90d35bc9e80d2a023f",
+    "runs": {
+      "source": {
+        "passed": 11,
+        "failed": 0,
+        "proof": null,
+        "testOutputSha256": "d7956fffe15c60df39bf36115311c487e59b3d0c4085a8d9df66ebe2f3fa78bf"
+      },
+      "installed": {
+        "passed": 11,
+        "failed": 0,
+        "proof": {
+          "registryArtifacts": 45,
+          "archives": [
+            {
+              "name": "@breditor/browser",
+              "sha256": "79f5b486d3742d1234e4eb21c18822e0a494551d49a73039f5b856908c124f3f"
+            },
+            {
+              "name": "@breditor/experimental-rich-content",
+              "sha256": "c181984cc8f737861adf4886398d00413af6a42178d8542d789710c5b3faf371"
+            },
+            {
+              "name": "@breditor/collaboration",
+              "sha256": "406d96a29604e83d2fde83db2f5e24e2545308ebdc5d805e56c57a1f9eed67e9"
+            }
+          ]
+        },
+        "testOutputSha256": "de5223f7b225985ae8bb6e1d6d3cb94d24cd2ddb8ba7bc1f4ceaa43a484f232e"
+      }
+    }
+  },
+  "authenticated": {
+    "compatible": {
+      "sha256": "dc3f7e4405d0515557cc576a27a9ecb10b8e5c67cfc096aed38067112bc7bc57",
+      "relaySha256": "c4e5d35613eff7c713937680123eb3efaf11ed6f33dbb04f30e360f8eb4f81c7",
+      "runs": {
+        "source": {
+          "mode": "source",
+          "handoffs": 2,
+          "portableRestores": 2,
+          "restoredOfflineLanes": 6,
+          "undoRedoLanes": 2,
+          "rasterReads": 2,
+          "processExits": 6,
+          "authenticatedTakeovers": 2,
+          "oldServingRefusals": 2,
+          "coldResumes": 4,
+          "alternateOmissionRefusals": 1,
+          "carriedAlternateArchives": 2,
+          "carriedAlternateHistoryLanes": 4,
+          "sameOwnerSubstitutionRefusals": 1,
+          "advancedAcceptedCut": true,
+          "coldReaderReopens": 1,
+          "coldReaderThreads": 6,
+          "coldReaderReviewReceipts": 3,
+          "coldReaderVersionPackets": 2,
+          "coldReaderRevisionPackets": 1,
+          "coldRecoveredCommentReads": 1,
+          "committedRecoveredComments": 1,
+          "registrationRefusals": 3,
+          "providerRasters": 3,
+          "retainedPackets": 1,
+          "stagedClientRasters": 3,
+          "clientUploadReceipts": 1,
+          "clientUploadArchives": 2,
+          "missingArchiveRefusals": 1,
+          "preservedCancelledUploads": 1,
+          "nativeJournals": 3,
+          "missingJournalRefusals": 2,
+          "coldJournalPairs": 1,
+          "clientJournalRasterBindings": 3,
+          "offlineImageRedo": 1,
+          "pairedBackups": 0,
+          "wrongReceiptRefusals": 1,
+          "retainedLocalVersions": 1,
+          "independentDeliveries": 0,
+          "participantArchives": 1,
+          "participantRasterBindings": 3,
+          "archiveOnlyRasterReads": 1,
+          "branchAdmissions": 2,
+          "branchCutRefusals": 3,
+          "incomingBranchRefusals": 1,
+          "preservedAlternateArchives": 1,
+          "alteredAlternateRefusals": 1,
+          "recoveredAlternateHistoryLanes": 2,
+          "exportedAlternateArchives": 1,
+          "recoveredRichAccepts": 1,
+          "coldAcceptedRichReads": 1,
+          "stagedArchivedImageBytes": 1,
+          "retainedOutboxPendings": 4,
+          "deliveredOutboxEntries": 4,
+          "retainedAbsolutePositions": true,
+          "runtimeSha256": "d0abb16b7eb70b9c4860db7a5f99a395fd33121e71249470c6f45b6d5eb56d5a",
+          "proof": null
+        },
+        "installed": {
+          "mode": "installed",
+          "handoffs": 2,
+          "portableRestores": 2,
+          "restoredOfflineLanes": 6,
+          "undoRedoLanes": 2,
+          "rasterReads": 2,
+          "processExits": 6,
+          "authenticatedTakeovers": 2,
+          "oldServingRefusals": 2,
+          "coldResumes": 4,
+          "alternateOmissionRefusals": 1,
+          "carriedAlternateArchives": 2,
+          "carriedAlternateHistoryLanes": 4,
+          "sameOwnerSubstitutionRefusals": 1,
+          "advancedAcceptedCut": true,
+          "coldReaderReopens": 1,
+          "coldReaderThreads": 6,
+          "coldReaderReviewReceipts": 3,
+          "coldReaderVersionPackets": 2,
+          "coldReaderRevisionPackets": 1,
+          "coldRecoveredCommentReads": 1,
+          "committedRecoveredComments": 1,
+          "registrationRefusals": 3,
+          "providerRasters": 3,
+          "retainedPackets": 1,
+          "stagedClientRasters": 3,
+          "clientUploadReceipts": 1,
+          "clientUploadArchives": 2,
+          "missingArchiveRefusals": 1,
+          "preservedCancelledUploads": 1,
+          "nativeJournals": 3,
+          "missingJournalRefusals": 2,
+          "coldJournalPairs": 1,
+          "clientJournalRasterBindings": 3,
+          "offlineImageRedo": 1,
+          "pairedBackups": 0,
+          "wrongReceiptRefusals": 1,
+          "retainedLocalVersions": 1,
+          "independentDeliveries": 0,
+          "participantArchives": 1,
+          "participantRasterBindings": 3,
+          "archiveOnlyRasterReads": 1,
+          "branchAdmissions": 2,
+          "branchCutRefusals": 3,
+          "incomingBranchRefusals": 1,
+          "preservedAlternateArchives": 1,
+          "alteredAlternateRefusals": 1,
+          "recoveredAlternateHistoryLanes": 2,
+          "exportedAlternateArchives": 1,
+          "recoveredRichAccepts": 1,
+          "coldAcceptedRichReads": 1,
+          "stagedArchivedImageBytes": 1,
+          "retainedOutboxPendings": 4,
+          "deliveredOutboxEntries": 4,
+          "retainedAbsolutePositions": true,
+          "runtimeSha256": "d0abb16b7eb70b9c4860db7a5f99a395fd33121e71249470c6f45b6d5eb56d5a",
+          "proof": {
+            "registryArtifacts": 45,
+            "archives": [
+              {
+                "name": "@breditor/browser",
+                "sha256": "79f5b486d3742d1234e4eb21c18822e0a494551d49a73039f5b856908c124f3f"
+              },
+              {
+                "name": "@breditor/experimental-rich-content",
+                "sha256": "c181984cc8f737861adf4886398d00413af6a42178d8542d789710c5b3faf371"
+              },
+              {
+                "name": "@breditor/collaboration",
+                "sha256": "406d96a29604e83d2fde83db2f5e24e2545308ebdc5d805e56c57a1f9eed67e9"
+              }
+            ]
+          }
+        }
+      }
+    },
+    "rebuilt": {
+      "sha256": "3abb7c6d7c53793ea32c62b013b056e064af3e15ff01604566975b4d1726dad2",
+      "relaySha256": "f329bbe130b6fd9f421244de9cf731a2a5022f768b66feec0c52941e3efd1108",
+      "runs": {
+        "source": {
+          "mode": "source",
+          "handoffs": 2,
+          "portableRestores": 2,
+          "restoredOfflineLanes": 6,
+          "undoRedoLanes": 2,
+          "rasterReads": 2,
+          "processExits": 6,
+          "authenticatedTakeovers": 2,
+          "oldServingRefusals": 2,
+          "coldResumes": 4,
+          "alternateOmissionRefusals": 1,
+          "carriedAlternateArchives": 2,
+          "carriedAlternateHistoryLanes": 4,
+          "sameOwnerSubstitutionRefusals": 1,
+          "advancedAcceptedCut": true,
+          "coldReaderReopens": 1,
+          "coldReaderThreads": 6,
+          "coldReaderReviewReceipts": 3,
+          "coldReaderVersionPackets": 2,
+          "coldReaderRevisionPackets": 1,
+          "coldRecoveredCommentReads": 1,
+          "committedRecoveredComments": 1,
+          "registrationRefusals": 3,
+          "providerRasters": 3,
+          "retainedPackets": 1,
+          "stagedClientRasters": 3,
+          "clientUploadReceipts": 1,
+          "clientUploadArchives": 2,
+          "missingArchiveRefusals": 1,
+          "preservedCancelledUploads": 1,
+          "nativeJournals": 3,
+          "missingJournalRefusals": 2,
+          "coldJournalPairs": 1,
+          "clientJournalRasterBindings": 3,
+          "offlineImageRedo": 1,
+          "pairedBackups": 0,
+          "wrongReceiptRefusals": 1,
+          "retainedLocalVersions": 1,
+          "independentDeliveries": 0,
+          "participantArchives": 1,
+          "participantRasterBindings": 3,
+          "archiveOnlyRasterReads": 1,
+          "branchAdmissions": 2,
+          "branchCutRefusals": 3,
+          "incomingBranchRefusals": 1,
+          "preservedAlternateArchives": 1,
+          "alteredAlternateRefusals": 1,
+          "recoveredAlternateHistoryLanes": 2,
+          "exportedAlternateArchives": 1,
+          "recoveredRichAccepts": 1,
+          "coldAcceptedRichReads": 1,
+          "stagedArchivedImageBytes": 1,
+          "retainedOutboxPendings": 4,
+          "deliveredOutboxEntries": 4,
+          "retainedAbsolutePositions": true,
+          "runtimeSha256": "d0abb16b7eb70b9c4860db7a5f99a395fd33121e71249470c6f45b6d5eb56d5a",
+          "proof": null
+        },
+        "installed": {
+          "mode": "installed",
+          "handoffs": 2,
+          "portableRestores": 2,
+          "restoredOfflineLanes": 6,
+          "undoRedoLanes": 2,
+          "rasterReads": 2,
+          "processExits": 6,
+          "authenticatedTakeovers": 2,
+          "oldServingRefusals": 2,
+          "coldResumes": 4,
+          "alternateOmissionRefusals": 1,
+          "carriedAlternateArchives": 2,
+          "carriedAlternateHistoryLanes": 4,
+          "sameOwnerSubstitutionRefusals": 1,
+          "advancedAcceptedCut": true,
+          "coldReaderReopens": 1,
+          "coldReaderThreads": 6,
+          "coldReaderReviewReceipts": 3,
+          "coldReaderVersionPackets": 2,
+          "coldReaderRevisionPackets": 1,
+          "coldRecoveredCommentReads": 1,
+          "committedRecoveredComments": 1,
+          "registrationRefusals": 3,
+          "providerRasters": 3,
+          "retainedPackets": 1,
+          "stagedClientRasters": 3,
+          "clientUploadReceipts": 1,
+          "clientUploadArchives": 2,
+          "missingArchiveRefusals": 1,
+          "preservedCancelledUploads": 1,
+          "nativeJournals": 3,
+          "missingJournalRefusals": 2,
+          "coldJournalPairs": 1,
+          "clientJournalRasterBindings": 3,
+          "offlineImageRedo": 1,
+          "pairedBackups": 0,
+          "wrongReceiptRefusals": 1,
+          "retainedLocalVersions": 1,
+          "independentDeliveries": 0,
+          "participantArchives": 1,
+          "participantRasterBindings": 3,
+          "archiveOnlyRasterReads": 1,
+          "branchAdmissions": 2,
+          "branchCutRefusals": 3,
+          "incomingBranchRefusals": 1,
+          "preservedAlternateArchives": 1,
+          "alteredAlternateRefusals": 1,
+          "recoveredAlternateHistoryLanes": 2,
+          "exportedAlternateArchives": 1,
+          "recoveredRichAccepts": 1,
+          "coldAcceptedRichReads": 1,
+          "stagedArchivedImageBytes": 1,
+          "retainedOutboxPendings": 4,
+          "deliveredOutboxEntries": 4,
+          "retainedAbsolutePositions": true,
+          "runtimeSha256": "d0abb16b7eb70b9c4860db7a5f99a395fd33121e71249470c6f45b6d5eb56d5a",
+          "proof": {
+            "registryArtifacts": 45,
+            "archives": [
+              {
+                "name": "@breditor/browser",
+                "sha256": "79f5b486d3742d1234e4eb21c18822e0a494551d49a73039f5b856908c124f3f"
+              },
+              {
+                "name": "@breditor/experimental-rich-content",
+                "sha256": "c181984cc8f737861adf4886398d00413af6a42178d8542d789710c5b3faf371"
+              },
+              {
+                "name": "@breditor/collaboration",
+                "sha256": "406d96a29604e83d2fde83db2f5e24e2545308ebdc5d805e56c57a1f9eed67e9"
+              }
+            ]
+          }
+        }
+      }
+    }
+  }
+}
