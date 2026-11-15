@@ -57,7 +57,7 @@ export async function reviewRecoveredRich({api,session,queue,transport,source,po
   const staged=await fetch(assetUrl,{method:'PUT',headers:{...headers,'Content-Type':asset.blob.type},body:asset.blob});
   assert.equal(staged.status,200);
   assert.equal((await staged.json()).asset,recoveredAsset);
-  await publishRecoveredSuggestion({api,session,queue,transport,prepared,
+  const accepted = await publishRecoveredSuggestion({api,session,queue,transport,prepared,
     verify:document=>assertRecoveredRich(document,asset.target.generation)});
-  return asset.target.generation;
+  return {...accepted, generation: asset.target.generation};
 }

@@ -14,6 +14,7 @@ import {captureParticipant, checkRecoveredAlternate, proposalAlias, reopenPartic
 import {captureClientRaster, resumeClientRaster} from './fixtures/relay-segment-client-raster.mjs';
 import {recoveredText, reviewRecoveredText} from './fixtures/relay-segment-recovered-text.mjs';
 import {assertRecoveredRich, authorRecoveredRich, reviewRecoveredRich} from './fixtures/relay-segment-recovered-rich.mjs';
+import {checkColdReviewReader} from './fixtures/relay-segment-cold-review-reader.mjs';
 import {recoveryFactory} from './fixtures/independent-delivery-recovery/session.mjs';
 import {installCollaborationConsumer} from './fixtures/installed-collaboration-consumer.mjs';
 import {sourceEvidence, saveEvidence} from './candidate-release/evidence.mjs';
@@ -54,7 +55,7 @@ function readRetainedClientJournals(parent, expected, directory = 'client-journa
   return originals;
 }
 
-async function run(mode, {distribution, rich}, executable, parent, journalKind, terminalReceipts, opaque, competing, carryForward, multipleAlternates, reviewRecovered, richRecovered) {
+async function run(mode, {distribution, rich}, executable, parent, journalKind, terminalReceipts, opaque, competing, carryForward, multipleAlternates, reviewRecovered, richRecovered, coldReviewReader) {
   const participant = journalKind === 'independentParticipant';
   const archiveImage = opaque ? proposalAlias : proposalAsset;
   const independentDelivery = journalKind !== 'pairedSession';
@@ -73,9 +74,11 @@ async function run(mode, {distribution, rich}, executable, parent, journalKind, 
     },
   });
   const token = randomBytes(32).toString('hex');
+  const readerToken = coldReviewReader ? randomBytes(32).toString('hex') : undefined;
   writeFileSync(join(parent, 'auth.json'), JSON.stringify({
     format: 'breditor/relay-auth', formatVersion: 1, origins: [origin],
-    accounts: [{principal: 'owner', tokenHash: [...createHash('sha256').update(token).digest()]}],
+    accounts: [{principal: 'owner', tokenHash: [...createHash('sha256').update(token).digest()]},
+      ...(readerToken ? [{principal: 'reader', tokenHash: [...createHash('sha256').update(readerToken).digest()]}] : [])],
   }), {mode: 0o600});
   writeFileSync(join(parent, 'asset.png'), pixel, {mode: 0o600});
   let host, profile, session, document, review, portableUploads, failure;
@@ -676,7 +679,8 @@ async function run(mode, {distribution, rich}, executable, parent, journalKind, 
         await closeOutboxes({queue, revisions, versions, transport});
       }
     }
-    if (pending) await deliverWork(pending);
+    const delivered = pending ? await deliverWork(pending) : undefined;
+    let coldReaderEvidence;
     if (reviewRecovered) {
       const retained = readRetainedClientJournals(parent, retainedAlternatePins, 'client-alternatives', restoredRoot);
       const sourceIndex = retainedAlternatePins.findIndex(pin => Buffer.from(pin.sha256).equals(Buffer.from(incomingBranch.sha256)));
@@ -684,12 +688,12 @@ async function run(mode, {distribution, rich}, executable, parent, journalKind, 
       const sourceBytes = retained[sourceIndex];
       const parts = await attachOutboxes(session, () => token);
       const assetUrl = new URL('/assets/' + encodeURIComponent(recoveredAsset), rasterUrl);
-      let generation;
+      let recovered;
       try {
         const context = {api, session, queue: parts.queue, transport: parts.transport,
           source: {file: new Blob([sourceBytes]), selection: retainedBranches.incomingSelection},
           policy: retainedBranches.readPolicy};
-        if (richRecovered) generation = await reviewRecoveredRich({...context, assetUrl, headers});
+        if (richRecovered) recovered = await reviewRecoveredRich({...context, assetUrl, headers});
         else await reviewRecoveredText(context);
       } finally {
         await closeOutboxes(parts);
@@ -702,8 +706,8 @@ async function run(mode, {distribution, rich}, executable, parent, journalKind, 
       const core = new api.SharedRichEditor(profile.join_frame('room', fresh.identity.writer, fresh.frame));
       try {
         if (richRecovered) {
-          assert.ok(generation);
-          assertRecoveredRich(core.documentJson(), generation);
+          assert.ok(recovered);
+          assertRecoveredRich(core.documentJson(), recovered.generation);
           const raster = await fetch(assetUrl, {headers});
           assert.equal(raster.status, 200);
           assert.deepEqual(Buffer.from(await raster.arrayBuffer()), recoveredPixel);
@@ -713,6 +717,15 @@ async function run(mode, {distribution, rich}, executable, parent, journalKind, 
       } finally {
         core.dispose();
       }
+      if (coldReviewReader) {
+        assert.ok(recovered && delivered && readerToken);
+        coldReaderEvidence = await checkColdReviewReader({
+          api, options: {...options, principal: 'reader', getToken: () => readerToken},
+          origin, database: persisted.database + '-fresh-reader', profile, assetUrl, recovered,
+          threads: session.core.reviewSnapshot().view.threads, delivered,
+          originalVersion: {id: admission.entry.version.id, packet},
+        });
+      }
       assert.deepEqual(readRetainedClientJournals(parent, retainedAlternatePins, 'client-alternatives', restoredRoot), retained);
     }
     const extra = Number(carryForward);
@@ -720,6 +733,7 @@ async function run(mode, {distribution, rich}, executable, parent, journalKind, 
       processExits: 4 + extra + Number(reviewRecovered), authenticatedTakeovers: 1 + extra,
       oldServingRefusals: 1 + extra, coldResumes: 2 + extra + Number(reviewRecovered),
       ...carryEvidence,
+      ...coldReaderEvidence,
       registrationRefusals: captured.registrationRefusals, providerRasters: captured.providerRasters,
       retainedPackets: captured.retainedPackets, stagedClientRasters: captured.clientRasters, clientUploadReceipts,
       clientUploadArchives: captured.clientArchives, missingArchiveRefusals: captured.missingArchiveRefusals,
@@ -773,7 +787,8 @@ const executable = resolve(process.argv[2]);
 const option = process.argv[3];
 const terminalReceipts = option === '--participant-terminal-receipts';
 const opaque = option === '--participant-opaque';
-const richRecovered = option === '--participant-multiple-rich-review';
+const coldReviewReader = option === '--participant-cold-review-reader';
+const richRecovered = coldReviewReader || option === '--participant-multiple-rich-review';
 const multipleReviewed = richRecovered || option === '--participant-multiple-reviewed';
 const multipleAlternates = multipleReviewed || option === '--participant-multiple-alternates';
 const carryForward = multipleAlternates || option === '--participant-carried-alternate';
@@ -781,7 +796,7 @@ const reviewRecovered = multipleReviewed || option === '--participant-reviewed-t
 const competing = carryForward || reviewRecovered || option === '--participant-accepted-branch';
 assert.ok(process.argv.length === 3 || process.argv.length === 4 &&
   ['--independent-delivery', '--participant-archive', '--participant-terminal-receipts', '--participant-opaque',
-    '--participant-accepted-branch', '--participant-carried-alternate', '--participant-multiple-alternates', '--participant-reviewed-text', '--participant-multiple-reviewed', '--participant-multiple-rich-review'].includes(option));
+    '--participant-accepted-branch', '--participant-carried-alternate', '--participant-multiple-alternates', '--participant-reviewed-text', '--participant-multiple-reviewed', '--participant-multiple-rich-review', '--participant-cold-review-reader'].includes(option));
 const journalKind = terminalReceipts || opaque || competing || option === '--participant-archive' ? 'independentParticipant'
   : option === '--independent-delivery' ? 'independentDelivery' : 'pairedSession';
 const source = sourceEvidence(root);
@@ -798,7 +813,7 @@ try {
     mkdirSync(path, {mode: 0o700});
     reports[mode] = {
       ...await run(mode, distribution, executable, path, journalKind, terminalReceipts, opaque, competing,
-        carryForward, multipleAlternates, reviewRecovered, richRecovered),
+        carryForward, multipleAlternates, reviewRecovered, richRecovered, coldReviewReader),
       proof: distribution.proof,
     };
   }
@@ -808,7 +823,8 @@ try {
     format: 'breditor/writable-relay-segment-qualification', formatVersion: 1,
     source, relaySha256: sha(readFileSync(executable)), reports,
   };
-  const reportFile = richRecovered ? 'qualified-rich-review-after-multiple-handover.json'
+  const reportFile = coldReviewReader ? 'qualified-cold-review-reader.json'
+    : richRecovered ? 'qualified-rich-review-after-multiple-handover.json'
     : multipleReviewed ? 'qualified-review-after-multiple-handover.json'
     : reviewRecovered ? 'qualified-reviewed-recovered-text.json'
     : multipleAlternates ? 'qualified-multiple-participant-alternates.json'

@@ -46,6 +46,7 @@ export async function publishRecoveredSuggestion({api,session,queue,transport,pr
     assert.equal(queue.status(info.id).decision.decision, 'accept');
     verify(session.core.documentJson());
     await session.flush();
+    return {id: info.id, packet: queue.packet(info.id), decision: queue.status(info.id).decision};
   } finally {
     sync.dispose();
   }

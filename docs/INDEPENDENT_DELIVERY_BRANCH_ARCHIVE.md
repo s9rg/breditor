@@ -164,3 +164,26 @@ publication and acceptance to the ordinary review lane.
 
 The source and installed fixture for a rich proposal after two handovers is
 `node scripts/check-writable-relay-segment.mjs <relay-executable> --participant-multiple-rich-review`.
+
+## Open a new read-only client after handover
+
+An application can start a new Reader with its current account token and the
+active room endpoint. Register the suggestion observer, then register a
+read-only review actor against that same observation-only document writer.
+Discover the version catalog with `discoverSharedDocumentVersions` and the
+revision lane with `discoverSharedSuggestionRevisions`. The revision helper
+takes the nonsecret suggestion queue identity and checks the authenticated
+revision descriptor against the selected suggestion room. It allocates no
+writer and returns only the binding. Reconnecting still requires current
+authentication and an exact descriptor match.
+
+Use these bindings with a fresh `SharedIndependentDeliverySession`. Join the
+document from the registered observer frame, connect the suggestion and review
+transports, and retrieve versions through the ordinary catalog. Keep the
+observer and review credentials in protected application storage. The Reader
+can reopen its own local history after initial sync. The original participant
+archive stays with its recovery owner.
+
+Run `node scripts/check-writable-relay-segment.mjs <relay-executable>
+--participant-cold-review-reader` to exercise a Reader first registered after two
+handovers and a relay restart.

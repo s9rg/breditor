@@ -114,6 +114,7 @@ export type {SharedSuggestionObserverIdentity,SharedSuggestionObserverRegistrati
 export type {SharedSuggestionSyncState,SharedSuggestionSyncOptions} from "./suggestions/sync.js";
 export type {SharedSuggestionRelayBinding,SharedSuggestionRelayState,SharedSuggestionPermissions} from "./relay/suggestion_types.js";
 export type * from "./suggestion_revisions/types.js";
+export {discoverSharedSuggestionRevisions, type SharedSuggestionRevisionsDiscoveryOptions} from './suggestion_revisions/discover.js';
 export {SharedSuggestionRevisions} from "./suggestion_revisions/outbox.js";
 export type {SuggestionEntry as SharedSuggestionEntry} from "./suggestions/transport.js";
 export {mountSharedReviewPanel} from "./review_panel/mount.js";
