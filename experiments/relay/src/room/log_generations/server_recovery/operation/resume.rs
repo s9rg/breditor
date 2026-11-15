@@ -77,16 +77,19 @@ impl OpenMode {
         directory: RasterDirectory,
         binding: &str,
     ) -> Result<(AssetStore, RasterCustody)> {
-        #[cfg(feature = "server")]
-        if matches!(
-            self,
+        match self {
+            Self::Resume | Self::Committed | Self::InspectNativePrefix => {
+                directory.into_store(binding)
+            }
+            #[cfg(feature = "server")]
+            Self::InspectPendingRotation => directory.into_store(binding),
+            #[cfg(feature = "server")]
             Self::InspectPendingRaster
-                | Self::InspectNativePrefixAndRaster
-                | Self::InspectPendingRotationAndRaster
-        ) {
-            return directory.into_store_for_upload_inspection(binding);
+            | Self::InspectNativePrefixAndRaster
+            | Self::InspectPendingRotationAndRaster => {
+                directory.into_store_for_upload_inspection(binding)
+            }
         }
-        directory.into_store(binding)
     }
 }
 impl OperationalLogGenerationServerRoom {

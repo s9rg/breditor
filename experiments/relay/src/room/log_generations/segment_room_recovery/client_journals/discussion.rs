@@ -37,7 +37,7 @@ impl Room {
 impl RelaySegmentServingCustody {
     pub(crate) fn prepare_recovered_discussion(
         &self,
-        room: RecoveredDiscussionSource,
+        room: &RecoveredDiscussionSource,
         archive: [u8; 32],
         packet: String,
     ) -> Result<VerifiedRecoveredDiscussion> {

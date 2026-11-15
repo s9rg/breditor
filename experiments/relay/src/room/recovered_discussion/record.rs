@@ -81,12 +81,13 @@ impl<'a> DiscussionRecord<'a> {
     }
 
     pub(super) fn check_source_archive(&self, archive_sha256: &[u8; 32]) -> Result<()> {
-        if !archive_sha256.iter().zip(self.original.archive_sha256.as_bytes().chunks_exact(2)).all(
-            |(byte, hex)| {
-                const HEX: &[u8; 16] = b"0123456789abcdef";
-                hex == [HEX[(byte >> 4) as usize], HEX[(byte & 15) as usize]]
-            },
-        ) {
+        const HEX: &[u8; 16] = b"0123456789abcdef";
+        let (pairs, _) = self.original.archive_sha256.as_bytes().as_chunks::<2>();
+        if !archive_sha256
+            .iter()
+            .zip(pairs)
+            .all(|(byte, hex)| *hex == [HEX[(byte >> 4) as usize], HEX[(byte & 15) as usize]])
+        {
             return Err(Error::Contract("recovered discussion archive identity differs"));
         }
         Ok(())
@@ -99,15 +100,15 @@ impl<'a> DiscussionRecord<'a> {
         endpoint: &str,
         comments: &breditor_collab_feasibility::review::ReviewSession,
     ) -> Result<()> {
-        self.check_source_archive(archive_sha256)?;
-        if endpoint != self.room.endpoint {
-            return Err(Error::Contract("recovered discussion archive identity differs"));
-        }
         // This ID selects a native birth. Its remaining projection fields are verified
         // by the full canonical encoding below.
         #[derive(Deserialize)]
         struct SelectedThread {
             id: ReviewThreadId,
+        }
+        self.check_source_archive(archive_sha256)?;
+        if endpoint != self.room.endpoint {
+            return Err(Error::Contract("recovered discussion archive identity differs"));
         }
         let SelectedThread { id } = serde_json::from_str(self.thread.get())?;
         let mut originals = self.events.iter();

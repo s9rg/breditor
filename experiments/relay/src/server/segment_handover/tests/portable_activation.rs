@@ -25,9 +25,7 @@ impl ServerRecoveryAssetProvider for SeedAsset {
     }
 }
 
-#[tokio::test]
-async fn relocated_bundle_activates_after_a_durable_seal_with_a_lost_reply() -> TestResult {
-    let source = Source::open()?;
+async fn seed_asset_provider(source: &Source) -> TestResult<Arc<dyn ServerRecoveryAssetProvider>> {
     let store = source.handle.host.assets.clone().ok_or("source assets")?;
     let raster = source
         .handle
@@ -44,7 +42,13 @@ async fn relocated_bundle_activates_after_a_durable_seal_with_a_lost_reply() -> 
             Ok(id)
         })
         .await?;
-    let provider: Arc<dyn ServerRecoveryAssetProvider> = Arc::new(SeedAsset(raster));
+    Ok(Arc::new(SeedAsset(raster)))
+}
+
+#[tokio::test]
+async fn relocated_bundle_activates_after_a_durable_seal_with_a_lost_reply() -> TestResult {
+    let source = Source::open()?;
+    let provider = seed_asset_provider(&source).await?;
     let stale_path = source.parent.join("stale-bundle");
     let stale = RelaySegmentPortableSeal::select(source.handle.capture_portable_relay_segment(
         "owner",

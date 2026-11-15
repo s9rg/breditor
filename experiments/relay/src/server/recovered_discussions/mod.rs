@@ -52,7 +52,8 @@ fn decode_sha256(text: &str) -> Result<[u8; 32]> {
         return Err(Error::Contract("invalid recovered discussion digest"));
     }
     let mut value = [0; 32];
-    for (part, out) in text.as_bytes().chunks_exact(2).zip(&mut value) {
+    let (pairs, _) = text.as_bytes().as_chunks::<2>();
+    for (part, out) in pairs.iter().zip(&mut value) {
         *out = u8::from_str_radix(std::str::from_utf8(part).map_err(|_| Error::NeedsRecovery)?, 16)
             .map_err(|_| Error::NeedsRecovery)?;
     }

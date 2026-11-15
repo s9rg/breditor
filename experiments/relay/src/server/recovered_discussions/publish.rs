@@ -80,7 +80,7 @@ pub(in crate::server) async fn publish(
         let entry = verify_then_commit(
             &host,
             permit,
-            move || custody.prepare_recovered_discussion(source, archive, packet),
+            move || custody.prepare_recovered_discussion(&source, archive, packet),
             move |room, verified| {
                 room.check_discussion_catalog(&access.principal, &access.binding)?;
                 verified.publish(room, &access.principal, &access.thread)

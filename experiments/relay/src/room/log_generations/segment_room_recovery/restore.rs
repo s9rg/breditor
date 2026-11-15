@@ -219,12 +219,11 @@ impl RelaySegmentRoomBackupFiles {
         &self,
         path: &Path,
         active_generation: &str,
-        policy: RoomRecoveryPolicy,
+        RoomRecoveryPolicy::HostReacquired: RoomRecoveryPolicy,
         rasters: &[SelectedRaster<'_>],
         archives: Option<&[UploadSource<'_>]>,
         originals: Option<OriginalJournals<'_>>,
     ) -> Result<RecoveredRelaySegmentRoom> {
-        let RoomRecoveryPolicy::HostReacquired = policy;
         self.check()?;
         Log::validate_segment_restoration(&self.native, active_generation)?;
         client_rasters::check_selected(rasters, &self.identity.assets, &self.entries)?;
@@ -296,16 +295,12 @@ impl RelaySegmentRoomBackupFiles {
         self.check()?;
         raster.guard(&assets)?;
         let completed = Completion {
-            format_version: if alternatives.is_some() {
-                5
-            } else if journals.is_some() {
-                4
-            } else if uploads.is_some() {
-                3
-            } else if added.is_some() {
-                2
-            } else {
-                1
+            format_version: match (&alternatives, &journals, &uploads, &added) {
+                (Some(_), _, _, _) => 5,
+                (_, Some(_), _, _) => 4,
+                (_, _, Some(_), _) => 3,
+                (_, _, _, Some(_)) => 2,
+                (None, None, None, None) => 1,
             },
             backup: self.identity.clone(),
             root: directory.witness()?,
@@ -324,6 +319,7 @@ impl RelaySegmentRoomBackupFiles {
             assets,
             raster,
             directory,
+            #[cfg(feature = "server")]
             completed,
             RestoredClientArchives { uploads, journals, alternatives },
         ))
@@ -424,6 +420,7 @@ impl RelaySegmentRoomBackupFiles {
             assets,
             raster,
             directory,
+            #[cfg(feature = "server")]
             completed,
             RestoredClientArchives { uploads, journals, alternatives },
         ))
@@ -435,7 +432,7 @@ fn recovered(
     assets: AssetStore,
     raster: super::RasterCustody,
     directory: GenerationDirectory,
-    completed: Completion,
+    #[cfg(feature = "server")] completed: Completion,
     clients: RestoredClientArchives,
 ) -> RecoveredRelaySegmentRoom {
     #[cfg(feature = "server")]
@@ -443,8 +440,6 @@ fn recovered(
         || (Vec::new(), completed.backup.assets.clone()),
         |added| (added.selected, added.restored_assets),
     );
-    #[cfg(not(feature = "server"))]
-    let _ = completed;
     RecoveredRelaySegmentRoom {
         room,
         assets,

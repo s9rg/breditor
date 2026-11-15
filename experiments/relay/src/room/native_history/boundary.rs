@@ -1,4 +1,5 @@
 //! Closed durable lifecycle intent. IDs are opaque native inputs, not sortable server sequences.
+use crate::{Error, Result};
 use serde::{Deserialize, Serialize};
 
 /// Explicit native retention intent. Identical retries acknowledge the original durable boundary.
@@ -27,4 +28,18 @@ pub enum ServerNativeHistoryBoundary {
         /// First active generation under the continued document budget.
         next: String,
     },
+}
+
+impl ServerNativeHistoryBoundary {
+    pub(in crate::room) fn check_v1_record(&self) -> Result<()> {
+        match self {
+            Self::ContinueReview { .. } => {
+                Err(Error::Contract("review continuation requires its own durable record"))
+            }
+            Self::ContinueDocument { .. } => {
+                Err(Error::Contract("document continuation requires its own durable record"))
+            }
+            Self::Enable { .. } | Self::Seal { .. } => Ok(()),
+        }
+    }
 }

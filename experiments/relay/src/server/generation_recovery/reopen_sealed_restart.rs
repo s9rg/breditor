@@ -46,6 +46,10 @@ pub struct ReopenedSealedNativeRestartHost {
 }
 
 /// Coverage of a complete cold startup from independently retained host inputs.
+#[allow(
+    clippy::large_enum_variant,
+    reason = "Preserve the public shape of verified restart custody"
+)]
 pub enum SealedNativeRestartBootstrapCoverage {
     /// All protected streams match, and the reopened custody is still held.
     Verified(ReopenedSealedNativeRestartHost),
