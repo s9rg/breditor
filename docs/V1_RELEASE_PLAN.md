@@ -2,6 +2,17 @@
 
 ## November 15 collaboration recovery
 
+[Portable native predecessor backup](qualification/2026-11-15-relay-portable-native-lineage.json)
+includes the exact archive and checkpoint of each earlier native segment.
+The source and clean-installed workflow verifies all three original
+predecessors, restores the room from the bundle, and reopens the original
+selected and alternate client histories with document and review Undo/Redo.
+Missing native archives or client journals and omitted published discussion
+dependencies refuse. A separate native test moves the earlier locations
+aside, rejects reordered and missing predecessors, and cold-reopens the room
+from the bundle. The ordinary authenticated handover still verifies the live
+target and current provider and client inputs.
+
 [Retained client backup](qualification/2026-11-15-relay-retained-client-backup.json)
 includes all client journals and upload archives already held by the relay
 at the native and raster cut. Restore uses one copy of an embedded upload
