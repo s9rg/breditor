@@ -1,0 +1,55 @@
+{
+  "format": "breditor/portable-relay-seal-named-custody-qualification",
+  "formatVersion": 1,
+  "date": "2026-11-15",
+  "source": {
+    "commit": "41806028c7db05e3513e83857bfc07dbbd71756a",
+    "dirty": false,
+    "sha256": "c6a141321e5445df84ee57d1cd8617c8efbdd140dec11362fdc25c2821ee54da",
+    "files": 8949,
+    "bytes": 76034352
+  },
+  "baseline": {
+    "librarySource": "ab57057364f4cebc5580d584b36c316a34095a66",
+    "regressions": [
+      "seal_refuses_a_displaced_backup_root",
+      "seal_refuses_a_displaced_native_lineage"
+    ],
+    "failed": 2,
+    "executableSha256": "c7cbfa5ff648a6f9cde3fc2a819fc19db1ddfc78fd103dd9bde97294403a293a",
+    "logSha256": "588e0812dd039b334dd4f8133cbc033084d48caa21619a022859f9470b5c7908"
+  },
+  "nativeHandover": {
+    "passed": 17,
+    "failed": 0,
+    "executableSha256": "9a8670016182fca01fe18985ac9ce1ffe8d571b7b6562b23181b27ad498fa7c3",
+    "logSha256": "af9939557c75fa7c08ac4c33d3bb1a30af13556a0031ae255bf480f5445c2c22"
+  },
+  "workflows": {
+    "portableRelocationReportSha256": "c4ecb703af83ceb9ff44c6c189e6ab6d38286b808700cb4028f52b243bb2c8b2",
+    "legacyHandoverReportSha256": "e802c7f23174a80d4dde30668271ec37b7caec0d66caa73c2378d3f71c321835",
+    "relaySha256": "3e69d8f7709ffb26510fd56a6b8f723f74399737f3df8e09f8d3e383676e2bd1",
+    "runtimeSha256": "38b17b58126858fd4ef014e877e85806c323c675e88cd191222badbe9a36a6d5",
+    "sourceAndInstalledMatchPriorWorkflowResults": true
+  },
+  "strictLibraryLint": {
+    "server": {
+      "passed": true,
+      "logSha256": "f701547e6c2a802b8442a169bde432a1798b650952c041930bda5b3a6a30ef4a"
+    },
+    "noDefaultFeatures": {
+      "passed": true,
+      "logSha256": "64fb626b13c450253485ca8255b9455a272481d4cd2cb20b9e151af7632d4ee5"
+    }
+  },
+  "candidatePlan": {
+    "passed": 69,
+    "failed": 0,
+    "logSha256": "db4532122343a9ebfc7e7f9c004e6f3217a1fcac8b49f816775997cb6c4e3b49"
+  },
+  "scope": [
+    "A barrier moves the backup root or native-lineage directory after validation and comparison with the current serving cut, before the authority append. The older code published the seal in both cases.",
+    "The repaired source holds the exact named backup and retained archive witnesses through the seal. Both failed attempts leave the prior epoch writable, and a new capture then seals correctly.",
+    "The native tests cover the actual handover code. Source and clean-installed consumers also pass the ordinary pre-listen relocation and the earlier handover with identical observed results."
+  ]
+}

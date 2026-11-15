@@ -2,6 +2,14 @@
 
 ## November 15 collaboration recovery
 
+[Portable backup custody at the source seal](qualification/2026-11-15-portable-relay-seal-named-custody.json)
+keeps the verified backup root, native predecessors and retained client archive
+paths under custody until the source fence commits. The earlier relay fenced
+two test rooms after the backup root or its native lineage directory was moved
+during the seal. Both cases now leave the original relay writable, and each
+fresh capture seals normally. All 17 native handover tests pass, along with both
+source and clean-installed workflows for relocation and the prior handover.
+
 [Relay library lint](qualification/2026-11-15-relay-library-lint.json)
 passes strict Clippy with and without the server feature. All 537 enabled
 server tests and 216 enabled non-server tests pass. Source and clean-installed
