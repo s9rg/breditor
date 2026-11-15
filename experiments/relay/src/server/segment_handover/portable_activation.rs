@@ -35,11 +35,11 @@ impl RecoveredRelaySegmentRoom {
         authentication: Authentication,
         principal: &str,
         token: &str,
-        selection: SealedRelaySegmentActivation<'_>,
+        selection: &SealedRelaySegmentActivation<'_>,
     ) -> Result<(axum::Router, ServerBackupHandle, RoomDeploymentSelection)> {
         authentication.authenticate(principal, token)?;
         self.check_handover_owner(principal)?;
-        let lease = deployment_fence::activate_portable_segment(&self, principal, &selection)?;
+        let lease = deployment_fence::activate_portable_segment(&self, principal, selection)?;
         let active = lease.selection();
         let (router, handle) = router_with_recovered_segment(self, authentication, lease)?;
         Ok((router, handle, active))

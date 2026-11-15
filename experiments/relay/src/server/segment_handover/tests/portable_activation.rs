@@ -114,7 +114,7 @@ async fn relocated_bundle_activates_after_a_durable_seal_with_a_lost_reply() -> 
         authentication,
         "owner",
         &source.token,
-        SealedRelaySegmentActivation {
+        &SealedRelaySegmentActivation {
             authority: &authority,
             seal: &seal,
             approval: &approval,

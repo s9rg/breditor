@@ -133,7 +133,7 @@ pub(crate) fn router(parent: &Path, authentication: Authentication) -> Result<ax
                 authentication,
                 "owner",
                 &token,
-                SealedRelaySegmentActivation {
+                &SealedRelaySegmentActivation {
                     authority: &authority,
                     seal: &seal,
                     approval: &approval,
