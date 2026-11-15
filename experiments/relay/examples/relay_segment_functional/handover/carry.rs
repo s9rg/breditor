@@ -33,6 +33,7 @@ struct Carry {
     peer_upload: RelaySegmentClientUploadPin,
     journals: [RelaySegmentClientJournalPin; 2],
     alternate: RelaySegmentClientJournalPin,
+    additional_alternate: Option<RelaySegmentClientJournalPin>,
 }
 
 pub(super) fn backup(parent: &Path) -> Result<RelaySegmentRoomBackupFiles> {
@@ -90,6 +91,16 @@ impl Carry {
             File::open(parent.join("exported-alternates/0.participant"))?,
             self.alternate.clone(),
         )?;
+        let additional = self
+            .additional_alternate
+            .as_ref()
+            .map(|pin| {
+                RelaySegmentClientJournal::open(
+                    File::open(parent.join("additional-alternate.bin"))?,
+                    pin.clone(),
+                )
+            })
+            .transpose()?;
         let backup = backup(parent)?;
         let provider: Arc<dyn ServerRecoveryAssetProvider> = Arc::new(ContentAddressedServerAssets);
         let verify =
@@ -108,12 +119,13 @@ impl Carry {
                     }
                 }
             };
-        let mut omitted = backup.restore_with_client_journals(
+        let mut omitted = backup.restore_with_client_journal_alternatives(
             &parent.join("omitted-alternate"),
             "omitted-alternate",
             POLICY,
             std::slice::from_ref(&peer_upload),
             &journals,
+            additional.as_slice(),
         )?;
         let inputs = verify(&mut omitted)?;
         let approval =
@@ -132,20 +144,28 @@ impl Carry {
         ));
         assert_eq!(deployment(parent)?.current_selection()?, old_epoch);
 
+        let mut alternatives = vec![(self.alternate, alternate)];
+        if let Some(pair) = self.additional_alternate.zip(additional) {
+            alternatives.push(pair);
+            alternatives.sort_unstable_by_key(|(pin, _)| pin.sha256);
+        }
+        let (pins, alternatives): (Vec<_>, Vec<_>) = alternatives.into_iter().unzip();
         let mut target = backup.restore_with_client_journal_alternatives(
             &parent.join("carried"),
             "carried-one",
             POLICY,
             &[peer_upload],
             &journals,
-            &[alternate],
+            &alternatives,
         )?;
         let inputs = verify(&mut target)?;
         let branches = &inputs.report().alternate_branches;
-        assert_eq!(branches.len(), 1);
-        assert_eq!(branches[0].pin, self.alternate);
-        assert!(!branches[0].document.prefix_matches);
-        assert!(!branches[0].review.prefix_matches);
+        assert_eq!(branches.len(), pins.len());
+        for (branch, pin) in branches.iter().zip(&pins) {
+            assert_eq!(branch.pin, *pin);
+            assert!(!branch.document.prefix_matches);
+            assert!(!branch.review.prefix_matches);
+        }
         let approval = RelaySegmentHandoverApproval::select_verified(&target, &inputs, old_epoch)?;
         storage::write_new(&parent.join("carry-approval.json"), &serde_json::to_vec(&approval)?)?;
         File::open(parent)?.sync_all()?;
@@ -162,6 +182,7 @@ impl Carry {
             "kind": "carried",
             "records": captured.native.predecessor.source.records,
             "alternateOmissionRefusals": 1,
+            "carriedAlternateArchives": pins.len(),
         }))
     }
 }
