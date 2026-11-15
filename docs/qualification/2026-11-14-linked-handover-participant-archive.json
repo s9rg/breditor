@@ -309,5 +309,11 @@
     "The original binary and its exact embedded upload archive were used after moving aside the initial relay paths and the host inputs. The ordinary SDK coordinator restored fresh source and upload stores, retained the original bytes through a second cold coordinator lifecycle and reopened with current host policy.",
     "The image referenced by the pending proposal was absent from both the earlier relay and the embedded upload queue. It was readable byte-for-byte from the activated relay after its portable payload was enrolled. The restored pending upload received the ordinary duplicate upload receipt, the peer cancellation remained in force and all four outbox actions received durable receipts.",
     "A rehashed binary with a changed saved review acknowledgement refused before the serving epoch switch. The same locally built relay also passed both source and independently installed paired-session and independent-delivery JSON baselines. Client storage in the fixture is controlled. Per-writer branch reconciliation and the broader terminal receipt matrix are outside this qualification."
-  ]
+  ],
+  "fullRelayRegression": {
+    "passed": 525,
+    "failed": 0,
+    "ignored": 1,
+    "logSha256": "318693144427c074a437ea23c829a354a99b8863dec53b77f323195e0670ef00"
+  }
 }
