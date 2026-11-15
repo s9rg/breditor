@@ -50,7 +50,7 @@ pub(super) fn backup(parent: &Path) -> Result<RelaySegmentRoomBackupFiles> {
     let capture = parent.join("carry-capture");
     let bundle = parent.join("carry-discussion-backup.json");
     if bundle.exists() {
-        let identity = serde_json::from_slice(&read(&bundle, 32 * 1024)?)?;
+        let identity = serde_json::from_str(&read(&bundle, 32 * 1024)?)?;
         return Ok(RelaySegmentDiscussionBackup::open(&capture, Some(prior), &identity)?.backup);
     }
     let (current, identity) = captured_base(&capture, &parent.join("carry-restore.json"), prior)?;
@@ -143,7 +143,7 @@ impl Carry {
             .transpose()?;
         let (backup, bundled_alternate) = if let Some(identity) = &bundle {
             let (prior, _) = original_capture(parent)?;
-            let complete: RelaySegmentDiscussionBackupIdentity = serde_json::from_slice(&read(
+            let complete: RelaySegmentDiscussionBackupIdentity = serde_json::from_str(&read(
                 &parent.join("carry-discussion-backup.json"),
                 32 * 1024,
             )?)?;
