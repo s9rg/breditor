@@ -2,6 +2,15 @@
 
 ## November 15 collaboration recovery
 
+[Concurrent archive verification](qualification/2026-11-15-recovered-discussion-publication.json)
+moves archive reads, native restore and transcript comparison outside the live
+room and deployment locks. Publication reacquires the current epoch and file
+custody before checking the live thread and current accepted prefixes. Tests
+park the worker while an ordinary write and takeover proceed, then verify that
+the superseded publisher cannot append. Cancellation keeps the worker's quota
+held and leaves the separate read quota available. The source and clean-install
+40-event recovery flows and the physical APFS recovery case pass.
+
 [Single-traversal discussion recovery](qualification/2026-11-15-recovered-discussion-transcript.json)
 uses the same native causal order for the selected thread's projection and
 complete timeline during preparation and verification. The 40-event test
