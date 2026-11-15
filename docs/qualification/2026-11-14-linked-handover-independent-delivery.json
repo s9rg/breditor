@@ -215,5 +215,11 @@
     "The relay verified an image binding reachable solely through the pending proposal. It refused a wrong accepted review sequence before switching the serving epoch. After takeover each queued action delivered through the original authenticated protocol and received a server receipt, preserving accepted document content.",
     "Document and review histories were sealed independently before capture. Their offline work and future Undo/Redo survived with the earlier server packet and exact raster payloads. The fixture uses controlled client storage and the separately selected upload archives.",
     "Full participant binary archive enrollment, broader retained terminal-receipt matrix and divergent same-writer branch reconciliation remain open. The historical WebKit fault is deferred."
-  ]
+  ],
+  "fullRelayRegression": {
+    "passed": 525,
+    "failed": 0,
+    "ignored": 1,
+    "logSha256": "09f1cea7cdceaa6fa0630d6b337041937dc5af0feabff70fac051e7e48d26b9a"
+  }
 }
