@@ -2,10 +2,14 @@
 use super::{
     RelaySegmentClientJournal, RelaySegmentClientJournalPin, RelaySegmentJournalOwner,
     delivery::DeliveryRecord,
+    participant::ParticipantArchive,
     selected::{DocumentInput, SelectedSources},
     verify::{clocks, restore_review},
 };
-use crate::{Error, Result, Room, RoomParticipantInventoryMetadata};
+use crate::{
+    Error, RecoveredRelaySegmentRoom, Result, Room, RoomParticipantInventoryMetadata,
+    archive_input::ArchiveSlice,
+};
 use serde::Serialize;
 
 /// Exact local and accepted positions for one document writer or comment actor.
@@ -61,13 +65,42 @@ fn inspect(
     source: &RelaySegmentClientJournal,
 ) -> Result<RelaySegmentParticipantBranch> {
     source.file.check()?;
-    let selected = SelectedSources::read(participants, std::slice::from_ref(&source.pin))?;
+    let archive = source.participant.as_ref().ok_or(Error::NeedsRecovery)?;
+    inspect_part(room, participants, &source.pin, archive, source.file.all())
+}
+
+impl RecoveredRelaySegmentRoom {
+    pub(crate) fn handover_alternate_branches(
+        &self,
+        participants: &RoomParticipantInventoryMetadata,
+    ) -> Result<Vec<RelaySegmentParticipantBranch>> {
+        let Some(alternatives) = &self.alternatives else {
+            return Ok(Vec::new());
+        };
+        let mut branches = Vec::with_capacity(alternatives.pins().len());
+        for (index, pin) in alternatives.pins().iter().enumerate() {
+            let part = alternatives.part(index)?;
+            let archive = ParticipantArchive::open(part, &pin.owner)?;
+            branches.push(inspect_part(&self.room, participants, pin, &archive, part)?);
+        }
+        alternatives.check()?;
+        Ok(branches)
+    }
+}
+
+fn inspect_part(
+    room: &Room,
+    participants: &RoomParticipantInventoryMetadata,
+    pin: &RelaySegmentClientJournalPin,
+    archive: &ParticipantArchive,
+    part: ArchiveSlice<'_>,
+) -> Result<RelaySegmentParticipantBranch> {
+    let selected = SelectedSources::read(participants, std::slice::from_ref(pin))?;
     let document = selected.documents.first().ok_or(Error::NeedsRecovery)?;
     let DocumentInput::Participant(review) = document.input else {
         return Err(Error::Contract("standalone SDK participant archive required"));
     };
-    let archive = source.participant.as_ref().ok_or(Error::NeedsRecovery)?;
-    let native = archive.read_records(source.file.all())?;
+    let native = archive.read_records(part)?;
     let sections =
         archive.delivery_sections(native.document, native.review, native.versions, &native.stores);
     let record = DeliveryRecord::from_sections(sections, participants, document.row, review)?;
@@ -80,7 +113,7 @@ fn inspect(
     let (family, json) = record.review();
     let comments = restore_review(&local, review, family, json)?;
     Ok(RelaySegmentParticipantBranch {
-        pin: source.pin.clone(),
+        pin: pin.clone(),
         document: clocks::compare_document(
             room,
             &local,

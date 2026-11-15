@@ -10,7 +10,7 @@ import {WebSocket as Socket} from 'undici';
 import {environment} from './fixtures/room-participant-inventory/environment.mjs';
 import {pixel, proposalAsset, proposalPixel, secondAsset, secondPixel} from './fixtures/review-assets/pixels.mjs';
 import {startSegmentHandoverHost} from './fixtures/relay-segment-handover-host.mjs';
-import {captureParticipant, proposalAlias, reopenParticipant, withWrongReviewReceipt} from './fixtures/relay-segment-participant.mjs';
+import {captureParticipant, checkRecoveredAlternate, proposalAlias, reopenParticipant, withWrongReviewReceipt} from './fixtures/relay-segment-participant.mjs';
 import {captureClientRaster, resumeClientRaster} from './fixtures/relay-segment-client-raster.mjs';
 import {recoveryFactory} from './fixtures/independent-delivery-recovery/session.mjs';
 import {installCollaborationConsumer} from './fixtures/installed-collaboration-consumer.mjs';
@@ -35,8 +35,8 @@ function selectClientJournals(parent, identity, pairedBackup, peerWriter, peerCh
   ];
 }
 
-function readRetainedClientJournals(parent, expected) {
-  const root = join(parent, 'restored', 'client-journals');
+function readRetainedClientJournals(parent, expected, directory = 'client-journals') {
+  const root = join(parent, 'restored', directory);
   const manifest = JSON.parse(readFileSync(join(root, 'manifest.json'), 'utf8'));
   assert.deepEqual(manifest, expected);
   const stream = readFileSync(join(root, 'journals.bin'));
@@ -372,7 +372,7 @@ async function run(mode, {distribution, rich}, executable, parent, journalKind, 
       ? JSON.stringify(queuedAcrossTakeover) : await session.exportBackup());
     const journalPins = selectClientJournals(parent, binding, archive,
       peer.identity.writer, peerDocument.checkpoint(), journalKind);
-    let incomingBranch, retainedBranches;
+    let incomingBranch, retainedBranches, recoveredAlternateHistoryLanes;
     if (competingSeed) {
       await session.close();
       session = await api.SharedIndependentDeliverySession.restoreRecovery({
@@ -382,6 +382,7 @@ async function run(mode, {distribution, rich}, executable, parent, journalKind, 
       edit('Competing branch text ');
       post('Competing branch comment');
       await session.flush();
+      const competingRecovery = session.exportRecovery();
       const competingFile = await captureParticipant(
         api, richApi, session, uploads[0], undefined, 'handover-competing-assets',
       );
@@ -397,7 +398,10 @@ async function run(mode, {distribution, rich}, executable, parent, journalKind, 
       writeFileSync(join(parent, 'retained-branches.bin'), Buffer.from(await branches.file.arrayBuffer()), {
         flag: 'wx', mode: 0o600,
       });
-      retainedBranches = {selection: branches.selection, readPolicy, incoming: competingFile.archive};
+      retainedBranches = {
+        selection: branches.selection, readPolicy, incoming: competingFile.archive,
+        incomingSelection: competingFile.selection, competingRecovery,
+      };
       const cold = await api.readSharedIndependentDeliveryBranchArchive(branches.file, branches.selection, readPolicy);
       assert.equal(cold.comparison.document.relation, 'diverged');
       assert.equal(cold.comparison.review.relation, 'diverged');
@@ -436,6 +440,8 @@ async function run(mode, {distribution, rich}, executable, parent, journalKind, 
       assert.equal(captured.branchAdmissions, 2);
       assert.equal(captured.branchCutRefusals, 3);
       assert.equal(captured.incomingBranchRefusals, 1);
+      assert.equal(captured.preservedAlternateArchives, 1);
+      assert.equal(captured.alteredAlternateRefusals, 1);
     }
     assert.equal(captured.participantUnmapped, opaque ? 1 : 0);
     assert.equal(captured.participantMappingRefusals, opaque ? 2 : 0);
@@ -474,7 +480,13 @@ async function run(mode, {distribution, rich}, executable, parent, journalKind, 
         new Blob([readFileSync(join(parent, 'retained-branches.bin'))]),
         retainedBranches.selection, retainedBranches.readPolicy,
       );
-      assert.deepEqual(Buffer.from(await surviving.incoming.file.arrayBuffer()), retainedBranches.incoming);
+      const [alternate] = readRetainedClientJournals(parent, [incomingBranch], 'client-alternatives');
+      assert.deepEqual(alternate, retainedBranches.incoming);
+      assert.deepEqual(Buffer.from(await surviving.incoming.file.arrayBuffer()), alternate);
+      recoveredAlternateHistoryLanes = await checkRecoveredAlternate(
+        api, {...deliveryOptions, database: deliveryOptions.database + '-retained-alternate'},
+        alternate, retainedBranches.incomingSelection, retainedBranches.competingRecovery,
+      );
     }
     const [backup] = readRetainedClientJournals(parent, journalPins);
     assert.deepEqual(backup, archive);
@@ -505,6 +517,7 @@ async function run(mode, {distribution, rich}, executable, parent, journalKind, 
     assert.equal(review.state().pending, false);
     assert.ok(BigInt(document.state().serverReceiptSequence) >= BigInt(captured.records));
     assert.equal(visibleThreads().length, 4);
+    if (competing) assert.doesNotMatch(session.core.documentJson(), /Competing branch text/);
     const accepted = session.core.documentJson();
     assert.equal(session.core.undo(), true);
     assert.equal(session.core.undoReview().kind, 'committed');
@@ -580,6 +593,9 @@ async function run(mode, {distribution, rich}, executable, parent, journalKind, 
         branchAdmissions: captured.branchAdmissions,
         branchCutRefusals: captured.branchCutRefusals,
         incomingBranchRefusals: captured.incomingBranchRefusals,
+        preservedAlternateArchives: captured.preservedAlternateArchives,
+        alteredAlternateRefusals: captured.alteredAlternateRefusals,
+        recoveredAlternateHistoryLanes,
       } : {}),
       ...(opaque ? {
         unresolvedProviderMappings: captured.participantUnmapped,

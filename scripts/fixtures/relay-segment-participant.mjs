@@ -65,6 +65,38 @@ export async function reopenParticipant(api, options, bytes, selection, upload, 
   }
 }
 
+/** Recover the retained fork offline, under the original native writer and actor. */
+export async function checkRecoveredAlternate(api, options, bytes, selection, expected) {
+  const backup = await api.readSharedIndependentDeliveryParticipant(new Blob([bytes]), selection);
+  try {
+    assert.deepEqual(backup.sourceRecovery(), expected);
+    const {session, uploads} = await restoreParticipantThroughRecovery({
+      api, options, backup, uploadsDatabase: options.database + '-uploads',
+    });
+    try {
+      assert.deepEqual(session.exportRecovery(), expected);
+      const text = () => session.core.documentJson();
+      const review = () => session.core.reviewSnapshot().view.threads
+        .filter(({thread}) => !thread.hidden).length;
+      const visible = review();
+      assert.match(text(), /Competing branch text/);
+      assert.equal(session.core.undo(), true);
+      assert.equal(session.core.undoReview().kind, 'committed');
+      assert.doesNotMatch(text(), /Competing branch text/);
+      assert.equal(review(), visible - 1);
+      assert.equal(session.core.redo(), true);
+      assert.equal(session.core.redoReview().kind, 'committed');
+      assert.match(text(), /Competing branch text/);
+      assert.equal(review(), visible);
+      return 2;
+    } finally {
+      try { await session.close(); } finally { uploads.close(); }
+    }
+  } finally {
+    backup.dispose();
+  }
+}
+
 // Reseal the outer envelope so the test exercises native receipt admission.
 export function withWrongReviewReceipt(archive, review) {
   assert.deepEqual(archive.subarray(0, magic.length), magic);

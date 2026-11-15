@@ -16,7 +16,19 @@ impl RecoveredRelaySegmentRoom {
             self.raster.witness(),
         );
         let common = (&self.backup, &self.active, owners);
-        let digest = if let Some(journals) = &self.journals {
+        let digest = if let Some(alternatives) = &self.alternatives {
+            let journals = self.journals.as_ref().ok_or(Error::NeedsRecovery)?;
+            let uploads = self.uploads.as_ref().ok_or(Error::NeedsRecovery)?;
+            Sha256::digest(serde_json::to_vec(&(
+                "breditor/relay-segment-handover-target/6",
+                common,
+                &self.client_rasters,
+                &self.restored_assets,
+                uploads.selection(),
+                journals.selection(),
+                alternatives.selection(),
+            ))?)
+        } else if let Some(journals) = &self.journals {
             let uploads =
                 self.uploads.as_ref().ok_or(Error::Contract("missing journal cohort uploads"))?;
             Sha256::digest(serde_json::to_vec(&(

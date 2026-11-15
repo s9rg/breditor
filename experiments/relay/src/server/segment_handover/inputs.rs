@@ -2,8 +2,8 @@
 use crate::{
     Error, MAX_SERVER_ASSET_REFERENCE_PAIRS, MissingRecoveryRegistration,
     RecoveredRelaySegmentRoom, RecoveryRegistrationCredentials, RelaySegmentClientJournalCoverage,
-    RelaySegmentClientUploadPin, RelaySegmentRoomBackupIdentity, Result,
-    RoomParticipantInventoryMetadata, ServerAssetReferenceOutcome,
+    RelaySegmentClientUploadPin, RelaySegmentParticipantBranch, RelaySegmentRoomBackupIdentity,
+    Result, RoomParticipantInventoryMetadata, ServerAssetReferenceOutcome,
     ServerRelaySegmentAssetReferences,
     archive_digest::ArchiveDigest,
     assets::{AssetBackupStream, AssetInfo},
@@ -56,6 +56,9 @@ pub struct RelaySegmentHandoverInputReport {
     /// Native journal enrollment and common-prefix evidence, for a selected journal cohort.
     #[serde(skip_serializing_if = "Option::is_none")]
     pub client_journal_coverage: Option<RelaySegmentClientJournalCoverage>,
+    /// Retained alternate originals, compared to the same native cut. These do not deliver work.
+    #[serde(skip_serializing_if = "Vec::is_empty")]
+    pub alternate_branches: Vec<RelaySegmentParticipantBranch>,
 }
 
 impl RelaySegmentHandoverInputReport {
@@ -205,6 +208,7 @@ impl RecoveredRelaySegmentRoom {
             None => Vec::new(),
         };
         let client_journal_coverage = self.handover_client_journals(&participants)?;
+        let alternate_branches = self.handover_alternate_branches(&participants)?;
         let (room, assets) = self.components_mut();
         let references = room.relay_segment_retained_asset_references(principal)?;
         if references.room != backup.native.predecessor.source || references.base != backup.native {
@@ -212,7 +216,13 @@ impl RecoveredRelaySegmentRoom {
         }
         let mut report = Box::new(RelaySegmentHandoverInputReport {
             format: "breditor/relay-segment-handover-inputs",
-            format_version: if client_journal_coverage.is_some() { 3 } else { 1 },
+            format_version: if !alternate_branches.is_empty() {
+                4
+            } else if client_journal_coverage.is_some() {
+                3
+            } else {
+                1
+            },
             backup,
             participants,
             references,
@@ -224,6 +234,7 @@ impl RecoveredRelaySegmentRoom {
             client_upload_archives,
             missing_upload_writers,
             client_journal_coverage,
+            alternate_branches,
         });
         let packet_pending = if let Some(references) = report.required_assets()? {
             let resolved = resolve_server_assets(assets, &references, provider.as_ref())?;

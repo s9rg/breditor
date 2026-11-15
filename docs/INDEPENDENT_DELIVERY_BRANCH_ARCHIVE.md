@@ -70,3 +70,29 @@ admit receipts, check provider and asset state, and switch epochs.
 
 Run the source and offline-installed SDK scenario with
 `node scripts/check-writable-relay-segment.mjs <relay-executable> --participant-accepted-branch`.
+
+## Retain the alternate inside the replacement
+
+When the host wants the restored room to hold both originals, pass the
+selected cohort and the corresponding alternate archives to
+`RelaySegmentRoomBackupFiles::restore_with_client_journal_alternatives`.
+Each alternate must be a different exact participant file for the same
+registered document writer and review actor as a selected file. Supply
+both cohorts in canonical owner order. This supports one alternate per
+selected participant.
+
+Only the selected cohort contributes to live provider checks, upload
+enrollment, and the replacement's raster store. The alternate's complete
+document and review histories, packets, rasters and queue stay together
+inside its original archive. Verified handover compares the retained
+alternate against the same accepted cut and binds it into the completion
+and deployment epoch. Cold reopen checks the original archive pins before
+it resumes serving. Supply the original standalone backup and retained
+handover approval as in the ordinary resume flow.
+
+A host can enumerate `client_alternate_pins` and export an exact original
+through `copy_client_alternative` under local recovery ownership. The same
+participant SDK can reopen that copy in an independent store without
+transport. To move into another handover, explicitly pass the alternate
+again. An overlapping fork still needs a conflict-resolution step before
+its edits can join the live history.

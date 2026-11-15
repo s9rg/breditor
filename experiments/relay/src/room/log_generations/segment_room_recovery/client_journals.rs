@@ -17,7 +17,7 @@ mod verify;
 #[cfg(feature = "server")]
 pub use branches::{RelaySegmentBranchClock, RelaySegmentParticipantBranch};
 
-pub(super) use custody::{JournalSelection, RetainedJournals};
+pub(super) use custody::{JournalDirectory, JournalSelection, RetainedJournals};
 #[cfg(feature = "server")]
 pub use verify::{
     RelaySegmentClientJournalCoverage, RelaySegmentClientJournalHead, RelaySegmentPairedReviewHead,
@@ -224,6 +224,36 @@ impl RelaySegmentClientJournal {
 pub(super) fn check_sources(sources: &[RelaySegmentClientJournal]) -> Result<()> {
     let pins: Vec<_> = sources.iter().map(|source| source.pin.clone()).collect();
     check_pins(&pins)?;
+    Ok(())
+}
+
+pub(super) fn check_alternative_sources(
+    selected: &[RelaySegmentClientJournal],
+    alternatives: &[RelaySegmentClientJournal],
+) -> Result<()> {
+    let selected = selected.iter().map(|source| source.pin.clone()).collect::<Vec<_>>();
+    let alternatives = alternatives.iter().map(|source| source.pin.clone()).collect::<Vec<_>>();
+    check_pins(&alternatives)?;
+    check_alternatives(&selected, &alternatives)
+}
+
+pub(super) fn check_alternatives(
+    selected: &[RelaySegmentClientJournalPin],
+    alternatives: &[RelaySegmentClientJournalPin],
+) -> Result<()> {
+    for alternative in alternatives {
+        let owner = &alternative.owner;
+        let matches = selected.binary_search_by(|pin| pin.owner.key().cmp(&owner.key()));
+        if !matches!(owner, RelaySegmentJournalOwner::IndependentParticipant { .. })
+            || !matches.is_ok_and(|index| {
+                selected[index].owner == *owner && selected[index].sha256 != alternative.sha256
+            })
+        {
+            return Err(Error::Contract(
+                "alternate participant requires a different selected original of the same writer and actor",
+            ));
+        }
+    }
     Ok(())
 }
 
