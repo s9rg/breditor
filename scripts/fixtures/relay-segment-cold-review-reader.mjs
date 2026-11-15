@@ -77,6 +77,10 @@ export async function checkColdReviewReader({
       assert.equal(queue.status(id).localSaved, true);
     }
     assert.deepEqual(revisions.entries().find(entry => entry.revision.id === delivered.pending.revision), delivered.revision);
+    const revision = await revisions.loadRevision(delivered.pending.revision);
+    assert.equal(revision.packet, delivered.pending.packets[2]);
+    assert.equal(revision.previousPacket, delivered.pending.packets[0]);
+    assert.equal(revision.source.kind, 'verified');
     assert.equal(await versions.loadVersion(originalVersion.id), originalVersion.packet);
     assert.equal(await versions.loadVersion(delivered.pending.version), delivered.pending.packets[3]);
     const image = await fetch(assetUrl, {headers: {
@@ -107,7 +111,12 @@ export async function checkColdReviewReader({
     assert.deepEqual(session.exportRecovery(), exact);
     assertRecoveredRich(session.core.documentJson(), recovered.generation);
     assert.deepEqual(session.core.reviewSnapshot().view.threads, threads);
-    return {coldReaderReopens: 1, coldReaderThreads: threads.length, coldReaderReviewReceipts: 3, coldReaderVersionPackets: 2};
+    queue = await session.openSuggestionQueue();
+    assert.deepEqual(queue.status(recovered.id).decision, recovered.decision);
+    assert.equal(queue.packet(recovered.id), recovered.packet);
+    await queue.close();
+    return {coldReaderReopens: 1, coldReaderThreads: threads.length, coldReaderReviewReceipts: 3,
+      coldReaderVersionPackets: 2, coldReaderRevisionPackets: 1};
   } finally {
     sync?.dispose();
     observer?.dispose();
@@ -115,11 +124,14 @@ export async function checkColdReviewReader({
     await Promise.allSettled([
       observer?.waitForDisconnected(), comments?.waitForDisconnected(), revisions?.discardAndClose(), versions?.discardAndClose(),
     ]);
-    await queue?.discardAndClose();
     try {
-      await session?.discardAndClose();
+      await queue?.discardAndClose();
     } finally {
-      globalThis.fetch = originalFetch;
+      try {
+        await session?.discardAndClose();
+      } finally {
+        globalThis.fetch = originalFetch;
+      }
     }
   }
 }
