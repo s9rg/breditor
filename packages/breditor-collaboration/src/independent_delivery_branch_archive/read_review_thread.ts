@@ -8,9 +8,12 @@ import type {SharedReviewId} from '../review_types.js';
 import type {SharedIndependentDeliveryBranchArchiveReadOptions} from './contract.js';
 import {branchFile} from './framing.js';
 import {withArchivedBranch} from './read_native.js';
-import type {SharedRecoveredBranchReviewThread, SharedRecoveredBranchReviewThreadOptions} from './review_contract.js';
+import type {
+  SharedRecoveredBranchReview, SharedRecoveredBranchReviewOptions,
+  SharedRecoveredBranchReviewThread, SharedRecoveredBranchReviewThreadOptions,
+} from './review_contract.js';
 
-const {readReviewThreadHistory} = SharedRichEditor.prototype;
+const {readReviewThreadHistory, reviewSnapshot} = SharedRichEditor.prototype;
 export const archivedReviewReadFields = ['session', 'wasm', 'checkAuthority'] as const;
 export const archivedReviewOptionalFields = ['signal', 'limits'] as const;
 export const reviewThreadOffset = (input: unknown): number => integer(input, 0xffffffff);
@@ -20,6 +23,16 @@ export function archivedReviewId(input: unknown): SharedReviewId {
   const counter = decimal(value['counter']);
   if (counter === '0') throw new Error('Select a positive original review event');
   return Object.freeze({actor: reviewActor(value['actor']), counter});
+}
+
+/** Inspect the archived thread inventory, including hidden births and original anchor status. */
+export async function readSharedRecoveredBranchReview(
+  options: SharedRecoveredBranchReviewOptions,
+): Promise<SharedRecoveredBranchReview> {
+  const value = fields(options, [...archivedReviewReadFields, 'source'], archivedReviewOptionalFields);
+  const source = branchFile(value['source']);
+  return withArchivedBranch(source, value as unknown as SharedIndependentDeliveryBranchArchiveReadOptions, core =>
+    frozen({source: source.selection, view: reviewSnapshot.call(core).view}));
 }
 
 export async function readSharedRecoveredBranchReviewThread(

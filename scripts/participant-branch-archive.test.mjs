@@ -344,7 +344,13 @@ test('recovers a hidden original as a fresh authored message and rejects substit
   const source = f.options.incoming;
   const own = f.chosen.options.review.actor;
   const thread = {actor: own, counter: '2'};
-  const request = {...options(f), source, thread};
+  const branchReview = await api.readSharedRecoveredBranchReview({...options(f), source});
+  assert.deepEqual(branchReview.source, source.selection);
+  assert.equal(branchReview.view.redoDepth, 1);
+  const hidden = branchReview.view.threads.find(item => item.thread.id.counter === thread.counter &&
+   item.thread.id.actor === thread.actor);
+  assert.equal(hidden.thread.hidden, true);
+  const request = {...options(f), source, thread: hidden.thread.id};
   const {page} = await api.readSharedRecoveredBranchReviewThread(request);
   const [birth, undo] = page.events;
   assert.deepEqual(birth.id, thread);

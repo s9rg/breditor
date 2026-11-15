@@ -297,7 +297,7 @@ export type {SharedServerLogGenerationRecoveryRasterRead} from './generation_rec
 export {buildSharedIndependentDeliveryBranchArchive,readSharedIndependentDeliveryBranchArchive} from './independent_delivery_branch_archive/archive.js';
 export {prepareSharedRecoveredBranchTextSuggestion} from './independent_delivery_branch_archive/recover_text.js';
 export {prepareSharedRecoveredBranchRichSuggestion} from './independent_delivery_branch_archive/recover_rich.js';
-export {readSharedRecoveredBranchReviewThread} from './independent_delivery_branch_archive/read_review_thread.js';
+export {readSharedRecoveredBranchReview,readSharedRecoveredBranchReviewThread} from './independent_delivery_branch_archive/read_review_thread.js';
 export {prepareSharedRecoveredBranchReviewMessage} from './independent_delivery_branch_archive/recover_review_message.js';
 export type * from './independent_delivery_branch_archive/review_contract.js';
 export type {

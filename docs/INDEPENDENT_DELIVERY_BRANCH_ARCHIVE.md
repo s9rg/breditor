@@ -190,8 +190,10 @@ handovers and a relay restart.
 
 ## Inspect and recover an archived comment
 
-Use `readSharedRecoveredBranchReviewThread` with an exact participant archive
-and thread birth identity. Follow `nextOffset` to read further pages from that
+Use `readSharedRecoveredBranchReview` to find threads and original anchor
+status, including hidden threads, in an exact participant archive. Pass the
+chosen birth identity to `readSharedRecoveredBranchReviewThread`. Follow
+`nextOffset` to read further pages from that
 same archive. The native reader returns each original event's account,
 identity, digest, and literal action or visibility change. It includes hidden
 births, retracted messages, edits, replies, anchor changes and Undo/Redo. The

@@ -18,7 +18,11 @@ export function assertRecoveredComment(threads, recovered) {
 export async function recoverArchivedComment({api, session, review, policy, source, thread}) {
   const accepted = session.core.documentJson();
   const before = session.exportRecovery();
-  const {page} = await api.readSharedRecoveredBranchReviewThread({...policy, source, thread});
+  const archived = await api.readSharedRecoveredBranchReview({...policy, source});
+  const chosen = archived.view.threads.find(({thread}) =>
+    thread.messages.some(message => message.versions.some(version => version.text === body)));
+  assert.deepEqual(chosen?.thread.id, thread);
+  const {page} = await api.readSharedRecoveredBranchReviewThread({...policy, source, thread: chosen.thread.id});
   const [original] = page.events;
   assert.equal(original.principal, 'owner');
   assert.equal(original.payload.data.data.body, body);

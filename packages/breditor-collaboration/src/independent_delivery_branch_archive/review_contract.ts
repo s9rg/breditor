@@ -1,12 +1,20 @@
 import type {SharedIndependentDeliverySession} from '../independent_delivery/session.js';
 import type {
-  SharedReviewGuard, SharedReviewId, SharedReviewOutcome, SharedReviewTarget, SharedReviewThreadHistoryPage,
+  SharedReviewGuard, SharedReviewId, SharedReviewOutcome, SharedReviewTarget, SharedReviewThreadHistoryPage, SharedReviewView,
 } from '../review_types.js';
 import type {SharedIndependentDeliveryParticipantSelection} from '../independent_delivery_participant/contract.js';
 import type {SharedIndependentDeliveryBranchArchiveReadOptions, SharedIndependentDeliveryBranchFile} from './contract.js';
 
-export interface SharedRecoveredBranchReviewThreadOptions extends SharedIndependentDeliveryBranchArchiveReadOptions {
+export interface SharedRecoveredBranchReviewOptions extends SharedIndependentDeliveryBranchArchiveReadOptions {
   readonly source: SharedIndependentDeliveryBranchFile;
+}
+
+export interface SharedRecoveredBranchReview {
+  readonly source: SharedIndependentDeliveryParticipantSelection;
+  readonly view: SharedReviewView;
+}
+
+export interface SharedRecoveredBranchReviewThreadOptions extends SharedRecoveredBranchReviewOptions {
   readonly thread: SharedReviewId;
   /** Use the preceding page's nextOffset for the same exact archive and thread. */
   readonly offset?: number;
