@@ -13,36 +13,45 @@ export async function startSegmentHandoverHost(executable, args, token, exportAl
   child.stderr.on('data', value => { errors = (errors + value).slice(-8192); });
   child.stdin.on('error', () => {});
   const spawned = once(child, 'spawn');
-  async function next(kind) {
+  async function withinDeadline(promise, step) {
     let timer;
     try {
-      const result = await Promise.race([
-        lines.next(),
+      return await Promise.race([
+        promise,
         new Promise((_, reject) => {
-          timer = setTimeout(() => reject(Error(`Relay segment ${mode} ${kind} deadline: ${errors}`)), 90_000);
+          timer = setTimeout(() => reject(Error(`Relay segment ${mode} ${step} deadline: ${errors}`)), 90_000);
         }),
       ]);
-      assert.equal(result.done, false, 'Relay segment host exited: ' + errors);
-      const row = JSON.parse(result.value);
-      assert.equal(row.kind, kind);
-      return row;
     } finally {
       clearTimeout(timer);
     }
+  }
+  async function next(kind) {
+    const result = await withinDeadline(lines.next(), kind);
+    assert.equal(result.done, false, 'Relay segment host exited: ' + errors);
+    const row = JSON.parse(result.value);
+    assert.equal(row.kind, kind);
+    return row;
   }
   const send = request => {
     child.stdin.write(JSON.stringify(request) + '\n');
   };
   try {
     await spawned;
-    if (mode === 'relocated') {
-      send(relocation ? {kind: 'activate', token, ...relocation} : {kind: 'resume', token});
+    if (mode === 'relocated' || mode === 'relocated-before-listen') {
+      send({...(relocation ?? {kind: 'resume'}), token});
       child.stdin.end();
     } else if (token) {
       send({kind: 'resume', token, exportAlternates, ...(carryControl ? {carryControl} : {})});
       if (!carryControl) child.stdin.end();
     } else if (mode !== 'final') {
       child.stdin.end();
+    }
+    if (mode === 'relocated-before-listen') {
+      const {selection} = await next('activated');
+      assert.deepEqual(await withinDeadline(closed, 'abrupt exit'), {code: 77, signal: null}, errors);
+      assert.equal((await lines.next()).done, true, 'Relay announced service before the exit');
+      return {selection};
     }
     const {address} = await next('listening');
     return {

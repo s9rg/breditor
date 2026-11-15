@@ -5,13 +5,13 @@ use breditor_collab_relay::{
     server::{
         Authentication, ContentAddressedServerAssets, LogGenerationHandoverStatus,
         RelaySegmentHandoverApproval, RelaySegmentHandoverInputCoverage, RelaySegmentPortableSeal,
-        RelaySegmentRetainedBackup, SealedRelaySegmentActivation, ServerBackupHandle,
-        ServerRecoveryAssetProvider,
+        RelaySegmentRetainedBackup, RoomDeploymentSelection, SealedRelaySegmentActivation,
+        ServerBackupHandle, ServerRecoveryAssetProvider,
     },
 };
 use serde::Deserialize;
 use serde_json::json;
-use std::{fs::File, path::Path, sync::Arc};
+use std::{fs::File, io::Write, path::Path, sync::Arc};
 
 const ROOM: &str = "relocated";
 const SEAL: &str = "portable-relocation-seal.json";
@@ -64,11 +64,23 @@ struct Review {
 #[derive(Deserialize)]
 #[serde(tag = "kind", rename_all = "camelCase", deny_unknown_fields)]
 enum Command {
-    Activate { token: String, documents: Vec<Document>, reviews: Vec<Review> },
-    Resume { token: String },
+    Activate {
+        token: String,
+        documents: Vec<Document>,
+        reviews: Vec<Review>,
+    },
+    Resume {
+        token: String,
+        #[serde(rename = "expectedUnservedSelection")]
+        expected_unserved_selection: Option<RoomDeploymentSelection>,
+    },
 }
 
-pub(crate) fn router(parent: &Path, authentication: Authentication) -> Result<axum::Router> {
+pub(crate) fn router(
+    parent: &Path,
+    authentication: Authentication,
+    exit_before_listen: bool,
+) -> Result<axum::Router> {
     let command: Command = serde_json::from_slice(&input()?)?;
     let seal: RelaySegmentPortableSeal =
         serde_json::from_str(&read(&parent.join(SEAL), 128 * 1024)?)?;
@@ -141,14 +153,26 @@ pub(crate) fn router(parent: &Path, authentication: Authentication) -> Result<ax
                 },
             )?;
             assert_eq!(active, approval.planned_selection()?);
+            if exit_before_listen {
+                // Skip destructors and exit before main can bind the listener.
+                let mut stdout = std::io::stdout().lock();
+                writeln!(stdout, "{}", json!({"kind": "activated", "selection": active}))?;
+                stdout.flush()?;
+                std::process::exit(77);
+            }
             Ok(router)
         }
-        Command::Resume { token } => {
+        Command::Resume { token, expected_unserved_selection } => {
+            assert!(!exit_before_listen);
             let approval: RelaySegmentHandoverApproval =
                 serde_json::from_str(&read(&approval_path, 128 * 1024)?)?;
             assert_eq!(approval.previous_selection(), &seal.planned_selection()?);
             let target = bundle.backup().reopen(&room_path, POLICY)?;
             let selected = authority.current_selection()?;
+            if let Some(expected) = expected_unserved_selection {
+                assert_eq!(expected, approval.planned_selection()?);
+                assert_eq!(selected, expected);
+            }
             let (router, _, resumed) = target.resume_handover(
                 authentication,
                 "owner",

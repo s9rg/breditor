@@ -695,10 +695,16 @@ async function run(mode, {distribution, rich}, executable, parent, journalKind, 
           {principal: 'owner', actor: comment.identity.actor, credential: comment.identity.credential},
           {principal: peer.identity.principal, ...protectedPeerReview},
         ];
+        const {selection} = await startSegmentHandoverHost(
+          executable, [parent, 'relocated-before-listen', address], token,
+          false, false, {kind: 'activate', documents, reviews},
+        );
         host = await startSegmentHandoverHost(executable, [parent, restoredRoot, address], token,
-          false, false, {documents, reviews});
+          false, false, {kind: 'resume', expectedUnservedSelection: selection});
         relocationEvidence = {
           sealedPortableActivations: 1,
+          unservedActivationExits: 1,
+          unservedActivationResumes: 1,
           sealedCaptureRefusals: 1,
           sealedNativePredecessors: result.portableSeal.nativePredecessors,
           retiredOriginalPaths: originalPaths.length,
@@ -904,8 +910,8 @@ async function run(mode, {distribution, rich}, executable, parent, journalKind, 
     const extra = Number(carryForward);
     const relocated = Number(portableSeal);
     return {mode, handoffs: 2, portableRestores: 1 + extra + relocated, restoredOfflineLanes: 6, undoRedoLanes: 2, rasterReads: 2,
-      processExits: 4 + extra + Number(reviewRecovered) + Number(relayDiscussion), authenticatedTakeovers: 1 + extra + relocated,
-      oldServingRefusals: 1 + extra, coldResumes: 2 + extra + Number(reviewRecovered) + Number(relayDiscussion) - relocated,
+      processExits: 4 + extra + Number(reviewRecovered) + Number(relayDiscussion) + relocated, authenticatedTakeovers: 1 + extra + relocated,
+      oldServingRefusals: 1 + extra, coldResumes: 2 + extra + Number(reviewRecovered) + Number(relayDiscussion),
       ...carryEvidence,
       ...relocationEvidence,
       ...coldReaderEvidence,
