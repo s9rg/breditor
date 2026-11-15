@@ -85,21 +85,35 @@ fn continue_room(
     Ok(())
 }
 
-fn restored_backup(parent: &Path) -> Result<RelaySegmentRoomBackupFiles> {
-    let first = saved_base(parent, "base", None)?;
-    let second = saved_base(parent, "linked", Some(first))?;
-    let capture = parent.join("capture");
+fn captured_base(
+    capture: &Path,
+    selection: &Path,
+    prior: Arc<RelaySegmentBaseFile>,
+) -> Result<(Arc<RelaySegmentBaseFile>, RelaySegmentRoomBackupIdentity)> {
     let identity: RelaySegmentRoomBackupIdentity =
-        serde_json::from_str(&read(&parent.join("restore.json"), 32 * 1024)?)?;
-    let current = Arc::new(RelaySegmentBaseFile::open_linked(
+        serde_json::from_str(&read(selection, 32 * 1024)?)?;
+    let base = Arc::new(RelaySegmentBaseFile::open_linked(
         File::open(capture.join("native.archive"))?,
         File::open(capture.join("native.checkpoint"))?,
         &identity.native,
-        second,
+        prior,
     )?);
+    Ok((base, identity))
+}
+
+fn original_capture(
+    parent: &Path,
+) -> Result<(Arc<RelaySegmentBaseFile>, RelaySegmentRoomBackupIdentity)> {
+    let first = saved_base(parent, "base", None)?;
+    let second = saved_base(parent, "linked", Some(first))?;
+    captured_base(&parent.join("capture"), &parent.join("restore.json"), second)
+}
+
+fn restored_backup(parent: &Path) -> Result<RelaySegmentRoomBackupFiles> {
+    let (current, identity) = original_capture(parent)?;
     Ok(RelaySegmentRoomBackupFiles::open(
         current,
-        File::open(capture.join("rasters.archive"))?,
+        File::open(parent.join("capture/rasters.archive"))?,
         &identity,
     )?)
 }
@@ -177,7 +191,9 @@ async fn main() -> Result {
             room.put_asset("owner", &mut assets, prepare_asset(&id, "image/png", png)?)?;
             (source_router(room, assets, parent, true, auth)?.0, None)
         }
-        "restore" | "restored" => (handover::resumed_router(parent, auth)?, None),
+        "restore" | "restored" | "carried" => {
+            handover::resumed_router(parent, auth, mode == "carried")?
+        }
         "handoff" => {
             let (room, _) = Room::open_log_generations(&old)?;
             return continue_room(parent, room, "base", "successor", "successor-one", None);

@@ -143,6 +143,13 @@ impl RetainedJournals {
         &self.pins
     }
 
+    #[cfg(feature = "server")]
+    pub fn contains(&self, pin: &RelaySegmentClientJournalPin) -> bool {
+        self.pins
+            .binary_search_by(|candidate| candidate.owner.key().cmp(&pin.owner.key()))
+            .is_ok_and(|index| self.pins[index] == *pin)
+    }
+
     pub fn check(&self) -> Result<()> {
         self.directory.guard_witness(&self.selection.directory)?;
         self.data.check_named(&self.data_witness, &self.directory.path.join(DATA))?;

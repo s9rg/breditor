@@ -36,6 +36,7 @@ pub(in crate::server) fn commit_segment_handover(
         };
         if let Some(custody) = &host.relay_segment_custody {
             custody.check()?;
+            custody.check_alternate_continuity(target)?;
         }
         let mut room = host.room.lock().map_err(|_| Error::NeedsRecovery)?;
         let assets = host.assets.as_ref().ok_or(Error::NeedsRecovery)?;

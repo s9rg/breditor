@@ -30,6 +30,27 @@ impl RelaySegmentServingCustody {
         Ok(())
     }
 
+    pub(crate) fn check_alternate_continuity(
+        &self,
+        target: &RecoveredRelaySegmentRoom,
+    ) -> Result<()> {
+        if let Some(alternates) = &self.alternatives {
+            let destinations = [&target.journals, &target.alternatives];
+            for pin in alternates.pins() {
+                if !destinations
+                    .iter()
+                    .filter_map(|entry| entry.as_ref())
+                    .any(|cohort| cohort.contains(pin))
+                {
+                    return Err(Error::Contract(
+                        "relay segment handover omitted a retained alternate",
+                    ));
+                }
+            }
+        }
+        Ok(())
+    }
+
     pub(crate) fn export_alternates(
         &self,
         destination: &Path,

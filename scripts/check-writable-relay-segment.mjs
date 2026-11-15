@@ -35,8 +35,8 @@ function selectClientJournals(parent, identity, pairedBackup, peerWriter, peerCh
   ];
 }
 
-function readRetainedClientJournals(parent, expected, directory = 'client-journals') {
-  const root = join(parent, 'restored', directory);
+function readRetainedClientJournals(parent, expected, directory = 'client-journals', restoredRoot = 'restored') {
+  const root = join(parent, restoredRoot, directory);
   const manifest = JSON.parse(readFileSync(join(root, 'manifest.json'), 'utf8'));
   assert.deepEqual(manifest, expected);
   const stream = readFileSync(join(root, 'journals.bin'));
@@ -52,7 +52,7 @@ function readRetainedClientJournals(parent, expected, directory = 'client-journa
   return originals;
 }
 
-async function run(mode, {distribution, rich}, executable, parent, journalKind, terminalReceipts, opaque, competing) {
+async function run(mode, {distribution, rich}, executable, parent, journalKind, terminalReceipts, opaque, competing, carryForward) {
   const participant = journalKind === 'independentParticipant';
   const archiveImage = opaque ? proposalAlias : proposalAsset;
   const independentDelivery = journalKind !== 'pairedSession';
@@ -474,7 +474,7 @@ async function run(mode, {distribution, rich}, executable, parent, journalKind, 
     }
     await session.close();
     session = undefined;
-    host = await startSegmentHandoverHost(executable, [parent, 'restore', address], token, competing);
+    host = await startSegmentHandoverHost(executable, [parent, 'restore', address], token, competing, carryForward);
     if (retainedBranches) {
       const surviving = await api.readSharedIndependentDeliveryBranchArchive(
         new Blob([readFileSync(join(parent, 'retained-branches.bin'))]),
@@ -491,7 +491,7 @@ async function run(mode, {distribution, rich}, executable, parent, journalKind, 
         alternate, retainedBranches.incomingSelection, retainedBranches.competingRecovery,
       );
     }
-    const [backup] = readRetainedClientJournals(parent, journalPins);
+    const [backup, peerJournal] = readRetainedClientJournals(parent, journalPins);
     assert.deepEqual(backup, archive);
     if (portable) {
       const restored = await fetch(proposalRasterUrl, {headers});
@@ -521,6 +521,70 @@ async function run(mode, {distribution, rich}, executable, parent, journalKind, 
     assert.ok(BigInt(document.state().serverReceiptSequence) >= BigInt(captured.records));
     assert.equal(visibleThreads().length, 4);
     if (competing) assert.doesNotMatch(session.core.documentJson(), /Competing branch text/);
+    let restoredRoot = 'restored';
+    let carryEvidence;
+    if (carryForward) {
+      await stopClients();
+      await session.flush();
+      const recovery = session.exportRecovery();
+      const selectedUpload = {
+        ...uploads[0], path: join(parent, restoredRoot, 'client-uploads', uploads[0].pin.writer + '.uploads'),
+      };
+      assert.deepEqual(Buffer.from(await (await portableUploads.exportBackup()).arrayBuffer()),
+        readFileSync(selectedUpload.path));
+      const current = await captureParticipant(
+        api, richApi, session, selectedUpload, archiveImage, 'carry-selected-assets',
+      );
+      const updatedPins = [
+        writeJournal(parent, 'carry-journal-0.json', journalPins[0].owner, current.archive),
+        writeJournal(parent, 'carry-journal-1.json', journalPins[1].owner, peerJournal),
+      ];
+      assert.deepEqual(updatedPins[1], journalPins[1]);
+      const peerUpload = readFileSync(join(parent, restoredRoot, 'client-uploads', uploads[1].pin.writer + '.uploads'));
+      assert.equal(sha(peerUpload), uploads[1].pin.sha256);
+      writeFileSync(join(parent, 'carry-peer.uploads'), peerUpload, {flag: 'wx', mode: 0o600});
+
+      const result = await host.carry(token, registered.identity, comment.identity, peer.identity,
+        uploads[1].pin, updatedPins, incomingBranch);
+      assert.equal(result.alternateOmissionRefusals, 1);
+      assert.ok(BigInt(result.records) > BigInt(captured.records));
+      const superseded = await fetch(rasterUrl, {headers});
+      assert.equal(superseded.status, 403);
+      await superseded.arrayBuffer();
+      await host.crash();
+      host = undefined;
+      await session.close();
+      session = undefined;
+      portableUploads.close();
+      portableUploads = undefined;
+      for (const name of [restoredRoot, 'exported-alternates', 'retained-branches.bin',
+        'carry-journal-0.json', 'carry-journal-1.json', 'carry-peer.uploads']) {
+        renameSync(join(parent, name), join(parent, 'retired-' + name));
+      }
+      restoredRoot = 'carried';
+      host = await startSegmentHandoverHost(executable, [parent, restoredRoot, address], token);
+      const [alternate] = readRetainedClientJournals(parent, [incomingBranch], 'client-alternatives', restoredRoot);
+      assert.deepEqual(alternate, retainedBranches.incoming);
+      const alternateHistoryLanes = await checkRecoveredAlternate(
+        api, {...deliveryOptions, database: deliveryOptions.database + '-carried-alternate'},
+        alternate, retainedBranches.incomingSelection, retainedBranches.competingRecovery,
+      );
+      const [currentBytes] = readRetainedClientJournals(parent, updatedPins, 'client-journals', restoredRoot);
+      assert.deepEqual(currentBytes, current.archive);
+      const restored = await reopenParticipant(api, {...deliveryOptions, database: database + '-carried'},
+        currentBytes, current.selection, uploads[0], archiveImage);
+      session = restored.session;
+      portableUploads = restored.uploads;
+      assert.deepEqual(session.exportRecovery(), recovery);
+      await attach();
+      assert.equal(document.state().pending, false);
+      assert.equal(review.state().pending, false);
+      assert.equal(visibleThreads().length, 4);
+      assert.doesNotMatch(session.core.documentJson(), /Competing branch text/);
+      carryEvidence = {alternateOmissionRefusals: result.alternateOmissionRefusals,
+        carriedAlternateArchives: 1, carriedAlternateHistoryLanes: alternateHistoryLanes,
+        advancedAcceptedCut: true};
+    }
     const accepted = session.core.documentJson();
     assert.equal(session.core.undo(), true);
     assert.equal(session.core.undoReview().kind, 'committed');
@@ -528,12 +592,14 @@ async function run(mode, {distribution, rich}, executable, parent, journalKind, 
     await review.flush();
     await stopClients();
     await host.crash();
-    host = await startSegmentHandoverHost(executable, [parent, 'restored', address], token);
+    host = await startSegmentHandoverHost(executable, [parent, restoredRoot, address], token);
     const clientUploadReceipts = await resumeClientRaster(
-      richApi, api, parent, address, origin, token, uploads[0], portableUploads,
+      richApi, api, parent, address, origin, token, uploads[0], portableUploads, restoredRoot,
     );
     portableUploads = undefined;
-    const cancelledUploadReceipts = await resumeClientRaster(richApi, api, parent, address, origin, token, uploads[1]);
+    const cancelledUploadReceipts = await resumeClientRaster(
+      richApi, api, parent, address, origin, token, uploads[1], undefined, restoredRoot,
+    );
     assert.equal(cancelledUploadReceipts, 0);
     await attach();
     assert.doesNotMatch(session.core.documentJson(), /Offline before portable restore/);
@@ -576,8 +642,10 @@ async function run(mode, {distribution, rich}, executable, parent, journalKind, 
       }
     }
     if (pending) await deliverWork(pending);
-    return {mode, handoffs: 2, portableRestores: 1, restoredOfflineLanes: 6, undoRedoLanes: 2, rasterReads: 2,
-      processExits: 4, authenticatedTakeovers: 1, oldServingRefusals: 1, coldResumes: 2,
+    const extra = Number(carryForward);
+    return {mode, handoffs: 2, portableRestores: 1 + extra, restoredOfflineLanes: 6, undoRedoLanes: 2, rasterReads: 2,
+      processExits: 4 + extra, authenticatedTakeovers: 1 + extra, oldServingRefusals: 1 + extra, coldResumes: 2 + extra,
+      ...carryEvidence,
       registrationRefusals: captured.registrationRefusals, providerRasters: captured.providerRasters,
       retainedPackets: captured.retainedPackets, stagedClientRasters: captured.clientRasters, clientUploadReceipts,
       clientUploadArchives: captured.clientArchives, missingArchiveRefusals: captured.missingArchiveRefusals,
@@ -629,9 +697,11 @@ const executable = resolve(process.argv[2]);
 const option = process.argv[3];
 const terminalReceipts = option === '--participant-terminal-receipts';
 const opaque = option === '--participant-opaque';
-const competing = option === '--participant-accepted-branch';
+const carryForward = option === '--participant-carried-alternate';
+const competing = carryForward || option === '--participant-accepted-branch';
 assert.ok(process.argv.length === 3 || process.argv.length === 4 &&
-  ['--independent-delivery', '--participant-archive', '--participant-terminal-receipts', '--participant-opaque', '--participant-accepted-branch'].includes(option));
+  ['--independent-delivery', '--participant-archive', '--participant-terminal-receipts', '--participant-opaque',
+    '--participant-accepted-branch', '--participant-carried-alternate'].includes(option));
 const journalKind = terminalReceipts || opaque || competing || option === '--participant-archive' ? 'independentParticipant'
   : option === '--independent-delivery' ? 'independentDelivery' : 'pairedSession';
 const source = sourceEvidence(root);
@@ -647,7 +717,8 @@ try {
     const path = join(sandbox, mode);
     mkdirSync(path, {mode: 0o700});
     reports[mode] = {
-      ...await run(mode, distribution, executable, path, journalKind, terminalReceipts, opaque, competing), proof: distribution.proof,
+      ...await run(mode, distribution, executable, path, journalKind, terminalReceipts, opaque, competing, carryForward),
+      proof: distribution.proof,
     };
   }
   assert.equal(reports.source.runtimeSha256, reports.installed.runtimeSha256);
@@ -656,7 +727,8 @@ try {
     format: 'breditor/writable-relay-segment-qualification', formatVersion: 1,
     source, relaySha256: sha(readFileSync(executable)), reports,
   };
-  const reportFile = competing ? 'qualified-accepted-participant-branch.json'
+  const reportFile = carryForward ? 'qualified-carried-participant-alternate.json'
+    : competing ? 'qualified-accepted-participant-branch.json'
     : opaque ? 'qualified-participant-opaque.json'
     : terminalReceipts ? 'qualified-participant-terminal-receipts.json'
     : journalKind === 'independentParticipant' ? 'qualified-participant-archive-segment.json'
