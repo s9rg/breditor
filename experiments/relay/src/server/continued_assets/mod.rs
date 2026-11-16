@@ -8,7 +8,7 @@ pub use backup::ContinuedRasterRoomBackupIdentity;
 pub(super) use store::HttpRasterStore;
 
 use super::{Authentication, Host, RoomDeploymentLease, create_host, deployment_fence, routes};
-use crate::{ContinuedAssetStore, Result, Room};
+use crate::{ContinuedAssetStore, Error, Result, Room};
 use axum::Router;
 use std::sync::{Arc, Mutex};
 
@@ -29,6 +29,10 @@ pub fn router_with_continued_assets_and_deployment_lease(
     assets: ContinuedAssetStore,
     lease: RoomDeploymentLease,
 ) -> Result<(Router, ContinuedAssetServerHandle)> {
+    if room.asset_binding() != assets.binding() {
+        return Err(Error::Contract("continued raster store room binding"));
+    }
+    assets.guard()?;
     let mut host = create_host(room, authentication, None);
     host.continued_assets = Some(Arc::new(Mutex::new(assets)));
     deployment_fence::attach_host(&host, lease)?;

@@ -3,6 +3,10 @@
 //! requires the planned resource-limited import worker, TLS and deployment qualification.
 mod assets;
 mod continued_assets;
+pub use crate::room::{
+    ContinuedRasterRoomBackupFiles, ContinuedRasterRoomClientArchives,
+    RecoveredContinuedRasterRoom, RecoveredContinuedRasterRoomIdentity,
+};
 pub use continued_assets::{
     ContinuedAssetServerHandle, ContinuedRasterRoomBackupIdentity,
     router_with_continued_assets_and_deployment_lease,

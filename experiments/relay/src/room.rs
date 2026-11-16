@@ -21,6 +21,11 @@ pub use log_generations::{
     ContinuedAssetBackupIdentity, ContinuedAssetStore, ContinuedAssetStoreIdentity,
 };
 
+#[cfg(feature = "server")]
+pub use log_generations::{
+    ContinuedRasterRoomBackupFiles, ContinuedRasterRoomClientArchives,
+    RecoveredContinuedRasterRoom, RecoveredContinuedRasterRoomIdentity,
+};
 mod materialized_checkpoint;
 #[cfg(feature = "server")]
 pub(crate) use log_generations::{

@@ -46,7 +46,7 @@ impl AssetArchive {
     }
 
     pub(super) fn copy_into(
-        mut self,
+        &self,
         directory: &GenerationDirectory,
         name: &str,
     ) -> Result<(Self, GenerationFileWitness)> {
@@ -61,12 +61,17 @@ impl AssetArchive {
         }
         input.check_named(&witness, &path)?;
         directory.guard()?;
-        self.input = input;
-        Ok((self, witness))
+        let archived = Self { input, files: self.files.clone(), identity: self.identity.clone() };
+        Ok((archived, witness))
     }
 
     pub(super) fn guard(&self, path: &Path, witness: &GenerationFileWitness) -> Result<()> {
         self.input.check_named(witness, path)
+    }
+
+    #[cfg(feature = "server")]
+    pub(super) fn check(&self) -> Result<()> {
+        self.input.check()
     }
 
     pub(super) fn write_to(&self, output: &mut impl Write) -> Result<()> {

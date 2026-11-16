@@ -1,5 +1,12 @@
 //! Bind a complete native segment chain to its exact raster archive and a new local owner.
 mod capture;
+#[cfg(feature = "server")]
+mod continued_raster_room;
+#[cfg(feature = "server")]
+pub use continued_raster_room::{
+    ContinuedRasterRoomBackupFiles, ContinuedRasterRoomClientArchives,
+    RecoveredContinuedRasterRoom, RecoveredContinuedRasterRoomIdentity,
+};
 mod client_journals;
 #[cfg(feature = "server")]
 pub use client_journals::{

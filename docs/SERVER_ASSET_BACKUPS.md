@@ -189,3 +189,34 @@ archives. Keep the returned `ContinuedRasterRoomBackupIdentity` independently
 and retain any earlier native segments and client inputs that this room needs.
 The combined capture is a storage identity. Coordinated takeover still requires
 verification of the complete room and its client/provider inputs.
+
+### Restore a combined capture on a fresh relay host
+
+Keep the capture directory private, with its `.owner` marker and all four
+files. Copy it to the recovery host along with the separately retained
+`ContinuedRasterRoomBackupIdentity`, any required native predecessor
+archives, and independently pinned client originals. Keep these sources
+immutable while they are in use. Open the capture with
+`ContinuedRasterRoomBackupFiles::open`. The native archive and checkpoint
+must match the selected physical cut, and the two raster archives must match
+the selected generation pair and the same room binding.
+
+With `restore`, select an absent destination and a fresh native generation
+ID. Include the original client journals, alternate participant files and
+upload queues as companion inputs. Any original referenced by an already
+published recovered discussion is required. The restore keeps selected queue
+states, payloads and receipts in the original client files. Both live raster
+generations retain their captured contents and limits.
+
+After all owners and selected client files are synced, the restore commits
+the local completion record. Store the returned
+`RecoveredContinuedRasterRoomIdentity` separately. On restart, open the
+original capture again and call `reopen` with that local identity. An
+incomplete target, a substituted local owner or an advanced native or raster
+cut refuses reopening. Preserve an interrupted attempt and retry to a new
+absent path.
+
+The host can inspect the reconstructed room, read images from both generations,
+and export the selected client originals before serving. Authenticated
+takeover still requires complete client and provider reconciliation, a fresh
+operator decision and the deployment authority's epoch transition.

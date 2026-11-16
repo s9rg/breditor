@@ -1,6 +1,8 @@
 //! Explicit continuation of one original raster archive into a fresh bounded active generation.
 mod archive;
 mod backup;
+#[cfg(feature = "server")]
+pub(super) use backup::ContinuedAssetBackupFiles;
 mod open;
 mod operations;
 #[cfg(test)]

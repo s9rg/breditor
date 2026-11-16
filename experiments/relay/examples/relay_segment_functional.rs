@@ -1,4 +1,6 @@
 //! Loopback fixture with separate old, handoff, and successor process lifetimes.
+#[path = "relay_segment_functional/continued_restore.rs"]
+mod continued_restore;
 #[path = "relay_segment_functional/continued_serving.rs"]
 mod continued_serving;
 #[path = "relay_segment_functional/full_predecessor.rs"]
@@ -177,6 +179,9 @@ async fn main() -> Result {
     let address: SocketAddr = address.parse()?;
     if !address.ip().is_loopback() {
         return Err("relay segment fixture requires loopback".into());
+    }
+    if matches!(mode.as_str(), "continued-raster-restore" | "continued-raster-reopen") {
+        return continued_restore::run(parent, mode == "continued-raster-reopen");
     }
     let old = parent.join("source-native");
     let png = fs::read(parent.join("asset.png"))?;

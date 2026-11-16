@@ -92,7 +92,7 @@ impl<'a> OriginalJournals<'a> {
         Ok(selected.into_values().collect())
     }
 
-    fn retain(
+    pub(super) fn retain(
         self,
         directory: &GenerationDirectory,
     ) -> Result<(Option<RetainedJournals>, Option<RetainedJournals>)> {

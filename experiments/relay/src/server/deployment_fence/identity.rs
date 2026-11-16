@@ -49,7 +49,7 @@ impl RoomDeploymentIdentity {
     }
 }
 impl RoomDeploymentSelection {
-    pub(super) fn validate_pin(&self) -> Result<u64> {
+    pub(in crate::server) fn validate_pin(&self) -> Result<u64> {
         self.identity.validate()?;
         let generation = self
             .generation

@@ -1,5 +1,7 @@
 //! Live HTTP, current-epoch refusal and exact backup for a continuation above the old count ceiling.
 use super::router_with_continued_assets_and_deployment_lease;
+#[path = "restore_tests.rs"]
+mod restore_tests;
 use crate::{
     ContinuedAssetStore, Error, RelaySegmentBaseFile, Room,
     assets::{AssetStore, MAX_ASSETS, asset_id, prepare_asset},
@@ -91,13 +93,8 @@ async fn full_predecessor_serves_http_through_replacement_and_captures_both_gene
         &backup.native,
     )?;
     assert_eq!(native.identity(), &backup.native);
-    let relocated = ContinuedAssetStore::restore(
-        &parent.join("relocated"),
-        File::open(captured.join("rasters-predecessor.archive"))?,
-        File::open(captured.join("rasters-active.archive"))?,
-        &backup.rasters,
-    )?;
-    assert_eq!(relocated.get(&asset_id(&new))?.ok_or("captured active raster")?.bytes, new);
+    restore_tests::check_combined_restore(parent, &captured, &backup, &before, [&inherited, &new])?;
+    assert_eq!(authority.current_selection()?, lease.selection());
 
     let in_flight = network.admitted_upload(&route(&late), &token, late.len()).await?;
     let next = authority.claim(&lease.selection())?;

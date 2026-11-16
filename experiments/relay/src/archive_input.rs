@@ -40,6 +40,7 @@ pub(crate) enum ArchiveSlice<'a> {
     File(ArchiveRange<'a>),
 }
 
+#[derive(Clone)]
 pub(crate) struct ArchiveEntry {
     pub(crate) offset: u64,
     pub(crate) bytes: u64,

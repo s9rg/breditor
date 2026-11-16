@@ -2,6 +2,7 @@
 use super::{
     ACTIVE, ARCHIVE, CONTROL, ContinuedAssetBackupIdentity, ContinuedAssetStore,
     ContinuedAssetStoreIdentity, FORMAT, Lineage, MAX_CONTROL, archive::AssetArchive,
+    backup::ContinuedAssetBackupFiles,
 };
 use crate::{
     Error, Result,
@@ -30,7 +31,7 @@ impl ContinuedAssetStore {
         let retained = AssetArchive::admit(predecessor, selected)?;
         let lineage =
             Lineage { predecessor: selected.clone(), namespace: crate::credentials::issue()? };
-        Self::install(path, lineage, retained, None)
+        Self::install(path, lineage, &retained, None)
     }
 
     /// Restore the verified pair at an absent path, yielding a new local custody selection.
@@ -43,25 +44,13 @@ impl ContinuedAssetStore {
         active: File,
         selected: &ContinuedAssetBackupIdentity,
     ) -> Result<Self> {
-        if selected.format != FORMAT
-            || selected.format_version != 1
-            || selected.active.binding != selected.lineage.active_binding()?
-        {
-            return Err(Error::Contract("raster continuation backup selection differs"));
-        }
-        let retained = AssetArchive::admit(predecessor, selected.predecessor())?;
-        let active = AssetArchive::admit(active, selected.active())?;
-        let previous: std::collections::BTreeSet<_> = retained.keys().collect();
-        if active.keys().any(|digest| previous.contains(digest)) {
-            return Err(Error::Contract("raster continuation generations overlap"));
-        }
-        Self::install(path, selected.lineage.clone(), retained, Some(&active))
+        ContinuedAssetBackupFiles::admit(predecessor, active, selected)?.restore(path)
     }
 
-    fn install(
+    pub(super) fn install(
         path: &Path,
         lineage: Lineage,
-        retained: AssetArchive,
+        retained: &AssetArchive,
         restore: Option<&AssetArchive>,
     ) -> Result<Self> {
         let active_binding = lineage.active_binding()?;

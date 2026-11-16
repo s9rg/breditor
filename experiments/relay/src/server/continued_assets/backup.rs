@@ -8,6 +8,8 @@ use crate::{
 use serde::{Deserialize, Serialize};
 use std::path::Path;
 
+const FORMAT: &str = "breditor/relay-continued-raster-room-backup";
+
 /// Exact combined capture of a physical native room and both raster generations.
 #[derive(Clone, Debug, Eq, PartialEq, Serialize, Deserialize)]
 #[serde(rename_all = "camelCase", deny_unknown_fields)]
@@ -22,6 +24,21 @@ pub struct ContinuedRasterRoomBackupIdentity {
     pub rasters: ContinuedAssetBackupIdentity,
     /// Serving epoch at this cut. This selection gives no activation permission.
     pub source_epoch: RoomDeploymentSelection,
+}
+
+impl ContinuedRasterRoomBackupIdentity {
+    pub(crate) fn check_selection(&self) -> Result<()> {
+        let native = &self.native.predecessor.source;
+        if self.format != FORMAT
+            || self.format_version != 1
+            || self.source_epoch.validate_pin()? == 0
+            || native.asset_binding != self.rasters.predecessor().binding
+            || native.deployment_binding()? != self.source_epoch.identity.binding
+        {
+            return Err(Error::Contract("continued raster room backup selection differs"));
+        }
+        Ok(())
+    }
 }
 
 impl ContinuedAssetServerHandle {
@@ -77,7 +94,7 @@ impl ContinuedAssetServerHandle {
                 output.sync()?;
                 output.guard()?;
                 Ok(ContinuedRasterRoomBackupIdentity {
-                    format: "breditor/relay-continued-raster-room-backup".into(),
+                    format: FORMAT.into(),
                     format_version: 1,
                     native,
                     rasters,
