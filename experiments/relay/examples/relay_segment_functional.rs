@@ -191,7 +191,9 @@ async fn main() -> Result {
     }
     if matches!(
         mode.as_str(),
-        "continued-raster-inspect-tail"
+        "continued-raster-inspect-rotation"
+            | "continued-raster-repair-rotation"
+            | "continued-raster-inspect-tail"
             | "continued-raster-repair-tail"
             | "continued-raster-inspect-upload"
             | "continued-raster-repair-upload"

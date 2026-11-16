@@ -368,6 +368,11 @@ inspection below and preserve the files if it refuses.
 
 ### Finish an interrupted native rotation
 
+The current owner can seal the active WAL with the trusted-host
+`ContinuedAssetServerHandle::rotate_log_generation` operation. It keeps the
+original native sequence and accepts an exact retry under the same serving
+permit.
+
 Ordinary restart preserves a pending rotation for explicit recovery.
 Call `inspect_activated_native_rotation` with the authenticated owner,
 committed serving selection and independently saved minimum. The relay

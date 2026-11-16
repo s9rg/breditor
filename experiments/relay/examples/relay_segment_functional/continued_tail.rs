@@ -3,8 +3,10 @@ use super::{Result, configured_auth, continued_activation, continued_reconcile, 
 use breditor_collab_relay::server::{
     Authentication, ContinuedRasterNativeTailInspection, ContinuedRasterNativeTailPlan,
     ContinuedRasterNativeTailRepair, ContinuedRasterRestart, ContinuedRasterRoomBackupFiles,
-    ContinuedRasterRoomBackupIdentity, ContinuedRasterUploadInspection, ContinuedRasterUploadPlan,
-    ContinuedRasterUploadRepair, RoomDeploymentAuthority, RoomDeploymentSelection,
+    ContinuedRasterRoomBackupIdentity, ContinuedRasterRotationInspection,
+    ContinuedRasterRotationPlan, ContinuedRasterRotationRepair, ContinuedRasterUploadInspection,
+    ContinuedRasterUploadPlan, ContinuedRasterUploadRepair, RoomDeploymentAuthority,
+    RoomDeploymentSelection,
 };
 use serde::Serialize;
 use serde_json::json;
@@ -62,6 +64,48 @@ impl Recovery<'_> {
                     restart: &self.restart,
                     plan: &plan,
                     suffix: &evidence.join("suffix.bin"),
+                },
+            )?;
+            println!("{}", serde_json::to_string(&outcome)?);
+        }
+        Ok(())
+    }
+
+    fn rotation(&self, inspect: bool) -> Result {
+        let evidence = self.parent.join("rotation-evidence");
+        let name = "rotation-selection.json";
+        if inspect {
+            let plan = self.backup.inspect_activated_native_rotation(
+                self.target,
+                self.auth,
+                "owner",
+                self.token,
+                &ContinuedRasterRotationInspection {
+                    restart: &self.restart,
+                    minimum: &self.minimum()?,
+                    evidence: &evidence,
+                },
+            )?;
+            self.save(name, &plan)?;
+            println!(
+                "{}",
+                json!({
+                    "nextSequence": plan.next_sequence(),
+                    "afterManifest": plan.successor_manifest(),
+                })
+            );
+        } else {
+            let plan: ContinuedRasterRotationPlan =
+                serde_json::from_str(&read(&self.parent.join(name), 64 * 1024)?)?;
+            let outcome = self.backup.repair_activated_native_rotation(
+                self.target,
+                self.auth,
+                "owner",
+                self.token,
+                &ContinuedRasterRotationRepair {
+                    restart: &self.restart,
+                    plan: &plan,
+                    evidence: &evidence,
                 },
             )?;
             println!("{}", serde_json::to_string(&outcome)?);
@@ -133,6 +177,8 @@ pub(super) fn run(parent: &Path, mode: &str) -> Result {
         },
     };
     match mode {
+        "continued-raster-inspect-rotation" => recovery.rotation(true),
+        "continued-raster-repair-rotation" => recovery.rotation(false),
         "continued-raster-inspect-tail" => recovery.native_tail(true),
         "continued-raster-repair-tail" => recovery.native_tail(false),
         "continued-raster-inspect-upload" => recovery.upload(true, "upload"),

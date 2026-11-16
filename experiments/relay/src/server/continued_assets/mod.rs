@@ -12,6 +12,7 @@ pub use native_tail::{
 };
 mod raster_repair;
 mod reconcile;
+mod rotate;
 mod rotation_repair;
 pub use raster_repair::{
     ContinuedRasterUploadInspection, ContinuedRasterUploadPlan, ContinuedRasterUploadRepair,

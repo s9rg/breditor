@@ -89,6 +89,7 @@ enum Action {
     Capture,
     CaptureActivation,
     CaptureRepairFloor,
+    RotateNative { generation: String },
     SealActivation,
     Activate,
 }
@@ -113,6 +114,10 @@ pub(super) fn control(
                 Action::CaptureRepairFloor => handle
                     .capture(&principal, &token, &parent.join("repair-floor"))
                     .map(|capture| json!(capture))
+                    .map_err(|error| error.to_string()),
+                Action::RotateNative { generation } => handle
+                    .rotate_log_generation(&principal, &token, &generation)
+                    .map(|receipt| json!(receipt))
                     .map_err(|error| error.to_string()),
                 Action::SealActivation => {
                     super::continued_activation::seal(&parent, &handle, &principal, &token)

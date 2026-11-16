@@ -223,7 +223,31 @@ export async function verifyContinuedRasterServing(api, rich, wasm, executable, 
     verifyNativeTailRepair({parent, activation, invoke, floor: floor.result, floorPath});
     verifyPendingRasterRepair({parent, activation, invoke});
     host = await startApproved();
-    assert.equal(BigInt(newEpoch(firstServing).generation), BigInt(firstServing.generation) + 1n);
+    const rotationServing = newEpoch(firstServing);
+    assert.equal(BigInt(rotationServing.generation), BigInt(firstServing.generation) + 1n);
+    const action = {kind: 'rotateNative', generation: 'recovered-rotation'};
+    const wrongToken = '0'.repeat(64);
+    const deniedRotation = await host.maintenance('owner', wrongToken, action);
+    assert.ok(deniedRotation.error);
+    const rotated = await host.maintenance('owner', token, action);
+    assert.ok(rotated.result, rotated.error);
+    assert.equal(rotated.result.duplicate, false);
+    assert.equal(rotated.result.generation, action.generation);
+    const duplicate = await host.maintenance('owner', token, action);
+    assert.deepEqual(duplicate.result, {...rotated.result, duplicate: true});
+    await host.crash();
+    host = undefined;
+
+    assert.equal(client.undo(), true);
+    assert.equal(client.documentJson(), accepted);
+    await persistLocal();
+    client.dispose();
+    client = new api.SharedRichEditor(profile.restore('room', readFileSync(journal, 'utf8')));
+
+    saveExpected(rotationServing);
+    const interruptedNativeRotation = verifyPublishedRotation({parent, activation, invoke, cut: rotated.result});
+    host = await startApproved();
+    assert.equal(BigInt(newEpoch(rotationServing).generation), BigInt(rotationServing.generation) + 1n);
     const coldReader = await api.registerSharedRelayWriter(options);
     const coldDocument = new api.SharedRichEditor(profile.join_frame('room', coldReader.identity.writer, coldReader.frame));
     try {
@@ -232,7 +256,24 @@ export async function verifyContinuedRasterServing(api, rich, wasm, executable, 
       coldDocument.dispose();
     }
     await connect();
+    assert.equal(client.documentJson(), accepted);
+    const afterUndo = await api.registerSharedRelayWriter(options);
+    const freshAfterUndo = new api.SharedRichEditor(profile.join_frame('room', afterUndo.identity.writer, afterUndo.frame));
+    try {
+      assert.equal(freshAfterUndo.documentJson(), accepted);
+    } finally {
+      freshAfterUndo.dispose();
+    }
+    assert.equal(client.redo(), true);
+    await sync.flush();
     assert.equal(client.documentJson(), edited);
+    const afterRedo = await api.registerSharedRelayWriter(options);
+    const freshAfterRedo = new api.SharedRichEditor(profile.join_frame('room', afterRedo.identity.writer, afterRedo.frame));
+    try {
+      assert.equal(freshAfterRedo.documentJson(), edited);
+    } finally {
+      freshAfterRedo.dispose();
+    }
     for (const [id, bytes] of [[pixelAsset, pixel], [unavailableAsset, queued], [secondAsset, secondPixel], [proposalAsset, proposalPixel]]) {
       const response = await get(id);
       assert.equal(response.status, 200);
@@ -240,12 +281,13 @@ export async function verifyContinuedRasterServing(api, rich, wasm, executable, 
     }
     return {
       httpRastersRecovered: 2, stagedUploadReceipts: 1, offlineUndoAndRedo: true, combinedCapture: true, portableRestore,
-      authenticatedTakeover: {staleRelayReadsAndWritesRefused: true, coldStarts: 2, offlineRedoDelivered: true,
+      authenticatedTakeover: {staleRelayReadsAndWritesRefused: true, coldStarts: 3, offlineRedoDelivered: true,
         postActivationRasterAndEditSurvived: true, exactRastersRead: 4, portableSealAndRelocation: true, changedClientOriginalRefused: true},
       explicitTailRepair: {preservedIncompleteBytes: 9, acceptedFloorGuarded: true,
         changedSuffixRefused: true, coldRepairRetrySucceeded: true, pendingRasterEvidencePreserved: true},
       interruptedRasterRepair: {unpublishedBytesPreserved: true, publishedInodePreserved: true,
         nativeTailAndRasterRepairedTogether: true, changedEvidenceRefused: true, retryResynced: true},
+      interruptedNativeRotation: {...interruptedNativeRotation, offlineUndoAndRedoDelivered: true},
     };
   } finally {
     if (sync) {
@@ -482,4 +524,130 @@ function verifyPendingRasterRepair({parent, activation, invoke}) {
   assert.deepEqual([after.dev, after.ino], [before.dev, before.ino]);
   assert.deepEqual(readFileSync(published), record);
   assert.deepEqual(readFileSync(evidence), record);
+}
+
+function verifyPublishedRotation({parent, activation, invoke, cut}) {
+  const prepared = join(activation, 'prepared');
+  const native = join(prepared, 'native');
+  const active = join(prepared, 'rasters', 'active');
+  const manifest = join(native, 'm-' + Buffer.from(cut.afterManifest).toString('hex') + '.json');
+  const head = join(native, '.head.json');
+  const headBytes = readFileSync(head);
+  const manifestBytes = readFileSync(manifest);
+  const successor = JSON.parse(manifestBytes);
+  assert.deepEqual(successor.parent, cut.beforeManifest);
+  assert.equal(successor.active.generation, cut.generation);
+  assert.equal(String(successor.active.first), cut.nextSequence);
+  assert.deepEqual(successor.active.previous, cut.terminalDigest);
+
+  const wal = generation => join(native, 'g-' + createHash('sha256')
+    .update('breditor/relay-log-file/1\0').update(generation).digest('hex') + '.wal');
+  const sealed = successor.sealed.at(-1);
+  const accepted = readFileSync(wal(sealed.generation));
+  assert.deepEqual([...createHash('sha256').update(accepted).digest()], sealed.sha256);
+  const next = wal(cut.generation);
+  const nextFile = statSync(next, {bigint: true});
+  assert.equal(nextFile.size, 0n);
+
+  // The real rotation has finished. Reinstate the exact pending marker and continuation alias
+  // seen at its published-head boundary on this disposable room. Native tests interrupt inside
+  // the rotation implementation itself at both sides of head publication.
+  const stage = '.stage-' + 'd'.repeat(64);
+  linkSync(next, join(native, stage));
+  const selected = JSON.stringify({
+    format: 'breditor/relay-log-rotation',
+    formatVersion: 1,
+    before: cut.beforeManifest,
+    after: cut.afterManifest,
+    next: cut.generation,
+    sealed,
+    stage,
+  });
+  // Keep inode identifiers as exact integers in the native JSON format.
+  const intent = selected.slice(0, -1) +
+    `,"identity":{"device":${nextFile.dev},"inode":${nextFile.ino}}}`;
+  const marker = join(native, '.rotation.json');
+  const pending = openSync(marker, 'wx', 0o600);
+  try { writeFileSync(pending, intent); fsyncSync(pending); } finally { closeSync(pending); }
+  const raster = join(active, proposalAsset.slice(7) + '.asset');
+  const stagedRaster = join(active, '.pending-' + 'e'.repeat(64));
+  const rasterBytes = readFileSync(raster);
+  const imageFile = statSync(raster, {bigint: true});
+  linkSync(raster, stagedRaster);
+  for (const directory of [native, active]) {
+    const file = openSync(directory, 'r');
+    try { fsyncSync(file); } finally { closeSync(file); }
+  }
+
+  const call = action => invoke(parent, 'continued-raster-' + action);
+  assert.throws(() => call('activated'), error => error.status === 1);
+  assert.equal(readFileSync(marker, 'utf8'), intent);
+  const selectedCut = {nextSequence: Number(cut.nextSequence), afterManifest: cut.afterManifest};
+  const repairSelection = join(parent, 'rotation-selection.json');
+  const repairEvidence = join(parent, 'rotation-evidence');
+
+  // Select the still-pending old head, then publish the saved head as if another repair
+  // reached that boundary before losing its reply.
+  const heldHead = join(parent, 'held-rotated-head.json');
+  renameSync(head, heldHead);
+  writeFileSync(head, JSON.stringify({...JSON.parse(headBytes), manifest: cut.beforeManifest}),
+    {flag: 'wx', mode: 0o600});
+  assert.deepEqual(call('inspect-rotation'), selectedCut);
+  renameSync(heldHead, head);
+  assert.throws(() => call('repair-rotation'), error =>
+    error.status === 1 && error.stderr.includes('continued rotation phase or selection changed'));
+  assert.equal(readFileSync(marker, 'utf8'), intent);
+  assert.deepEqual(readFileSync(stagedRaster), rasterBytes);
+  renameSync(repairSelection, join(parent, 'earlier-rotation-selection.json'));
+  renameSync(repairEvidence, join(parent, 'earlier-rotation-evidence'));
+
+  assert.deepEqual(call('inspect-rotation'), selectedCut);
+  assert.equal(readFileSync(marker, 'utf8'), intent);
+  const retained = join(repairEvidence, 'rotation.json');
+  const retainedRotation = readFileSync(retained);
+  const retainedRaster = join(repairEvidence, 'raster.bin');
+  assert.deepEqual(readFileSync(retainedRaster), rasterBytes);
+  for (const [file, original, reason] of [
+    [retained, retainedRotation, 'continued rotation evidence differs'],
+    [retainedRaster, rasterBytes, 'continued rotation raster evidence differs'],
+  ]) {
+    const changed = Buffer.from(original);
+    changed[changed.length - 1] ^= 1;
+    writeFileSync(file, changed);
+    assert.throws(() => call('repair-rotation'),
+      error => error.status === 1 && error.stderr.includes(reason));
+    assert.equal(readFileSync(marker, 'utf8'), intent);
+    assert.deepEqual(readFileSync(stagedRaster), rasterBytes);
+    writeFileSync(file, original);
+  }
+  assert.equal(call('repair-rotation'), 'repaired');
+  const heldWal = join(parent, 'held-successor.wal');
+  renameSync(next, heldWal);
+  writeFileSync(next, '', {flag: 'wx', mode: 0o600});
+  assert.throws(() => call('repair-rotation'), error =>
+    error.status === 1 && error.stderr.includes('continued rotation selected successor differs'));
+  renameSync(heldWal, next);
+  assert.equal(call('repair-rotation'), 'alreadyComplete');
+  for (const retired of [marker, join(native, stage), stagedRaster]) {
+    assert.throws(() => statSync(retired), {code: 'ENOENT'});
+  }
+  assert.deepEqual(readFileSync(head), headBytes);
+  assert.deepEqual(readFileSync(manifest), manifestBytes);
+  assert.deepEqual(readFileSync(wal(sealed.generation)), accepted);
+  const sameNext = statSync(next, {bigint: true});
+  const sameImage = statSync(raster, {bigint: true});
+  assert.deepEqual([sameNext.dev, sameNext.ino, sameNext.size], [nextFile.dev, nextFile.ino, 0n]);
+  assert.deepEqual([sameImage.dev, sameImage.ino], [imageFile.dev, imageFile.ino]);
+  assert.deepEqual(readFileSync(raster), rasterBytes);
+  assert.deepEqual(readFileSync(retained), retainedRotation);
+  assert.deepEqual(readFileSync(retainedRaster), rasterBytes);
+  return {
+    ownerRotationAndDuplicateVerified: true,
+    headAndWalBytesPreserved: true,
+    stagingNamesRetired: true,
+    modifiedEvidenceRefused: true,
+    stalePhaseRefused: true,
+    replacedSuccessorRefused: true,
+    exactRetrySynced: true,
+  };
 }
