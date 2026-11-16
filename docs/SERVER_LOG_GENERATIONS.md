@@ -697,6 +697,35 @@ document and returns original event positions and whole Pending results
 when applicable. Backups retain and verify their full original WALs.
 Opening indexed checkpoints requires a reader that supports version 2.
 
+## Compact certified portable predecessors
+
+`Room::write_relay_segment_base_with_compactable_history` writes a
+version-three checkpoint along with the exact original archive. The
+checkpoint adds an `archiveClosure` to the indexed packet history. It
+records the original root, parent binding, archive digest and canonical
+inventory of file names, lengths and digests. Keep the returned selection
+in trusted recovery configuration. Live continuation and portable seal
+rederive the closure from the held original files before fencing the room.
+
+`capture_portable_relay_segment_with_compacted_history` and
+`copy_portable_with_compacted_history` write a fresh `BRLINE3\n` lineage.
+Its framing matches `BRLINE2\n`. An archive length of zero selects the
+exact retained version-three checkpoint and its physical closure. Older
+predecessors still include their full archives. The terminal segment also
+includes its full archive. Its checkpoint becomes eligible for compaction
+on a later capture after handover. Conversion verifies complete source
+archives before omitting them and reuses admitted gzip members verbatim.
+For split sources that exceed the open-file limit, first create a fully
+packed copy using the descriptor-bounded converter.
+
+Native hosts can use `RelaySegmentBaseFile::open_compacted_checkpoint`
+with the independently retained original selection and exact parent.
+Portable recovery admits a mixed chain in order, verifies original segment
+bindings, and preserves the absolute log cut. Original packet positions,
+offline client receipts, writer identities, Undo/Redo and complete raster
+copies remain available. Compaction writes a new copy. Lossless raw export
+requires the original archive bytes.
+
 ## Restore a linked room with its raster store
 
 `Room::write_relay_segment_room_backup` streams the current WAL archive,

@@ -1,5 +1,18 @@
 # Breditor V1 release preparation
 
+## November 16 collaboration recovery
+
+[Compacted portable relay history](qualification/2026-11-16-compacted-relay-history.json)
+omits a certified predecessor's raw archive while preserving its exact
+independently selected identity. Native recovery keeps orphaned review asset
+references after the original archive is removed. A 26-predecessor mixed
+portable chain converts and reopens under 48 file descriptors and refuses
+conversion if the archive selected for omission was changed. Source and
+clean-installed clients retain offline edits and Undo/Redo after moving the
+smaller bundle. Both fixtures remove about 47.5% of the compressed predecessor
+lineage bytes. A second capture from the recovered relay omits two archives
+and cold-reopens at the new cut. All 168 targeted native tests pass.
+
 ## November 15 collaboration recovery
 
 [Indexed asset packet history](qualification/2026-11-15-retained-asset-packet-history.json)

@@ -1,0 +1,121 @@
+{
+  "format": "breditor/compacted-relay-history-qualification",
+  "formatVersion": 1,
+  "date": "2026-11-16",
+  "source": {
+    "commit": "dd5563775d4bb885942f045fd686232cd3b469c7",
+    "dirty": false,
+    "sha256": "81c3d9e6d9f12c1c76d5ed75bc1b3e848bbfded6013f225a6570afb8fef4372d",
+    "files": 8980,
+    "bytes": 76259860
+  },
+  "compactedHistory": {
+    "originalArchiveAbsentOnRestore": true,
+    "absentArchiveKeepsOrphanedAssetReferences": true,
+    "compactionRefusesCorruptOriginalArchive": true,
+    "rawExportRefusesAfterArchiveRetirement": true,
+    "mixedPortablePredecessorsUnderDescriptorLimit": {
+      "predecessors": 26,
+      "descriptorLimit": 48
+    },
+    "subsequentCaptureCompactsTheFormerTerminalArchive": true
+  },
+  "nativeAssetReferences": {
+    "passed": 12,
+    "failed": 0,
+    "ignored": 0,
+    "executableSha256": "ef45454cba8903d5986185a6982bcf5f57ae8abcc86874e67a5dc1490247e2bf",
+    "logSha256": "85ab483cbef798bd97f4aec7bf0489d9ff46a89b2bc16a125b82a8689c514ed5"
+  },
+  "nativeMaterializedCheckpoint": {
+    "passed": 3,
+    "failed": 0,
+    "ignored": 0,
+    "executableSha256": "ef45454cba8903d5986185a6982bcf5f57ae8abcc86874e67a5dc1490247e2bf",
+    "logSha256": "0cd6f7621a9c7de5d5d3c9636f08d2b5a41549ca63046c4f733be5320f394435"
+  },
+  "nativeHandover": {
+    "passed": 30,
+    "failed": 0,
+    "ignored": 0,
+    "executableSha256": "ef45454cba8903d5986185a6982bcf5f57ae8abcc86874e67a5dc1490247e2bf",
+    "logSha256": "2a1cd15c6abe3601bd471035e7d07eec441b54577175dc74b878ff7d405a096c"
+  },
+  "nativeStorage": {
+    "passed": 78,
+    "failed": 0,
+    "ignored": 1,
+    "executableSha256": "ef45454cba8903d5986185a6982bcf5f57ae8abcc86874e67a5dc1490247e2bf",
+    "logSha256": "f312c121cfb105fc684081ca112fdb33e2e2c2204d55244875ff0aeb759e4e64"
+  },
+  "nativeFencing": {
+    "passed": 45,
+    "failed": 0,
+    "ignored": 0,
+    "executableSha256": "ef45454cba8903d5986185a6982bcf5f57ae8abcc86874e67a5dc1490247e2bf",
+    "logSha256": "47f6f860d21ed4bbcfdeb377d04512fa7ae143df7fae6977ab0489867f21b10d"
+  },
+  "strictRelayLibraryLint": {
+    "server": {
+      "passed": true,
+      "logSha256": "e4e82017e4c099c5cc663794688c7d87a9e0bd10017344162f71d5887d1e0f7e"
+    },
+    "noServer": {
+      "passed": true,
+      "logSha256": "3bd4af427dce9caad59dcd4f6e2810885c88dacf9372c1f99b23e93c2ddf59fe"
+    }
+  },
+  "candidatePlan": {
+    "passed": 69,
+    "failed": 0,
+    "logSha256": "a34d6c5d78925f6799da6e5266f30c933ab15cbdfb202c21ed76d6dc89c474bc"
+  },
+  "workflows": {
+    "isolatedRerun": true,
+    "concurrentFixtureTimeoutLogSha256": "4df475ec04da6ecd1f17c10ea3ae7a83342ecf133eed834ba256181ec5c1ceff",
+    "portableRelocationReportSha256": "ab12ba079722c772080cc6028194b464311e1e3a3d50e784980168878eaf526f",
+    "legacyHandoverReportSha256": "ede6fb5329e13302e59c8a13f4bf83c5f48f12e379d0fb02c9dadc87692f8fcf",
+    "relaySha256": "0013d05e042f32a23d2a5017969390f7f671fe30768b81a1d7f3a8bb0952df00",
+    "runtimeSha256": "38b17b58126858fd4ef014e877e85806c323c675e88cd191222badbe9a36a6d5",
+    "runs": {
+      "source": {
+        "compactedPredecessorArchives": 1,
+        "compactedPredecessorsOnRecapture": 2,
+        "compressedLineageBytes": 2089920,
+        "compactedLineageBytes": 1096373,
+        "retiredArchiveBytes": 993547,
+        "offlineLanes": 6,
+        "undoRedoLanes": 2,
+        "coldResumes": 5,
+        "proof": null
+      },
+      "installed": {
+        "compactedPredecessorArchives": 1,
+        "compactedPredecessorsOnRecapture": 2,
+        "compressedLineageBytes": 2086822,
+        "compactedLineageBytes": 1095174,
+        "retiredArchiveBytes": 991648,
+        "offlineLanes": 6,
+        "undoRedoLanes": 2,
+        "coldResumes": 5,
+        "proof": {
+          "registryArtifacts": 45,
+          "archives": [
+            {
+              "name": "@breditor/browser",
+              "sha256": "79f5b486d3742d1234e4eb21c18822e0a494551d49a73039f5b856908c124f3f"
+            },
+            {
+              "name": "@breditor/experimental-rich-content",
+              "sha256": "c181984cc8f737861adf4886398d00413af6a42178d8542d789710c5b3faf371"
+            },
+            {
+              "name": "@breditor/collaboration",
+              "sha256": "c5d79a56da7f48c4e4e10a298bfc2bca5cb9cee46642c0c0586df828396ed7b8"
+            }
+          ]
+        }
+      }
+    }
+  }
+}
