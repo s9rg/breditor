@@ -2,12 +2,48 @@
 use super::{Source, TestResult, auth};
 use crate::{
     Error, Room,
+    archive_input::{CheckpointInput, TerminalCheckpointWriter},
     log::generations::GenerationDirectory,
     server::{RelaySegmentPortableSeal, RelaySegmentRetainedBackup},
 };
 use serde_json::{Value, json};
 use sha2::{Digest, Sha256};
-use std::fs;
+use std::{fs, fs::File, io::Write};
+
+#[test]
+fn terminal_checkpoint_requires_its_exact_storage_family() -> TestResult {
+    let source = Source::open()?;
+    let extended = source.parent.join("extended-terminal");
+    let selected = source.handle.capture_portable_relay_segment_with_extended_terminal(
+        "owner",
+        &source.token,
+        &extended,
+    )?;
+    RelaySegmentRetainedBackup::open_portable_with_retired_history(&extended, &selected)?;
+    let checkpoint = extended.join("native.checkpoint");
+    let mut decoded = Vec::new();
+    CheckpointInput::open_file(File::open(&checkpoint)?)?.write_to(&mut decoded)?;
+    fs::write(&checkpoint, decoded)?;
+    assert!(matches!(
+        RelaySegmentRetainedBackup::open_portable_with_retired_history(&extended, &selected),
+        Err(Error::Contract("relay checkpoint payload and storage formats differ"))
+    ));
+
+    let legacy = source.parent.join("legacy-terminal");
+    let selected = source.handle.capture_portable_relay_segment("owner", &source.token, &legacy)?;
+    let checkpoint = legacy.join("native.checkpoint");
+    let decoded = fs::read(&checkpoint)?;
+    let mut file = File::create(&checkpoint)?;
+    let mut output = TerminalCheckpointWriter::new(&mut file)?;
+    output.write_all(&decoded)?;
+    output.finish()?;
+    file.sync_all()?;
+    assert!(matches!(
+        RelaySegmentRetainedBackup::open_portable(&legacy, &selected),
+        Err(Error::Contract("relay checkpoint payload and storage formats differ"))
+    ));
+    Ok(())
+}
 
 #[tokio::test]
 async fn retired_pack_requires_its_selection_and_seal_checks_the_original_archive() -> TestResult {

@@ -346,6 +346,29 @@ impl ServerBackupHandle {
         )
     }
 
+    /// Capture a portable room with proof-only predecessors and an extended,
+    /// losslessly compressed terminal checkpoint. The independent identity
+    /// selects the decoded checkpoint. Native lane limits continue to apply.
+    ///
+    /// # Errors
+    /// Refuses changed ancestry, unauthorized or superseded sources, over-budget
+    /// checkpoint data, occupied destinations and I/O failures.
+    pub fn capture_portable_relay_segment_with_extended_terminal(
+        &self,
+        principal: &str,
+        token: &str,
+        destination: &Path,
+    ) -> Result<RelaySegmentRetiredHistorySelection> {
+        self.capture_portable_with_lineage(
+            principal,
+            token,
+            destination,
+            LineageLayout::Proofs,
+            ClientLayout::Packed,
+            SegmentCheckpointEncoding::ExtendedTerminal,
+        )
+    }
+
     fn capture_portable_with_lineage(
         &self,
         principal: &str,

@@ -21,7 +21,11 @@ impl RelaySegmentBaseFile {
     pub(crate) const CHECKPOINT_LIMIT: u64 =
         crate::room::materialized_checkpoint::MAX_CHECKPOINT_BYTES as u64;
     pub(crate) fn stored_inputs(&self) -> Result<(Option<&ArchiveInput>, &CheckpointInput)> {
-        Ok((self.archive.as_ref(), &self.stored_checkpoint()?.input))
+        let checkpoint = self.stored_checkpoint()?;
+        if checkpoint.encoding.requires_terminal_stream() {
+            return Err(Error::Contract("extended terminal predecessor requires ancestry proofs"));
+        }
+        Ok((self.archive.as_ref(), &checkpoint.input))
     }
 
     pub(crate) fn write_original_pair(
@@ -29,8 +33,12 @@ impl RelaySegmentBaseFile {
         archive: &mut impl Write,
         checkpoint: &mut impl Write,
     ) -> Result<()> {
-        write_original(self.original_archive()?, archive)?;
-        self.stored_checkpoint()?.input.write_to(checkpoint)
+        let (raw, stored) = self.stored_inputs()?;
+        write_original(
+            raw.ok_or(Error::Contract("relay predecessor archive has been compacted"))?,
+            archive,
+        )?;
+        stored.write_to(checkpoint)
     }
 
     pub(crate) fn check_named_pair(

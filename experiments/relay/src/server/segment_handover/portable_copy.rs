@@ -8,7 +8,8 @@ use super::{
     retained_backup::ClientLayout,
 };
 use crate::{
-    MAX_SERVER_LOG_GENERATION_BACKUP_BYTES, RelaySegmentBaseFile, Result,
+    MAX_SERVER_LOG_GENERATION_BACKUP_BYTES, Result,
+    archive_input::TERMINAL_CHECKPOINT_FILE_BYTES,
     assets::MAX_SERVER_ASSET_BACKUP_BYTES,
     log::generations::GenerationDirectory,
     server::{
@@ -181,7 +182,7 @@ impl RelaySegmentRetainedBackup {
         )?;
         for (name, limit) in [
             (NATIVE, MAX_SERVER_LOG_GENERATION_BACKUP_BYTES),
-            (CHECKPOINT, RelaySegmentBaseFile::CHECKPOINT_LIMIT),
+            (CHECKPOINT, TERMINAL_CHECKPOINT_FILE_BYTES),
             (RASTERS, MAX_SERVER_ASSET_BACKUP_BYTES),
         ] {
             copy_file(&source, &destination, name, limit)?;

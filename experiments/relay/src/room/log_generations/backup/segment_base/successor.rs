@@ -1,6 +1,6 @@
 //! Stage an empty WAL and durably fence its exact source before allowing writes.
 use super::RelaySegmentBaseFile;
-use crate::{Error, Recovery, Result, Room, log::Log, room::SegmentCheckpointEncoding};
+use crate::{Error, Recovery, Result, Room, log::Log};
 use std::{cell::Cell, path::Path, sync::Arc};
 
 impl Room {
@@ -37,18 +37,16 @@ impl Room {
         }
         // Confirm the checkpoint's exact native state before the irreversible fence. The same
         // serialization is already used by both the source capture and cold recovery.
-        let mut digest = crate::archive_digest::ArchiveDigest::new(
-            crate::room::materialized_checkpoint::MAX_CHECKPOINT_BYTES as u64,
-        );
+        let encoding = base.checkpoint_encoding()?;
+        let mut digest = crate::archive_digest::ArchiveDigest::new(encoding.byte_limit());
         let mut observed = crate::room::materialized_checkpoint::Checkpoint::capture(
             self,
             selected.source.clone(),
             selected.manifest,
         )?;
-        let encoding = base.checkpoint_encoding()?;
         if encoding.has_asset_history() {
             self.with_relay_segment_base_stream(principal, &Cell::new(false), |mut stream| {
-                if encoding == SegmentCheckpointEncoding::Compactable {
+                if encoding.has_physical_closure() {
                     stream.measure()?;
                 }
                 stream.complete_checkpoint(&mut observed, encoding)

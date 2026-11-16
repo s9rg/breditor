@@ -6,6 +6,7 @@ import {mkdirSync, mkdtempSync, readFileSync, renameSync, rmSync, statSync, writ
 import {tmpdir} from 'node:os';
 import {join, resolve} from 'node:path';
 import {fileURLToPath, pathToFileURL} from 'node:url';
+import {gunzipSync} from 'node:zlib';
 import {WebSocket as Socket} from 'undici';
 import {environment} from './fixtures/room-participant-inventory/environment.mjs';
 import {pixel, proposalAsset, proposalPixel, secondAsset, secondPixel, recoveredAsset, recoveredPixel} from './fixtures/review-assets/pixels.mjs';
@@ -63,6 +64,14 @@ function readAncestryProofs(pack, predecessors) {
   }
   assert.equal(offset, pack.length);
   return proofs;
+}
+
+function readTerminalCheckpoint(directory) {
+  const stored = readFileSync(join(directory, 'native.checkpoint'));
+  assert.equal(stored.subarray(0, 8).toString(), 'BRCKPT1\n');
+  const decoded = gunzipSync(stored.subarray(16));
+  assert.equal(stored.readBigUInt64BE(8), BigInt(decoded.length));
+  return {stored, decoded, state: JSON.parse(decoded)};
 }
 
 function assertOrdinaryStartupRefused(executable, parent, mode, address) {
@@ -787,6 +796,13 @@ async function run(mode, {distribution, rich}, executable, parent, journalKind, 
         assert.equal(Buffer.from(proofs[1].closure.archiveSha256).toString('hex'),
           sha(readFileSync(join(split, '1.archive'))));
         assert.ok(proofPack.length < migrated.length);
+        const extendedPath = join(parent, 'portable-relocation-extended-copy');
+        const terminalStream = readTerminalCheckpoint(extendedPath);
+        const extendedSelection = JSON.parse(readFileSync(join(parent, 'portable-relocation-retired-selection.json')));
+        const expectedDigest = extendedSelection.backup.retained.backup.native.checkpoint.sha256;
+        assert.equal(sha(terminalStream.decoded), Buffer.from(expectedDigest).toString('hex'));
+        assert.deepEqual(terminalStream.state, {...terminal, formatVersion: 4});
+        assert.ok(terminalStream.stored.length < terminalStream.decoded.length);
         assert.throws(() => readFileSync(join(packed, '0.archive')), {code:'ENOENT'});
         const converted = join(parent, 'portable-relocation-source');
         assert.ok(readFileSync(join(converted, 'client-inputs.bin')).subarray(0, 8).equals(Buffer.from('BRCLNT1\n')));
@@ -802,7 +818,7 @@ async function run(mode, {distribution, rich}, executable, parent, journalKind, 
         for (const name of originalPaths) {
           renameSync(join(parent, name), join(parent, 'relocation-retired-' + name));
         }
-        renameSync(proofPath, join(parent, 'portable-relocation-arrived'));
+        renameSync(extendedPath, join(parent, 'portable-relocation-arrived'));
         restoredRoot = 'relocated';
         const documents = [
           {principal: 'owner', writer: registered.identity.writer, credential: registered.identity.credential},
@@ -838,6 +854,9 @@ async function run(mode, {distribution, rich}, executable, parent, journalKind, 
           migratedLegacyArchiveProofs: history.proofs.filter(Boolean).length,
           proofOnlyLineageBytes: proofPack.length,
           proofOnlyPredecessors: proofs.length,
+          terminalCheckpointBytes: terminalStream.stored.length,
+          terminalCheckpointDecodedBytes: terminalStream.decoded.length,
+          extendedTerminalCheckpoints: 1,
           rawLineageBytes,
           compressedLineageBytes,
           packedCopiesOfExistingSplit: 1,
@@ -927,6 +946,7 @@ async function run(mode, {distribution, rich}, executable, parent, journalKind, 
         parent, 'portable-proof-recapture', 'native-lineage', 'packed.bin'));
       const recaptured = readAncestryProofs(recapturedPack, 5);
       assert.equal(recaptured.length, 5);
+      assert.equal(readTerminalCheckpoint(join(parent, 'portable-proof-recapture')).state.formatVersion, 4);
       relocationEvidence.proofOnlyPredecessorsOnRecapture = recaptured.length;
     }
     const clientUploadReceipts = await resumeClientRaster(

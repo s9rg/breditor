@@ -13,7 +13,7 @@ use crate::{
     room::{
         SegmentCheckpointEncoding,
         asset_references::PacketRecord,
-        materialized_checkpoint::{Checkpoint, Header, MAX_CHECKPOINT_BYTES, SelectedHeader},
+        materialized_checkpoint::{Checkpoint, Header, SelectedHeader},
     },
 };
 use sha2::{Digest, Sha256};
@@ -70,8 +70,7 @@ impl RelaySegmentBaseFile {
         parent: Option<Arc<Self>>,
     ) -> Result<Self> {
         let archive = ArchiveInput::new(archive, crate::MAX_SERVER_LOG_GENERATION_BACKUP_BYTES)?;
-        let checkpoint = ArchiveInput::new(checkpoint, MAX_CHECKPOINT_BYTES as u64)?;
-        Self::open_inputs(archive, CheckpointInput::raw(checkpoint), expected, parent)
+        Self::open_inputs(archive, CheckpointInput::open_file(checkpoint)?, expected, parent)
     }
 
     pub(crate) fn open_inputs(
@@ -83,7 +82,7 @@ impl RelaySegmentBaseFile {
         Self::open_selected(Some(archive), checkpoint, expected, parent)
     }
 
-    /// Reopen certified version-three history using its independently retained original
+    /// Reopen certified version-three or version-four history using its independently retained original
     /// identity. Keep the checkpoint immutable while it is in use.
     ///
     /// # Errors
@@ -93,8 +92,7 @@ impl RelaySegmentBaseFile {
         expected: &RelaySegmentBaseIdentity,
         parent: Option<Arc<Self>>,
     ) -> Result<Self> {
-        let checkpoint = ArchiveInput::new(checkpoint, MAX_CHECKPOINT_BYTES as u64)?;
-        Self::open_selected(None, CheckpointInput::raw(checkpoint), expected, parent)
+        Self::open_selected(None, CheckpointInput::open_file(checkpoint)?, expected, parent)
     }
 
     pub(crate) fn open_selected(
@@ -128,7 +126,6 @@ impl RelaySegmentBaseFile {
         if archive
             .as_ref()
             .is_some_and(|input| input.all().len() > crate::MAX_SERVER_LOG_GENERATION_BACKUP_BYTES)
-            || checkpoint.as_ref().is_some_and(|input| input.len() > MAX_CHECKPOINT_BYTES as u64)
         {
             return Err(Error::Contract("relay segment base input budget"));
         }
@@ -147,6 +144,11 @@ impl RelaySegmentBaseFile {
             }
             let SelectedHeader { encoding, closure, .. } =
                 read_header(&input, &expected.checkpoint, first)?;
+            if input.len() > encoding.byte_limit()
+                || input.is_terminal() != encoding.requires_terminal_stream()
+            {
+                return Err(Error::Contract("relay checkpoint payload and storage formats differ"));
+            }
             (Some(StoredCheckpoint { input, encoding }), closure)
         } else {
             if retirement.is_none() || archive.is_some() {

@@ -1,5 +1,6 @@
 //! Bounded, independent reads from archive bytes or a held archive inode.
 mod checkpoint;
+mod terminal_checkpoint;
 use crate::{Error, Result, archive_digest::ArchiveDigest, log::generations::GenerationFileStamp};
 pub(crate) use checkpoint::CheckpointInput;
 use serde::{Serialize, de::DeserializeOwned};
@@ -10,6 +11,9 @@ use std::{
     io::{self, Read},
     sync::Arc,
 };
+pub(crate) use terminal_checkpoint::{LEGACY_CHECKPOINT_BYTES, TERMINAL_CHECKPOINT_BYTES};
+#[cfg(feature = "server")]
+pub(crate) use terminal_checkpoint::{TERMINAL_CHECKPOINT_FILE_BYTES, TerminalCheckpointWriter};
 
 struct HeldArchiveFile {
     file: File,
@@ -56,7 +60,6 @@ impl ArchiveInput {
 
     /// Own a bounded logical input without opening another descriptor. All public read offsets
     /// remain relative to this input, so existing archive section indexes still start at zero.
-    #[cfg(feature = "server")]
     pub(crate) fn retained_section(&self, offset: u64, bytes: u64) -> Result<Self> {
         self.all().section(offset, bytes)?;
         Ok(Self { held: self.held.clone(), start: self.start + offset, bytes })

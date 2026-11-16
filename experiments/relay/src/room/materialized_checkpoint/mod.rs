@@ -5,7 +5,10 @@ mod state;
 #[cfg(all(test, feature = "server"))]
 mod tests;
 
-use crate::{Error, Result, Room, RoomBackupIdentity};
+use crate::{
+    Error, Result, Room, RoomBackupIdentity,
+    archive_input::{LEGACY_CHECKPOINT_BYTES, TERMINAL_CHECKPOINT_BYTES},
+};
 pub(super) use physical_closure::PhysicalClosure;
 use serde::{Deserialize, Serialize};
 use sha2::{Digest, Sha256};
@@ -20,6 +23,7 @@ pub(crate) enum SegmentCheckpointEncoding {
     Original,
     IndexedAssetHistory,
     Compactable,
+    ExtendedTerminal,
 }
 
 impl SegmentCheckpointEncoding {
@@ -28,11 +32,28 @@ impl SegmentCheckpointEncoding {
             Self::Original => 1,
             Self::IndexedAssetHistory => 2,
             Self::Compactable => 3,
+            Self::ExtendedTerminal => 4,
         }
     }
 
     pub(super) fn has_asset_history(self) -> bool {
         self != Self::Original
+    }
+
+    pub(crate) fn requires_terminal_stream(self) -> bool {
+        self == Self::ExtendedTerminal
+    }
+
+    pub(super) fn has_physical_closure(self) -> bool {
+        matches!(self, Self::Compactable | Self::ExtendedTerminal)
+    }
+
+    pub(super) fn byte_limit(self) -> u64 {
+        if self.requires_terminal_stream() {
+            TERMINAL_CHECKPOINT_BYTES
+        } else {
+            LEGACY_CHECKPOINT_BYTES as u64
+        }
     }
 }
 
@@ -56,7 +77,7 @@ pub struct RelayCheckpoint {
 
 // The document, review and effect lanes have separate history bounds.
 // This combined limit also caps the original catalog and receipt indexes.
-pub(super) const MAX_CHECKPOINT_BYTES: usize = 512 * 1024 * 1024;
+pub(super) const MAX_CHECKPOINT_BYTES: usize = LEGACY_CHECKPOINT_BYTES;
 const FORMAT: &str = "breditor/relay-materialized-checkpoint";
 
 #[derive(Deserialize)]
@@ -117,17 +138,14 @@ fn check_selection(
     extensions: (bool, bool),
     expected: &RelayCheckpointIdentity,
 ) -> Result<SegmentCheckpointEncoding> {
-    let encoding = match extensions {
-        (false, false) => SegmentCheckpointEncoding::Original,
-        (true, false) => SegmentCheckpointEncoding::IndexedAssetHistory,
-        (true, true) => SegmentCheckpointEncoding::Compactable,
-        (false, true) => return Err(Error::Contract("physical closure requires asset history")),
+    let encoding = match (format_version, extensions) {
+        (1, (false, false)) => SegmentCheckpointEncoding::Original,
+        (2, (true, false)) => SegmentCheckpointEncoding::IndexedAssetHistory,
+        (3, (true, true)) => SegmentCheckpointEncoding::Compactable,
+        (4, (true, true)) => SegmentCheckpointEncoding::ExtendedTerminal,
+        _ => return Err(Error::Contract("relay checkpoint selected cut differs")),
     };
-    if format != FORMAT
-        || format_version != encoding.version()
-        || source != &expected.source
-        || manifest != expected.manifest
-    {
+    if format != FORMAT || source != &expected.source || manifest != expected.manifest {
         return Err(Error::Contract("relay checkpoint selected cut differs"));
     }
     Ok(encoding)

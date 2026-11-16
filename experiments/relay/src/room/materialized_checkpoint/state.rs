@@ -117,8 +117,12 @@ impl Checkpoint {
         self.asset_packet_history = Some(history);
     }
 
-    pub(in crate::room) fn include_physical_closure(&mut self, closure: PhysicalClosure) {
-        self.format_version = SegmentCheckpointEncoding::Compactable.version();
+    pub(in crate::room) fn include_physical_closure(
+        &mut self,
+        encoding: SegmentCheckpointEncoding,
+        closure: PhysicalClosure,
+    ) {
+        self.format_version = encoding.version();
         self.archive_closure = Some(closure);
     }
 

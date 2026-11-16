@@ -72,7 +72,7 @@ impl Command {
             }
             Action::RecaptureProofs => {
                 let path = parent.join("portable-proof-recapture");
-                let selection = handle.capture_portable_relay_segment_with_ancestry_proofs(
+                let selection = handle.capture_portable_relay_segment_with_extended_terminal(
                     &principal, &token, &path,
                 )?;
                 let backup = RelaySegmentRetainedBackup::open_portable_with_retired_history(

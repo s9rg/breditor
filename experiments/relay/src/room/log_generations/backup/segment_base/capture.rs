@@ -108,9 +108,7 @@ impl Room {
             let (checkpoint_result, sha256) = {
                 let mut writer = BackupOutput {
                     destination: &mut checkpoint_file,
-                    digest: ArchiveDigest::new(
-                        materialized_checkpoint::MAX_CHECKPOINT_BYTES as u64,
-                    ),
+                    digest: ArchiveDigest::new(encoding.byte_limit()),
                     failed: &failed,
                 };
                 let result = serde_json::to_writer(&mut writer, &state)

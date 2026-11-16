@@ -59,13 +59,19 @@ impl NativeBackupStream<'_> {
         }
         Ok(crate::room::asset_references::PacketHistory::capture(&self.capture)?.map(|history| {
             state.include_asset_history(history);
-            if encoding == SegmentCheckpointEncoding::Compactable {
-                state.include_physical_closure(PhysicalClosure {
-                    root: self.capture.cut.root.clone(),
-                    parent: self.capture.segment_base().map(crate::RelaySegmentBaseFile::binding),
-                    archive_sha256: self.info.identity.archive_sha256,
-                    files: self.capture.sections.clone(),
-                });
+            if encoding.has_physical_closure() {
+                state.include_physical_closure(
+                    encoding,
+                    PhysicalClosure {
+                        root: self.capture.cut.root.clone(),
+                        parent: self
+                            .capture
+                            .segment_base()
+                            .map(crate::RelaySegmentBaseFile::binding),
+                        archive_sha256: self.info.identity.archive_sha256,
+                        files: self.capture.sections.clone(),
+                    },
+                );
             }
         }))
     }

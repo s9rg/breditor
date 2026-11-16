@@ -1,6 +1,7 @@
 //! Stream to a private, absent-only capture directory under the live serving epoch.
 use crate::{
     Error, RelaySegmentBaseFile, RelaySegmentRoomBackupIdentity, Result,
+    archive_input::TerminalCheckpointWriter,
     log::generations::{GenerationDirectory, GenerationFileStamp, GenerationFileWitness},
     room::SegmentCheckpointEncoding,
     server::{Host, RoomDeploymentSelection, ServerBackupHandle, deployment_fence},
@@ -98,14 +99,29 @@ fn capture(
     let mut native = directory.create_file(NATIVE, &[])?;
     let mut checkpoint = directory.create_file(CHECKPOINT, &[])?;
     let mut raster = directory.create_file(RASTERS, &[])?;
-    let (backup, _) = room.write_relay_segment_room_backup_with_custody(
-        principal,
-        &assets,
-        &mut native,
-        &mut checkpoint,
-        &mut raster,
-        encoding,
-    )?;
+    let backup = if encoding.requires_terminal_stream() {
+        let mut output = TerminalCheckpointWriter::new(&mut checkpoint)?;
+        let (backup, _) = room.write_relay_segment_room_backup_with_custody(
+            principal,
+            &assets,
+            &mut native,
+            &mut output,
+            &mut raster,
+            encoding,
+        )?;
+        output.finish()?;
+        backup
+    } else {
+        room.write_relay_segment_room_backup_with_custody(
+            principal,
+            &assets,
+            &mut native,
+            &mut checkpoint,
+            &mut raster,
+            encoding,
+        )?
+        .0
+    };
     let discussion_sources = room.recovered_discussion_source_digests();
     let parent = room.hold_relay_segment_parent();
     let capture = CapturedSegment {

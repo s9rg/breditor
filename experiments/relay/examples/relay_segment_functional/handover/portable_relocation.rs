@@ -79,16 +79,35 @@ pub(super) fn seal(
         &retired,
     )?;
     assert_eq!(proofs.backup(), &compacted);
-    let intent = RelaySegmentPortableSeal::select(compacted)?;
+    let extended_path = parent.join("portable-relocation-extended");
+    let extended = handle.capture_portable_relay_segment_with_extended_terminal(
+        "owner",
+        token,
+        &extended_path,
+    )?;
+    assert_eq!(extended.backup().native_predecessors, proofs.backup().native_predecessors);
+    assert_eq!(
+        extended.backup().retained.backup.native.predecessor,
+        proofs.backup().retained.backup.native.predecessor
+    );
+    assert_same_lineage(&extended_path, &proof_path)?;
+    let detached_path = parent.join("portable-relocation-extended-copy");
+    let detached = RelaySegmentRetainedBackup::copy_portable_with_ancestry_proofs(
+        &extended_path,
+        &detached_path,
+        &extended,
+    )?;
+    assert_eq!(detached, extended);
+    let intent = RelaySegmentPortableSeal::select(extended.backup().clone())?;
     storage::write_new(&parent.join(SEAL), &serde_json::to_vec(&intent)?)?;
-    storage::write_new(&parent.join(RETIRED), &serde_json::to_vec(&proofs)?)?;
+    storage::write_new(&parent.join(RETIRED), &serde_json::to_vec(&detached)?)?;
     File::open(parent)?.sync_all()?;
     let selected = handle.seal_portable_relay_segment_with_retired_history(
         "owner",
         token,
-        &proof_path,
+        &detached_path,
         &intent,
-        &proofs,
+        &detached,
     )?;
     let authority = deployment(parent)?;
     assert_eq!(selected, intent.planned_selection()?);

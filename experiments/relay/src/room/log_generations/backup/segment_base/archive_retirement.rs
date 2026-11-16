@@ -77,8 +77,7 @@ impl RelaySegmentBaseFile {
             if io::copy(&mut bytes.reader(), output)? != bytes.len() {
                 return Err(Error::Contract("relay archive retirement copy truncated"));
             }
-        } else if self.checkpoint_encoding()? == crate::room::SegmentCheckpointEncoding::Compactable
-        {
+        } else if self.checkpoint_encoding()?.has_physical_closure() {
             let header = self.checkpoint_header()?;
             let closure = header.closure.ok_or(Error::NeedsRecovery)?;
             let history = header.history.ok_or(Error::NeedsRecovery)?;
