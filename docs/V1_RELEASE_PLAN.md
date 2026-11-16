@@ -2,6 +2,19 @@
 
 ## November 16 collaboration recovery
 
+[Fenced continued-raster serving](qualification/2026-11-16-continued-raster-serving.json)
+connects the native continuation to the original authenticated HTTP and
+WebSocket asset capability. A room with 1,024 predecessor images serves
+an old image and accepts a new upload. An earlier epoch refuses a request
+whose body reaches the relay after replacement, and its capture refuses.
+The replacement serves both accepted files. Owner capture selects the native
+WAL and checkpoint and both raster generations under one current permit.
+Source and clean-installed clients keep their original SDK upload receipt,
+recover both images after a separate relay process restart, and replay a
+saved offline Undo followed by Redo. All 77 focused Rust tests pass.
+Portable activation of a restored combined capture still requires joined
+client and provider verification.
+
 [Native raster continuation](qualification/2026-11-16-native-raster-continuation.json)
 opens a new bounded writable store behind one exact read-only predecessor
 archive. The native test starts at 1,024 retained images, writes a new

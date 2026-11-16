@@ -1,0 +1,167 @@
+{
+  "format": "breditor/continued-raster-serving-qualification",
+  "formatVersion": 1,
+  "date": "2026-11-16",
+  "source": {
+    "commit": "f5b7c33988c41ecfb476b9e934bf967923cb138b",
+    "dirty": false,
+    "sha256": "e9ddd65f668bc7afff51e28d5e103a711f299c781898efdd972e411062d1610c",
+    "files": 9032,
+    "bytes": 76610267
+  },
+  "fencedServing": {
+    "retainedAssetsAtOriginalCountCeiling": 1024,
+    "ordinaryAuthenticatedHttpAcrossBothGenerations": true,
+    "exactOldAndNewRetriesKeepOrdinaryReceipts": true,
+    "staleEpochDeniesInFlightUploadAndCapture": true,
+    "coldOpenServesBothGenerationsAndNoStaleUpload": true,
+    "nativeAndBothRasterArchivesCapturedUnderCurrentOwner": true
+  },
+  "nativeRelayTests": {
+    "server-continued_assets": {
+      "passed": 1,
+      "failed": 0,
+      "ignored": 0,
+      "executableSha256": [
+        "784f46053f2ee80868f2f239cb733d8d7b141b743bd2149fe8cac8f8998c1902"
+      ],
+      "logSha256": "5a04227916874376db4f9b489ea984cf1b930fc0147923cdf737643eeae6151a"
+    },
+    "room-log_generations-asset_continuation": {
+      "passed": 2,
+      "failed": 0,
+      "ignored": 0,
+      "executableSha256": [
+        "784f46053f2ee80868f2f239cb733d8d7b141b743bd2149fe8cac8f8998c1902"
+      ],
+      "logSha256": "ddb29196440825cff12e8a871026126737bc52fa9cbcc9cb63e122930adb249e"
+    },
+    "server-deployment_fence-tests": {
+      "passed": 41,
+      "failed": 0,
+      "ignored": 0,
+      "executableSha256": [
+        "784f46053f2ee80868f2f239cb733d8d7b141b743bd2149fe8cac8f8998c1902"
+      ],
+      "logSha256": "fad98288e54e634b1991f9fc9549b340273968a526bcabd08d60e712a1cdf2a4"
+    },
+    "server-segment_handover-tests": {
+      "passed": 33,
+      "failed": 0,
+      "ignored": 0,
+      "executableSha256": [
+        "784f46053f2ee80868f2f239cb733d8d7b141b743bd2149fe8cac8f8998c1902"
+      ],
+      "logSha256": "d470aa480360de218825ba2a8aac14ab1fd08d04a68c320cc9dc820c695d8b58"
+    }
+  },
+  "strictRelayLibraryLint": {
+    "server": {
+      "passed": true,
+      "logSha256": "f241a1058ed3e1344dfb2a431112c1b9bd35f5069a1adae3c1a72ed5474dd953"
+    },
+    "noServer": {
+      "passed": true,
+      "logSha256": "b00281f2ba54ba129bc39f35e27c79ce53fea423e778fb80ed2303a9eee0b871"
+    }
+  },
+  "reusedRuntimeArtifacts": {
+    "byteIdenticalSourceSince": "782bf48874e23e50fe08527bc3c4b6ff13d2df67",
+    "localRichWasmSha256": "bc020ce07ed80600b85735c1e592d5ae163d921f5556fef05269a12bc1d59ec5",
+    "sharedWasmSha256": "4bd769ac853ccc377dcbb45ebcfd5fc8f7f0f200850b1f5a106f7a4a0beddca4",
+    "verificationLogSha256": "c8df6ab3bd34bf3bd84ec875560a15b984d6bfa81ce1c1425a3427cf73f1045a"
+  },
+  "candidatePlan": {
+    "passed": 69,
+    "failed": 0,
+    "logSha256": "32d8862ab1862b250e7558236f91c6472a9aa3ea27f7904968cee3e551018e8c"
+  },
+  "workflows": {
+    "relaySha256": "299f0c011060108f33c7c1ab7fdb3a3113a77a8d352d68d0c057d0e2ab10d61d",
+    "runtimeSha256": "4bd769ac853ccc377dcbb45ebcfd5fc8f7f0f200850b1f5a106f7a4a0beddca4",
+    "portableRelocation": {
+      "reportSha256": "0a3c8b9ce846c0e532dfd2cac18b2529f56950b0d815157a23248c14065169f4",
+      "runs": {
+        "source": {
+          "offlineLanes": 6,
+          "undoRedoLanes": 2,
+          "coldResumes": 5,
+          "continuedRasterServing": {
+            "httpRastersRecovered": 2,
+            "stagedUploadReceipts": 1,
+            "offlineUndoAndRedo": true,
+            "combinedCapture": true
+          },
+          "sealedPortableActivations": 1,
+          "rasterReads": 2,
+          "retainedPackets": 1,
+          "proof": null
+        },
+        "installed": {
+          "offlineLanes": 6,
+          "undoRedoLanes": 2,
+          "coldResumes": 5,
+          "continuedRasterServing": {
+            "httpRastersRecovered": 2,
+            "stagedUploadReceipts": 1,
+            "offlineUndoAndRedo": true,
+            "combinedCapture": true
+          },
+          "sealedPortableActivations": 1,
+          "rasterReads": 2,
+          "retainedPackets": 1,
+          "proof": {
+            "registryArtifacts": 45,
+            "archives": [
+              {
+                "name": "@breditor/browser",
+                "sha256": "79f5b486d3742d1234e4eb21c18822e0a494551d49a73039f5b856908c124f3f"
+              },
+              {
+                "name": "@breditor/experimental-rich-content",
+                "sha256": "06fc9770ef5b26cd5f4c10d7d55d9b1d91e352392a599f277cee25d431d6f4b7"
+              },
+              {
+                "name": "@breditor/collaboration",
+                "sha256": "05aeaf3cedf9431890bb10b8cdc9c92b70c4410bfeeb52ff421d59b5a72dd2e2"
+              }
+            ]
+          }
+        }
+      }
+    },
+    "legacyHandover": {
+      "reportSha256": "0e94072a3522c0bfad2c32e0597a178c9f864f3460fbe19a35605cc08fba1051",
+      "runs": {
+        "source": {
+          "offlineLanes": 6,
+          "undoRedoLanes": 2,
+          "coldResumes": 3,
+          "proof": null
+        },
+        "installed": {
+          "offlineLanes": 6,
+          "undoRedoLanes": 2,
+          "coldResumes": 3,
+          "proof": {
+            "registryArtifacts": 45,
+            "archives": [
+              {
+                "name": "@breditor/browser",
+                "sha256": "79f5b486d3742d1234e4eb21c18822e0a494551d49a73039f5b856908c124f3f"
+              },
+              {
+                "name": "@breditor/experimental-rich-content",
+                "sha256": "06fc9770ef5b26cd5f4c10d7d55d9b1d91e352392a599f277cee25d431d6f4b7"
+              },
+              {
+                "name": "@breditor/collaboration",
+                "sha256": "05aeaf3cedf9431890bb10b8cdc9c92b70c4410bfeeb52ff421d59b5a72dd2e2"
+              }
+            ]
+          }
+        }
+      }
+    }
+  }
+}
