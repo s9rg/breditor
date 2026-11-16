@@ -1,6 +1,7 @@
 //! Immutable file custody shared across staged owners, never mutable event/history buffers.
 use super::{
     super::{ReviewError, event},
+    checkpoint_budget::quoted_bytes,
     record::{CONTINUED_MAX_EVENTS, MAX_RETAINED_EVENTS},
 };
 use std::sync::Arc;
@@ -9,15 +10,30 @@ use std::sync::Arc;
 pub(super) struct SealedReviewGeneration {
     pub generation: String,
     pub json: Arc<str>,
+    pub quoted_bytes: usize,
     pub digest: String,
     pub start: usize,
     pub end: usize,
+}
+
+impl SealedReviewGeneration {
+    pub(super) fn new(
+        generation: String,
+        json: Arc<str>,
+        start: usize,
+        end: usize,
+    ) -> Result<Self, ReviewError> {
+        let quoted_bytes = quoted_bytes(&json)?;
+        let digest = file_digest(&json)?;
+        Ok(Self { generation, json, quoted_bytes, digest, start, end })
+    }
 }
 
 #[derive(Clone)]
 pub(in crate::rich_content::review) struct ReviewGenerations {
     pub(super) root_generation: String,
     pub(super) root_json: Arc<str>,
+    pub(super) root_quoted_bytes: usize,
     pub(super) root_digest: String,
     pub(super) root_events: usize,
     pub(super) sealed: Vec<SealedReviewGeneration>,
@@ -34,9 +50,11 @@ impl ReviewGenerations {
         events: usize,
     ) -> Result<Self, ReviewError> {
         let root_digest = file_digest(&root_json)?;
+        let root_quoted_bytes = quoted_bytes(&root_json)?;
         Ok(Self {
             root_generation: root,
             root_json: root_json.into(),
+            root_quoted_bytes,
             root_digest,
             root_events: events,
             sealed: vec![],

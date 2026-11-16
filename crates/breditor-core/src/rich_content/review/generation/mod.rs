@@ -1,4 +1,5 @@
 //! Explicit native comment retention; no document, transport or permission upgrade.
+mod checkpoint_budget;
 mod continue_history;
 mod enable_observer_segmented_history;
 mod enable_read_only_segmented_history;
@@ -28,3 +29,6 @@ mod integrity_tests;
 
 #[cfg(test)]
 mod continued_tests;
+
+#[cfg(test)]
+mod checkpoint_budget_tests;

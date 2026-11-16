@@ -55,11 +55,9 @@ impl Room {
         &self,
         prepared: &PreparedWriterGroup,
     ) -> Result<()> {
-        if self.replica.continued_history_enabled() {
-            prepared.continued_history_checkpoint()?;
-        } else if self.replica.segmented_history_enabled() {
-            prepared.segmented_checkpoint()?;
-        } else {
+        // A new writer group already passed native adoption's exact segmented/continued
+        // archive budget. Keep the original relay checkpoint contract for flat rooms.
+        if !self.replica.segmented_history_enabled() {
             prepared.checkpoint()?;
         }
         Ok(())

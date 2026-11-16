@@ -185,12 +185,8 @@ impl ReviewSession {
         if self.events.len() > self.event_limit() {
             return Err(ReviewError::Limit("events"));
         }
-        if self.generations.is_some() {
-            if self.has_continued_history() {
-                self.continued_checkpoint_json()?;
-            } else {
-                self.segmented_checkpoint_json()?;
-            }
+        if let Some(state) = &self.generations {
+            self.check_generation_checkpoint_budget(state)?;
         } else {
             self.checkpoint_json()?;
         }

@@ -108,9 +108,21 @@ as whole-room recovery or an activation capability.
 
 Native original and generation bounds remain unchanged, including the 1,000-item
 retained document Undo ceiling. The original server log still has a 4,096-record,
-256 MiB whole-log and 20 MiB per-record limit. These lifecycle calls do not widen
-or rotate that log. Candidate preparation and boundary staging currently serialize
-and replay bounded complete native archives; no latency envelope is implied.
+256 MiB whole-log and 20 MiB per-record limit. These lifecycle calls leave
+rotation and those bounds to the server-log contract.
+
+Before the relay appends an edit, native admission checks the candidate against
+the byte limit of its selected history family. With segmented or continued
+history, admission counts the exact canonical JSON string length of each root
+or sealed file once, when the file becomes immutable or is restored. Each edit
+charges those lengths, array separators, the selected envelope and the current
+active file. JSON escapes and the continuation boundary count toward the same
+limits used by the full checkpoint writer. The relay uses this native check for
+prepared comments and segmented or continued writer groups, including the
+receiver of an accepted suggestion. Explicit export and boundary hashing still
+write the complete canonical archive. Event validation, native replay, and the
+private suggestion author's reconstruction still have costs that grow with
+retained history.
 
 Server-log generations, matching client/relay negotiation, complete asset and
 outbox dependency closure, historic-copy decisions, coordinated recovery and

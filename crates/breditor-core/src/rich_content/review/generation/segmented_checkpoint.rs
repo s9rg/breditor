@@ -1,7 +1,9 @@
 //! Exact native segmented recovery. It contains no saved current-access grant.
 use super::{
     super::{ReviewError, ReviewSession},
+    checkpoint_budget,
     encode_segment::encode_active,
+    history::ReviewGenerations,
     record::{
         ARCHIVE_FORMAT, ArchiveRef, CONTINUED_MAX_ARCHIVE_BYTES, MAX_ARCHIVE_BYTES, check_budget,
     },
@@ -41,21 +43,47 @@ impl ReviewSession {
         if state.continued_after.is_some() != continued {
             return Err(ReviewError::Contract("review history family"));
         }
-        check_budget(state.sealed.len() + 2, self.events.len(), continued)?;
-        let active = encode_active(self)?;
+        let active = self.encode_generation_active(state)?;
         let json = serde_json::to_string(&ArchiveRef {
-            format: ARCHIVE_FORMAT,
-            format_version: if continued { 2 } else { 1 },
-            root_generation: &state.root_generation,
             root: &state.root_json,
             sealed: state.sealed.iter().map(|file| file.json.as_ref()).collect(),
             active: &active,
-            continued_after: state.continued_after,
+            ..state.archive_envelope()
         })?;
-        let limit = if continued { CONTINUED_MAX_ARCHIVE_BYTES } else { MAX_ARCHIVE_BYTES };
-        if json.len() > limit {
+        if json.len() > state.archive_byte_limit() {
             return Err(ReviewError::Limit("review history archive bytes"));
         }
         Ok(json)
+    }
+
+    pub(in crate::rich_content::review) fn check_generation_checkpoint_budget(
+        &self,
+        state: &ReviewGenerations,
+    ) -> Result<(), ReviewError> {
+        let active = self.encode_generation_active(state)?;
+        checkpoint_budget::check_size(state, &active, state.archive_byte_limit())
+    }
+
+    fn encode_generation_active(&self, state: &ReviewGenerations) -> Result<String, ReviewError> {
+        check_budget(state.sealed.len() + 2, self.events.len(), state.continued_after.is_some())?;
+        encode_active(self)
+    }
+}
+
+impl ReviewGenerations {
+    pub(super) fn archive_envelope(&self) -> ArchiveRef<'_> {
+        ArchiveRef {
+            format: ARCHIVE_FORMAT,
+            format_version: if self.continued_after.is_some() { 2 } else { 1 },
+            root_generation: &self.root_generation,
+            root: "",
+            sealed: Vec::new(),
+            active: "",
+            continued_after: self.continued_after,
+        }
+    }
+
+    const fn archive_byte_limit(&self) -> usize {
+        if self.continued_after.is_some() { CONTINUED_MAX_ARCHIVE_BYTES } else { MAX_ARCHIVE_BYTES }
     }
 }

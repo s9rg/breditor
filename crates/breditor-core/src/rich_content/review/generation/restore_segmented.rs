@@ -3,7 +3,7 @@
 use super::{
     super::{ReviewActorPolicy, ReviewBinding, ReviewError, ReviewSession, event},
     encode_segment::encode_active,
-    history::{ReviewGenerations, SealedReviewGeneration, file_digest},
+    history::{ReviewGenerations, SealedReviewGeneration},
     record::{
         ARCHIVE_FORMAT, Archive, CONTINUED_MAX_ARCHIVE_BYTES, MAX_ARCHIVE_BYTES, MAX_GENERATIONS,
         SEGMENT_FORMAT, Segment, check_budget, generation_id,
@@ -102,25 +102,7 @@ impl ReviewSession {
             }
             state.active_generation = segment.generation;
             state.active_start = owner.events.len();
-            // Native append order is causal and actor-contiguous. Do not sort late
-            // concurrent inputs back into an already retained segment or actor frame.
-            let mut frontier = event::clock(&owner.events);
-            for event in &segment.events {
-                let previous = frontier.get(&event.id.actor).map_or(0, |c| c.0);
-                if previous.checked_add(1) != Some(event.id.counter.0)
-                    || event.dependencies.get(&event.id.actor).map_or(0, |c| c.0) != previous
-                {
-                    return Err(ReviewError::Fork);
-                }
-                if event
-                    .dependencies
-                    .iter()
-                    .any(|(actor, counter)| frontier.get(actor).is_none_or(|known| known < counter))
-                {
-                    return Err(ReviewError::Contract("review generation append dependencies"));
-                }
-                frontier.insert(event.id.actor.clone(), event.id.counter);
-            }
+            validate_append_order(&owner.events, &segment.events)?;
             owner.events.extend(segment.events);
             owner.history = segment.history;
             owner.cursor = segment.cursor;
@@ -133,13 +115,12 @@ impl ReviewSession {
                     .generations
                     .as_mut()
                     .ok_or(ReviewError::Contract("review history family"))?;
-                state.sealed.push(SealedReviewGeneration {
-                    generation: state.active_generation.clone(),
-                    json: json.as_str().into(),
-                    digest: file_digest(json)?,
-                    start: state.active_start,
-                    end: owner.events.len(),
-                });
+                state.sealed.push(SealedReviewGeneration::new(
+                    state.active_generation.clone(),
+                    json.as_str().into(),
+                    state.active_start,
+                    owner.events.len(),
+                )?);
             }
         }
         let encoded = if continued {
@@ -152,4 +133,29 @@ impl ReviewSession {
         }
         Ok(owner)
     }
+}
+
+/// Verify causal and actor-contiguous append order across an immutable file boundary.
+fn validate_append_order(
+    retained: &[event::Event],
+    appended: &[event::Event],
+) -> Result<(), ReviewError> {
+    let mut frontier = event::clock(retained);
+    for event in appended {
+        let previous = frontier.get(&event.id.actor).map_or(0, |c| c.0);
+        if previous.checked_add(1) != Some(event.id.counter.0)
+            || event.dependencies.get(&event.id.actor).map_or(0, |c| c.0) != previous
+        {
+            return Err(ReviewError::Fork);
+        }
+        if event
+            .dependencies
+            .iter()
+            .any(|(actor, counter)| frontier.get(actor).is_none_or(|known| known < counter))
+        {
+            return Err(ReviewError::Contract("review generation append dependencies"));
+        }
+        frontier.insert(event.id.actor.clone(), event.id.counter);
+    }
+    Ok(())
 }

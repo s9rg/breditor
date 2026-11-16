@@ -3,7 +3,7 @@
 use super::{
     super::{ReviewError, ReviewSession},
     encode_segment::encode_active,
-    history::{SealedReviewGeneration, file_digest},
+    history::SealedReviewGeneration,
     record::{check_budget, generation_id},
 };
 pub(super) fn prepare(owner: &ReviewSession, next: String) -> Result<ReviewSession, ReviewError> {
@@ -31,17 +31,15 @@ pub(super) fn stage_seal(
         continuing || old.continued_after.is_some(),
     )?;
     let json = encode_active(owner)?;
-    let digest = file_digest(&json)?;
     let mut candidate = owner.staged();
     let state =
         candidate.generations.as_mut().ok_or(ReviewError::Contract("review history family"))?;
-    state.sealed.push(SealedReviewGeneration {
-        generation: state.active_generation.clone(),
-        json: json.into(),
-        digest,
-        start: state.active_start,
-        end: owner.events.len(),
-    });
+    state.sealed.push(SealedReviewGeneration::new(
+        state.active_generation.clone(),
+        json.into(),
+        state.active_start,
+        owner.events.len(),
+    )?);
     if continuing {
         state.continued_after = Some(state.sealed.len());
     }
