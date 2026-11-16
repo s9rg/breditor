@@ -2,6 +2,19 @@
 
 ## November 16 collaboration recovery
 
+[Sealed portable continued-raster takeover](qualification/2026-11-16-continued-raster-seal.json)
+binds the exact native and image capture, original client files and decoded
+image mappings to a coordinated authority's source seal. The source drops
+its serving lease and the seal survives an interrupted reply. The relocated
+target has a new local completion and native generation. It verifies the
+same portable inputs, refuses a different client original or provider mapping
+and activates after the source process and its live directories are gone.
+The source and clean-installed SDK workflows then deliver an offline Redo,
+upload an image, and cold-reopen the accepted edit and all four image payloads.
+All 84 focused Rust tests, 69 candidate-plan tests, and the carried-alternate
+checks pass. The coordinated source seal must commit before shutdown.
+Explicit repair of an interrupted native serving tail remains open.
+
 [Authenticated continued-raster takeover](qualification/2026-11-16-continued-raster-activation.json)
 commits a separately approved restore under the live source's exclusive
 deployment permit. It checks fresh client and provider inputs and both
