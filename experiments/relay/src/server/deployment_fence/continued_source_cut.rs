@@ -36,9 +36,7 @@ impl<'a> ContinuedSourceCut<'a> {
             &mut sink(),
             &mut sink(),
         )?;
-        if native != expected.native
-            || rasters.write_backup(&mut sink(), &mut sink())? != expected.rasters
-        {
+        if native != expected.native || !rasters.matches_backup(&expected.rasters)? {
             return Err(Error::Contract("continued raster activation live source advanced"));
         }
         Ok(Self { room, rasters, custody })

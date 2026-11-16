@@ -1,6 +1,8 @@
 //! Loopback fixture with separate old, handoff, and successor process lifetimes.
 #[path = "relay_segment_functional/continued_activation.rs"]
 mod continued_activation;
+#[path = "relay_segment_functional/continued_capture.rs"]
+mod continued_capture;
 #[path = "relay_segment_functional/continued_reconcile.rs"]
 mod continued_reconcile;
 #[path = "relay_segment_functional/continued_restore.rs"]
@@ -210,11 +212,20 @@ async fn main() -> Result {
         "continued-raster-start" | "continued-raster-resume" => {
             continued_serving::router(parent, auth, &png, mode == "continued-raster-resume")?
         }
-        "continued-raster-activated" => continued_activation::restart(parent, auth)?,
-        "continued-raster-portable-commit" => {
+        "continued-raster-activated" | "continued-raster-activated-next" => {
+            continued_activation::restart(
+                parent,
+                &continued_activation::directory(parent, mode),
+                auth,
+            )?
+        }
+        "continued-raster-portable-commit" | "continued-raster-portable-commit-next" => {
+            let path = continued_activation::directory(parent, mode);
             println!(
                 "{}",
-                serde_json::to_string(&continued_activation::commit_portable(parent, auth)?)?
+                serde_json::to_string(&continued_activation::commit_portable(
+                    parent, &path, auth
+                )?)?
             );
             return Ok(());
         }

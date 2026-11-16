@@ -70,6 +70,20 @@ impl ContinuedAssetBackupFiles {
 }
 
 impl ContinuedAssetStore {
+    /// Compare the held immutable pack selection and the actual current active archive.
+    /// The pack was fully admitted when its inode was opened. Both guards check that same
+    /// named file and change stamp while active records are streamed for the comparison.
+    #[cfg(feature = "server")]
+    pub(crate) fn matches_backup(&self, selected: &ContinuedAssetBackupIdentity) -> Result<bool> {
+        self.guard()?;
+        let matches = selected.format == FORMAT
+            && selected.format_version == self.identity.format_version
+            && selected.lineage == self.identity.lineage
+            && selected.active == self.active.prepare_backup_stream()?.identity;
+        self.guard()?;
+        Ok(matches)
+    }
+
     /// Stream the unchanged retained archives and the active store to separate outputs.
     /// Retain the returned selection independently of both archive files.
     ///

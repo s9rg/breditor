@@ -1,13 +1,10 @@
 //! Exercise unserved reconstruction and cold inspection using original SDK files.
-use super::{Result, read, storage};
+use super::{Result, continued_capture, read, storage};
 use breditor_collab_relay::{
     RelaySegmentClientJournal, RelaySegmentClientJournalPin, RelaySegmentClientUploadArchive,
     RelaySegmentClientUploadPin,
     assets::asset_id,
-    server::{
-        ContinuedRasterRoomBackupFiles, ContinuedRasterRoomBackupIdentity,
-        ContinuedRasterRoomClientArchives, RecoveredContinuedRasterRoomIdentity,
-    },
+    server::{ContinuedRasterRoomClientArchives, RecoveredContinuedRasterRoomIdentity},
 };
 use serde::Deserialize;
 use serde_json::json;
@@ -26,6 +23,8 @@ struct Originals {
     queued: String,
     deferred: String,
     #[serde(default)]
+    additional: Vec<Companion>,
+    #[serde(default)]
     staged: Vec<String>,
     #[serde(default)]
     approve: bool,
@@ -34,28 +33,44 @@ struct Originals {
     generation: Option<String>,
 }
 
+#[derive(Deserialize)]
+#[serde(deny_unknown_fields)]
+struct Companion {
+    journal: RelaySegmentClientJournalPin,
+    uploads: RelaySegmentClientUploadPin,
+}
+
 pub(super) fn run(parent: &Path, reopen: bool) -> Result {
-    let selected: ContinuedRasterRoomBackupIdentity =
-        serde_json::from_str(&read(&parent.join("capture-selection.json"), 32 * 1024)?)?;
-    let original: Originals = serde_json::from_str(&read(&parent.join("originals.json"), 4096)?)?;
-    let files = ContinuedRasterRoomBackupFiles::open(&parent.join("capture"), &selected, None)?;
+    let original: Originals =
+        serde_json::from_str(&read(&parent.join("originals.json"), 32 * 1024)?)?;
+    let (files, selected) = continued_capture::open(parent)?;
     let destination = parent.join("prepared");
     let local = parent.join("prepared-selection.json");
     let mut target = if reopen {
         let pin: RecoveredContinuedRasterRoomIdentity = serde_json::from_str(&read(&local, 4096)?)?;
         files.reopen(&destination, &pin)?
     } else {
-        let journal = RelaySegmentClientJournal::open(
+        let mut journals = vec![RelaySegmentClientJournal::open(
             File::open(parent.join("original.journal"))?,
             original.journal.clone(),
-        )?;
-        let uploads = RelaySegmentClientUploadArchive::open(
+        )?];
+        let mut uploads = vec![RelaySegmentClientUploadArchive::open(
             File::open(parent.join("original.uploads"))?,
             original.uploads.clone(),
-        )?;
+        )?];
+        for (index, companion) in original.additional.iter().enumerate() {
+            journals.push(RelaySegmentClientJournal::open(
+                File::open(parent.join(format!("companion-{index}.journal")))?,
+                companion.journal.clone(),
+            )?);
+            uploads.push(RelaySegmentClientUploadArchive::open(
+                File::open(parent.join(format!("companion-{index}.uploads")))?,
+                companion.uploads.clone(),
+            )?);
+        }
         let inputs = ContinuedRasterRoomClientArchives {
-            journals: &[journal],
-            uploads: &[uploads],
+            journals: &journals,
+            uploads: &uploads,
             alternatives: &[],
         };
         let generation = original.generation.as_deref().unwrap_or("continued-portable-next");
@@ -99,9 +114,13 @@ pub(super) fn run(parent: &Path, reopen: bool) -> Result {
     assert!(target.asset(&original.deferred)?.is_none());
     let staged_bytes = target.asset(&original.queued)?.map(|asset| asset.bytes);
     assert_eq!(staged_bytes.is_some(), original.staged.contains(&original.queued));
-    assert_eq!(target.client_journal_pins(false)?, [original.journal.clone()]);
+    let wanted_journals = std::iter::once(&original.journal)
+        .chain(original.additional.iter().map(|companion| &companion.journal));
+    assert!(target.client_journal_pins(false)?.iter().eq(wanted_journals));
     assert!(target.client_journal_pins(true)?.is_empty());
-    assert_eq!(target.client_upload_pins()?, [original.uploads.clone()]);
+    let wanted_uploads = std::iter::once(&original.uploads)
+        .chain(original.additional.iter().map(|companion| &companion.uploads));
+    assert!(target.client_upload_pins()?.iter().eq(wanted_uploads));
     let mut journal = Vec::new();
     assert!(target.copy_client_archive(&original.journal, false, &mut journal)?);
     let uploads = target

@@ -18,20 +18,32 @@ pub(super) struct Protected {
     pub token: String,
     writer: String,
     document_credential: String,
+    #[serde(default)]
+    additional: Vec<ProtectedWriter>,
+}
+
+#[derive(Deserialize)]
+#[serde(rename_all = "camelCase", deny_unknown_fields)]
+struct ProtectedWriter {
+    writer: String,
+    document_credential: String,
 }
 
 pub(super) fn read_protected(parent: &Path) -> Result<Protected> {
-    Ok(serde_json::from_str(&read(&parent.join("protected.json"), 4096)?)?)
+    Ok(serde_json::from_str(&read(&parent.join("protected.json"), 32 * 1024)?)?)
 }
 
 impl Protected {
     pub fn credentials(&self) -> RecoveryRegistrationCredentials {
         RecoveryRegistrationCredentials {
-            documents: vec![RecoveryDocumentCredential {
-                principal: "owner".into(),
-                writer: self.writer.clone(),
-                credential: self.document_credential.clone(),
-            }],
+            documents: std::iter::once((&self.writer, &self.document_credential))
+                .chain(self.additional.iter().map(|row| (&row.writer, &row.document_credential)))
+                .map(|(writer, credential)| RecoveryDocumentCredential {
+                    principal: "owner".into(),
+                    writer: writer.clone(),
+                    credential: credential.clone(),
+                })
+                .collect(),
             ..RecoveryRegistrationCredentials::default()
         }
     }
@@ -60,15 +72,14 @@ pub(super) fn verify(
     let pending =
         target.verify_recovery_inputs(&authentication, "owner", token, &empty, &provider)?;
     assert!(!pending.inputs_complete());
-    assert_eq!(
-        pending.missing_registrations,
-        [MissingRecoveryRegistration::Document {
-            principal: "owner".into(),
-            writer: protected.writer.clone(),
-        }]
-    );
-
     let credentials = protected.credentials();
+    assert_eq!(pending.missing_registrations.len(), credentials.documents.len());
+    for row in &credentials.documents {
+        assert!(pending.missing_registrations.contains(&MissingRecoveryRegistration::Document {
+            principal: row.principal.clone(),
+            writer: row.writer.clone(),
+        }));
+    }
     let complete =
         target.verify_recovery_inputs(&authentication, "owner", token, &credentials, &provider)?;
     if approve {
@@ -89,8 +100,8 @@ pub(super) fn verify(
     assert!(complete.missing_upload_writers.is_empty());
     assert!(complete.client_journals.missing_document_writers.is_empty());
     assert!(complete.client_journals.missing_review_actors.is_empty());
-    assert_eq!(complete.client_journals.journals.len(), 1);
-    let head = &complete.client_journals.journals[0];
+    assert_eq!(complete.client_journals.journals.len(), credentials.documents.len());
+    let head = complete.client_journals.journals.first().ok_or("missing primary journal")?;
     assert!(head.local_through.parse::<u64>()? > head.accepted_through.parse::<u64>()?);
     let mut response = json!({
         "inputsComplete": complete.inputs_complete(),

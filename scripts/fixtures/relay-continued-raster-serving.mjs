@@ -4,8 +4,8 @@ import {execFileSync} from 'node:child_process';
 import {createHash} from 'node:crypto';
 import {closeSync, cpSync, fsyncSync, linkSync, mkdirSync, openSync, readFileSync, readdirSync, renameSync, statSync, unlinkSync, writeFileSync} from 'node:fs';
 import {join} from 'node:path';
-import {pixel, pixelAsset, proposalAsset, proposalPixel, secondAsset, secondPixel} from './review-assets/pixels.mjs';
-import {unavailableAsset} from './physical-recovery-control/unavailable-upload.mjs';
+import {pixel, pixelAsset, proposalAsset, proposalPixel, recoveredAsset, recoveredPixel, secondAsset, secondPixel} from './review-assets/pixels.mjs';
+import {lostReplyUpload, unavailableAsset} from './physical-recovery-control/unavailable-upload.mjs';
 import {startSegmentHandoverHost} from './relay-segment-handover-host.mjs';
 
 export async function verifyContinuedRasterServing(api, rich, wasm, executable, root, token, origin, queued) {
@@ -270,33 +270,151 @@ export async function verifyContinuedRasterServing(api, rich, wasm, executable, 
     const interruptedNativeRotation = verifyPublishedRotation({parent, activation, invoke, cut: rotated.result});
     host = await startApproved();
     assert.equal(BigInt(newEpoch(rotationServing).generation), BigInt(rotationServing.generation) + 1n);
-    const coldReader = await api.registerSharedRelayWriter(options);
-    const coldDocument = new api.SharedRichEditor(profile.join_frame('room', coldReader.identity.writer, coldReader.frame));
-    try {
-      assert.equal(coldDocument.documentJson(), edited);
-    } finally {
-      coldDocument.dispose();
-    }
+    const peers = [];
+    const assertPeerDocument = async expected => {
+      const {identity, frame} = await api.registerSharedRelayWriter(options);
+      const reader = new api.SharedRichEditor(profile.join_frame('room', identity.writer, frame));
+      try {
+        assert.equal(reader.documentJson(), expected);
+        peers.push({...identity, journal: Buffer.from(reader.checkpointJson())});
+      } finally {
+        reader.dispose();
+      }
+    };
+    await assertPeerDocument(edited);
     await connect();
     assert.equal(client.documentJson(), accepted);
-    const afterUndo = await api.registerSharedRelayWriter(options);
-    const freshAfterUndo = new api.SharedRichEditor(profile.join_frame('room', afterUndo.identity.writer, afterUndo.frame));
-    try {
-      assert.equal(freshAfterUndo.documentJson(), accepted);
-    } finally {
-      freshAfterUndo.dispose();
-    }
+    await assertPeerDocument(accepted);
     assert.equal(client.redo(), true);
     await sync.flush();
     assert.equal(client.documentJson(), edited);
-    const afterRedo = await api.registerSharedRelayWriter(options);
-    const freshAfterRedo = new api.SharedRichEditor(profile.join_frame('room', afterRedo.identity.writer, afterRedo.frame));
-    try {
-      assert.equal(freshAfterRedo.documentJson(), edited);
-    } finally {
-      freshAfterRedo.dispose();
-    }
+    await assertPeerDocument(edited);
     for (const [id, bytes] of [[pixelAsset, pixel], [unavailableAsset, queued], [secondAsset, secondPixel], [proposalAsset, proposalPixel]]) {
+      const response = await get(id);
+      assert.equal(response.status, 200);
+      assert.deepEqual(Buffer.from(await response.arrayBuffer()), bytes);
+    }
+    const serving = newEpoch(rotationServing);
+    const rollover = await host.maintenance('owner', token, {kind: 'captureRollover'});
+    assert.ok(rollover.result, rollover.error);
+    assert.deepEqual(rollover.result.sourceEpoch, serving);
+    await disconnect();
+
+    const deferredId = 'sha256:' + createHash('sha256').update(lostReplyUpload).digest('hex');
+    store = await rich.RichAssetStore.restoreBackup('continued-raster-second-owner',
+      new Blob([queue]), {uploadState: 'preserve'});
+    assert.equal((await store.get(unavailableAsset)).status, 'uploaded');
+    assert.equal((await store.ingest(new Blob([recoveredPixel], {type: 'image/png'}))).asset, recoveredAsset);
+    assert.equal((await store.ingest(new Blob([lostReplyUpload], {type: 'image/png'}))).asset, deferredId);
+    const rolloverQueue = Buffer.from(await (await store.exportBackup()).arrayBuffer());
+    store.close();
+    store = await rich.RichAssetStore.open('continued-raster-second-peer');
+    const emptyQueue = Buffer.from(await (await store.exportBackup()).arrayBuffer());
+    store.close();
+    store = undefined;
+
+    client.dispatch({commands: [{kind: 'replace_image', data: {
+      block: 'image-block', asset: recoveredAsset, generation: 'second-rollover-offline-edit',
+    }}]});
+    const offlineEdit = client.documentJson();
+    assert.ok(offlineEdit.includes(recoveredAsset));
+    await persistLocal();
+    const nativeParent = {source: join(activation, 'capture'), identity: captured.result.native};
+    const companions = peers.map(peer => ({
+      writer: peer.writer, credential: peer.credential, original: peer.journal, queue: emptyQueue,
+    }));
+    const nextActivation = join(parent, 'next-activation');
+    const prepareRollover = (directory, source, generation, seal, includeParent = true) =>
+      prepareContinuedCapture({
+        directory, source, parent, capture: rollover.result,
+        writer: registration.identity.writer, credential: registration.identity.credential, token,
+        original: readFileSync(journal), queue: rolloverQueue, staged: [recoveredAsset],
+        approve: true, rollover: true, generation, seal, companions,
+        queued: recoveredAsset, deferred: deferredId, nativeParent: includeParent ? nativeParent : undefined,
+      });
+    const missingParent = join(parent, 'missing-rollover-parent');
+    prepareRollover(missingParent, join(parent, 'rollover-capture'), 'unparented-raster-rollover', undefined, false);
+    assert.throws(() => invoke(missingParent, 'continued-raster-restore'), error => error.status === 1);
+    assert.throws(() => statSync(join(missingParent, 'prepared')), {code: 'ENOENT'});
+    prepareRollover(nextActivation, join(parent, 'rollover-capture'), 'rollover-preflight-native');
+    const preflightRollover = invoke(nextActivation, 'continued-raster-restore');
+    assert.equal(preflightRollover.reconciliation.inputsComplete, true);
+    assert.deepEqual(preflightRollover.reconciliation.stagedRasters, [recoveredAsset]);
+    const sealedRollover = await host.maintenance('owner', token, {kind: 'sealNextActivation'});
+    assert.ok(sealedRollover.result, sealedRollover.error);
+    assert.equal(BigInt(sealedRollover.result.generation), BigInt(serving.generation) + 1n);
+    for (const denied of [await get(recoveredAsset), await upload(deferredId, lostReplyUpload)]) {
+      assert.equal(denied.status, 403);
+      await denied.arrayBuffer();
+    }
+    await host.crash();
+    host = undefined;
+
+    const stoppedPreflight = join(parent, 'sealed-next-preflight');
+    renameSync(nextActivation, stoppedPreflight);
+    renameSync(join(activation, 'prepared'), join(parent, 'retired-first-operating-room'));
+    renameSync(join(parent, 'rollover-capture'), join(parent, 'first-rollover-capture'));
+    prepareRollover(nextActivation, join(stoppedPreflight, 'capture'), 'relocated-second-rollover',
+      readFileSync(join(stoppedPreflight, 'seal.json')));
+    const prepared = invoke(nextActivation, 'continued-raster-restore');
+    assert.equal(prepared.reconciliation.inputsComplete, true);
+    assert.equal(prepared.reconciliation.rolledRasterGeneration, true);
+    assert.deepEqual(Buffer.from(prepared.journal), readFileSync(journal));
+    assert.deepEqual(Buffer.from(prepared.queue), rolloverQueue);
+    assert.notDeepEqual(localPin(nextActivation), localPin(stoppedPreflight));
+
+    const saveNextEpoch = selection =>
+      writeFileSync(join(nextActivation, 'expected.json'), JSON.stringify(selection), {mode: 0o600});
+    saveNextEpoch(sealedRollover.result);
+    const committedRollover = invoke(parent, 'continued-raster-portable-commit-next');
+    assert.equal(BigInt(committedRollover.generation), BigInt(sealedRollover.result.generation) + 1n);
+    saveNextEpoch(committedRollover);
+    const startNext = () => startSegmentHandoverHost(executable, [parent, 'continued-raster-activated-next', address]);
+    host = await startNext();
+    const nextEpoch = selection => JSON.parse(readFileSync(join(nextActivation,
+      'started-after-' + selection.generation + '.json'), 'utf8'));
+    const restartedSelection = nextEpoch(committedRollover);
+    assert.equal(BigInt(restartedSelection.generation), BigInt(committedRollover.generation) + 1n);
+
+    await assertPeerDocument(edited);
+    await connect();
+    assert.equal(client.documentJson(), offlineEdit);
+    await assertPeerDocument(offlineEdit);
+    assert.equal(client.undo(), true);
+    await sync.flush();
+    await assertPeerDocument(edited);
+    assert.equal(client.redo(), true);
+    await sync.flush();
+    await assertPeerDocument(offlineEdit);
+    const pendingResponse = await get(deferredId);
+    assert.equal(pendingResponse.status, 404);
+    await pendingResponse.arrayBuffer();
+    const uploaded = await upload(deferredId, lostReplyUpload);
+    assert.equal(uploaded.status, 200);
+    assert.equal((await uploaded.json()).duplicate, false);
+    const priorDuplicate = await upload(proposalAsset, proposalPixel);
+    assert.equal(priorDuplicate.status, 200);
+    assert.equal((await priorDuplicate.json()).duplicate, true);
+    const secondCut = await host.maintenance('owner', token, {kind: 'captureRollover'});
+    assert.ok(secondCut.result, secondCut.error);
+    assert.deepEqual(secondCut.result.sourceEpoch, restartedSelection);
+    assert.equal(secondCut.result.rasters.active.assets, 2);
+    assert.deepEqual(secondCut.result.rasters.lineage.sealed.map(generation => generation.archive),
+      [...rollover.result.rasters.lineage.sealed.map(generation => generation.archive), rollover.result.rasters.active]);
+    assert.deepEqual(readFileSync(join(parent, 'rollover-capture', 'rasters-predecessor.archive')),
+      Buffer.concat(['rasters-predecessor.archive', 'rasters-active.archive']
+        .map(name => readFileSync(join(nextActivation, 'capture', name)))));
+    await disconnect();
+    await host.crash();
+    host = undefined;
+    saveNextEpoch(restartedSelection);
+    host = await startNext();
+    assert.equal(BigInt(nextEpoch(restartedSelection).generation), BigInt(restartedSelection.generation) + 1n);
+    await assertPeerDocument(offlineEdit);
+    for (const [id, bytes] of [
+      [pixelAsset, pixel], [unavailableAsset, queued], [secondAsset, secondPixel],
+      [proposalAsset, proposalPixel], [recoveredAsset, recoveredPixel], [deferredId, lostReplyUpload],
+    ]) {
       const response = await get(id);
       assert.equal(response.status, 200);
       assert.deepEqual(Buffer.from(await response.arrayBuffer()), bytes);
@@ -310,6 +428,14 @@ export async function verifyContinuedRasterServing(api, rich, wasm, executable, 
       interruptedRasterRepair: {unpublishedBytesPreserved: true, publishedInodePreserved: true,
         nativeTailAndRasterRepairedTogether: true, changedEvidenceRefused: true, retryResynced: true},
       interruptedNativeRotation: {...interruptedNativeRotation, offlineUndoAndRedoDelivered: true},
+      repeatedRasterGenerationRollover: {
+        requiredNativeParent: true,
+        protectedOriginalClients: companions.length + 1,
+        coldActivationAfterPriorRoomRetired: true,
+        exactRecaptureAndColdRestart: true,
+        offlineEditAndUndoRedo: true,
+        exactHttpImages: 6,
+      },
       rasterGenerationRollover: {
         explicitRolloverBoundToPortableSeal: true,
         retainedArchiveBytesUnchanged: true,
@@ -424,23 +550,41 @@ async function verifyPortableCapture({
 
 function prepareContinuedCapture({
   directory, source, parent, capture, writer, credential, token, original, queue, staged, approve = false,
-  generation, seal, rollover = false,
+  generation, seal, rollover = false, nativeParent, companions = [],
+  queued = secondAsset, deferred = proposalAsset,
 }) {
   mkdirSync(directory, {mode: 0o700});
   cpSync(source, join(directory, 'capture'), {recursive: true});
   const write = (name, bytes) => writeFileSync(join(directory, name), bytes, {flag: 'wx', mode: 0o600});
   const hash = bytes => createHash('sha256').update(bytes).digest();
   write('auth.json', readFileSync(join(parent, 'auth.json')));
-  write('protected.json', JSON.stringify({token, writer, documentCredential: credential}));
+  write('protected.json', JSON.stringify({
+    token, writer, documentCredential: credential,
+    additional: companions.map(peer => ({writer: peer.writer, documentCredential: peer.credential})),
+  }));
   write('capture-selection.json', JSON.stringify(capture));
+  if (nativeParent) {
+    mkdirSync(join(directory, 'native-parent'), {mode: 0o700});
+    for (const name of ['native.archive', 'native.checkpoint']) {
+      cpSync(join(nativeParent.source, name), join(directory, 'native-parent', name));
+    }
+    write('native-parent/selection.json', JSON.stringify(nativeParent.identity));
+  }
   if (seal) write('seal.json', seal);
   write('original.journal', original);
   write('original.uploads', queue);
-  write('originals.json', JSON.stringify({
+  const pins = ({writer, original, queue}) => ({
     journal: {owner: {kind: 'document', writer, family: 'original'}, bytes: original.length, sha256: [...hash(original)]},
     uploads: {writer, bytes: queue.length, sha256: hash(queue).toString('hex')},
-    rasters: [pixelAsset, unavailableAsset],
-    queued: secondAsset, deferred: proposalAsset, staged, approve, generation, rollover,
+  });
+  const additional = companions.map((peer, index) => {
+    write(`companion-${index}.journal`, peer.original);
+    write(`companion-${index}.uploads`, peer.queue);
+    return pins(peer);
+  });
+  write('originals.json', JSON.stringify({
+    ...pins({writer, original, queue}), additional, rasters: [pixelAsset, unavailableAsset],
+    queued, deferred, staged, approve, generation, rollover,
   }));
 }
 

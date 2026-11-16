@@ -191,9 +191,17 @@ seal selected for rollover binds that rollover decision and the exact staged
 IDs across relocation.
 
 Save the original archives and the resulting selection independently.
-A completed rollover can be recaptured and rolled again. The format holds up
-to 64 immutable archives behind one active store, with the existing per-store
-count and byte limits. Each preparation needs disk space for a complete copy
+A completed rollover can be recaptured and rolled again. A recapture from
+a linked native room needs the exact independently retained parent. Admit
+its original native archive and checkpoint with `RelaySegmentBaseFile::open`
+or `open_linked` and supply the resulting parent to
+`ContinuedRasterRoomBackupFiles::open`. Keep the newly captured native files,
+source epoch, and every registered client's current originals for the next
+handoff. Older operating directories can be retired after sealing when the
+target has the original archives and the selected parent chain.
+
+The format holds up to 64 immutable archives behind one active store.
+The existing per-store count and byte limits apply. Each preparation needs disk space for a complete copy
 of its retained pack. Preparation writes into the new target. The host seals
 or activates through the deployment authority described below.
 

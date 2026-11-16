@@ -114,6 +114,12 @@ fn full_original_raster_archive_continues_with_exact_old_and_new_bytes_across_co
     assert_eq!(relocated.write_backup(&mut left, &mut right)?, backup);
     assert_eq!(left, fs::read(path.join("captured-predecessor"))?);
     assert_eq!(right, fs::read(path.join("captured-active"))?);
+    #[cfg(feature = "server")]
+    {
+        assert!(relocated.matches_backup(&backup)?);
+        relocated.put(prepared(&image(MAX_ASSETS + 1)?)?)?;
+        assert!(!relocated.matches_backup(&backup)?);
+    }
     Ok(())
 }
 
@@ -139,6 +145,8 @@ fn predecessor_replacement_fences_reads_and_writes_and_bad_pair_preflight_is_abs
     let mut predecessor = ancestor(&path.join("predecessor"))?;
     let mut active = ancestor(&path.join("active"))?;
     let backup = store.write_backup(&mut predecessor, &mut active)?;
+    #[cfg(feature = "server")]
+    assert!(store.matches_backup(&backup)?);
     let bad = path.join("bad");
     assert!(
         ContinuedAssetStore::restore(&bad, predecessor, File::open(&original_file)?, &backup)
@@ -148,6 +156,8 @@ fn predecessor_replacement_fences_reads_and_writes_and_bad_pair_preflight_is_abs
     let parked = path.join("parked");
     fs::rename(continued.join(ARCHIVE), &parked)?;
     fs::copy(&parked, continued.join(ARCHIVE))?;
+    #[cfg(feature = "server")]
+    assert!(store.matches_backup(&backup).is_err());
     assert!(store.get(&asset_id(&old)).is_err());
     assert!(store.put(prepared(&new)?).is_err());
     assert_eq!(store.active_count(), 0);

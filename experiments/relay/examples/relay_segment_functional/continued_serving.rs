@@ -89,8 +89,10 @@ enum Action {
     Capture,
     CaptureActivation,
     CaptureRepairFloor,
+    CaptureRollover,
     RotateNative { generation: String },
     SealActivation,
+    SealNextActivation,
     Activate,
 }
 
@@ -115,14 +117,27 @@ pub(super) fn control(
                     .capture(&principal, &token, &parent.join("repair-floor"))
                     .map(|capture| json!(capture))
                     .map_err(|error| error.to_string()),
+                Action::CaptureRollover => handle
+                    .capture(&principal, &token, &parent.join("rollover-capture"))
+                    .map(|capture| json!(capture))
+                    .map_err(|error| error.to_string()),
                 Action::RotateNative { generation } => handle
                     .rotate_log_generation(&principal, &token, &generation)
                     .map(|receipt| json!(receipt))
                     .map_err(|error| error.to_string()),
-                Action::SealActivation => {
-                    super::continued_activation::seal(&parent, &handle, &principal, &token)
-                        .map(|selection| json!(selection))
-                        .map_err(|error| error.to_string())
+                Action::SealActivation | Action::SealNextActivation => {
+                    let target = match action {
+                        Action::SealActivation => "activation",
+                        _ => "next-activation",
+                    };
+                    super::continued_activation::seal(
+                        &parent.join(target),
+                        &handle,
+                        &principal,
+                        &token,
+                    )
+                    .map(|selection| json!(selection))
+                    .map_err(|error| error.to_string())
                 }
                 Action::Activate => {
                     super::continued_activation::commit(&parent, &handle, &principal, &token)
