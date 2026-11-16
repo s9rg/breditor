@@ -154,7 +154,10 @@ async function run(mode, {distribution, rich}, executable, parent, journalKind, 
       ...(peerDiscussionToken ? [{principal: 'discussion-peer', tokenHash: [...createHash('sha256').update(peerDiscussionToken).digest()]}] : [])],
   }), {mode: 0o600});
   writeFileSync(join(parent, 'asset.png'), pixel, {mode: 0o600});
-  if (portableSeal) writeFileSync(join(parent, 'fixture-coordinated-recovery'), '', {mode: 0o600});
+  if (portableSeal) {
+    writeFileSync(join(parent, 'fixture-coordinated-recovery'), '', {mode: 0o600});
+    writeFileSync(join(parent, 'fixture-full-predecessor-wal'), '', {mode: 0o600});
+  }
   let host, profile, session, document, review, portableUploads, failure;
   const connect = {getToken: () => token, autoConnect: false, requestTimeoutMs: 15_000};
   const stopClients = async () => {
@@ -409,6 +412,7 @@ async function run(mode, {distribution, rich}, executable, parent, journalKind, 
     assert.match(session.core.documentJson(), /Offline over handoff/);
     assert.equal(session.core.reviewSnapshot().view.threads.length, 2);
     const visibleThreads = () => session.core.reviewSnapshot().view.threads.filter(({thread}) => !thread.hidden);
+    const acceptedReviewBeforeHandoff = review.state().serverThrough;
     await stopClients();
     await host.crash();
     host = undefined;
@@ -417,12 +421,30 @@ async function run(mode, {distribution, rich}, executable, parent, journalKind, 
     await session.flush();
     const advanced = handoff('handoff-again');
     assert.ok(advanced > switched);
+    let recordExhaustion;
+    if (portableSeal) {
+      const full = JSON.parse(readFileSync(join(parent, 'full-predecessor.json'), 'utf8'));
+      assert.equal(full.active.recordsRemaining, 0);
+      assert.equal(full.retained.recordsRemaining, 0);
+      assert.equal(full.rotation.continuationFilesRemaining, 0);
+      assert.equal(full.rotation.canRotate, false);
+      assert.equal(full.nextSequence, String(advanced));
+      recordExhaustion = {nextSequence: full.nextSequence, activeRecordsRemaining: 0,
+        continuationFilesRemaining: 0, verifiedColdReopen: true, refusedAppend: true};
+    }
     host = await startSegmentHandoverHost(executable, [parent, 'final', address]);
     await attach();
     assert.equal(document.state().pending, false);
     assert.equal(review.state().pending, false);
     assert.ok(BigInt(document.state().serverReceiptSequence) >= advanced);
     assert.equal(visibleThreads().length, 3);
+    if (recordExhaustion) {
+      assert.match(session.core.documentJson(), /Offline over second handoff/);
+      const {lastReceipt, localThrough} = review.state();
+      assert.equal(lastReceipt.through, localThrough);
+      assert.ok(BigInt(lastReceipt.through) > BigInt(acceptedReviewBeforeHandoff));
+      recordExhaustion.offlineEditAndCommentAccepted = true;
+    }
     await stopClients();
     const rasterBefore = await fetch(rasterUrl, {headers});
     assert.equal(rasterBefore.status, 200);
@@ -1105,6 +1127,7 @@ async function run(mode, {distribution, rich}, executable, parent, journalKind, 
       portableRestores: 1 + extra + relocated, restoredOfflineLanes: 6, undoRedoLanes: 2, rasterReads: 2,
       processExits: 4 + extra + Number(reviewRecovered) + Number(relayDiscussion) + relocated, authenticatedTakeovers: 1 + extra + relocated,
       oldServingRefusals: 1 + extra, coldResumes: 2 + extra + Number(reviewRecovered) + Number(relayDiscussion),
+      ...(recordExhaustion ? {recordExhaustion} : {}),
       ...carryEvidence,
       ...relocationEvidence,
       ...coldReaderEvidence,

@@ -1,6 +1,7 @@
 use super::{RelaySegmentBaseFile, tests::save};
 use crate::{
-    Admission, Error, Role, Room,
+    Admission, Error, Role, Room, ServerNativeHistoryBoundary, ServerNativeHistoryLane,
+    log::generations::test_wal_name,
     room::log_generations::tests::{send, setup_profile},
 };
 use breditor_collab_feasibility::rich_replica::{Command, actions::InsertText};
@@ -9,8 +10,7 @@ use std::{fs, io::Write, sync::Arc};
 type TestResult = Result<(), Box<dyn std::error::Error>>;
 
 #[test]
-fn writable_segment_reopens_and_accepts_offline_edits_at_absolute_positions_past_the_wal_limit()
--> TestResult {
+fn writable_segment_continues_a_full_last_wal_and_keeps_offline_edits_and_receipts() -> TestResult {
     let (files, mut original, profile) = setup_profile(3, true, true)?;
     let source = files.room();
     let target = files.recovery();
@@ -36,12 +36,50 @@ fn writable_segment_reopens_and_accepts_offline_edits_at_absolute_positions_past
     let Admission::Durable(first) = original.admit("alice", &registration.lease, frame)? else {
         return Err("first receipt missing".into());
     };
+    let capacity = original.log.storage_capacity()?;
+    assert_eq!(capacity.rotation.ok_or("file capacity")?.continuation_files_remaining, 0);
+    assert!(capacity.active.records_remaining > 0);
+    for _ in 0..capacity.active.records_remaining {
+        original.grant("owner", "reader", Some(Role::Reader))?;
+    }
+    let full = original.log.storage_capacity()?;
+    assert_eq!(full.active.records_remaining, 0);
+    assert_eq!(full.retained.records_remaining, 0);
     let expected = original.log_generation_descriptor("owner")?;
-    assert!(!original.log.storage_capacity()?.rotation.ok_or("file capacity")?.can_rotate);
+    let wal = source.join(test_wal_name(&expected.active));
+    let saved_wal = fs::read(&wal)?;
+    let full_frame = original.catchup("alice")?;
+
+    client.apply(edit("Offline "))?;
+    let offline: serde_json::Value = serde_json::from_str(
+        &client.writer_groups_v2_guarded(&client.observe()?, &first.receipt.through)?,
+    )?;
+    let offline_frame = offline["groups"][0].as_str().ok_or("offline frame")?;
+    let through = offline["through"].as_str().ok_or("offline cut")?;
+    assert!(matches!(
+        original.admit("alice", &registration.lease, offline_frame),
+        Err(Error::Contract("physical rotation generation or capacity"))
+    ));
+    let boundary = ServerNativeHistoryBoundary::Seal { next: "doc-two".into() };
+    assert!(matches!(
+        original.prepare_native_history_boundary(
+            "owner",
+            ServerNativeHistoryLane::Document,
+            boundary
+        ),
+        Err(Error::Contract("physical rotation generation or capacity"))
+    ));
+    let Admission::Durable(retry) = original.admit("alice", &registration.lease, frame)? else {
+        return Err("original receipt missing at capacity".into());
+    };
+    assert_eq!(retry, crate::DurableReceipt { duplicate: true, ..first.clone() });
+    assert_eq!(original.catchup("alice")?, full_frame);
+    assert_eq!(original.log.storage_capacity()?, full);
+    assert_eq!(fs::read(&wal)?, saved_wal);
+
     let references = original.log_generation_retained_asset_references("owner")?;
     let (_, base) = save(&mut original, source.parent().ok_or("fixture directory")?)?;
     let base = Arc::new(base);
-    client.apply(edit("Offline "))?;
 
     assert!(matches!(
         original.continue_into_relay_segment("alice", &target, base.clone(), "fresh"),
@@ -72,12 +110,18 @@ fn writable_segment_reopens_and_accepts_offline_edits_at_absolute_positions_past
         return Err("original receipt missing".into());
     };
     assert_eq!(duplicate, crate::DurableReceipt { duplicate: true, ..first.clone() });
-    let through = send(&mut room, &client, &lease, &first.receipt.through)?;
+    let Admission::Durable(offline) = room.admit("alice", &lease, offline_frame)? else {
+        return Err("offline frame was not admitted on the successor".into());
+    };
+    assert!(!offline.duplicate);
+    assert_eq!(offline.sequence, expected.next_sequence);
+    assert_eq!(offline.receipt.through, through);
+    assert_eq!(fs::read(&wal)?, saved_wal);
     assert!(room.rotate_log_generation("owner", "file-2").is_err());
     let sealed = room.rotate_log_generation("owner", "fresh-two")?;
     assert_eq!(sealed.next_sequence.parse::<u64>()?, expected.next_sequence.parse::<u64>()? + 1);
     assert!(client.undo()?);
-    let through = send(&mut room, &client, &lease, &through)?;
+    let through = send(&mut room, &client, &lease, through)?;
     let snapshot = room.catchup("owner")?;
     drop(original);
     assert!(Room::open_log_generations(&source).is_err());

@@ -1,4 +1,6 @@
 //! Loopback fixture with separate old, handoff, and successor process lifetimes.
+#[path = "relay_segment_functional/full_predecessor.rs"]
+mod full_predecessor;
 #[path = "relay_segment_functional/handover.rs"]
 mod handover;
 #[path = "server_generation_inventory_fixture/source.rs"]
@@ -235,6 +237,14 @@ async fn main() -> Result {
                 room.grant("owner", "reader", Some(breditor_collab_relay::Role::Reader))?;
                 room.rotate_log_generation("owner", &format!("successor-{i}"))?;
             }
+            let full_records = if parent.join("fixture-full-predecessor-wal").is_file() {
+                let raster_root = parent.join("rasters");
+                assert!(raster_root.join("store.json").is_file());
+                let assets = AssetStore::open(&raster_root, room.asset_binding())?;
+                Some((full_predecessor::fill_last_wal(&mut room, &assets)?, assets))
+            } else {
+                None
+            };
             let full = room.log_generation_descriptor("owner")?;
             assert_eq!(full.sealed, 63);
             drop(room);
@@ -242,6 +252,9 @@ async fn main() -> Result {
                 Room::open_relay_segment_successor(&old, &successor, prior.clone())?;
             assert_eq!(recovered.truncated_bytes, 0);
             assert_eq!(room.log_generation_descriptor("owner")?, full);
+            if let Some((cut, assets)) = full_records {
+                full_predecessor::verify_reopened(parent, &room, &assets, &cut)?;
+            }
             return continue_room(parent, room, "linked", "final", "final-one", Some(prior));
         }
         "successor" | "final" => {
