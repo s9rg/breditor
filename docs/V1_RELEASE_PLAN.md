@@ -2,6 +2,18 @@
 
 ## November 16 collaboration recovery
 
+[Native raster continuation](qualification/2026-11-16-native-raster-continuation.json)
+opens a new bounded writable store behind one exact read-only predecessor
+archive. The native test starts at 1,024 retained images, writes a new
+image, and reads both generations after cold reopen and portable restore.
+A duplicate uses the original receipt format. A replaced predecessor inode
+or a mismatched archive pair refuses. Source and clean-installed workflows
+continue an actual recovered room's captured raster archive using a
+payload from the original SDK upload queue, then restore both generations
+and compare their bytes. All 71 focused relay tests and legacy handover
+pass. Relay HTTP and authenticated whole-room activation still need to
+adopt the new storage family.
+
 [Selective restore of queued rasters](qualification/2026-11-16-selective-queued-raster-restore.json)
 lets the host stage exact content IDs from original upload queues during
 linked or portable restore. A native store with 1,023 assets and two

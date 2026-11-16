@@ -1,0 +1,178 @@
+{
+  "format": "breditor/native-raster-continuation-qualification",
+  "formatVersion": 1,
+  "date": "2026-11-16",
+  "source": {
+    "commit": "51ba70e36bdf96e8e9e90ba38e93e47334803298",
+    "dirty": false,
+    "sha256": "d1b5b39b5de1b0f1398dbf0b61135d6a747a3533ddc1c383bb671666ed74f5de",
+    "files": 9025,
+    "bytes": 76577575
+  },
+  "rasterContinuation": {
+    "retainedAssetsAtOriginalCountCeiling": 1024,
+    "newAssetAdmittedToSeparateEmptyGeneration": true,
+    "bothGenerationsReadableAcrossColdOpenAndPortableRestore": true,
+    "preservesExactOriginalArchiveBytes": true,
+    "exactRetryUsesOrdinaryDuplicateReceipt": true,
+    "activeUploadStagingRecoversWithoutLosingCompleteAsset": true,
+    "changedOriginalInodeRefusesWarmAndColdOperations": true,
+    "incompatibleArchivePairRefusedBeforeDestinationCreation": true
+  },
+  "nativeRelayTests": {
+    "room-log_generations-asset_continuation": {
+      "passed": 2,
+      "failed": 0,
+      "ignored": 0,
+      "executableSha256": [
+        "8b4cee0a53a1395e324423f146cee2655079022b6dc0e73f917805a62c1a38e2"
+      ],
+      "logSha256": "1eea60cac0e90eea0f7e7c62a3fd8c3e875dde46bca64d83d24329f192a2f3e4"
+    },
+    "assets-store": {
+      "passed": 22,
+      "failed": 0,
+      "ignored": 0,
+      "executableSha256": [
+        "8b4cee0a53a1395e324423f146cee2655079022b6dc0e73f917805a62c1a38e2"
+      ],
+      "logSha256": "2bb8890fda77c3ebc2104ab30ed5ab1f00d3a89a692b08c8d03185d708ac087e"
+    },
+    "room-log_generations-segment_room_recovery": {
+      "passed": 6,
+      "failed": 0,
+      "ignored": 0,
+      "executableSha256": [
+        "8b4cee0a53a1395e324423f146cee2655079022b6dc0e73f917805a62c1a38e2"
+      ],
+      "logSha256": "008934b7fc4bca9b714bb70b4c97ec13173f551476527fbbe38b458bb42ffd96"
+    },
+    "room-log_generations-server_recovery-tests": {
+      "passed": 8,
+      "failed": 0,
+      "ignored": 0,
+      "executableSha256": [
+        "8b4cee0a53a1395e324423f146cee2655079022b6dc0e73f917805a62c1a38e2"
+      ],
+      "logSha256": "ef070acf45a78860d7e246d9dd8fed157c8415e50977ce837e68dd28fa06a713"
+    },
+    "server-segment_handover-tests": {
+      "passed": 33,
+      "failed": 0,
+      "ignored": 0,
+      "executableSha256": [
+        "8b4cee0a53a1395e324423f146cee2655079022b6dc0e73f917805a62c1a38e2"
+      ],
+      "logSha256": "b0701e0513dc68e27ea753019684b43a28aaffbdd3d9ad7eeffb8ce8151912ff"
+    }
+  },
+  "strictRelayLibraryLint": {
+    "server": {
+      "passed": true,
+      "logSha256": "fef61cf8e9d8188511ccb748bcabde6f3ae80f4df152068b6b3a81a7fd689887"
+    },
+    "noServer": {
+      "passed": true,
+      "logSha256": "276fad300ddd0f7ca0f2ff8f19f6533536037a99732d146cbe18a15207d8b193"
+    }
+  },
+  "reusedRuntimeArtifacts": {
+    "byteIdenticalSourceSince": "782bf48874e23e50fe08527bc3c4b6ff13d2df67",
+    "localRichWasmSha256": "bc020ce07ed80600b85735c1e592d5ae163d921f5556fef05269a12bc1d59ec5",
+    "sharedWasmSha256": "4bd769ac853ccc377dcbb45ebcfd5fc8f7f0f200850b1f5a106f7a4a0beddca4",
+    "verificationLogSha256": "c8df6ab3bd34bf3bd84ec875560a15b984d6bfa81ce1c1425a3427cf73f1045a"
+  },
+  "candidatePlan": {
+    "passed": 69,
+    "failed": 0,
+    "logSha256": "4f91f8c8c2a86047298c5a4ef2476a52b0d6924964400941d6375a98415235cc"
+  },
+  "workflows": {
+    "relaySha256": "5a9c36e7a12c3cfb61e3ee5e639ac019b426cb740e734c88bcd0f01e6bce8ea9",
+    "runtimeSha256": "4bd769ac853ccc377dcbb45ebcfd5fc8f7f0f200850b1f5a106f7a4a0beddca4",
+    "portableRelocation": {
+      "reportSha256": "5b98676562ce236ac111879ba8d5af8c7105ab5bf32910faf9589e566112bb6b",
+      "runs": {
+        "source": {
+          "offlineLanes": 6,
+          "undoRedoLanes": 2,
+          "coldResumes": 5,
+          "rasterContinuation": {
+            "duplicateAfterReopen": true,
+            "newAssets": 1,
+            "preservedOriginalBytes": true,
+            "retainedAssets": 4
+          },
+          "sealedPortableActivations": 1,
+          "rasterReads": 2,
+          "retainedPackets": 1,
+          "proof": null
+        },
+        "installed": {
+          "offlineLanes": 6,
+          "undoRedoLanes": 2,
+          "coldResumes": 5,
+          "rasterContinuation": {
+            "duplicateAfterReopen": true,
+            "newAssets": 1,
+            "preservedOriginalBytes": true,
+            "retainedAssets": 4
+          },
+          "sealedPortableActivations": 1,
+          "rasterReads": 2,
+          "retainedPackets": 1,
+          "proof": {
+            "registryArtifacts": 45,
+            "archives": [
+              {
+                "name": "@breditor/browser",
+                "sha256": "79f5b486d3742d1234e4eb21c18822e0a494551d49a73039f5b856908c124f3f"
+              },
+              {
+                "name": "@breditor/experimental-rich-content",
+                "sha256": "06fc9770ef5b26cd5f4c10d7d55d9b1d91e352392a599f277cee25d431d6f4b7"
+              },
+              {
+                "name": "@breditor/collaboration",
+                "sha256": "05aeaf3cedf9431890bb10b8cdc9c92b70c4410bfeeb52ff421d59b5a72dd2e2"
+              }
+            ]
+          }
+        }
+      }
+    },
+    "legacyHandover": {
+      "reportSha256": "b1b2c1ed9287065381b0a8dac976a2fe1aef8114c378a997c75ac5697309fd8d",
+      "runs": {
+        "source": {
+          "offlineLanes": 6,
+          "undoRedoLanes": 2,
+          "coldResumes": 3,
+          "proof": null
+        },
+        "installed": {
+          "offlineLanes": 6,
+          "undoRedoLanes": 2,
+          "coldResumes": 3,
+          "proof": {
+            "registryArtifacts": 45,
+            "archives": [
+              {
+                "name": "@breditor/browser",
+                "sha256": "79f5b486d3742d1234e4eb21c18822e0a494551d49a73039f5b856908c124f3f"
+              },
+              {
+                "name": "@breditor/experimental-rich-content",
+                "sha256": "06fc9770ef5b26cd5f4c10d7d55d9b1d91e352392a599f277cee25d431d6f4b7"
+              },
+              {
+                "name": "@breditor/collaboration",
+                "sha256": "05aeaf3cedf9431890bb10b8cdc9c92b70c4410bfeeb52ff421d59b5a72dd2e2"
+              }
+            ]
+          }
+        }
+      }
+    }
+  }
+}
