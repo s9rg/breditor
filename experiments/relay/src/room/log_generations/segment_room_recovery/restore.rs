@@ -22,7 +22,7 @@ use crate::{
     },
 };
 use serde::{Deserialize, Serialize};
-use std::{fs, path::Path};
+use std::{collections::BTreeMap, fs, path::Path};
 
 const COMPLETE: &str = ".segment-room-complete.json";
 
@@ -52,12 +52,46 @@ struct ClientRasters {
     restored_assets: AssetBackupIdentity,
 }
 
-struct OriginalJournals<'a> {
-    selected: &'a [RelaySegmentClientJournal],
-    alternatives: &'a [RelaySegmentClientJournal],
+pub(super) struct OriginalJournals<'a> {
+    pub selected: &'a [RelaySegmentClientJournal],
+    pub alternatives: &'a [RelaySegmentClientJournal],
 }
 
-impl OriginalJournals<'_> {
+impl<'a> OriginalJournals<'a> {
+    pub(super) fn uploads(
+        &self,
+        archives: &'a [RelaySegmentClientUploadArchive],
+    ) -> Result<Vec<UploadSource<'a>>> {
+        let mut sources: Vec<_> =
+            archives.iter().map(RelaySegmentClientUploadArchive::source).collect();
+        client_uploads::check_pins(
+            &sources.iter().map(|source| source.pin.clone()).collect::<Vec<_>>(),
+        )?;
+        client_journals::check_sources(self.selected)?;
+        if !self.alternatives.is_empty() {
+            client_journals::check_alternative_sources(self.selected, self.alternatives)?;
+        }
+        for journal in self.selected {
+            if let Some(source) = journal.participant_upload()? {
+                sources.push(source);
+            }
+        }
+        sources.sort_unstable_by_key(|source| source.pin.writer.as_str());
+        Ok(sources)
+    }
+
+    pub(super) fn rasters(
+        &self,
+        initial: Vec<SelectedRaster<'a>>,
+    ) -> Result<Vec<SelectedRaster<'a>>> {
+        let mut selected: BTreeMap<_, _> =
+            initial.into_iter().map(|raster| (raster.info.asset.as_str(), raster)).collect();
+        for journal in self.selected {
+            journal.add_participant_rasters(&mut selected)?;
+        }
+        Ok(selected.into_values().collect())
+    }
+
     fn retain(
         self,
         directory: &GenerationDirectory,
@@ -136,7 +170,7 @@ impl RelaySegmentRoomBackupFiles {
     ) -> Result<RecoveredRelaySegmentRoom> {
         let sources: Vec<_> =
             archives.iter().map(RelaySegmentClientUploadArchive::source).collect();
-        let rasters = client_uploads::select(&sources)?;
+        let rasters = client_uploads::select(&sources, None)?;
         self.restore_selected(path, active_generation, policy, &rasters, Some(&sources), None)
     }
 
@@ -181,41 +215,20 @@ impl RelaySegmentRoomBackupFiles {
         journals: &[RelaySegmentClientJournal],
         alternatives: &[RelaySegmentClientJournal],
     ) -> Result<RecoveredRelaySegmentRoom> {
-        let mut sources: Vec<_> =
-            archives.iter().map(RelaySegmentClientUploadArchive::source).collect();
-        client_uploads::check_pins(
-            &sources.iter().map(|source| source.pin.clone()).collect::<Vec<_>>(),
-        )?;
-        client_journals::check_sources(journals)?;
-        if !alternatives.is_empty() {
-            client_journals::check_alternative_sources(journals, alternatives)?;
-        }
-        for journal in journals {
-            if let Some(source) = journal.participant_upload()? {
-                sources.push(source);
-            }
-        }
-        sources.sort_unstable_by_key(|source| source.pin.writer.as_str());
-        let rasters = client_uploads::select(&sources)?;
-        let mut selected = rasters
-            .into_iter()
-            .map(|raster| (raster.info.asset.as_str(), raster))
-            .collect::<std::collections::BTreeMap<_, _>>();
-        for journal in journals {
-            journal.add_participant_rasters(&mut selected)?;
-        }
-        let rasters: Vec<_> = selected.into_values().collect();
+        let originals = OriginalJournals { selected: journals, alternatives };
+        let sources = originals.uploads(archives)?;
+        let rasters = originals.rasters(client_uploads::select(&sources, None)?)?;
         self.restore_selected(
             path,
             active_generation,
             policy,
             &rasters,
             Some(&sources),
-            Some(OriginalJournals { selected: journals, alternatives }),
+            Some(originals),
         )
     }
 
-    fn restore_selected(
+    pub(super) fn restore_selected(
         &self,
         path: &Path,
         active_generation: &str,

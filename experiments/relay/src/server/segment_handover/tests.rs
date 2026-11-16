@@ -39,6 +39,7 @@ mod portable_backup;
 mod portable_seal_custody;
 mod provider_commit;
 mod retained_backup;
+mod retained_upload_capacity;
 mod retired_history;
 #[cfg(any(target_os = "macos", target_os = "linux"))]
 mod saturated_replay;

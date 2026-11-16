@@ -25,7 +25,7 @@ impl ParticipantArchive {
         versions: Vec<String>,
         stores: &'a ArchiveStores,
     ) -> DeliverySections<'a> {
-        let identity = &self.metadata.identity.source;
+        let identity = &self.source;
         DeliverySections {
             identity: &identity.history,
             binding: &identity.binding,

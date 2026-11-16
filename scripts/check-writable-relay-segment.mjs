@@ -10,6 +10,7 @@ import {gunzipSync} from 'node:zlib';
 import {WebSocket as Socket} from 'undici';
 import {environment} from './fixtures/room-participant-inventory/environment.mjs';
 import {pixel, proposalAsset, proposalPixel, secondAsset, secondPixel, recoveredAsset, recoveredPixel} from './fixtures/review-assets/pixels.mjs';
+import {unavailableAsset, unavailableUpload, UnavailableUploadImage} from './fixtures/physical-recovery-control/unavailable-upload.mjs';
 import {assertOlderAuthorityRefused, startSegmentHandoverHost} from './fixtures/relay-segment-handover-host.mjs';
 import {advanceRelocatedHistories, readNativeHistoryCapacity, verifyRelocatedMaintenanceRetries} from './fixtures/relay-segment-maintenance.mjs';
 import {captureParticipant, checkRecoveredAlternate, checkRetainedSelected, proposalAlias, reopenParticipant, withWrongReviewReceipt} from './fixtures/relay-segment-participant.mjs';
@@ -131,6 +132,9 @@ async function run(mode, {distribution, rich}, executable, parent, journalKind, 
   const wasmBytes = readFileSync(join(runtime, 'breditor_shared_bg.wasm'));
   await wasm.default({module_or_path: wasmBytes});
   const reset = environment();
+  if (portableSeal) {
+    Object.defineProperty(globalThis, 'Image', {configurable: true, value: UnavailableUploadImage});
+  }
   const previousSocket = Object.getOwnPropertyDescriptor(globalThis, 'WebSocket');
   const loss = recoverCommentIntent ? {armed: false, durable: null, submissions: 0} : null;
   const portableSockets = [];
@@ -157,6 +161,7 @@ async function run(mode, {distribution, rich}, executable, parent, journalKind, 
   if (portableSeal) {
     writeFileSync(join(parent, 'fixture-coordinated-recovery'), '', {mode: 0o600});
     writeFileSync(join(parent, 'fixture-full-predecessor-wal'), '', {mode: 0o600});
+    writeFileSync(join(parent, 'fixture-retain-client-uploads'), '', {mode: 0o600});
   }
   let host, profile, session, document, review, portableUploads, failure;
   const connect = {getToken: () => token, autoConnect: false, requestTimeoutMs: 15_000};
@@ -489,7 +494,8 @@ async function run(mode, {distribution, rich}, executable, parent, journalKind, 
     assert.equal(localVersions.length, 1);
     const peerDocument = profile.join_frame('room', peer.identity.writer, peer.frame);
     const uploads = [
-      await captureClientRaster(richApi, parent, registered.identity.writer, 'pending'),
+      await captureClientRaster(richApi, parent, registered.identity.writer, 'pending',
+        portableSeal ? {asset: unavailableAsset, bytes: unavailableUpload} : undefined),
       await captureClientRaster(richApi, parent, peer.identity.writer, 'cancelled'),
     ];
     const portable = participant ? await captureParticipant(api, richApi, session, uploads[0], archiveImage) : null;
@@ -979,9 +985,22 @@ async function run(mode, {distribution, rich}, executable, parent, journalKind, 
       assert.equal(readTerminalCheckpoint(join(parent, 'portable-proof-recapture')).state.formatVersion, 4);
       relocationEvidence.proofOnlyPredecessorsOnRecapture = recaptured.length;
     }
+    const deferredUrl = 'http://' + address + '/assets/' + encodeURIComponent(unavailableAsset);
+    if (portableSeal) {
+      const queued = await fetch(deferredUrl, {headers});
+      assert.equal(queued.status, 404);
+      await queued.arrayBuffer();
+      assert.equal((await portableUploads.get(unavailableAsset)).status, 'pending');
+    }
     const clientUploadReceipts = await resumeClientRaster(
       richApi, api, parent, address, origin, token, uploads[0], portableUploads, restoredRoot,
     );
+    if (portableSeal) {
+      const uploaded = await fetch(deferredUrl, {headers});
+      assert.equal(uploaded.status, 200);
+      assert.deepEqual(Buffer.from(await uploaded.arrayBuffer()), unavailableUpload);
+      relocationEvidence.clientOnlyUploadDeferredThroughColdRestart = true;
+    }
     portableUploads = undefined;
     const cancelledUploadReceipts = await resumeClientRaster(
       richApi, api, parent, address, origin, token, uploads[1], undefined, restoredRoot,

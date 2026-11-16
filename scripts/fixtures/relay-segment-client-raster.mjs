@@ -7,7 +7,7 @@ import {pixel, pixelAsset, secondAsset, secondPixel} from './review-assets/pixel
 
 const digest = bytes => createHash('sha256').update(bytes).digest('hex');
 
-export async function captureClientRaster(api, parent, writer, status) {
+export async function captureClientRaster(api, parent, writer, status, deferredRaster) {
   const store = await api.RichAssetStore.open('handover-original-uploads-' + writer);
   let custody;
   try {
@@ -16,12 +16,18 @@ export async function captureClientRaster(api, parent, writer, status) {
     assert.equal(item.status, 'pending');
     if (status === 'cancelled') await store.cancel(secondAsset);
     await store.cacheRemote(pixelAsset, new Blob([pixel], {type: 'image/png'}), 'original-\ud800');
+    const deferred = deferredRaster
+      ? await store.ingest(new Blob([deferredRaster.bytes], {type: 'image/png'})) : undefined;
+    if (deferred) {
+      assert.equal(deferred.asset, deferredRaster.asset);
+      assert.equal(deferred.status, 'pending');
+    }
     custody = await store.acquireRecoveryCustody();
     const backup = await store.exportBackup();
     const archive = await api.RichAssetArchive.read(backup);
     try {
       const rows = archive.entries();
-      assert.equal(rows.length, 2);
+      assert.equal(rows.length, 2 + Number(deferredRaster !== undefined));
       const queued = rows.find(row => row.asset === secondAsset);
       assert.equal(queued.status, status);
       assert.equal(queued.storageRef, null);
@@ -39,7 +45,7 @@ export async function captureClientRaster(api, parent, writer, status) {
       const directory = openSync(parent, 'r');
       try { fsyncSync(directory); } finally { closeSync(directory); }
       custody.check();
-      return {path, rows, queued, pin: {writer, bytes: bytes.length, sha256: digest(bytes)}};
+      return {path, rows, queued, deferred, pin: {writer, bytes: bytes.length, sha256: digest(bytes)}};
     } finally {
       archive.dispose();
     }
@@ -60,13 +66,19 @@ export async function resumeClientRaster(rich, sdk, parent, address, origin, tok
   });
   const fetch = globalThis.fetch;
   const url = 'http://' + address + '/assets/' + encodeURIComponent(secondAsset);
-  let duplicate;
+  const deferredUrl = retained.deferred
+    ? 'http://' + address + '/assets/' + encodeURIComponent(retained.deferred.asset) : undefined;
+  let duplicate, deferredDuplicate;
   globalThis.fetch = async (input, options) => {
-    if (input !== url) return fetch(input, options);
+    if (input !== url && input !== deferredUrl) return fetch(input, options);
     const headers = new Headers(options?.headers);
     headers.set('Origin', origin);
     const response = await fetch(input, {...options, headers});
-    if (options?.method === 'PUT' && response.ok) duplicate = (await response.clone().json()).duplicate;
+    if (options?.method === 'PUT' && response.ok) {
+      const receipt = await response.clone().json();
+      if (input === url) duplicate = receipt.duplicate;
+      else deferredDuplicate = receipt.duplicate;
+    }
     return response;
   };
   try {
@@ -90,6 +102,12 @@ export async function resumeClientRaster(rich, sdk, parent, address, origin, tok
     assert.equal(duplicate, true);
     assert.equal(receipt.status, 'uploaded');
     assert.equal(receipt.storageRef, 'breditor:relay-asset:1:' + secondAsset);
+    if (retained.deferred) {
+      const uploaded = await store.get(retained.deferred.asset);
+      assert.equal(uploaded.status, 'uploaded');
+      assert.equal(uploaded.storageRef, 'breditor:relay-asset:1:' + retained.deferred.asset);
+      assert.equal(deferredDuplicate, false);
+    }
     await provider.flush();
     assert.deepEqual(await store.get(secondAsset), receipt);
     return 1;

@@ -4,7 +4,7 @@ use crate::{
     archive_input::{ArchiveEntry, ArchiveInput, ArchiveSlice},
     assets::{
         AssetBackupIdentity, AssetInfo, AssetStore, MAX_ASSET_BYTES, MAX_ASSETS, MAX_STORED_BYTES,
-        prepare_asset,
+        PreparedAsset, prepare_asset,
     },
 };
 use std::{
@@ -45,6 +45,15 @@ pub(super) struct SelectedRaster<'a> {
 }
 
 impl SelectedRaster<'_> {
+    pub fn prepare(&self) -> Result<PreparedAsset> {
+        let bytes = self.bytes.read(MAX_ASSET_BYTES)?.into_owned();
+        let prepared = prepare_asset(&self.info.asset, self.info.mime.as_str(), bytes)?;
+        if prepared.info() != self.info {
+            return Err(Error::Contract("client raster selected metadata differs"));
+        }
+        Ok(prepared)
+    }
+
     pub fn check_digest(&self) -> Result<()> {
         let digest = self.bytes.digest()?;
         let hex = b"0123456789abcdef";
@@ -92,12 +101,7 @@ pub(super) fn install(
 ) -> Result<Vec<String>> {
     let mut selected = Vec::with_capacity(rasters.len());
     for raster in rasters {
-        let bytes = raster.bytes.read(MAX_ASSET_BYTES)?.into_owned();
-        let prepared = prepare_asset(&raster.info.asset, raster.info.mime.as_str(), bytes)?;
-        if prepared.info() != raster.info {
-            return Err(Error::Contract("client raster selected metadata differs"));
-        }
-        store.put(prepared)?;
+        store.put(raster.prepare()?)?;
         selected.push(raster.info.asset.clone());
     }
     for raster in rasters {

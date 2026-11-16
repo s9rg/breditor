@@ -1032,6 +1032,24 @@ duplicate receipts, including for a payload absent from the old source.
 This operation accepts explicit retained payloads from the host. It does
 not discover every client archive or resolve conflicts among client queues.
 
+For a full live raster store, the host can select
+`restore_retaining_client_uploads` on the linked backup or portable retained
+bundle. This restore stages the original server raster archive and the selected
+participant dependency rasters. Participant bindings can select a payload from
+an embedded or standalone upload archive. Every other queue payload undergoes
+native raster validation and stays in the exact original queue, including
+its saved status, epoch and receipt. The target retains all selected uploads,
+journals and alternate branches under the same custody checks.
+
+Handover still verifies the accepted room and the clients’ retained
+dependencies. If a separate native journal requires an asset available
+only in a held queue, a missing live asset remains a Pending verification
+input. Select a staging restore for dependencies that need to be installed.
+The SDK can resume pending uploads from the retained archive under normal
+authenticated delivery. A unique upload needs both a free live raster slot and
+enough payload capacity, and an exact upload retry can acknowledge existing bytes
+even at capacity.
+
 [Client raster handover qualification](qualification/2026-11-14-linked-handover-client-rasters.json)
 records 519 passing relay tests and a separately run APFS interruption test.
 Both source and freshly installed SDK runs restored the whole client upload

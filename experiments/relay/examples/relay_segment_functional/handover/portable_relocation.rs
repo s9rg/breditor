@@ -190,7 +190,11 @@ pub(crate) fn router(
             let selected = seal.planned_selection()?;
             assert_eq!(authority.current_selection()?, selected);
             assert_eq!(seal.status(&authority)?, LogGenerationHandoverStatus::Sealed);
-            let mut target = bundle.restore(&room_path, "relocated-one", POLICY)?;
+            let mut target = if parent.join("fixture-retain-client-uploads").is_file() {
+                bundle.restore_retaining_client_uploads(&room_path, "relocated-one", POLICY)?
+            } else {
+                bundle.restore(&room_path, "relocated-one", POLICY)?
+            };
             let provider: Arc<dyn ServerRecoveryAssetProvider> =
                 Arc::new(ContentAddressedServerAssets);
             let missing = target.verify_handover_inputs(

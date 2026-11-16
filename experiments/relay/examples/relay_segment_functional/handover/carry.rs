@@ -287,7 +287,9 @@ impl Carry {
             alternatives.sort_unstable_by_key(|(pin, _)| pin.sha256);
         }
         let (pins, alternatives): (Vec<_>, Vec<_>) = alternatives.into_iter().unzip();
-        let mut target = backup.restore_with_client_journal_alternatives(
+        let restore = super::restore_selected_cohort(parent);
+        let mut target = restore(
+            &backup,
             &parent.join("carried"),
             "carried-one",
             POLICY,

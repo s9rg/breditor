@@ -229,6 +229,12 @@ impl RelaySegmentClientJournal {
         self.participant.as_ref().map(|archive| archive.upload(self.file.all())).transpose()
     }
 
+    pub(super) fn participant_raster_ids(&self) -> impl Iterator<Item = &str> {
+        self.participant.iter().flat_map(|archive| {
+            archive.bindings().iter().map(|binding| binding.content_asset.as_str())
+        })
+    }
+
     pub(super) fn add_participant_rasters<'a>(
         &'a self,
         selected: &mut BTreeMap<&'a str, SelectedRaster<'a>>,

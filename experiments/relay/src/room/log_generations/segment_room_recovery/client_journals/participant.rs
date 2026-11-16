@@ -142,7 +142,8 @@ pub(super) struct ParticipantArchive {
     #[cfg(feature = "server")]
     records: Vec<Record>,
     #[cfg(feature = "server")]
-    metadata: Metadata,
+    source: Source,
+    bindings: Vec<Binding>,
     rasters: Vec<(u64, AssetInfo)>,
     body: u64,
     upload_offset: u64,
@@ -182,7 +183,8 @@ impl ParticipantArchive {
             #[cfg(feature = "server")]
             records: header.records,
             #[cfg(feature = "server")]
-            metadata,
+            source: metadata.identity.source,
+            bindings: metadata.bindings,
             rasters,
             body,
             upload_offset,
@@ -191,9 +193,8 @@ impl ParticipantArchive {
         })
     }
 
-    #[cfg(feature = "server")]
     pub fn bindings(&self) -> &[Binding] {
-        &self.metadata.bindings
+        &self.bindings
     }
 
     pub fn upload<'a>(&'a self, input: ArchiveSlice<'a>) -> Result<UploadSource<'a>> {

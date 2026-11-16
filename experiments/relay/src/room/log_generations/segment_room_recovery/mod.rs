@@ -18,6 +18,7 @@ mod discussion_sources;
 #[cfg(feature = "server")]
 mod handover_target;
 mod restore;
+mod restore_retaining_client_uploads;
 #[cfg(feature = "server")]
 mod serving;
 #[cfg(feature = "server")]

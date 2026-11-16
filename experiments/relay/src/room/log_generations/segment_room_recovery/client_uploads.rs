@@ -9,7 +9,10 @@ use crate::{
     archive_input::{ArchiveInput, ArchiveSlice},
 };
 use serde::{Deserialize, Serialize};
-use std::{collections::BTreeMap, fs::File};
+use std::{
+    collections::{BTreeMap, BTreeSet},
+    fs::File,
+};
 
 pub(super) const MAX_CLIENTS: usize = 1024;
 const MAX_TOTAL_BYTES: u64 = 512 * 1024 * 1024;
@@ -66,6 +69,15 @@ pub(super) struct UploadSource<'a> {
     pub pin: &'a RelaySegmentClientUploadPin,
     pub bytes: ArchiveSlice<'a>,
     pub layout: &'a UploadLayout,
+}
+
+impl<'a> UploadSource<'a> {
+    fn raster(&self, entry: &'a codec::Payload) -> Result<SelectedRaster<'a>> {
+        Ok(SelectedRaster {
+            info: &entry.info,
+            bytes: self.bytes.section(self.layout.body_offset + entry.offset, entry.info.bytes)?,
+        })
+    }
 }
 
 impl UploadLayout {
@@ -128,8 +140,12 @@ pub(super) fn check_pins(pins: &[RelaySegmentClientUploadPin]) -> Result<()> {
     Ok(())
 }
 
-/// Canonical union for server storage; original per-writer queue histories stay independent.
-pub(super) fn select<'a>(archives: &[UploadSource<'a>]) -> Result<Vec<SelectedRaster<'a>>> {
+/// Form the canonical staging union. With an explicit dependency set, verify
+/// all remaining payloads for archive custody without staging them.
+pub(super) fn select<'a>(
+    archives: &[UploadSource<'a>],
+    required: Option<&BTreeSet<&str>>,
+) -> Result<Vec<SelectedRaster<'a>>> {
     if archives.len() > MAX_CLIENTS {
         return Err(Error::Contract("client upload archive count budget"));
     }
@@ -139,13 +155,12 @@ pub(super) fn select<'a>(archives: &[UploadSource<'a>]) -> Result<Vec<SelectedRa
     for archive in archives {
         archive.bytes.check()?;
         for entry in &archive.layout.entries {
-            let raster = SelectedRaster {
-                info: &entry.info,
-                bytes: archive
-                    .bytes
-                    .section(archive.layout.body_offset + entry.offset, entry.info.bytes)?,
-            };
-            add_raster(&mut selected, raster)?;
+            let raster = archive.raster(entry)?;
+            if required.is_none_or(|assets| assets.contains(entry.info.asset.as_str())) {
+                add_raster(&mut selected, raster)?;
+            } else {
+                raster.prepare()?;
+            }
         }
         archive.bytes.check()?;
     }

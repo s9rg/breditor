@@ -1,9 +1,10 @@
 //! Private test pipe for a live old relay. The owner token stays off disk and out of responses.
 use super::{Result, configured_auth, deployment, read, restored_backup, storage};
 use breditor_collab_relay::{
-    RecoveryDocumentCredential, RecoveryRegistrationCredentials, RecoveryReviewCredential,
-    RelaySegmentClientJournal, RelaySegmentClientJournalPin, RelaySegmentClientUploadArchive,
-    RelaySegmentClientUploadPin, RelaySegmentJournalOwner, RoomRecoveryPolicy,
+    RecoveredRelaySegmentRoom, RecoveryDocumentCredential, RecoveryRegistrationCredentials,
+    RecoveryReviewCredential, RelaySegmentClientJournal, RelaySegmentClientJournalPin,
+    RelaySegmentClientUploadArchive, RelaySegmentClientUploadPin, RelaySegmentJournalOwner,
+    RelaySegmentRoomBackupFiles, RoomRecoveryPolicy,
     server::{
         Authentication, ContentAddressedServerAssets, RelaySegmentHandoverApproval,
         RelaySegmentHandoverInputCoverage, ServerBackupHandle, ServerRecoveryAssetProvider,
@@ -92,6 +93,24 @@ fn next_input() -> Result<Option<Vec<u8>>> {
         return Err("private relay segment command bounds".into());
     }
     Ok(Some(line))
+}
+
+fn restore_selected_cohort(
+    parent: &Path,
+) -> fn(
+    &RelaySegmentRoomBackupFiles,
+    &Path,
+    &str,
+    RoomRecoveryPolicy,
+    &[RelaySegmentClientUploadArchive],
+    &[RelaySegmentClientJournal],
+    &[RelaySegmentClientJournal],
+) -> std::result::Result<RecoveredRelaySegmentRoom, breditor_collab_relay::Error> {
+    if parent.join("fixture-retain-client-uploads").is_file() {
+        RelaySegmentRoomBackupFiles::restore_retaining_client_uploads
+    } else {
+        RelaySegmentRoomBackupFiles::restore_with_client_journal_alternatives
+    }
 }
 
 fn prepare_and_commit(
@@ -190,7 +209,9 @@ fn prepare_and_commit(
             return Err("a fabricated paired review receipt sequence was not refused".into());
         }
     }
-    let mut target = backup.restore_with_client_journal_alternatives(
+    let restore = restore_selected_cohort(parent);
+    let mut target = restore(
+        &backup,
         &parent.join("restored"),
         "restored-one",
         POLICY,

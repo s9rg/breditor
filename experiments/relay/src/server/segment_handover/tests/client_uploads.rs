@@ -16,6 +16,26 @@ use std::{
 
 fn archive() -> TestResult<Vec<u8>> {
     let body = br#"{"format":"breditor/raster-asset-archive","formatVersion":1,"records":[]}"#;
+    upload_archive(body, &[])
+}
+
+pub(super) fn pending_raster_archive(bytes: &[u8], width: u32) -> TestResult<Vec<u8>> {
+    let record = format!(
+        concat!(
+            r#"{{"asset":"{}","mime":"image/png","bytes":{},"width":{},"height":1,"status":"pending","#,
+            r#""attempts":0,"storageRef":null,"failure":null,"epoch":0,"offset":0}}"#,
+        ),
+        asset_id(bytes),
+        bytes.len(),
+        width,
+    );
+    let header = format!(
+        r#"{{"format":"breditor/raster-asset-archive","formatVersion":1,"records":[{record}]}}"#,
+    );
+    upload_archive(header.as_bytes(), bytes)
+}
+
+fn upload_archive(body: &[u8], payload: &[u8]) -> TestResult<Vec<u8>> {
     let hash = asset_id(body);
     let header = format!(
         "{},\"sha256\":\"{}\"}}",
@@ -25,6 +45,7 @@ fn archive() -> TestResult<Vec<u8>> {
     let mut output = b"BREDITOR-ASSETS1\n".to_vec();
     output.extend(u32::try_from(header.len())?.to_be_bytes());
     output.extend(header.bytes());
+    output.extend(payload);
     Ok(output)
 }
 
@@ -166,7 +187,7 @@ async fn incomplete_roster_and_changed_archive_custody_never_authorize_takeover(
 }
 
 #[tokio::test]
-async fn verifies_raster_needed_only_by_offline_document_redo() -> TestResult {
+async fn retained_upload_bytes_do_not_satisfy_a_raster_needed_by_offline_redo() -> TestResult {
     use crate::{
         RecoveryDocumentCredential, RelaySegmentClientJournal, RelaySegmentClientJournalPin,
         RelaySegmentDocumentJournalFamily, RelaySegmentJournalOwner, assets::prepare_asset,
@@ -209,7 +230,8 @@ async fn verifies_raster_needed_only_by_offline_document_redo() -> TestResult {
         .await?;
     let writer = registration.lease.writer;
     let mut client = source.profile.join_frame("room".into(), writer.clone(), &frame)?;
-    let only_redo = asset_id(&png(2)?);
+    let redo_png = png(2)?;
+    let only_redo = asset_id(&redo_png);
     let generation = "offline-redo";
     assert!(client.apply(vec![Command::ReplaceImage(ReplaceImage {
         block: "image-block".into(),
@@ -219,8 +241,8 @@ async fn verifies_raster_needed_only_by_offline_document_redo() -> TestResult {
     assert!(client.undo()?);
     assert!(!client.document_json().contains(&only_redo));
     let backup = source.capture("raster-required-by-redo")?;
-    let input = source.parent.join("empty-client-raster-queue");
-    let bytes = archive()?;
+    let input = source.parent.join("offline-redo-raster-queue");
+    let bytes = pending_raster_archive(&redo_png, 2)?;
     fs::write(&input, &bytes)?;
     let uploads = RelaySegmentClientUploadArchive::open(
         File::open(input)?,
@@ -245,8 +267,21 @@ async fn verifies_raster_needed_only_by_offline_document_redo() -> TestResult {
         },
     )?;
     let path = source.parent.join("replacement-missing-offline-raster");
-    let mut replacement =
-        backup.restore_with_client_journals(&path, "new", POLICY, &[uploads], &[original])?;
+    let mut replacement = backup.restore_retaining_client_uploads(
+        &path,
+        "new",
+        POLICY,
+        &[uploads],
+        &[original],
+        &[],
+    )?;
+    assert!(replacement.components().1.get(&only_redo)?.is_none());
+    let mut retained = Vec::new();
+    replacement
+        .open_client_upload_archive(&writer)?
+        .ok_or("offline queue")?
+        .read_to_end(&mut retained)?;
+    assert_eq!(retained, bytes);
     let provider: Arc<dyn ServerRecoveryAssetProvider> = Arc::new(MapSeedRaster(seed));
     let credentials = RecoveryRegistrationCredentials {
         documents: vec![RecoveryDocumentCredential {

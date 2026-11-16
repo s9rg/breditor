@@ -150,6 +150,29 @@ impl RelaySegmentRetainedBackup {
             &self.clients.alternates,
         )
     }
+
+    /// Restore the selected room and keep upload-only payloads in their original archived queues.
+    ///
+    /// Selected participant dependencies still stage as live rasters. Future uploads and
+    /// activation must pass normal live capacity, custody and provider checks.
+    ///
+    /// # Errors
+    /// Refuses changed or invalid archives, excessive live dependencies and occupied targets.
+    pub fn restore_retaining_client_uploads(
+        &self,
+        destination: &Path,
+        active_generation: &str,
+        policy: RoomRecoveryPolicy,
+    ) -> Result<RecoveredRelaySegmentRoom> {
+        self.backup.restore_retaining_client_uploads(
+            destination,
+            active_generation,
+            policy,
+            &self.clients.uploads,
+            &self.clients.selected,
+            &self.clients.alternates,
+        )
+    }
 }
 
 pub(super) struct RetainedBackupCopies {
