@@ -2,6 +2,22 @@
 
 ## November 16 collaboration recovery
 
+[Explicit continued-room native rotation recovery](qualification/2026-11-16-continued-native-rotation.json)
+lets the authenticated owner rotate under the current serving lease and
+recover the inspected transition under the retained epoch. It verifies the
+linked history against an independent native floor, saves rotation and
+optional upload evidence outside the room, and checks the intended empty WAL
+inode before retiring any raster stage. Rust tests interrupt the actual
+native rotation before and after publishing the new head, verify the same
+accepted sequence and terminal digest, and cold-restart and capture the
+repaired room. Source and clean-installed SDK workflows reconstruct both
+pending phases from a real rotation on disposable storage. They reject a stale
+inspection, modified evidence and a byte-identical replacement WAL, preserve
+the published image inode, and deliver an offline Undo and Redo that fresh
+peers can read after restart. All 98 focused Rust tests, 69 candidate-plan
+tests and carried-alternate checks pass. An unselected stage left before
+durable intent remains preserved by the existing bounded inventory policy.
+
 [Explicit continued-room upload recovery](qualification/2026-11-16-continued-raster-upload.json)
 holds the current serving epoch and authenticates the original room owner.
 Inspection saves the exact pending upload and any incomplete native WAL
