@@ -673,6 +673,30 @@ then verify Undo/Redo across an additional restart and read the original
 raster. Native tests verify orphaned and middle-segment packet references,
 and reject missing, reordered or changed ownership evidence.
 
+## Retain asset packet history in the checkpoint
+
+Use `Room::write_relay_segment_base_with_indexed_asset_history` or
+`ServerBackupHandle::capture_portable_relay_segment_with_indexed_asset_history`
+to opt into relay checkpoint version 2. The original capture entry points
+still write version 1. The version-two checkpoint pins an
+`assetPacketHistory` field in the selected checkpoint digest.
+
+The history contains the first absolute sequence of its physical segment
+and the original sequence, kind and literal packet inputs of each version,
+suggestion and revision Prepare or Commit. Capture reads the segment under
+the same WAL custody as the native backup. It retains abandoned prepares
+and their dependencies alongside published packets. The projection's
+records are strictly ordered within the selected segment and capped at
+64 MiB of encoded records including separators.
+
+Continuation and authenticated portable seal recompute the indexed
+checkpoint from the held source before fencing it. Linked-room asset inventory
+reads indexed and original-format segments in sequence order, then scans the
+current WAL suffix. The existing packet evaluator runs against the current native
+document and returns original event positions and whole Pending results
+when applicable. Backups retain and verify their full original WALs.
+Opening indexed checkpoints requires a reader that supports version 2.
+
 ## Restore a linked room with its raster store
 
 `Room::write_relay_segment_room_backup` streams the current WAL archive,

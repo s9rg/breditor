@@ -2,6 +2,17 @@
 
 ## November 15 collaboration recovery
 
+[Indexed asset packet history](qualification/2026-11-15-retained-asset-packet-history.json)
+lets linked-room asset inventory read selected packets from a version-two
+checkpoint. Mixed checkpoint versions preserve the same original sequence,
+asset references and revision ancestry through cold recovery. The native
+regression removes an abandoned prepare and confirms that a newly hashed
+checkpoint still cannot continue the live room. Both source and clean-installed
+relocation qualify an actual published version in an indexed predecessor, a
+version-one intervening checkpoint, and an indexed terminal checkpoint.
+The portable and legacy runs retain offline work and Undo/Redo. All 555
+enabled relay tests and the separate APFS archive interruption test pass.
+
 [Packed-lineage seal custody](qualification/2026-11-15-packed-lineage-final-seal.json)
 rechecks the directory during final seal validation. The
 regression added a file after the live cut comparison. The earlier relay

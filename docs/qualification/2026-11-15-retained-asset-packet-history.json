@@ -1,0 +1,125 @@
+{
+  "format": "breditor/retained-relay-asset-packet-history-qualification",
+  "formatVersion": 1,
+  "date": "2026-11-15",
+  "source": {
+    "commit": "cfdafd85d31e52e70125410ad71acdc54b0125e7",
+    "dirty": false,
+    "sha256": "16ed93debbb9dbd60aa2135c6c97fa16e58ed6f0e45bbd42aaa051c771af891a",
+    "files": 8978,
+    "bytes": 76235020
+  },
+  "verifiedAssetHistory": {
+    "abandonedPrepareOnlyImagesRetained": true,
+    "revisedPacketAncestryAndOriginalSequencesRetained": true,
+    "removedPrepareRefusedBeforeLiveContinuation": true,
+    "oldAndNewFormatsMatchBeforeAndAfterColdRestart": true
+  },
+  "nativeRelay": {
+    "passed": 555,
+    "failed": 0,
+    "ignored": 1,
+    "executableSha256": "d581430ff9eb84e551de6a4a76531233f105e89816537e31c18148d4fa7b4d59",
+    "logSha256": "954a8c3fd53a9d5e942465277e739977430b71e1350915510d421553faf24abe"
+  },
+  "crossVolumeArchiveInterruption": {
+    "passed": 1,
+    "failed": 0,
+    "ignored": 0,
+    "executableSha256": "d581430ff9eb84e551de6a4a76531233f105e89816537e31c18148d4fa7b4d59",
+    "logSha256": "b76a07fb76fe57ca8b62d045491554edf382cf134cf41482e9daf91b629a0ac9"
+  },
+  "nativeAssetReferences": {
+    "passed": 11,
+    "failed": 0,
+    "ignored": 0,
+    "executableSha256": "d581430ff9eb84e551de6a4a76531233f105e89816537e31c18148d4fa7b4d59",
+    "logSha256": "e0888f0283ab897953da82f64f11a2b070accf5de937eac2ea726bf9d79809db"
+  },
+  "nativeAssetReferencesWithoutServer": {
+    "passed": 11,
+    "failed": 0,
+    "ignored": 0,
+    "executableSha256": "81c141ce6c9bcab7b0b221fcb2034d7bbcfc805f3874a1e8ab2b0c293213b521",
+    "logSha256": "84c7903e4ad5ab4c703a3d8fabf32c86bf55946371987923877fd90f875ab156"
+  },
+  "nativeMaterializedCheckpoint": {
+    "passed": 3,
+    "failed": 0,
+    "ignored": 0,
+    "executableSha256": "d581430ff9eb84e551de6a4a76531233f105e89816537e31c18148d4fa7b4d59",
+    "logSha256": "fdbe18b2b0eff6e5f5bbdf0969bb63810e835de51b725533d18064ab7f90d423"
+  },
+  "nativeHandover": {
+    "passed": 30,
+    "failed": 0,
+    "ignored": 0,
+    "executableSha256": "d581430ff9eb84e551de6a4a76531233f105e89816537e31c18148d4fa7b4d59",
+    "logSha256": "641d425478d7db40acdd49d6c19aec3808b81eb10ef0baa994b644c440edaf9c"
+  },
+  "strictRelayLibraryLint": {
+    "server": {
+      "passed": true,
+      "logSha256": "b93718d0705dbd90565a8dba6fb25cf2da2b16b84c8af7e8a4ec9eeb73f11e37"
+    },
+    "noServer": {
+      "passed": true,
+      "logSha256": "5373f8ca9f558181e6f2189246a474757e7eedd189e972269499c1209bf1f090"
+    }
+  },
+  "candidatePlan": {
+    "passed": 69,
+    "failed": 0,
+    "logSha256": "f92dea253599acc39fe1891f4494f532b0abbeb02f637a5fee00c33191eefb22"
+  },
+  "workflows": {
+    "portableRelocationReportSha256": "4bec8cb56f321428169a9db396e4a0b0b104a03c478f574f8173f6b53e7c0e8c",
+    "legacyHandoverReportSha256": "9c4f2d53c0ae94541b7715cbaecdbef49f8e5bb6c3095ff0aa70cff66ee1642a",
+    "relaySha256": "eec9e07a1f215a3998d2614b1759243743093eb5c351b8b56d808bc53faccc61",
+    "runtimeSha256": "38b17b58126858fd4ef014e877e85806c323c675e88cd191222badbe9a36a6d5",
+    "runs": {
+      "source": {
+        "indexedAssetHistorySegments": 2,
+        "indexedPredecessorContainsExactSdkVersionPacket": true,
+        "mixedCheckpointVersions": [
+          1,
+          2
+        ],
+        "offlineLanes": 6,
+        "undoRedoLanes": 2,
+        "coldResumes": 5,
+        "originalRecoveryBehaviorRetained": true,
+        "proof": null
+      },
+      "installed": {
+        "indexedAssetHistorySegments": 2,
+        "indexedPredecessorContainsExactSdkVersionPacket": true,
+        "mixedCheckpointVersions": [
+          1,
+          2
+        ],
+        "offlineLanes": 6,
+        "undoRedoLanes": 2,
+        "coldResumes": 5,
+        "originalRecoveryBehaviorRetained": true,
+        "proof": {
+          "registryArtifacts": 45,
+          "archives": [
+            {
+              "name": "@breditor/browser",
+              "sha256": "79f5b486d3742d1234e4eb21c18822e0a494551d49a73039f5b856908c124f3f"
+            },
+            {
+              "name": "@breditor/experimental-rich-content",
+              "sha256": "c181984cc8f737861adf4886398d00413af6a42178d8542d789710c5b3faf371"
+            },
+            {
+              "name": "@breditor/collaboration",
+              "sha256": "c5d79a56da7f48c4e4e10a298bfc2bca5cb9cee46642c0c0586df828396ed7b8"
+            }
+          ]
+        }
+      }
+    }
+  }
+}
