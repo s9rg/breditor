@@ -755,6 +755,28 @@ proofs forward and certify the next terminal checkpoint. The terminal
 WAL and checkpoint are present in full so the new bundle can select
 its exact recovery cut.
 
+## Retire redundant predecessor checkpoints
+
+Use `copy_portable_with_ancestry_proofs` with an independently retained
+retirement selection to compact an existing `BRLINE4\n` or `BRLINE5\n`
+bundle. A serving relay can use
+`capture_portable_relay_segment_with_ancestry_proofs` directly. Both
+produce a fresh `BRLINE5\n` pack retaining the logical identity of the cut.
+The pack has a big-endian 32-bit predecessor count and, for each ancestor
+in order, a big-endian 64-bit proof length followed by the proof bytes.
+
+Each proof carries the original binding, physical closure and exact
+packet history. Capture extracts them from an independently verified
+version-three checkpoint or derives them from an admitted original WAL.
+It can also carry a previously selected retirement proof forward.
+The terminal archive and checkpoint supply full room recovery state,
+including receipts and native histories. The same retirement selection,
+open and seal APIs independently pin and verify the proof-only format.
+Source sealing still checks the proofs against the actual serving ancestry.
+
+A retired ancestor is part of the selected lineage. Restoring that earlier
+cut directly requires a separate full backup taken at that cut.
+
 ## Restore a linked room with its raster store
 
 `Room::write_relay_segment_room_backup` streams the current WAL archive,

@@ -1,0 +1,131 @@
+{
+  "format": "breditor/proof-only-relay-ancestry-qualification",
+  "formatVersion": 1,
+  "date": "2026-11-16",
+  "source": {
+    "commit": "4fbd49f0c004f8655cad1366fc4fa1388669c458",
+    "dirty": false,
+    "sha256": "3a3e7fc0bc7668c92dd304a2165fcc96c89f879773a9f5fe332ad7ff02931fa9",
+    "files": 8984,
+    "bytes": 76307049
+  },
+  "nativeAncestry": {
+    "originalBackupIdentityUnchanged": true,
+    "missingProofRefused": true,
+    "retiredCheckpointCannotResumeAsTerminal": true,
+    "reselectedFalseProofRefusedByLiveSeal": true,
+    "refusalDoesNotAppendAnEpoch": true,
+    "mixedOriginalCheckpointVersions": [
+      1,
+      2,
+      3
+    ],
+    "mixedPredecessors": 26,
+    "descriptorLimit": 48
+  },
+  "nativeAssetReferences": {
+    "passed": 12,
+    "failed": 0,
+    "ignored": 0,
+    "executableSha256": "0dbc9b076e98eae462311cf096b415c225627795ac6b6eaedb057fc4dba90c81",
+    "logSha256": "e2a657fcae80b26ce42aa11b7fcea07f5fdac2a3640cb9694574e20a166631d0"
+  },
+  "nativeMaterializedCheckpoint": {
+    "passed": 3,
+    "failed": 0,
+    "ignored": 0,
+    "executableSha256": "0dbc9b076e98eae462311cf096b415c225627795ac6b6eaedb057fc4dba90c81",
+    "logSha256": "27c5c1e56b1f2ba792377af8f19c91eea652ebd60f80e12fe532eb50f3cb78cb"
+  },
+  "nativeHandover": {
+    "passed": 31,
+    "failed": 0,
+    "ignored": 0,
+    "executableSha256": "0dbc9b076e98eae462311cf096b415c225627795ac6b6eaedb057fc4dba90c81",
+    "logSha256": "19277af1f34bf5f65300bc3c60e860959c42bd1fa48db8c788f496fc39bfb2d9"
+  },
+  "nativeStorage": {
+    "passed": 78,
+    "failed": 0,
+    "ignored": 1,
+    "executableSha256": "0dbc9b076e98eae462311cf096b415c225627795ac6b6eaedb057fc4dba90c81",
+    "logSha256": "cf76173244820f8e6f9675d9df001d9289b84e815784c9ce2db30a8147b36f07"
+  },
+  "nativeFencing": {
+    "passed": 45,
+    "failed": 0,
+    "ignored": 0,
+    "executableSha256": "0dbc9b076e98eae462311cf096b415c225627795ac6b6eaedb057fc4dba90c81",
+    "logSha256": "b6bf09ceb9e6feb8f7fe652e48801b4594c3fd8bfae5fc9e3059fa2025c65da0"
+  },
+  "crossVolumeArchiveInterruption": {
+    "passed": 1,
+    "failed": 0,
+    "ignored": 0,
+    "executableSha256": "0dbc9b076e98eae462311cf096b415c225627795ac6b6eaedb057fc4dba90c81",
+    "logSha256": "c5def7e106b82ffb232f6c4caa73e5841dfe76307afcb3f9e66afef6e6d7c280"
+  },
+  "strictRelayLibraryLint": {
+    "server": {
+      "passed": true,
+      "logSha256": "69ac4639ef3cd7b3341ca43648eddac4cd3744af40eac6185d14e367b101cee6"
+    },
+    "noServer": {
+      "passed": true,
+      "logSha256": "a354c32a1a8dcf07fa18e9b94d1e42e1b626f2e705838b0add551c0fe431e293"
+    }
+  },
+  "candidatePlan": {
+    "passed": 69,
+    "failed": 0,
+    "logSha256": "8e35b39ae4866b9266fc2d6df50d719ab16e32e03f66adfde9242b3564fe9b67"
+  },
+  "workflows": {
+    "portableRelocationReportSha256": "a3a1af8fe481654bd84194121d35c85b2ffa28f91970f14671a300f3758252b2",
+    "legacyHandoverReportSha256": "1702fc6baddddd83b0cb93b7d8d8b245e12a0c6333c2c854623909334acbff8d",
+    "relaySha256": "c0bd207527e7f10c665d44984a0bf76f67b6ee4da65c07e6ac4331c2debda842",
+    "runtimeSha256": "38b17b58126858fd4ef014e877e85806c323c675e88cd191222badbe9a36a6d5",
+    "runs": {
+      "source": {
+        "compressedLineageBytes": 2085302,
+        "migratedLineageBytes": 95545,
+        "proofOnlyLineageBytes": 66604,
+        "proofOnlyPredecessors": 4,
+        "proofOnlyPredecessorsOnRecapture": 5,
+        "originalLegacyVersionPacketRetained": true,
+        "offlineLanes": 6,
+        "undoRedoLanes": 2,
+        "coldResumes": 5,
+        "proof": null
+      },
+      "installed": {
+        "compressedLineageBytes": 2089635,
+        "migratedLineageBytes": 95622,
+        "proofOnlyLineageBytes": 66593,
+        "proofOnlyPredecessors": 4,
+        "proofOnlyPredecessorsOnRecapture": 5,
+        "originalLegacyVersionPacketRetained": true,
+        "offlineLanes": 6,
+        "undoRedoLanes": 2,
+        "coldResumes": 5,
+        "proof": {
+          "registryArtifacts": 45,
+          "archives": [
+            {
+              "name": "@breditor/browser",
+              "sha256": "79f5b486d3742d1234e4eb21c18822e0a494551d49a73039f5b856908c124f3f"
+            },
+            {
+              "name": "@breditor/experimental-rich-content",
+              "sha256": "c181984cc8f737861adf4886398d00413af6a42178d8542d789710c5b3faf371"
+            },
+            {
+              "name": "@breditor/collaboration",
+              "sha256": "c5d79a56da7f48c4e4e10a298bfc2bca5cb9cee46642c0c0586df828396ed7b8"
+            }
+          ]
+        }
+      }
+    }
+  }
+}

@@ -2,6 +2,17 @@
 
 ## November 16 collaboration recovery
 
+[Proof-only portable ancestry](qualification/2026-11-16-proof-only-relay-ancestry.json)
+retires redundant full checkpoints from predecessor segments. The
+terminal checkpoint still restores the native document, review and receipt
+state. A 26-predecessor chain with mixed original checkpoint versions
+converts and cold-reopens under 48 descriptors. Missing proofs and attempts
+to use a retired ancestor as a terminal checkpoint refuse. Source and
+clean-installed runs relocate with four proof-only ancestors, recover
+offline edits and Undo/Redo, then restore a five-ancestor recapture. Each
+fixture's predecessor pack falls from about 96 KB to 67 KB. All 169 targeted
+native tests and the separate APFS interruption test pass.
+
 [Migration of older relay archives](qualification/2026-11-16-retired-legacy-relay-history.json)
 retires legacy WAL payloads while keeping their original checkpoint bytes
 and selections. A 26-predecessor chain with all three checkpoint versions
