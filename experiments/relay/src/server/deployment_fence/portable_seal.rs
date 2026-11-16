@@ -47,7 +47,7 @@ pub(in crate::server) fn seal_portable_segment(
             &mut sink(),
             &mut sink(),
             &mut sink(),
-            bundle.checkpoint_encoding(),
+            bundle.checkpoint_encoding()?,
         )?;
         if current != expected.backup {
             return Err(Error::Contract("portable relay seal source cut advanced"));

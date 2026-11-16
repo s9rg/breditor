@@ -180,7 +180,7 @@ fn retained_packet_ancestry(
         fs::File::open(&checkpoint)?,
         &identity,
     )?;
-    assert!(raw.checkpoint_encoding() == root);
+    assert!(raw.checkpoint_encoding()? == root);
     let base = if root == Compactable {
         let compacted = crate::RelaySegmentBaseFile::open_compacted_checkpoint(
             fs::File::open(&checkpoint)?,
@@ -260,7 +260,7 @@ fn retained_packet_ancestry(
         &identity,
         base,
     )?);
-    assert_eq!(linked.checkpoint_encoding() == IndexedAssetHistory, suffix == IndexedAssetHistory);
+    assert_eq!(linked.checkpoint_encoding()? == IndexedAssetHistory, suffix == IndexedAssetHistory);
     let last = parent.join("final");
     let successor =
         reopened.continue_into_relay_segment("owner", &last, linked.clone(), "final-first")?;

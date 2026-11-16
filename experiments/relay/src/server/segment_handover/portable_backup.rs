@@ -78,7 +78,7 @@ pub(in crate::server) struct NamedPortableBackup {
 }
 
 impl NamedPortableBackup {
-    pub(in crate::server) fn checkpoint_encoding(&self) -> SegmentCheckpointEncoding {
+    pub(in crate::server) fn checkpoint_encoding(&self) -> Result<SegmentCheckpointEncoding> {
         self.copies.room.backup.checkpoint_encoding()
     }
 
@@ -319,6 +319,28 @@ impl ServerBackupHandle {
             token,
             destination,
             LineageLayout::Retired,
+            ClientLayout::Packed,
+            SegmentCheckpointEncoding::Compactable,
+        )
+    }
+
+    /// Capture the exact serving cut with proof-only predecessors and a full
+    /// terminal checkpoint. Retain the resulting selection outside the backup.
+    ///
+    /// # Errors
+    /// Refuses unavailable ancestry, changed files, stale authority and occupied
+    /// destinations. Retry failed capture at a fresh absent path.
+    pub fn capture_portable_relay_segment_with_ancestry_proofs(
+        &self,
+        principal: &str,
+        token: &str,
+        destination: &Path,
+    ) -> Result<RelaySegmentRetiredHistorySelection> {
+        self.capture_portable_with_lineage(
+            principal,
+            token,
+            destination,
+            LineageLayout::Proofs,
             ClientLayout::Packed,
             SegmentCheckpointEncoding::Compactable,
         )

@@ -1,7 +1,8 @@
 //! Independently pinned retired archives and comparison against the actual serving lineage.
 use super::{Source, TestResult, auth};
 use crate::{
-    Error,
+    Error, Room,
+    log::generations::GenerationDirectory,
     server::{RelaySegmentPortableSeal, RelaySegmentRetainedBackup},
 };
 use serde_json::{Value, json};
@@ -29,12 +30,27 @@ async fn retired_pack_requires_its_selection_and_seal_checks_the_original_archiv
     assert_eq!(selected.backup(), &identity);
     assert!(RelaySegmentRetainedBackup::open_portable(&retired, &identity).is_err());
     RelaySegmentRetainedBackup::open_portable_with_retired_history(&retired, &selected)?;
+    let proofs = source.parent.join("proof-only-copy");
+    let selected = RelaySegmentRetainedBackup::copy_portable_with_ancestry_proofs(
+        &retired, &proofs, &selected,
+    )?;
+    assert_eq!(selected.backup(), &identity);
+    assert!(RelaySegmentRetainedBackup::open_portable(&proofs, &identity).is_err());
+    RelaySegmentRetainedBackup::open_portable_with_retired_history(&proofs, &selected)?;
 
-    let file = retired.join("native-lineage/packed.bin");
+    let file = proofs.join("native-lineage/packed.bin");
     let bytes = fs::read(&file)?;
-    assert_eq!(&bytes[..8], b"BRLINE4\n");
-    let stored = usize::try_from(u64::from_be_bytes(bytes[28..36].try_into()?))?;
-    let offset = 36 + stored;
+    assert_eq!(&bytes[..8], b"BRLINE5\n");
+    let offset = 12;
+    let mut empty = bytes[..offset].to_vec();
+    empty.extend_from_slice(&0_u64.to_be_bytes());
+    let mut missing_selection = selected.clone();
+    missing_selection.lineage_sha256 = Some(Sha256::digest(&empty).into());
+    fs::write(&file, empty)?;
+    assert!(matches!(
+        RelaySegmentRetainedBackup::open_portable_with_retired_history(&proofs, &missing_selection),
+        Err(Error::Contract("portable ancestor proof missing"))
+    ));
     let mut proof: Value = serde_json::from_slice(&bytes[offset + 8..])?;
     let digest_first = &mut proof["closure"]["files"][0]["sha256"][0];
     let original_byte = digest_first.as_u64().ok_or("section digest")?;
@@ -45,7 +61,7 @@ async fn retired_pack_requires_its_selection_and_seal_checks_the_original_archiv
     changed.extend_from_slice(&proof);
     fs::write(&file, &changed)?;
     assert!(matches!(
-        RelaySegmentRetainedBackup::open_portable_with_retired_history(&retired, &selected),
+        RelaySegmentRetainedBackup::open_portable_with_retired_history(&proofs, &selected),
         Err(Error::Contract("portable retired lineage digest differs"))
     ));
 
@@ -53,13 +69,13 @@ async fn retired_pack_requires_its_selection_and_seal_checks_the_original_archiv
     different_selection.lineage_sha256 = Some(Sha256::digest(&changed).into());
     // A detached selection names its physical input. The live seal independently
     // compares the proof with the predecessor the relay actually held.
-    RelaySegmentRetainedBackup::open_portable_with_retired_history(&retired, &different_selection)?;
+    RelaySegmentRetainedBackup::open_portable_with_retired_history(&proofs, &different_selection)?;
     let intent = RelaySegmentPortableSeal::select(identity)?;
     assert!(matches!(
         live.seal_portable_relay_segment_with_retired_history(
             "owner",
             &source.token,
-            &retired,
+            &proofs,
             &intent,
             &different_selection,
         ),
@@ -67,10 +83,23 @@ async fn retired_pack_requires_its_selection_and_seal_checks_the_original_archiv
     ));
     assert_eq!(source.authority.current_selection()?, live_epoch);
     fs::write(&file, bytes)?;
+    {
+        let root = GenerationDirectory::open(&proofs)?;
+        let lineage = super::super::native_lineage::NativeLineage::open_with_retired_digest(
+            &root,
+            &selected.backup().native_predecessors,
+            selected.lineage_sha256,
+        )?;
+        let parent = lineage.parent().ok_or("retired predecessor")?;
+        assert!(matches!(
+            Room::open_log_generations_with_segment_base(&source.parent.join("missing"), &parent),
+            Err(Error::Contract("relay ancestor checkpoint has been retired"))
+        ));
+    }
     let sealed = live.seal_portable_relay_segment_with_retired_history(
         "owner",
         &source.token,
-        &retired,
+        &proofs,
         &intent,
         &selected,
     )?;

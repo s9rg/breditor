@@ -33,6 +33,7 @@ pub(super) enum LineageLayout {
     Split,
     Packed(packed::Encoding),
     Retired,
+    Proofs,
 }
 
 impl NativeLineage {
@@ -57,7 +58,12 @@ impl NativeLineage {
                     packed::write(&directory, &chain, encoding)?;
                     None
                 }
-                LineageLayout::Retired => Some(packed::write_retired(&directory, &chain)?),
+                LineageLayout::Retired => {
+                    Some(packed::write_retired(&directory, &chain, packed::Encoding::Retired)?)
+                }
+                LineageLayout::Proofs => {
+                    Some(packed::write_retired(&directory, &chain, packed::Encoding::Proofs)?)
+                }
             };
             directory.sync()?;
             directory.guard()?;
@@ -66,13 +72,6 @@ impl NativeLineage {
         let lineage = Self::open_with_retired_digest(destination, &identities, retired_digest)?;
         lineage.check_retired_history(parent)?;
         Ok((identities, lineage))
-    }
-
-    pub(super) fn open(
-        root: &GenerationDirectory,
-        expected: &[RelaySegmentBaseIdentity],
-    ) -> Result<Self> {
-        Self::open_with_retired_digest(root, expected, None)
     }
 
     pub(super) fn open_with_retired_digest(
@@ -155,18 +154,25 @@ pub(super) fn copy_packed(
     destination: &GenerationDirectory,
     expected: &[RelaySegmentBaseIdentity],
     encoding: packed::Encoding,
+    source_digest: Option<[u8; 32]>,
 ) -> Result<Option<[u8; 32]>> {
     let count = expected.len();
     if count == 0 {
+        if source_digest.is_some() {
+            return Err(Error::Contract("empty portable ancestry has a retirement selection"));
+        }
         return Ok(None);
     }
-    if matches!(encoding, packed::Encoding::Compacted | packed::Encoding::Retired) {
-        let lineage = NativeLineage::open(source, expected)?;
+    if matches!(
+        encoding,
+        packed::Encoding::Compacted | packed::Encoding::Retired | packed::Encoding::Proofs
+    ) {
+        let lineage = NativeLineage::open_with_retired_digest(source, expected, source_digest)?;
         let parent = lineage.parent();
-        let layout = if encoding == packed::Encoding::Retired {
-            LineageLayout::Retired
-        } else {
-            LineageLayout::Packed(encoding)
+        let layout = match encoding {
+            packed::Encoding::Retired => LineageLayout::Retired,
+            packed::Encoding::Proofs => LineageLayout::Proofs,
+            _ => LineageLayout::Packed(encoding),
         };
         let (_, exported) = NativeLineage::export(destination, parent.as_deref(), layout)?;
         lineage.check()?;

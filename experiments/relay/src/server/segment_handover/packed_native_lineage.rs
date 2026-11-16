@@ -19,6 +19,7 @@ const RAW_MAGIC: &[u8; 8] = b"BRLINE1\n";
 const COMPRESSED_MAGIC: &[u8; 8] = b"BRLINE2\n";
 const COMPACTED_MAGIC: &[u8; 8] = b"BRLINE3\n";
 const RETIRED_MAGIC: &[u8; 8] = b"BRLINE4\n";
+const PROOFS_MAGIC: &[u8; 8] = b"BRLINE5\n";
 const HEADER: u64 = 12;
 const RAW_LENGTHS: u64 = 16;
 const COMPRESSED_LENGTHS: u64 = 24;
@@ -29,6 +30,7 @@ pub(super) enum Encoding {
     Compressed,
     Compacted,
     Retired,
+    Proofs,
 }
 
 impl Encoding {
@@ -36,6 +38,7 @@ impl Encoding {
         match self {
             Self::Raw => RAW_LENGTHS,
             Self::Compressed | Self::Compacted | Self::Retired => COMPRESSED_LENGTHS,
+            Self::Proofs => 8,
         }
     }
 
@@ -45,6 +48,7 @@ impl Encoding {
             Self::Compressed => COMPRESSED_MAGIC,
             Self::Compacted => COMPACTED_MAGIC,
             Self::Retired => RETIRED_MAGIC,
+            Self::Proofs => PROOFS_MAGIC,
         }
     }
 }
@@ -61,9 +65,9 @@ pub(super) fn write(
 ) -> Result<()> {
     let mut file = create(directory, chain.len(), encoding)?;
     for base in chain {
-        let (mut archive, checkpoint) = base.stored_inputs();
+        let (mut archive, checkpoint) = base.stored_inputs()?;
         if encoding == Encoding::Compacted
-            && base.checkpoint_encoding() == SegmentCheckpointEncoding::Compactable
+            && base.checkpoint_encoding()? == SegmentCheckpointEncoding::Compactable
         {
             // A held original must still be valid when we replace it with the proof.
             base.check()?;
@@ -90,15 +94,22 @@ pub(super) fn create(
 pub(super) fn write_retired(
     directory: &GenerationDirectory,
     chain: &[&RelaySegmentBaseFile],
+    encoding: Encoding,
 ) -> Result<[u8; 32]> {
-    let mut file = create(directory, chain.len(), Encoding::Retired)?;
+    let mut file = create(directory, chain.len(), encoding)?;
     for base in chain {
         base.check()?;
-        let (_, checkpoint) = base.stored_inputs();
-        write_inputs(&mut file, Encoding::Compacted, None, checkpoint)?;
+        let write_proof = if encoding == Encoding::Retired {
+            let (_, checkpoint) = base.stored_inputs()?;
+            write_inputs(&mut file, Encoding::Compacted, None, checkpoint)?;
+            base.checkpoint_encoding()? != SegmentCheckpointEncoding::Compactable
+        } else {
+            debug_assert!(encoding == Encoding::Proofs);
+            true
+        };
         let length = file.stream_position()?;
         file.write_all(&0_u64.to_be_bytes())?;
-        if base.checkpoint_encoding() != SegmentCheckpointEncoding::Compactable {
+        if write_proof {
             base.write_archive_retirement(&mut file)?;
             let end = file.stream_position()?;
             let proof_bytes = end - length - 8;
@@ -113,10 +124,8 @@ pub(super) fn write_retired(
     file.sync_all()?;
     directory.sync()?;
     let witness = GenerationFileWitness::of(&file)?;
-    let limit = maximum_bytes(
-        u32::try_from(chain.len()).map_err(|_| Error::NeedsRecovery)?,
-        Encoding::Retired,
-    )?;
+    let limit =
+        maximum_bytes(u32::try_from(chain.len()).map_err(|_| Error::NeedsRecovery)?, encoding)?;
     let input = ArchiveInput::new(file, limit)?;
     let digest = input.all().digest()?;
     input.check_named(&witness, &directory.path.join(FILE))?;
@@ -124,18 +133,22 @@ pub(super) fn write_retired(
 }
 
 fn maximum_bytes(count: u32, encoding: Encoding) -> Result<u64> {
-    let proof = if encoding == Encoding::Retired {
-        8 + RelaySegmentBaseFile::ARCHIVE_RETIREMENT_LIMIT
-    } else {
-        0
-    };
-    u64::from(count)
-        .checked_mul(
+    let frame = match encoding {
+        Encoding::Proofs => encoding.lengths() + RelaySegmentBaseFile::ARCHIVE_RETIREMENT_LIMIT,
+        Encoding::Retired => {
+            encoding.lengths()
+                + 8
+                + RelaySegmentBaseFile::CHECKPOINT_LIMIT
+                + RelaySegmentBaseFile::ARCHIVE_RETIREMENT_LIMIT
+        }
+        _ => {
             MAX_SERVER_LOG_GENERATION_BACKUP_BYTES
                 + RelaySegmentBaseFile::CHECKPOINT_LIMIT
                 + encoding.lengths()
-                + proof,
-        )
+        }
+    };
+    u64::from(count)
+        .checked_mul(frame)
         .and_then(|bytes| bytes.checked_add(HEADER))
         .ok_or(Error::Contract("packed lineage byte budget"))
 }
@@ -278,9 +291,10 @@ impl PackedSource {
             prefix if prefix == COMPRESSED_MAGIC => Encoding::Compressed,
             prefix if prefix == COMPACTED_MAGIC => Encoding::Compacted,
             prefix if prefix == RETIRED_MAGIC => Encoding::Retired,
+            prefix if prefix == PROOFS_MAGIC => Encoding::Proofs,
             _ => return Err(Error::Contract("packed lineage header")),
         };
-        if (encoding == Encoding::Retired) != retired_digest.is_some() {
+        if matches!(encoding, Encoding::Retired | Encoding::Proofs) != retired_digest.is_some() {
             return Err(Error::Contract(
                 "portable retirement requires its independently selected pack",
             ));
@@ -332,7 +346,7 @@ impl PackedSource {
     }
 
     fn retirement(&mut self) -> Result<Option<ArchiveInput>> {
-        if self.encoding != Encoding::Retired {
+        if !matches!(self.encoding, Encoding::Retired | Encoding::Proofs) {
             return Ok(None);
         }
         let bytes = self.input.all().section(self.offset, 8)?.read(8)?;
@@ -371,11 +385,18 @@ impl PackedNativeLineage {
         let mut source = PackedSource::open(directory, expected.len(), retired_digest)?;
         let mut parent = None;
         for selection in expected {
-            let (archive, checkpoint) = source.next()?;
-            let base = if let Some(proof) = source.retirement()? {
-                RelaySegmentBaseFile::open_retired(checkpoint, proof, selection, parent)?
+            let base = if source.encoding == Encoding::Proofs {
+                let proof = source
+                    .retirement()?
+                    .ok_or(Error::Contract("portable ancestor proof missing"))?;
+                RelaySegmentBaseFile::open_retired(None, proof, selection, parent)?
             } else {
-                RelaySegmentBaseFile::open_selected(archive, checkpoint, selection, parent)?
+                let (archive, checkpoint) = source.next()?;
+                if let Some(proof) = source.retirement()? {
+                    RelaySegmentBaseFile::open_retired(Some(checkpoint), proof, selection, parent)?
+                } else {
+                    RelaySegmentBaseFile::open_selected(archive, checkpoint, selection, parent)?
+                }
             };
             parent = Some(Arc::new(base));
         }

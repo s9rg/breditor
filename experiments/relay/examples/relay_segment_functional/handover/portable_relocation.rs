@@ -72,16 +72,23 @@ pub(super) fn seal(
     )?;
     assert_eq!(retired.backup(), &compacted);
     assert!(RelaySegmentRetainedBackup::open_portable(&retired_path, &compacted).is_err());
+    let proof_path = parent.join("portable-relocation-proofs");
+    let proofs = RelaySegmentRetainedBackup::copy_portable_with_ancestry_proofs(
+        &retired_path,
+        &proof_path,
+        &retired,
+    )?;
+    assert_eq!(proofs.backup(), &compacted);
     let intent = RelaySegmentPortableSeal::select(compacted)?;
     storage::write_new(&parent.join(SEAL), &serde_json::to_vec(&intent)?)?;
-    storage::write_new(&parent.join(RETIRED), &serde_json::to_vec(&retired)?)?;
+    storage::write_new(&parent.join(RETIRED), &serde_json::to_vec(&proofs)?)?;
     File::open(parent)?.sync_all()?;
     let selected = handle.seal_portable_relay_segment_with_retired_history(
         "owner",
         token,
-        &retired_path,
+        &proof_path,
         &intent,
-        &retired,
+        &proofs,
     )?;
     let authority = deployment(parent)?;
     assert_eq!(selected, intent.planned_selection()?);

@@ -29,7 +29,7 @@ enum Action {
     Checkpoint,
     Pack { generation: String },
     Archive { generation: String },
-    RecaptureRetired,
+    RecaptureProofs,
 }
 
 impl Command {
@@ -70,9 +70,9 @@ impl Command {
                     handle.archive_sealed_wal(&principal, &token, checkpoint, &generation).await?,
                 )?
             }
-            Action::RecaptureRetired => {
-                let path = parent.join("portable-retired-recapture");
-                let selection = handle.capture_portable_relay_segment_with_retired_history(
+            Action::RecaptureProofs => {
+                let path = parent.join("portable-proof-recapture");
+                let selection = handle.capture_portable_relay_segment_with_ancestry_proofs(
                     &principal, &token, &path,
                 )?;
                 let backup = RelaySegmentRetainedBackup::open_portable_with_retired_history(

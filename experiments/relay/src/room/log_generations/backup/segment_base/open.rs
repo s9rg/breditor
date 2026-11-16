@@ -1,6 +1,7 @@
 //! Select the exact paired artifacts and replay a suffix only after proving its predecessor.
 use super::{
-    RelaySegmentBaseFile, RelaySegmentBaseIdentity, archive_retirement::ArchiveRetirement,
+    RelaySegmentBaseFile, RelaySegmentBaseIdentity, StoredCheckpoint,
+    archive_retirement::ArchiveRetirement,
 };
 use crate::{
     Error, Result, Room,
@@ -102,14 +103,14 @@ impl RelaySegmentBaseFile {
         expected: &RelaySegmentBaseIdentity,
         parent: Option<Arc<Self>>,
     ) -> Result<Self> {
-        Self::open_storage(archive, checkpoint, None, expected, parent)
+        Self::open_storage(archive, Some(checkpoint), None, expected, parent)
     }
 
     /// Only the portable reader can supply a supplemental range after checking its
     /// independently selected packed-file digest.
     #[cfg(feature = "server")]
     pub(crate) fn open_retired(
-        checkpoint: CheckpointInput,
+        checkpoint: Option<CheckpointInput>,
         retirement: ArchiveInput,
         expected: &RelaySegmentBaseIdentity,
         parent: Option<Arc<Self>>,
@@ -119,7 +120,7 @@ impl RelaySegmentBaseFile {
 
     fn open_storage(
         archive: Option<ArchiveInput>,
-        checkpoint: CheckpointInput,
+        checkpoint: Option<CheckpointInput>,
         retirement: Option<ArchiveInput>,
         expected: &RelaySegmentBaseIdentity,
         parent: Option<Arc<Self>>,
@@ -127,7 +128,7 @@ impl RelaySegmentBaseFile {
         if archive
             .as_ref()
             .is_some_and(|input| input.all().len() > crate::MAX_SERVER_LOG_GENERATION_BACKUP_BYTES)
-            || checkpoint.len() > MAX_CHECKPOINT_BYTES as u64
+            || checkpoint.as_ref().is_some_and(|input| input.len() > MAX_CHECKPOINT_BYTES as u64)
         {
             return Err(Error::Contract("relay segment base input budget"));
         }
@@ -139,12 +140,20 @@ impl RelaySegmentBaseFile {
         if let Some(prior) = &parent {
             prior.check()?;
         }
-        if checkpoint.len() == 0 || checkpoint.digest()? != expected.checkpoint.sha256 {
-            return Err(Error::Contract("relay segment base checkpoint digest differs"));
-        }
         let first = parent.as_ref().map_or(0, |base| base.identity.predecessor.source.records);
-        let SelectedHeader { encoding, closure, .. } =
-            read_header(&checkpoint, &expected.checkpoint, first)?;
+        let (checkpoint, closure) = if let Some(input) = checkpoint {
+            if input.len() == 0 || input.digest()? != expected.checkpoint.sha256 {
+                return Err(Error::Contract("relay segment base checkpoint digest differs"));
+            }
+            let SelectedHeader { encoding, closure, .. } =
+                read_header(&input, &expected.checkpoint, first)?;
+            (Some(StoredCheckpoint { input, encoding }), closure)
+        } else {
+            if retirement.is_none() || archive.is_some() {
+                return Err(Error::Contract("relay ancestor checkpoint omission requires a proof"));
+            }
+            (None, None)
+        };
         let binding = segment_history_digest(parent.as_deref(), expected)?;
         let closure = if let Some(input) = &retirement {
             if closure.is_some() || archive.is_some() {
@@ -207,7 +216,6 @@ impl RelaySegmentBaseFile {
             archive,
             retirement,
             checkpoint,
-            checkpoint_encoding: encoding,
             sections,
         };
         result.check()?;
@@ -226,7 +234,7 @@ impl RelaySegmentBaseFile {
             base.archive
                 .iter()
                 .chain(&base.retirement)
-                .chain(std::iter::once(&base.checkpoint.input))
+                .chain(base.checkpoint.iter().map(|checkpoint| &checkpoint.input.input))
         }) {
             if checked.is_some_and(|previous| input.shares_handle(previous)) {
                 continue;
@@ -266,8 +274,19 @@ impl RelaySegmentBaseFile {
             .collect()
     }
 
-    pub(crate) fn checkpoint_encoding(&self) -> SegmentCheckpointEncoding {
-        self.checkpoint_encoding
+    pub(crate) fn checkpoint_encoding(&self) -> Result<SegmentCheckpointEncoding> {
+        Ok(self.stored_checkpoint()?.encoding)
+    }
+
+    pub(super) fn stored_checkpoint(&self) -> Result<&StoredCheckpoint> {
+        self.checkpoint
+            .as_ref()
+            .ok_or(Error::Contract("relay ancestor checkpoint has been retired"))
+    }
+
+    pub(super) fn checkpoint_header(&self) -> Result<SelectedHeader> {
+        let first = self.parent().map_or(0, |base| base.identity.predecessor.source.records);
+        read_header(&self.stored_checkpoint()?.input, &self.identity.checkpoint, first)
     }
 
     pub(in crate::room) fn visit_asset_packets(
@@ -283,10 +302,9 @@ impl RelaySegmentBaseFile {
                 for packet in proof.history.into_records() {
                     visit(packet)?;
                 }
-            } else if base.checkpoint_encoding.has_asset_history() {
-                let first =
-                    base.parent().map_or(0, |base| base.identity.predecessor.source.records);
-                let history = read_header(&base.checkpoint, &base.identity.checkpoint, first)?
+            } else if base.checkpoint_encoding()?.has_asset_history() {
+                let history = base
+                    .checkpoint_header()?
                     .history
                     .ok_or(Error::Contract("relay checkpoint asset packet history missing"))?;
                 for packet in history.into_records() {
@@ -329,8 +347,10 @@ impl RelaySegmentBaseFile {
 
     pub(in crate::room::log_generations) fn checkpoint_state(&self) -> Result<Checkpoint> {
         self.check()?;
-        let state: Checkpoint =
-            self.checkpoint.visit(|reader| Ok(serde_json::from_reader(BufReader::new(reader))?))?;
+        let state: Checkpoint = self
+            .stored_checkpoint()?
+            .input
+            .visit(|reader| Ok(serde_json::from_reader(BufReader::new(reader))?))?;
         state.check_selection(&self.identity.checkpoint)?;
         self.check()?;
         Ok(state)

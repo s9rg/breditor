@@ -49,6 +49,22 @@ function inspectRetiredArchives(pack, predecessors, version) {
   return {retired, proofs};
 }
 
+function readAncestryProofs(pack, predecessors) {
+  assert.equal(pack.subarray(0, 8).toString(), 'BRLINE5\n');
+  assert.equal(pack.readUInt32BE(8), predecessors);
+  let offset = 12;
+  const proofs = [];
+  for (let index = 0; index < predecessors; index++) {
+    const bytes = Number(pack.readBigUInt64BE(offset));
+    offset += 8;
+    assert.ok(bytes > 0 && bytes <= pack.length - offset);
+    proofs.push(JSON.parse(pack.subarray(offset, offset + bytes)));
+    offset += bytes;
+  }
+  assert.equal(offset, pack.length);
+  return proofs;
+}
+
 function assertOrdinaryStartupRefused(executable, parent, mode, address) {
   const ledger = join(parent, 'deployment', 'authority.log');
   const before = readFileSync(ledger);
@@ -764,6 +780,13 @@ async function run(mode, {distribution, rich}, executable, parent, journalKind, 
         assert.ok(history.proofs[0].history.records.some(({event}) =>
           event.kind === 'version' && event.packet === packet));
         assert.ok(migrated.length < compacted.length);
+        const proofPath = join(parent, 'portable-relocation-proofs');
+        const proofPack = readFileSync(join(proofPath, 'native-lineage', 'packed.bin'));
+        const proofs = readAncestryProofs(proofPack, result.portableSeal.nativePredecessors);
+        assert.deepEqual(proofs[0], history.proofs[0]);
+        assert.equal(Buffer.from(proofs[1].closure.archiveSha256).toString('hex'),
+          sha(readFileSync(join(split, '1.archive'))));
+        assert.ok(proofPack.length < migrated.length);
         assert.throws(() => readFileSync(join(packed, '0.archive')), {code:'ENOENT'});
         const converted = join(parent, 'portable-relocation-source');
         assert.ok(readFileSync(join(converted, 'client-inputs.bin')).subarray(0, 8).equals(Buffer.from('BRCLNT1\n')));
@@ -779,7 +802,7 @@ async function run(mode, {distribution, rich}, executable, parent, journalKind, 
         for (const name of originalPaths) {
           renameSync(join(parent, name), join(parent, 'relocation-retired-' + name));
         }
-        renameSync(retired, join(parent, 'portable-relocation-arrived'));
+        renameSync(proofPath, join(parent, 'portable-relocation-arrived'));
         restoredRoot = 'relocated';
         const documents = [
           {principal: 'owner', writer: registered.identity.writer, credential: registered.identity.credential},
@@ -813,6 +836,8 @@ async function run(mode, {distribution, rich}, executable, parent, journalKind, 
           migratedLineageBytes: migrated.length,
           migratedPredecessorArchives: history.retired,
           migratedLegacyArchiveProofs: history.proofs.filter(Boolean).length,
+          proofOnlyLineageBytes: proofPack.length,
+          proofOnlyPredecessors: proofs.length,
           rawLineageBytes,
           compressedLineageBytes,
           packedCopiesOfExistingSplit: 1,
@@ -896,14 +921,13 @@ async function run(mode, {distribution, rich}, executable, parent, journalKind, 
     host = await startSegmentHandoverHost(executable, [parent, restoredRoot, address], token);
     if (maintenance) {
       Object.assign(relocationEvidence, await verifyRelocatedMaintenanceRetries(host, token, maintenance.state));
-      assert.deepEqual(await host.maintenance('owner', token, {kind: 'recaptureRetired'}),
+      assert.deepEqual(await host.maintenance('owner', token, {kind: 'recaptureProofs'}),
         {kind: 'maintenance', result: {nativePredecessors: 5}});
       const recapturedPack = readFileSync(join(
-        parent, 'portable-retired-recapture', 'native-lineage', 'packed.bin'));
-      const recaptured = inspectRetiredArchives(recapturedPack, 5, 4);
-      assert.equal(recaptured.retired, 5);
-      assert.equal(recaptured.proofs.filter(Boolean).length, 3);
-      relocationEvidence.migratedPredecessorsOnRecapture = 5;
+        parent, 'portable-proof-recapture', 'native-lineage', 'packed.bin'));
+      const recaptured = readAncestryProofs(recapturedPack, 5);
+      assert.equal(recaptured.length, 5);
+      relocationEvidence.proofOnlyPredecessorsOnRecapture = recaptured.length;
     }
     const clientUploadReceipts = await resumeClientRaster(
       richApi, api, parent, address, origin, token, uploads[0], portableUploads, restoredRoot,

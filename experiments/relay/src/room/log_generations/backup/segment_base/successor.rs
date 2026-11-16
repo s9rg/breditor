@@ -45,7 +45,7 @@ impl Room {
             selected.source.clone(),
             selected.manifest,
         )?;
-        let encoding = base.checkpoint_encoding();
+        let encoding = base.checkpoint_encoding()?;
         if encoding.has_asset_history() {
             self.with_relay_segment_base_stream(principal, &Cell::new(false), |mut stream| {
                 if encoding == SegmentCheckpointEncoding::Compactable {

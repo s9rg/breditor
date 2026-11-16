@@ -85,7 +85,7 @@ impl Room {
 
 impl RelaySegmentRoomBackupFiles {
     #[cfg(feature = "server")]
-    pub(crate) fn checkpoint_encoding(&self) -> SegmentCheckpointEncoding {
+    pub(crate) fn checkpoint_encoding(&self) -> Result<SegmentCheckpointEncoding> {
         self.native.checkpoint_encoding()
     }
 

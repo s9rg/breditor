@@ -39,6 +39,7 @@ impl RelaySegmentRetainedBackup {
             expected,
             ClientLayout::Split,
             Encoding::Raw,
+            None,
         )
         .map(|_| ())
     }
@@ -61,6 +62,7 @@ impl RelaySegmentRetainedBackup {
             expected,
             ClientLayout::Packed,
             Encoding::Raw,
+            None,
         )
         .map(|_| ())
     }
@@ -82,6 +84,7 @@ impl RelaySegmentRetainedBackup {
             expected,
             ClientLayout::Packed,
             Encoding::Compressed,
+            None,
         )
         .map(|_| ())
     }
@@ -104,6 +107,7 @@ impl RelaySegmentRetainedBackup {
             expected,
             ClientLayout::Packed,
             Encoding::Compacted,
+            None,
         )
         .map(|_| ())
     }
@@ -127,8 +131,34 @@ impl RelaySegmentRetainedBackup {
             expected,
             ClientLayout::Packed,
             Encoding::Retired,
+            None,
         )?;
         Ok(RelaySegmentRetiredHistorySelection { backup: expected.clone(), lineage_sha256 })
+    }
+
+    /// Copy a selected retirement pack using a proof for each ancestor and
+    /// the original full terminal checkpoint. Retain the new selection separately.
+    ///
+    /// # Errors
+    /// Refuses changed storage, unavailable input, an unsupported proof,
+    /// oversized data and occupied or nested destinations.
+    pub fn copy_portable_with_ancestry_proofs(
+        source: &Path,
+        destination: &Path,
+        expected: &RelaySegmentRetiredHistorySelection,
+    ) -> Result<RelaySegmentRetiredHistorySelection> {
+        let lineage_sha256 = Self::copy_portable_with_layout(
+            source,
+            destination,
+            expected.backup(),
+            ClientLayout::Packed,
+            Encoding::Proofs,
+            expected.lineage_sha256,
+        )?;
+        Ok(RelaySegmentRetiredHistorySelection {
+            backup: expected.backup().clone(),
+            lineage_sha256,
+        })
     }
 
     fn copy_portable_with_layout(
@@ -137,6 +167,7 @@ impl RelaySegmentRetainedBackup {
         expected: &RelaySegmentPortableBackupIdentity,
         layout: ClientLayout,
         encoding: Encoding,
+        source_digest: Option<[u8; 32]>,
     ) -> Result<Option<[u8; 32]>> {
         expected.retained.verify_pins(&BTreeSet::new())?;
         let source = GenerationDirectory::open(source)?;
@@ -146,6 +177,7 @@ impl RelaySegmentRetainedBackup {
             &destination,
             &expected.native_predecessors,
             encoding,
+            source_digest,
         )?;
         for (name, limit) in [
             (NATIVE, MAX_SERVER_LOG_GENERATION_BACKUP_BYTES),

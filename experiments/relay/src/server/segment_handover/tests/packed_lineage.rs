@@ -260,6 +260,20 @@ fn cold_lineage_worker() -> TestResult {
                 &retirement,
             )?;
             reopen_backup(&root, "retired-legacy", &backup)?;
+            let path = root.join("proof-only");
+            let selection = RelaySegmentRetainedBackup::copy_portable_with_ancestry_proofs(
+                &migrated,
+                &path,
+                &retirement,
+            )?;
+            let backup =
+                RelaySegmentRetainedBackup::open_portable_with_retired_history(&path, &selection)?;
+            assert_eq!(selection.backup(), &selected);
+            assert!(
+                fs::metadata(path.join("native-lineage/packed.bin"))?.len()
+                    < fs::metadata(migrated.join("native-lineage/packed.bin"))?.len()
+            );
+            reopen_backup(&root, "proof-only", &backup)?;
             assert!(matches!(
                 RelaySegmentRetainedBackup::copy_portable_fully_packed(
                     &compacted,

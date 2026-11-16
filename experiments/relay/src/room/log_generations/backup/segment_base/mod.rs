@@ -38,7 +38,11 @@ pub struct RelaySegmentBaseFile {
     parent: Option<Arc<Self>>,
     archive: Option<ArchiveInput>,
     retirement: Option<ArchiveInput>,
-    checkpoint: CheckpointInput,
-    checkpoint_encoding: SegmentCheckpointEncoding,
+    checkpoint: Option<StoredCheckpoint>,
     sections: BTreeMap<String, ArchiveEntry>,
+}
+
+struct StoredCheckpoint {
+    input: CheckpointInput,
+    encoding: SegmentCheckpointEncoding,
 }
