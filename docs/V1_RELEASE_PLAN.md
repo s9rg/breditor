@@ -2,6 +2,20 @@
 
 ## November 16 collaboration recovery
 
+[Explicit continued-room native tail repair](qualification/2026-11-16-continued-raster-tail.json)
+authenticates the original owner under the retained serving epoch, verifies
+the complete native prefix against an independently retained minimum, and
+preserves the incomplete final bytes outside the room. Repair checks the
+saved WAL inode, physical head, accepted native cut, inspected raster cut,
+and exact suffix before truncation. A real worker killed after truncation
+can resume with the same independent plan and preserved evidence. Source
+and clean-installed clients verify that ordinary restart leaves the torn log
+intact, that rollback below the minimum or a changed suffix refuses, and
+that pending raster staging stays in place. They repair in a separate process
+and then reopen the accepted edit and all four images. All 89 focused Rust
+tests, 69 candidate-plan tests and carried-alternate checks pass. Interrupted
+raster staging and unfinished native rotation still require separate recovery.
+
 [Sealed portable continued-raster takeover](qualification/2026-11-16-continued-raster-seal.json)
 binds the exact native and image capture, original client files and decoded
 image mappings to a coordinated authority's source seal. The source drops
