@@ -20,19 +20,30 @@ fn archive() -> TestResult<Vec<u8>> {
 }
 
 pub(super) fn pending_raster_archive(bytes: &[u8], width: u32) -> TestResult<Vec<u8>> {
-    let record = format!(
-        concat!(
-            r#"{{"asset":"{}","mime":"image/png","bytes":{},"width":{},"height":1,"status":"pending","#,
-            r#""attempts":0,"storageRef":null,"failure":null,"epoch":0,"offset":0}}"#,
-        ),
-        asset_id(bytes),
-        bytes.len(),
-        width,
-    );
+    pending_raster_archives(&[(bytes, width)])
+}
+
+fn pending_raster_archives(rasters: &[(&[u8], u32)]) -> TestResult<Vec<u8>> {
+    let mut entries: Vec<_> =
+        rasters.iter().map(|&(bytes, width)| (asset_id(bytes), width, bytes)).collect();
+    entries.sort_unstable_by(|left, right| left.0.cmp(&right.0));
+    let mut records = Vec::new();
+    let mut payload = Vec::new();
+    for (asset, width, bytes) in entries {
+        records.push(format!(
+            concat!(
+                r#"{{"asset":"{}","mime":"image/png","bytes":{},"width":{},"height":1,"status":"pending","#,
+                r#""attempts":0,"storageRef":null,"failure":null,"epoch":0,"offset":{}}}"#,
+            ),
+            asset, bytes.len(), width, payload.len(),
+        ));
+        payload.extend_from_slice(bytes);
+    }
+    let records = records.join(",");
     let header = format!(
-        r#"{{"format":"breditor/raster-asset-archive","formatVersion":1,"records":[{record}]}}"#,
+        r#"{{"format":"breditor/raster-asset-archive","formatVersion":1,"records":[{records}]}}"#,
     );
-    upload_archive(header.as_bytes(), bytes)
+    upload_archive(header.as_bytes(), &payload)
 }
 
 fn upload_archive(body: &[u8], payload: &[u8]) -> TestResult<Vec<u8>> {
@@ -187,10 +198,12 @@ async fn incomplete_roster_and_changed_archive_custody_never_authorize_takeover(
 }
 
 #[tokio::test]
-async fn retained_upload_bytes_do_not_satisfy_a_raster_needed_by_offline_redo() -> TestResult {
+async fn selective_restore_gives_the_last_raster_slot_to_offline_redo() -> TestResult {
     use crate::{
-        RecoveryDocumentCredential, RelaySegmentClientJournal, RelaySegmentClientJournalPin,
-        RelaySegmentDocumentJournalFamily, RelaySegmentJournalOwner, assets::prepare_asset,
+        Admission, RecoveryDocumentCredential, RelaySegmentClientJournal,
+        RelaySegmentClientJournalPin, RelaySegmentDocumentJournalFamily, RelaySegmentJournalOwner,
+        RelaySegmentQueuedRasterRestore,
+        assets::{MAX_ASSETS, prepare_asset},
         server::ServerAssetAvailabilityMissing,
     };
     use breditor_collab_feasibility::rich_replica::{
@@ -215,18 +228,11 @@ async fn retained_upload_bytes_do_not_satisfy_a_raster_needed_by_offline_redo() 
         image::DynamicImage::new_rgba8(width, 1).write_to(&mut out, image::ImageFormat::Png)?;
         Ok(out.into_inner())
     };
-    let original = png(1)?;
-    let seed = asset_id(&original);
-    let prepared = prepare_asset(&seed, "image/png", original)?;
-    let store = source.handle.host.assets.clone().ok_or("source raster owner")?;
+    let seed = super::retained_upload_capacity::fill_raster_store(&source, MAX_ASSETS - 1).await?;
     let (registration, frame) = source
         .handle
         .host
-        .transaction(move |room| {
-            let mut assets = store.lock().map_err(|_| Error::NeedsRecovery)?;
-            room.put_asset("owner", &mut assets, prepared)?;
-            Ok((room.register("owner")?, room.catchup("owner")?))
-        })
+        .transaction(|room| Ok((room.register("owner")?, room.catchup("owner")?)))
         .await?;
     let writer = registration.lease.writer;
     let mut client = source.profile.join_frame("room".into(), writer.clone(), &frame)?;
@@ -242,7 +248,9 @@ async fn retained_upload_bytes_do_not_satisfy_a_raster_needed_by_offline_redo() 
     assert!(!client.document_json().contains(&only_redo));
     let backup = source.capture("raster-required-by-redo")?;
     let input = source.parent.join("offline-redo-raster-queue");
-    let bytes = pending_raster_archive(&redo_png, 2)?;
+    let unrelated_png = png(3)?;
+    let unrelated = asset_id(&unrelated_png);
+    let bytes = pending_raster_archives(&[(&redo_png, 2), (&unrelated_png, 3)])?;
     fs::write(&input, &bytes)?;
     let uploads = RelaySegmentClientUploadArchive::open(
         File::open(input)?,
@@ -266,15 +274,16 @@ async fn retained_upload_bytes_do_not_satisfy_a_raster_needed_by_offline_redo() 
             sha256: Sha256::digest(journal.as_bytes()).into(),
         },
     )?;
+    let (uploads, originals) = ([uploads], [original]);
+    let all = source.parent.join("too-many-uploads");
+    assert!(matches!(
+        backup.restore_with_client_journals(&all, "too-many", POLICY, &uploads, &originals),
+        Err(Error::Contract("restored raster union budget"))
+    ));
+    assert!(!all.exists());
     let path = source.parent.join("replacement-missing-offline-raster");
-    let mut replacement = backup.restore_retaining_client_uploads(
-        &path,
-        "new",
-        POLICY,
-        &[uploads],
-        &[original],
-        &[],
-    )?;
+    let mut replacement =
+        backup.restore_retaining_client_uploads(&path, "new", POLICY, &uploads, &originals, &[])?;
     assert!(replacement.components().1.get(&only_redo)?.is_none());
     let mut retained = Vec::new();
     replacement
@@ -291,8 +300,9 @@ async fn retained_upload_bytes_do_not_satisfy_a_raster_needed_by_offline_redo() 
         }],
         ..RecoveryRegistrationCredentials::default()
     };
+    let authentication = auth(&source.token)?;
     let pending = replacement.verify_handover_inputs(
-        &auth(&source.token)?,
+        &authentication,
         "owner",
         &source.token,
         &credentials,
@@ -306,7 +316,114 @@ async fn retained_upload_bytes_do_not_satisfy_a_raster_needed_by_offline_redo() 
     assert!(matches!(&pending.missing_assets[..],
         [ServerAssetAvailabilityMissing::Bytes {reference, content_asset}]
             if reference.asset == only_redo && reference.generation == generation && content_asset == &only_redo));
-    assert_eq!(source.authority.current_selection()?, source.lease.selection());
-    source.lease.check()?;
+    let mut all_ids = [only_redo.clone(), unrelated.clone()];
+    all_ids.sort_unstable();
+    let restore = |path: &std::path::Path, selected: &[String]| {
+        backup.restore_selecting_queued_rasters(
+            path,
+            "selected",
+            POLICY,
+            RelaySegmentQueuedRasterRestore {
+                archives: &uploads,
+                journals: &originals,
+                queued_rasters: selected,
+                ..RelaySegmentQueuedRasterRestore::default()
+            },
+        )
+    };
+    assert!(matches!(
+        restore(&all, &all_ids),
+        Err(Error::Contract("restored raster union budget"))
+    ));
+    assert!(!all.exists());
+    let invalid = source.parent.join("invalid-selection");
+    let mut unsorted = all_ids.clone();
+    unsorted.reverse();
+    for ids in [&[only_redo.clone(), only_redo.clone()][..], &unsorted] {
+        assert!(matches!(
+            restore(&invalid, ids),
+            Err(Error::Contract("selected queued rasters must be unique and sorted"))
+        ));
+        assert!(!invalid.exists());
+    }
+    assert!(matches!(
+        restore(&invalid, &[asset_id(&png(4)?)]),
+        Err(Error::Contract("selected raster missing from client upload archives"))
+    ));
+    assert!(!invalid.exists());
+
+    let [ServerAssetAvailabilityMissing::Bytes { content_asset, .. }] = &pending.missing_assets[..]
+    else {
+        return Err("expected the authenticated missing asset".into());
+    };
+    let path = source.parent.join("only-redo-restored");
+    let target = restore(&path, std::slice::from_ref(content_asset))?;
+    assert_eq!(target.components().1.count(), MAX_ASSETS);
+    assert_eq!(target.components().1.get(&only_redo)?.ok_or("staged Redo raster")?.bytes, redo_png);
+    assert!(target.components().1.get(&unrelated)?.is_none());
+    drop(target);
+    let mut target = backup.reopen(&path, POLICY)?;
+    let mut reopened_queue = Vec::new();
+    target
+        .open_client_upload_archive(&credentials.documents[0].writer)?
+        .ok_or("reopened retained queue")?
+        .read_to_end(&mut reopened_queue)?;
+    assert_eq!(reopened_queue, bytes);
+    let RelaySegmentHandoverInputCoverage::Verified(verified) = target.verify_handover_inputs(
+        &authentication,
+        "owner",
+        &source.token,
+        &credentials,
+        &provider,
+    )?
+    else {
+        return Err("selected raster did not complete the verification".into());
+    };
+    assert_eq!(verified.report().client_rasters, [only_redo.clone()]);
+    let approval = RelaySegmentHandoverApproval::select_verified(
+        &target,
+        &verified,
+        source.lease.selection(),
+    )?;
+    let (_, handle, _) = source.handle.commit_verified_relay_segment_handover(
+        "owner",
+        &source.token,
+        target,
+        authentication,
+        &approval,
+        &verified,
+    )?;
+    assert!(client.redo()?);
+    let frames: serde_json::Value =
+        serde_json::from_str(&client.writer_groups_v2_guarded(&client.observe()?, "0")?)?;
+    let frames = serde_json::from_value::<Vec<String>>(frames["groups"].clone())?;
+    assert!(!frames.is_empty());
+    let credential = credentials.documents.into_iter().next().ok_or("protected writer")?;
+    let store = handle.host.assets.clone().ok_or("target raster owner")?;
+    let accepted = handle
+        .host
+        .transaction(move |room| {
+            let lease = room.resume("owner", &credential.writer, &credential.credential)?;
+            for frame in frames {
+                assert!(matches!(room.admit("owner", &lease, &frame)?, Admission::Durable(_)));
+            }
+            let mut assets = store.lock().map_err(|_| Error::NeedsRecovery)?;
+            assert_eq!(
+                room.read_asset("owner", &assets, &only_redo)?.ok_or(Error::NeedsRecovery)?.bytes,
+                redo_png
+            );
+            assert!(matches!(
+                room.put_asset(
+                    "owner",
+                    &mut assets,
+                    prepare_asset(&unrelated, "image/png", unrelated_png)?
+                ),
+                Err(Error::Contract("asset store budget"))
+            ));
+            room.catchup("owner")
+        })
+        .await?;
+    let observer = source.profile.join_frame("room".into(), "900".into(), &accepted)?;
+    assert_eq!(observer.document_json(), client.document_json());
     Ok(())
 }

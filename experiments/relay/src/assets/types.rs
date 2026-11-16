@@ -66,7 +66,7 @@ impl AssetInfo {
         Ok(())
     }
 }
-pub(super) fn key(value: &str) -> Result<&str> {
+pub(crate) fn key(value: &str) -> Result<&str> {
     let hex = value.strip_prefix("sha256:").ok_or(Error::Contract("asset digest identity"))?;
     if hex.len() != 64 || !hex.bytes().all(|v| v.is_ascii_digit() || (b'a'..=b'f').contains(&v)) {
         return Err(Error::Contract("canonical asset digest identity"));

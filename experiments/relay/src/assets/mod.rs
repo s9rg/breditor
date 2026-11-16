@@ -13,6 +13,7 @@ pub use store::{
     AssetStoreBackup, MAX_SERVER_ASSET_BACKUP_BYTES,
 };
 pub(crate) use store::{AssetBackupStream, admit_asset_file};
+pub(crate) use types::key as asset_key;
 pub use types::{AssetInfo, AssetReceipt, RasterMime, StoredAsset};
 
 /// Encoded raster ceiling, matching the browser asset store.

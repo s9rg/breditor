@@ -19,6 +19,7 @@ mod discussion_sources;
 mod handover_target;
 mod restore;
 mod restore_retaining_client_uploads;
+pub use restore_retaining_client_uploads::RelaySegmentQueuedRasterRestore;
 #[cfg(feature = "server")]
 mod serving;
 #[cfg(feature = "server")]

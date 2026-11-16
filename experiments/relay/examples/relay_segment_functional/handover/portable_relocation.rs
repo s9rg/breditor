@@ -190,8 +190,13 @@ pub(crate) fn router(
             let selected = seal.planned_selection()?;
             assert_eq!(authority.current_selection()?, selected);
             assert_eq!(seal.status(&authority)?, LogGenerationHandoverStatus::Sealed);
-            let mut target = if parent.join("fixture-retain-client-uploads").is_file() {
-                bundle.restore_retaining_client_uploads(&room_path, "relocated-one", POLICY)?
+            let mut target = if let Some(queued) = super::selected_queue_rasters(parent)? {
+                bundle.restore_selecting_queued_rasters(
+                    &room_path,
+                    "relocated-one",
+                    POLICY,
+                    &queued,
+                )?
             } else {
                 bundle.restore(&room_path, "relocated-one", POLICY)?
             };

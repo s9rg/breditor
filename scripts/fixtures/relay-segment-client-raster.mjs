@@ -7,7 +7,7 @@ import {pixel, pixelAsset, secondAsset, secondPixel} from './review-assets/pixel
 
 const digest = bytes => createHash('sha256').update(bytes).digest('hex');
 
-export async function captureClientRaster(api, parent, writer, status, deferredRaster) {
+export async function captureClientRaster(api, parent, writer, status, additional = []) {
   const store = await api.RichAssetStore.open('handover-original-uploads-' + writer);
   let custody;
   try {
@@ -16,18 +16,17 @@ export async function captureClientRaster(api, parent, writer, status, deferredR
     assert.equal(item.status, 'pending');
     if (status === 'cancelled') await store.cancel(secondAsset);
     await store.cacheRemote(pixelAsset, new Blob([pixel], {type: 'image/png'}), 'original-\ud800');
-    const deferred = deferredRaster
-      ? await store.ingest(new Blob([deferredRaster.bytes], {type: 'image/png'})) : undefined;
-    if (deferred) {
-      assert.equal(deferred.asset, deferredRaster.asset);
-      assert.equal(deferred.status, 'pending');
+    for (const extra of additional) {
+      const pending = await store.ingest(new Blob([extra.bytes], {type: 'image/png'}));
+      assert.equal(pending.asset, extra.asset);
+      assert.equal(pending.status, 'pending');
     }
     custody = await store.acquireRecoveryCustody();
     const backup = await store.exportBackup();
     const archive = await api.RichAssetArchive.read(backup);
     try {
       const rows = archive.entries();
-      assert.equal(rows.length, 2 + Number(deferredRaster !== undefined));
+      assert.equal(rows.length, 2 + additional.length);
       const queued = rows.find(row => row.asset === secondAsset);
       assert.equal(queued.status, status);
       assert.equal(queued.storageRef, null);
@@ -45,7 +44,7 @@ export async function captureClientRaster(api, parent, writer, status, deferredR
       const directory = openSync(parent, 'r');
       try { fsyncSync(directory); } finally { closeSync(directory); }
       custody.check();
-      return {path, rows, queued, deferred, pin: {writer, bytes: bytes.length, sha256: digest(bytes)}};
+      return {path, rows, queued, additional, pin: {writer, bytes: bytes.length, sha256: digest(bytes)}};
     } finally {
       archive.dispose();
     }
@@ -66,18 +65,19 @@ export async function resumeClientRaster(rich, sdk, parent, address, origin, tok
   });
   const fetch = globalThis.fetch;
   const url = 'http://' + address + '/assets/' + encodeURIComponent(secondAsset);
-  const deferredUrl = retained.deferred
-    ? 'http://' + address + '/assets/' + encodeURIComponent(retained.deferred.asset) : undefined;
-  let duplicate, deferredDuplicate;
+  const attempted = new Map();
+  const expected = new Map([[url, {asset: secondAsset, duplicate: true}],
+    ...retained.additional.map(extra => [
+      'http://' + address + '/assets/' + encodeURIComponent(extra.asset), extra,
+    ])]);
   globalThis.fetch = async (input, options) => {
-    if (input !== url && input !== deferredUrl) return fetch(input, options);
+    if (!expected.has(input)) return fetch(input, options);
     const headers = new Headers(options?.headers);
     headers.set('Origin', origin);
     const response = await fetch(input, {...options, headers});
     if (options?.method === 'PUT' && response.ok) {
-      const receipt = await response.clone().json();
-      if (input === url) duplicate = receipt.duplicate;
-      else deferredDuplicate = receipt.duplicate;
+      assert.ok(!attempted.has(input), 'Upload should acknowledge once');
+      attempted.set(input, (await response.clone().json()).duplicate);
     }
     return response;
   };
@@ -95,18 +95,16 @@ export async function resumeClientRaster(rich, sdk, parent, address, origin, tok
     await provider.flush();
     const receipt = await store.get(secondAsset);
     if (before.status === 'cancelled') {
-      assert.equal(duplicate, undefined);
+      assert.equal(attempted.size, 0);
       assert.deepEqual(receipt, before);
       return 0;
     }
-    assert.equal(duplicate, true);
-    assert.equal(receipt.status, 'uploaded');
-    assert.equal(receipt.storageRef, 'breditor:relay-asset:1:' + secondAsset);
-    if (retained.deferred) {
-      const uploaded = await store.get(retained.deferred.asset);
+    assert.equal(attempted.size, expected.size);
+    for (const [endpoint, extra] of expected) {
+      const uploaded = await store.get(extra.asset);
       assert.equal(uploaded.status, 'uploaded');
-      assert.equal(uploaded.storageRef, 'breditor:relay-asset:1:' + retained.deferred.asset);
-      assert.equal(deferredDuplicate, false);
+      assert.equal(uploaded.storageRef, 'breditor:relay-asset:1:' + extra.asset);
+      assert.equal(attempted.get(endpoint), extra.duplicate);
     }
     await provider.flush();
     assert.deepEqual(await store.get(secondAsset), receipt);

@@ -1043,12 +1043,18 @@ journals and alternate branches under the same custody checks.
 
 Handover still verifies the accepted room and the clients’ retained
 dependencies. If a separate native journal requires an asset available
-only in a held queue, a missing live asset remains a Pending verification
-input. Select a staging restore for dependencies that need to be installed.
+only in a held queue, verification reports the missing live content ID.
+Use `restore_selecting_queued_rasters` at a fresh destination to stage
+that payload from the selected original queues. The host supplies sorted,
+unique content IDs. The restore verifies each ID is present in those queues
+and checks the actual union against live count and byte limits before
+creating the target. Any other queue-only bytes retain their original
+status, epoch and receipt. Verify the new target before activation.
+
 The SDK can resume pending uploads from the retained archive under normal
-authenticated delivery. A unique upload needs both a free live raster slot and
-enough payload capacity, and an exact upload retry can acknowledge existing bytes
-even at capacity.
+authenticated delivery. A unique upload needs both a free live raster slot
+and enough payload capacity. An exact upload retry can acknowledge existing
+bytes even at capacity.
 
 [Client raster handover qualification](qualification/2026-11-14-linked-handover-client-rasters.json)
 records 519 passing relay tests and a separately run APFS interruption test.

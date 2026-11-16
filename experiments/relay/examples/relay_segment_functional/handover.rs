@@ -4,7 +4,7 @@ use breditor_collab_relay::{
     RecoveredRelaySegmentRoom, RecoveryDocumentCredential, RecoveryRegistrationCredentials,
     RecoveryReviewCredential, RelaySegmentClientJournal, RelaySegmentClientJournalPin,
     RelaySegmentClientUploadArchive, RelaySegmentClientUploadPin, RelaySegmentJournalOwner,
-    RelaySegmentRoomBackupFiles, RoomRecoveryPolicy,
+    RelaySegmentQueuedRasterRestore, RelaySegmentRoomBackupFiles, RoomRecoveryPolicy,
     server::{
         Authentication, ContentAddressedServerAssets, RelaySegmentHandoverApproval,
         RelaySegmentHandoverInputCoverage, ServerBackupHandle, ServerRecoveryAssetProvider,
@@ -95,22 +95,42 @@ fn next_input() -> Result<Option<Vec<u8>>> {
     Ok(Some(line))
 }
 
+fn selected_queue_rasters(parent: &Path) -> Result<Option<Vec<String>>> {
+    let path = parent.join("fixture-retain-client-uploads");
+    path.is_file().then(|| Ok(serde_json::from_str(&read(&path, 4096)?)?)).transpose()
+}
+
 fn restore_selected_cohort(
     parent: &Path,
-) -> fn(
-    &RelaySegmentRoomBackupFiles,
-    &Path,
-    &str,
-    RoomRecoveryPolicy,
-    &[RelaySegmentClientUploadArchive],
-    &[RelaySegmentClientJournal],
-    &[RelaySegmentClientJournal],
-) -> std::result::Result<RecoveredRelaySegmentRoom, breditor_collab_relay::Error> {
-    if parent.join("fixture-retain-client-uploads").is_file() {
-        RelaySegmentRoomBackupFiles::restore_retaining_client_uploads
+    backup: &RelaySegmentRoomBackupFiles,
+    destination: &Path,
+    active: &str,
+    archives: &[RelaySegmentClientUploadArchive],
+    journals: &[RelaySegmentClientJournal],
+    alternatives: &[RelaySegmentClientJournal],
+) -> Result<RecoveredRelaySegmentRoom> {
+    Ok(if let Some(queued_rasters) = selected_queue_rasters(parent)? {
+        backup.restore_selecting_queued_rasters(
+            destination,
+            active,
+            POLICY,
+            RelaySegmentQueuedRasterRestore {
+                archives,
+                journals,
+                alternatives,
+                queued_rasters: &queued_rasters,
+            },
+        )?
     } else {
-        RelaySegmentRoomBackupFiles::restore_with_client_journal_alternatives
-    }
+        backup.restore_with_client_journal_alternatives(
+            destination,
+            active,
+            POLICY,
+            archives,
+            journals,
+            alternatives,
+        )?
+    })
 }
 
 fn prepare_and_commit(
@@ -209,12 +229,11 @@ fn prepare_and_commit(
             return Err("a fabricated paired review receipt sequence was not refused".into());
         }
     }
-    let restore = restore_selected_cohort(parent);
-    let mut target = restore(
+    let mut target = restore_selected_cohort(
+        parent,
         &backup,
         &parent.join("restored"),
         "restored-one",
-        POLICY,
         &archives,
         &originals,
         alternatives,

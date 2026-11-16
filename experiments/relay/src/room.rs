@@ -29,8 +29,8 @@ pub use log_generations::{
 };
 pub use log_generations::{
     InspectedNativeGenerationTail, RecoveredRelaySegmentRoom, RelaySegmentClientRaster,
-    RelaySegmentClientUploadArchive, RelaySegmentClientUploadPin, RelaySegmentRoomBackupFiles,
-    RelaySegmentRoomBackupIdentity,
+    RelaySegmentClientUploadArchive, RelaySegmentClientUploadPin, RelaySegmentQueuedRasterRestore,
+    RelaySegmentRoomBackupFiles, RelaySegmentRoomBackupIdentity,
 };
 pub use log_generations::{
     MAX_SERVER_LOG_GENERATION_BACKUP_BYTES, RelaySegmentBaseFile, RelaySegmentBaseIdentity,

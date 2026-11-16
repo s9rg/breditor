@@ -37,21 +37,16 @@ fn pixel(index: usize) -> TestResult<Vec<u8>> {
     Ok(png.into_inner())
 }
 
-#[tokio::test]
-async fn full_raster_store_activates_with_original_upload_bytes_and_no_new_receipt() -> TestResult {
-    let source = Source::open()?;
-    let seed = pixel(0)?;
-    let pending = pixel(MAX_ASSETS)?;
-    let seed_id = asset_id(&seed);
-    let pending_id = asset_id(&pending);
-    let prepared = (0..MAX_ASSETS)
+pub(super) async fn fill_raster_store(source: &Source, count: usize) -> TestResult<String> {
+    let prepared = (0..count)
         .map(|index| -> TestResult<_> {
             let bytes = pixel(index)?;
             Ok(prepare_asset(&asset_id(&bytes), "image/png", bytes)?)
         })
         .collect::<TestResult<Vec<_>>>()?;
+    let seed = asset_id(&pixel(0)?);
     let store = source.handle.host.assets.clone().ok_or("raster owner")?;
-    let registration = source
+    source
         .handle
         .host
         .transaction(move |room| {
@@ -59,9 +54,21 @@ async fn full_raster_store_activates_with_original_upload_bytes_and_no_new_recei
             for asset in prepared {
                 assert!(!room.put_asset("owner", &mut store, asset)?.duplicate);
             }
-            Ok(room.register("owner")?)
+            Ok(())
         })
         .await?;
+    Ok(seed)
+}
+
+#[tokio::test]
+async fn full_raster_store_activates_with_original_upload_bytes_and_no_new_receipt() -> TestResult {
+    let source = Source::open()?;
+    let seed = pixel(0)?;
+    let pending = pixel(MAX_ASSETS)?;
+    let seed_id = asset_id(&seed);
+    let pending_id = asset_id(&pending);
+    fill_raster_store(&source, MAX_ASSETS).await?;
+    let registration = source.handle.host.transaction(|room| room.register("owner")).await?;
     let before = source.handle.storage_capacity("owner", &source.token).await?;
     assert_eq!(before.rasters.assets_remaining, 0);
     let backup = source.capture("at-raster-ceiling")?;

@@ -10,7 +10,7 @@ import {gunzipSync} from 'node:zlib';
 import {WebSocket as Socket} from 'undici';
 import {environment} from './fixtures/room-participant-inventory/environment.mjs';
 import {pixel, proposalAsset, proposalPixel, secondAsset, secondPixel, recoveredAsset, recoveredPixel} from './fixtures/review-assets/pixels.mjs';
-import {unavailableAsset, unavailableUpload, UnavailableUploadImage} from './fixtures/physical-recovery-control/unavailable-upload.mjs';
+import {lostReplyUpload, unavailableAsset, unavailableUpload, UnavailableUploadImage} from './fixtures/physical-recovery-control/unavailable-upload.mjs';
 import {assertOlderAuthorityRefused, startSegmentHandoverHost} from './fixtures/relay-segment-handover-host.mjs';
 import {advanceRelocatedHistories, readNativeHistoryCapacity, verifyRelocatedMaintenanceRetries} from './fixtures/relay-segment-maintenance.mjs';
 import {captureParticipant, checkRecoveredAlternate, checkRetainedSelected, proposalAlias, reopenParticipant, withWrongReviewReceipt} from './fixtures/relay-segment-participant.mjs';
@@ -28,6 +28,7 @@ import {sourceEvidence, saveEvidence} from './candidate-release/evidence.mjs';
 const root = fileURLToPath(new URL('..', import.meta.url));
 const origin = 'http://127.0.0.1:49785';
 const sha = bytes => createHash('sha256').update(bytes).digest('hex');
+const stagedUploadAsset = 'sha256:' + sha(lostReplyUpload);
 
 function inspectRetiredArchives(pack, predecessors, version) {
   assert.equal(pack.subarray(0, 8).toString(), `BRLINE${version}\n`);
@@ -161,7 +162,7 @@ async function run(mode, {distribution, rich}, executable, parent, journalKind, 
   if (portableSeal) {
     writeFileSync(join(parent, 'fixture-coordinated-recovery'), '', {mode: 0o600});
     writeFileSync(join(parent, 'fixture-full-predecessor-wal'), '', {mode: 0o600});
-    writeFileSync(join(parent, 'fixture-retain-client-uploads'), '', {mode: 0o600});
+    writeFileSync(join(parent, 'fixture-retain-client-uploads'), JSON.stringify([stagedUploadAsset]), {mode: 0o600});
   }
   let host, profile, session, document, review, portableUploads, failure;
   const connect = {getToken: () => token, autoConnect: false, requestTimeoutMs: 15_000};
@@ -495,7 +496,10 @@ async function run(mode, {distribution, rich}, executable, parent, journalKind, 
     const peerDocument = profile.join_frame('room', peer.identity.writer, peer.frame);
     const uploads = [
       await captureClientRaster(richApi, parent, registered.identity.writer, 'pending',
-        portableSeal ? {asset: unavailableAsset, bytes: unavailableUpload} : undefined),
+        portableSeal ? [
+          {asset: stagedUploadAsset, bytes: lostReplyUpload, duplicate: true},
+          {asset: unavailableAsset, bytes: unavailableUpload, duplicate: false},
+        ] : undefined),
       await captureClientRaster(richApi, parent, peer.identity.writer, 'cancelled'),
     ];
     const portable = participant ? await captureParticipant(api, richApi, session, uploads[0], archiveImage) : null;
@@ -602,7 +606,7 @@ async function run(mode, {distribution, rich}, executable, parent, journalKind, 
     assert.equal(captured.clientJournalRasterBindings, terminal ? 4 : independentDelivery ? 3 : 2);
     if (terminal) assert.ok(captured.retainedPackets > 1);
     else assert.equal(captured.retainedPackets, 1);
-    assert.equal(captured.clientRasters, participant ? 3 : 2);
+    assert.equal(captured.clientRasters, (participant ? 3 : 2) + Number(portableSeal));
     assert.equal(captured.clientArchives, 2);
     assert.equal(captured.missingArchiveRefusals, 1);
     assert.equal(captured.nativeJournals, 3);
@@ -987,6 +991,11 @@ async function run(mode, {distribution, rich}, executable, parent, journalKind, 
     }
     const deferredUrl = 'http://' + address + '/assets/' + encodeURIComponent(unavailableAsset);
     if (portableSeal) {
+      const stagedUrl = 'http://' + address + '/assets/' + encodeURIComponent(stagedUploadAsset);
+      const staged = await fetch(stagedUrl, {headers});
+      assert.equal(staged.status, 200);
+      assert.deepEqual(Buffer.from(await staged.arrayBuffer()), lostReplyUpload);
+      assert.equal((await portableUploads.get(stagedUploadAsset)).status, 'pending');
       const queued = await fetch(deferredUrl, {headers});
       assert.equal(queued.status, 404);
       await queued.arrayBuffer();
@@ -1000,6 +1009,7 @@ async function run(mode, {distribution, rich}, executable, parent, journalKind, 
       assert.equal(uploaded.status, 200);
       assert.deepEqual(Buffer.from(await uploaded.arrayBuffer()), unavailableUpload);
       relocationEvidence.clientOnlyUploadDeferredThroughColdRestart = true;
+      relocationEvidence.selectedQueueRasterStagedThroughColdRestart = true;
     }
     portableUploads = undefined;
     const cancelledUploadReceipts = await resumeClientRaster(

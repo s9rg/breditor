@@ -7,7 +7,8 @@ use super::{
 use crate::{
     RecoveredRelaySegmentRoom, RelaySegmentBaseFile, RelaySegmentClientJournal,
     RelaySegmentClientJournalPin, RelaySegmentClientUploadArchive, RelaySegmentClientUploadPin,
-    RelaySegmentRoomBackupFiles, RelaySegmentRoomBackupIdentity, Result, RoomRecoveryPolicy,
+    RelaySegmentQueuedRasterRestore, RelaySegmentRoomBackupFiles, RelaySegmentRoomBackupIdentity,
+    Result, RoomRecoveryPolicy,
     log::generations::GenerationDirectory,
     room::SegmentCheckpointEncoding,
     server::{Host, RoomDeploymentSelection, ServerBackupHandle},
@@ -164,13 +165,34 @@ impl RelaySegmentRetainedBackup {
         active_generation: &str,
         policy: RoomRecoveryPolicy,
     ) -> Result<RecoveredRelaySegmentRoom> {
-        self.backup.restore_retaining_client_uploads(
+        self.restore_selecting_queued_rasters(destination, active_generation, policy, &[])
+    }
+
+    /// Restore the portable backup and stage exactly the selected additional queued content IDs.
+    ///
+    /// Dependencies and original server assets remain live. Keep the returned target under
+    /// custody and use ordinary handover verification before activation.
+    ///
+    /// # Errors
+    /// Refuses missing, duplicate, unsorted or malformed IDs, invalid queue data, excessive
+    /// live raster dependencies and occupied or uncertain destinations.
+    pub fn restore_selecting_queued_rasters(
+        &self,
+        destination: &Path,
+        active_generation: &str,
+        policy: RoomRecoveryPolicy,
+        queued_rasters: &[String],
+    ) -> Result<RecoveredRelaySegmentRoom> {
+        self.backup.restore_selecting_queued_rasters(
             destination,
             active_generation,
             policy,
-            &self.clients.uploads,
-            &self.clients.selected,
-            &self.clients.alternates,
+            RelaySegmentQueuedRasterRestore {
+                archives: &self.clients.uploads,
+                journals: &self.clients.selected,
+                alternatives: &self.clients.alternates,
+                queued_rasters,
+            },
         )
     }
 }
