@@ -4,7 +4,9 @@ mod inspect;
 mod open;
 mod reconciliation;
 mod restore;
+mod serving;
 mod stage_rasters;
+pub(crate) use serving::ContinuedServingCustody;
 
 use super::super::asset_continuation::ContinuedAssetBackupFiles;
 use crate::{

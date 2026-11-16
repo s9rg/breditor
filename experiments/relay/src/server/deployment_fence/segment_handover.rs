@@ -101,7 +101,26 @@ pub(in crate::server) fn resume_segment_handover(
     approval: &RelaySegmentHandoverApproval,
     expected: &RoomDeploymentSelection,
 ) -> Result<RoomDeploymentLease> {
-    let first = approval.planned_selection()?;
+    let (lease, ()) = resume_retained_handover(
+        authority,
+        &approval.planned_selection()?,
+        expected,
+        |epoch| approval.restart_nonce(epoch),
+        || {
+            approval.check_target(target)?;
+            target.check_handover_client_rasters()
+        },
+    )?;
+    Ok(lease)
+}
+
+pub(in crate::server) fn resume_retained_handover<T>(
+    authority: &RoomDeploymentAuthority,
+    first: &RoomDeploymentSelection,
+    expected: &RoomDeploymentSelection,
+    restart_nonce: impl Fn(u64) -> Result<[u8; 32]>,
+    check_target: impl FnOnce() -> Result<T>,
+) -> Result<(RoomDeploymentLease, T)> {
     let generation = expected.validate_pin()?;
     let first_generation = first.validate_pin()?;
     if expected.identity != first.identity
@@ -118,7 +137,7 @@ pub(in crate::server) fn resume_segment_handover(
     let owner = if generation == first_generation {
         first.owner.clone()
     } else {
-        Some(journal::nonce(&approval.restart_nonce(generation)?))
+        Some(journal::nonce(&restart_nonce(generation)?))
     };
     if expected.owner != owner {
         return Err(Error::Lease);
@@ -133,16 +152,12 @@ pub(in crate::server) fn resume_segment_handover(
         &authority.state.header_digest,
         authority.state.offset,
         &current,
-        &first,
+        first,
     )?;
-    approval.check_target(target)?;
-    target.check_handover_client_rasters()?;
-    let lease = authority.claim_handover_held(
-        &mut epoch,
-        expected,
-        approval.restart_nonce(generation + 1)?,
-    )?;
+    let target = check_target()?;
+    let lease =
+        authority.claim_handover_held(&mut epoch, expected, restart_nonce(generation + 1)?)?;
     epoch.finish()?;
     authority.state.healthy()?;
-    Ok(lease)
+    Ok((lease, target))
 }

@@ -1,0 +1,158 @@
+//! A changed source or provider cannot spend the approved epoch. A synced epoch can resume.
+use super::{TestResult, image, router_with_continued_assets_and_deployment_lease};
+use crate::{
+    ContinuedAssetStore, Error, RecoveryRegistrationCredentials,
+    assets::{AssetStore, asset_id, prepare_asset},
+    room::segment_handover_test_source,
+    server::{
+        Authentication, ContinuedRasterActivation, ContinuedRasterActivationApproval,
+        ContinuedRasterRestart, ContinuedRasterRoomBackupFiles, ContinuedRasterRoomClientArchives,
+        RoomDeploymentAuthority, ServerRecoveryAssetProvider, deployment_fence,
+        generation_backup::durable::{Interruption, Point},
+    },
+};
+use breditor_collab_feasibility::rich_replica::VersionAssetReference;
+use serde_json::json;
+use std::fs::File;
+
+struct Mapping<'a>(&'a str);
+
+impl ServerRecoveryAssetProvider for Mapping<'_> {
+    fn check(&self) -> crate::Result<()> {
+        Ok(())
+    }
+    fn resolve(&self, pair: &VersionAssetReference) -> crate::Result<Option<String>> {
+        assert_eq!((pair.asset.as_str(), pair.generation.as_str()), ("asset", "generation"));
+        Ok(Some(self.0.to_owned()))
+    }
+}
+
+#[tokio::test]
+async fn activation_refuses_advanced_source_and_changed_mapping_then_resumes_synced_epoch()
+-> TestResult {
+    let (fixture, room, _) = segment_handover_test_source(3, true, true)?;
+    let native = fixture.room();
+    let root = native.parent().ok_or("fixture root")?;
+    let mut assets = AssetStore::open(&root.join("initial-rasters"), room.asset_binding())?;
+    let pixels = image(100)?;
+    let id = asset_id(&pixels);
+    assets.put(prepare_asset(&id, "image/png", pixels)?)?;
+    let archive = root.join("initial-rasters.archive");
+    let original = assets.write_backup(&mut File::create_new(&archive)?)?;
+    let assets = ContinuedAssetStore::create_from_backup(
+        &root.join("continued"),
+        File::open(archive)?,
+        &original,
+    )?;
+    let authority_root = root.join("authority");
+    let authority = RoomDeploymentAuthority::create_with_coordinated_recovery(
+        &authority_root,
+        &room.deployment_binding()?,
+    )?;
+    let lease = authority.claim(&authority.current_selection()?)?;
+    let previous = lease.selection();
+    let (token, hash) = Authentication::issue_token()?;
+    let auth = || {
+        Authentication::from_json(&json!({
+        "format": "breditor/relay-auth", "formatVersion": 1, "origins": ["http://127.0.0.1:4187"],
+        "accounts": [{"principal": "owner", "tokenHash": hash}],
+    }).to_string())
+    };
+    let (_, handle) =
+        router_with_continued_assets_and_deployment_lease(room, auth()?, assets, lease)?;
+    let credentials = RecoveryRegistrationCredentials::default();
+    let provider = Mapping(&id);
+    let restore = |name: &str| {
+        let capture = root.join(format!("{name}-capture"));
+        let selection = handle.capture("owner", &token, &capture)?;
+        let backup = ContinuedRasterRoomBackupFiles::open(&capture, &selection, None)?;
+        let path = root.join(name);
+        let mut target =
+            backup.restore(&path, "next", ContinuedRasterRoomClientArchives::default())?;
+        let report =
+            target.verify_recovery_inputs(&auth()?, "owner", &token, &credentials, &provider)?;
+        let approval = ContinuedRasterActivationApproval::select(&report)?;
+        Ok::<_, Box<dyn std::error::Error>>((backup, target, path, approval))
+    };
+    let (_, target, _, stale) = restore("stale")?;
+    let later = image(101)?;
+    let later_id = asset_id(&later);
+    let store = handle.host.continued_assets.clone().ok_or("source store")?;
+    let prepared = prepare_asset(&later_id, "image/png", later)?;
+    handle
+        .host
+        .transaction(move |room| {
+            let mut store = store.lock().map_err(|_| Error::NeedsRecovery)?;
+            room.put_continued_asset("owner", &mut store, prepared)
+        })
+        .await?;
+    assert!(matches!(
+        handle.activate_recovered_room(
+            auth()?,
+            "owner",
+            &token,
+            target,
+            &ContinuedRasterActivation {
+                approval: &stale,
+                credentials: &credentials,
+                provider: &provider
+            }
+        ),
+        Err(Error::Contract("continued raster activation live source advanced"))
+    ));
+    assert_eq!(authority.current_selection()?, previous);
+
+    let (backup, target, path, approval) = restore("ready")?;
+    let planned = approval.planned_selection()?;
+    assert!(RoomDeploymentAuthority::open_at_least(&authority_root, &planned).is_err());
+    let changed = Mapping(&later_id);
+    assert!(matches!(
+        handle.activate_recovered_room(
+            auth()?,
+            "owner",
+            &token,
+            target,
+            &ContinuedRasterActivation {
+                approval: &approval,
+                credentials: &credentials,
+                provider: &changed
+            }
+        ),
+        Err(Error::Contract("continued raster activation inputs changed"))
+    ));
+    assert_eq!(authority.current_selection()?, previous);
+    let mut target = backup.reopen(&path, approval.target())?;
+    assert!(matches!(
+        deployment_fence::activate_continued_raster(
+            &handle.host,
+            &auth()?,
+            "owner",
+            &token,
+            &mut target,
+            &ContinuedRasterActivation {
+                approval: &approval,
+                credentials: &credentials,
+                provider: &provider
+            },
+            &Interruption { stop: Some(Point::EpochSynced), ..Interruption::default() },
+        ),
+        Err(Error::Contract("injected durable handover interruption"))
+    ));
+    drop(target);
+    assert_eq!(authority.current_selection()?, planned);
+    assert!(matches!(handle.capture("owner", &token, &root.join("denied")), Err(Error::Lease)));
+    assert!(authority.claim(&planned).is_err());
+
+    let authority = RoomDeploymentAuthority::open_at_least(&authority_root, &planned)?;
+    let (_, handle, next) = backup.restart_activated_room(
+        &path,
+        auth()?,
+        "owner",
+        &token,
+        &ContinuedRasterRestart { authority: &authority, approval: &approval, expected: &planned },
+    )?;
+    assert_eq!(authority.current_selection()?, next);
+    assert_eq!(next.generation.parse::<u64>()?, planned.generation.parse::<u64>()? + 1);
+    assert!(handle.capture("owner", &token, &root.join("restarted")).is_ok());
+    Ok(())
+}

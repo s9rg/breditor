@@ -24,7 +24,7 @@ use serde::{Deserialize, Serialize};
 use sha2::{Digest, Sha256};
 use std::{fs, path::Path};
 
-const COMPLETE: &str = ".continued-raster-room-complete.json";
+pub(super) const COMPLETE: &str = ".continued-raster-room-complete.json";
 const FORMAT: &str = "breditor/recovered-continued-raster-room";
 
 #[derive(Serialize, Deserialize)]
@@ -33,7 +33,7 @@ pub(super) struct Completion {
     format: String,
     format_version: u32,
     pub(super) backup: ContinuedRasterRoomBackupIdentity,
-    directory: GenerationDirectoryWitness,
+    pub(super) directory: GenerationDirectoryWitness,
     native: GenerationDirectoryWitness,
     active_generation: String,
     rasters: ContinuedAssetStoreIdentity,
@@ -144,6 +144,15 @@ impl ContinuedRasterRoomBackupFiles {
         path: &Path,
         selected: &RecoveredContinuedRasterRoomIdentity,
     ) -> Result<RecoveredContinuedRasterRoom> {
+        self.reopen_with_history(path, selected, false)
+    }
+
+    pub(crate) fn reopen_with_history(
+        &self,
+        path: &Path,
+        selected: &RecoveredContinuedRasterRoomIdentity,
+        serving_history: bool,
+    ) -> Result<RecoveredContinuedRasterRoom> {
         self.check()?;
         let directory = GenerationDirectory::open(path)?;
         let path = directory.path.join(COMPLETE);
@@ -175,7 +184,16 @@ impl ContinuedRasterRoomBackupFiles {
             return Err(Error::Contract("continued raster room requires an exact native WAL"));
         }
         let (room, _) = Room::replay_relay_segment(log, recovery, state, false)?;
-        self.check_target(&room, &assets, &clients, &completed)?;
+        if serving_history {
+            self.rasters.check_serving_prefix(
+                &assets,
+                completed.staged.as_ref().map_or(&[], |staged| staged.ids.as_slice()),
+            )?;
+            clients.check(&room.recovered_discussion_source_digests())?;
+            self.check()?;
+        } else {
+            self.check_target(&room, &assets, &clients, &completed)?;
+        }
         directory.guard_witness(&completed.directory)?;
         Ok(RecoveredContinuedRasterRoom {
             directory,
@@ -211,18 +229,15 @@ impl ContinuedRasterRoomBackupFiles {
     }
 }
 
-fn completion_identity(bytes: &[u8]) -> RecoveredContinuedRasterRoomIdentity {
+pub(super) fn completion_identity(bytes: &[u8]) -> RecoveredContinuedRasterRoomIdentity {
     RecoveredContinuedRasterRoomIdentity { completion_sha256: Sha256::digest(bytes).into() }
 }
 
 impl RecoveredContinuedRasterRoom {
     pub(crate) fn check_exact_restored_cut(&self) -> Result<()> {
         self.directory.guard_witness(&self.completed.directory)?;
-        let completion = self.directory.path.join(COMPLETE);
-        GenerationFileWitness::of_metadata(&fs::symlink_metadata(&completion)?)?;
-        let selected: Completion = files::read(&completion)?;
-        if completion_identity(&files::encode(&selected)?) != self.identity
-            || self.room.log.segment_directory_witness()? != self.completed.native
+        check_completion(&self.directory, &self.identity)?;
+        if self.room.log.segment_directory_witness()? != self.completed.native
             || self.assets.identity() != &self.completed.rasters
         {
             return Err(Error::Contract("continued raster room completion differs"));
@@ -233,4 +248,17 @@ impl RecoveredContinuedRasterRoom {
         self.clients.check(&self.room.recovered_discussion_source_digests())?;
         self.directory.guard()
     }
+}
+
+pub(super) fn check_completion(
+    directory: &GenerationDirectory,
+    identity: &RecoveredContinuedRasterRoomIdentity,
+) -> Result<()> {
+    let completion = directory.path.join(COMPLETE);
+    GenerationFileWitness::of_metadata(&fs::symlink_metadata(&completion)?)?;
+    let selected: Completion = files::read(&completion)?;
+    if completion_identity(&files::encode(&selected)?) != *identity {
+        return Err(Error::Contract("continued raster room completion differs"));
+    }
+    Ok(())
 }

@@ -73,3 +73,6 @@ pub(in crate::room) mod tests;
 pub(crate) use tests::{
     Files as SegmentHandoverTestFiles, setup_profile as segment_handover_test_source,
 };
+
+#[cfg(feature = "server")]
+pub(crate) use segment_room_recovery::ContinuedServingCustody;

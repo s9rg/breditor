@@ -64,6 +64,9 @@ impl ContinuedAssetServerHandle {
                 let mut native = host.room.lock().map_err(|_| Error::NeedsRecovery)?;
                 native.log_generation_descriptor(principal)?;
                 native.recovery_inventory_owner(principal)?;
+                if let Some(held) = &host.continued_custody {
+                    held.check(&native)?;
+                }
                 let rasters = host
                     .continued_assets
                     .as_ref()

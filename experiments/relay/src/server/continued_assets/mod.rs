@@ -1,5 +1,9 @@
 //! Explicit live serving and exact backup for the continued raster storage family.
+mod activation;
+mod approval;
 mod backup;
+pub use activation::{ContinuedRasterActivation, ContinuedRasterRestart};
+pub use approval::ContinuedRasterActivationApproval;
 mod reconcile;
 pub use reconcile::ContinuedRasterRoomInputReport;
 mod store;
@@ -31,12 +35,26 @@ pub fn router_with_continued_assets_and_deployment_lease(
     assets: ContinuedAssetStore,
     lease: RoomDeploymentLease,
 ) -> Result<(Router, ContinuedAssetServerHandle)> {
+    build(room, authentication, assets, lease, None)
+}
+
+fn build(
+    room: Room,
+    authentication: Authentication,
+    assets: ContinuedAssetStore,
+    lease: RoomDeploymentLease,
+    custody: Option<crate::room::ContinuedServingCustody>,
+) -> Result<(Router, ContinuedAssetServerHandle)> {
+    if let Some(held) = &custody {
+        held.check(&room)?;
+    }
     if room.asset_binding() != assets.binding() {
         return Err(Error::Contract("continued raster store room binding"));
     }
     assets.guard()?;
     let mut host = create_host(room, authentication, None);
     host.continued_assets = Some(Arc::new(Mutex::new(assets)));
+    host.continued_custody = custody.map(Arc::new);
     deployment_fence::attach_host(&host, lease)?;
     let handle = ContinuedAssetServerHandle { host: host.clone() };
     Ok((routes(host), handle))

@@ -83,3 +83,6 @@ pub struct RecoveredRelaySegmentRoom {
     alternatives: Option<client_journals::RetainedJournals>,
     uploads: Option<client_uploads::RetainedUploads>,
 }
+
+#[cfg(feature = "server")]
+pub(crate) use continued_raster_room::ContinuedServingCustody;

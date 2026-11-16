@@ -261,3 +261,30 @@ byte-for-byte, so uploads keep their original states and receipts. The restored
 native document keeps its accepted cut while the client history retains work
 such as an offline Redo that needs one of the staged images. Run the normal
 input verification on the new target before selecting it for takeover.
+
+### Approve a live takeover and restart the selected room
+
+Store a `ContinuedRasterActivationApproval` from the verified input report
+separately from the restored room. Keep the protected resume records and
+current image provider guard available. While the source is still serving,
+call `ContinuedAssetServerHandle::activate_recovered_room` with the saved
+decision and the authenticated original owner. The replacement account
+configuration must authenticate that same owner.
+
+Under the exclusive deployment permit, activation verifies the exact target,
+recomputes the input report, and checks the live source's native cut and both
+raster archives. A newer source edit or upload changes that cut. The relay
+then checks the current image mappings and commits the exact successor epoch
+to the independent authority journal. Its serving owner retains the restored
+room's selected and alternate client originals. The earlier lease is retired
+and the earlier relay's requests refuse.
+
+If activation committed before its response or before the new listener
+started, reopen the authority with `RoomDeploymentAuthority::open_at_least`
+using the separately retained decision's planned selection. To restart later,
+use the last independently retained serving selection. Call
+`ContinuedRasterRoomBackupFiles::restart_activated_room` with that authority,
+the exact same approval and the original owner credentials. It checks the
+approval's committed epoch in the authority ledger, reopens the same restored
+owner and its later complete native and raster work, and commits a fresh epoch.
+A torn native tail requires a separate explicit recovery path.

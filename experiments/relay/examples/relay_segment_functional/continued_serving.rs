@@ -54,7 +54,10 @@ pub(super) fn router(
         let store =
             ContinuedAssetStore::create_from_backup(&data, File::open(archive)?, &identity)?;
         storage::write_new(&parent.join(STORE), &serde_json::to_vec(store.identity())?)?;
-        let authority = RoomDeploymentAuthority::create(&epochs, &room.deployment_binding()?)?;
+        let authority = RoomDeploymentAuthority::create_with_coordinated_recovery(
+            &epochs,
+            &room.deployment_binding()?,
+        )?;
         storage::write_new(&parent.join(AUTHORITY), &serde_json::to_vec(&authority.identity())?)?;
         let selection = authority.current_selection()?;
         (room, authority, store, selection)
@@ -84,18 +87,33 @@ struct Command {
 #[serde(tag = "kind", rename_all = "camelCase", deny_unknown_fields)]
 enum Action {
     Capture,
+    CaptureActivation,
+    Activate,
 }
 
 fn control(parent: &Path, handle: ContinuedAssetServerHandle) -> tokio::task::JoinHandle<Result> {
-    let destination = parent.join("captured");
+    let parent = parent.to_path_buf();
     tokio::task::spawn_blocking(move || {
         while let Some(bytes) = super::handover::next_input()? {
             let Command { principal, token, action } = serde_json::from_slice(&bytes)?;
-            let reply = match action {
-                Action::Capture => match handle.capture(&principal, &token, &destination) {
-                    Ok(result) => json!({"kind": "maintenance", "result": result}),
-                    Err(error) => json!({"kind": "maintenance", "error": error.to_string()}),
-                },
+            let result = match action {
+                Action::Capture => handle
+                    .capture(&principal, &token, &parent.join("captured"))
+                    .map(|capture| json!(capture))
+                    .map_err(|error| error.to_string()),
+                Action::CaptureActivation => handle
+                    .capture(&principal, &token, &parent.join("activation-capture"))
+                    .map(|capture| json!(capture))
+                    .map_err(|error| error.to_string()),
+                Action::Activate => {
+                    super::continued_activation::commit(&parent, &handle, &principal, &token)
+                        .map(|selection| json!(selection))
+                        .map_err(|error| error.to_string())
+                }
+            };
+            let reply = match result {
+                Ok(result) => json!({"kind": "maintenance", "result": result}),
+                Err(error) => json!({"kind": "maintenance", "error": error}),
             };
             let mut output = std::io::stdout().lock();
             writeln!(output, "{reply}")?;

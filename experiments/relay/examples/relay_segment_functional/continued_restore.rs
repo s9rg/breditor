@@ -27,6 +27,8 @@ struct Originals {
     deferred: String,
     #[serde(default)]
     staged: Vec<String>,
+    #[serde(default)]
+    approve: bool,
 }
 
 pub(super) fn run(parent: &Path, reopen: bool) -> Result {
@@ -95,7 +97,8 @@ pub(super) fn run(parent: &Path, reopen: bool) -> Result {
         .ok_or("captured queue unavailable")?;
     let mut queue = Vec::new();
     io::copy(&mut uploads.take(original.uploads.bytes + 1), &mut queue)?;
-    let reconciliation = super::continued_reconcile::verify(parent, &mut target)?;
+    let reconciliation =
+        super::continued_reconcile::verify(parent, &mut target, original.approve && !reopen)?;
     println!(
         "{}",
         json!({

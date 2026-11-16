@@ -1,5 +1,7 @@
 //! Live HTTP, current-epoch refusal and exact backup for a continuation above the old count ceiling.
 use super::router_with_continued_assets_and_deployment_lease;
+#[path = "activation_tests.rs"]
+mod activation_tests;
 #[path = "restore_tests.rs"]
 mod restore_tests;
 use crate::{

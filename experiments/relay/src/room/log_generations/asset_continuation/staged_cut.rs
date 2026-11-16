@@ -37,12 +37,31 @@ impl ContinuedAssetBackupFiles {
         selected: &[String],
         expected: &AssetBackupIdentity,
     ) -> Result<()> {
+        self.check_active_prefix(current, selected, Some(expected))
+    }
+
+    pub(in crate::room::log_generations) fn check_serving_prefix(
+        &self,
+        current: &ContinuedAssetStore,
+        selected: &[String],
+    ) -> Result<()> {
+        self.check_active_prefix(current, selected, None)
+    }
+
+    fn check_active_prefix(
+        &self,
+        current: &ContinuedAssetStore,
+        selected: &[String],
+        exact: Option<&AssetBackupIdentity>,
+    ) -> Result<()> {
         self.check_new_rasters(selected)?;
         current.guard()?;
         let active = current.active.prepare_backup_stream()?;
         if current.identity.lineage != self.lineage
-            || active.identity != *expected
-            || active.identity.assets != self.active.identity.assets + selected.len() as u64
+            || exact.is_some_and(|expected| {
+                active.identity != *expected
+                    || active.identity.assets != self.active.identity.assets + selected.len() as u64
+            })
         {
             return Err(Error::Contract("staged continued raster cut differs"));
         }

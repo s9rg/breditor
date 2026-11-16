@@ -8,7 +8,8 @@ pub use crate::room::{
     RecoveredContinuedRasterRoom, RecoveredContinuedRasterRoomIdentity,
 };
 pub use continued_assets::{
-    ContinuedAssetServerHandle, ContinuedRasterRoomBackupIdentity, ContinuedRasterRoomInputReport,
+    ContinuedAssetServerHandle, ContinuedRasterActivation, ContinuedRasterActivationApproval,
+    ContinuedRasterRestart, ContinuedRasterRoomBackupIdentity, ContinuedRasterRoomInputReport,
     router_with_continued_assets_and_deployment_lease,
 };
 mod authentication;
@@ -122,6 +123,7 @@ pub(super) struct Host {
     connections: Arc<Semaphore>,
     assets: Option<Arc<Mutex<crate::assets::AssetStore>>>,
     continued_assets: Option<Arc<Mutex<crate::ContinuedAssetStore>>>,
+    continued_custody: Option<Arc<crate::room::ContinuedServingCustody>>,
     assets_changed: watch::Sender<u64>,
     asset_operations: Arc<Semaphore>,
     presence_changed: watch::Sender<u64>,
@@ -147,6 +149,7 @@ impl Host {
         let custody = self.generation_custody.clone();
         let assets = self.assets.clone();
         let continued = self.continued_assets.clone();
+        let continued_custody = self.continued_custody.clone();
         let deployment = self.deployment.clone();
         let serving = self.generation_serving.clone();
         let segment = self.relay_segment_custody.clone();
@@ -164,7 +167,13 @@ impl Host {
                 if let Some(assets) = &continued {
                     assets.lock().map_err(|_| Error::NeedsRecovery)?.guard()?;
                 }
+                if let Some(held) = &continued_custody {
+                    held.check(&room)?;
+                }
                 let result = f(&mut room);
+                if let Some(held) = &continued_custody {
+                    held.check(&room)?;
+                }
                 if let Some(assets) = &continued {
                     assets.lock().map_err(|_| Error::NeedsRecovery)?.guard()?;
                 }
@@ -244,6 +253,7 @@ fn create_host(
         connections: Arc::new(Semaphore::new(64)),
         assets: assets.map(|store| Arc::new(Mutex::new(store))),
         continued_assets: None,
+        continued_custody: None,
         assets_changed,
         asset_operations: Arc::new(Semaphore::new(4)),
         presence_changed,

@@ -118,7 +118,91 @@ export async function verifyContinuedRasterServing(api, rich, wasm, executable, 
     assert.deepEqual(Buffer.from(await (await provider.readBytes(unavailableAsset)).blob.arrayBuffer()), queued);
     const next = JSON.parse(readFileSync(join(parent, 'continued-reopened-selection.json'), 'utf8'));
     assert.ok(BigInt(next.generation) > BigInt(before.result.sourceEpoch.generation));
-    return {httpRastersRecovered: 2, stagedUploadReceipts: 1, offlineUndoAndRedo: true, combinedCapture: true, portableRestore};
+    await disconnect();
+    provider.dispose();
+    provider = undefined;
+    store.close();
+    store = undefined;
+    const captured = await host.maintenance('owner', token, {kind: 'captureActivation'});
+    assert.ok(captured.result, captured.error);
+    assert.deepEqual(captured.result.sourceEpoch, next);
+    client.dispatch({commands: [{kind: 'replace_image', data: {
+      block: 'image-block', asset: secondAsset, generation: 'approved-continuation-redo',
+    }}]});
+    assert.equal(client.undo(), true);
+    assert.equal(client.documentJson(), accepted);
+    await persistLocal();
+    const activation = join(parent, 'activation');
+    prepareContinuedCapture({
+      directory: activation, source: join(parent, 'activation-capture'), parent,
+      capture: captured.result, writer: registration.identity.writer, credential: registration.identity.credential,
+      token, original: readFileSync(journal), queue, staged: [secondAsset], approve: true,
+    });
+    const approved = JSON.parse(execFileSync(executable, [activation, 'continued-raster-restore', '127.0.0.1:0'], {
+      encoding: 'utf8', timeout: 30_000, maxBuffer: 8 * 1024 * 1024,
+    }));
+    assert.equal(approved.reconciliation.inputsComplete, true);
+    assert.deepEqual(approved.reconciliation.stagedRasters, [secondAsset]);
+    const prohibited = await host.maintenance('owner', 'wrong-owner-token', {kind: 'activate'});
+    assert.ok(prohibited.error);
+    const headers = {Origin: origin, Authorization: 'Bearer ' + token, 'X-Breditor-Principal': 'owner'};
+    const get = id => fetch(base + id, {headers});
+    const upload = (id, bytes) => fetch(base + id, {method: 'PUT',
+      headers: {...headers, 'Content-Type': 'image/png'}, body: bytes});
+    const beforeActivation = await get(pixelAsset);
+    assert.equal(beforeActivation.status, 200);
+    await beforeActivation.arrayBuffer();
+    const committed = await host.maintenance('owner', token, {kind: 'activate'});
+    assert.ok(committed.result, committed.error);
+    assert.equal(BigInt(committed.result.generation), BigInt(next.generation) + 1n);
+    for (const denied of [await get(pixelAsset), await upload(proposalAsset, proposalPixel)]) {
+      assert.equal(denied.status, 403);
+      await denied.arrayBuffer();
+    }
+    await host.crash();
+    host = undefined;
+
+    const saveExpected = selection => writeFileSync(join(activation, 'expected.json'), JSON.stringify(selection), {mode: 0o600});
+    const startApproved = () => startSegmentHandoverHost(executable, [parent, 'continued-raster-activated', address]);
+    const newEpoch = selection => JSON.parse(readFileSync(join(activation, 'started-after-' + selection.generation + '.json'), 'utf8'));
+    saveExpected(committed.result);
+    host = await startApproved();
+    const firstServing = newEpoch(committed.result);
+    assert.equal(BigInt(firstServing.generation), BigInt(committed.result.generation) + 1n);
+    await connect();
+    assert.equal(client.redo(), true);
+    await sync.flush();
+    const edited = client.documentJson();
+    assert.ok(edited.includes(secondAsset));
+    const saved = await upload(proposalAsset, proposalPixel);
+    assert.equal(saved.status, 200);
+    assert.equal((await saved.json()).duplicate, false);
+    await disconnect();
+    await host.crash();
+    host = undefined;
+
+    saveExpected(firstServing);
+    host = await startApproved();
+    assert.equal(BigInt(newEpoch(firstServing).generation), BigInt(firstServing.generation) + 1n);
+    const coldReader = await api.registerSharedRelayWriter(options);
+    const coldDocument = new api.SharedRichEditor(profile.join_frame('room', coldReader.identity.writer, coldReader.frame));
+    try {
+      assert.equal(coldDocument.documentJson(), edited);
+    } finally {
+      coldDocument.dispose();
+    }
+    await connect();
+    assert.equal(client.documentJson(), edited);
+    for (const [id, bytes] of [[pixelAsset, pixel], [unavailableAsset, queued], [secondAsset, secondPixel], [proposalAsset, proposalPixel]]) {
+      const response = await get(id);
+      assert.equal(response.status, 200);
+      assert.deepEqual(Buffer.from(await response.arrayBuffer()), bytes);
+    }
+    return {
+      httpRastersRecovered: 2, stagedUploadReceipts: 1, offlineUndoAndRedo: true, combinedCapture: true, portableRestore,
+      authenticatedTakeover: {staleRelayReadsAndWritesRefused: true, coldStarts: 2, offlineRedoDelivered: true,
+        postActivationRasterAndEditSurvived: true, exactRastersRead: 4},
+    };
   } finally {
     if (sync) {
       sync.dispose();
@@ -149,21 +233,10 @@ async function verifyPortableCapture({
   };
   const prepareCapture = (name, original, staged = []) => {
     const portable = join(root, name);
-    mkdirSync(portable, {mode: 0o700});
-    cpSync(join(parent, 'captured'), join(portable, 'capture'), {recursive: true});
-    const write = (name, bytes) => writeFileSync(join(portable, name), bytes, {flag: 'wx', mode: 0o600});
-    const hash = bytes => createHash('sha256').update(bytes).digest();
-    write('auth.json', readFileSync(join(parent, 'auth.json')));
-    write('protected.json', JSON.stringify({token, writer, documentCredential: credential}));
-    write('capture-selection.json', JSON.stringify(capture));
-    write('original.journal', original);
-    write('original.uploads', queue);
-    write('originals.json', JSON.stringify({
-      journal: {owner: {kind: 'document', writer, family: 'original'}, bytes: original.length, sha256: [...hash(original)]},
-      uploads: {writer, bytes: queue.length, sha256: hash(queue).toString('hex')},
-      rasters: [pixelAsset, unavailableAsset],
-      queued: secondAsset, deferred: proposalAsset, staged,
-    }));
+    prepareContinuedCapture({
+      directory: portable, source: join(parent, 'captured'), parent, capture,
+      writer, credential, token, original, queue, staged,
+    });
     return portable;
   };
   const portable = prepareCapture('continued-raster-portable', journal);
@@ -233,4 +306,24 @@ async function verifyPortableCapture({
     retained.dispose();
     restored.dispose();
   }
+}
+
+function prepareContinuedCapture({
+  directory, source, parent, capture, writer, credential, token, original, queue, staged, approve = false,
+}) {
+  mkdirSync(directory, {mode: 0o700});
+  cpSync(source, join(directory, 'capture'), {recursive: true});
+  const write = (name, bytes) => writeFileSync(join(directory, name), bytes, {flag: 'wx', mode: 0o600});
+  const hash = bytes => createHash('sha256').update(bytes).digest();
+  write('auth.json', readFileSync(join(parent, 'auth.json')));
+  write('protected.json', JSON.stringify({token, writer, documentCredential: credential}));
+  write('capture-selection.json', JSON.stringify(capture));
+  write('original.journal', original);
+  write('original.uploads', queue);
+  write('originals.json', JSON.stringify({
+    journal: {owner: {kind: 'document', writer, family: 'original'}, bytes: original.length, sha256: [...hash(original)]},
+    uploads: {writer, bytes: queue.length, sha256: hash(queue).toString('hex')},
+    rasters: [pixelAsset, unavailableAsset],
+    queued: secondAsset, deferred: proposalAsset, staged, approve,
+  }));
 }
