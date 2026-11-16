@@ -2,6 +2,19 @@
 
 ## November 16 collaboration recovery
 
+[Exact native admission budget](qualification/2026-11-16-native-admission-budget.json)
+charges the canonical JSON bytes of immutable review history when each file
+is sealed or restored. Segmented and continued review edits reuse those
+charges, and the relay relies on native admission for the corresponding
+review and document checks before durable append. The regression accepts
+the exact encoded length and refuses one byte less across a cold restore.
+Source and clean-installed workflows advance both native lanes on the
+relocated relay, recover six offline lanes and exercise Undo/Redo in two
+lanes. Legacy handover also passes. Both Wasm builds, 21 review tests, all
+560 enabled relay tests and the separate APFS interruption test pass.
+Retained-event validation, explicit archive export and bounded native
+history lifetime remain part of the storage work.
+
 [Extended streamed terminal checkpoint](qualification/2026-11-16-extended-terminal-checkpoint.json)
 adds an independently bounded gzip envelope. A synthetic 513 MiB stream
 round-trips byte for byte above the original raw ceiling. Altered lengths,
