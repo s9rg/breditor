@@ -2,6 +2,19 @@
 
 ## November 16 collaboration recovery
 
+[Native review causal ordering](qualification/2026-11-16-native-review-causal-order.json)
+indexes blocked events by their next prerequisite. A 65,536-event fixture
+keeps a lower-sorting stream blocked until a higher-sorting stream reaches
+its required counter, then verifies the exact canonical order. Randomized
+valid and malformed histories match the original scan's results and refusals.
+The final admission check reuses that order for replay validation, projection
+and original-family checkpoint capacity. Both Wasm builds, 22 Rust review
+tests and contracts, and 69 focused relay tests pass. Source and
+clean-installed workflows verify portable relocation, legacy handover,
+offline edits and Undo/Redo. In the lost-reply case, cold recovery recognizes
+the original durable comment and preserves its single submission. Cold restore
+still validates retained prefixes at each generation boundary.
+
 [Exact native admission budget](qualification/2026-11-16-native-admission-budget.json)
 charges the canonical JSON bytes of immutable review history when each file
 is sealed or restored. Segmented and continued review edits reuse those

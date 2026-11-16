@@ -1,0 +1,220 @@
+{
+  "format": "breditor/native-review-causal-order-qualification",
+  "formatVersion": 1,
+  "date": "2026-11-16",
+  "source": {
+    "commit": "ffd1bf2e2c21dfd5ca458033766f7d7e11b0d10d",
+    "dirty": false,
+    "sha256": "2679ae112a710cca12f8529cf03eefbe97a07f756bca2239e4b9ed605bbb08b0",
+    "files": 8991,
+    "bytes": 76349547
+  },
+  "causalChecks": {
+    "blockedStreamFixtureEvents": 65536,
+    "lowerActorRegainsPriorityAfterPrerequisite": true,
+    "propertyCasesPerOracle": 1024,
+    "fullScanOracleMatchesCanonicalOrderAndRefusals": true,
+    "validAndCorruptHistoryOraclesRetained": true,
+    "reachedNativeEventLimitAndColdRestored": true
+  },
+  "coreReviewTests": {
+    "passed": 13,
+    "failed": 0,
+    "ignored": 0,
+    "executableSha256": [
+      "07ff5f7bf52ef553457dbb8f0acc2ca5a320102e9f6ed8c66aea0e2268c9d67f"
+    ],
+    "logSha256": "f4a19d607c30255c4d953d4b8af8158ee8a97a546f6deaa880f1aadf02f594de"
+  },
+  "coreReviewContracts": {
+    "passed": 9,
+    "failed": 0,
+    "ignored": 0,
+    "executableSha256": [
+      "fd75f2643848471d92de9a9a05878539ac665339358ad841c38db0d64338270c",
+      "cf024343cc5fc7b48fc19ee0ca156479807cc33efe71b9c29d4292e323c8ff14"
+    ],
+    "logSha256": "c91c2f5147eaf52d44f95cc5b387371124585320d3d4d2341c74a6bad29b1285"
+  },
+  "nativeRelayTests": {
+    "room-native_history": {
+      "passed": 15,
+      "failed": 0,
+      "ignored": 0,
+      "executableSha256": [
+        "7d38cd70b53c23c80bb03054559b5c792d24be0ca9fb64e1969a63a494ee8e82"
+      ],
+      "logSha256": "f2362b7c96d1e991fa23bf941053ba71327b3103b12ab8c970048287936fa42d"
+    },
+    "room-review": {
+      "passed": 7,
+      "failed": 0,
+      "ignored": 0,
+      "executableSha256": [
+        "7d38cd70b53c23c80bb03054559b5c792d24be0ca9fb64e1969a63a494ee8e82"
+      ],
+      "logSha256": "5fcc9020c33f17a8445f9ab36ed1b46f2cc8c917191b7335597ba05ec216c918"
+    },
+    "room-asset_references": {
+      "passed": 12,
+      "failed": 0,
+      "ignored": 0,
+      "executableSha256": [
+        "7d38cd70b53c23c80bb03054559b5c792d24be0ca9fb64e1969a63a494ee8e82"
+      ],
+      "logSha256": "e5b74e650f0d5ed117e93a41af4c060c26f70b30cd2a15be03e11a2808cd16d3"
+    },
+    "room-materialized_checkpoint": {
+      "passed": 3,
+      "failed": 0,
+      "ignored": 0,
+      "executableSha256": [
+        "7d38cd70b53c23c80bb03054559b5c792d24be0ca9fb64e1969a63a494ee8e82"
+      ],
+      "logSha256": "981d284bf847aecebb7c5975753bb8064a75c0621b9f17d22a08acd25c89e6b0"
+    },
+    "server-segment_handover-tests": {
+      "passed": 32,
+      "failed": 0,
+      "ignored": 0,
+      "executableSha256": [
+        "7d38cd70b53c23c80bb03054559b5c792d24be0ca9fb64e1969a63a494ee8e82"
+      ],
+      "logSha256": "6a0cc8ba1beeb68332ae0dca2cfb202fe71cffd60737d9c3b8f7f6396da3c806"
+    }
+  },
+  "strictCoreLibraryLint": {
+    "passed": true,
+    "logSha256": "4bcd0a49708835cd93f0ca1906508f588c6b8ace3879b4a33091206ce1792dc4"
+  },
+  "localRichWasm": {
+    "passed": true,
+    "logSha256": "455b9e95ba9dad38c0a4c2929c456b26452c6e7f1d710574c4f74d619376adff",
+    "sha256": "bc020ce07ed80600b85735c1e592d5ae163d921f5556fef05269a12bc1d59ec5"
+  },
+  "sharedWasm": {
+    "passed": true,
+    "logSha256": "9e433e4a36d207fa46195ec1cb3316ff33522900f0b5d4ddcbb6fe48a20b393f",
+    "sha256": "6859050d1201babafd6653e448bd5a608417f9ed5c65e5e7e941135ffa55c058"
+  },
+  "candidatePlan": {
+    "passed": 69,
+    "failed": 0,
+    "logSha256": "0b4f1542877cd8f735e6ae54c32aeb22678a4e2c7d0989200eafb1a5f25923be"
+  },
+  "workflows": {
+    "relaySha256": "81a646a419a63f31554783395263ddbd1a28fa53e78e11fb8447bdf1183c844d",
+    "runtimeSha256": "6859050d1201babafd6653e448bd5a608417f9ed5c65e5e7e941135ffa55c058",
+    "portableRelocation": {
+      "reportSha256": "f95b4dcb32bdf01d99b510cc6483c75633fef88a30d5532f43dd3d5cc8e83915",
+      "runs": {
+        "source": {
+          "offlineLanes": 6,
+          "undoRedoLanes": 2,
+          "coldResumes": 5,
+          "liveNativeHistoryBoundaries": 2,
+          "nativeHistoryColdRetries": 2,
+          "proof": null
+        },
+        "installed": {
+          "offlineLanes": 6,
+          "undoRedoLanes": 2,
+          "coldResumes": 5,
+          "liveNativeHistoryBoundaries": 2,
+          "nativeHistoryColdRetries": 2,
+          "proof": {
+            "registryArtifacts": 45,
+            "archives": [
+              {
+                "name": "@breditor/browser",
+                "sha256": "79f5b486d3742d1234e4eb21c18822e0a494551d49a73039f5b856908c124f3f"
+              },
+              {
+                "name": "@breditor/experimental-rich-content",
+                "sha256": "06fc9770ef5b26cd5f4c10d7d55d9b1d91e352392a599f277cee25d431d6f4b7"
+              },
+              {
+                "name": "@breditor/collaboration",
+                "sha256": "0798de31602792117993d6a8fcc67b21ad3341d2acfa0d2b971dc954420ea9ff"
+              }
+            ]
+          }
+        }
+      }
+    },
+    "legacyHandover": {
+      "reportSha256": "2ed2d15a02cb842a6ef35a436c30f173c86f7e04d1b122426044ac4bbe6f66be",
+      "runs": {
+        "source": {
+          "offlineLanes": 6,
+          "undoRedoLanes": 2,
+          "coldResumes": 3,
+          "proof": null
+        },
+        "installed": {
+          "offlineLanes": 6,
+          "undoRedoLanes": 2,
+          "coldResumes": 3,
+          "proof": {
+            "registryArtifacts": 45,
+            "archives": [
+              {
+                "name": "@breditor/browser",
+                "sha256": "79f5b486d3742d1234e4eb21c18822e0a494551d49a73039f5b856908c124f3f"
+              },
+              {
+                "name": "@breditor/experimental-rich-content",
+                "sha256": "06fc9770ef5b26cd5f4c10d7d55d9b1d91e352392a599f277cee25d431d6f4b7"
+              },
+              {
+                "name": "@breditor/collaboration",
+                "sha256": "0798de31602792117993d6a8fcc67b21ad3341d2acfa0d2b971dc954420ea9ff"
+              }
+            ]
+          }
+        }
+      }
+    },
+    "recoveredCommentIntent": {
+      "reportSha256": "b6696309144b1d857909e3f79cb218ea68ee710af504a7c10562ea215596fae9",
+      "runs": {
+        "source": {
+          "offlineLanes": 6,
+          "undoRedoLanes": 2,
+          "coldResumes": 4,
+          "committedRecoveredComments": 1,
+          "discardedDurableReviewReplies": 1,
+          "coldAcknowledgedReviewIntents": 1,
+          "recoveredReviewSubmissions": 1,
+          "proof": null
+        },
+        "installed": {
+          "offlineLanes": 6,
+          "undoRedoLanes": 2,
+          "coldResumes": 4,
+          "committedRecoveredComments": 1,
+          "discardedDurableReviewReplies": 1,
+          "coldAcknowledgedReviewIntents": 1,
+          "recoveredReviewSubmissions": 1,
+          "proof": {
+            "registryArtifacts": 45,
+            "archives": [
+              {
+                "name": "@breditor/browser",
+                "sha256": "79f5b486d3742d1234e4eb21c18822e0a494551d49a73039f5b856908c124f3f"
+              },
+              {
+                "name": "@breditor/experimental-rich-content",
+                "sha256": "06fc9770ef5b26cd5f4c10d7d55d9b1d91e352392a599f277cee25d431d6f4b7"
+              },
+              {
+                "name": "@breditor/collaboration",
+                "sha256": "0798de31602792117993d6a8fcc67b21ad3341d2acfa0d2b971dc954420ea9ff"
+              }
+            ]
+          }
+        }
+      }
+    }
+  }
+}
