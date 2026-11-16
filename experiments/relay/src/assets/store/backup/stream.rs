@@ -57,6 +57,7 @@ pub(crate) struct AssetBackupStream<'a> {
     store: &'a AssetStore,
     inventory: BTreeSet<String>,
     manifest: Vec<u8>,
+    pending: Option<String>,
     records: Vec<RecordFile>,
     header: format::Header,
     pub(crate) bytes: u64,
@@ -94,9 +95,16 @@ impl AssetStore {
     }
 
     pub(crate) fn prepare_backup_stream(&self) -> Result<AssetBackupStream<'_>> {
+        self.prepare_backup_stream_with_pending(None)
+    }
+
+    pub(crate) fn prepare_backup_stream_with_pending(
+        &self,
+        pending: Option<&str>,
+    ) -> Result<AssetBackupStream<'_>> {
         self.ready()?;
         restore_files::guard_lock(&self.root, &self.lock)?;
-        let inventory = export::files(self)?;
+        let inventory = export::files_with_pending(self, pending)?;
         let manifest = export::manifest(self)?;
         let mut offset = manifest.len() as u64;
         let mut bytes = 0;
@@ -130,6 +138,7 @@ impl AssetStore {
             store: self,
             inventory,
             manifest,
+            pending: pending.map(str::to_owned),
             records,
             header,
             bytes: 0,
@@ -174,7 +183,7 @@ impl AssetBackupStream<'_> {
     pub(crate) fn check(&self) -> Result<()> {
         self.store.ready()?;
         restore_files::guard_lock(&self.store.root, &self.store.lock)?;
-        if export::files(self.store)? != self.inventory
+        if export::files_with_pending(self.store, self.pending.as_deref())? != self.inventory
             || export::manifest(self.store)? != self.manifest
         {
             return Err(Error::Contract("streamed asset source changed"));

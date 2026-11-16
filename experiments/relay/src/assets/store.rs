@@ -18,6 +18,8 @@ pub use backup::{
     AssetStoreBackup, MAX_SERVER_ASSET_BACKUP_BYTES,
 };
 #[cfg(feature = "server")]
+pub(crate) use pending_upload::MAX_STAGE_BYTES;
+#[cfg(feature = "server")]
 pub use pending_upload::PendingRasterUpload;
 
 #[derive(Serialize, Deserialize)]

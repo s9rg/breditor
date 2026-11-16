@@ -37,15 +37,16 @@ impl ContinuedAssetBackupFiles {
         selected: &[String],
         expected: &AssetBackupIdentity,
     ) -> Result<()> {
-        self.check_active_prefix(current, selected, Some(expected))
+        self.check_active_prefix(current, selected, Some(expected), None)
     }
 
     pub(in crate::room::log_generations) fn check_serving_prefix(
         &self,
         current: &ContinuedAssetStore,
         selected: &[String],
+        pending: Option<&str>,
     ) -> Result<()> {
-        self.check_active_prefix(current, selected, None)
+        self.check_active_prefix(current, selected, None, pending)
     }
 
     fn check_active_prefix(
@@ -53,10 +54,11 @@ impl ContinuedAssetBackupFiles {
         current: &ContinuedAssetStore,
         selected: &[String],
         exact: Option<&AssetBackupIdentity>,
+        pending: Option<&str>,
     ) -> Result<()> {
         self.check_new_rasters(selected)?;
         current.guard()?;
-        let active = current.active.prepare_backup_stream()?;
+        let active = current.active.prepare_backup_stream_with_pending(pending)?;
         if current.identity.lineage != self.lineage
             || exact.is_some_and(|expected| {
                 active.identity != *expected

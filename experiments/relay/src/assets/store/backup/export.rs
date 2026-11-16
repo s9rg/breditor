@@ -20,7 +20,10 @@ pub(super) fn files(store: &AssetStore) -> Result<BTreeSet<String>> {
     files_with_pending(store, None)
 }
 
-fn files_with_pending(store: &AssetStore, pending: Option<&str>) -> Result<BTreeSet<String>> {
+pub(super) fn files_with_pending(
+    store: &AssetStore,
+    pending: Option<&str>,
+) -> Result<BTreeSet<String>> {
     let mut names = BTreeSet::new();
     for entry in fs::read_dir(&store.root)? {
         let entry = entry?;

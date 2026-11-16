@@ -57,6 +57,23 @@ impl Completion {
     }
 }
 
+#[derive(Clone, Copy)]
+pub(super) enum ReplayMode<'a> {
+    Unserved,
+    Serving,
+    NativeTail(&'a RoomBackupIdentity),
+    PendingRaster(&'a RoomBackupIdentity),
+}
+
+impl<'a> ReplayMode<'a> {
+    fn floor(self) -> Option<&'a RoomBackupIdentity> {
+        match self {
+            Self::NativeTail(floor) | Self::PendingRaster(floor) => Some(floor),
+            Self::Unserved | Self::Serving => None,
+        }
+    }
+}
+
 impl ContinuedRasterRoomBackupFiles {
     /// Restore the backup and selected original client archives into an absent private directory.
     /// Save the returned room's identity separately for cold reopening. Original native archive
@@ -154,15 +171,15 @@ impl ContinuedRasterRoomBackupFiles {
         selected: &RecoveredContinuedRasterRoomIdentity,
         serving_history: bool,
     ) -> Result<RecoveredContinuedRasterRoom> {
-        self.open_replayed(path, selected, serving_history, None).map(|(target, _)| target)
+        let mode = if serving_history { ReplayMode::Serving } else { ReplayMode::Unserved };
+        self.open_replayed(path, selected, mode).map(|(target, _)| target)
     }
 
     pub(super) fn open_replayed(
         &self,
         path: &Path,
         selected: &RecoveredContinuedRasterRoomIdentity,
-        serving_history: bool,
-        floor: Option<&RoomBackupIdentity>,
+        mode: ReplayMode<'_>,
     ) -> Result<(RecoveredContinuedRasterRoom, Recovery)> {
         self.check()?;
         let directory = GenerationDirectory::open(path)?;
@@ -189,10 +206,7 @@ impl ContinuedRasterRoomBackupFiles {
             self.native.clone(),
             &completed.active_generation,
         )?;
-        let room = if let Some(floor) = floor {
-            if !serving_history {
-                return Err(Error::Contract("native prefix inspection requires activated history"));
-            }
+        let room = if let Some(floor) = mode.floor() {
             let current = log.generation_descriptor()?;
             let origin = &completed.backup.native.predecessor.source;
             let through: u64 = current.next_sequence.parse().map_err(|_| Error::NeedsRecovery)?;
@@ -220,15 +234,30 @@ impl ContinuedRasterRoomBackupFiles {
             Room::replay_relay_segment(log, recovery, state, false)?.0
         };
         let raster_path = directory.path.join("rasters");
-        let assets = if floor.is_some() {
-            ContinuedAssetStore::open_for_native_tail(&raster_path, &completed.rasters)?
-        } else {
-            ContinuedAssetStore::open(&raster_path, &completed.rasters)?
+        let assets = match mode {
+            ReplayMode::Unserved => ContinuedAssetStore::open(&raster_path, &completed.rasters)?,
+            ReplayMode::PendingRaster(_) => {
+                ContinuedAssetStore::open_for_raster_repair(&raster_path, &completed.rasters)?
+            }
+            ReplayMode::Serving | ReplayMode::NativeTail(_) => {
+                ContinuedAssetStore::open_for_native_tail(&raster_path, &completed.rasters)?
+            }
         };
-        if serving_history {
-            self.check_serving_history(&room, &assets, &clients, &completed)?;
-        } else {
+        if matches!(mode, ReplayMode::Unserved) {
             self.check_target(&room, &assets, &clients, &completed)?;
+        } else {
+            let pending = if matches!(mode, ReplayMode::PendingRaster(_)) {
+                assets.inspect_pending_upload()?
+            } else {
+                None
+            };
+            self.check_serving_history(
+                &room,
+                &assets,
+                &clients,
+                &completed,
+                pending.as_ref().map(|file| file.file_name.as_str()),
+            )?;
         }
         directory.guard_witness(&completed.directory)?;
         Ok((
@@ -250,10 +279,12 @@ impl ContinuedRasterRoomBackupFiles {
         assets: &ContinuedAssetStore,
         clients: &RetainedClients,
         completed: &Completion,
+        pending: Option<&str>,
     ) -> Result<()> {
         self.rasters.check_serving_prefix(
             assets,
             completed.staged.as_ref().map_or(&[], |staged| staged.ids.as_slice()),
+            pending,
         )?;
         clients.check(&room.recovered_discussion_source_digests())?;
         self.check()

@@ -4,9 +4,10 @@ use crate::{
     log::generations::{NativeTailRepairInterruption, NativeTailRepairPoint},
     server::{
         Authentication, ContinuedRasterActivationApproval, ContinuedRasterNativeTailInspection,
-        ContinuedRasterNativeTailOutcome, ContinuedRasterNativeTailPlan,
-        ContinuedRasterNativeTailRepair, ContinuedRasterRestart, ContinuedRasterRoomBackupFiles,
-        ContinuedRasterRoomBackupIdentity, RoomDeploymentAuthority, RoomDeploymentSelection,
+        ContinuedRasterNativeTailPlan, ContinuedRasterNativeTailRepair, ContinuedRasterRestart,
+        ContinuedRasterRoomBackupFiles, ContinuedRasterRoomBackupIdentity,
+        ContinuedRasterUploadInspection, ContinuedRasterUploadPlan, ContinuedRasterUploadRepair,
+        RoomDeploymentAuthority, RoomDeploymentSelection,
     },
 };
 use serde::{Deserialize, Serialize};
@@ -30,7 +31,13 @@ struct Inputs {
     epoch: RoomDeploymentSelection,
     auth: String,
     token: String,
-    repair: ContinuedRasterNativeTailPlan,
+    repair: RepairPlan,
+}
+
+#[derive(Serialize, Deserialize)]
+enum RepairPlan {
+    Native(ContinuedRasterNativeTailPlan),
+    Joint(ContinuedRasterUploadPlan),
 }
 
 pub(super) fn check_interrupted_repair(
@@ -45,11 +52,8 @@ pub(super) fn check_interrupted_repair(
     let target = root.join("relocated");
     let wal = target.join("native").join(crate::log::generations::test_wal_name("relocated"));
     let accepted = fs::read(&wal)?;
-    let mut file = OpenOptions::new().append(true).open(&wal)?;
     let suffix = b"BR!";
-    file.write_all(suffix)?;
-    file.sync_all()?;
-    drop(file);
+    append_suffix(&wal, suffix)?;
 
     let auth = json!({
         "format": "breditor/relay-auth", "formatVersion": 1,
@@ -73,20 +77,74 @@ pub(super) fn check_interrupted_repair(
     )?;
     drop(backup);
 
-    let inputs = Inputs {
+    let mut inputs = Inputs {
         capture: capture.clone(),
         approval: approval.clone(),
         epoch: epoch.clone(),
         auth,
         token: token.into(),
-        repair: plan,
+        repair: RepairPlan::Native(plan),
     };
+    kill_after_truncate(root, &inputs)?;
+    assert_eq!(fs::read(&wal)?, accepted);
+    assert_eq!(authority.current_selection()?, *epoch);
+    assert_eq!(apply(root, &inputs, NativeTailRepairInterruption::default())?, "alreadyComplete");
+    assert_eq!(fs::read(root.join("evidence/suffix.bin"))?, suffix);
+    assert_eq!(authority.current_selection()?, *epoch);
+
+    let active = target.join("rasters/active");
+    let published = fs::read_dir(&active)?
+        .collect::<std::io::Result<Vec<_>>>()?
+        .into_iter()
+        .map(|entry| entry.path())
+        .find(|path| path.extension().is_some_and(|ext| ext == "asset"))
+        .ok_or("missing published raster")?;
+    let bytes = fs::read(&published)?;
+    let stage = active.join(format!(".pending-{}", "a".repeat(64)));
+    fs::hard_link(&published, &stage)?;
+    append_suffix(&wal, suffix)?;
+    let backup = ContinuedRasterRoomBackupFiles::open(&root.join("capture"), capture, None)?;
+    inputs.repair = RepairPlan::Joint(backup.inspect_activated_raster_upload(
+        &target,
+        &Authentication::from_json(&inputs.auth)?,
+        "owner",
+        token,
+        &ContinuedRasterUploadInspection {
+            restart: &restart,
+            minimum: floor,
+            evidence: &root.join("joint"),
+        },
+    )?);
+    drop(backup);
+    kill_after_truncate(root, &inputs)?;
+    assert_eq!(fs::read(&wal)?, accepted);
+    assert_eq!(fs::read(&stage)?, bytes);
+    assert_eq!(authority.current_selection()?, *epoch);
+    assert_eq!(apply(root, &inputs, NativeTailRepairInterruption::default())?, "repaired");
+    assert_eq!(apply(root, &inputs, NativeTailRepairInterruption::default())?, "alreadyComplete");
+    assert!(!stage.exists());
+    assert_eq!(fs::read(&published)?, bytes);
+    assert_eq!(fs::read(root.join("joint/raster.bin"))?, bytes);
+    assert_eq!(fs::read(root.join("joint/suffix.bin"))?, suffix);
+    assert_eq!(authority.current_selection()?, *epoch);
+    Ok(())
+}
+
+fn append_suffix(wal: &Path, suffix: &[u8]) -> TestResult {
+    let mut file = OpenOptions::new().append(true).open(wal)?;
+    file.write_all(suffix)?;
+    file.sync_all()?;
+    Ok(())
+}
+
+fn kill_after_truncate(root: &Path, inputs: &Inputs) -> TestResult {
     let mut plan_file = OpenOptions::new()
-        .create_new(true)
+        .create(true)
+        .truncate(true)
         .write(true)
         .mode(0o600)
         .open(root.join("worker.json"))?;
-    serde_json::to_writer(&mut plan_file, &inputs)?;
+    serde_json::to_writer(&mut plan_file, inputs)?;
     plan_file.sync_all()?;
     drop(plan_file);
     let mut child = Command::new(std::env::current_exe()?)
@@ -116,14 +174,6 @@ pub(super) fn check_interrupted_repair(
     reached?;
     kill?;
     assert!(!status.success());
-    assert_eq!(fs::read(&wal)?, accepted);
-    assert_eq!(authority.current_selection()?, *epoch);
-    assert_eq!(
-        apply(root, &inputs, NativeTailRepairInterruption::default())?,
-        ContinuedRasterNativeTailOutcome::AlreadyComplete
-    );
-    assert_eq!(fs::read(root.join("evidence/suffix.bin"))?, suffix);
-    assert_eq!(authority.current_selection()?, *epoch);
     Ok(())
 }
 
@@ -145,7 +195,7 @@ fn apply(
     root: &Path,
     inputs: &Inputs,
     pause: NativeTailRepairInterruption,
-) -> TestResult<ContinuedRasterNativeTailOutcome> {
+) -> TestResult<serde_json::Value> {
     let backup =
         ContinuedRasterRoomBackupFiles::open(&root.join("capture"), &inputs.capture, None)?;
     let authority = RoomDeploymentAuthority::open_at_least(&root.join("authority"), &inputs.epoch)?;
@@ -154,16 +204,33 @@ fn apply(
         approval: &inputs.approval,
         expected: &inputs.epoch,
     };
-    Ok(backup.repair_native_tail(
-        &root.join("relocated"),
-        &Authentication::from_json(&inputs.auth)?,
-        "owner",
-        &inputs.token,
-        &ContinuedRasterNativeTailRepair {
-            restart: &restart,
-            plan: &inputs.repair,
-            suffix: &root.join("evidence/suffix.bin"),
-        },
-        pause,
-    )?)
+    let auth = Authentication::from_json(&inputs.auth)?;
+    let path = root.join("relocated");
+    Ok(match &inputs.repair {
+        RepairPlan::Native(plan) => serde_json::to_value(backup.repair_native_tail(
+            &path,
+            &auth,
+            "owner",
+            &inputs.token,
+            &ContinuedRasterNativeTailRepair {
+                restart: &restart,
+                plan,
+                suffix: &root.join("evidence/suffix.bin"),
+            },
+            pause,
+        )?)?,
+        RepairPlan::Joint(plan) => serde_json::to_value(backup.repair_raster_upload(
+            &path,
+            &auth,
+            "owner",
+            &inputs.token,
+            &ContinuedRasterUploadRepair {
+                restart: &restart,
+                plan,
+                raster: &root.join("joint/raster.bin"),
+                suffix: &root.join("joint/suffix.bin"),
+            },
+            pause,
+        )?)?,
+    })
 }

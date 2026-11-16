@@ -189,8 +189,16 @@ async fn main() -> Result {
     if matches!(mode.as_str(), "continued-raster-restore" | "continued-raster-reopen") {
         return continued_restore::run(parent, mode == "continued-raster-reopen");
     }
-    if matches!(mode.as_str(), "continued-raster-inspect-tail" | "continued-raster-repair-tail") {
-        return continued_tail::run(parent, mode == "continued-raster-inspect-tail");
+    if matches!(
+        mode.as_str(),
+        "continued-raster-inspect-tail"
+            | "continued-raster-repair-tail"
+            | "continued-raster-inspect-upload"
+            | "continued-raster-repair-upload"
+            | "continued-raster-inspect-joint"
+            | "continued-raster-repair-joint"
+    ) {
+        return continued_tail::run(parent, mode);
     }
     let old = parent.join("source-native");
     let png = fs::read(parent.join("asset.png"))?;

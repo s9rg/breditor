@@ -16,6 +16,15 @@ use std::{
     path::Path,
 };
 
+#[derive(Clone, Copy)]
+enum RasterOpen {
+    Ordinary,
+    #[cfg(feature = "server")]
+    Complete,
+    #[cfg(feature = "server")]
+    InspectPending,
+}
+
 impl ContinuedAssetStore {
     /// Continue a verified original asset archive in a fresh private directory.
     /// The predecessor remains readable and its asset IDs remain deduplicated.
@@ -104,7 +113,7 @@ impl ContinuedAssetStore {
     /// # Errors
     /// Refuses changed local custody, corrupt archives, overlaps and invalid active state.
     pub fn open(path: &Path, selected: &ContinuedAssetStoreIdentity) -> Result<Self> {
-        Self::open_with_policy(path, selected, false)
+        Self::open_with_policy(path, selected, RasterOpen::Ordinary)
     }
 
     #[cfg(feature = "server")]
@@ -112,13 +121,21 @@ impl ContinuedAssetStore {
         path: &Path,
         selected: &ContinuedAssetStoreIdentity,
     ) -> Result<Self> {
-        Self::open_with_policy(path, selected, true)
+        Self::open_with_policy(path, selected, RasterOpen::Complete)
+    }
+
+    #[cfg(feature = "server")]
+    pub(in crate::room::log_generations) fn open_for_raster_repair(
+        path: &Path,
+        selected: &ContinuedAssetStoreIdentity,
+    ) -> Result<Self> {
+        Self::open_with_policy(path, selected, RasterOpen::InspectPending)
     }
 
     fn open_with_policy(
         path: &Path,
         selected: &ContinuedAssetStoreIdentity,
-        retain_pending: bool,
+        policy: RasterOpen,
     ) -> Result<Self> {
         if selected.format != FORMAT || selected.format_version != 1 {
             return Err(Error::Contract("raster continuation selection format"));
@@ -144,10 +161,14 @@ impl ContinuedAssetStore {
         )?;
         let active_directory =
             RasterDirectory::open(&directory.path.join(ACTIVE), &selected.active)?;
-        let (active, active_custody) = if retain_pending {
-            active_directory.into_store(&active_binding)?
-        } else {
-            active_directory.into_continued_store(&active_binding)?
+        let (active, active_custody) = match policy {
+            RasterOpen::Ordinary => active_directory.into_continued_store(&active_binding)?,
+            #[cfg(feature = "server")]
+            RasterOpen::Complete => active_directory.into_store(&active_binding)?,
+            #[cfg(feature = "server")]
+            RasterOpen::InspectPending => {
+                active_directory.into_store_for_upload_inspection(&active_binding)?
+            }
         };
         if retained.keys().any(|digest| active.has_asset(&format!("sha256:{digest}"))) {
             return Err(Error::Contract("raster continuation generations overlap"));

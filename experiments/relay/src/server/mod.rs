@@ -12,8 +12,9 @@ pub use continued_assets::{
     ContinuedRasterNativeTailInspection, ContinuedRasterNativeTailOutcome,
     ContinuedRasterNativeTailPlan, ContinuedRasterNativeTailRepair, ContinuedRasterRestart,
     ContinuedRasterRoomBackupIdentity, ContinuedRasterRoomInputReport, ContinuedRasterSeal,
-    ContinuedRasterSealing, SealedContinuedRasterActivation,
-    router_with_continued_assets_and_deployment_lease,
+    ContinuedRasterSealing, ContinuedRasterUploadInspection, ContinuedRasterUploadPlan,
+    ContinuedRasterUploadRepair, ContinuedRasterUploadRepairOutcome,
+    SealedContinuedRasterActivation, router_with_continued_assets_and_deployment_lease,
 };
 mod authentication;
 mod backup;

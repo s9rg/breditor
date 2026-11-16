@@ -341,3 +341,27 @@ The minimum capture protects the native history recorded at that cut.
 The repair compares the active raster state to what inspection observed.
 Pending raster staging and an unfinished native rotation require their
 own recovery. Preserve those files when this repair refuses.
+
+### Recover one interrupted image upload
+
+Restart of an activated continued room refuses pending raster staging and
+leaves the files in place. With the authenticated owner, retained serving
+epoch and independently saved minimum native cut, call
+`inspect_activated_raster_upload`. This inspects one pending upload and
+preserves its exact bytes in `raster.bin` outside the room. If the native
+log also has an incomplete final record, the same plan preserves it in
+`suffix.bin`. For a complete log, this evidence file is empty. Save the
+returned plan independently from the room and both evidence files.
+
+Call `repair_activated_raster_upload` with the exact plan and both files.
+It verifies and syncs the evidence, compares the accepted log and raster
+cut, repairs the incomplete native bytes first, and removes the verified
+staging name. If an image already has a final name on the same inode,
+that published image stays in place. Unpublished bytes stay in the evidence
+file and the client can retry the original upload. The same plan can resume
+after an interrupted repair or synchronize the already-complete cut. Use the
+retained serving selection for an ordinary restart after repair.
+
+An unfinished log rotation, multiple pending uploads, and staging files
+with unrelated hard links require separate recovery. Preserve the files if
+inspection or repair refuses.

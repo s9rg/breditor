@@ -2,6 +2,7 @@
 mod clients;
 mod inspect;
 mod open;
+mod raster_repair;
 mod reconciliation;
 mod restore;
 mod serving;

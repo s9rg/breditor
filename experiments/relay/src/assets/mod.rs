@@ -8,6 +8,8 @@ mod types;
 pub use prepare::{PreparedAsset, asset_id, prepare_asset};
 pub use store::AssetStore;
 #[cfg(feature = "server")]
+pub(crate) use store::MAX_STAGE_BYTES;
+#[cfg(feature = "server")]
 pub use store::PendingRasterUpload;
 pub use store::{
     AssetBackupIdentity, AssetBackupInfo, AssetRecoveryPolicy, AssetRestore, AssetRestoreProgress,

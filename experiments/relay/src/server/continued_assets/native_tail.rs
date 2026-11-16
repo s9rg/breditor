@@ -207,7 +207,7 @@ impl ContinuedRasterRoomBackupFiles {
     }
 }
 
-fn with_repair_epoch<T>(
+pub(super) fn with_repair_epoch<T>(
     restart: &ContinuedRasterRestart<'_>,
     minimum: &ContinuedRasterRoomBackupIdentity,
     inspect: impl FnOnce() -> Result<T>,

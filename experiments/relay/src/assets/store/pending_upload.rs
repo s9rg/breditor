@@ -12,7 +12,8 @@ use std::{
     path::Path,
 };
 
-const MAX_STAGE_BYTES: u64 = record::HEADER + record::MAX_METADATA as u64 + MAX_ASSET_BYTES;
+pub(crate) const MAX_STAGE_BYTES: u64 =
+    record::HEADER + record::MAX_METADATA as u64 + MAX_ASSET_BYTES;
 
 /// Exact detached evidence from the interrupted upload of a sealed room.
 pub struct PendingRasterUpload {
@@ -53,7 +54,7 @@ fn links(file: &File) -> Result<u64> {
     }
 }
 
-fn pending_name(root: &Path) -> Result<String> {
+fn pending_name(root: &Path) -> Result<Option<String>> {
     let mut selected = None;
     for (index, entry) in fs::read_dir(root)?.enumerate() {
         if index >= MAX_ASSETS + 3 {
@@ -68,7 +69,7 @@ fn pending_name(root: &Path) -> Result<String> {
             return Err(Error::Contract("multiple pending raster uploads"));
         }
     }
-    selected.ok_or(Error::Contract("no pending raster upload to inspect"))
+    Ok(selected)
 }
 
 impl AssetStore {
@@ -98,9 +99,13 @@ impl AssetStore {
     }
 
     fn observe_pending_upload(&self) -> Result<PendingRasterUpload> {
+        self.inspect_pending_upload()?.ok_or(Error::Contract("no pending raster upload to inspect"))
+    }
+
+    pub(crate) fn inspect_pending_upload(&self) -> Result<Option<PendingRasterUpload>> {
         self.ready()?;
         backup::guard_recovered_lock(&self.root, &self.lock)?;
-        let file_name = pending_name(&self.root)?;
+        let Some(file_name) = pending_name(&self.root)? else { return Ok(None) };
         let path = self.root.join(&file_name);
         if !fs::symlink_metadata(&path)?.is_file() {
             return Err(Error::Contract("pending raster source file type"));
@@ -134,7 +139,7 @@ impl AssetStore {
             &published_asset,
         ))?;
         let selection_sha256 = Sha256::digest(&selection).into();
-        Ok(PendingRasterUpload {
+        Ok(Some(PendingRasterUpload {
             file_name,
             bytes,
             evidence_sha256,
@@ -144,7 +149,7 @@ impl AssetStore {
             identity,
             stamp,
             links: link_count,
-        })
+        }))
     }
 
     fn pending_publication(
@@ -166,6 +171,11 @@ impl AssetStore {
             }
         }
         Err(Error::Contract("pending raster upload has unrelated links"))
+    }
+
+    pub(crate) fn sync_retired_upload(&self) -> Result<()> {
+        self.prepare_backup_stream()?.check()?;
+        sync_directory(&self.root)
     }
 
     pub(crate) fn retire_pending_upload(&mut self, selected: &PendingRasterUpload) -> Result<()> {

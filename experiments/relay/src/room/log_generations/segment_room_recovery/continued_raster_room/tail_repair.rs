@@ -17,7 +17,8 @@ impl ContinuedRasterRoomBackupFiles {
         selected: &RecoveredContinuedRasterRoomIdentity,
         floor: &RoomBackupIdentity,
     ) -> Result<RecoveredContinuedRasterRoom> {
-        let (mut target, recovery) = self.open_replayed(path, selected, true, Some(floor))?;
+        let (mut target, recovery) =
+            self.open_replayed(path, selected, super::restore::ReplayMode::NativeTail(floor))?;
         if recovery.truncated_bytes == 0 {
             target.room.log.finish_complete_recovery(recovery)?;
         }
@@ -29,11 +30,15 @@ impl RecoveredContinuedRasterRoom {
     pub(crate) fn native_tail_cut(
         &self,
     ) -> Result<(SelectedNativeTailPrefix, AssetBackupIdentity)> {
-        self.directory.guard()?;
-        super::restore::check_completion(&self.directory, &self.identity)?;
-        let native = self.room.log.select_native_tail_prefix()?;
+        let native = self.native_recovery_prefix()?;
         let assets = self.assets.active_backup_identity()?;
         Ok((native, assets))
+    }
+
+    pub(super) fn native_recovery_prefix(&self) -> Result<SelectedNativeTailPrefix> {
+        self.directory.guard()?;
+        super::restore::check_completion(&self.directory, &self.identity)?;
+        self.room.log.select_native_tail_prefix()
     }
 
     pub(crate) fn native_incomplete_suffix(&mut self) -> Result<Vec<u8>> {
@@ -45,9 +50,18 @@ impl RecoveredContinuedRasterRoom {
     }
 
     pub(crate) fn preserve_native_suffix(&self, destination: &Path, suffix: &[u8]) -> Result<()> {
+        self.preserve_recovery_evidence(destination, &[("suffix.bin", suffix)])
+    }
+
+    pub(super) fn preserve_recovery_evidence(
+        &self,
+        destination: &Path,
+        files: &[(&str, &[u8])],
+    ) -> Result<()> {
         let evidence = self.directory.create_outside(destination)?;
-        let file = evidence.create_file("suffix.bin", suffix)?;
-        file.sync_all()?;
+        for (name, bytes) in files {
+            evidence.create_file(name, bytes)?.sync_all()?;
+        }
         evidence.sync()?;
         evidence.guard()
     }

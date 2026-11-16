@@ -9,7 +9,12 @@ pub use native_tail::{
     ContinuedRasterNativeTailInspection, ContinuedRasterNativeTailOutcome,
     ContinuedRasterNativeTailPlan, ContinuedRasterNativeTailRepair,
 };
+mod raster_repair;
 mod reconcile;
+pub use raster_repair::{
+    ContinuedRasterUploadInspection, ContinuedRasterUploadPlan, ContinuedRasterUploadRepair,
+    ContinuedRasterUploadRepairOutcome,
+};
 pub use reconcile::ContinuedRasterRoomInputReport;
 mod seal;
 pub use seal::{ContinuedRasterSeal, ContinuedRasterSealing, SealedContinuedRasterActivation};

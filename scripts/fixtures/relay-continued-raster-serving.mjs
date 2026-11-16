@@ -2,7 +2,7 @@
 import assert from 'node:assert/strict';
 import {execFileSync} from 'node:child_process';
 import {createHash} from 'node:crypto';
-import {closeSync, cpSync, fsyncSync, mkdirSync, openSync, readFileSync, readdirSync, renameSync, unlinkSync, writeFileSync} from 'node:fs';
+import {closeSync, cpSync, fsyncSync, linkSync, mkdirSync, openSync, readFileSync, readdirSync, renameSync, statSync, unlinkSync, writeFileSync} from 'node:fs';
 import {join} from 'node:path';
 import {pixel, pixelAsset, proposalAsset, proposalPixel, secondAsset, secondPixel} from './review-assets/pixels.mjs';
 import {unavailableAsset} from './physical-recovery-control/unavailable-upload.mjs';
@@ -221,6 +221,7 @@ export async function verifyContinuedRasterServing(api, rich, wasm, executable, 
 
     saveExpected(firstServing);
     verifyNativeTailRepair({parent, activation, invoke, floor: floor.result, floorPath});
+    verifyPendingRasterRepair({parent, activation, invoke});
     host = await startApproved();
     assert.equal(BigInt(newEpoch(firstServing).generation), BigInt(firstServing.generation) + 1n);
     const coldReader = await api.registerSharedRelayWriter(options);
@@ -243,6 +244,8 @@ export async function verifyContinuedRasterServing(api, rich, wasm, executable, 
         postActivationRasterAndEditSurvived: true, exactRastersRead: 4, portableSealAndRelocation: true, changedClientOriginalRefused: true},
       explicitTailRepair: {preservedIncompleteBytes: 9, acceptedFloorGuarded: true,
         changedSuffixRefused: true, coldRepairRetrySucceeded: true, pendingRasterEvidencePreserved: true},
+      interruptedRasterRepair: {unpublishedBytesPreserved: true, publishedInodePreserved: true,
+        nativeTailAndRasterRepairedTogether: true, changedEvidenceRefused: true, retryResynced: true},
     };
   } finally {
     if (sync) {
@@ -418,4 +421,65 @@ function verifyNativeTailRepair({parent, activation, invoke, floor, floorPath}) 
   assert.equal(invoke(parent, 'continued-raster-repair-tail'), 'alreadyComplete');
   assert.deepEqual(readFileSync(evidence), suffix);
   assert.deepEqual(JSON.parse(readFileSync(floorPath, 'utf8')), floor);
+}
+
+function verifyPendingRasterRepair({parent, activation, invoke}) {
+  const prepared = join(activation, 'prepared');
+  const active = join(prepared, 'rasters', 'active');
+  const staged = join(active, '.pending-' + 'b'.repeat(64));
+  const otherStage = join(active, '.pending-' + 'c'.repeat(64));
+  const refused = (mode, reason) => assert.throws(() => invoke(parent, mode),
+    error => error.status === 1 && error.stderr.includes(reason));
+  const call = action => invoke(parent, 'continued-raster-' + action);
+  const partial = Buffer.from('partial unpublished raster bytes');
+  writeFileSync(staged, partial, {flag: 'wx', mode: 0o600});
+  refused('continued-raster-activated', 'operational asset has pending work');
+  assert.deepEqual(readFileSync(staged), partial);
+  assert.deepEqual(call('inspect-upload'), {publishedAsset: null, incompleteNativeBytes: 0});
+  const unpublishedEvidence = join(parent, 'upload-evidence', 'raster.bin');
+  assert.deepEqual(readFileSync(unpublishedEvidence), partial);
+  writeFileSync(otherStage, '', {flag: 'wx', mode: 0o600});
+  refused('continued-raster-repair-upload', 'multiple pending raster uploads');
+  assert.deepEqual(readFileSync(staged), partial);
+  assert.equal(statSync(otherStage).size, 0);
+  unlinkSync(otherStage);
+  assert.equal(call('repair-upload'), 'repaired');
+  assert.throws(() => statSync(staged), {code: 'ENOENT'});
+  assert.equal(call('repair-upload'), 'alreadyComplete');
+  assert.deepEqual(readFileSync(unpublishedEvidence), partial);
+
+  const native = join(prepared, 'native');
+  const logs = readdirSync(native).filter(name => name.endsWith('.wal'));
+  assert.equal(logs.length, 1);
+  const wal = join(native, logs[0]);
+  const accepted = readFileSync(wal);
+  assert.ok(accepted.length > 9);
+  const suffix = accepted.subarray(0, 9);
+  const torn = Buffer.concat([accepted, suffix]);
+  const published = join(active, proposalAsset.slice(7) + '.asset');
+  const record = readFileSync(published);
+  const before = statSync(published, {bigint: true});
+  const append = openSync(wal, 'a');
+  try { writeFileSync(append, suffix); fsyncSync(append); } finally { closeSync(append); }
+  linkSync(published, staged);
+
+  assert.deepEqual(call('inspect-joint'), {publishedAsset: proposalAsset, incompleteNativeBytes: suffix.length});
+  const evidence = join(parent, 'joint-evidence', 'raster.bin');
+  assert.deepEqual(readFileSync(evidence), record);
+  assert.deepEqual(readFileSync(join(parent, 'joint-evidence', 'suffix.bin')), suffix);
+  const changed = Buffer.from(record);
+  changed[changed.length - 1] ^= 1;
+  writeFileSync(evidence, changed);
+  refused('continued-raster-repair-joint', 'continued upload recovery evidence differs');
+  assert.deepEqual(readFileSync(wal), torn);
+  assert.deepEqual(readFileSync(staged), record);
+  writeFileSync(evidence, record);
+  assert.equal(call('repair-joint'), 'repaired');
+  assert.equal(call('repair-joint'), 'alreadyComplete');
+  assert.deepEqual(readFileSync(wal), accepted);
+  assert.throws(() => statSync(staged), {code: 'ENOENT'});
+  const after = statSync(published, {bigint: true});
+  assert.deepEqual([after.dev, after.ino], [before.dev, before.ino]);
+  assert.deepEqual(readFileSync(published), record);
+  assert.deepEqual(readFileSync(evidence), record);
 }
