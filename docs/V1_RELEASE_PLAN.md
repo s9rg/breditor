@@ -2,6 +2,21 @@
 
 ## November 16 collaboration recovery
 
+[Unserved combined room restore](qualification/2026-11-16-continued-raster-restore.json)
+admits the native archive and checkpoint with both continued raster archives
+against the independent capture selection. It preserves the accepted native
+cut and retains the exact selected client originals. A separate completion
+pin permits cold reopening without advancing the source epoch. The full-store
+test refuses mixed archive files, a wrong local pin and an incomplete WAL
+without changing the target's bytes. Linked native capture requires its exact
+parent. Source and clean-installed clients inspect the restored document and
+both images after a separate process starts. The retained journal can still
+Redo the offline Undo, and its original upload archive retains a pending
+payload and the earlier receipt. All 78 focused Rust tests, 69 candidate-plan
+tests, and the existing carried-alternate workflow pass. Authenticated
+takeover still needs complete client and provider reconciliation across both
+raster generations.
+
 [Fenced continued-raster serving](qualification/2026-11-16-continued-raster-serving.json)
 connects the native continuation to the original authenticated HTTP and
 WebSocket asset capability. A room with 1,024 predecessor images serves
