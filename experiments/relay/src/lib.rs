@@ -105,8 +105,9 @@ pub use room::{
 pub use room::{
     ServerNativeBoundaryAppend, ServerNativeHistoryBoundary, ServerNativeHistoryCapacity,
     ServerNativeHistoryDescriptor, ServerNativeHistoryFamily, ServerNativeHistoryLane,
-    ServerNativeHistoryPlan, ServerNativeHistoryReceipt, ServerNativeHistorySelection,
-    ServerNativeLaneCapacity,
+    ServerNativeHistoryPlan, ServerNativeHistoryReceipt, ServerNativeHistoryReserve,
+    ServerNativeHistoryReserveOutcome, ServerNativeHistoryReserveRequest,
+    ServerNativeHistorySelection, ServerNativeLaneCapacity,
 };
 pub use room::{ServerRasterStorageCapacity, ServerRoomStorageCapacity};
 

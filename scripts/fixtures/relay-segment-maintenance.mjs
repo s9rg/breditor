@@ -3,6 +3,14 @@ import assert from 'node:assert/strict';
 
 const native = (lane, boundary) => ({kind: 'boundary', lane, boundary});
 const preview = intent => ({...intent, kind: 'prepareBoundary'});
+const planReserve = ({lane, boundary}) => ({
+  kind: 'planReserve',
+  request: {lane, next: boundary.next, reserve: {
+    checkpointBytes: 64 * 1024 * 1024,
+    generationFiles: 64,
+    ...(lane === 'review' && {retainedReviewEvents: 65536}),
+  }},
+});
 const apply = selection => ({kind: 'applyPreparedBoundary', selection});
 const resolve = selection => ({kind: 'resolveBoundary', selection});
 const describe = {kind: 'describe'};
@@ -43,6 +51,25 @@ function advancedLane(before, after) {
   assert.equal(after.redoItems, before.redoItems);
 }
 
+async function selectContinuation(host, token, intent) {
+  const requested = planReserve(intent);
+  const outcome = await accepted(host, token, requested);
+  assert.equal(outcome.kind, 'boundary');
+  const {plan} = outcome;
+  assert.equal(plan.selection.lane, intent.lane);
+  assert.deepEqual(plan.selection.boundary, intent.boundary);
+  const owners = intent.lane === 'document'
+    ? [plan.capacityAfter.document, plan.capacityAfter.suggestionEffect]
+    : [plan.capacityAfter.review];
+  for (const owner of owners) {
+    for (const [resource, floor] of Object.entries(requested.request.reserve)) {
+      const charge = owner[resource === 'retainedReviewEvents' ? 'retainedEvents' : resource];
+      assert.ok(charge.limit - charge.used >= floor, resource);
+    }
+  }
+  return plan;
+}
+
 export async function advanceRelocatedHistories(host, token, readerToken) {
   const before = await accepted(host, token, capacity);
   const beforeNative = await readNativeHistoryCapacity(host, token);
@@ -58,6 +85,8 @@ export async function advanceRelocatedHistories(host, token, readerToken) {
   assert.deepEqual(await host.maintenance('reader', readerToken, nativeCapacity), denied);
   assert.deepEqual(await host.maintenance('owner', readerToken, nativeCapacity), denied);
   assert.deepEqual(await host.maintenance('reader', readerToken, preview(intents[0])), denied);
+  assert.deepEqual(await host.maintenance('reader', readerToken, planReserve(intents[0])), denied);
+  assert.deepEqual(await host.maintenance('owner', readerToken, planReserve(intents[1])), denied);
   const descriptor = await accepted(host, readerToken, describe, 'reader');
   assert.equal(descriptor.document, 'segmented-v1');
   assert.equal(descriptor.review, 'segmented-v1');
@@ -68,12 +97,12 @@ export async function advanceRelocatedHistories(host, token, readerToken) {
   ];
   const receipts = [];
   const selections = [];
-  const staleReview = await accepted(host, token, preview(intents[1]));
+  const staleReview = await selectContinuation(host, token, intents[1]);
   assert.deepEqual(staleReview.capacityBefore, beforeNative);
   let expectedNative = beforeNative;
   for (const [index, intent] of intents.entries()) {
     const beforeAppend = await accepted(host, token, capacity);
-    const plan = await accepted(host, token, preview(intent));
+    const plan = await selectContinuation(host, token, intent);
     assert.deepEqual(plan.capacityBefore, expectedNative);
     assert.deepEqual(plan.selection.source.terminalLogDigest, beforeAppend.log.terminalDigest);
     assert.equal(String(plan.selection.source.records), beforeAppend.log.nextSequence);
@@ -95,6 +124,9 @@ export async function advanceRelocatedHistories(host, token, readerToken) {
     assert.deepEqual([families.document, families.review], expectedFamilies[index]);
     const observedNative = await readNativeHistoryCapacity(host, token);
     assert.deepEqual(observedNative, plan.capacityAfter);
+    const sufficient = await accepted(host, token, planReserve(intent));
+    assert.equal(sufficient.kind, 'sufficient');
+    assert.deepEqual(sufficient.capacity, observedNative);
     const afterAppend = await accepted(host, token, capacity);
     assert.equal(afterAppend.log.active.framedBytesRemaining,
       beforeAppend.log.active.framedBytesRemaining - plan.selection.append.framedBytes);
@@ -131,6 +163,14 @@ export async function advanceRelocatedHistories(host, token, readerToken) {
   assert.equal(continued.log.nextSequence, String(BigInt(before.log.nextSequence) + BigInt(intents.length)));
   assert.equal(continued.log.rotation.continuationFilesRemaining, before.log.rotation.continuationFilesRemaining);
   assert.equal(continued.log.rotation.canRotate, true);
+  const exhausted = planReserve(intents[0]);
+  exhausted.request.reserve.generationFiles = 256;
+  const unavailable = await accepted(host, token, exhausted);
+  assert.equal(unavailable.kind, 'unavailable');
+  assert.deepEqual(unavailable.capacity, expectedNative);
+  assert.equal(String(unavailable.source.records), continued.log.nextSequence);
+  assert.deepEqual(unavailable.source.terminalLogDigest, continued.log.terminalDigest);
+  assert.deepEqual(await accepted(host, token, capacity), continued);
   const rotation = await accepted(host, token, rotate);
   assert.equal(rotation.generation, rotate.next);
   assert.equal(rotation.duplicate, false);
@@ -167,6 +207,10 @@ export async function verifyRelocatedMaintenanceRetries(host, token, state, nati
     assert.deepEqual(await accepted(host, token, resolve(state.selections[index])),
       {...state.receipts[index], duplicate: true});
     assert.deepEqual(await accepted(host, token, intent), {...state.receipts[index], duplicate: true});
+    const sufficient = await accepted(host, token, planReserve(intent));
+    assert.equal(sufficient.kind, 'sufficient');
+    assert.deepEqual(sufficient.capacity, nativeBeforeCrash);
+    assert.equal(String(sufficient.source.records), before.log.nextSequence);
   }
   assert.deepEqual(await accepted(host, token, rotate), {...state.rotation, duplicate: true});
   assert.deepEqual(await accepted(host, token, pack), state.packed);
@@ -178,7 +222,7 @@ export async function verifyRelocatedMaintenanceRetries(host, token, state, nati
     nativeHistoryColdRetries: state.intents.length,
     physicalWalRotations: 1,
     physicalWalColdRetries: 1,
-    deniedMaintenanceRequests: 7,
+    deniedMaintenanceRequests: 9,
     deniedNativeCapacityRequests: 2,
     nativeCapacityMatchesColdRestart: true,
     reportedNativeCapacityLanes: 3,
@@ -186,6 +230,10 @@ export async function verifyRelocatedMaintenanceRetries(host, token, state, nati
     preparedNativeBoundariesResolvedAfterRestart: state.selections.length,
     stalePreparedBoundaryRefusals: 1,
     deniedPreparedBoundaryRequests: 3,
+    reserveSelectedNativeBoundaries: state.selections.length,
+    reserveSatisfiedAfterColdRestart: state.selections.length,
+    reserveUnavailableAtFiniteLimit: true,
+    deniedReserveRequests: 2,
     retainedLiveClientSockets: 2,
     relocatedSealedWalPacks: 1,
     relocatedSealedWalArchives: 1,

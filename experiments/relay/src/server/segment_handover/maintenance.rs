@@ -2,12 +2,27 @@
 use crate::{
     Error, Result, Room, ServerLogGenerationReceipt, ServerNativeHistoryBoundary,
     ServerNativeHistoryCapacity, ServerNativeHistoryDescriptor, ServerNativeHistoryLane,
-    ServerNativeHistoryPlan, ServerNativeHistoryReceipt, ServerNativeHistorySelection,
-    ServerRoomStorageCapacity,
+    ServerNativeHistoryPlan, ServerNativeHistoryReceipt, ServerNativeHistoryReserveOutcome,
+    ServerNativeHistoryReserveRequest, ServerNativeHistorySelection, ServerRoomStorageCapacity,
     server::{Host, ServerBackupHandle, deployment_fence},
 };
 
 impl ServerBackupHandle {
+    /// Plan one native history boundary to meet the requested reserve at the fenced cut.
+    /// # Errors
+    /// Refuses invalid owner credentials, stale service, uncertain custody or invalid requests.
+    pub async fn plan_native_history_reserve(
+        &self,
+        principal: &str,
+        token: &str,
+        request: ServerNativeHistoryReserveRequest,
+    ) -> Result<ServerNativeHistoryReserveOutcome> {
+        self.maintain(principal, token, move |_, room, principal| {
+            room.plan_native_history_reserve(principal, request)
+        })
+        .await
+    }
+
     /// Preview a native boundary on the currently fenced room and its actual WAL.
     /// # Errors
     /// Refuses non-owner credentials, stale service, uncertain custody or an inadmissible boundary.

@@ -73,23 +73,22 @@ impl Room {
             &prepared.candidate,
             &boundary,
         )?;
-        if self.native_history_append_cut()? != source {
-            return Err(Error::Contract("native history selection is stale"));
-        }
+        self.check_native_history_append_cut(&source)?;
         Ok(ServerNativeHistoryPlan {
-            selection: ServerNativeHistorySelection {
-                format: FORMAT.into(),
-                format_version: 1,
-                source,
-                lane,
-                boundary,
-                before: prepared.before,
-                after: prepared.after,
-                append,
-            },
+            selection: select_boundary(source, lane, boundary, &prepared, append),
             capacity_before,
             capacity_after,
         })
+    }
+
+    pub(super) fn check_native_history_append_cut(
+        &self,
+        source: &RoomBackupIdentity,
+    ) -> Result<()> {
+        if &self.native_history_append_cut()? != source {
+            return Err(Error::Contract("native history selection is stale"));
+        }
+        Ok(())
     }
 
     pub(super) fn check_native_selection(
@@ -137,5 +136,24 @@ impl Room {
             return Err(Error::Contract("native history boundary already durable"));
         }
         self.prepare_new_native_history(lane, boundary)
+    }
+}
+
+pub(super) fn select_boundary(
+    source: RoomBackupIdentity,
+    lane: ServerNativeHistoryLane,
+    boundary: NativeHistoryBoundary,
+    prepared: &PreparedNativeHistory,
+    append: ServerNativeBoundaryAppend,
+) -> ServerNativeHistorySelection {
+    ServerNativeHistorySelection {
+        format: FORMAT.into(),
+        format_version: 1,
+        source,
+        lane,
+        boundary,
+        before: prepared.before,
+        after: prepared.after,
+        append,
     }
 }

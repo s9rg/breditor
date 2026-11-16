@@ -10,10 +10,12 @@ mod enable_document;
 mod enable_review;
 mod lane;
 mod plan;
+mod plan_reserve;
 mod prepare;
 mod prepare_review;
 mod receipt;
 mod replay;
+mod reserve;
 mod resolve_prepared;
 mod seal_document;
 mod seal_review;
@@ -28,3 +30,7 @@ pub use descriptor::{ServerNativeHistoryDescriptor, ServerNativeHistoryFamily};
 pub use lane::ServerNativeHistoryLane;
 pub use plan::{ServerNativeBoundaryAppend, ServerNativeHistoryPlan, ServerNativeHistorySelection};
 pub use receipt::ServerNativeHistoryReceipt;
+pub use reserve::{
+    ServerNativeHistoryReserve, ServerNativeHistoryReserveOutcome,
+    ServerNativeHistoryReserveRequest,
+};

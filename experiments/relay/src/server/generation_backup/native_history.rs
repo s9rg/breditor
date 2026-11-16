@@ -2,11 +2,26 @@
 use super::LogGenerationServerBackupHandle;
 use crate::{
     Error, Result, ServerNativeHistoryBoundary, ServerNativeHistoryLane, ServerNativeHistoryPlan,
-    ServerNativeHistoryReceipt, ServerNativeHistorySelection,
+    ServerNativeHistoryReceipt, ServerNativeHistoryReserveOutcome,
+    ServerNativeHistoryReserveRequest, ServerNativeHistorySelection,
     server::{ServerBackupHandle, deployment_fence},
 };
 
 impl LogGenerationServerBackupHandle {
+    /// Plan one native history boundary to meet the requested reserve at the fenced cut.
+    /// # Errors
+    /// Refuses invalid owner credentials, stale service, uncertain custody or invalid requests.
+    pub async fn plan_native_history_reserve(
+        &self,
+        principal: &str,
+        token: &str,
+        request: ServerNativeHistoryReserveRequest,
+    ) -> Result<ServerNativeHistoryReserveOutcome> {
+        ServerBackupHandle { host: self.host.clone() }
+            .plan_native_history_reserve(principal, token, request)
+            .await
+    }
+
     /// Preview a native boundary on this currently fenced generation source.
     /// # Errors
     /// Refuses invalid owner credentials, stale service, uncertain custody or native/WAL limits.

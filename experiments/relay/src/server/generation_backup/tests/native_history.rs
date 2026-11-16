@@ -4,8 +4,9 @@ use super::{
 };
 use crate::{
     Room, ServerNativeHistoryBoundary as Boundary, ServerNativeHistoryFamily as Family,
-    ServerNativeHistoryLane as Lane, assets::AssetStore,
-    server::router_with_log_generation_backups_and_deployment_lease,
+    ServerNativeHistoryLane as Lane, ServerNativeHistoryReserve as Reserve,
+    ServerNativeHistoryReserveOutcome as Outcome, ServerNativeHistoryReserveRequest as Request,
+    assets::AssetStore, server::router_with_log_generation_backups_and_deployment_lease,
 };
 
 #[tokio::test(flavor = "multi_thread", worker_threads = 2)]
@@ -37,7 +38,17 @@ async fn fenced_source_history_maintenance_retains_the_original_receipt_and_refu
     assert_eq!(native_before.review.ok_or("review capacity")?.family, Family::Original);
     assert_eq!(native_before.suggestion_effect, None);
     assert_eq!(native_before.boundary_records.limit, 128);
+    let reserve = Request {
+        lane: Lane::Document,
+        next: "continued".into(),
+        original_root: None,
+        reserve: Reserve { generation_files: 64, ..Reserve::default() },
+    };
     for (principal, token) in [("owner", &reader), ("reader", &reader)] {
+        assert!(matches!(
+            handle.plan_native_history_reserve(principal, token, reserve.clone()).await,
+            Err(Error::Permission)
+        ));
         assert!(matches!(
             handle.native_history_capacity(principal, token).await,
             Err(Error::Permission)
@@ -56,6 +67,12 @@ async fn fenced_source_history_maintenance_retains_the_original_receipt_and_refu
     let plan = handle
         .prepare_native_history_boundary("owner", &owner, Lane::Document, continuation.clone())
         .await?;
+    let Outcome::Boundary { plan: planned } =
+        handle.plan_native_history_reserve("owner", &owner, reserve.clone()).await?
+    else {
+        return Err("expected a continued reserve".into());
+    };
+    assert_eq!(*planned, plan);
     assert!(matches!(
         handle
             .apply_prepared_native_history_boundary("reader", &reader, plan.selection.clone())
@@ -83,7 +100,15 @@ async fn fenced_source_history_maintenance_retains_the_original_receipt_and_refu
     assert_eq!(handle.storage_capacity("owner", &owner).await?.log, after);
     assert_eq!(handle.native_history_capacity("owner", &owner).await?, native_after);
 
+    assert!(matches!(
+        handle.plan_native_history_reserve("owner", &owner, reserve.clone()).await?,
+        Outcome::Sufficient { capacity, .. } if *capacity == native_after
+    ));
     authority.claim(&lease.selection())?.close();
+    assert!(matches!(
+        handle.plan_native_history_reserve("owner", &owner, reserve).await,
+        Err(Error::Lease)
+    ));
     assert!(matches!(
         handle.resolve_native_history_boundary("owner", &owner, plan.selection.clone()).await,
         Err(Error::Lease)

@@ -26,6 +26,7 @@ mod durability;
 mod effects;
 mod owned_effects;
 mod prepared;
+mod reserve;
 mod workflows;
 
 type TestResult<T = ()> = std::result::Result<T, Box<dyn std::error::Error>>;

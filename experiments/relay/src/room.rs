@@ -86,8 +86,9 @@ pub(crate) use native_history::NativeHistoryBoundary;
 pub use native_history::{
     ServerNativeBoundaryAppend, ServerNativeHistoryBoundary, ServerNativeHistoryCapacity,
     ServerNativeHistoryDescriptor, ServerNativeHistoryFamily, ServerNativeHistoryLane,
-    ServerNativeHistoryPlan, ServerNativeHistoryReceipt, ServerNativeHistorySelection,
-    ServerNativeLaneCapacity,
+    ServerNativeHistoryPlan, ServerNativeHistoryReceipt, ServerNativeHistoryReserve,
+    ServerNativeHistoryReserveOutcome, ServerNativeHistoryReserveRequest,
+    ServerNativeHistorySelection, ServerNativeLaneCapacity,
 };
 pub use participant_inventory::{
     MAX_ROOM_PARTICIPANT_INVENTORY_BYTES, MissingRecoveryRegistration, RecoveryAccount,

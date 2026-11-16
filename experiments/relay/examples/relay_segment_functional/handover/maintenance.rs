@@ -2,7 +2,7 @@
 use super::{POLICY, Result, next_input, read, storage};
 use breditor_collab_relay::{
     RelayCheckpoint, RelayCheckpointIdentity, ServerNativeHistoryBoundary, ServerNativeHistoryLane,
-    ServerNativeHistorySelection,
+    ServerNativeHistoryReserveRequest, ServerNativeHistorySelection,
     server::{RelaySegmentRetainedBackup, ServerBackupHandle},
 };
 use serde::Deserialize;
@@ -27,6 +27,7 @@ enum Action {
     Capacity,
     NativeCapacity,
     Boundary { lane: ServerNativeHistoryLane, boundary: ServerNativeHistoryBoundary },
+    PlanReserve { request: ServerNativeHistoryReserveRequest },
     PrepareBoundary { lane: ServerNativeHistoryLane, boundary: ServerNativeHistoryBoundary },
     ApplyPreparedBoundary { selection: Box<ServerNativeHistorySelection> },
     ResolveBoundary { selection: Box<ServerNativeHistorySelection> },
@@ -52,6 +53,9 @@ impl Command {
             }
             Action::Boundary { lane, boundary } => serde_json::to_value(
                 handle.apply_native_history_boundary(&principal, &token, lane, boundary).await?,
+            )?,
+            Action::PlanReserve { request } => serde_json::to_value(
+                handle.plan_native_history_reserve(&principal, &token, request).await?,
             )?,
             Action::PrepareBoundary { lane, boundary } => serde_json::to_value(
                 handle.prepare_native_history_boundary(&principal, &token, lane, boundary).await?,

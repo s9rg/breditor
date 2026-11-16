@@ -197,6 +197,33 @@ after subsequent writes or cold recovery and issues no append. Prepared
 selections are detached values and each call authenticates independently.
 The ordinary boundary methods still support their original exact-intent retry.
 
+### Plan for a minimum reserve
+
+An owner can call `plan_native_history_reserve` on the exclusive room or its
+fenced source or relocated handle. The request selects a native lane, a
+lifetime-new successor ID to use if needed, and one or more minimum amounts
+of free capacity. The caller can specify active input count, active bytes,
+complete checkpoint bytes, generation slots, room-wide boundary receipt slots
+and, for review, total retained event allowance. Zero omits that floor.
+Document floors apply independently to the receiver and its private
+suggestion-effect author whenever enabled.
+
+The read-only outcome is `sufficient` at the observed cut, `boundary` with a
+guarded selection that meets every floor in its exact projection, or
+`unavailable` with the current cut and usage. For original history, supply
+`originalRoot` to consider enabling generations. For segmented history, an
+ordinary seal is preferred when it meets every floor. A V1 lane may instead
+continue into the larger V2 archive. A V2 lane can only seal. An empty
+receiver cannot seal, and a seal leaves an idle private effect author intact.
+The planner checks the actual staged bytes and native limits, including the
+new boundary receipt, then preflights the WAL for any proposed selection.
+Identity, integrity and WAL errors use the existing refusal paths.
+
+Apply still requires an explicit guarded application against the selected
+cut. One reserve request considers one boundary on one lane. Reserve values
+describe free capacity in the requested units, and separate WAL, raster, and
+client journal limits still apply to future writes.
+
 Server-log generations, matching client/relay negotiation, complete asset and
 outbox dependency closure, historic-copy decisions, coordinated recovery and
 authenticated room activation remain separate architectural requirements.
