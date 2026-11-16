@@ -2,6 +2,16 @@
 
 ## November 16 collaboration recovery
 
+[Handoff at the exact WAL record ceiling](qualification/2026-11-16-full-wal-handoff.json)
+fills all 64 physical slots and the 4,096 records in the last active file.
+The predecessor refuses a new edit and a native history boundary, preserves
+its WAL bytes and original receipt, and cold-reopens at the same cut. The
+linked successor accepts the same pending edit at the next original sequence
+and preserves Undo/Redo across restart. Source and clean-installed workflows
+deliver offline edits and comments after that handoff under the
+160-descriptor predecessor limit. The later portable activation retains
+review packets and raster data. All 46 focused relay tests pass.
+
 [Native history reserve planning](qualification/2026-11-16-native-history-reserve.json)
 lets an owner choose a minimum amount of free capacity before staging a
 boundary. It prefers a seal when the exact projection meets every floor and

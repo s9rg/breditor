@@ -586,6 +586,17 @@ absolute sequence, digest, receipt, canonical backup and append semantics
 continue across the base. Pending rotation and incomplete tails require their
 existing explicit recovery actions.
 
+The [exact record-ceiling drill](qualification/2026-11-16-full-wal-handoff.json)
+fills every physical slot and all 4,096 records in the last active WAL.
+When both retained record headroom and available rotation slots reach zero,
+new edit and boundary writes refuse. The room still serves the exact
+accepted state and original receipts. The owner can capture the base at that
+cut and continue into a fresh linked segment. Its first WAL record uses the
+predecessor's next absolute sequence. In the drill, the same pending edit
+is accepted there, and its original author can Undo and Redo across cold
+recovery. Leave pending SDK work in its original journal and resume under
+the original registration after the host selects and opens the successor.
+
 A future writable segment needs a durable selection of this base before
 opening its suffix at the exact absolute sequence and frame digest. Its
 retained proof must continue to serve exact old receipt and packet reads,
