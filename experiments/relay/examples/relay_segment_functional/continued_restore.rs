@@ -29,6 +29,8 @@ struct Originals {
     staged: Vec<String>,
     #[serde(default)]
     approve: bool,
+    #[serde(default)]
+    rollover: bool,
     generation: Option<String>,
 }
 
@@ -57,7 +59,14 @@ pub(super) fn run(parent: &Path, reopen: bool) -> Result {
             alternatives: &[],
         };
         let generation = original.generation.as_deref().unwrap_or("continued-portable-next");
-        let target = if original.staged.is_empty() {
+        let target = if original.rollover {
+            files.restore_rolling_raster_generation(
+                &destination,
+                generation,
+                inputs,
+                &original.staged,
+            )?
+        } else if original.staged.is_empty() {
             files.restore(&destination, generation, inputs)?
         } else {
             files.restore_staging_client_rasters(
@@ -86,6 +95,7 @@ pub(super) fn run(parent: &Path, reopen: bool) -> Result {
         })
         .collect::<Result<Vec<_>>>()?;
     assert_eq!(target.staged_rasters(), original.staged);
+    assert_eq!(target.rolled_raster_generation(), original.rollover);
     assert!(target.asset(&original.deferred)?.is_none());
     let staged_bytes = target.asset(&original.queued)?.map(|asset| asset.bytes);
     assert_eq!(staged_bytes.is_some(), original.staged.contains(&original.queued));

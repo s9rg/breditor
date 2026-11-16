@@ -1,23 +1,24 @@
-//! Explicit continuation of one original raster archive into a fresh bounded active generation.
+//! Continue exact retained raster archives in a fresh bounded writable generation.
 mod archive;
 mod backup;
 #[cfg(feature = "server")]
 pub(super) use backup::ContinuedAssetBackupFiles;
+mod lineage;
 mod open;
 mod operations;
 #[cfg(feature = "server")]
 mod pending_upload;
+mod retained;
 #[cfg(feature = "server")]
 mod staged_cut;
 #[cfg(test)]
 mod tests;
 
-use self::archive::AssetArchive;
+use self::{archive::AssetArchive, lineage::Lineage, retained::RetainedArchives};
 use super::server_recovery::{raster_directory::RasterCustody, selection::RasterWitness};
 use crate::{
-    Result,
     archive_input::ArchiveInput,
-    assets::{AssetBackupIdentity, AssetStore, asset_id},
+    assets::{AssetBackupIdentity, AssetStore},
     log::generations::{GenerationDirectory, GenerationDirectoryWitness, GenerationFileWitness},
 };
 use serde::{Deserialize, Serialize};
@@ -26,21 +27,6 @@ const FORMAT: &str = "breditor/relay-continued-assets";
 const CONTROL: &str = "asset-continuation.json";
 const ARCHIVE: &str = "predecessor.rasset";
 const ACTIVE: &str = "active";
-const MAX_CONTROL: u64 = 4096;
-
-#[derive(Clone, Debug, Eq, PartialEq, Serialize, Deserialize)]
-#[serde(rename_all = "camelCase", deny_unknown_fields)]
-struct Lineage {
-    predecessor: AssetBackupIdentity,
-    namespace: String,
-}
-
-impl Lineage {
-    fn active_binding(&self) -> Result<String> {
-        crate::credentials::hash(&self.namespace)?;
-        Ok(asset_id(&serde_json::to_vec(&(FORMAT, 1_u32, self))?))
-    }
-}
 
 /// Exact local continuation selection. Save it independently of the selected directory.
 #[derive(Clone, Debug, Eq, PartialEq, Serialize, Deserialize)]
@@ -54,7 +40,7 @@ pub struct ContinuedAssetStoreIdentity {
     archive: GenerationFileWitness,
 }
 
-/// Independently selected predecessor and active archives for portable raster continuation restore.
+/// Independently selected retained and active archives for portable raster continuation restore.
 #[derive(Clone, Debug, Eq, PartialEq, Serialize, Deserialize)]
 #[serde(rename_all = "camelCase", deny_unknown_fields)]
 pub struct ContinuedAssetBackupIdentity {
@@ -78,13 +64,13 @@ impl ContinuedAssetBackupIdentity {
     }
 }
 
-/// One immutable original raster archive and one separate writable, bounded active generation.
+/// Immutable raster archives and one separate writable, bounded active generation.
 pub struct ContinuedAssetStore {
     directory: GenerationDirectory,
     identity: ContinuedAssetStoreIdentity,
     control: ArchiveInput,
     control_witness: GenerationFileWitness,
-    retained: AssetArchive,
+    retained: RetainedArchives,
     active: AssetStore,
     active_custody: RasterCustody,
 }

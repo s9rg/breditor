@@ -47,6 +47,9 @@ pub struct ContinuedRasterRoomInputReport {
     /// Exact missing raster IDs staged from client originals during restoration.
     #[serde(skip_serializing_if = "Vec::is_empty")]
     pub staged_rasters: Vec<String>,
+    /// Whether the restore seals the captured active raster archive.
+    #[serde(skip_serializing_if = "std::ops::Not::not")]
+    pub rolled_raster_generation: bool,
     /// Missing live provider mappings or complete bytes through either captured raster generation.
     pub missing_assets: Vec<ServerAssetAvailabilityMissing>,
     /// Verified generation-exact provider mappings.
@@ -113,6 +116,7 @@ impl RecoveredContinuedRasterRoom {
             client_uploads,
             missing_upload_writers,
             staged_rasters: self.staged_rasters().to_vec(),
+            rolled_raster_generation: self.rolled_raster_generation(),
             missing_assets,
             resolutions,
             assets,

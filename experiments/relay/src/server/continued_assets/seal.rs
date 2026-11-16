@@ -109,21 +109,26 @@ fn portable_input_digest(report: &ContinuedRasterRoomInputReport) -> Result<[u8;
         return Err(Error::Contract("continued raster portable inputs incomplete"));
     }
     let mut digest = ArchiveDigest::new(MAX_SERVER_ASSET_AVAILABILITY_BYTES as u64);
-    serde_json::to_writer(
-        &mut digest,
-        &(
-            "breditor/continued-raster-portable-inputs/1",
-            &report.backup,
-            &report.participants,
-            &report.references.sources,
-            &report.references.outcome,
-            &report.client_journals,
-            &report.alternate_branches,
-            &report.client_uploads,
-            &report.resolutions,
-            &report.assets,
-        ),
-    )?;
+    let inputs = (
+        "breditor/continued-raster-portable-inputs/1",
+        &report.backup,
+        &report.participants,
+        &report.references.sources,
+        &report.references.outcome,
+        &report.client_journals,
+        &report.alternate_branches,
+        &report.client_uploads,
+        &report.resolutions,
+        &report.assets,
+    );
+    if report.rolled_raster_generation {
+        serde_json::to_writer(
+            &mut digest,
+            &("breditor/continued-raster-portable-rollover/1", inputs, &report.staged_rasters),
+        )?;
+    } else {
+        serde_json::to_writer(&mut digest, &inputs)?;
+    }
     Ok(digest.finish().0)
 }
 

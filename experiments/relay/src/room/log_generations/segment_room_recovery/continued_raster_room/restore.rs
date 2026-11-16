@@ -40,20 +40,40 @@ pub(super) struct Completion {
     rasters: ContinuedAssetStoreIdentity,
     clients: ClientSelection,
     #[serde(default, skip_serializing_if = "Option::is_none")]
-    pub(super) staged: Option<StagedRasters>,
+    staged: Option<StagedRasters>,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    rollover: Option<AssetBackupIdentity>,
 }
 
 impl Completion {
     fn active_rasters(&self) -> &AssetBackupIdentity {
-        self.staged.as_ref().map_or_else(|| self.backup.rasters.active(), |staged| &staged.active)
+        self.staged
+            .as_ref()
+            .map(|staged| &staged.active)
+            .or(self.rollover.as_ref())
+            .unwrap_or_else(|| self.backup.rasters.active())
+    }
+
+    pub(super) fn staged_ids(&self) -> &[String] {
+        self.staged.as_ref().map_or(&[], |staged| staged.ids.as_slice())
     }
 
     fn matches_revision(&self) -> bool {
-        match (self.format_version, &self.staged) {
-            (1, None) => true,
-            (2, Some(staged)) => !staged.ids.is_empty(),
-            _ => false,
-        }
+        self.format_version == completion_revision(self.rollover.is_some(), self.staged.is_some())
+            && self.staged.as_ref().is_none_or(|staged| !staged.ids.is_empty())
+            && self
+                .rollover
+                .as_ref()
+                .is_none_or(|identity| identity.assets == 0 && identity.bytes == 0)
+    }
+}
+
+const fn completion_revision(rollover: bool, staged: bool) -> u32 {
+    match (rollover, staged) {
+        (false, false) => 1,
+        (false, true) => 2,
+        (true, false) => 3,
+        (true, true) => 4,
     }
 }
 
@@ -105,6 +125,34 @@ impl ContinuedRasterRoomBackupFiles {
         inputs: ContinuedRasterRoomClientArchives<'_>,
         staged_ids: &[String],
     ) -> Result<RecoveredContinuedRasterRoom> {
+        self.restore_selected(path, active_generation, inputs, staged_ids, false)
+    }
+
+    /// Seal the captured nonempty active raster archive and restore into a fresh generation.
+    /// Select any required missing raster payloads from the same independently held client inputs.
+    /// Keep the original native and raster capture, approvals and clients for the normal takeover.
+    ///
+    /// # Errors
+    /// Refuses an empty or exhausted lineage, changed inputs, invalid staging selections, reused
+    /// native IDs, occupied paths and storage failures. The fresh target remains unserved.
+    pub fn restore_rolling_raster_generation(
+        &self,
+        path: &Path,
+        active_generation: &str,
+        inputs: ContinuedRasterRoomClientArchives<'_>,
+        staged_ids: &[String],
+    ) -> Result<RecoveredContinuedRasterRoom> {
+        self.restore_selected(path, active_generation, inputs, staged_ids, true)
+    }
+
+    fn restore_selected(
+        &self,
+        path: &Path,
+        active_generation: &str,
+        inputs: ContinuedRasterRoomClientArchives<'_>,
+        staged_ids: &[String],
+        rollover: bool,
+    ) -> Result<RecoveredContinuedRasterRoom> {
         self.check()?;
         check_queued_rasters(staged_ids)?;
         self.rasters.check_new_rasters(staged_ids)?;
@@ -113,14 +161,25 @@ impl ContinuedRasterRoomBackupFiles {
         let required_sources = state.recovered_discussion_source_digests();
         let sources = ClientSources::select(&required_sources, inputs)?;
         let staged_inputs = sources.staging_sources(staged_ids)?;
-        client_rasters::check_selected(
-            &staged_inputs,
-            self.identity.rasters.active(),
-            self.rasters.active_entries(),
-        )?;
+        if rollover {
+            self.rasters.check_rollover_capacity()?;
+            client_rasters::check_fresh_selection(&staged_inputs)?;
+        } else {
+            client_rasters::check_selected(
+                &staged_inputs,
+                self.identity.rasters.active(),
+                self.rasters.active_entries(),
+            )?;
+        }
         let directory = self.directory.create_outside(path)?;
         let clients = sources.retain(&directory, &required_sources)?;
-        let mut assets = self.rasters.restore(&directory.path.join("rasters"))?;
+        let asset_path = directory.path.join("rasters");
+        let mut assets = if rollover {
+            self.rasters.rollover(&asset_path)?
+        } else {
+            self.rasters.restore(&asset_path)?
+        };
+        let rolled_active = rollover.then(|| assets.active_backup_identity()).transpose()?;
         let staged = StagedRasters::install(&mut assets, &staged_inputs)?;
         directory.guard()?;
         let (log, recovery) = Log::create_restored_segment(
@@ -134,7 +193,7 @@ impl ContinuedRasterRoomBackupFiles {
         let (room, _) = Room::replay_relay_segment(log, recovery, state, false)?;
         let completed = Completion {
             format: FORMAT.into(),
-            format_version: if staged.is_some() { 2 } else { 1 },
+            format_version: completion_revision(rollover, staged.is_some()),
             backup: self.identity.clone(),
             directory: directory.witness()?,
             native: room.log.segment_directory_witness()?,
@@ -142,6 +201,7 @@ impl ContinuedRasterRoomBackupFiles {
             rasters: assets.identity().clone(),
             clients: clients.selection(),
             staged,
+            rollover: rolled_active,
         };
         self.check_target(&room, &assets, &clients, &completed)?;
         let bytes = files::encode(&completed)?;
@@ -283,7 +343,8 @@ impl ContinuedRasterRoomBackupFiles {
     ) -> Result<()> {
         self.rasters.check_serving_prefix(
             assets,
-            completed.staged.as_ref().map_or(&[], |staged| staged.ids.as_slice()),
+            completed.staged_ids(),
+            completed.rollover.is_some(),
             pending,
         )?;
         clients.check(&room.recovered_discussion_source_digests())?;
@@ -303,12 +364,13 @@ impl ContinuedRasterRoomBackupFiles {
         {
             return Err(Error::Contract("restored continued raster room differs"));
         }
-        match &completed.staged {
-            Some(staged) => staged.verify(&self.rasters, assets)?,
-            None => {
-                assets.check_selected_cut(&self.identity.rasters, completed.active_rasters())?;
-            }
-        }
+        check_queued_rasters(completed.staged_ids())?;
+        self.rasters.check_active_extension(
+            assets,
+            completed.staged_ids(),
+            completed.rollover.is_some(),
+            completed.active_rasters(),
+        )?;
         clients.check(&room.recovered_discussion_source_digests())?;
         self.check()
     }
@@ -319,6 +381,12 @@ pub(super) fn completion_identity(bytes: &[u8]) -> RecoveredContinuedRasterRoomI
 }
 
 impl RecoveredContinuedRasterRoom {
+    /// Whether this restore seals the captured active raster generation into the retained pack.
+    #[must_use]
+    pub const fn rolled_raster_generation(&self) -> bool {
+        self.completed.rollover.is_some()
+    }
+
     pub(crate) fn check_exact_restored_cut(&self) -> Result<()> {
         self.directory.guard_witness(&self.completed.directory)?;
         check_completion(&self.directory, &self.identity)?;
@@ -328,8 +396,9 @@ impl RecoveredContinuedRasterRoom {
             return Err(Error::Contract("continued raster room completion differs"));
         }
         self.room.log.check_fresh_segment_restoration(&self.completed.active_generation)?;
-        self.assets
-            .check_selected_cut(&self.completed.backup.rasters, self.completed.active_rasters())?;
+        if self.assets.active_backup_identity()? != *self.completed.active_rasters() {
+            return Err(Error::Contract("restored continued assets advanced"));
+        }
         self.clients.check(&self.room.recovered_discussion_source_digests())?;
         self.directory.guard()
     }

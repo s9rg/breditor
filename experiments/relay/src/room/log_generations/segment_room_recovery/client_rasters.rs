@@ -73,9 +73,21 @@ pub(super) fn check_selected(
     base: &AssetBackupIdentity,
     entries: &BTreeMap<String, ArchiveEntry>,
 ) -> Result<()> {
+    check_selected_capacity(rasters, Some((base, entries)))
+}
+
+#[cfg(feature = "server")]
+pub(super) fn check_fresh_selection(rasters: &[SelectedRaster<'_>]) -> Result<()> {
+    check_selected_capacity(rasters, None)
+}
+
+fn check_selected_capacity(
+    rasters: &[SelectedRaster<'_>],
+    existing: Option<(&AssetBackupIdentity, &BTreeMap<String, ArchiveEntry>)>,
+) -> Result<()> {
     let mut assets = BTreeSet::new();
-    let mut bytes = base.bytes;
-    let mut count = base.assets;
+    let mut bytes = existing.map_or(0, |(base, _)| base.bytes);
+    let mut count = existing.map_or(0, |(base, _)| base.assets);
     if rasters.len() > MAX_ASSETS {
         return Err(Error::Contract("client raster count budget"));
     }
@@ -84,7 +96,9 @@ pub(super) fn check_selected(
         if !assets.insert(&raster.info.asset) {
             return Err(Error::Contract("duplicate client raster selection"));
         }
-        if !entries.contains_key(&format!("{}.asset", &raster.info.asset[7..])) {
+        if existing.is_none_or(|(_, entries)| {
+            !entries.contains_key(&format!("{}.asset", &raster.info.asset[7..]))
+        }) {
             count += 1;
             bytes += raster.info.bytes;
         }

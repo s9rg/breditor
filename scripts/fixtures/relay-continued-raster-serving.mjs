@@ -136,13 +136,14 @@ export async function verifyContinuedRasterServing(api, rich, wasm, executable, 
     prepareContinuedCapture({
       directory: activation, source: join(parent, 'activation-capture'), parent,
       capture: captured.result, writer: registration.identity.writer, credential: registration.identity.credential,
-      token, original: readFileSync(journal), queue, staged: [secondAsset], approve: true,
+      token, original: readFileSync(journal), queue, staged: [secondAsset], approve: true, rollover: true,
     });
     const approved = JSON.parse(execFileSync(executable, [activation, 'continued-raster-restore', '127.0.0.1:0'], {
       encoding: 'utf8', timeout: 30_000, maxBuffer: 8 * 1024 * 1024,
     }));
     assert.equal(approved.reconciliation.inputsComplete, true);
     assert.deepEqual(approved.reconciliation.stagedRasters, [secondAsset]);
+    assert.equal(approved.reconciliation.rolledRasterGeneration, true);
     const prohibited = await host.maintenance('owner', 'wrong-owner-token', {kind: 'sealActivation'});
     assert.ok(prohibited.error);
     const headers = {Origin: origin, Authorization: 'Bearer ' + token, 'X-Breditor-Principal': 'owner'};
@@ -168,7 +169,7 @@ export async function verifyContinuedRasterServing(api, rich, wasm, executable, 
     prepareContinuedCapture({
       directory: activation, source: join(preflight, 'capture'), parent,
       capture: captured.result, writer: registration.identity.writer, credential: registration.identity.credential,
-      token, original: readFileSync(journal), queue, staged: [secondAsset], approve: true,
+      token, original: readFileSync(journal), queue, staged: [secondAsset], approve: true, rollover: true,
       generation: 'relocated-continued-raster', seal: readFileSync(join(preflight, 'seal.json')),
     });
     const invoke = (directory, mode) => JSON.parse(execFileSync(executable, [directory, mode, '127.0.0.1:0'], {
@@ -182,6 +183,7 @@ export async function verifyContinuedRasterServing(api, rich, wasm, executable, 
         directory: incompatible, source: join(preflight, 'capture'), parent, capture: captured.result,
         writer: registration.identity.writer, credential: registration.identity.credential, token,
         original: Buffer.from(changedOriginal.checkpointJson()), queue, staged: [secondAsset], approve: true,
+        rollover: true,
         seal: readFileSync(join(preflight, 'seal.json')),
       });
       assert.throws(() => invoke(incompatible, 'continued-raster-restore'),
@@ -189,7 +191,18 @@ export async function verifyContinuedRasterServing(api, rich, wasm, executable, 
     } finally {
       changedOriginal.dispose();
     }
-    assert.equal(invoke(activation, 'continued-raster-restore').reconciliation.inputsComplete, true);
+    const unchangedLayout = join(parent, 'different-portable-raster-layout');
+    prepareContinuedCapture({
+      directory: unchangedLayout, source: join(preflight, 'capture'), parent, capture: captured.result,
+      writer: registration.identity.writer, credential: registration.identity.credential, token,
+      original: readFileSync(journal), queue, staged: [secondAsset], approve: true,
+      generation: 'unchanged-raster-layout', seal: readFileSync(join(preflight, 'seal.json')),
+    });
+    assert.throws(() => invoke(unchangedLayout, 'continued-raster-restore'),
+      error => error.status === 1 && error.stderr.includes('continued raster sealed inputs differ'));
+    const restored = invoke(activation, 'continued-raster-restore');
+    assert.equal(restored.reconciliation.inputsComplete, true);
+    assert.equal(restored.reconciliation.rolledRasterGeneration, true);
     const localPin = directory => JSON.parse(readFileSync(join(directory, 'prepared-selection.json'), 'utf8'));
     assert.notDeepEqual(localPin(activation), localPin(preflight));
     const saveExpected = selection => writeFileSync(join(activation, 'expected.json'), JSON.stringify(selection), {mode: 0o600});
@@ -213,6 +226,15 @@ export async function verifyContinuedRasterServing(api, rich, wasm, executable, 
     const floor = await host.maintenance('owner', token, {kind: 'captureRepairFloor'});
     assert.ok(floor.result, floor.error);
     assert.deepEqual(floor.result.sourceEpoch, firstServing);
+    assert.equal(floor.result.rasters.formatVersion, 2);
+    assert.equal(floor.result.rasters.active.assets, 2);
+    assert.deepEqual(floor.result.rasters.lineage.predecessor, captured.result.rasters.lineage.predecessor);
+    assert.deepEqual(floor.result.rasters.lineage.sealed.map(generation => generation.archive),
+      [captured.result.rasters.active]);
+    const inputRasterPath = join(activation, 'capture');
+    assert.deepEqual(readFileSync(join(parent, 'repair-floor', 'rasters-predecessor.archive')),
+      Buffer.concat(['rasters-predecessor.archive', 'rasters-active.archive']
+        .map(name => readFileSync(join(inputRasterPath, name)))));
     const floorPath = join(parent, 'repair-floor.json');
     writeFileSync(floorPath, JSON.stringify(floor.result), {flag: 'wx', mode: 0o600});
     await disconnect();
@@ -288,6 +310,12 @@ export async function verifyContinuedRasterServing(api, rich, wasm, executable, 
       interruptedRasterRepair: {unpublishedBytesPreserved: true, publishedInodePreserved: true,
         nativeTailAndRasterRepairedTogether: true, changedEvidenceRefused: true, retryResynced: true},
       interruptedNativeRotation: {...interruptedNativeRotation, offlineUndoAndRedoDelivered: true},
+      rasterGenerationRollover: {
+        explicitRolloverBoundToPortableSeal: true,
+        retainedArchiveBytesUnchanged: true,
+        stagedQueueAndNewUploadInFreshGeneration: true,
+        allImagesServedAfterColdRestart: true,
+      },
     };
   } finally {
     if (sync) {
@@ -396,7 +424,7 @@ async function verifyPortableCapture({
 
 function prepareContinuedCapture({
   directory, source, parent, capture, writer, credential, token, original, queue, staged, approve = false,
-  generation, seal,
+  generation, seal, rollover = false,
 }) {
   mkdirSync(directory, {mode: 0o700});
   cpSync(source, join(directory, 'capture'), {recursive: true});
@@ -412,7 +440,7 @@ function prepareContinuedCapture({
     journal: {owner: {kind: 'document', writer, family: 'original'}, bytes: original.length, sha256: [...hash(original)]},
     uploads: {writer, bytes: queue.length, sha256: hash(queue).toString('hex')},
     rasters: [pixelAsset, unavailableAsset],
-    queued: secondAsset, deferred: proposalAsset, staged, approve, generation,
+    queued: secondAsset, deferred: proposalAsset, staged, approve, generation, rollover,
   }));
 }
 

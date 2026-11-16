@@ -92,10 +92,14 @@ pub(super) fn verify(
     assert_eq!(complete.client_journals.journals.len(), 1);
     let head = &complete.client_journals.journals[0];
     assert!(head.local_through.parse::<u64>()? > head.accepted_through.parse::<u64>()?);
-    Ok(json!({
+    let mut response = json!({
         "inputsComplete": complete.inputs_complete(),
         "matchedAssets": complete.assets.into_iter().map(|entry| entry.asset).collect::<Vec<_>>(),
         "missingAssets": complete.missing_assets,
         "stagedRasters": complete.staged_rasters,
-    }))
+    });
+    if complete.rolled_raster_generation {
+        response["rolledRasterGeneration"] = json!(true);
+    }
+    Ok(response)
 }

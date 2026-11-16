@@ -1,11 +1,8 @@
 //! Durable evidence of additions sourced from original client files during an absent-only restore.
-use super::{ContinuedAssetBackupFiles, ContinuedAssetStore, RecoveredContinuedRasterRoom};
+use super::{ContinuedAssetStore, RecoveredContinuedRasterRoom};
 use crate::{
-    Result,
-    assets::AssetBackupIdentity,
-    room::log_generations::segment_room_recovery::{
-        client_rasters::SelectedRaster, restore_retaining_client_uploads::check_queued_rasters,
-    },
+    Result, assets::AssetBackupIdentity,
+    room::log_generations::segment_room_recovery::client_rasters::SelectedRaster,
 };
 use serde::{Deserialize, Serialize};
 
@@ -31,21 +28,12 @@ impl StagedRasters {
         let ids = inputs.iter().map(|input| input.info.asset.clone()).collect();
         Ok(Some(Self { ids, active }))
     }
-
-    pub fn verify(
-        &self,
-        files: &ContinuedAssetBackupFiles,
-        assets: &ContinuedAssetStore,
-    ) -> Result<()> {
-        check_queued_rasters(&self.ids)?;
-        files.check_active_extension(assets, &self.ids, &self.active)
-    }
 }
 
 impl RecoveredContinuedRasterRoom {
     /// Exact content IDs staged from selected client originals during this restore.
     #[must_use]
     pub fn staged_rasters(&self) -> &[String] {
-        self.completed.staged.as_ref().map_or(&[], |staged| staged.ids.as_slice())
+        self.completed.staged_ids()
     }
 }

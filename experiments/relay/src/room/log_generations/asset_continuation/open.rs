@@ -1,7 +1,7 @@
 //! Absent-only creation, exact local cold reopen, and portable restore of selected raster generations.
 use super::{
     ACTIVE, ARCHIVE, CONTROL, ContinuedAssetBackupIdentity, ContinuedAssetStore,
-    ContinuedAssetStoreIdentity, FORMAT, Lineage, MAX_CONTROL, archive::AssetArchive,
+    ContinuedAssetStoreIdentity, FORMAT, Lineage, RetainedArchives, archive::AssetArchive,
     backup::ContinuedAssetBackupFiles,
 };
 use crate::{
@@ -37,10 +37,9 @@ impl ContinuedAssetStore {
         predecessor: File,
         selected: &AssetBackupIdentity,
     ) -> Result<Self> {
-        let retained = AssetArchive::admit(predecessor, selected)?;
-        let lineage =
-            Lineage { predecessor: selected.clone(), namespace: crate::credentials::issue()? };
-        Self::install(path, lineage, &retained, None)
+        let lineage = Lineage::original(selected.clone())?;
+        let retained = RetainedArchives::admit(predecessor, &lineage)?;
+        Self::install(path, lineage, &retained, None, None)
     }
 
     /// Restore the verified pair at an absent path, yielding a new local custody selection.
@@ -56,15 +55,31 @@ impl ContinuedAssetStore {
         ContinuedAssetBackupFiles::admit(predecessor, active, selected)?.restore(path)
     }
 
+    /// Seal the selected nonempty active archive behind a fresh writable generation.
+    /// Both inputs are verified before creating the private target, which has independent custody.
+    /// The original archives and source remain available for a separate authenticated handover.
+    ///
+    /// # Errors
+    /// Refuses changed archives, invalid ancestry, overlap, generation exhaustion or occupied paths.
+    pub fn rollover_from_backup(
+        path: &Path,
+        predecessor: File,
+        active: File,
+        selected: &ContinuedAssetBackupIdentity,
+    ) -> Result<Self> {
+        ContinuedAssetBackupFiles::admit(predecessor, active, selected)?.rollover(path)
+    }
+
     pub(super) fn install(
         path: &Path,
         lineage: Lineage,
-        retained: &AssetArchive,
+        retained: &RetainedArchives,
+        append: Option<&AssetArchive>,
         restore: Option<&AssetArchive>,
     ) -> Result<Self> {
         let active_binding = lineage.active_binding()?;
         let directory = GenerationDirectory::create(path)?;
-        let (retained, archive) = retained.copy_into(&directory, ARCHIVE)?;
+        let (retained, archive) = retained.copy_into(&directory, &lineage, append)?;
         let active_directory = RasterDirectory::create(&directory.path.join(ACTIVE))?;
         let active_witness = active_directory.witness()?;
         let (active, active_custody) = if let Some(restore) = restore {
@@ -85,7 +100,7 @@ impl ContinuedAssetStore {
         active_custody.guard(&active)?;
         let identity = ContinuedAssetStoreIdentity {
             format: FORMAT.into(),
-            format_version: 1,
+            format_version: lineage.format_version(),
             lineage,
             directory: directory.witness()?,
             active: active_witness,
@@ -93,7 +108,7 @@ impl ContinuedAssetStore {
         };
         let control = directory.create_file(CONTROL, &serde_json::to_vec(&identity)?)?;
         let control_witness = GenerationFileWitness::of(&control)?;
-        let control = ArchiveInput::new(control, MAX_CONTROL)?;
+        let control = ArchiveInput::new(control, identity.lineage.control_budget())?;
         let result = Self {
             directory,
             identity,
@@ -137,7 +152,8 @@ impl ContinuedAssetStore {
         selected: &ContinuedAssetStoreIdentity,
         policy: RasterOpen,
     ) -> Result<Self> {
-        if selected.format != FORMAT || selected.format_version != 1 {
+        if selected.format != FORMAT || selected.format_version != selected.lineage.format_version()
+        {
             return Err(Error::Contract("raster continuation selection format"));
         }
         let active_binding = selected.lineage.active_binding()?;
@@ -150,14 +166,15 @@ impl ContinuedAssetStore {
         let control = File::open(&path)?;
         let control_witness = GenerationFileWitness::of(&control)?;
         control_witness.guard(&control, &path)?;
-        let control = ArchiveInput::new(control, MAX_CONTROL)?;
-        if control.all().read(MAX_CONTROL)?.as_ref() != serde_json::to_vec(selected)? {
+        let budget = selected.lineage.control_budget();
+        let control = ArchiveInput::new(control, budget)?;
+        if control.all().read(budget)?.as_ref() != serde_json::to_vec(selected)? {
             return Err(Error::Contract("raster continuation local selection differs"));
         }
-        let retained = AssetArchive::open(
+        let retained = RetainedArchives::open(
             &directory.path.join(ARCHIVE),
             &selected.archive,
-            &selected.lineage.predecessor,
+            &selected.lineage,
         )?;
         let active_directory =
             RasterDirectory::open(&directory.path.join(ACTIVE), &selected.active)?;

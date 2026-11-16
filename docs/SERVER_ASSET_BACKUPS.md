@@ -160,33 +160,58 @@ existing Unix inode checks. The derived active binding makes an ordinary
 room-bound open of just that directory refuse. An incomplete new destination
 stays private. Retry creation at another absent path.
 
-For portable restore, `ContinuedAssetStore::write_backup` streams two ordinary
-archive files under one continued owner. Sync each output and retain the
-returned `ContinuedAssetBackupIdentity` independently. The first file is
-the exact predecessor and the second file selects the exact active cut.
-`ContinuedAssetStore::restore` verifies both, checks for overlapping asset
-IDs, and selects a new local directory. Preserve its new local selection
-for subsequent cold opens.
+For portable restore, `ContinuedAssetStore::write_backup` streams two files
+under one continued owner. Sync each output and retain the returned
+`ContinuedAssetBackupIdentity` independently. In revision one the first file
+is the original predecessor archive. After rollover the first file is the
+ordered pack of immutable archives. The second file always selects the exact
+active cut. `ContinuedAssetStore::restore` verifies each archive and refuses
+overlapping asset IDs before creating a new local directory. Preserve the
+new local selection for later cold opens.
 
-This contract covers one predecessor and one active generation.
-Whole-room activation must verify both generations alongside the
-native document and retained client inputs.
+### Roll over a full active generation
+
+`ContinuedAssetStore::rollover_from_backup` verifies the exact retained and
+nonempty active archives, then creates a separate private target. It copies
+the old archives byte for byte, appends the original active archive and opens
+an empty writable store. Revision two selects each archive's exact length,
+binding and digest in order. The relay reads the carried archives through a
+single held descriptor. It preserves the original room binding, image IDs
+and duplicate-upload receipts across all the retained generations.
+
+For a combined native capture, call
+`ContinuedRasterRoomBackupFiles::restore_rolling_raster_generation` with
+the absent target path, a fresh native generation ID and independently
+retained client originals. It accepts the same optional list of missing
+images to stage from those originals. The selected staged bytes use the
+fresh writable store. Earlier images remain readable from the retained
+pack. Both live takeover and portable activation require the ordinary
+input reconciliation and the approved deployment transition. A portable
+seal selected for rollover binds that rollover decision and the exact staged
+IDs across relocation.
+
+Save the original archives and the resulting selection independently.
+A completed rollover can be recaptured and rolled again. The format holds up
+to 64 immutable archives behind one active store, with the existing per-store
+count and byte limits. Each preparation needs disk space for a complete copy
+of its retained pack. A refused or interrupted preparation leaves the source
+available under its existing authority.
 
 ### Serve a continued store from the reference relay
 
 `router_with_continued_assets_and_deployment_lease` attaches an explicitly
 selected native room and continued asset store to a current serving lease.
-The normal HTTP raster routes authenticate both generations and use the
-existing content IDs and receipts. Room operations check continued asset
+The normal HTTP raster routes authenticate reads and uploads across all
+selected generations and use the existing content IDs and receipts. Room operations check continued asset
 custody under the same lease. On restart, retain the current authority
 selection and reopen the original native room and exact local asset
 continuation before attaching the approved replacement lease.
 
 `ContinuedAssetServerHandle::capture` verifies the current owner credentials
 and holds the room, raster owner and serving permit through capture. It writes
-the physical native archive and checkpoint together with the two exact raster
-archives. Keep the returned `ContinuedRasterRoomBackupIdentity` independently
-and retain any earlier native segments and client inputs that this room needs.
+the physical native archive and checkpoint together with the retained and
+active raster files. Keep the returned `ContinuedRasterRoomBackupIdentity`
+independently and retain any earlier native segments and client inputs.
 The combined capture is a storage identity. Coordinated takeover still requires
 verification of the complete room and its client/provider inputs.
 
@@ -198,15 +223,15 @@ files. Copy it to the recovery host along with the separately retained
 archives, and independently pinned client originals. Keep these sources
 immutable while they are in use. Open the capture with
 `ContinuedRasterRoomBackupFiles::open`. The native archive and checkpoint
-must match the selected physical cut, and the two raster archives must match
-the selected generation pair and the same room binding.
+must match the selected physical cut. The retained and active raster files
+must match the selected archive identities and original room binding.
 
 With `restore`, select an absent destination and a fresh native generation
 ID. Include the original client journals, alternate participant files and
 upload queues as companion inputs. Any original referenced by an already
 published recovered discussion is required. The restore keeps selected queue
-states, payloads and receipts in the original client files. Both live raster
-generations retain their captured contents and limits.
+states, payloads and receipts in the original client files. Ordinary restore
+preserves the layout, contents and limits of the captured raster generations.
 
 After all owners and selected client files are synced, the restore commits
 the local completion record. Store the returned
@@ -216,8 +241,8 @@ incomplete target, a substituted local owner or an advanced native or raster
 cut refuses reopening. Preserve an interrupted attempt and retry to a new
 absent path.
 
-The host can inspect the reconstructed room, read images from both generations,
-and export the selected client originals before serving. Authenticated
+The host can inspect the reconstructed room, read images across its captured
+generations, and export the selected client originals before serving. Authenticated
 takeover still requires complete client and provider reconciliation, a fresh
 operator decision and the deployment authority's epoch transition.
 
@@ -234,7 +259,7 @@ alternate branches, and the writers whose original upload queues are absent.
 The relay collects image references from retained native records and the
 selected client journals, including bindings still reachable by Undo and Redo.
 It checks the provider's generation-exact mappings and reads and admits the
-actual bytes from the predecessor or active raster store. A required image held
+actual bytes from the retained or active raster store. A required image held
 only in a retained client queue appears as missing live bytes. The queue keeps
 its original upload state and receipt history.
 
@@ -250,7 +275,7 @@ content IDs in sorted, unique order. Call
 `ContinuedRasterRoomBackupFiles::restore_staging_client_rasters` with that
 selection, the original client archives, and a new absent target. The payloads
 must exist in the selected standalone upload queues or participant originals.
-An ID from either captured server generation is already available and is
+An ID from any captured server generation is already available and is
 refused as a staged addition. The active generation's existing limits apply to
 the combined captured and staged contents.
 

@@ -6,12 +6,12 @@ use crate::{
         AssetBackupIdentity, MAX_SERVER_ASSET_BACKUP_BYTES, StoredAsset, admit_asset_file,
         decode_raster_record,
     },
-    log::generations::{GenerationDirectory, GenerationFileWitness},
+    log::generations::GenerationFileWitness,
 };
 use sha2::{Digest, Sha256};
 use std::{
     collections::BTreeMap,
-    fs::{self, File, OpenOptions},
+    fs::{File, OpenOptions},
     io::{self, Write},
     path::Path,
 };
@@ -25,48 +25,17 @@ pub(super) struct AssetArchive {
 impl AssetArchive {
     pub(super) fn admit(file: File, expected: &AssetBackupIdentity) -> Result<Self> {
         let input = ArchiveInput::new(file, MAX_SERVER_ASSET_BACKUP_BYTES)?;
+        Self::admit_input(input, expected)
+    }
+
+    pub(super) fn admit_input(input: ArchiveInput, expected: &AssetBackupIdentity) -> Result<Self> {
         let files = admit_asset_file(input.all(), expected)?;
         input.check()?;
         Ok(Self { input, files, identity: expected.clone() })
     }
 
-    pub(super) fn open(
-        path: &Path,
-        witness: &GenerationFileWitness,
-        expected: &AssetBackupIdentity,
-    ) -> Result<Self> {
-        if !fs::symlink_metadata(path)?.is_file() {
-            return Err(Error::Contract("retained raster archive file type"));
-        }
-        let file = File::open(path)?;
-        witness.guard(&file, path)?;
-        let result = Self::admit(file, expected)?;
-        result.guard(path, witness)?;
-        Ok(result)
-    }
-
-    pub(super) fn copy_into(
-        &self,
-        directory: &GenerationDirectory,
-        name: &str,
-    ) -> Result<(Self, GenerationFileWitness)> {
-        let mut file = directory.create_file(name, &[])?;
-        self.write_to(&mut file)?;
-        file.sync_all()?;
-        let path = directory.path.join(name);
-        let witness = GenerationFileWitness::of(&file)?;
-        let input = ArchiveInput::new(file, MAX_SERVER_ASSET_BACKUP_BYTES)?;
-        if input.all().digest()? != self.identity.archive_sha256 {
-            return Err(Error::Contract("copied raster archive differs"));
-        }
-        input.check_named(&witness, &path)?;
-        directory.guard()?;
-        let archived = Self { input, files: self.files.clone(), identity: self.identity.clone() };
-        Ok((archived, witness))
-    }
-
-    pub(super) fn guard(&self, path: &Path, witness: &GenerationFileWitness) -> Result<()> {
-        self.input.check_named(witness, path)
+    pub(super) fn bytes(&self) -> u64 {
+        self.input.all().len()
     }
 
     #[cfg(feature = "server")]

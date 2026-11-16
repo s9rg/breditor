@@ -163,3 +163,6 @@ fn predecessor_replacement_fences_reads_and_writes_and_bad_pair_preflight_is_abs
     assert!(ContinuedAssetStore::open(&continued, &local).is_err());
     Ok(())
 }
+
+#[path = "rollover_tests.rs"]
+mod rollover_tests;
