@@ -2,12 +2,12 @@
 //! Hashes select exact files; they never replace causal/action/Undo replay or current policy.
 use super::{
     super::{ReviewActorPolicy, ReviewBinding, ReviewError, ReviewSession, event},
-    encode_segment::encode_active,
     history::{ReviewGenerations, SealedReviewGeneration},
     record::{
         ARCHIVE_FORMAT, Archive, CONTINUED_MAX_ARCHIVE_BYTES, MAX_ARCHIVE_BYTES, MAX_GENERATIONS,
         SEGMENT_FORMAT, Segment, check_budget, generation_id,
     },
+    restore_replay::RestoreReplay,
 };
 use std::collections::BTreeSet;
 
@@ -62,7 +62,8 @@ impl ReviewSession {
         check_budget(saved.sealed.len() + 2, 0, continued)?;
         generation_id(&saved.root_generation)?;
         let mut ids = BTreeSet::from([saved.root_generation.clone()]);
-        let mut owner = Self::restore_json(binding, policy, &saved.root)?;
+        let (mut owner, replay) = Self::restore_original_with_replay(binding, policy, &saved.root)?;
+        let mut replay = RestoreReplay::new(replay, &owner);
         owner.generations = Some(ReviewGenerations::new(
             saved.root_generation,
             saved.root,
@@ -102,14 +103,10 @@ impl ReviewSession {
             }
             state.active_generation = segment.generation;
             state.active_start = owner.events.len();
-            validate_append_order(&owner.events, &segment.events)?;
-            owner.events.extend(segment.events);
             owner.history = segment.history;
             owner.cursor = segment.cursor;
-            owner.admit()?;
-            if encode_active(&owner)? != *json {
-                return Err(ReviewError::Contract("canonical review generation"));
-            }
+            replay.append_cut(&mut owner, segment.events)?;
+            owner.check_restored_generation_checkpoint(json)?;
             if sealed {
                 let state = owner
                     .generations
@@ -123,6 +120,9 @@ impl ReviewSession {
                 )?);
             }
         }
+        // A verified cut already has causal births and valid actor history.
+        // Project the terminal state once in canonical order.
+        owner.projection(&owner.events)?;
         let encoded = if continued {
             owner.continued_checkpoint_json()?
         } else {
@@ -133,29 +133,4 @@ impl ReviewSession {
         }
         Ok(owner)
     }
-}
-
-/// Verify causal and actor-contiguous append order across an immutable file boundary.
-fn validate_append_order(
-    retained: &[event::Event],
-    appended: &[event::Event],
-) -> Result<(), ReviewError> {
-    let mut frontier = event::clock(retained);
-    for event in appended {
-        let previous = frontier.get(&event.id.actor).map_or(0, |c| c.0);
-        if previous.checked_add(1) != Some(event.id.counter.0)
-            || event.dependencies.get(&event.id.actor).map_or(0, |c| c.0) != previous
-        {
-            return Err(ReviewError::Fork);
-        }
-        if event
-            .dependencies
-            .iter()
-            .any(|(actor, counter)| frontier.get(actor).is_none_or(|known| known < counter))
-        {
-            return Err(ReviewError::Contract("review generation append dependencies"));
-        }
-        frontier.insert(event.id.actor.clone(), event.id.counter);
-    }
-    Ok(())
 }

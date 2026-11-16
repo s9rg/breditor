@@ -6,9 +6,9 @@ use super::super::{
         CreateReviewThread, EditReviewMessage, ReanchorReviewThread, ReplyToReviewThread,
         RetractReviewMessage, ReviewAction, SetReviewThreadState,
     },
-    codec,
     event::{self, Clock, Event, Payload},
     identity::Counter,
+    replay::ReviewReplay,
 };
 use crate::{rich_content::DocumentId, schema::SchemaFingerprint};
 use proptest::prelude::*;
@@ -216,7 +216,7 @@ fn spelling(result: Result<(), ReviewError>) -> Result<(), String> {
 
 fn validate(session: &ReviewSession) -> Result<(), ReviewError> {
     let ordered = event::ordered(&session.events, session.event_limit())?;
-    codec::validate_ordered(session, &ordered)
+    ReviewReplay::validate_ordered(session, &ordered).map(|_| ())
 }
 
 fn rehash(owner: &mut ReviewSession) -> TestResult<()> {

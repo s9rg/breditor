@@ -64,6 +64,20 @@ impl ReviewSession {
         checkpoint_budget::check_size(state, &active, state.archive_byte_limit())
     }
 
+    pub(super) fn check_restored_generation_checkpoint(
+        &self,
+        stored: &str,
+    ) -> Result<(), ReviewError> {
+        let state =
+            self.generations.as_ref().ok_or(ReviewError::Contract("review history family"))?;
+        let active = self.encode_generation_active(state)?;
+        checkpoint_budget::check_size(state, &active, state.archive_byte_limit())?;
+        if active != stored {
+            return Err(ReviewError::Contract("canonical review generation"));
+        }
+        Ok(())
+    }
+
     fn encode_generation_active(&self, state: &ReviewGenerations) -> Result<String, ReviewError> {
         check_budget(state.sealed.len() + 2, self.events.len(), state.continued_after.is_some())?;
         encode_active(self)

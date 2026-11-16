@@ -12,6 +12,7 @@ mod generation;
 mod identity;
 mod materialize;
 mod recovery_origin;
+mod replay;
 mod retained_branch;
 mod session;
 mod thread_history;

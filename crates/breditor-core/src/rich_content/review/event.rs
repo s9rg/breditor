@@ -69,6 +69,30 @@ pub(super) fn clock(events: &[Event]) -> Clock {
     }
     result
 }
+
+pub(super) fn validate_causal_frontier<'a>(
+    event: &Event,
+    dependency: impl Fn(&ReviewActorId, Counter) -> Option<&'a Event>,
+) -> Result<(), ReviewError> {
+    // Each accepted actor prefix closes over its earlier events, so the last
+    // observed event of each actor suffices to check transitive closure.
+    for (actor, through) in &event.dependencies {
+        if through.0 == 0 {
+            continue;
+        }
+        let observed = dependency(actor, *through)
+            .ok_or(ReviewError::Contract("nonclosed review causal frontier"))?;
+        if observed
+            .dependencies
+            .iter()
+            .any(|(actor, counter)| event.dependencies.get(actor).is_none_or(|seen| seen < counter))
+        {
+            return Err(ReviewError::Contract("nonclosed review causal frontier"));
+        }
+    }
+    Ok(())
+}
+
 #[cfg(test)]
 mod ordering_tests;
 pub(super) fn text(input: &str) -> Result<(), ReviewError> {

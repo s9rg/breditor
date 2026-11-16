@@ -4,9 +4,10 @@ use super::{
     ReviewActorId, ReviewActorPolicy, ReviewBinding, ReviewError, ReviewEventId,
     ReviewImportOutcome, ReviewObservation, ReviewSession,
     event::{self, Event, Payload},
+    materialize::Projection,
+    replay::ReviewReplay,
 };
 use serde::{Deserialize, Serialize};
-use std::collections::{BTreeMap, BTreeSet};
 pub use transport::{
     PreparedReviewBatch, ReviewBatchPreparation, ReviewBatchReceipt, ReviewWriterClock,
 };
@@ -68,6 +69,14 @@ impl ReviewSession {
         policy: ReviewActorPolicy,
         input: &str,
     ) -> Result<Self, ReviewError> {
+        Self::restore_original_with_replay(binding, policy, input).map(|(owner, _)| owner)
+    }
+
+    pub(super) fn restore_original_with_replay(
+        binding: &ReviewBinding,
+        policy: ReviewActorPolicy,
+        input: &str,
+    ) -> Result<(Self, ReviewReplay), ReviewError> {
         if input.len() > event::MAX_BYTES {
             return Err(ReviewError::Limit("checkpoint bytes"));
         }
@@ -84,11 +93,14 @@ impl ReviewSession {
         result.events = saved.events;
         result.history = saved.history;
         result.cursor = saved.cursor;
-        result.admit()?;
-        if result.checkpoint_json()? != input {
+        let ordered = event::ordered(&result.events, result.event_limit())?;
+        let replay = ReviewReplay::validate_ordered(&result, &ordered)?;
+        let canonical = result.checkpoint_json_with_order(&ordered)?;
+        Projection::from_ordered(&ordered)?;
+        if canonical != input {
             return Err(ReviewError::Contract("canonical review recovery"));
         }
-        Ok(result)
+        Ok((result, replay))
     }
     /// Export a bounded prefix of this writer's stream after an exact last-acknowledged counter.
     /// The receiver's host must authenticate actor/account/rights independently.
@@ -265,73 +277,4 @@ impl ReviewSession {
         self.adopt(candidate);
         Ok(ReviewImportOutcome::Applied)
     }
-}
-pub(super) fn validate_ordered(
-    session: &ReviewSession,
-    ordered: &[&Event],
-) -> Result<(), ReviewError> {
-    let mut principals = BTreeMap::new();
-    let mut local_targets = BTreeSet::new();
-    let mut streams = BTreeMap::<ReviewActorId, &Event>::new();
-    let mut histories = BTreeMap::<_, (Vec<ReviewEventId>, usize)>::new();
-    let mut births = super::causal_births::CausalBirths::default();
-    for &event in ordered {
-        let expected = streams.get(&event.id.actor).map_or_else(
-            || event::genesis(&session.binding, &event.id.actor, &event.principal),
-            |previous| event::digest(previous),
-        )?;
-        if event.previous_digest != expected {
-            return Err(ReviewError::Fork);
-        }
-        streams.insert(event.id.actor.clone(), event);
-        if let Some(old) = principals.insert(&event.id.actor, &event.principal)
-            && old != &event.principal
-        {
-            return Err(ReviewError::Fork);
-        }
-        if event.id.actor == session.policy.actor && event.principal != session.policy.principal {
-            return Err(ReviewError::Permission);
-        }
-        if let Payload::Action(action) = &event.payload {
-            births.validate_action(&session.binding, action, &event.dependencies)?;
-            births.record_validated_action(&event.id, action);
-            if event.id.actor == session.policy.actor {
-                local_targets.insert(&event.id);
-            }
-        }
-        let (stack, cursor) = histories.entry(event.id.actor.clone()).or_default();
-        match &event.payload {
-            Payload::Action(_) => {
-                stack.truncate(*cursor);
-                stack.push(event.id.clone());
-                *cursor = stack.len();
-            }
-            Payload::Visibility { target, visible: false } => {
-                if *cursor == 0 || stack.get(*cursor - 1) != Some(target) {
-                    return Err(ReviewError::Contract("review Undo stack"));
-                }
-                *cursor -= 1;
-            }
-            Payload::Visibility { target, visible: true } => {
-                if stack.get(*cursor) != Some(target) {
-                    return Err(ReviewError::Contract("review Redo stack"));
-                }
-                *cursor += 1;
-            }
-        }
-    }
-    if streams.len() > 1024 {
-        return Err(ReviewError::Limit("causal actors"));
-    }
-    let expected = histories.get(&session.policy.actor).cloned().unwrap_or_default();
-    if expected != (session.history.clone(), session.cursor) {
-        return Err(ReviewError::Contract("review history replay"));
-    }
-    let mut unique = BTreeSet::new();
-    if session.cursor > session.history.len()
-        || session.history.iter().any(|id| !local_targets.contains(id) || !unique.insert(id))
-    {
-        return Err(ReviewError::Contract("review history partition"));
-    }
-    Ok(())
 }

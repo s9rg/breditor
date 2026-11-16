@@ -5,6 +5,7 @@ use super::{
     actions::ReviewAction,
     event::{self, Event, Payload},
     materialize::Projection,
+    replay::ReviewReplay,
 };
 use std::sync::Arc;
 
@@ -181,7 +182,7 @@ impl ReviewSession {
     }
     pub(super) fn admit(&self) -> Result<(), ReviewError> {
         let ordered = event::ordered(&self.events, self.event_limit())?;
-        super::codec::validate_ordered(self, &ordered)?;
+        ReviewReplay::validate_ordered(self, &ordered)?;
         if let Some(state) = &self.generations {
             self.check_generation_checkpoint_budget(state)?;
         } else {

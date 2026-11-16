@@ -10,6 +10,7 @@ mod prepare_archive_enable;
 mod prepare_archive_seal;
 mod record;
 mod recovery_origin;
+mod restore_replay;
 mod restore_segmented;
 mod retained_branch;
 mod seal_history_generation;

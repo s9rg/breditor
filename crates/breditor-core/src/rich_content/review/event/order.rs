@@ -1,5 +1,5 @@
 //! Canonical causal order with one waiting-list entry per blocked event.
-use super::{Counter, Event, ReviewActorId, ReviewError};
+use super::{Counter, Event, ReviewActorId, ReviewError, validate_causal_frontier};
 use std::collections::{BTreeMap, btree_map};
 
 type Position<'a> = (&'a ReviewActorId, Counter);
@@ -73,7 +73,7 @@ pub(in crate::rich_content::review) fn ordered(
         {
             return Err(ReviewError::Fork);
         }
-        validate_closure(event, &indexed)?;
+        validate_causal_frontier(event, |actor, through| indexed.get(&(actor, through)).copied())?;
         frontier.advance(position);
         result.push(event);
     }
@@ -81,25 +81,4 @@ pub(in crate::rich_content::review) fn ordered(
         return Err(ReviewError::Contract("missing or cyclic review dependencies"));
     }
     Ok(result)
-}
-
-fn validate_closure(event: &Event, indexed: &Events<'_>) -> Result<(), ReviewError> {
-    // Each accepted actor prefix already closes over its earlier events.
-    // Only the last observed event of each actor needs to be inspected.
-    for (actor, through) in &event.dependencies {
-        if through.0 == 0 {
-            continue;
-        }
-        let dependency = indexed
-            .get(&(actor, *through))
-            .ok_or(ReviewError::Contract("nonclosed review causal frontier"))?;
-        if dependency
-            .dependencies
-            .iter()
-            .any(|(actor, counter)| event.dependencies.get(actor).is_none_or(|seen| seen < counter))
-        {
-            return Err(ReviewError::Contract("nonclosed review causal frontier"));
-        }
-    }
-    Ok(())
 }

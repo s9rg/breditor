@@ -85,6 +85,15 @@ A correct outer log checksum cannot substitute for that replay. Duplicate durabl
 boundary records, forged owners or changed native cuts refuse before even an
 incomplete final tail can be trimmed.
 
+Inside a native review archive, cold restore validates the original root and
+carries forward per-actor event positions, digests, births and Undo/Redo stacks.
+It checks each new segment's append order and transitive causal frontier against
+that prefix. Each cut must match its exact saved local history, cursor, bytes and
+selected family's limits. Late concurrent events retain their archive positions
+and can precede earlier files' inputs in the final canonical projection.
+Malformed cuts still report failures through the canonical order. The replay
+state is rebuilt at restore and never supplies live actor permissions.
+
 The complete room-log backup retains these new typed records and their original
 global order. Its existing outer backup framing stays unchanged; readers that
 do not understand the explicitly selected new event must refuse it. Backup
