@@ -2,6 +2,18 @@
 
 ## November 16 collaboration recovery
 
+[Selective restore of queued rasters](qualification/2026-11-16-selective-queued-raster-restore.json)
+lets the host stage exact content IDs from original upload queues during
+linked or portable restore. A native store with 1,023 assets and two
+pending rasters refuses the full union. Its retained-only target reports
+one missing raster required by offline Redo. Restoring that exact payload
+spends the last slot, preserves both queue records, survives cold open and
+permits verified takeover. The original writer resumes and performs Redo.
+Source and clean-installed clients preserve staged and deferred bytes
+through portable relocation and restart, then obtain the expected duplicate
+and first upload receipts through ordinary delivery. Legacy handover and
+all 61 focused Rust tests pass.
+
 [Retain upload queues at the raster ceiling](qualification/2026-11-16-retained-uploads-at-capacity.json)
 adds an explicit restore path for room backups with pending client uploads.
 It keeps upload-only bytes in their verified original queues and stages

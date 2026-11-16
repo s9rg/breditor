@@ -1,0 +1,156 @@
+{
+  "format": "breditor/selective-queued-raster-restore-qualification",
+  "formatVersion": 1,
+  "date": "2026-11-16",
+  "source": {
+    "commit": "f855a66e4dd0fabb141aeec81387ff89b1a2a944",
+    "dirty": false,
+    "sha256": "5a4eb9437bb25b22b74f2b87f61c3bb1e123a5388d65eb8e9c33797755710cee",
+    "files": 9017,
+    "bytes": 76536458
+  },
+  "selectiveRestore": {
+    "originalLiveAssets": 1023,
+    "restoredLiveAssets": 1024,
+    "originalQueuedAssets": 2,
+    "retainingAllQueuesReportsMissingRedoRaster": true,
+    "stagingBothPayloadsRefusesBeforeCreatingDestination": true,
+    "unknownDuplicateAndUnsortedIdsRefused": true,
+    "selectiveRestoreStagesVerifiedMissingPayload": true,
+    "coldOpenRecoversOriginalQueueBytes": true,
+    "verifiedTakeoverAndOriginalWriterRedo": true,
+    "unselectedUploadStillSubjectToLiveCapacity": true
+  },
+  "nativeRelayTests": {
+    "assets-store": {
+      "passed": 22,
+      "failed": 0,
+      "ignored": 0,
+      "executableSha256": [
+        "977a07e7cf87d78b9743df8b1695ad32804df3cf06f9f499e0e97e8b5f4b911c"
+      ],
+      "logSha256": "4a32d27f11a52ff203fb1cb6b78eccda09ac36b6b8623415b2126e8e34a2f67f"
+    },
+    "room-log_generations-segment_room_recovery": {
+      "passed": 6,
+      "failed": 0,
+      "ignored": 0,
+      "executableSha256": [
+        "977a07e7cf87d78b9743df8b1695ad32804df3cf06f9f499e0e97e8b5f4b911c"
+      ],
+      "logSha256": "108d830c7d8e0412a63687299695c2ee43c26339a9c28c0858c3cbe02d44f39d"
+    },
+    "server-segment_handover-tests": {
+      "passed": 33,
+      "failed": 0,
+      "ignored": 0,
+      "executableSha256": [
+        "977a07e7cf87d78b9743df8b1695ad32804df3cf06f9f499e0e97e8b5f4b911c"
+      ],
+      "logSha256": "4c7a620b2a6d54a7df030feedf8426e5cfcbbdf3264ae93f929e68cccbb1b21f"
+    }
+  },
+  "strictRelayLibraryLint": {
+    "server": {
+      "passed": true,
+      "logSha256": "e8ecabd8bc42eda4b0e7f341bf84324481dfdabe79ed607b97cad45593245ed1"
+    },
+    "noServer": {
+      "passed": true,
+      "logSha256": "dc849e48721a6688b8406a47df535f28d648e7e5520c8799192cddfe0edb298c"
+    }
+  },
+  "reusedRuntimeArtifacts": {
+    "byteIdenticalSourceSince": "782bf48874e23e50fe08527bc3c4b6ff13d2df67",
+    "localRichWasmSha256": "bc020ce07ed80600b85735c1e592d5ae163d921f5556fef05269a12bc1d59ec5",
+    "sharedWasmSha256": "4bd769ac853ccc377dcbb45ebcfd5fc8f7f0f200850b1f5a106f7a4a0beddca4",
+    "verificationLogSha256": "c8df6ab3bd34bf3bd84ec875560a15b984d6bfa81ce1c1425a3427cf73f1045a"
+  },
+  "candidatePlan": {
+    "passed": 69,
+    "failed": 0,
+    "logSha256": "18c380c41123abb7a64281936b8ed8047451b6495cfc6fa0d99690d3d34a8eef"
+  },
+  "workflows": {
+    "relaySha256": "0e97b93d8abcd174ebe10d49cd53dab47dc410512e58d562857fe8c4e2557a0f",
+    "runtimeSha256": "4bd769ac853ccc377dcbb45ebcfd5fc8f7f0f200850b1f5a106f7a4a0beddca4",
+    "portableRelocation": {
+      "reportSha256": "a930c8ea63aa068a12fefb78c4c4944fe5cb4d61e2b790fb02d11b6a9f203ba3",
+      "runs": {
+        "source": {
+          "offlineLanes": 6,
+          "undoRedoLanes": 2,
+          "coldResumes": 5,
+          "queueOnlyUploadPreservedThenDelivered": true,
+          "selectedQueueRasterStagedThroughColdRestart": true,
+          "uploadArchives": 2,
+          "sealedPortableActivations": 1,
+          "rasterReads": 2,
+          "retainedPackets": 1,
+          "proof": null
+        },
+        "installed": {
+          "offlineLanes": 6,
+          "undoRedoLanes": 2,
+          "coldResumes": 5,
+          "queueOnlyUploadPreservedThenDelivered": true,
+          "selectedQueueRasterStagedThroughColdRestart": true,
+          "uploadArchives": 2,
+          "sealedPortableActivations": 1,
+          "rasterReads": 2,
+          "retainedPackets": 1,
+          "proof": {
+            "registryArtifacts": 45,
+            "archives": [
+              {
+                "name": "@breditor/browser",
+                "sha256": "79f5b486d3742d1234e4eb21c18822e0a494551d49a73039f5b856908c124f3f"
+              },
+              {
+                "name": "@breditor/experimental-rich-content",
+                "sha256": "06fc9770ef5b26cd5f4c10d7d55d9b1d91e352392a599f277cee25d431d6f4b7"
+              },
+              {
+                "name": "@breditor/collaboration",
+                "sha256": "05aeaf3cedf9431890bb10b8cdc9c92b70c4410bfeeb52ff421d59b5a72dd2e2"
+              }
+            ]
+          }
+        }
+      }
+    },
+    "legacyHandover": {
+      "reportSha256": "99f3ddf27325e66dadf81a397ba7617116ea7547ba8e7594ad1e9b2eea9f1b73",
+      "runs": {
+        "source": {
+          "offlineLanes": 6,
+          "undoRedoLanes": 2,
+          "coldResumes": 3,
+          "proof": null
+        },
+        "installed": {
+          "offlineLanes": 6,
+          "undoRedoLanes": 2,
+          "coldResumes": 3,
+          "proof": {
+            "registryArtifacts": 45,
+            "archives": [
+              {
+                "name": "@breditor/browser",
+                "sha256": "79f5b486d3742d1234e4eb21c18822e0a494551d49a73039f5b856908c124f3f"
+              },
+              {
+                "name": "@breditor/experimental-rich-content",
+                "sha256": "06fc9770ef5b26cd5f4c10d7d55d9b1d91e352392a599f277cee25d431d6f4b7"
+              },
+              {
+                "name": "@breditor/collaboration",
+                "sha256": "05aeaf3cedf9431890bb10b8cdc9c92b70c4410bfeeb52ff421d59b5a72dd2e2"
+              }
+            ]
+          }
+        }
+      }
+    }
+  }
+}
