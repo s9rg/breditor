@@ -67,7 +67,7 @@ export async function startSegmentHandoverHost(executable, args, token, exportAl
     await spawned;
     if (mode === 'relocated' || mode === 'relocated-before-listen') {
       send({...(relocation ?? {kind: 'resume'}), token});
-      child.stdin.end();
+      if (mode === 'relocated-before-listen') child.stdin.end();
     } else if (token) {
       send({kind: 'resume', token, exportAlternates, ...(carryControl ? {carryControl} : {})});
       if (!carryControl) child.stdin.end();
@@ -83,6 +83,11 @@ export async function startSegmentHandoverHost(executable, args, token, exportAl
     const {address} = await next('listening');
     return {
       address,
+      async maintenance(principal, token, action) {
+        assert.equal(mode, 'relocated');
+        send({principal, token, action});
+        return next('maintenance');
+      },
       async handover(token, document, review, peer, uploads, journals, wrongReceipt, assetMapping, incomingBranch, peerReview) {
         send({kind: 'handover', token, writer: document.writer, documentCredential: document.credential,
           actor: review.actor, reviewCredential: review.credential, peerWriter: peer.writer,

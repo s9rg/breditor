@@ -210,10 +210,9 @@ async fn main() -> Result {
         "restore" | "restored" | "carried" => {
             handover::resumed_router(parent, auth, mode == "carried")?
         }
-        "relocated" | "relocated-before-listen" => (
-            handover::portable_relocation::router(parent, auth, mode == "relocated-before-listen")?,
-            None,
-        ),
+        "relocated" | "relocated-before-listen" => {
+            handover::portable_relocation::router(parent, auth, mode == "relocated-before-listen")?
+        }
         "handoff" => {
             let (room, _) = Room::open_log_generations(&old)?;
             return continue_room(parent, room, "base", "successor", "successor-one", None);

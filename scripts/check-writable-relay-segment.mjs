@@ -10,6 +10,7 @@ import {WebSocket as Socket} from 'undici';
 import {environment} from './fixtures/room-participant-inventory/environment.mjs';
 import {pixel, proposalAsset, proposalPixel, secondAsset, secondPixel, recoveredAsset, recoveredPixel} from './fixtures/review-assets/pixels.mjs';
 import {assertOlderAuthorityRefused, startSegmentHandoverHost} from './fixtures/relay-segment-handover-host.mjs';
+import {advanceRelocatedHistories, verifyRelocatedMaintenanceRetries} from './fixtures/relay-segment-maintenance.mjs';
 import {captureParticipant, checkRecoveredAlternate, checkRetainedSelected, proposalAlias, reopenParticipant, withWrongReviewReceipt} from './fixtures/relay-segment-participant.mjs';
 import {captureClientRaster, resumeClientRaster} from './fixtures/relay-segment-client-raster.mjs';
 import {recoveredText, reviewRecoveredText} from './fixtures/relay-segment-recovered-text.mjs';
@@ -85,10 +86,14 @@ async function run(mode, {distribution, rich}, executable, parent, journalKind, 
   const reset = environment();
   const previousSocket = Object.getOwnPropertyDescriptor(globalThis, 'WebSocket');
   const loss = recoverCommentIntent ? {armed: false, durable: null, submissions: 0} : null;
+  const portableSockets = [];
   Object.defineProperty(globalThis, 'WebSocket', {
     configurable: true,
     value: loss ? recoveryReviewReplySocket(Socket, origin, loss) : class extends Socket {
-      constructor(url) { super(url, {headers: {Origin: origin}}); }
+      constructor(url) {
+        super(url, {headers: {Origin: origin}});
+        if (portableSeal) portableSockets.push(this);
+      }
     },
   });
   const token = randomBytes(32).toString('hex');
@@ -593,7 +598,7 @@ async function run(mode, {distribution, rich}, executable, parent, journalKind, 
     if (competing) assert.doesNotMatch(session.core.documentJson(), /Competing branch text/);
     let restoredRoot = 'restored';
     let retainedAlternatePins = competing ? [incomingBranch] : [];
-    let carryEvidence, relocationEvidence, attachedDiscussion, portableActivationLedger;
+    let carryEvidence, relocationEvidence, attachedDiscussion, portableActivationLedger, maintenance;
     if (relayDiscussion) {
       const source = {file: new Blob([retainedBranches.incoming]), selection: retainedBranches.incomingSelection};
       attachedDiscussion = await publishAttachedDiscussion({
@@ -773,11 +778,20 @@ async function run(mode, {distribution, rich}, executable, parent, journalKind, 
       session = restored.session;
       portableUploads = restored.uploads;
       assert.deepEqual(session.exportRecovery(), recovery);
+      const beforeAttach = portableSockets.length;
       await attach();
       assert.equal(document.state().pending, false);
       assert.equal(review.state().pending, false);
       assert.equal(visibleThreads().length, 4 + Number(relayDiscussion));
       assert.doesNotMatch(session.core.documentJson(), /Competing branch text/);
+      if (portableSeal) {
+        assert.ok(readerToken);
+        const sockets = portableSockets.slice(beforeAttach);
+        assert.equal(sockets.length, 2);
+        assert.ok(sockets.every(socket => socket.readyState === Socket.OPEN));
+        maintenance = {sockets, socketCount: portableSockets.length,
+          state: await advanceRelocatedHistories(host, token, readerToken)};
+      }
       carryEvidence = {alternateOmissionRefusals: result.alternateOmissionRefusals,
         ...(relayDiscussion ? {
           discussionBackup: result.discussionBackup,
@@ -797,6 +811,12 @@ async function run(mode, {distribution, rich}, executable, parent, journalKind, 
     assert.equal(session.core.undoReview().kind, 'committed');
     await document.flush();
     await review.flush();
+    if (maintenance) {
+      assert.equal(portableSockets.length, maintenance.socketCount);
+      assert.ok(maintenance.sockets.every(socket => socket.readyState === Socket.OPEN));
+      assert.equal(document.state().pending, false);
+      assert.equal(review.state().pending, false);
+    }
     await stopClients();
     await host.crash();
     if (portableActivationLedger) {
@@ -804,6 +824,7 @@ async function run(mode, {distribution, rich}, executable, parent, journalKind, 
       relocationEvidence.rolledBackAuthorityRefusals = 1;
     }
     host = await startSegmentHandoverHost(executable, [parent, restoredRoot, address], token);
+    if (maintenance) Object.assign(relocationEvidence, await verifyRelocatedMaintenanceRetries(host, token, maintenance.state));
     const clientUploadReceipts = await resumeClientRaster(
       richApi, api, parent, address, origin, token, uploads[0], portableUploads, restoredRoot,
     );

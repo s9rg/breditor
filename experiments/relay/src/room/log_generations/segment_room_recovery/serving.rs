@@ -52,6 +52,14 @@ impl RelaySegmentServingCustody {
         Ok(())
     }
 
+    pub(crate) fn check_retained_inputs(&self) -> Result<()> {
+        self.check()?;
+        if let Some(uploads) = &self.uploads {
+            uploads.check()?;
+        }
+        Ok(())
+    }
+
     pub(crate) fn check_alternate_continuity(
         &self,
         target: &RecoveredRelaySegmentRoom,

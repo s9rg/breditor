@@ -1,5 +1,5 @@
 //! Process-level fixture for sealing on one relay and activating a moved bundle on another.
-use super::{POLICY, Result, deployment, input, read, restart_floor, storage};
+use super::{POLICY, Result, deployment, input, maintenance, read, restart_floor, storage};
 use breditor_collab_relay::{
     Error, RecoveryDocumentCredential, RecoveryRegistrationCredentials, RecoveryReviewCredential,
     server::{
@@ -96,7 +96,7 @@ pub(crate) fn router(
     parent: &Path,
     authentication: Authentication,
     exit_before_listen: bool,
-) -> Result<axum::Router> {
+) -> Result<(axum::Router, Option<tokio::task::JoinHandle<Result>>)> {
     let command: Command = serde_json::from_slice(&input()?)?;
     let seal: RelaySegmentPortableSeal =
         serde_json::from_str(&read(&parent.join(SEAL), 128 * 1024)?)?;
@@ -158,7 +158,7 @@ pub(crate) fn router(
             storage::write_new(&approval_path, &serde_json::to_vec(&approval)?)?;
             File::open(parent)?.sync_all()?;
             restart_floor::remember(parent, APPROVAL, &approval.planned_selection()?)?;
-            let (router, _, active) = target.activate_sealed_portable_relay(
+            let (router, handle, active) = target.activate_sealed_portable_relay(
                 authentication,
                 "owner",
                 &token,
@@ -177,7 +177,7 @@ pub(crate) fn router(
                 stdout.flush()?;
                 std::process::exit(77);
             }
-            Ok(router)
+            Ok((router, Some(maintenance::serve(handle))))
         }
         Command::Resume { token, expected_unserved_selection } => {
             assert!(!exit_before_listen);
@@ -191,7 +191,7 @@ pub(crate) fn router(
                 assert_eq!(expected, approval.planned_selection()?);
                 assert_eq!(selected, expected);
             }
-            let (router, _, resumed) = target.resume_handover(
+            let (router, handle, resumed) = target.resume_handover(
                 authentication,
                 "owner",
                 &token,
@@ -201,7 +201,7 @@ pub(crate) fn router(
             )?;
             assert_ne!(selected, resumed);
             restart_floor::remember(parent, APPROVAL, &resumed)?;
-            Ok(router)
+            Ok((router, Some(maintenance::serve(handle))))
         }
     }
 }

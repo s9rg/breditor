@@ -22,6 +22,8 @@ use std::{
 mod branches;
 #[path = "handover/carry.rs"]
 mod carry;
+#[path = "handover/maintenance.rs"]
+mod maintenance;
 #[path = "handover/portable_relocation.rs"]
 pub(super) mod portable_relocation;
 #[path = "handover/provider.rs"]
@@ -76,13 +78,20 @@ enum Command {
 }
 
 fn input() -> Result<Vec<u8>> {
+    next_input()?.ok_or_else(|| "private relay segment command bounds".into())
+}
+
+fn next_input() -> Result<Option<Vec<u8>>> {
     let stdin = std::io::stdin();
     let mut line = Vec::new();
     stdin.lock().take(8193).read_until(b'\n', &mut line)?;
+    if line.is_empty() {
+        return Ok(None);
+    }
     if line.len() > 8192 || line.last() != Some(&b'\n') {
         return Err("private relay segment command bounds".into());
     }
-    Ok(line)
+    Ok(Some(line))
 }
 
 fn prepare_and_commit(
