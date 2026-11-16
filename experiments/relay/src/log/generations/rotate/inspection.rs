@@ -26,6 +26,8 @@ pub struct PendingNativeLogRotation {
     pub evidence_sha256: [u8; 32],
     #[serde(skip)]
     evidence: Vec<u8>,
+    #[serde(skip)]
+    pub(in crate::log::generations) continuation: FileIdentity,
 }
 
 impl PendingNativeLogRotation {
@@ -144,6 +146,7 @@ impl Generations {
                 head_published,
                 evidence_sha256,
                 evidence,
+                continuation: intent.identity,
             },
             excluded,
         })

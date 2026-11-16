@@ -1,5 +1,5 @@
 //! Authenticate and retire one interrupted upload, preserving any complete published image.
-use super::native_tail::with_repair_epoch;
+use super::{evidence::Fingerprint, native_tail::with_repair_epoch};
 use crate::{
     Error, Result,
     assets::{AssetBackupIdentity, MAX_STAGE_BYTES},
@@ -15,28 +15,7 @@ use crate::{
     },
 };
 use serde::{Deserialize, Serialize};
-use sha2::{Digest, Sha256};
 use std::path::Path;
-
-#[derive(Clone, Debug, Eq, PartialEq, Serialize, Deserialize)]
-#[serde(rename_all = "camelCase", deny_unknown_fields)]
-struct Fingerprint {
-    bytes: u64,
-    sha256: [u8; 32],
-}
-
-impl Fingerprint {
-    fn of(bytes: &[u8]) -> Self {
-        Self { bytes: bytes.len() as u64, sha256: Sha256::digest(bytes).into() }
-    }
-
-    fn sync_evidence(&self, file: &RetainedRepairFile) -> Result<()> {
-        if file.digest(self.bytes)? != self.sha256 {
-            return Err(Error::Contract("continued upload recovery evidence differs"));
-        }
-        file.sync()
-    }
-}
 
 /// Independent choice of an exact pending upload and accepted room cut.
 /// Retain it separately from both the room and the exported evidence.
@@ -202,8 +181,9 @@ impl ContinuedRasterRoomBackupFiles {
                 RetainedRepairFile::open(selected.raster, target.operating_directory(), outside)?;
             let suffix_file =
                 RetainedRepairFile::open(selected.suffix, target.operating_directory(), outside)?;
-            plan.stage.sync_evidence(&upload_file)?;
-            plan.suffix.sync_evidence(&suffix_file)?;
+            let changed = "continued upload recovery evidence differs";
+            plan.stage.sync_evidence(&upload_file, changed)?;
+            plan.suffix.sync_evidence(&suffix_file, changed)?;
             self.check()?;
             target.finish_pending_raster_repair(
                 &plan.accepted,

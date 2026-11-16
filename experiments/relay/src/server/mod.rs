@@ -11,10 +11,12 @@ pub use continued_assets::{
     ContinuedAssetServerHandle, ContinuedRasterActivation, ContinuedRasterActivationApproval,
     ContinuedRasterNativeTailInspection, ContinuedRasterNativeTailOutcome,
     ContinuedRasterNativeTailPlan, ContinuedRasterNativeTailRepair, ContinuedRasterRestart,
-    ContinuedRasterRoomBackupIdentity, ContinuedRasterRoomInputReport, ContinuedRasterSeal,
-    ContinuedRasterSealing, ContinuedRasterUploadInspection, ContinuedRasterUploadPlan,
-    ContinuedRasterUploadRepair, ContinuedRasterUploadRepairOutcome,
-    SealedContinuedRasterActivation, router_with_continued_assets_and_deployment_lease,
+    ContinuedRasterRoomBackupIdentity, ContinuedRasterRoomInputReport,
+    ContinuedRasterRotationInspection, ContinuedRasterRotationPlan, ContinuedRasterRotationRepair,
+    ContinuedRasterRotationRepairOutcome, ContinuedRasterSeal, ContinuedRasterSealing,
+    ContinuedRasterUploadInspection, ContinuedRasterUploadPlan, ContinuedRasterUploadRepair,
+    ContinuedRasterUploadRepairOutcome, SealedContinuedRasterActivation,
+    router_with_continued_assets_and_deployment_lease,
 };
 mod authentication;
 mod backup;

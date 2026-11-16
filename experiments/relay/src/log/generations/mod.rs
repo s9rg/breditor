@@ -42,6 +42,8 @@ pub(crate) use repair_tail::NativeTailRepairPoint;
 mod rotate;
 #[cfg(feature = "server")]
 pub use rotate::inspection::PendingNativeLogRotation;
+#[cfg(feature = "server")]
+pub(crate) use rotate::segment::SelectedSegmentRotation;
 mod rotation_recovery_stages;
 mod segment;
 pub(crate) use segment::SegmentArchiveOrigin;

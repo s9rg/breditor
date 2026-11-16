@@ -5,6 +5,7 @@ mod open;
 mod raster_repair;
 mod reconciliation;
 mod restore;
+mod rotation_repair;
 mod serving;
 mod stage_rasters;
 mod tail_repair;

@@ -17,6 +17,8 @@ use breditor_collab_feasibility::rich_replica::VersionAssetReference;
 use serde_json::json;
 use std::fs::File;
 
+#[path = "rotation_tests.rs"]
+mod rotation_tests;
 #[path = "tail_tests.rs"]
 mod tail_tests;
 
@@ -278,5 +280,13 @@ fn portable_seal_survives_lost_reply_and_refuses_changed_inputs_after_relocation
     tail_tests::check_interrupted_repair(
         root, &selection, &approval, &active, &floor, &hash, &token,
     )?;
+    let backup = ContinuedRasterRoomBackupFiles::open(&root.join("capture"), &selection, None)?;
+    let repair_authority = RoomDeploymentAuthority::open_at_least(&epochs, &active)?;
+    let restart = ContinuedRasterRestart {
+        authority: &repair_authority,
+        approval: &approval,
+        expected: &active,
+    };
+    rotation_tests::check_interrupted_rotation(root, &backup, &restart, &floor, &auth, &token)?;
     Ok(())
 }

@@ -1,6 +1,8 @@
 //! Physical rotation: verify -> sync intent -> link exact owned inode -> sync head -> publish.
 #[cfg(feature = "server")]
 pub(super) mod inspection;
+#[cfg(feature = "server")]
+pub(super) mod segment;
 use super::{
     directory::Directory,
     format,
@@ -75,6 +77,9 @@ impl Intent {
 }
 impl Generations {
     fn child(&self, next: &str, sealed: ClosedFile) -> Result<Manifest> {
+        if self.contains_generation(next) {
+            return Err(Error::Contract("physical rotation reuses a generation"));
+        }
         let mut child = self.current().value.clone();
         child.parent = Some(self.current().hash);
         child.active = ActiveFile {

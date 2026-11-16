@@ -4,6 +4,7 @@ mod approval;
 mod backup;
 pub use activation::{ContinuedRasterActivation, ContinuedRasterRestart};
 pub use approval::ContinuedRasterActivationApproval;
+mod evidence;
 mod native_tail;
 pub use native_tail::{
     ContinuedRasterNativeTailInspection, ContinuedRasterNativeTailOutcome,
@@ -11,11 +12,16 @@ pub use native_tail::{
 };
 mod raster_repair;
 mod reconcile;
+mod rotation_repair;
 pub use raster_repair::{
     ContinuedRasterUploadInspection, ContinuedRasterUploadPlan, ContinuedRasterUploadRepair,
     ContinuedRasterUploadRepairOutcome,
 };
 pub use reconcile::ContinuedRasterRoomInputReport;
+pub use rotation_repair::{
+    ContinuedRasterRotationInspection, ContinuedRasterRotationPlan, ContinuedRasterRotationRepair,
+    ContinuedRasterRotationRepairOutcome,
+};
 mod seal;
 pub use seal::{ContinuedRasterSeal, ContinuedRasterSealing, SealedContinuedRasterActivation};
 mod store;

@@ -362,6 +362,29 @@ file and the client can retry the original upload. The same plan can resume
 after an interrupted repair or synchronize the already-complete cut. Use the
 retained serving selection for an ordinary restart after repair.
 
-An unfinished log rotation, multiple pending uploads, and staging files
-with unrelated hard links require separate recovery. Preserve the files if
-inspection or repair refuses.
+Multiple pending uploads and staging files with unrelated hard links
+require separate recovery. When a log rotation is pending, use the rotation
+inspection below and preserve the files if it refuses.
+
+### Finish an interrupted native rotation
+
+Ordinary restart preserves a pending rotation for explicit recovery.
+Call `inspect_activated_native_rotation` with the authenticated owner,
+committed serving selection and independently saved minimum. The relay
+replays the complete linked history and checks its accepted digest at the
+minimum. Inspection saves the observed rotation files in `rotation.json`
+outside the room and saves `raster.bin` if one image upload is also pending.
+Keep the plan and evidence apart from the operating room.
+
+Call `repair_activated_native_rotation` with the saved plan and exact
+evidence. The relay verifies the current phase and syncs the evidence before
+writing. It checks the selected successor manifest, empty WAL inode and
+unchanged absolute event cut before retiring any image stage. A published
+image stays at its original name and inode, and unpublished bytes remain
+available in the evidence. Use ordinary authenticated restart after success.
+
+If a retry finds a different phase with the intent still present, inspect
+that phase and retain its evidence alongside the earlier plan before applying
+it. If the intent was already retired, the same plan can verify and sync the
+exact successor and finish the remaining image stage. A newer edit, replaced
+successor, incomplete active frame or unrelated pending work refuses.
