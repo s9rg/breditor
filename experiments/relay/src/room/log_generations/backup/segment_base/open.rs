@@ -9,8 +9,8 @@ use crate::{
     },
     room::{
         SegmentCheckpointEncoding,
-        asset_references::{PacketHistory, PacketRecord},
-        materialized_checkpoint::{Checkpoint, Header, MAX_CHECKPOINT_BYTES},
+        asset_references::PacketRecord,
+        materialized_checkpoint::{Checkpoint, Header, MAX_CHECKPOINT_BYTES, SelectedHeader},
     },
 };
 use sha2::{Digest, Sha256};
@@ -77,7 +77,32 @@ impl RelaySegmentBaseFile {
         expected: &RelaySegmentBaseIdentity,
         parent: Option<Arc<Self>>,
     ) -> Result<Self> {
-        if archive.all().len() > crate::MAX_SERVER_LOG_GENERATION_BACKUP_BYTES
+        Self::open_selected(Some(archive), checkpoint, expected, parent)
+    }
+
+    /// Reopen certified version-three history using its independently retained original
+    /// identity. Keep the checkpoint immutable while it is in use.
+    ///
+    /// # Errors
+    /// Refuses older checkpoints, changed bytes, a different parent or invalid closure.
+    pub fn open_compacted_checkpoint(
+        checkpoint: File,
+        expected: &RelaySegmentBaseIdentity,
+        parent: Option<Arc<Self>>,
+    ) -> Result<Self> {
+        let checkpoint = ArchiveInput::new(checkpoint, MAX_CHECKPOINT_BYTES as u64)?;
+        Self::open_selected(None, CheckpointInput::raw(checkpoint), expected, parent)
+    }
+
+    pub(crate) fn open_selected(
+        archive: Option<ArchiveInput>,
+        checkpoint: CheckpointInput,
+        expected: &RelaySegmentBaseIdentity,
+        parent: Option<Arc<Self>>,
+    ) -> Result<Self> {
+        if archive
+            .as_ref()
+            .is_some_and(|input| input.all().len() > crate::MAX_SERVER_LOG_GENERATION_BACKUP_BYTES)
             || checkpoint.len() > MAX_CHECKPOINT_BYTES as u64
         {
             return Err(Error::Contract("relay segment base input budget"));
@@ -90,12 +115,41 @@ impl RelaySegmentBaseFile {
         if let Some(prior) = &parent {
             prior.check()?;
         }
-        let origin = parent.as_deref().map(|base| SegmentArchiveOrigin { base });
-        let (sections, root_generation) = super::super::disk::admit_generation_file(
-            archive.all(),
-            &expected.predecessor,
-            origin.as_ref(),
-        )?;
+        if checkpoint.len() == 0 || checkpoint.digest()? != expected.checkpoint.sha256 {
+            return Err(Error::Contract("relay segment base checkpoint digest differs"));
+        }
+        let first = parent.as_ref().map_or(0, |base| base.identity.predecessor.source.records);
+        let SelectedHeader { encoding, closure, .. } =
+            read_header(&checkpoint, &expected.checkpoint, first)?;
+        let projected = closure
+            .map(|proof| proof.select(&expected.predecessor, parent.as_deref()))
+            .transpose()?;
+        let (sections, root_generation) = if let Some(input) = &archive {
+            let origin = parent.as_deref().map(|base| SegmentArchiveOrigin { base });
+            let (sections, root) = super::super::disk::admit_generation_file(
+                input.all(),
+                &expected.predecessor,
+                origin.as_ref(),
+            )?;
+            if let Some((projected_sections, projected_root)) = projected {
+                let pairs = sections.iter().zip(&projected_sections);
+                if root != projected_root
+                    || sections.len() != projected_sections.len()
+                    || pairs.into_iter().any(|((name, part), (pinned_name, pinned))| {
+                        name != pinned_name
+                            || part.bytes != pinned.bytes
+                            || part.sha256 != pinned.sha256
+                    })
+                {
+                    return Err(Error::Contract(
+                        "relay checkpoint physical closure differs from archive",
+                    ));
+                }
+            }
+            (sections, root)
+        } else {
+            projected.ok_or(Error::Contract("relay checkpoint does not certify retired archive"))?
+        };
         if let Some(prior) = &parent {
             let old = &prior.identity.predecessor.source;
             let mut ancestor = expected.predecessor.source.clone();
@@ -110,16 +164,6 @@ impl RelaySegmentBaseFile {
                 }
             }
         }
-        if checkpoint.len() == 0 || checkpoint.digest()? != expected.checkpoint.sha256 {
-            return Err(Error::Contract("relay segment base checkpoint digest differs"));
-        }
-        let first = parent.as_ref().map_or(0, |base| base.identity.predecessor.source.records);
-        let checkpoint_encoding =
-            if read_asset_history(&checkpoint, &expected.checkpoint, first)?.is_some() {
-                SegmentCheckpointEncoding::IndexedAssetHistory
-            } else {
-                SegmentCheckpointEncoding::Original
-            };
         let result = Self {
             identity: expected.clone(),
             binding: segment_history_digest(parent.as_deref(), expected)?,
@@ -127,7 +171,7 @@ impl RelaySegmentBaseFile {
             parent,
             archive,
             checkpoint,
-            checkpoint_encoding,
+            checkpoint_encoding: encoding,
             sections,
         };
         result.check()?;
@@ -142,7 +186,10 @@ impl RelaySegmentBaseFile {
 
     pub(crate) fn check(&self) -> Result<()> {
         let mut checked = None;
-        for input in self.lineage().flat_map(|base| [&base.archive, &base.checkpoint.input]) {
+        for input in self
+            .lineage()
+            .flat_map(|base| base.archive.iter().chain(std::iter::once(&base.checkpoint.input)))
+        {
             if checked.is_some_and(|previous| input.shares_handle(previous)) {
                 continue;
             }
@@ -192,18 +239,18 @@ impl RelaySegmentBaseFile {
         self.check()?;
         let lineage = self.lineage().collect::<Vec<_>>();
         for base in lineage.into_iter().rev() {
-            if base.checkpoint_encoding == SegmentCheckpointEncoding::IndexedAssetHistory {
+            if base.checkpoint_encoding.has_asset_history() {
                 let first =
                     base.parent().map_or(0, |base| base.identity.predecessor.source.records);
-                let history =
-                    read_asset_history(&base.checkpoint, &base.identity.checkpoint, first)?
-                        .ok_or(Error::Contract("relay checkpoint asset packet history missing"))?;
+                let history = read_header(&base.checkpoint, &base.identity.checkpoint, first)?
+                    .history
+                    .ok_or(Error::Contract("relay checkpoint asset packet history missing"))?;
                 for packet in history.into_records() {
                     visit(packet)?;
                 }
                 continue;
             }
-            let input = base.archive.all();
+            let input = base.archive.as_ref().ok_or(Error::NeedsRecovery)?.all();
             let files = base
                 .sections
                 .iter()
@@ -241,14 +288,14 @@ impl RelaySegmentBaseFile {
     }
 }
 
-fn read_asset_history(
+fn read_header(
     checkpoint: &CheckpointInput,
     identity: &crate::RelayCheckpointIdentity,
     first: u64,
-) -> Result<Option<PacketHistory>> {
+) -> Result<SelectedHeader> {
     let header: Header =
         checkpoint.visit(|reader| Ok(serde_json::from_reader(BufReader::new(reader))?))?;
-    header.select_asset_history(identity, first)
+    header.select(identity, first)
 }
 
 impl Room {

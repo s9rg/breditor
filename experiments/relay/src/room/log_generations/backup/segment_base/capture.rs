@@ -59,6 +59,25 @@ impl Room {
         )
     }
 
+    /// Write the original archive and a version-three checkpoint that independently pins
+    /// its exact physical closure and retained packet history.
+    ///
+    /// # Errors
+    /// Refuses the same conditions as [`Self::write_relay_segment_base_with_indexed_asset_history`].
+    pub fn write_relay_segment_base_with_compactable_history(
+        &mut self,
+        principal: &str,
+        archive: &mut impl Write,
+        checkpoint: &mut impl Write,
+    ) -> Result<RelaySegmentBaseIdentity> {
+        self.write_relay_segment_base_with_encoding(
+            principal,
+            archive,
+            checkpoint,
+            SegmentCheckpointEncoding::Compactable,
+        )
+    }
+
     pub(in crate::room) fn write_relay_segment_base_with_encoding(
         &mut self,
         principal: &str,
@@ -82,12 +101,8 @@ impl Room {
             {
                 return Err(Error::Contract("relay segment base predecessor changed"));
             }
-            if encoding == SegmentCheckpointEncoding::IndexedAssetHistory {
-                let history =
-                    stream.capture_asset_packet_history()?.inspect_err(|_| failed.set(true))?;
-                state.include_asset_history(history);
-            }
             stream.write_and_pin(archive, &failed)?;
+            stream.complete_checkpoint(&mut state, encoding)?.inspect_err(|_| failed.set(true))?;
             let predecessor = stream.info.identity.clone();
             let mut checkpoint_file = BufWriter::new(checkpoint);
             let (checkpoint_result, sha256) = {

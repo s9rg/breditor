@@ -1,6 +1,6 @@
 //! Real retained history and packet ancestry across files, independent from visible AST/catalogs.
 use super::*;
-use crate::room::SegmentCheckpointEncoding::{self, IndexedAssetHistory, Original};
+use crate::room::SegmentCheckpointEncoding::{self, Compactable, IndexedAssetHistory, Original};
 use crate::room::log_generations::tests::setup_profile;
 
 fn generation_pairs(
@@ -81,6 +81,12 @@ fn indexed_packet_history_matches_live_and_legacy_reads_across_mixed_relay_segme
 {
     retained_packet_ancestry(IndexedAssetHistory, Original)?;
     retained_packet_ancestry(Original, IndexedAssetHistory)
+}
+
+#[test]
+fn compacted_checkpoint_keeps_abandoned_asset_references_without_the_original_archive() -> TestResult
+{
+    retained_packet_ancestry(Compactable, Original)
 }
 
 fn retained_packet_ancestry(
@@ -169,12 +175,26 @@ fn retained_packet_ancestry(
         &mut fs::File::create_new(&checkpoint)?,
         root,
     )?;
-    let base = std::sync::Arc::new(crate::RelaySegmentBaseFile::open(
+    let raw = crate::RelaySegmentBaseFile::open(
         fs::File::open(&archive)?,
         fs::File::open(&checkpoint)?,
         &identity,
-    )?);
-    assert_eq!(base.checkpoint_encoding() == IndexedAssetHistory, root == IndexedAssetHistory);
+    )?;
+    assert!(raw.checkpoint_encoding() == root);
+    let base = if root == Compactable {
+        let compacted = crate::RelaySegmentBaseFile::open_compacted_checkpoint(
+            fs::File::open(&checkpoint)?,
+            &identity,
+            None,
+        )?;
+        drop(raw);
+        fs::remove_file(&archive)?;
+        assert!(!archive.exists());
+        compacted
+    } else {
+        raw
+    };
+    let base = std::sync::Arc::new(base);
     if root == IndexedAssetHistory {
         use crate::room::materialized_checkpoint::Checkpoint;
         use sha2::{Digest, Sha256};

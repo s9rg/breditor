@@ -20,6 +20,8 @@ mod inventory;
 mod manifest;
 mod open;
 mod options;
+pub(crate) use format::{manifest_name, wal_name};
+pub(crate) use options::generation as validate_generation_id;
 mod pack_sealed_wal;
 #[cfg(test)]
 pub(crate) use pack_sealed_wal::WalPackingInterruption;

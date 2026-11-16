@@ -35,7 +35,7 @@ pub struct RelaySegmentBaseFile {
     binding: [u8; 32],
     root_generation: String,
     parent: Option<Arc<Self>>,
-    archive: ArchiveInput,
+    archive: Option<ArchiveInput>,
     checkpoint: CheckpointInput,
     checkpoint_encoding: SegmentCheckpointEncoding,
     sections: BTreeMap<String, ArchiveEntry>,

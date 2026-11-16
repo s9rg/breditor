@@ -102,11 +102,18 @@ impl NativeLineage {
 pub(super) fn copy_packed(
     source: &GenerationDirectory,
     destination: &GenerationDirectory,
-    count: usize,
+    expected: &[RelaySegmentBaseIdentity],
     encoding: packed::Encoding,
 ) -> Result<()> {
+    let count = expected.len();
     if count == 0 {
         return Ok(());
+    }
+    if encoding == packed::Encoding::Compacted {
+        let lineage = NativeLineage::open(source, expected)?;
+        let parent = lineage.parent();
+        NativeLineage::export(destination, parent.as_deref(), LineageLayout::Packed(encoding))?;
+        return lineage.check();
     }
     let source = GenerationDirectory::open(&source.path.join(LINEAGE))?;
     let destination = GenerationDirectory::create(&destination.path.join(LINEAGE))?;

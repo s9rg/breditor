@@ -80,6 +80,27 @@ impl RelaySegmentRetainedBackup {
         )
     }
 
+    /// Verify the selected portable backup and copy it into a fresh directory.
+    /// Omit certified predecessor WAL archives while retaining the original selection,
+    /// exact checkpoints, terminal archive and every retained client input.
+    ///
+    /// # Errors
+    /// Refuses changed inputs, unsupported paths and occupied destinations.
+    /// Retry a failed copy at another absent path.
+    pub fn copy_portable_with_compacted_history(
+        source: &Path,
+        destination: &Path,
+        expected: &RelaySegmentPortableBackupIdentity,
+    ) -> Result<()> {
+        Self::copy_portable_with_layout(
+            source,
+            destination,
+            expected,
+            ClientLayout::Packed,
+            Encoding::Compacted,
+        )
+    }
+
     fn copy_portable_with_layout(
         source: &Path,
         destination: &Path,
@@ -93,7 +114,7 @@ impl RelaySegmentRetainedBackup {
         native_lineage::copy_packed(
             &source,
             &destination,
-            expected.native_predecessors.len(),
+            &expected.native_predecessors,
             encoding,
         )?;
         for (name, limit) in [

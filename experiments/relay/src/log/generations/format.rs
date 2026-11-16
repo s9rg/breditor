@@ -17,7 +17,7 @@ pub(super) fn hex(bytes: &[u8; 32]) -> String {
     }
     result
 }
-pub(super) fn manifest_name(hash: &[u8; 32]) -> String {
+pub(crate) fn manifest_name(hash: &[u8; 32]) -> String {
     format!("m-{}.json", hex(hash))
 }
 pub(crate) fn wal_name(generation: &str) -> String {

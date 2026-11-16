@@ -197,6 +197,29 @@ impl ServerBackupHandle {
         )
     }
 
+    /// Copy a portable room while retiring WAL archives for certified predecessors.
+    /// The terminal segment is captured in full and can be compacted as an ancestor.
+    /// Keep the selected identity independently so recovery can verify the retained bytes.
+    ///
+    /// # Errors
+    /// Refuses unauthorized or superseded sources, changing inputs, oversized histories,
+    /// occupied destinations and I/O errors. Retry at a fresh absent path.
+    pub fn capture_portable_relay_segment_with_compacted_history(
+        &self,
+        principal: &str,
+        token: &str,
+        destination: &Path,
+    ) -> Result<RelaySegmentPortableBackupIdentity> {
+        self.capture_portable_relay_segment_with_layout(
+            principal,
+            token,
+            destination,
+            LineageLayout::Packed(Encoding::Compacted),
+            ClientLayout::Packed,
+            SegmentCheckpointEncoding::Compactable,
+        )
+    }
+
     fn capture_portable_relay_segment_with_layout(
         &self,
         principal: &str,

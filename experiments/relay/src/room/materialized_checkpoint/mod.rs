@@ -1,10 +1,12 @@
 //! Independently pinned relay state at a sealed WAL boundary.
+mod physical_closure;
 mod restore;
 mod state;
 #[cfg(all(test, feature = "server"))]
 mod tests;
 
 use crate::{Error, Result, Room, RoomBackupIdentity};
+pub(super) use physical_closure::PhysicalClosure;
 use serde::{Deserialize, Serialize};
 use sha2::{Digest, Sha256};
 pub(super) use state::Checkpoint;
@@ -17,6 +19,7 @@ use super::asset_references::PacketHistory;
 pub(crate) enum SegmentCheckpointEncoding {
     Original,
     IndexedAssetHistory,
+    Compactable,
 }
 
 impl SegmentCheckpointEncoding {
@@ -24,7 +27,12 @@ impl SegmentCheckpointEncoding {
         match self {
             Self::Original => 1,
             Self::IndexedAssetHistory => 2,
+            Self::Compactable => 3,
         }
+    }
+
+    pub(super) fn has_asset_history(self) -> bool {
+        self != Self::Original
     }
 }
 
@@ -58,35 +66,46 @@ pub(super) struct Header {
     format_version: u32,
     source: RoomBackupIdentity,
     manifest: [u8; 32],
-    #[serde(default, deserialize_with = "present_asset_history")]
+    #[serde(default, deserialize_with = "present")]
     asset_packet_history: Option<PacketHistory>,
+    #[serde(default, deserialize_with = "present")]
+    archive_closure: Option<PhysicalClosure>,
 }
 
-fn present_asset_history<'de, D: serde::Deserializer<'de>>(
+pub(super) struct SelectedHeader {
+    pub(super) encoding: SegmentCheckpointEncoding,
+    pub(super) history: Option<PacketHistory>,
+    pub(super) closure: Option<PhysicalClosure>,
+}
+
+fn present<'de, T: Deserialize<'de>, D: serde::Deserializer<'de>>(
     deserializer: D,
-) -> std::result::Result<Option<PacketHistory>, D::Error> {
-    PacketHistory::deserialize(deserializer).map(Some)
+) -> std::result::Result<Option<T>, D::Error> {
+    T::deserialize(deserializer).map(Some)
 }
 
 impl Header {
-    pub(super) fn select_asset_history(
+    pub(super) fn select(
         self,
         expected: &RelayCheckpointIdentity,
         first_sequence: u64,
-    ) -> Result<Option<PacketHistory>> {
-        let Self { format, format_version, source, manifest, asset_packet_history } = self;
-        check_selection(
-            &format,
-            format_version,
-            &source,
-            manifest,
-            asset_packet_history.is_some(),
+    ) -> Result<SelectedHeader> {
+        let encoding = check_selection(
+            &self.format,
+            self.format_version,
+            &self.source,
+            self.manifest,
+            (self.asset_packet_history.is_some(), self.archive_closure.is_some()),
             expected,
         )?;
-        if let Some(history) = &asset_packet_history {
-            history.check_range(first_sequence, source.records)?;
+        if let Some(history) = &self.asset_packet_history {
+            history.check_range(first_sequence, self.source.records)?;
         }
-        Ok(asset_packet_history)
+        Ok(SelectedHeader {
+            encoding,
+            history: self.asset_packet_history,
+            closure: self.archive_closure,
+        })
     }
 }
 
@@ -95,13 +114,14 @@ fn check_selection(
     format_version: u32,
     source: &RoomBackupIdentity,
     manifest: [u8; 32],
-    has_indexed_history: bool,
+    extensions: (bool, bool),
     expected: &RelayCheckpointIdentity,
-) -> Result<()> {
-    let encoding = if has_indexed_history {
-        SegmentCheckpointEncoding::IndexedAssetHistory
-    } else {
-        SegmentCheckpointEncoding::Original
+) -> Result<SegmentCheckpointEncoding> {
+    let encoding = match extensions {
+        (false, false) => SegmentCheckpointEncoding::Original,
+        (true, false) => SegmentCheckpointEncoding::IndexedAssetHistory,
+        (true, true) => SegmentCheckpointEncoding::Compactable,
+        (false, true) => return Err(Error::Contract("physical closure requires asset history")),
     };
     if format != FORMAT
         || format_version != encoding.version()
@@ -110,7 +130,7 @@ fn check_selection(
     {
         return Err(Error::Contract("relay checkpoint selected cut differs"));
     }
-    Ok(())
+    Ok(encoding)
 }
 
 pub(in crate::room) fn sequence(value: &str, end: u64) -> Result<u64> {
@@ -145,7 +165,7 @@ impl RelayCheckpoint {
             return Err(Error::Contract("relay checkpoint digest differs"));
         }
         let value: Header = serde_json::from_slice(&bytes)?;
-        if value.select_asset_history(expected, 0)?.is_some() {
+        if value.select(expected, 0)?.encoding.has_asset_history() {
             return Err(Error::Contract("indexed checkpoint requires a relay segment"));
         }
         Ok(Self { identity: expected.clone(), bytes })

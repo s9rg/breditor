@@ -1,7 +1,7 @@
 //! Exact durable room state. Connection leases and presence never appear here.
 use super::{
-    FORMAT, RelayCheckpointIdentity, SegmentCheckpointEncoding, check_selection,
-    present_asset_history,
+    FORMAT, PhysicalClosure, RelayCheckpointIdentity, SegmentCheckpointEncoding, check_selection,
+    present,
 };
 use crate::{
     DurableReceipt, Result, Role, Room, RoomBackupIdentity, ServerNativeHistoryBoundary,
@@ -34,12 +34,10 @@ pub(in crate::room) struct Checkpoint {
     pub(super) discussions: Vec<StoredDiscussion>,
     pub(super) versions: Option<VersionCheckpoint>,
     pub(super) suggestions: Option<SuggestionCheckpoint>,
-    #[serde(
-        default,
-        deserialize_with = "present_asset_history",
-        skip_serializing_if = "Option::is_none"
-    )]
+    #[serde(default, deserialize_with = "present", skip_serializing_if = "Option::is_none")]
     asset_packet_history: Option<PacketHistory>,
+    #[serde(default, deserialize_with = "present", skip_serializing_if = "Option::is_none")]
+    archive_closure: Option<PhysicalClosure>,
 }
 
 #[derive(Serialize, Deserialize)]
@@ -108,14 +106,20 @@ impl Checkpoint {
             self.format_version,
             &self.source,
             self.manifest,
-            self.asset_packet_history.is_some(),
+            (self.asset_packet_history.is_some(), self.archive_closure.is_some()),
             expected,
         )
+        .map(|_| ())
     }
 
     pub(in crate::room) fn include_asset_history(&mut self, history: PacketHistory) {
         self.format_version = SegmentCheckpointEncoding::IndexedAssetHistory.version();
         self.asset_packet_history = Some(history);
+    }
+
+    pub(in crate::room) fn include_physical_closure(&mut self, closure: PhysicalClosure) {
+        self.format_version = SegmentCheckpointEncoding::Compactable.version();
+        self.archive_closure = Some(closure);
     }
 
     pub fn capture(room: &Room, source: RoomBackupIdentity, manifest: [u8; 32]) -> Result<Self> {
@@ -159,6 +163,7 @@ impl Checkpoint {
                 .map(SuggestionCheckpoint::capture)
                 .transpose()?,
             asset_packet_history: None,
+            archive_closure: None,
         })
     }
 }

@@ -7,6 +7,10 @@ use crate::{
     Error, Result, Room, RoomBackupIdentity,
     archive_digest::ArchiveDigest,
     log::{Log, Record, generations::StreamGenerationCapture},
+    room::{
+        SegmentCheckpointEncoding,
+        materialized_checkpoint::{Checkpoint, PhysicalClosure},
+    },
 };
 use breditor_collab_feasibility::rich_replica::RichReplica;
 use std::{
@@ -45,10 +49,25 @@ pub(in crate::room) struct NativeBackupStream<'a> {
 }
 
 impl NativeBackupStream<'_> {
-    pub(super) fn capture_asset_packet_history(
+    pub(super) fn complete_checkpoint(
         &self,
-    ) -> Result<Result<crate::room::asset_references::PacketHistory>> {
-        crate::room::asset_references::PacketHistory::capture(&self.capture)
+        state: &mut Checkpoint,
+        encoding: SegmentCheckpointEncoding,
+    ) -> Result<Result<()>> {
+        if !encoding.has_asset_history() {
+            return Ok(Ok(()));
+        }
+        Ok(crate::room::asset_references::PacketHistory::capture(&self.capture)?.map(|history| {
+            state.include_asset_history(history);
+            if encoding == SegmentCheckpointEncoding::Compactable {
+                state.include_physical_closure(PhysicalClosure {
+                    root: self.capture.cut.root.clone(),
+                    parent: self.capture.segment_base().map(crate::RelaySegmentBaseFile::binding),
+                    archive_sha256: self.info.identity.archive_sha256,
+                    files: self.capture.sections.clone(),
+                });
+            }
+        }))
     }
 
     pub(in crate::room) fn measure(&mut self) -> Result<()> {

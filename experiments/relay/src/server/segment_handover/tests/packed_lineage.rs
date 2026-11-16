@@ -28,17 +28,17 @@ fn compact_frame_uses_raw_bytes_when_gzip_would_grow_the_checkpoint() -> TestRes
     write_frame(
         &mut output,
         Encoding::Compressed,
-        0,
+        1,
         4,
-        |_| Ok(()),
+        |writer| Ok(writer.write_all(b"a")?),
         |writer| Ok(writer.write_all(b"tiny")?),
     )?;
     let frame = fs::read(path)?;
-    assert_eq!(frame.len(), 24 + 4);
-    assert_eq!(&frame[..8], &0_u64.to_be_bytes());
+    assert_eq!(frame.len(), 24 + 1 + 4);
+    assert_eq!(&frame[..8], &1_u64.to_be_bytes());
     assert_eq!(&frame[8..16], &4_u64.to_be_bytes());
     assert_eq!(&frame[16..24], &4_u64.to_be_bytes());
-    assert_eq!(&frame[24..], b"tiny");
+    assert_eq!(&frame[24..], b"atiny");
     Ok(())
 }
 
@@ -53,8 +53,15 @@ fn long_lineage_moves_and_reopens_under_a_small_descriptor_limit() -> TestResult
         let checkpoint = parent.join(format!("original-{i}.checkpoint"));
         let mut archive_output = File::create_new(&archive)?;
         let mut checkpoint_output = File::create_new(&checkpoint)?;
-        let identity =
-            room.write_relay_segment_base("owner", &mut archive_output, &mut checkpoint_output)?;
+        let identity = if i == 0 {
+            room.write_relay_segment_base_with_compactable_history(
+                "owner",
+                &mut archive_output,
+                &mut checkpoint_output,
+            )?
+        } else {
+            room.write_relay_segment_base("owner", &mut archive_output, &mut checkpoint_output)?
+        };
         archive_output.sync_all()?;
         checkpoint_output.sync_all()?;
         drop((archive_output, checkpoint_output));
@@ -209,6 +216,42 @@ fn cold_lineage_worker() -> TestResult {
                 fs::read(root.join("compressed/native-lineage/packed.bin"))?
             );
             restore_and_reopen(&root, "compressed-from-packed", &selected)?;
+            let compacted = root.join("compacted-from-packed");
+            RelaySegmentRetainedBackup::copy_portable_with_compacted_history(
+                &compressed,
+                &compacted,
+                &selected,
+            )?;
+            let compacted_bytes = fs::read(compacted.join("native-lineage/packed.bin"))?;
+            let compressed_bytes = fs::read(compressed.join("native-lineage/packed.bin"))?;
+            let retired =
+                usize::try_from(u64::from_be_bytes(compressed_bytes[12..20].try_into()?))?;
+            assert_eq!(&compacted_bytes[..8], b"BRLINE3\n");
+            assert_eq!(&compacted_bytes[12..20], &0_u64.to_be_bytes());
+            assert!(retired > 0);
+            assert_eq!(compacted_bytes.len() + retired, compressed_bytes.len());
+            restore_and_reopen(&root, "compacted-from-packed", &selected)?;
+            let packed_path = compressed.join("native-lineage/packed.bin");
+            let mut corrupted_archive = compressed_bytes.clone();
+            corrupted_archive[36] ^= 1;
+            fs::write(&packed_path, corrupted_archive)?;
+            assert!(
+                RelaySegmentRetainedBackup::copy_portable_with_compacted_history(
+                    &compressed,
+                    &root.join("corrupt-compaction"),
+                    &selected,
+                )
+                .is_err()
+            );
+            fs::write(packed_path, compressed_bytes)?;
+            assert!(matches!(
+                RelaySegmentRetainedBackup::copy_portable_fully_packed(
+                    &compacted,
+                    &root.join("impossible-raw-copy"),
+                    &selected,
+                ),
+                Err(Error::Contract("relay predecessor archive has been compacted"))
+            ));
         }
         _ => return Err("unknown fixture layout".into()),
     }

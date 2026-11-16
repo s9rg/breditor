@@ -20,8 +20,8 @@ impl Room {
 impl RelaySegmentBaseFile {
     pub(crate) const CHECKPOINT_LIMIT: u64 =
         crate::room::materialized_checkpoint::MAX_CHECKPOINT_BYTES as u64;
-    pub(crate) fn original_inputs(&self) -> (&ArchiveInput, &CheckpointInput) {
-        (&self.archive, &self.checkpoint)
+    pub(crate) fn stored_inputs(&self) -> (Option<&ArchiveInput>, &CheckpointInput) {
+        (self.archive.as_ref(), &self.checkpoint)
     }
 
     pub(crate) fn write_original_pair(
@@ -29,7 +29,7 @@ impl RelaySegmentBaseFile {
         archive: &mut impl Write,
         checkpoint: &mut impl Write,
     ) -> Result<()> {
-        write_original(&self.archive, archive)?;
+        write_original(self.original_archive()?, archive)?;
         self.checkpoint.write_to(checkpoint)
     }
 
@@ -38,8 +38,12 @@ impl RelaySegmentBaseFile {
         archive: (&GenerationFileWitness, &Path),
         checkpoint: (&GenerationFileWitness, &Path),
     ) -> Result<()> {
-        self.archive.check_named(archive.0, archive.1)?;
+        self.original_archive()?.check_named(archive.0, archive.1)?;
         self.checkpoint.input.check_named(checkpoint.0, checkpoint.1)
+    }
+
+    fn original_archive(&self) -> Result<&ArchiveInput> {
+        self.archive.as_ref().ok_or(Error::Contract("relay predecessor archive has been compacted"))
     }
 }
 

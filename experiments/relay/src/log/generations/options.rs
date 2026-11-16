@@ -20,7 +20,7 @@ impl ServerLogGenerationOptions {
         Ok(())
     }
 }
-pub(super) fn generation(value: &str) -> Result<()> {
+pub(crate) fn generation(value: &str) -> Result<()> {
     if value.is_empty()
         || value.len() > 128
         || !value.as_bytes()[0].is_ascii_alphanumeric()

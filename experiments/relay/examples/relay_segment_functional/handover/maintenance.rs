@@ -1,8 +1,8 @@
 //! Private stdin commands for exercising maintenance against the real serving handle.
-use super::{Result, next_input, read, storage};
+use super::{POLICY, Result, next_input, read, storage};
 use breditor_collab_relay::{
     RelayCheckpoint, RelayCheckpointIdentity, ServerNativeHistoryBoundary, ServerNativeHistoryLane,
-    server::ServerBackupHandle,
+    server::{RelaySegmentRetainedBackup, ServerBackupHandle},
 };
 use serde::Deserialize;
 use serde_json::{Value, json};
@@ -29,6 +29,7 @@ enum Action {
     Checkpoint,
     Pack { generation: String },
     Archive { generation: String },
+    RecaptureCompacted,
 }
 
 impl Command {
@@ -68,6 +69,20 @@ impl Command {
                 serde_json::to_value(
                     handle.archive_sealed_wal(&principal, &token, checkpoint, &generation).await?,
                 )?
+            }
+            Action::RecaptureCompacted => {
+                let path = parent.join("portable-compacted-recapture");
+                let selection = handle.capture_portable_relay_segment_with_compacted_history(
+                    &principal, &token, &path,
+                )?;
+                let backup = RelaySegmentRetainedBackup::open_portable(&path, &selection)?;
+                let target = parent.join("portable-compacted-recapture-proof");
+                let restored = backup.restore(&target, "recaptured-one", POLICY)?;
+                let catchup = restored.components().0.catchup(&principal)?;
+                drop(restored);
+                let reopened = backup.backup().reopen(&target, POLICY)?;
+                assert_eq!(catchup, reopened.components().0.catchup(&principal)?);
+                json!({"nativePredecessors": selection.native_predecessors.len()})
             }
         })
     }

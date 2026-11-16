@@ -68,7 +68,7 @@ fn continue_room(
     let mut archive = create_base_file(&parent.join(format!("{lane}.archive")))?;
     let mut checkpoint = create_base_file(&parent.join(format!("{lane}.checkpoint")))?;
     let identity = if lane == "base" && parent.join("fixture-coordinated-recovery").is_file() {
-        room.write_relay_segment_base_with_indexed_asset_history(
+        room.write_relay_segment_base_with_compactable_history(
             "owner",
             &mut archive,
             &mut checkpoint,

@@ -47,23 +47,29 @@ pub(super) fn seal(
         fs::read(converted.join("native-lineage/packed.bin"))?
     );
     fs::rename(original, parent.join("portable-relocation-retired-split"))?;
-    let indexed =
-        handle.capture_portable_relay_segment_with_indexed_asset_history("owner", token, &path)?;
-    assert_eq!(indexed.native_predecessors, captured.native_predecessors);
+    let compacted_copy = parent.join("portable-relocation-compacted-copy");
+    RelaySegmentRetainedBackup::copy_portable_with_compacted_history(
+        &converted,
+        &compacted_copy,
+        &captured,
+    )?;
+    let compacted =
+        handle.capture_portable_relay_segment_with_compacted_history("owner", token, &path)?;
+    assert_eq!(compacted.native_predecessors, captured.native_predecessors);
     assert_eq!(
-        indexed.retained.backup.native.predecessor,
+        compacted.retained.backup.native.predecessor,
         captured.retained.backup.native.predecessor
     );
-    assert_eq!(indexed.retained.backup.assets, captured.retained.backup.assets);
+    assert_eq!(compacted.retained.backup.assets, captured.retained.backup.assets);
     assert_ne!(
-        indexed.retained.backup.native.checkpoint.sha256,
+        compacted.retained.backup.native.checkpoint.sha256,
         captured.retained.backup.native.checkpoint.sha256
     );
     assert_eq!(
         fs::read(path.join("native-lineage/packed.bin"))?,
-        fs::read(converted.join("native-lineage/packed.bin"))?
+        fs::read(compacted_copy.join("native-lineage/packed.bin"))?
     );
-    let intent = RelaySegmentPortableSeal::select(indexed)?;
+    let intent = RelaySegmentPortableSeal::select(compacted)?;
     storage::write_new(&parent.join(SEAL), &serde_json::to_vec(&intent)?)?;
     File::open(parent)?.sync_all()?;
     let selected = handle.seal_portable_relay_segment("owner", token, &path, &intent)?;

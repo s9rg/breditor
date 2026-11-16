@@ -45,12 +45,14 @@ impl Room {
             selected.source.clone(),
             selected.manifest,
         )?;
-        if base.checkpoint_encoding() == SegmentCheckpointEncoding::IndexedAssetHistory {
-            let history =
-                self.with_relay_segment_base_stream(principal, &Cell::new(false), |stream| {
-                    stream.capture_asset_packet_history()
-                })??;
-            observed.include_asset_history(history);
+        let encoding = base.checkpoint_encoding();
+        if encoding.has_asset_history() {
+            self.with_relay_segment_base_stream(principal, &Cell::new(false), |mut stream| {
+                if encoding == SegmentCheckpointEncoding::Compactable {
+                    stream.measure()?;
+                }
+                stream.complete_checkpoint(&mut observed, encoding)
+            })??;
         }
         serde_json::to_writer(&mut digest, &observed)?;
         if digest.finish().0 != base.identity.checkpoint.sha256 {

@@ -27,6 +27,21 @@ const root = fileURLToPath(new URL('..', import.meta.url));
 const origin = 'http://127.0.0.1:49785';
 const sha = bytes => createHash('sha256').update(bytes).digest('hex');
 
+function countRetiredArchives(pack, predecessors) {
+  assert.equal(pack.subarray(0, 8).toString(), 'BRLINE3\n');
+  assert.equal(pack.readUInt32BE(8), predecessors);
+  let retired = 0;
+  let offset = 12;
+  for (let index = 0; index < predecessors; index++) {
+    const archiveBytes = Number(pack.readBigUInt64BE(offset));
+    const checkpointBytes = Number(pack.readBigUInt64BE(offset + 16));
+    retired += Number(archiveBytes === 0);
+    offset += 24 + archiveBytes + checkpointBytes;
+  }
+  assert.equal(offset, pack.length);
+  return retired;
+}
+
 function assertOrdinaryStartupRefused(executable, parent, mode, address) {
   const ledger = join(parent, 'deployment', 'authority.log');
   const before = readFileSync(ledger);
@@ -707,26 +722,33 @@ async function run(mode, {distribution, rich}, executable, parent, journalKind, 
         assert.ok(statSync(join(split, '0.archive')).isFile());
         assert.throws(() => readFileSync(join(split, 'packed.bin')), {code:'ENOENT'});
         const firstCheckpoint = JSON.parse(readFileSync(join(split, '0.checkpoint'), 'utf8'));
-        assert.equal(firstCheckpoint.formatVersion, 2);
+        assert.equal(firstCheckpoint.formatVersion, 3);
         assert.equal(firstCheckpoint.assetPacketHistory.firstSequence, 0);
         assert.ok(firstCheckpoint.assetPacketHistory.records.some(({event}) =>
           event.kind === 'version' && event.packet === packet));
         assert.equal(JSON.parse(readFileSync(join(split, '1.checkpoint'), 'utf8')).formatVersion, 1);
         const indexed = join(parent, 'portable-relocation-source');
         const terminal = JSON.parse(readFileSync(join(indexed, 'native.checkpoint'), 'utf8'));
-        assert.equal(terminal.formatVersion, 2);
+        assert.equal(terminal.formatVersion, 3);
+        assert.ok(terminal.archiveClosure.files.length > 0);
         assert.ok(terminal.assetPacketHistory.firstSequence > 0);
         assert.ok(Array.isArray(terminal.assetPacketHistory.records));
         const packed = join(parent, 'portable-relocation-source', 'native-lineage');
         const packedFile = join(packed, 'packed.bin');
-        assert.ok(readFileSync(packedFile).subarray(0, 8).equals(Buffer.from('BRLINE2\n')));
+        const compacted = readFileSync(packedFile);
+        assert.equal(countRetiredArchives(compacted, result.portableSeal.nativePredecessors), 1);
+        assert.equal(compacted.readBigUInt64BE(12), 0n);
         let rawLineageBytes = 12;
         for (let i = 0; i < result.portableSeal.nativePredecessors; i++) {
           rawLineageBytes += 16 + statSync(join(split, i + '.archive')).size
             + statSync(join(split, i + '.checkpoint')).size;
         }
-        const compressedLineageBytes = statSync(packedFile).size;
+        const compressedLineageBytes = statSync(join(
+          parent, 'portable-relocation-converted', 'native-lineage', 'packed.bin')).size;
         assert.ok(compressedLineageBytes < rawLineageBytes);
+        const retiredArchiveBytes = statSync(join(split, '0.archive')).size;
+        assert.ok(retiredArchiveBytes > 0);
+        assert.equal(compacted.length, compressedLineageBytes - retiredArchiveBytes);
         assert.throws(() => readFileSync(join(packed, '0.archive')), {code:'ENOENT'});
         const converted = join(parent, 'portable-relocation-source');
         assert.ok(readFileSync(join(converted, 'client-inputs.bin')).subarray(0, 8).equals(Buffer.from('BRCLNT1\n')));
@@ -770,6 +792,9 @@ async function run(mode, {distribution, rich}, executable, parent, journalKind, 
           packedNativeLineages: 1,
           compressedCheckpointLineages: 1,
           indexedAssetHistorySegments: 2,
+          compactedPredecessorArchives: 1,
+          retiredArchiveBytes,
+          compactedLineageBytes: compacted.length,
           rawLineageBytes,
           compressedLineageBytes,
           packedCopiesOfExistingSplit: 1,
@@ -851,7 +876,15 @@ async function run(mode, {distribution, rich}, executable, parent, journalKind, 
       relocationEvidence.rolledBackAuthorityRefusals = 1;
     }
     host = await startSegmentHandoverHost(executable, [parent, restoredRoot, address], token);
-    if (maintenance) Object.assign(relocationEvidence, await verifyRelocatedMaintenanceRetries(host, token, maintenance.state));
+    if (maintenance) {
+      Object.assign(relocationEvidence, await verifyRelocatedMaintenanceRetries(host, token, maintenance.state));
+      assert.deepEqual(await host.maintenance('owner', token, {kind: 'recaptureCompacted'}),
+        {kind: 'maintenance', result: {nativePredecessors: 5}});
+      const recapturedPack = readFileSync(join(
+        parent, 'portable-compacted-recapture', 'native-lineage', 'packed.bin'));
+      assert.equal(countRetiredArchives(recapturedPack, 5), 2);
+      relocationEvidence.compactedPredecessorsOnRecapture = 2;
+    }
     const clientUploadReceipts = await resumeClientRaster(
       richApi, api, parent, address, origin, token, uploads[0], portableUploads, restoredRoot,
     );

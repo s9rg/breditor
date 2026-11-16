@@ -3,8 +3,9 @@ use super::backup_files::{copy_file, read_owned};
 use crate::{
     Error, MAX_SERVER_LOG_GENERATION_BACKUP_BYTES, RelaySegmentBaseFile, RelaySegmentBaseIdentity,
     Result,
-    archive_input::{ArchiveInput, CheckpointInput},
+    archive_input::{ArchiveInput, ArchiveSlice, CheckpointInput},
     log::generations::{GenerationDirectory, GenerationFileWitness},
+    room::SegmentCheckpointEncoding,
 };
 use flate2::{Compression, write::GzEncoder};
 use std::{
@@ -16,6 +17,7 @@ use std::{
 pub(super) const FILE: &str = "packed.bin";
 const RAW_MAGIC: &[u8; 8] = b"BRLINE1\n";
 const COMPRESSED_MAGIC: &[u8; 8] = b"BRLINE2\n";
+const COMPACTED_MAGIC: &[u8; 8] = b"BRLINE3\n";
 const HEADER: u64 = 12;
 const RAW_LENGTHS: u64 = 16;
 const COMPRESSED_LENGTHS: u64 = 24;
@@ -24,13 +26,14 @@ const COMPRESSED_LENGTHS: u64 = 24;
 pub(super) enum Encoding {
     Raw,
     Compressed,
+    Compacted,
 }
 
 impl Encoding {
     fn lengths(self) -> u64 {
         match self {
             Self::Raw => RAW_LENGTHS,
-            Self::Compressed => COMPRESSED_LENGTHS,
+            Self::Compressed | Self::Compacted => COMPRESSED_LENGTHS,
         }
     }
 
@@ -38,6 +41,7 @@ impl Encoding {
         match self {
             Self::Raw => RAW_MAGIC,
             Self::Compressed => COMPRESSED_MAGIC,
+            Self::Compacted => COMPACTED_MAGIC,
         }
     }
 }
@@ -54,7 +58,14 @@ pub(super) fn write(
 ) -> Result<()> {
     let mut file = create(directory, chain.len(), encoding)?;
     for base in chain {
-        let (archive, checkpoint) = base.original_inputs();
+        let (mut archive, checkpoint) = base.stored_inputs();
+        if encoding == Encoding::Compacted
+            && base.checkpoint_encoding() == SegmentCheckpointEncoding::Compactable
+        {
+            // A held original must still be valid when we replace it with the proof.
+            base.check()?;
+            archive = None;
+        }
         write_inputs(&mut file, encoding, archive, checkpoint)?;
     }
     file.sync_all()?;
@@ -103,6 +114,9 @@ pub(super) fn write_frame(
     write_archive: impl FnOnce(&mut dyn Write) -> Result<()>,
     write_checkpoint: impl Fn(&mut dyn Write) -> Result<()>,
 ) -> Result<()> {
+    if archive_len == 0 && encoding != Encoding::Compacted {
+        return Err(Error::Contract("relay predecessor archive has been compacted"));
+    }
     output.write_all(&archive_len.to_be_bytes())?;
     output.write_all(&checkpoint_len.to_be_bytes())?;
     if encoding == Encoding::Raw {
@@ -132,21 +146,24 @@ pub(super) fn write_frame(
 fn write_inputs(
     file: &mut File,
     encoding: Encoding,
-    archive: &ArchiveInput,
+    archive: Option<&ArchiveInput>,
     checkpoint: &CheckpointInput,
 ) -> Result<()> {
-    let input = archive.all();
+    let input = archive.map(ArchiveInput::all);
     write_frame(
         file,
         encoding,
-        input.len(),
+        input.map_or(0, ArchiveSlice::len),
         checkpoint.len(),
         |out| {
-            archive.check()?;
-            if io::copy(&mut input.reader(), out)? != input.len() {
-                return Err(Error::Contract("relay segment predecessor copy was truncated"));
+            if let Some((archive, input)) = archive.zip(input) {
+                archive.check()?;
+                if io::copy(&mut input.reader(), out)? != input.len() {
+                    return Err(Error::Contract("relay segment predecessor copy was truncated"));
+                }
+                archive.check()?;
             }
-            archive.check()
+            Ok(())
         },
         |out| checkpoint.write_to(out),
     )
@@ -166,7 +183,7 @@ pub(super) fn copy(
     let mut output = create(destination, count, encoding)?;
     for _ in 0..count {
         let (archive, checkpoint) = packed.next()?;
-        write_inputs(&mut output, encoding, &archive, &checkpoint)?;
+        write_inputs(&mut output, encoding, archive.as_ref(), &checkpoint)?;
     }
     packed.finish(source)?;
     output.sync_all()?;
@@ -191,6 +208,7 @@ impl PackedSource {
         let encoding = match &header[..8] {
             prefix if prefix == RAW_MAGIC => Encoding::Raw,
             prefix if prefix == COMPRESSED_MAGIC => Encoding::Compressed,
+            prefix if prefix == COMPACTED_MAGIC => Encoding::Compacted,
             _ => return Err(Error::Contract("packed lineage header")),
         };
         if header[8..] != count.to_be_bytes() || input.all().len() > maximum_bytes(count, encoding)?
@@ -200,7 +218,7 @@ impl PackedSource {
         Ok(Self { input, witness, encoding, offset: HEADER })
     }
 
-    fn next(&mut self) -> Result<(ArchiveInput, CheckpointInput)> {
+    fn next(&mut self) -> Result<(Option<ArchiveInput>, CheckpointInput)> {
         let widths = self.encoding.lengths();
         let frame = self.input.all().section(self.offset, widths)?.read(widths)?;
         let length = |start: usize| -> Result<u64> {
@@ -215,7 +233,11 @@ impl PackedSource {
             return Err(Error::Contract("packed archive byte budget"));
         }
         self.offset += widths;
-        let archive = self.input.retained_section(self.offset, archive_len)?;
+        let archive = if archive_len == 0 && self.encoding == Encoding::Compacted {
+            None
+        } else {
+            Some(self.input.retained_section(self.offset, archive_len)?)
+        };
         self.offset += archive_len;
         let input = self.input.retained_section(self.offset, stored)?;
         self.offset += stored;
@@ -246,7 +268,7 @@ impl PackedNativeLineage {
         let mut parent = None;
         for selection in expected {
             let (archive, checkpoint) = source.next()?;
-            parent = Some(Arc::new(RelaySegmentBaseFile::open_inputs(
+            parent = Some(Arc::new(RelaySegmentBaseFile::open_selected(
                 archive, checkpoint, selection, parent,
             )?));
         }
