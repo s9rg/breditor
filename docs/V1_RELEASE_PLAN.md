@@ -2,6 +2,15 @@
 
 ## November 15 collaboration recovery
 
+[Sealed WAL reclamation after portable activation](qualification/2026-11-15-linked-relay-wal-reclamation.json)
+shrinks the relocated relay's selected sealed WAL, archives it under an exact
+checkpoint and compares the complete portable backup identity and native
+archive bytes before and after. A fresh restore uses just the portable copy.
+Source and clean-installed clients deliver Undo on their existing sockets,
+then retry and Redo after a cold restart while the relay reads the packed
+archive. The legacy workflow and 89 native tests pass,
+including the separate APFS cross-volume interruption test.
+
 [Live maintenance after portable activation](qualification/2026-11-15-linked-relay-native-maintenance.json)
 continues the document and comment receivers independently and rotates the
 writable WAL under the same authenticated owner and current deployment epoch.

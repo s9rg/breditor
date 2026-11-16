@@ -495,6 +495,17 @@ that packing. Archive movement itself keeps the file on the same volume,
 uses the same disk space and leaves the generation count and logical storage
 budget unchanged.
 
+The serving `ServerBackupHandle` for a linked or portably restored room can
+also reclaim sealed WAL storage. Rotate to an empty active WAL, call
+`materialize_relay_checkpoint` under the current serving epoch, and retain the
+private bytes and expected identity. Use `pack_sealed_wal` to shrink a sealed
+file where compression helps. Call `archive_sealed_wal` with that admitted
+checkpoint and a sealed generation covered by its cut. It uses the room's
+selected archive location, including an existing separately mounted volume.
+On cold restart, the same checkpoint can identify an already archived file.
+The before and after portable backup identities and raw WAL bytes match.
+Safe removal of logical history remains a separate requirement.
+
 Checkpoint `162e18d9` passes 57 generation tests, three materialized checkpoint
 tests and 20 serving backup and handover tests. The Rust tests exercise both
 interruption points and verify that a corrupt archive or a second inode at the

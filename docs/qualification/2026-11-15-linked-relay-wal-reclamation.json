@@ -1,0 +1,131 @@
+{
+  "format": "breditor/linked-relay-wal-reclamation-qualification",
+  "formatVersion": 1,
+  "date": "2026-11-15",
+  "source": {
+    "commit": "84446b5210cb31374418cb55bd8173046ef1ce07",
+    "dirty": false,
+    "sha256": "8dd341f6c62da686413bb1a2f19b1e0d728065516d3e5e01b6ecac590b1e6e7e",
+    "files": 8971,
+    "bytes": 76172721
+  },
+  "relaySha256": "ba9ea875bbc43e71023e96c35543cd141f405ad5260747ba852b05eb5cb6d5ca",
+  "runtimeSha256": "38b17b58126858fd4ef014e877e85806c323c675e88cd191222badbe9a36a6d5",
+  "nativeMaintenance": {
+    "independentDocumentAndReviewEnableAndContinuation": true,
+    "physicalRotationPreservesOriginalGlobalCut": true,
+    "sealedSourceAndDisplacedRoomCannotAdvance": true,
+    "retainedEpochColdRestartReturnsIdenticalDurableReceipts": true,
+    "sealedWALReclaimsBytesUnderTheServingLease": true,
+    "archivedWALMatchesExactPortableCutAndBytes": true,
+    "freshPortableRestoreSucceedsIndependentlyOfTheOriginalArchive": true,
+    "alreadyPackedAndArchivedWALsRecognizedAfterColdRestart": true
+  },
+  "nativeHandover": {
+    "passed": 26,
+    "failed": 0,
+    "ignored": 0,
+    "executableSha256": "5b34774d19761ff244f0b3333d6629d5070f52abb4737c082814b82ca920eba8",
+    "logSha256": "ac2da47388932f028e44c815c7fd69d7aa35388120387e490e99f93a3affb29e"
+  },
+  "nativeFencingAndProcessRecovery": {
+    "passed": 53,
+    "failed": 0,
+    "ignored": 0,
+    "logSha256": "781217ef382a5e2c5213bcb7229bdec0f96f9c4b05d9aebaa546d2632575e67c"
+  },
+  "nativeStorage": {
+    "passed": 9,
+    "failed": 0,
+    "logSha256": "26bf0fee9b833cfeb4c00554b1be0ed7ba1684e2d12689aa7aeabc5031eabaff"
+  },
+  "crossVolumeArchiveInterruption": {
+    "passed": 1,
+    "failed": 0,
+    "logSha256": "abf2002349bcad00a6b8d93cfdf026cf21b449a3b705e5be540560c1af550815"
+  },
+  "strictRelayLibraryLint": {
+    "passed": true,
+    "logSha256": "97a7c25fe9ae065a4e2c19cbe0b7296a5052f68aa5cb36ea828751268035972a"
+  },
+  "live": {
+    "reportSha256": "3498626a4f3af41dfe29ab0f64623ce3444ba9978a94950bd6f8fa3edd66ef6e",
+    "runs": {
+      "source": {
+        "packedCopiesOfExistingSplit": 1,
+        "packedClientCohorts": 1,
+        "liveNativeHistoryBoundaries": 2,
+        "nativeHistoryColdRetries": 2,
+        "physicalWalRotations": 1,
+        "physicalWalColdRetries": 1,
+        "deniedMaintenanceRequests": 7,
+        "relocatedSealedWalPacks": 1,
+        "relocatedSealedWalArchives": 1,
+        "sealedWalColdRetries": 2,
+        "walPhysicalBytesReclaimed": 446,
+        "retainedLiveClientSockets": 2,
+        "predecessors": 4,
+        "coldResumes": 5,
+        "offlineLanes": 6,
+        "undoRedoLanes": 2,
+        "archivedDiscussionEvents": 40,
+        "retainedBackup": {
+          "alternateJournals": 1,
+          "selectedJournals": 2,
+          "standaloneUploads": 1
+        },
+        "proof": null
+      },
+      "installed": {
+        "packedCopiesOfExistingSplit": 1,
+        "packedClientCohorts": 1,
+        "liveNativeHistoryBoundaries": 2,
+        "nativeHistoryColdRetries": 2,
+        "physicalWalRotations": 1,
+        "physicalWalColdRetries": 1,
+        "deniedMaintenanceRequests": 7,
+        "relocatedSealedWalPacks": 1,
+        "relocatedSealedWalArchives": 1,
+        "sealedWalColdRetries": 2,
+        "walPhysicalBytesReclaimed": 443,
+        "retainedLiveClientSockets": 2,
+        "predecessors": 4,
+        "coldResumes": 5,
+        "offlineLanes": 6,
+        "undoRedoLanes": 2,
+        "archivedDiscussionEvents": 40,
+        "retainedBackup": {
+          "alternateJournals": 1,
+          "selectedJournals": 2,
+          "standaloneUploads": 1
+        },
+        "proof": {
+          "registryArtifacts": 45,
+          "archives": [
+            {
+              "name": "@breditor/browser",
+              "sha256": "79f5b486d3742d1234e4eb21c18822e0a494551d49a73039f5b856908c124f3f"
+            },
+            {
+              "name": "@breditor/experimental-rich-content",
+              "sha256": "c181984cc8f737861adf4886398d00413af6a42178d8542d789710c5b3faf371"
+            },
+            {
+              "name": "@breditor/collaboration",
+              "sha256": "c5d79a56da7f48c4e4e10a298bfc2bca5cb9cee46642c0c0586df828396ed7b8"
+            }
+          ]
+        }
+      }
+    }
+  },
+  "legacy": {
+    "reportSha256": "a0874769f5cb03d83746d00fdbc313113f8c099407d374e5dff46c24b0bd8982",
+    "matchesEarlierSourceAndInstalledResults": true
+  },
+  "candidatePlan": {
+    "passed": 69,
+    "failed": 0,
+    "logSha256": "9234b0d547cf3c4760a21056d890ea8ffab61d44c1ebc033c6fc2193720630b3"
+  }
+}
