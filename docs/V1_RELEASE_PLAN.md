@@ -2,6 +2,17 @@
 
 ## November 16 collaboration recovery
 
+[Extended streamed terminal checkpoint](qualification/2026-11-16-extended-terminal-checkpoint.json)
+adds an independently bounded gzip envelope. A synthetic 513 MiB stream
+round-trips byte for byte above the original raw ceiling. Altered lengths,
+damaged trailers, concatenated members and mismatched storage families
+refuse. Source and clean-installed relocation compare the real decoded
+room state with the raw checkpoint, verify its selected digest and
+recover offline work and Undo/Redo. A second capture retires the extended
+terminal as a proof and cold-opens the resulting room. Each fixture's
+terminal checkpoint uses about 87% fewer stored bytes. All 172 targeted
+native tests and the separate APFS interruption test pass.
+
 [Proof-only portable ancestry](qualification/2026-11-16-proof-only-relay-ancestry.json)
 retires redundant full checkpoints from predecessor segments. The
 terminal checkpoint still restores the native document, review and receipt

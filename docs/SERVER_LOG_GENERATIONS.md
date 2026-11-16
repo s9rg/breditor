@@ -777,6 +777,29 @@ Source sealing still checks the proofs against the actual serving ancestry.
 A retired ancestor is part of the selected lineage. Restoring that earlier
 cut directly requires a separate full backup taken at that cut.
 
+## Stream an extended terminal checkpoint
+
+`capture_portable_relay_segment_with_extended_terminal` writes a
+version-four terminal checkpoint for a proof-only portable backup.
+Its aggregate decoded budget is 2 GiB. The existing raw checkpoint
+families retain their 512 MiB budget. Document, review, and effect
+histories still enforce their own native limits.
+
+`native.checkpoint` starts with `BRCKPT1\n` and a big-endian 64-bit
+decoded length, followed by exactly one fixed-header gzip member.
+The selected checkpoint SHA-256 identifies the exact decoded JSON.
+The reader bounds the stored file, requires the declared decoded
+length, and validates the gzip trailer and the selected digest.
+Version four requires this storage envelope. The writer streams
+compression to the destination file under the serving epoch.
+
+Use the existing retired-history open and seal APIs with the separate
+portable selection. The live seal rederives the canonical version-four
+checkpoint and compares its digest with the independently chosen cut.
+Use the extended or ancestry-proof capture when the current terminal
+becomes a predecessor. Its closure and asset packets can travel as a
+proof after handover.
+
 ## Restore a linked room with its raster store
 
 `Room::write_relay_segment_room_backup` streams the current WAL archive,

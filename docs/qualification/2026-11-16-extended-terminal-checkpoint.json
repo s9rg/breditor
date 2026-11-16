@@ -1,0 +1,132 @@
+{
+  "format": "breditor/extended-terminal-checkpoint-qualification",
+  "formatVersion": 1,
+  "date": "2026-11-16",
+  "source": {
+    "commit": "ee93507648d8016c28f55a61d186353f0ec5b6a5",
+    "dirty": false,
+    "sha256": "4699cfc0d1678e5362d7d11e11763bed32ba0235a8cdb3650f5091007cc3e1ac",
+    "files": 8986,
+    "bytes": 76326269
+  },
+  "codec": {
+    "syntheticStreamRoundTripDecodedMiB": 513,
+    "legacyRawCeilingMiB": 512,
+    "extendedDecodedCeilingMiB": 2048,
+    "originalRawAboveCeilingRefused": true,
+    "overBudgetLengthAndCorruptGzipRefused": true,
+    "rawAndExtendedCheckpointFamiliesCannotBeSubstituted": true
+  },
+  "nativeCodec": {
+    "passed": 2,
+    "failed": 0,
+    "ignored": 0,
+    "executableSha256": "b11ff09964607171583f7d853efc0a64ce05168bbd03bd07a1efc0e1e3c819cb",
+    "logSha256": "a315336a3d894ac96b271673b664dc4d7eb02ab549e22a513256e5194e077d72"
+  },
+  "nativeAssetReferences": {
+    "passed": 12,
+    "failed": 0,
+    "ignored": 0,
+    "executableSha256": "b11ff09964607171583f7d853efc0a64ce05168bbd03bd07a1efc0e1e3c819cb",
+    "logSha256": "b26adc8e70fb7a0e46a2040b4534d89e0b6c91a1833ff5437c6f49ded8c2ec1c"
+  },
+  "nativeMaterializedCheckpoint": {
+    "passed": 3,
+    "failed": 0,
+    "ignored": 0,
+    "executableSha256": "b11ff09964607171583f7d853efc0a64ce05168bbd03bd07a1efc0e1e3c819cb",
+    "logSha256": "981d284bf847aecebb7c5975753bb8064a75c0621b9f17d22a08acd25c89e6b0"
+  },
+  "nativeHandover": {
+    "passed": 32,
+    "failed": 0,
+    "ignored": 0,
+    "executableSha256": "b11ff09964607171583f7d853efc0a64ce05168bbd03bd07a1efc0e1e3c819cb",
+    "logSha256": "a8fa3bb5006e707038f2a4d5a0ac2baf207a2635026bc8eabb32740ce0be8b29"
+  },
+  "nativeStorage": {
+    "passed": 78,
+    "failed": 0,
+    "ignored": 1,
+    "executableSha256": "b11ff09964607171583f7d853efc0a64ce05168bbd03bd07a1efc0e1e3c819cb",
+    "logSha256": "839a4622de24cf96727d3c74eb48db6b72267522dd138b5895b0cec3ec23f279"
+  },
+  "nativeFencing": {
+    "passed": 45,
+    "failed": 0,
+    "ignored": 0,
+    "executableSha256": "b11ff09964607171583f7d853efc0a64ce05168bbd03bd07a1efc0e1e3c819cb",
+    "logSha256": "da10c048e7868fd1bdc0702c713cdf53e1e307fd77acc2121168fe6cef47a832"
+  },
+  "crossVolumeArchiveInterruption": {
+    "passed": 1,
+    "failed": 0,
+    "ignored": 0,
+    "executableSha256": "b11ff09964607171583f7d853efc0a64ce05168bbd03bd07a1efc0e1e3c819cb",
+    "logSha256": "7f7765fa1dc0b6e198ca7e7e709344f2bf71e5302376dc267e77b00ffc819e2b"
+  },
+  "strictRelayLibraryLint": {
+    "server": {
+      "passed": true,
+      "logSha256": "335ba4a75c6c55255418074043b7f81dbfec383cf6f4c5fcb94f7b2bb20531bb"
+    },
+    "noServer": {
+      "passed": true,
+      "logSha256": "dd0aaf0111f38066e343e1ee248d3b0080eb06af0c1e8ae6a04a34837ab55976"
+    }
+  },
+  "candidatePlan": {
+    "passed": 69,
+    "failed": 0,
+    "logSha256": "bfc718291bbc2ebe89a903e595d4571900e54096c522f910f3fa6c4d8bd7dca1"
+  },
+  "workflows": {
+    "portableRelocationReportSha256": "a3323b95e63d1881679d51e3b4d33d7458e1f5918fd208658741b0b7239afe37",
+    "legacyHandoverReportSha256": "8d3648eb818e25aa7d52d9ad14d1ae0e745b13948a6c65d3b64aa3492a008f94",
+    "relaySha256": "df35072539f22107f9f123cfcad3b2892608b51818d54e8e64f320a5db8f15a3",
+    "runtimeSha256": "38b17b58126858fd4ef014e877e85806c323c675e88cd191222badbe9a36a6d5",
+    "runs": {
+      "source": {
+        "terminalCheckpointBytes": 14431,
+        "terminalCheckpointDecodedBytes": 111579,
+        "exactDecodedDigestMatchesIndependentSelection": true,
+        "terminalStateMatchesRawCheckpoint": true,
+        "extendedTerminalRetiredIntoSecondCapture": true,
+        "proofOnlyPredecessorsOnRecapture": 5,
+        "offlineLanes": 6,
+        "undoRedoLanes": 2,
+        "coldResumes": 5,
+        "proof": null
+      },
+      "installed": {
+        "terminalCheckpointBytes": 14400,
+        "terminalCheckpointDecodedBytes": 111568,
+        "exactDecodedDigestMatchesIndependentSelection": true,
+        "terminalStateMatchesRawCheckpoint": true,
+        "extendedTerminalRetiredIntoSecondCapture": true,
+        "proofOnlyPredecessorsOnRecapture": 5,
+        "offlineLanes": 6,
+        "undoRedoLanes": 2,
+        "coldResumes": 5,
+        "proof": {
+          "registryArtifacts": 45,
+          "archives": [
+            {
+              "name": "@breditor/browser",
+              "sha256": "79f5b486d3742d1234e4eb21c18822e0a494551d49a73039f5b856908c124f3f"
+            },
+            {
+              "name": "@breditor/experimental-rich-content",
+              "sha256": "c181984cc8f737861adf4886398d00413af6a42178d8542d789710c5b3faf371"
+            },
+            {
+              "name": "@breditor/collaboration",
+              "sha256": "c5d79a56da7f48c4e4e10a298bfc2bca5cb9cee46642c0c0586df828396ed7b8"
+            }
+          ]
+        }
+      }
+    }
+  }
+}
