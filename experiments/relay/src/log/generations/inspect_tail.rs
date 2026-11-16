@@ -3,6 +3,35 @@ use super::capture::GenerationFiles;
 use crate::{Error, Result, log::Log};
 use std::io::{Read, Seek, SeekFrom};
 
+#[cfg(feature = "server")]
+#[derive(Clone, Debug, Eq, PartialEq, serde::Deserialize, serde::Serialize)]
+#[serde(rename_all = "camelCase", deny_unknown_fields)]
+pub(crate) struct SelectedNativeTailPrefix {
+    pub(crate) manifest: [u8; 32],
+    pub(crate) records: u64,
+    pub(crate) terminal_digest: [u8; 32],
+    active_bytes: u64,
+    active_file: super::GenerationFileWitness,
+}
+
+#[cfg(feature = "server")]
+impl Log {
+    pub(crate) fn select_native_tail_prefix(&self) -> Result<SelectedNativeTailPrefix> {
+        self.check_generation_replay()?;
+        let state = self.generations.as_ref().ok_or(Error::NeedsRecovery)?;
+        state.directory.absent(".rotation.json")?;
+        let prefix = SelectedNativeTailPrefix {
+            manifest: state.current().hash,
+            records: self.next,
+            terminal_digest: self.previous,
+            active_bytes: self.bytes,
+            active_file: super::GenerationFileWitness::of(&self.file)?,
+        };
+        self.ready()?;
+        Ok(prefix)
+    }
+}
+
 impl Log {
     pub(crate) fn has_incomplete_generation_tail(&self) -> Result<bool> {
         self.ready()?;
@@ -16,6 +45,12 @@ impl Log {
     pub(crate) fn capture_inspected_generation_prefix(
         &mut self,
     ) -> Result<(GenerationFiles, Vec<u8>)> {
+        let suffix = self.read_incomplete_generation_tail()?;
+        let files = self.capture_generation_files_with_prefix(Some(self.bytes))?;
+        Ok((files, suffix))
+    }
+
+    pub(crate) fn read_incomplete_generation_tail(&mut self) -> Result<Vec<u8>> {
         self.ready()?;
         let length = self
             .generations
@@ -38,7 +73,6 @@ impl Log {
             return Err(Error::Contract("incomplete native tail changed during read"));
         }
         self.ready()?;
-        let files = self.capture_generation_files_with_prefix(Some(self.bytes))?;
-        Ok((files, suffix))
+        Ok(suffix)
     }
 }

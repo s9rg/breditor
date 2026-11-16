@@ -121,6 +121,46 @@ pub(in crate::server) fn resume_retained_handover<T>(
     restart_nonce: impl Fn(u64) -> Result<[u8; 32]>,
     check_target: impl FnOnce() -> Result<T>,
 ) -> Result<(RoomDeploymentLease, T)> {
+    with_retained_handover(authority, first, expected, &restart_nonce, |epoch, generation| {
+        let target = check_target()?;
+        let lease =
+            authority.claim_handover_held(epoch, expected, restart_nonce(generation + 1)?)?;
+        Ok((lease, target))
+    })
+}
+
+pub(in crate::server) fn inspect_retained_handover<T>(
+    authority: &RoomDeploymentAuthority,
+    first: &RoomDeploymentSelection,
+    expected: &RoomDeploymentSelection,
+    restart_nonce: impl Fn(u64) -> Result<[u8; 32]>,
+    floor: &RoomDeploymentSelection,
+    inspect: impl FnOnce() -> Result<T>,
+) -> Result<T> {
+    with_retained_handover(authority, first, expected, &restart_nonce, |epoch, _| {
+        let current = authority.state.selected(epoch.file()?)?;
+        journal::retains_selection(
+            epoch.file()?,
+            &authority.state.header_digest,
+            authority.state.offset,
+            &current,
+            floor,
+        )?;
+        let result = inspect()?;
+        if authority.state.selected(epoch.file()?)?.selection != *expected {
+            return Err(Error::Lease);
+        }
+        Ok(result)
+    })
+}
+
+fn with_retained_handover<T>(
+    authority: &RoomDeploymentAuthority,
+    first: &RoomDeploymentSelection,
+    expected: &RoomDeploymentSelection,
+    restart_nonce: &impl Fn(u64) -> Result<[u8; 32]>,
+    use_epoch: impl FnOnce(&mut Permit<'_>, u64) -> Result<T>,
+) -> Result<T> {
     let generation = expected.validate_pin()?;
     let first_generation = first.validate_pin()?;
     if expected.identity != first.identity
@@ -154,10 +194,8 @@ pub(in crate::server) fn resume_retained_handover<T>(
         &current,
         first,
     )?;
-    let target = check_target()?;
-    let lease =
-        authority.claim_handover_held(&mut epoch, expected, restart_nonce(generation + 1)?)?;
+    let output = use_epoch(&mut epoch, generation)?;
     epoch.finish()?;
     authority.state.healthy()?;
-    Ok((lease, target))
+    Ok(output)
 }

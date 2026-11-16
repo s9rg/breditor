@@ -14,6 +14,8 @@ mod format;
 mod guard_directory;
 mod held_file;
 mod inspect_tail;
+#[cfg(feature = "server")]
+pub(crate) use inspect_tail::SelectedNativeTailPrefix;
 #[cfg(test)]
 mod interruption;
 mod inventory;

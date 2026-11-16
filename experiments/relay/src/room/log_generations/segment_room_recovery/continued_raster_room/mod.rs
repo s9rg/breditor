@@ -6,6 +6,7 @@ mod reconciliation;
 mod restore;
 mod serving;
 mod stage_rasters;
+mod tail_repair;
 pub(crate) use serving::ContinuedServingCustody;
 
 use super::super::asset_continuation::ContinuedAssetBackupFiles;

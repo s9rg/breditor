@@ -9,7 +9,7 @@ use std::{
     path::{Path, PathBuf},
 };
 
-pub(super) struct RetainedRepairFile {
+pub(in crate::server) struct RetainedRepairFile {
     path: PathBuf,
     parent: PathBuf,
     file: File,
@@ -18,7 +18,7 @@ pub(super) struct RetainedRepairFile {
 }
 
 impl RetainedRepairFile {
-    pub(super) fn open(
+    pub(in crate::server) fn open(
         path: &Path,
         operating_directory: &Path,
         outside_error: &'static str,
@@ -39,22 +39,22 @@ impl RetainedRepairFile {
         Ok(Self { path, parent, file, witness, stamp })
     }
 
-    pub(super) fn guard(&self) -> Result<()> {
+    pub(in crate::server) fn guard(&self) -> Result<()> {
         self.witness.guard(&self.file, &self.path)?;
         self.stamp.guard(&self.file)
     }
 
-    pub(super) fn sync(&self) -> Result<()> {
+    pub(in crate::server) fn sync(&self) -> Result<()> {
         self.guard()?;
         self.file.sync_all()?;
         File::open(&self.parent)?.sync_all()?;
         self.guard()
     }
-    pub(super) fn read(&self, limit: u64) -> Result<Vec<u8>> {
+    pub(in crate::server) fn read(&self, limit: u64) -> Result<Vec<u8>> {
         files::read(&self.file, &self.path, limit)
     }
 
-    pub(super) fn digest(&self, length: u64) -> Result<[u8; 32]> {
+    pub(in crate::server) fn digest(&self, length: u64) -> Result<[u8; 32]> {
         files::digest(&self.file, &self.path, length)
     }
 }

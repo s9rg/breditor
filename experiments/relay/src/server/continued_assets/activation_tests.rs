@@ -17,6 +17,9 @@ use breditor_collab_feasibility::rich_replica::VersionAssetReference;
 use serde_json::json;
 use std::fs::File;
 
+#[path = "tail_tests.rs"]
+mod tail_tests;
+
 struct Mapping<'a>(&'a str);
 
 impl ServerRecoveryAssetProvider for Mapping<'_> {
@@ -269,6 +272,11 @@ fn portable_seal_survives_lost_reply_and_refuses_changed_inputs_after_relocation
     )?;
     assert_eq!(cold.current_selection()?, active);
     assert_eq!(active, approval.planned_selection()?);
-    assert!(replacement.capture("owner", &token, &root.join("final")).is_ok());
+    let floor = replacement.capture("owner", &token, &root.join("final"))?;
+    drop(replacement);
+    drop(backup);
+    tail_tests::check_interrupted_repair(
+        root, &selection, &approval, &active, &floor, &hash, &token,
+    )?;
     Ok(())
 }

@@ -6,7 +6,8 @@ use super::{
     stage_rasters::StagedRasters,
 };
 use crate::{
-    ContinuedAssetStore, ContinuedAssetStoreIdentity, Error, Result, Room,
+    ContinuedAssetStore, ContinuedAssetStoreIdentity, Error, Recovery, Result, Room,
+    RoomBackupIdentity,
     assets::AssetBackupIdentity,
     log::{
         Log,
@@ -153,6 +154,16 @@ impl ContinuedRasterRoomBackupFiles {
         selected: &RecoveredContinuedRasterRoomIdentity,
         serving_history: bool,
     ) -> Result<RecoveredContinuedRasterRoom> {
+        self.open_replayed(path, selected, serving_history, None).map(|(target, _)| target)
+    }
+
+    pub(super) fn open_replayed(
+        &self,
+        path: &Path,
+        selected: &RecoveredContinuedRasterRoomIdentity,
+        serving_history: bool,
+        floor: Option<&RoomBackupIdentity>,
+    ) -> Result<(RecoveredContinuedRasterRoom, Recovery)> {
         self.check()?;
         let directory = GenerationDirectory::open(path)?;
         let path = directory.path.join(COMPLETE);
@@ -172,37 +183,80 @@ impl ContinuedRasterRoomBackupFiles {
             &completed.clients,
             &state.recovered_discussion_source_digests(),
         )?;
-        let assets =
-            ContinuedAssetStore::open(&directory.path.join("rasters"), &completed.rasters)?;
         let (log, recovery) = Log::open_restored_segment_at(
             &directory.path.join("native"),
             &completed.native,
             self.native.clone(),
             &completed.active_generation,
         )?;
-        if recovery.truncated_bytes != 0 {
-            return Err(Error::Contract("continued raster room requires an exact native WAL"));
-        }
-        let (room, _) = Room::replay_relay_segment(log, recovery, state, false)?;
+        let room = if let Some(floor) = floor {
+            if !serving_history {
+                return Err(Error::Contract("native prefix inspection requires activated history"));
+            }
+            let current = log.generation_descriptor()?;
+            let origin = &completed.backup.native.predecessor.source;
+            let through: u64 = current.next_sequence.parse().map_err(|_| Error::NeedsRecovery)?;
+            if floor.records < origin.records || floor.records > through {
+                return Err(Error::Contract(
+                    "continued native recovery floor is outside retained history",
+                ));
+            }
+            let mut matched =
+                floor.records == through && floor.terminal_log_digest == current.terminal_digest;
+            let room = Room::replay_relay_segment_prefix(log, state, |record| {
+                if record.sequence == floor.records {
+                    matched = record.previous_digest() == floor.terminal_log_digest;
+                }
+                Ok(())
+            })?;
+            if !matched {
+                return Err(Error::Contract("continued native recovery floor digest differs"));
+            }
+            room
+        } else {
+            if recovery.truncated_bytes != 0 {
+                return Err(Error::Contract("continued raster room requires an exact native WAL"));
+            }
+            Room::replay_relay_segment(log, recovery, state, false)?.0
+        };
+        let raster_path = directory.path.join("rasters");
+        let assets = if floor.is_some() {
+            ContinuedAssetStore::open_for_native_tail(&raster_path, &completed.rasters)?
+        } else {
+            ContinuedAssetStore::open(&raster_path, &completed.rasters)?
+        };
         if serving_history {
-            self.rasters.check_serving_prefix(
-                &assets,
-                completed.staged.as_ref().map_or(&[], |staged| staged.ids.as_slice()),
-            )?;
-            clients.check(&room.recovered_discussion_source_digests())?;
-            self.check()?;
+            self.check_serving_history(&room, &assets, &clients, &completed)?;
         } else {
             self.check_target(&room, &assets, &clients, &completed)?;
         }
         directory.guard_witness(&completed.directory)?;
-        Ok(RecoveredContinuedRasterRoom {
-            directory,
-            room,
+        Ok((
+            RecoveredContinuedRasterRoom {
+                directory,
+                room,
+                assets,
+                clients,
+                identity: selected.clone(),
+                completed,
+            },
+            recovery,
+        ))
+    }
+
+    fn check_serving_history(
+        &self,
+        room: &Room,
+        assets: &ContinuedAssetStore,
+        clients: &RetainedClients,
+        completed: &Completion,
+    ) -> Result<()> {
+        self.rasters.check_serving_prefix(
             assets,
-            clients,
-            identity: selected.clone(),
-            completed,
-        })
+            completed.staged.as_ref().map_or(&[], |staged| staged.ids.as_slice()),
+        )?;
+        clients.check(&room.recovered_discussion_source_digests())?;
+        self.check()
     }
 
     fn check_target(

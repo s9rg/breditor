@@ -88,11 +88,15 @@ struct Command {
 enum Action {
     Capture,
     CaptureActivation,
+    CaptureRepairFloor,
     SealActivation,
     Activate,
 }
 
-fn control(parent: &Path, handle: ContinuedAssetServerHandle) -> tokio::task::JoinHandle<Result> {
+pub(super) fn control(
+    parent: &Path,
+    handle: ContinuedAssetServerHandle,
+) -> tokio::task::JoinHandle<Result> {
     let parent = parent.to_path_buf();
     tokio::task::spawn_blocking(move || {
         while let Some(bytes) = super::handover::next_input()? {
@@ -104,6 +108,10 @@ fn control(parent: &Path, handle: ContinuedAssetServerHandle) -> tokio::task::Jo
                     .map_err(|error| error.to_string()),
                 Action::CaptureActivation => handle
                     .capture(&principal, &token, &parent.join("activation-capture"))
+                    .map(|capture| json!(capture))
+                    .map_err(|error| error.to_string()),
+                Action::CaptureRepairFloor => handle
+                    .capture(&principal, &token, &parent.join("repair-floor"))
                     .map(|capture| json!(capture))
                     .map_err(|error| error.to_string()),
                 Action::SealActivation => {

@@ -95,6 +95,7 @@ pub use complete_sealed_rotation_and_raster::{
 mod inspect_sealed_tail;
 mod repair_evidence_file;
 pub use inspect_sealed_tail::{SealedNativeTailInspection, inspect_sealed_native_tail};
+pub(in crate::server) use repair_evidence_file::RetainedRepairFile;
 mod inspect_sealed_tail_and_raster;
 pub use inspect_sealed_tail_and_raster::{
     SealedNativeTailAndRasterInspection, inspect_sealed_native_tail_and_raster,

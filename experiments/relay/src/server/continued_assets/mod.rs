@@ -4,6 +4,11 @@ mod approval;
 mod backup;
 pub use activation::{ContinuedRasterActivation, ContinuedRasterRestart};
 pub use approval::ContinuedRasterActivationApproval;
+mod native_tail;
+pub use native_tail::{
+    ContinuedRasterNativeTailInspection, ContinuedRasterNativeTailOutcome,
+    ContinuedRasterNativeTailPlan, ContinuedRasterNativeTailRepair,
+};
 mod reconcile;
 pub use reconcile::ContinuedRasterRoomInputReport;
 mod seal;

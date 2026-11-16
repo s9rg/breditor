@@ -104,6 +104,22 @@ impl ContinuedAssetStore {
     /// # Errors
     /// Refuses changed local custody, corrupt archives, overlaps and invalid active state.
     pub fn open(path: &Path, selected: &ContinuedAssetStoreIdentity) -> Result<Self> {
+        Self::open_with_policy(path, selected, false)
+    }
+
+    #[cfg(feature = "server")]
+    pub(in crate::room::log_generations) fn open_for_native_tail(
+        path: &Path,
+        selected: &ContinuedAssetStoreIdentity,
+    ) -> Result<Self> {
+        Self::open_with_policy(path, selected, true)
+    }
+
+    fn open_with_policy(
+        path: &Path,
+        selected: &ContinuedAssetStoreIdentity,
+        retain_pending: bool,
+    ) -> Result<Self> {
         if selected.format != FORMAT || selected.format_version != 1 {
             return Err(Error::Contract("raster continuation selection format"));
         }
@@ -128,7 +144,11 @@ impl ContinuedAssetStore {
         )?;
         let active_directory =
             RasterDirectory::open(&directory.path.join(ACTIVE), &selected.active)?;
-        let (active, active_custody) = active_directory.into_continued_store(&active_binding)?;
+        let (active, active_custody) = if retain_pending {
+            active_directory.into_store(&active_binding)?
+        } else {
+            active_directory.into_continued_store(&active_binding)?
+        };
         if retained.keys().any(|digest| active.has_asset(&format!("sha256:{digest}"))) {
             return Err(Error::Contract("raster continuation generations overlap"));
         }

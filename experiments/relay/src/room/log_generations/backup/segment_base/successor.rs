@@ -99,13 +99,25 @@ impl Room {
         state: crate::room::materialized_checkpoint::Checkpoint,
         repair: bool,
     ) -> Result<(Self, Recovery)> {
+        let room = Self::replay_relay_segment_prefix(log, state, |_| Ok(()))?;
+        room.finish_replay(recovery, repair)
+    }
+
+    pub(in crate::room::log_generations) fn replay_relay_segment_prefix(
+        log: Log,
+        state: crate::room::materialized_checkpoint::Checkpoint,
+        mut observe: impl FnMut(&crate::log::Record) -> Result<()>,
+    ) -> Result<Self> {
         let replay = log.open_generation_replay()?;
         let selected =
             log.segment_base().ok_or(Error::NeedsRecovery)?.identity().checkpoint.clone();
         let mut room = state.restore(log, &selected)?;
-        replay.visit_suffix(selected.source.records, |record| room.replay(record))?;
+        replay.visit_suffix(selected.source.records, |record| {
+            observe(&record)?;
+            room.replay(record)
+        })?;
         room.log.check_generation_replay()?;
         room.abandon_suggestion_revision_preparation();
-        room.finish_replay(recovery, repair)
+        Ok(room)
     }
 }

@@ -313,3 +313,31 @@ fresh credentials, mapping checks and the same seal. The new directory has
 its own completion pin. The old host and its live directories can be offline
 during this step. Cold restarts after activation use
 `restart_activated_room` with the new approval and retained serving epoch.
+
+### Inspect and repair an interrupted native write
+
+Retain the latest independent complete room capture and exact serving
+selection. When a committed room has an incomplete final native frame,
+ordinary restart refuses. Reopen the same authority using
+`RoomDeploymentAuthority::open_at_least`. With the authenticated owner
+and the same activation approval, call
+`ContinuedRasterRoomBackupFiles::inspect_activated_native_tail`. Supply
+the retained complete capture as the minimum accepted native history and
+an absent evidence directory outside the room. Inspection replays the
+complete record chain, verifies that the minimum cut is retained and
+writes the incomplete bytes to `suffix.bin`. Keep the returned plan
+independently from both the room and that evidence file.
+
+Call `repair_activated_native_tail` with the same serving selection,
+saved plan and preserved suffix. It checks the original active WAL inode,
+physical head, complete native cut, inspected raster cut and exact suffix
+before removing the incomplete bytes. It synchronizes and checks the
+complete cut before releasing the deployment lock. An interrupted repair
+can retry with the same plan and evidence, including after truncation
+already reached disk. Use the normal restart afterward with the same
+serving selection.
+
+The minimum capture protects the native history recorded at that cut.
+The repair compares the active raster state to what inspection observed.
+Pending raster staging and an unfinished native rotation require their
+own recovery. Preserve those files when this repair refuses.

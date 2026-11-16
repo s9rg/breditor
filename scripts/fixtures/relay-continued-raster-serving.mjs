@@ -2,7 +2,7 @@
 import assert from 'node:assert/strict';
 import {execFileSync} from 'node:child_process';
 import {createHash} from 'node:crypto';
-import {closeSync, cpSync, fsyncSync, mkdirSync, openSync, readFileSync, renameSync, writeFileSync} from 'node:fs';
+import {closeSync, cpSync, fsyncSync, mkdirSync, openSync, readFileSync, readdirSync, renameSync, unlinkSync, writeFileSync} from 'node:fs';
 import {join} from 'node:path';
 import {pixel, pixelAsset, proposalAsset, proposalPixel, secondAsset, secondPixel} from './review-assets/pixels.mjs';
 import {unavailableAsset} from './physical-recovery-control/unavailable-upload.mjs';
@@ -210,11 +210,17 @@ export async function verifyContinuedRasterServing(api, rich, wasm, executable, 
     const saved = await upload(proposalAsset, proposalPixel);
     assert.equal(saved.status, 200);
     assert.equal((await saved.json()).duplicate, false);
+    const floor = await host.maintenance('owner', token, {kind: 'captureRepairFloor'});
+    assert.ok(floor.result, floor.error);
+    assert.deepEqual(floor.result.sourceEpoch, firstServing);
+    const floorPath = join(parent, 'repair-floor.json');
+    writeFileSync(floorPath, JSON.stringify(floor.result), {flag: 'wx', mode: 0o600});
     await disconnect();
     await host.crash();
     host = undefined;
 
     saveExpected(firstServing);
+    verifyNativeTailRepair({parent, activation, invoke, floor: floor.result, floorPath});
     host = await startApproved();
     assert.equal(BigInt(newEpoch(firstServing).generation), BigInt(firstServing.generation) + 1n);
     const coldReader = await api.registerSharedRelayWriter(options);
@@ -235,6 +241,8 @@ export async function verifyContinuedRasterServing(api, rich, wasm, executable, 
       httpRastersRecovered: 2, stagedUploadReceipts: 1, offlineUndoAndRedo: true, combinedCapture: true, portableRestore,
       authenticatedTakeover: {staleRelayReadsAndWritesRefused: true, coldStarts: 2, offlineRedoDelivered: true,
         postActivationRasterAndEditSurvived: true, exactRastersRead: 4, portableSealAndRelocation: true, changedClientOriginalRefused: true},
+      explicitTailRepair: {preservedIncompleteBytes: 9, acceptedFloorGuarded: true,
+        changedSuffixRefused: true, coldRepairRetrySucceeded: true, pendingRasterEvidencePreserved: true},
     };
   } finally {
     if (sync) {
@@ -361,4 +369,53 @@ function prepareContinuedCapture({
     rasters: [pixelAsset, unavailableAsset],
     queued: secondAsset, deferred: proposalAsset, staged, approve, generation,
   }));
+}
+
+function verifyNativeTailRepair({parent, activation, invoke, floor, floorPath}) {
+  const native = join(activation, 'prepared', 'native');
+  const logs = readdirSync(native).filter(name => name.endsWith('.wal'));
+  assert.equal(logs.length, 1);
+  const wal = join(native, logs[0]);
+  const accepted = readFileSync(wal);
+  assert.ok(accepted.length > 9);
+  const suffix = accepted.subarray(0, 9);
+  const torn = Buffer.concat([accepted, suffix]);
+  const write = bytes => {
+    const file = openSync(wal, 'w');
+    try { writeFileSync(file, bytes); fsyncSync(file); } finally { closeSync(file); }
+  };
+  const refused = (mode, reason) => assert.throws(() => invoke(parent, mode),
+    error => error.status === 1 && error.stderr.includes(reason));
+  write(torn);
+  refused('continued-raster-activated', 'continued raster room requires an exact native WAL');
+  assert.deepEqual(readFileSync(wal), torn);
+
+  write(Buffer.alloc(0));
+  refused('continued-raster-inspect-tail', 'continued native recovery floor is outside retained history');
+  assert.deepEqual(readFileSync(wal), Buffer.alloc(0));
+  write(torn);
+  const interruptedUpload = join(activation, 'prepared', 'rasters', 'active', '.pending-' + 'a'.repeat(64));
+  const uploadBytes = Buffer.from('interrupted upload witness');
+  writeFileSync(interruptedUpload, uploadBytes, {flag: 'wx', mode: 0o600});
+  refused('continued-raster-inspect-tail', 'operational asset has pending work');
+  assert.deepEqual(readFileSync(interruptedUpload), uploadBytes);
+  assert.deepEqual(readFileSync(wal), torn);
+  unlinkSync(interruptedUpload);
+  const observed = invoke(parent, 'continued-raster-inspect-tail');
+  assert.deepEqual(observed, {nextSequence: floor.native.predecessor.source.records, incompleteBytes: suffix.length});
+  const evidence = join(parent, 'repair-evidence', 'suffix.bin');
+  assert.deepEqual(readFileSync(evidence), suffix);
+  assert.deepEqual(readFileSync(wal), torn);
+
+  const changed = Buffer.from(torn);
+  changed[changed.length - 1] ^= 1;
+  write(changed);
+  refused('continued-raster-repair-tail', 'continued native tail changed after inspection');
+  assert.deepEqual(readFileSync(wal), changed);
+  write(torn);
+  assert.equal(invoke(parent, 'continued-raster-repair-tail'), 'repaired');
+  assert.deepEqual(readFileSync(wal), accepted);
+  assert.equal(invoke(parent, 'continued-raster-repair-tail'), 'alreadyComplete');
+  assert.deepEqual(readFileSync(evidence), suffix);
+  assert.deepEqual(JSON.parse(readFileSync(floorPath, 'utf8')), floor);
 }

@@ -8,7 +8,7 @@ use breditor_collab_relay::server::{
 };
 use std::{fs::File, path::Path};
 
-fn inputs(
+pub(super) fn inputs(
     parent: &Path,
 ) -> Result<(ContinuedRasterRoomBackupFiles, ContinuedRasterActivationApproval)> {
     let capture = serde_json::from_str(&read(&parent.join("capture-selection.json"), 32 * 1024)?)?;
@@ -43,14 +43,17 @@ pub(super) fn commit(
     Ok(selected)
 }
 
-pub(super) fn restart(parent: &Path, authentication: Authentication) -> Result<axum::Router> {
+pub(super) fn restart(
+    parent: &Path,
+    authentication: Authentication,
+) -> Result<(axum::Router, Option<tokio::task::JoinHandle<Result>>)> {
     let path = parent.join("activation");
     let (backup, approval) = inputs(&path)?;
     let expected: RoomDeploymentSelection =
         serde_json::from_str(&read(&path.join("expected.json"), 4096)?)?;
     let authority = RoomDeploymentAuthority::open_at_least(&parent.join("authority"), &expected)?;
     let protected = continued_reconcile::read_protected(&path)?;
-    let (router, _, selection) = backup.restart_activated_room(
+    let (router, handle, selection) = backup.restart_activated_room(
         &path.join("prepared"),
         authentication,
         "owner",
@@ -62,7 +65,7 @@ pub(super) fn restart(parent: &Path, authentication: Authentication) -> Result<a
         &serde_json::to_vec(&selection)?,
     )?;
     File::open(&path)?.sync_all()?;
-    Ok(router)
+    Ok((router, Some(super::continued_serving::control(parent, handle))))
 }
 
 pub(super) fn seal(

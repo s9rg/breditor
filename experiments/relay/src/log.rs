@@ -188,6 +188,13 @@ pub(crate) struct Record {
     previous: [u8; 32],
     pub event: Event,
 }
+#[cfg(feature = "server")]
+impl Record {
+    pub(crate) const fn previous_digest(&self) -> [u8; 32] {
+        self.previous
+    }
+}
+
 pub(crate) struct Log {
     file: File,
     family: frame::Family,

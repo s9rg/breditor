@@ -7,6 +7,8 @@ mod continued_reconcile;
 mod continued_restore;
 #[path = "relay_segment_functional/continued_serving.rs"]
 mod continued_serving;
+#[path = "relay_segment_functional/continued_tail.rs"]
+mod continued_tail;
 #[path = "relay_segment_functional/full_predecessor.rs"]
 mod full_predecessor;
 #[path = "relay_segment_functional/handover.rs"]
@@ -187,6 +189,9 @@ async fn main() -> Result {
     if matches!(mode.as_str(), "continued-raster-restore" | "continued-raster-reopen") {
         return continued_restore::run(parent, mode == "continued-raster-reopen");
     }
+    if matches!(mode.as_str(), "continued-raster-inspect-tail" | "continued-raster-repair-tail") {
+        return continued_tail::run(parent, mode == "continued-raster-inspect-tail");
+    }
     let old = parent.join("source-native");
     let png = fs::read(parent.join("asset.png"))?;
     let id = asset_id(&png);
@@ -195,7 +200,7 @@ async fn main() -> Result {
         "continued-raster-start" | "continued-raster-resume" => {
             continued_serving::router(parent, auth, &png, mode == "continued-raster-resume")?
         }
-        "continued-raster-activated" => (continued_activation::restart(parent, auth)?, None),
+        "continued-raster-activated" => continued_activation::restart(parent, auth)?,
         "continued-raster-portable-commit" => {
             println!(
                 "{}",
