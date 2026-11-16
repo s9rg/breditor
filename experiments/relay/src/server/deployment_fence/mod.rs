@@ -31,6 +31,8 @@ mod slot;
 mod state;
 #[cfg(all(test, unix))]
 mod tests;
+#[cfg(all(test, unix))]
+pub(in crate::server) use tests::network::Network as TestNetwork;
 mod transaction;
 pub use authority::RoomDeploymentAuthority;
 pub(super) use handover_epoch::{
@@ -45,7 +47,6 @@ pub(super) use seal_generation::seal_log_generation;
 pub(super) use seal_prepared_generation::{
     seal_prepared, seal_prepared_for_lease, seal_prepared_source,
 };
-#[cfg(test)]
 pub(super) use serving::attach_host;
 pub(super) use serving::prepare_host;
 pub use serving::{router_with_assets_and_deployment_lease, router_with_deployment_lease};

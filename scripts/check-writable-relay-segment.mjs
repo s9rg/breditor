@@ -12,6 +12,7 @@ import {environment} from './fixtures/room-participant-inventory/environment.mjs
 import {pixel, proposalAsset, proposalPixel, secondAsset, secondPixel, recoveredAsset, recoveredPixel} from './fixtures/review-assets/pixels.mjs';
 import {lostReplyUpload, unavailableAsset, unavailableUpload, UnavailableUploadImage} from './fixtures/physical-recovery-control/unavailable-upload.mjs';
 import {assertOlderAuthorityRefused, startSegmentHandoverHost} from './fixtures/relay-segment-handover-host.mjs';
+import {verifyContinuedRasterServing} from './fixtures/relay-continued-raster-serving.mjs';
 import {advanceRelocatedHistories, readNativeHistoryCapacity, verifyRelocatedMaintenanceRetries} from './fixtures/relay-segment-maintenance.mjs';
 import {captureParticipant, checkRecoveredAlternate, checkRetainedSelected, proposalAlias, reopenParticipant, withWrongReviewReceipt} from './fixtures/relay-segment-participant.mjs';
 import {captureClientRaster, resumeClientRaster} from './fixtures/relay-segment-client-raster.mjs';
@@ -997,6 +998,9 @@ async function run(mode, {distribution, rich}, executable, parent, journalKind, 
       assert.equal(rasterContinuation.preservedOriginalBytes, true);
       assert.equal(rasterContinuation.duplicateAfterReopen, true);
       relocationEvidence.rasterContinuation = rasterContinuation;
+      relocationEvidence.continuedRasterServing = await verifyContinuedRasterServing(
+        api, richApi, wasm, executable, parent, token, origin, queuedBytes,
+      );
       const recapturedPack = readFileSync(join(
         parent, 'portable-proof-recapture', 'native-lineage', 'packed.bin'));
       const recaptured = readAncestryProofs(recapturedPack, 5);

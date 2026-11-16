@@ -1,4 +1,6 @@
 //! Loopback fixture with separate old, handoff, and successor process lifetimes.
+#[path = "relay_segment_functional/continued_serving.rs"]
+mod continued_serving;
 #[path = "relay_segment_functional/full_predecessor.rs"]
 mod full_predecessor;
 #[path = "relay_segment_functional/handover.rs"]
@@ -181,6 +183,9 @@ async fn main() -> Result {
     let id = asset_id(&png);
     let auth = configured_auth(parent)?;
     let (router, control) = match mode.as_str() {
+        "continued-raster-start" | "continued-raster-resume" => {
+            continued_serving::router(parent, auth, &png, mode == "continued-raster-resume")?
+        }
         "claim-unverified" => {
             let authority = deployment(parent)?;
             authority.claim(&authority.current_selection()?)?;

@@ -3,7 +3,7 @@ mod backup;
 mod cold_selection;
 mod coordinated;
 mod fixture;
-mod network;
+pub(in crate::server) mod network;
 mod process;
 mod rollback;
 mod serving;

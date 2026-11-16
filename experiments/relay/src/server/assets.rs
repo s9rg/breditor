@@ -2,6 +2,7 @@
 //! permission is checked both before reading the body and again before publishing bytes.
 use super::{
     Host,
+    continued_assets::HttpRasterStore,
     http::{account, cors, failure, origin},
 };
 use crate::{
@@ -20,7 +21,7 @@ pub(super) async fn preflight(State(host): State<Host>, headers: HeaderMap) -> R
     let Some(allowed) = origin(&host, &headers) else {
         return StatusCode::FORBIDDEN.into_response();
     };
-    if host.assets.is_none() {
+    if !host.serves_assets() {
         return cors(StatusCode::NOT_FOUND.into_response(), allowed);
     }
     let method = headers.get("access-control-request-method").and_then(|h| h.to_str().ok());
@@ -60,7 +61,7 @@ pub(super) async fn download(
     let Some(allowed) = origin(&host, &headers) else {
         return StatusCode::FORBIDDEN.into_response();
     };
-    let Some(store) = host.assets.clone() else {
+    let Some(store) = HttpRasterStore::of(&host) else {
         return cors(StatusCode::NOT_FOUND.into_response(), allowed);
     };
     let principal = match account(&host, &headers) {
@@ -70,12 +71,7 @@ pub(super) async fn download(
     let Ok(_permit) = host.asset_operations.clone().try_acquire_owned() else {
         return cors(StatusCode::SERVICE_UNAVAILABLE.into_response(), allowed);
     };
-    let result = host
-        .transaction(move |room| {
-            let store = store.lock().map_err(|_| Error::NeedsRecovery)?;
-            room.read_asset(&principal, &store, &asset)
-        })
-        .await;
+    let result = host.transaction(move |room| store.read(room, &principal, &asset)).await;
     let response = match result {
         Ok(Some(stored)) => {
             ([("content-type", stored.info.mime.as_str())], Body::from(stored.bytes))
@@ -95,7 +91,7 @@ pub(super) async fn upload(
     let Some(allowed) = origin(&host, &parts.headers) else {
         return StatusCode::FORBIDDEN.into_response();
     };
-    let Some(store) = host.assets.clone() else {
+    let Some(store) = HttpRasterStore::of(&host) else {
         return cors(StatusCode::NOT_FOUND.into_response(), allowed);
     };
     let principal = match account(&host, &parts.headers) {
@@ -125,13 +121,7 @@ pub(super) async fn upload(
         .await
         .unwrap_or(Err(Error::NeedsRecovery));
     let result = match prepared {
-        Ok(prepared) => {
-            host.transaction(move |room| {
-                let mut store = store.lock().map_err(|_| Error::NeedsRecovery)?;
-                room.put_asset(&principal, &mut store, prepared)
-            })
-            .await
-        }
+        Ok(prepared) => host.transaction(move |room| store.put(room, &principal, prepared)).await,
         Err(e) => Err(e),
     };
     let response = match result {

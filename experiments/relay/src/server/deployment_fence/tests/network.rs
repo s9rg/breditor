@@ -52,7 +52,7 @@ fn http_response(mut stream: TcpStream) -> io::Result<(u16, Vec<u8>)> {
     stream.read_exact(&mut bytes)?;
     Ok((status, bytes))
 }
-pub(super) struct Network {
+pub(in crate::server) struct Network {
     pub address: SocketAddr,
     stop: Option<tokio::sync::oneshot::Sender<()>>,
     task: Option<tokio::task::JoinHandle<io::Result<()>>>,

@@ -24,7 +24,7 @@ impl ContinuedAssetStore {
         self.active.count()
     }
 
-    pub(super) fn guard(&self) -> Result<()> {
+    pub(crate) fn guard(&self) -> Result<()> {
         self.directory.guard_witness(&self.identity.directory)?;
         self.control.check_named(&self.control_witness, &self.directory.path.join(CONTROL))?;
         self.retained.guard(&self.directory.path.join(ARCHIVE), &self.identity.archive)?;

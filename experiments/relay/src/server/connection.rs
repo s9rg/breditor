@@ -275,7 +275,7 @@ async fn handshake(host: &Host, socket: &mut WebSocket) -> Option<(String, bool,
     if !capabilities::valid(&capabilities) {
         return None;
     }
-    let assets_enabled = host.assets.is_some() && capabilities.iter().any(|c| c == "assets");
+    let assets_enabled = host.serves_assets() && capabilities.iter().any(|c| c == "assets");
     let review_mode = ReviewMode::from_capabilities(&capabilities);
     let review_enabled = review_mode.enabled();
     let versions = capabilities.iter().any(|c| c == "documentVersionsV1");

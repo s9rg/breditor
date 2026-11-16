@@ -2,6 +2,11 @@
 //! async I/O workers, inside the same serialized room authority. Public untrusted hosting still
 //! requires the planned resource-limited import worker, TLS and deployment qualification.
 mod assets;
+mod continued_assets;
+pub use continued_assets::{
+    ContinuedAssetServerHandle, ContinuedRasterRoomBackupIdentity,
+    router_with_continued_assets_and_deployment_lease,
+};
 mod authentication;
 mod backup;
 mod connection;
@@ -112,6 +117,7 @@ pub(super) struct Host {
     changed: watch::Sender<u64>,
     connections: Arc<Semaphore>,
     assets: Option<Arc<Mutex<crate::assets::AssetStore>>>,
+    continued_assets: Option<Arc<Mutex<crate::ContinuedAssetStore>>>,
     assets_changed: watch::Sender<u64>,
     asset_operations: Arc<Semaphore>,
     presence_changed: watch::Sender<u64>,
@@ -136,6 +142,7 @@ impl Host {
         let room = self.room.clone();
         let custody = self.generation_custody.clone();
         let assets = self.assets.clone();
+        let continued = self.continued_assets.clone();
         let deployment = self.deployment.clone();
         let serving = self.generation_serving.clone();
         let segment = self.relay_segment_custody.clone();
@@ -150,7 +157,13 @@ impl Host {
                 }
                 let _assets = assets;
                 let mut room = room.lock().map_err(|_| Error::NeedsRecovery)?;
+                if let Some(assets) = &continued {
+                    assets.lock().map_err(|_| Error::NeedsRecovery)?.guard()?;
+                }
                 let result = f(&mut room);
+                if let Some(assets) = &continued {
+                    assets.lock().map_err(|_| Error::NeedsRecovery)?.guard()?;
+                }
                 if let Some(held) = serving.get() {
                     held.check_retained()?;
                 }
@@ -226,6 +239,7 @@ fn create_host(
         changed,
         connections: Arc::new(Semaphore::new(64)),
         assets: assets.map(|store| Arc::new(Mutex::new(store))),
+        continued_assets: None,
         assets_changed,
         asset_operations: Arc::new(Semaphore::new(4)),
         presence_changed,

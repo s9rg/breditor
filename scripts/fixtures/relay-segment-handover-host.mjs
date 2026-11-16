@@ -71,7 +71,7 @@ export async function startSegmentHandoverHost(executable, args, token, exportAl
     } else if (token) {
       send({kind: 'resume', token, exportAlternates, ...(carryControl ? {carryControl} : {})});
       if (!carryControl) child.stdin.end();
-    } else if (mode !== 'final') {
+    } else if (mode !== 'final' && !mode.startsWith('continued-raster-')) {
       child.stdin.end();
     }
     if (mode === 'relocated-before-listen') {
@@ -84,7 +84,7 @@ export async function startSegmentHandoverHost(executable, args, token, exportAl
     return {
       address,
       async maintenance(principal, token, action) {
-        assert.equal(mode, 'relocated');
+        assert.ok(mode === 'relocated' || mode.startsWith('continued-raster-'));
         send({principal, token, action});
         return next('maintenance');
       },

@@ -35,6 +35,13 @@ pub(in crate::server) fn attach_host(host: &Host, lease: RoomDeploymentLease) ->
                 return Err(Error::Contract("deployment native binding"));
             }
         }
+        if let Some(assets) = &host.continued_assets {
+            let assets = assets.lock().map_err(|_| Error::NeedsRecovery)?;
+            if assets.binding() != room.asset_binding() {
+                return Err(Error::Contract("deployment native binding"));
+            }
+            assets.guard()?;
+        }
         Ok(())
     })
 }

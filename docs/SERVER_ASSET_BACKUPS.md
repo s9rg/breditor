@@ -168,7 +168,24 @@ the exact predecessor and the second file selects the exact active cut.
 IDs, and selects a new local directory. Preserve its new local selection
 for subsequent cold opens.
 
-This contract covers one predecessor and one active generation. Relay
-HTTP routing and authenticated whole-room activation still need to
-select this storage family and verify both generations alongside the
+This contract covers one predecessor and one active generation.
+Whole-room activation must verify both generations alongside the
 native document and retained client inputs.
+
+### Serve a continued store from the reference relay
+
+`router_with_continued_assets_and_deployment_lease` attaches an explicitly
+selected native room and continued asset store to a current serving lease.
+The normal HTTP raster routes authenticate both generations and use the
+existing content IDs and receipts. Room operations check continued asset
+custody under the same lease. On restart, retain the current authority
+selection and reopen the original native room and exact local asset
+continuation before attaching the approved replacement lease.
+
+`ContinuedAssetServerHandle::capture` verifies the current owner credentials
+and holds the room, raster owner and serving permit through capture. It writes
+the physical native archive and checkpoint together with the two exact raster
+archives. Keep the returned `ContinuedRasterRoomBackupIdentity` independently
+and retain any earlier native segments and client inputs that this room needs.
+The combined capture is a storage identity. Coordinated takeover still requires
+verification of the complete room and its client/provider inputs.
