@@ -2,6 +2,19 @@
 
 ## November 16 collaboration recovery
 
+[Selected raster staging for continued rooms](qualification/2026-11-16-continued-raster-staging.json)
+copies an explicitly selected missing image from original client files into
+the fresh active store and binds the exact addition in the completion record.
+The native accepted cut and both captured raster generations survive cold
+reopen. The source and clean-installed clients stage a queued image needed
+by offline Redo while leaving a second image only in the queue. The original
+archive bytes, statuses and receipt are preserved. Reconciliation then
+verifies the completed image set, and the retained client journal can still
+Redo the image change. Already captured IDs and IDs absent from the originals
+refuse before allocating a target. All 82 focused Rust tests, 69 candidate-plan
+tests and the carried-alternate checks pass. An authenticated deployment
+transition for this recovery family remains open.
+
 [Restored room input reconciliation](qualification/2026-11-16-continued-raster-reconcile.json)
 authenticates the native owner, checks protected registrations and compares
 the selected original client journals to the captured server histories.
