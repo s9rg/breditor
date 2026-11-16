@@ -1,0 +1,175 @@
+{
+  "format": "breditor/native-history-reserve-qualification",
+  "formatVersion": 1,
+  "date": "2026-11-16",
+  "source": {
+    "commit": "8a162940b72846a7d9958d39b6be7ca57c7434e5",
+    "dirty": false,
+    "sha256": "f6300b6bdeee097734f7f5ee34c123ae26d6be9812743edbdd23bf5e4d2e425a",
+    "files": 9011,
+    "bytes": 76483629
+  },
+  "reserveChecks": {
+    "originalLaneRequiresExplicitRoot": true,
+    "sufficientActiveFloorPrefersSeal": true,
+    "privateAuthorAndReceiptFloorsAreMeasured": true,
+    "reviewRetainedEventFloorUsesIndependentContinuation": true,
+    "unavailableAtContinuedLimitWithoutWrites": true,
+    "sourceHandleSelectionMatchesExplicitPlan": true,
+    "sourceHandleRefusesNonOwnerAndRetiredEpoch": true
+  },
+  "nativeRelayTests": {
+    "room-native_history": {
+      "passed": 19,
+      "failed": 0,
+      "ignored": 0,
+      "executableSha256": [
+        "717db0b4d8d034a668cf8403c584e8f59ac6ceba11cde7d3a26afcb7983d3eea"
+      ],
+      "logSha256": "dd73d162884f2c7093327ce374aedf1afe37e60c70a839b42bb248aa8d68b54f"
+    },
+    "room-log_generations-tests-staging_capacity": {
+      "passed": 6,
+      "failed": 0,
+      "ignored": 0,
+      "executableSha256": [
+        "717db0b4d8d034a668cf8403c584e8f59ac6ceba11cde7d3a26afcb7983d3eea"
+      ],
+      "logSha256": "f68a8136e04a6c991396b77064235ba806841984f851a0141cd8fe0e2be85d2a"
+    },
+    "room-materialized_checkpoint": {
+      "passed": 3,
+      "failed": 0,
+      "ignored": 0,
+      "executableSha256": [
+        "717db0b4d8d034a668cf8403c584e8f59ac6ceba11cde7d3a26afcb7983d3eea"
+      ],
+      "logSha256": "0c7eb8e29f127953c6d2a9d42e1c9656178c8f716d245929812c92359de29df7"
+    },
+    "server-segment_handover-tests": {
+      "passed": 32,
+      "failed": 0,
+      "ignored": 0,
+      "executableSha256": [
+        "717db0b4d8d034a668cf8403c584e8f59ac6ceba11cde7d3a26afcb7983d3eea"
+      ],
+      "logSha256": "be38a41f8cef5ca7b086b9c5df13fead910ee7aa186cd840628002e3a65c9167"
+    },
+    "server-generation_backup-tests-native_history": {
+      "passed": 1,
+      "failed": 0,
+      "ignored": 0,
+      "executableSha256": [
+        "717db0b4d8d034a668cf8403c584e8f59ac6ceba11cde7d3a26afcb7983d3eea"
+      ],
+      "logSha256": "d7e6ea184b072c62a829e0a46c8a0cfefad7db6f2a37077bbc0b9d9c7be14a6a"
+    }
+  },
+  "strictRelayLibraryLint": {
+    "server": {
+      "passed": true,
+      "logSha256": "57fa90d0c3de28b620e95aac2df0ed261770b09e4bb9166366245a7254e3f227"
+    },
+    "noServer": {
+      "passed": true,
+      "logSha256": "0f2179a76f5e9a39ba8e710fac1262f694f4602fa1772a602ae91acbf437b50e"
+    }
+  },
+  "reusedRuntimeArtifacts": {
+    "byteIdenticalSourceSince": "782bf48874e23e50fe08527bc3c4b6ff13d2df67",
+    "localRichWasmSha256": "bc020ce07ed80600b85735c1e592d5ae163d921f5556fef05269a12bc1d59ec5",
+    "sharedWasmSha256": "4bd769ac853ccc377dcbb45ebcfd5fc8f7f0f200850b1f5a106f7a4a0beddca4",
+    "verificationLogSha256": "c8df6ab3bd34bf3bd84ec875560a15b984d6bfa81ce1c1425a3427cf73f1045a"
+  },
+  "candidatePlan": {
+    "passed": 69,
+    "failed": 0,
+    "logSha256": "9b3ccd232df5df0ba847c24813ce52e30bd425172f5173d24ee31172c4d6b4e1"
+  },
+  "workflows": {
+    "relaySha256": "e870a36b677d8e9767fbdfdbd4fa34ed47e1ae3d0e6ae284c49b1bccb2957ed4",
+    "runtimeSha256": "4bd769ac853ccc377dcbb45ebcfd5fc8f7f0f200850b1f5a106f7a4a0beddca4",
+    "portableRelocation": {
+      "reportSha256": "82927e80b40c173a54c3f0599c2e3fde15c68f1d48145e58d26749b37e15141b",
+      "runs": {
+        "source": {
+          "offlineLanes": 6,
+          "undoRedoLanes": 2,
+          "coldResumes": 5,
+          "reserveSelectedNativeBoundaries": 2,
+          "reserveSatisfiedAfterColdRestart": 2,
+          "reserveUnavailableAtFiniteLimit": true,
+          "deniedReserveRequests": 2,
+          "guardedNativeBoundaries": 2,
+          "preparedNativeBoundariesResolvedAfterRestart": 2,
+          "stalePreparedBoundaryRefusals": 1,
+          "deniedPreparedBoundaryRequests": 3,
+          "proof": null
+        },
+        "installed": {
+          "offlineLanes": 6,
+          "undoRedoLanes": 2,
+          "coldResumes": 5,
+          "reserveSelectedNativeBoundaries": 2,
+          "reserveSatisfiedAfterColdRestart": 2,
+          "reserveUnavailableAtFiniteLimit": true,
+          "deniedReserveRequests": 2,
+          "guardedNativeBoundaries": 2,
+          "preparedNativeBoundariesResolvedAfterRestart": 2,
+          "stalePreparedBoundaryRefusals": 1,
+          "deniedPreparedBoundaryRequests": 3,
+          "proof": {
+            "registryArtifacts": 45,
+            "archives": [
+              {
+                "name": "@breditor/browser",
+                "sha256": "79f5b486d3742d1234e4eb21c18822e0a494551d49a73039f5b856908c124f3f"
+              },
+              {
+                "name": "@breditor/experimental-rich-content",
+                "sha256": "06fc9770ef5b26cd5f4c10d7d55d9b1d91e352392a599f277cee25d431d6f4b7"
+              },
+              {
+                "name": "@breditor/collaboration",
+                "sha256": "05aeaf3cedf9431890bb10b8cdc9c92b70c4410bfeeb52ff421d59b5a72dd2e2"
+              }
+            ]
+          }
+        }
+      }
+    },
+    "legacyHandover": {
+      "reportSha256": "33cc7314aa46c173798d200e14385e1d448f938631bb49568dfaa795d0969a04",
+      "runs": {
+        "source": {
+          "offlineLanes": 6,
+          "undoRedoLanes": 2,
+          "coldResumes": 3,
+          "proof": null
+        },
+        "installed": {
+          "offlineLanes": 6,
+          "undoRedoLanes": 2,
+          "coldResumes": 3,
+          "proof": {
+            "registryArtifacts": 45,
+            "archives": [
+              {
+                "name": "@breditor/browser",
+                "sha256": "79f5b486d3742d1234e4eb21c18822e0a494551d49a73039f5b856908c124f3f"
+              },
+              {
+                "name": "@breditor/experimental-rich-content",
+                "sha256": "06fc9770ef5b26cd5f4c10d7d55d9b1d91e352392a599f277cee25d431d6f4b7"
+              },
+              {
+                "name": "@breditor/collaboration",
+                "sha256": "05aeaf3cedf9431890bb10b8cdc9c92b70c4410bfeeb52ff421d59b5a72dd2e2"
+              }
+            ]
+          }
+        }
+      }
+    }
+  }
+}

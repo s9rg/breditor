@@ -2,6 +2,18 @@
 
 ## November 16 collaboration recovery
 
+[Native history reserve planning](qualification/2026-11-16-native-history-reserve.json)
+lets an owner choose a minimum amount of free capacity before staging a
+boundary. It prefers a seal when the exact projection meets every floor and
+otherwise considers the available continuation. Document requests cover the
+private suggestion author as well as the receiver. The planner leaves the
+room unchanged until the owner applies the exact selection. Source and
+clean-installed relocation select both continuations, preserve six offline
+lanes and Undo/Redo in two lanes, confirm the reserve after cold restart and
+report when the finite ceiling rules out a boundary. Legacy handover and all
+61 focused relay tests pass. The room still needs an operating policy and
+recovery qualification at its supported lifetime limits.
+
 [Guarded native maintenance](qualification/2026-11-16-guarded-native-history-maintenance.json)
 previews exact native capacity and WAL frame cost before the owner selects
 a boundary. Apply checks the complete logical cut and both native digests
