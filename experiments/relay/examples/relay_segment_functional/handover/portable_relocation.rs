@@ -177,7 +177,7 @@ pub(crate) fn router(
                 stdout.flush()?;
                 std::process::exit(77);
             }
-            Ok((router, Some(maintenance::serve(handle))))
+            Ok((router, Some(maintenance::serve(parent, handle))))
         }
         Command::Resume { token, expected_unserved_selection } => {
             assert!(!exit_before_listen);
@@ -201,7 +201,7 @@ pub(crate) fn router(
             )?;
             assert_ne!(selected, resumed);
             restart_floor::remember(parent, APPROVAL, &resumed)?;
-            Ok((router, Some(maintenance::serve(handle))))
+            Ok((router, Some(maintenance::serve(parent, handle))))
         }
     }
 }

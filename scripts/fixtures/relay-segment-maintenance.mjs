@@ -5,6 +5,9 @@ const native = (lane, boundary) => ({kind: 'boundary', lane, boundary});
 const describe = {kind: 'describe'};
 const capacity = {kind: 'capacity'};
 const rotate = {kind: 'rotate', next: 'portable-maintenance-wal'};
+const checkpoint = {kind: 'checkpoint'};
+const pack = {kind: 'pack', generation: 'relocated-one'};
+const archive = {kind: 'archive', generation: pack.generation};
 
 async function accepted(host, token, action, principal = 'owner') {
   const row = await host.maintenance(principal, token, action);
@@ -53,7 +56,20 @@ export async function advanceRelocatedHistories(host, token, readerToken) {
   assert.equal(rotated.log.nextSequence, continued.log.nextSequence);
   assert.deepEqual(rotated.log.terminalDigest, continued.log.terminalDigest);
   assert.equal(rotated.log.rotation.continuationFilesRemaining, continued.log.rotation.continuationFilesRemaining - 1);
-  return {intents, receipts, rotation};
+  assert.deepEqual(await host.maintenance('reader', readerToken, checkpoint), denied);
+  assert.deepEqual(await host.maintenance('reader', readerToken, pack), denied);
+  const selected = await accepted(host, token, checkpoint);
+  assert.equal(String(selected.source.records), rotated.log.nextSequence);
+  assert.deepEqual(selected.source.terminalLogDigest, rotated.log.terminalDigest);
+  assert.deepEqual(await host.maintenance('reader', readerToken, archive), denied);
+  const packed = await accepted(host, token, pack);
+  assert.equal(packed.packed, true);
+  assert.equal(packed.generation, pack.generation);
+  assert.ok(packed.storedBytes < packed.originalBytes);
+  const archived = await accepted(host, token, archive);
+  assert.deepEqual(archived, {generation: pack.generation, storedBytes: packed.storedBytes, duplicate: false});
+  assert.deepEqual(await accepted(host, token, capacity), rotated);
+  return {intents, receipts, rotation, packed, archived};
 }
 
 export async function verifyRelocatedMaintenanceRetries(host, token, state) {
@@ -66,13 +82,19 @@ export async function verifyRelocatedMaintenanceRetries(host, token, state) {
     assert.deepEqual(await accepted(host, token, intent), {...state.receipts[index], duplicate: true});
   }
   assert.deepEqual(await accepted(host, token, rotate), {...state.rotation, duplicate: true});
+  assert.deepEqual(await accepted(host, token, pack), state.packed);
+  assert.deepEqual(await accepted(host, token, archive), {...state.archived, duplicate: true});
   assert.deepEqual(await accepted(host, token, capacity), before);
   return {
     liveNativeHistoryBoundaries: state.intents.length,
     nativeHistoryColdRetries: state.intents.length,
     physicalWalRotations: 1,
     physicalWalColdRetries: 1,
-    deniedMaintenanceRequests: 4,
+    deniedMaintenanceRequests: 7,
     retainedLiveClientSockets: 2,
+    relocatedSealedWalPacks: 1,
+    relocatedSealedWalArchives: 1,
+    sealedWalColdRetries: 2,
+    walPhysicalBytesReclaimed: state.packed.originalBytes - state.packed.storedBytes,
   };
 }

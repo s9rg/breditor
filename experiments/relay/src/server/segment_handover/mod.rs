@@ -21,6 +21,7 @@ mod retained_backup;
 #[cfg(all(test, unix))]
 mod tests;
 mod upload_coverage;
+mod wal_maintenance;
 
 pub use approval::RelaySegmentHandoverApproval;
 pub use branches::RelaySegmentParticipantBranchInspection;

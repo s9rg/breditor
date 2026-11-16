@@ -76,7 +76,7 @@ impl ServerBackupHandle {
         .await
     }
 
-    async fn maintain<T: Send + 'static>(
+    pub(super) async fn maintain<T: Send + 'static>(
         &self,
         principal: &str,
         token: &str,
