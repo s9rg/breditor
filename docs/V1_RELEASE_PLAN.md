@@ -2,6 +2,26 @@
 
 ## November 16 collaboration recovery
 
+[Repeated authenticated raster rollover](qualification/2026-11-16-repeated-raster-rollover.json)
+recaptures a serving room that already rolled forward and prepares a second
+rollover against its exact linked native parent. The second handover retains
+four original client journals and upload archives, including the original
+writer's pending image edit and earlier upload receipt. A missing parent
+refuses before target creation. The committed seal retires the earlier
+listener, and a separately relocated target activates after that listener
+and the earlier operating directory are gone. Fresh peers see the accepted
+document before the original writer reconnects, then see its offline edit,
+Undo and Redo. On recapture, the accepted predecessor pack and newly sealed
+archive compare byte for byte. A later cold restart serves six exact images,
+including a new upload and a duplicate accepted against the earlier store.
+Both source and clean-installed workflows and legacy handover pass, along
+with 99 focused Rust tests and 69 candidate-plan tests. The cut comparator
+checks the held immutable pack's selected identity and custody under the
+deployment permit, then streams only active raster records for comparison. A separate source
+fixture reproduces an earlier pending upload omitted from the next selected
+queue while the original still exists in the retired room. Carrying that
+payload forward remains open.
+
 [Continued raster generation rollover](qualification/2026-11-16-continued-raster-rollover.json)
 seals a nonempty active store into an ordered pack of the exact original
 archives and creates a fresh writable generation. At 1,024 images in each
