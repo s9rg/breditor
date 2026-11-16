@@ -108,6 +108,20 @@ impl RasterDirectory {
     pub fn sync(&self) -> Result<()> {
         self.root.sync_all().map_err(Into::into)
     }
+    pub(in crate::room::log_generations) fn into_empty_store(
+        self,
+        binding: &str,
+    ) -> Result<(AssetStore, RasterCustody)> {
+        self.into_store_with(binding, AssetStore::initialize_empty_with_lock)
+    }
+
+    pub(in crate::room::log_generations) fn into_continued_store(
+        self,
+        binding: &str,
+    ) -> Result<(AssetStore, RasterCustody)> {
+        self.into_store_with(binding, AssetStore::open_continued_with_lock)
+    }
+
     pub fn into_store(self, binding: &str) -> Result<(AssetStore, RasterCustody)> {
         self.into_store_with(binding, AssetStore::open_recovered_with_lock)
     }

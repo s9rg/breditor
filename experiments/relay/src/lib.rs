@@ -26,6 +26,7 @@ pub use presence::PresencePeer;
 pub use protocol::{Admission, DurableReceipt, Lease, Receipt, Recovery, Registration};
 pub use room::AtomicTransportProfile;
 pub use room::Room;
+pub use room::{ContinuedAssetBackupIdentity, ContinuedAssetStore, ContinuedAssetStoreIdentity};
 pub use room::{
     DocumentSuggestionAdmission, DocumentSuggestionDecisionAdmission, DocumentSuggestionEntry,
     DocumentSuggestionPublication, DocumentSuggestionsCursor, DocumentSuggestionsDescriptor,

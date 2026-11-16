@@ -980,8 +980,23 @@ async function run(mode, {distribution, rich}, executable, parent, journalKind, 
     if (maintenance) {
       Object.assign(relocationEvidence, await verifyRelocatedMaintenanceRetries(
         host, token, maintenance.state, maintenance.nativeBeforeCrash));
-      assert.deepEqual(await host.maintenance('owner', token, {kind: 'recaptureProofs'}),
-        {kind: 'maintenance', result: {nativePredecessors: 5}});
+      const heldRaster = await portableUploads.blob(unavailableAsset);
+      const queuedBytes = Buffer.from(await heldRaster.arrayBuffer());
+      assert.deepEqual(queuedBytes, unavailableUpload);
+      writeFileSync(join(parent, 'continued-queued-raster.png'), queuedBytes, {flag: 'wx', mode: 0o600});
+      const recapture = await host.maintenance('owner', token, {
+        kind: 'recaptureProofs',
+        rasterContinuation: {old: 'sha256:' + sha(pixel), queued: unavailableAsset},
+      });
+      assert.equal(recapture.kind, 'maintenance');
+      assert.ok(recapture.result, recapture.error);
+      assert.equal(recapture.result.nativePredecessors, 5);
+      const rasterContinuation = recapture.result.rasterContinuation;
+      assert.ok(rasterContinuation.retainedAssets >= 4);
+      assert.equal(rasterContinuation.newAssets, 1);
+      assert.equal(rasterContinuation.preservedOriginalBytes, true);
+      assert.equal(rasterContinuation.duplicateAfterReopen, true);
+      relocationEvidence.rasterContinuation = rasterContinuation;
       const recapturedPack = readFileSync(join(
         parent, 'portable-proof-recapture', 'native-lineage', 'packed.bin'));
       const recaptured = readAncestryProofs(recapturedPack, 5);

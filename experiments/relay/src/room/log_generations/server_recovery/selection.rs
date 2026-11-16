@@ -20,7 +20,7 @@ pub(super) struct NativeComponent {
     pub directory: String,
     pub witness: GenerationDirectoryWitness,
 }
-#[derive(Clone, Eq, PartialEq, Serialize, Deserialize)]
+#[derive(Clone, Debug, Eq, PartialEq, Serialize, Deserialize)]
 #[serde(rename_all = "camelCase", deny_unknown_fields)]
 pub(in crate::room::log_generations) struct RasterWitness {
     pub device: u64,

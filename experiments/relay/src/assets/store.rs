@@ -208,6 +208,31 @@ impl AssetStore {
         Ok(Self { root, binding: binding.into(), lock, entries, bytes, poisoned: false })
     }
 
+    pub(crate) fn initialize_empty_with_lock(
+        root: PathBuf,
+        lock: File,
+        binding: &str,
+    ) -> Result<Self> {
+        key(binding)?;
+        backup::guard_recovered_lock(&root, &lock)?;
+        initialize_manifest(&root, binding)?;
+        Self::read_locked_root(root, lock, binding, LoadMode::Retained)
+    }
+
+    pub(crate) fn open_continued_with_lock(
+        root: PathBuf,
+        lock: File,
+        binding: &str,
+    ) -> Result<Self> {
+        key(binding)?;
+        backup::guard_recovered_lock(&root, &lock)?;
+        Self::read_locked_root(root, lock, binding, LoadMode::Ordinary)
+    }
+
+    pub(crate) fn has_asset(&self, asset: &str) -> bool {
+        self.entries.contains_key(asset)
+    }
+
     pub(crate) fn open_recovered_with_lock(
         root: PathBuf,
         lock: File,

@@ -2,6 +2,7 @@
 //! Only the host chooses the directory. Network callers never supply a filesystem path.
 mod prepare;
 mod record;
+pub(crate) use record::decode as decode_raster_record;
 mod store;
 mod types;
 pub use prepare::{PreparedAsset, asset_id, prepare_asset};

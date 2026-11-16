@@ -1,5 +1,7 @@
 //! Private stdin commands for exercising maintenance against the real serving handle.
 use super::{POLICY, Result, next_input, read, storage};
+#[path = "raster_continuation.rs"]
+mod raster_continuation;
 use breditor_collab_relay::{
     RelayCheckpoint, RelayCheckpointIdentity, ServerNativeHistoryBoundary, ServerNativeHistoryLane,
     ServerNativeHistoryReserveRequest, ServerNativeHistorySelection,
@@ -26,16 +28,37 @@ enum Action {
     Describe,
     Capacity,
     NativeCapacity,
-    Boundary { lane: ServerNativeHistoryLane, boundary: ServerNativeHistoryBoundary },
-    PlanReserve { request: ServerNativeHistoryReserveRequest },
-    PrepareBoundary { lane: ServerNativeHistoryLane, boundary: ServerNativeHistoryBoundary },
-    ApplyPreparedBoundary { selection: Box<ServerNativeHistorySelection> },
-    ResolveBoundary { selection: Box<ServerNativeHistorySelection> },
-    Rotate { next: String },
+    Boundary {
+        lane: ServerNativeHistoryLane,
+        boundary: ServerNativeHistoryBoundary,
+    },
+    PlanReserve {
+        request: ServerNativeHistoryReserveRequest,
+    },
+    PrepareBoundary {
+        lane: ServerNativeHistoryLane,
+        boundary: ServerNativeHistoryBoundary,
+    },
+    ApplyPreparedBoundary {
+        selection: Box<ServerNativeHistorySelection>,
+    },
+    ResolveBoundary {
+        selection: Box<ServerNativeHistorySelection>,
+    },
+    Rotate {
+        next: String,
+    },
     Checkpoint,
-    Pack { generation: String },
-    Archive { generation: String },
-    RecaptureProofs,
+    Pack {
+        generation: String,
+    },
+    Archive {
+        generation: String,
+    },
+    RecaptureProofs {
+        #[serde(rename = "rasterContinuation")]
+        raster_continuation: Option<raster_continuation::Selection>,
+    },
 }
 
 impl Command {
@@ -93,7 +116,7 @@ impl Command {
                     handle.archive_sealed_wal(&principal, &token, checkpoint, &generation).await?,
                 )?
             }
-            Action::RecaptureProofs => {
+            Action::RecaptureProofs { raster_continuation } => {
                 let path = parent.join("portable-proof-recapture");
                 let selection = handle.capture_portable_relay_segment_with_extended_terminal(
                     &principal, &token, &path,
@@ -107,7 +130,18 @@ impl Command {
                 drop(restored);
                 let reopened = backup.backup().reopen(&target, POLICY)?;
                 assert_eq!(catchup, reopened.components().0.catchup(&principal)?);
-                json!({"nativePredecessors": selection.backup().native_predecessors.len()})
+                let mut report =
+                    json!({"nativePredecessors": selection.backup().native_predecessors.len()});
+                if let Some(raster) = raster_continuation {
+                    report["rasterContinuation"] = raster.exercise(
+                        parent,
+                        &path,
+                        &selection.backup().retained.backup.assets,
+                        reopened.components().0,
+                        &principal,
+                    )?;
+                }
+                report
             }
         })
     }

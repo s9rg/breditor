@@ -134,3 +134,41 @@ bounded document lifetime or establish V1 readiness.
 The [server raster checkpoint](qualification/2026-10-19-server-asset-backups.json)
 records the frozen native, script and SDK checks, exact failing-before-repair
 owner-path evidence and public room/raster recovery with future offline history.
+
+## Continue a full raster archive
+
+A native host can stream the original store through `AssetStore::write_backup`,
+sync the output, and independently retain the returned `AssetBackupIdentity`.
+`ContinuedAssetStore::create_from_backup` validates that archive and selects a
+new private directory. The complete original archive becomes a read-only
+predecessor and a separate active store starts empty. Each retains the existing
+per-store bound of 1,024 assets and 256 MiB of encoded raster bytes. The active
+store has a derived storage binding. The original room's content IDs and
+public raster binding apply across both generations.
+
+Reads verify the selected predecessor or active bytes. An exact predecessor
+upload retry returns the ordinary duplicate receipt and leaves the active
+budget available. A new asset is published by the ordinary active-store
+durable upload path. `Room::read_continued_asset` and
+`Room::put_continued_asset` check the room binding and current principal
+permission. The host supplies the authenticated principal.
+
+Keep the local `ContinuedAssetStoreIdentity` separately from the directory.
+Cold open validates its selected directory, predecessor, active lock and
+manifest before using it. This local filesystem custody relies on the
+existing Unix inode checks. The derived active binding makes an ordinary
+room-bound open of just that directory refuse. An incomplete new destination
+stays private. Retry creation at another absent path.
+
+For portable restore, `ContinuedAssetStore::write_backup` streams two ordinary
+archive files under one continued owner. Sync each output and retain the
+returned `ContinuedAssetBackupIdentity` independently. The first file is
+the exact predecessor and the second file selects the exact active cut.
+`ContinuedAssetStore::restore` verifies both, checks for overlapping asset
+IDs, and selects a new local directory. Preserve its new local selection
+for subsequent cold opens.
+
+This contract covers one predecessor and one active generation. Relay
+HTTP routing and authenticated whole-room activation still need to
+select this storage family and verify both generations alongside the
+native document and retained client inputs.

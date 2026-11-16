@@ -63,7 +63,7 @@ pub(super) fn read_encoded(path: &Path) -> Result<Vec<u8>> {
     Ok(encoded)
 }
 /// Same original record checks for bytes held by an independently framed archive.
-pub(super) fn decode(encoded: &[u8], expected: &str) -> Result<StoredAsset> {
+pub(crate) fn decode(encoded: &[u8], expected: &str) -> Result<StoredAsset> {
     if encoded.len() as u64 > HEADER + MAX_METADATA as u64 + super::MAX_ASSET_BYTES {
         return Err(Error::Contract("asset file type/bytes"));
     }

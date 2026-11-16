@@ -17,6 +17,10 @@ mod deployment_binding;
 mod document_presence;
 mod layout_v3;
 mod log_generations;
+pub use log_generations::{
+    ContinuedAssetBackupIdentity, ContinuedAssetStore, ContinuedAssetStoreIdentity,
+};
+
 mod materialized_checkpoint;
 #[cfg(feature = "server")]
 pub(crate) use log_generations::{

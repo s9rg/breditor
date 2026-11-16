@@ -87,7 +87,7 @@ pub struct AssetReceipt {
     pub duplicate: bool,
 }
 impl AssetReceipt {
-    pub(super) const fn new(info: AssetInfo, duplicate: bool) -> Self {
+    pub(crate) const fn new(info: AssetInfo, duplicate: bool) -> Self {
         Self { format: "breditor/relay-asset-receipt", format_version: 1, info, duplicate }
     }
 }

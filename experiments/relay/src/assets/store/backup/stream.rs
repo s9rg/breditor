@@ -83,6 +83,16 @@ fn capture_record(path: &Path, info: &crate::assets::AssetInfo) -> Result<(Recor
 }
 
 impl AssetStore {
+    /// Stream the complete original raster archive and return its independently retainable identity.
+    ///
+    /// # Errors
+    /// Refuses invalid, changed or poisoned storage and propagates destination failures.
+    pub fn write_backup(&self, output: &mut impl Write) -> Result<AssetBackupIdentity> {
+        let backup = self.prepare_backup_stream()?;
+        backup.write_to(output)?;
+        Ok(backup.identity)
+    }
+
     pub(crate) fn prepare_backup_stream(&self) -> Result<AssetBackupStream<'_>> {
         self.ready()?;
         restore_files::guard_lock(&self.root, &self.lock)?;
