@@ -11,7 +11,10 @@ use super::{
 use crate::{Error, Result};
 use std::{
     fs::File,
-    sync::atomic::{AtomicBool, Ordering},
+    sync::{
+        Arc,
+        atomic::{AtomicBool, Ordering},
+    },
 };
 
 pub(super) struct HeldManifest {
@@ -27,7 +30,7 @@ pub(in crate::log) struct Generations {
     pub(super) archive: Option<ArchiveDirectory>,
     pub(super) segment: Option<super::segment::SegmentCustody>,
     pub(super) history: Vec<HeldManifest>,
-    pub(super) closed: Vec<HeldWal>,
+    pub(super) closed: Vec<Arc<HeldWal>>,
     pub(super) head: File,
     pub(super) head_bytes: Vec<u8>,
     pub(super) head_identity: FileIdentity,

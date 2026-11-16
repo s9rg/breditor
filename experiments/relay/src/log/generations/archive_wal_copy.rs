@@ -31,15 +31,6 @@ impl ArchiveSource {
         }
     }
 
-    pub(super) fn clone_handle(&self) -> Result<Self> {
-        Ok(Self {
-            file: self.file.try_clone()?,
-            identity: self.identity,
-            stamp: self.stamp,
-            length: self.length,
-        })
-    }
-
     pub(super) fn guard(&self, path: &Path) -> Result<()> {
         self.stamp.guard(&self.file)?;
         self.identity.guard(&self.file, path)?;

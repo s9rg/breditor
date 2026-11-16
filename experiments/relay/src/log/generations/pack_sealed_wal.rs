@@ -7,7 +7,7 @@ use super::{
     state::Generations,
 };
 use crate::{Error, Result, credentials, log::Log};
-use std::{fs, io};
+use std::{fs, io, sync::Arc};
 
 #[cfg(test)]
 #[derive(Clone, Copy, PartialEq)]
@@ -93,7 +93,7 @@ impl Generations {
             Ok(())
         })?;
         let result = replacement.packing();
-        self.closed[position] = replacement;
+        self.closed[position] = Arc::new(replacement);
         self.guard(active, active_bytes)?;
         Ok(result)
     }

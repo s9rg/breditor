@@ -219,13 +219,21 @@ async fn main() -> Result {
         }
         "handoff-again" => {
             let prior = saved_base(parent, "base", None)?;
+            let successor = parent.join("successor");
             let (mut room, _) =
-                Room::open_relay_segment_successor(&old, &parent.join("successor"), prior.clone())?;
+                Room::open_relay_segment_successor(&old, &successor, prior.clone())?;
             // Fill all 64 real WAL slots in the first successor before moving again.
             for i in 2..=64 {
                 room.grant("owner", "reader", Some(breditor_collab_relay::Role::Reader))?;
                 room.rotate_log_generation("owner", &format!("successor-{i}"))?;
             }
+            let full = room.log_generation_descriptor("owner")?;
+            assert_eq!(full.sealed, 63);
+            drop(room);
+            let (room, recovered) =
+                Room::open_relay_segment_successor(&old, &successor, prior.clone())?;
+            assert_eq!(recovered.truncated_bytes, 0);
+            assert_eq!(room.log_generation_descriptor("owner")?, full);
             return continue_room(parent, room, "linked", "final", "final-one", Some(prior));
         }
         "successor" | "final" => {

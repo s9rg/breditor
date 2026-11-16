@@ -215,7 +215,9 @@ impl Generations {
                 && !packed_wal::is_stage(name)
                 && !pending.is_some_and(|names| names.contains(name))
         });
-        names.extend(self.closed.iter().filter(|wal| wal.archived).map(packed_wal::selected_name));
+        names.extend(
+            self.closed.iter().filter(|wal| wal.archived).map(|wal| packed_wal::selected_name(wal)),
+        );
         if names.len() > MAX_GENERATION_FILES {
             return Err(Error::Contract("generation capture count"));
         }

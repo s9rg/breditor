@@ -7,13 +7,15 @@ use crate::{
 use std::{
     fs::File,
     io::{BufReader, Seek, SeekFrom},
+    sync::Arc,
 };
 
-/// Read handles share the held log's inodes. The caller keeps the log and its
-/// exclusive directory lease alive for this private, synchronous traversal.
+/// Replay shares the selected sealed WAL handles instead of opening another
+/// descriptor per WAL. The log keeps the exclusive directory lease alive
+/// through this private, synchronous traversal.
 pub(crate) struct OpenGenerationReplay {
     manifest: Manifest,
-    closed: Vec<HeldWal>,
+    closed: Vec<Arc<HeldWal>>,
     active: File,
     active_length: u64,
     accepted_bytes: u64,
@@ -32,10 +34,9 @@ impl Log {
         if state.closed.len() != manifest.closed_count() {
             return Err(Error::Contract("generation replay owner count differs"));
         }
-        let closed = state.closed.iter().map(HeldWal::clone_handle).collect::<Result<_>>()?;
         Ok(OpenGenerationReplay {
             manifest: manifest.clone(),
-            closed,
+            closed: state.closed.clone(),
             active: self.file.try_clone()?,
             active_length,
             accepted_bytes: self.bytes,

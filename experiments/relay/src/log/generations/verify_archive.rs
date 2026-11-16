@@ -90,7 +90,7 @@ impl Generations {
         let mut logical_names = inventory.clone();
         logical_names
             .retain(|name| !self.is_archive_live_name(name) && !packed_wal::is_stage(name));
-        logical_names.extend(self.closed.iter().map(packed_wal::selected_name));
+        logical_names.extend(self.closed.iter().map(|wal| packed_wal::selected_name(wal)));
         let mut matches = retained || logical_names == exact_names;
         let mut witnesses = Vec::new();
         for (name, &bytes) in expected {

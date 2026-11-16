@@ -183,7 +183,7 @@ impl Log {
         for required in [".head.json".into(), ".ready.json".into(), active_name.clone()]
             .into_iter()
             .chain(state.history.iter().map(|manifest| format::manifest_name(&manifest.hash)))
-            .chain(state.closed.iter().map(super::packed_wal::selected_name))
+            .chain(state.closed.iter().map(|wal| super::packed_wal::selected_name(wal)))
         {
             if !portable.contains(&required) {
                 return Err(Error::Contract("streamed generation backup missing selected file"));

@@ -343,7 +343,11 @@ async function run(mode, {distribution, rich}, executable, parent, journalKind, 
     assert.deepEqual(session.exportRecovery(), offline);
 
     const handoff = command => {
-      const result = JSON.parse(execFileSync(executable, [parent, command, address], {
+      const invocation = [executable, parent, command, address];
+      const [program, ...args] = command === 'handoff-again'
+        ? ['/bin/sh', '-c', 'ulimit -n 160 && exec "$@"', 'sh', ...invocation]
+        : invocation;
+      const result = JSON.parse(execFileSync(program, args, {
         encoding: 'utf8', timeout: 90_000,
       }).trim());
       assert.equal(result.kind, 'handedOff');
@@ -969,7 +973,8 @@ async function run(mode, {distribution, rich}, executable, parent, journalKind, 
     }
     const extra = Number(carryForward);
     const relocated = Number(portableSeal);
-    return {mode, handoffs: 2, portableRestores: 1 + extra + relocated, restoredOfflineLanes: 6, undoRedoLanes: 2, rasterReads: 2,
+    return {mode, handoffs: 2, saturatedSuccessorColdReopens: 1, saturatedSuccessorDescriptorLimit: 160,
+      portableRestores: 1 + extra + relocated, restoredOfflineLanes: 6, undoRedoLanes: 2, rasterReads: 2,
       processExits: 4 + extra + Number(reviewRecovered) + Number(relayDiscussion) + relocated, authenticatedTakeovers: 1 + extra + relocated,
       oldServingRefusals: 1 + extra, coldResumes: 2 + extra + Number(reviewRecovered) + Number(relayDiscussion),
       ...carryEvidence,

@@ -15,6 +15,7 @@ use std::{
     fs::{self, File},
     io::ErrorKind,
     path::{Path, PathBuf},
+    sync::Arc,
 };
 
 pub(super) const ARCHIVE_DIRECTORY: &str = ".sealed-wals";
@@ -233,7 +234,7 @@ impl Generations {
             return Err(Error::Contract("cross-volume WAL stages require a separate volume"));
         }
         let expected: std::collections::BTreeSet<_> =
-            self.closed.iter().filter(|wal| wal.archived).map(selected_name).collect();
+            self.closed.iter().filter(|wal| wal.archived).map(|wal| selected_name(wal)).collect();
         let mut count = 0;
         for entry in fs::read_dir(&archive.path)? {
             let entry = entry?;
@@ -278,11 +279,12 @@ impl Generations {
         }
         let metadata = metadata.clone();
         self.verify_retained()?;
+        let wal = Arc::get_mut(&mut self.closed[position])
+            .ok_or(Error::Contract("sealed WAL is held for replay"))?;
         if self.archive.is_none() {
             self.archive = Some(ArchiveDirectory::create(&self.directory)?);
         }
         let archive = self.archive.as_ref().ok_or(Error::NeedsRecovery)?;
-        let wal = &mut self.closed[position];
         let duplicate = wal.archived;
         self.directory.sync()?;
         if !archive.shares_device(&self.directory)? {

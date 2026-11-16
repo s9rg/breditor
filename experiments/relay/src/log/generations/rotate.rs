@@ -22,6 +22,7 @@ use std::{
     collections::BTreeSet,
     fs,
     io::{BufReader, Seek, SeekFrom},
+    sync::Arc,
 };
 
 pub(super) fn pending_names(directory: &Directory) -> Result<BTreeSet<String>> {
@@ -343,7 +344,11 @@ impl Generations {
         )?;
         self.clean_intent(&intent, &marker, &marker_bytes, &next)?;
         let old = std::mem::replace(&mut log.file, next);
-        self.closed.push(HeldWal::raw(old, intent.sealed.generation.clone(), intent.sealed.bytes)?);
+        self.closed.push(Arc::new(HeldWal::raw(
+            old,
+            intent.sealed.generation.clone(),
+            intent.sealed.bytes,
+        )?));
         self.active_identity = intent.identity;
         self.refresh_active(&log.file)?;
         self.head_identity = FileIdentity::of(&head)?;

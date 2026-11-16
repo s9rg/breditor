@@ -17,6 +17,7 @@ use std::{
     collections::BTreeSet,
     io::{BufReader, Seek, SeekFrom},
     path::Path,
+    sync::Arc,
 };
 
 fn ready(
@@ -70,14 +71,14 @@ fn closed(
     archive: Option<&ArchiveDirectory>,
     current: &Manifest,
     identities: &mut BTreeSet<FileIdentity>,
-) -> Result<Vec<HeldWal>> {
+) -> Result<Vec<Arc<HeldWal>>> {
     let mut closed = Vec::new();
     for (item, _) in current.closed_files() {
         let wal = archive_sealed_wal::open_wal(directory, archive, item)?;
         if !identities.insert(wal.identity) {
             return Err(Error::Contract("physical log inode alias"));
         }
-        closed.push(wal);
+        closed.push(Arc::new(wal));
     }
     Ok(closed)
 }

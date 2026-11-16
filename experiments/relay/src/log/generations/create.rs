@@ -12,7 +12,10 @@ use crate::{
     Error, Result,
     log::{Event, Log, decoder, frame},
 };
-use std::path::{Path, PathBuf};
+use std::{
+    path::{Path, PathBuf},
+    sync::Arc,
+};
 
 pub(crate) struct Creation {
     directory: Directory,
@@ -116,7 +119,7 @@ impl Creation {
             archive: None,
             segment: None,
             history: vec![manifest],
-            closed: vec![HeldWal::raw(root_file, self.options.root, log.bytes)?],
+            closed: vec![Arc::new(HeldWal::raw(root_file, self.options.root, log.bytes)?)],
             head,
             head_bytes,
             head_identity,

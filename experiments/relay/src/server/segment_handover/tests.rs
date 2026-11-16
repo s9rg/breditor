@@ -39,6 +39,8 @@ mod portable_backup;
 mod portable_seal_custody;
 mod provider_commit;
 mod retained_backup;
+#[cfg(any(target_os = "macos", target_os = "linux"))]
+mod saturated_replay;
 mod verified_inputs;
 
 struct Source {

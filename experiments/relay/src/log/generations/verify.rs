@@ -9,6 +9,7 @@ impl Generations {
             .iter()
             .zip(selected.closed_files().map(|(file, _)| file))
             .find(|(wal, _)| name == format::wal_name(&wal.generation))
+            .map(|(wal, selected)| (wal.as_ref(), selected))
     }
 
     pub(super) fn verify_retained(&self) -> Result<()> {
