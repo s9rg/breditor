@@ -42,10 +42,7 @@ pub(super) fn seal(
         fs::read(direct.join("client-inputs.bin"))?,
         fs::read(converted.join("client-inputs.bin"))?
     );
-    assert_eq!(
-        fs::read(direct.join("native-lineage/packed.bin"))?,
-        fs::read(converted.join("native-lineage/packed.bin"))?
-    );
+    assert_same_lineage(&direct, &converted)?;
     fs::rename(original, parent.join("portable-relocation-retired-split"))?;
     let compacted_copy = parent.join("portable-relocation-compacted-copy");
     RelaySegmentRetainedBackup::copy_portable_with_compacted_history(
@@ -65,10 +62,7 @@ pub(super) fn seal(
         compacted.retained.backup.native.checkpoint.sha256,
         captured.retained.backup.native.checkpoint.sha256
     );
-    assert_eq!(
-        fs::read(path.join("native-lineage/packed.bin"))?,
-        fs::read(compacted_copy.join("native-lineage/packed.bin"))?
-    );
+    assert_same_lineage(&path, &compacted_copy)?;
     let intent = RelaySegmentPortableSeal::select(compacted)?;
     storage::write_new(&parent.join(SEAL), &serde_json::to_vec(&intent)?)?;
     File::open(parent)?.sync_all()?;
@@ -88,6 +82,18 @@ pub(super) fn seal(
         "packedCopyOfSplit": true,
         "sealedSelection": selected,
     }))
+}
+
+fn assert_same_lineage(left: &Path, right: &Path) -> Result<()> {
+    let left_bytes = fs::read(left.join("native-lineage/packed.bin"))?;
+    let right_bytes = fs::read(right.join("native-lineage/packed.bin"))?;
+    assert!(
+        left_bytes == right_bytes,
+        "lineage differs between {left:?} ({} bytes) and {right:?} ({} bytes)",
+        left_bytes.len(),
+        right_bytes.len()
+    );
+    Ok(())
 }
 
 #[derive(Deserialize)]

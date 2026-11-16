@@ -149,24 +149,41 @@ fn write_inputs(
     archive: Option<&ArchiveInput>,
     checkpoint: &CheckpointInput,
 ) -> Result<()> {
-    let input = archive.map(ArchiveInput::all);
+    let archive_len = archive.map(ArchiveInput::all).map_or(0, ArchiveSlice::len);
+    let stored = checkpoint.input.all().len();
+    if encoding == Encoding::Compacted && stored < checkpoint.len() {
+        // The checkpoint has already been admitted. Carry its exact stored member
+        // into the compacted pack, independent of the decoder's output chunking.
+        file.write_all(&archive_len.to_be_bytes())?;
+        file.write_all(&checkpoint.len().to_be_bytes())?;
+        file.write_all(&stored.to_be_bytes())?;
+        if let Some(archive) = archive {
+            copy_input(archive, file)?;
+        }
+        return copy_input(&checkpoint.input, file);
+    }
     write_frame(
         file,
         encoding,
-        input.map_or(0, ArchiveSlice::len),
+        archive_len,
         checkpoint.len(),
         |out| {
-            if let Some((archive, input)) = archive.zip(input) {
-                archive.check()?;
-                if io::copy(&mut input.reader(), out)? != input.len() {
-                    return Err(Error::Contract("relay segment predecessor copy was truncated"));
-                }
-                archive.check()?;
+            if let Some(archive) = archive {
+                copy_input(archive, out)?;
             }
             Ok(())
         },
         |out| checkpoint.write_to(out),
     )
+}
+
+fn copy_input(input: &ArchiveInput, output: &mut dyn Write) -> Result<()> {
+    input.check()?;
+    let source = input.all();
+    if io::copy(&mut source.reader(), output)? != source.len() {
+        return Err(Error::Contract("relay segment predecessor copy was truncated"));
+    }
+    input.check()
 }
 
 pub(super) fn copy(
