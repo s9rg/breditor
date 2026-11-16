@@ -1,9 +1,9 @@
 //! Deterministic causal registers retain concurrent values and independently visible contributions.
 use super::{
-    ReviewAccess, ReviewActorPolicy, ReviewBinding, ReviewError, ReviewEventId, ReviewMessageId,
+    ReviewActorPolicy, ReviewBinding, ReviewError, ReviewEventId, ReviewMessageId,
     ReviewMessageView, ReviewPrincipalId, ReviewTextVersion, ReviewThreadId, ReviewThreadState,
     ReviewThreadView,
-    actions::ReviewAction,
+    actions::{self, ReviewAction},
     event::{self, Clock, Event, Payload},
 };
 use std::collections::{BTreeMap, BTreeSet};
@@ -124,58 +124,14 @@ impl Projection {
         policy: Option<&ReviewActorPolicy>,
         dependencies: &Clock,
     ) -> Result<(), ReviewError> {
-        if policy.is_some_and(|p| p.access == ReviewAccess::ReadOnly) {
-            return Err(ReviewError::Permission);
-        }
-        let thread = |id: &ReviewThreadId| {
-            if !event::observes(dependencies, id.event()) {
-                return Err(ReviewError::Contract("unobserved thread birth"));
-            }
-            self.threads.get(id).ok_or(ReviewError::Contract("unknown review thread"))
-        };
-        let message = |id: &ReviewMessageId| {
-            if !event::observes(dependencies, id.event()) {
-                return Err(ReviewError::Contract("unobserved message birth"));
-            }
-            let message =
-                self.messages.get(id).ok_or(ReviewError::Contract("unknown review message"))?;
-            if policy.is_some_and(|p| {
-                p.principal != message.author && p.access != ReviewAccess::Moderate
-            }) {
-                return Err(ReviewError::Permission);
-            }
-            Ok(message)
-        };
-        match action {
-            ReviewAction::CreateThread(a) => {
-                event::anchor(binding, &a.anchor_json)?;
-                event::text(&a.body)?;
-            }
-            ReviewAction::Reply(a) => {
-                thread(&a.thread)?;
-                event::text(&a.body)?;
-            }
-            ReviewAction::EditMessage(a) => {
-                message(&a.message)?;
-                event::text(&a.body)?;
-            }
-            ReviewAction::RetractMessage(a) => {
-                message(&a.message)?;
-            }
-            ReviewAction::SetThreadState(a) => {
-                thread(&a.thread)?;
-            }
-            ReviewAction::ReanchorThread(a) => {
-                let thread = thread(&a.thread)?;
-                if policy.is_some_and(|p| {
-                    p.principal != thread.author && p.access != ReviewAccess::Moderate
-                }) {
-                    return Err(ReviewError::Permission);
-                }
-                event::anchor(binding, &a.anchor_json)?;
-            }
-        }
-        Ok(())
+        actions::validate_action(
+            binding,
+            action,
+            policy,
+            dependencies,
+            |id| self.threads.get(id).map(|thread| &thread.author),
+            |id| self.messages.get(id).map(|message| &message.author),
+        )
     }
     pub(super) fn is_noop(&self, action: &ReviewAction) -> bool {
         let body = |id: &ReviewMessageId, expected: Option<&str>| {

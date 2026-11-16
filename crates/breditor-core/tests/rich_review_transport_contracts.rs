@@ -5,8 +5,8 @@ use breditor_core::{
         DocumentId,
         review::{
             ReviewAccess, ReviewActorId, ReviewActorPolicy, ReviewBatchPreparation as Preparation,
-            ReviewBinding, ReviewError, ReviewOutcome, ReviewPrincipalId, ReviewSession,
-            ReviewThreadId,
+            ReviewBinding, ReviewError, ReviewImportOutcome, ReviewOutcome, ReviewPrincipalId,
+            ReviewSession, ReviewThreadId,
             actions::{CreateReviewThread, ReplyToReviewThread, ReviewAction},
         },
     },
@@ -32,15 +32,16 @@ fn owner(actor: &str) -> Result<ReviewSession> {
 }
 fn source() -> Result<ReviewSession> {
     let mut a = owner("101")?;
+    create_thread(&mut a, "First")?;
+    Ok(a)
+}
+fn create_thread(a: &mut ReviewSession, body: &str) -> Result {
     let anchor=json!({"format":"breditor/shared-review-anchor","formatVersion":1,"document":"room","schemaFingerprint":format!("sha256:{}","0".repeat(64)),"anchors":{"kind":"document"}}).to_string();
     a.dispatch(
         &a.observe(),
-        ReviewAction::CreateThread(CreateReviewThread {
-            anchor_json: anchor,
-            body: "First".into(),
-        }),
+        ReviewAction::CreateThread(CreateReviewThread { anchor_json: anchor, body: body.into() }),
     )?;
-    Ok(a)
+    Ok(())
 }
 fn reply(a: &mut ReviewSession, text: &str) -> Result {
     let thread = a.view()?.threads[0].id.clone();
@@ -278,5 +279,146 @@ fn empty_frames_do_not_author_history_or_fabricate_a_receipt() -> Result {
     assert_eq!(b.checkpoint_json()?, before);
     let ReviewOutcome::Committed(id)=b.dispatch(&observed,ReviewAction::CreateThread(CreateReviewThread{anchor_json:json!({"format":"breditor/shared-review-anchor","formatVersion":1,"document":"room","schemaFingerprint":format!("sha256:{}","0".repeat(64)),"anchors":{"kind":"document"}}).to_string(),body:"Still exact".into()}))? else{return Err("commit".into());};
     assert_eq!(ReviewThreadId::from_event(id), b.view()?.threads[0].id);
+    Ok(())
+}
+
+#[test]
+fn maximum_batch_preserves_history_anchor_checks_for_live_and_retained_inputs() -> Result {
+    let mut author = source()?;
+    author.undo(&author.observe())?;
+    author.redo(&author.observe())?;
+    for index in 0..125 {
+        reply(&mut author, &format!("Offline reply {index}"))?;
+    }
+    let frame = author.export_frame(0)?;
+    let verified = policy("101")?;
+    let mut received = owner("202")?;
+    let before = received.checkpoint_json()?;
+    let mut live_anchors = 0;
+    let Preparation::Prepared(prepared) =
+        received.prepare_authorized_batch(&received.observe(), &verified, &frame, |_| {
+            live_anchors += 1;
+            Ok(())
+        })?
+    else {
+        return Err("expected complete frame".into());
+    };
+    assert_eq!(before, received.checkpoint_json()?);
+    assert_eq!(live_anchors, 1);
+    assert_eq!(prepared.receipt().through, "128");
+    let receipt = received.commit_prepared_batch(*prepared)?;
+    assert_eq!(receipt.prefix_digest, author.local_writer_clock()?.prefix_digest);
+    assert_eq!(received.view()?.threads, author.view()?.threads);
+
+    let mut branch = owner("202")?;
+    let mut retained_anchors = 0;
+    let prepared = branch.prepare_retained_branch_guarded(
+        &branch.observe(),
+        &received,
+        &received.observe(),
+        frame.len(),
+        |_, _| Ok(verified.clone()),
+        |_| {
+            retained_anchors += 1;
+            Ok(())
+        },
+    )?;
+    assert_eq!(retained_anchors, 3);
+    assert_eq!(branch.checkpoint_json()?, before);
+    assert!(branch.commit_retained_branch_guarded(&branch.observe(), prepared)?);
+    assert_eq!(received.checkpoint_json()?, branch.checkpoint_json()?);
+    Ok(())
+}
+
+#[test]
+fn nonclosed_frame_preserves_backend_anchor_failure_order_and_pending_dependencies() -> Result {
+    let a = source()?;
+    let mut b = owner("202")?;
+    let a_frame = a.export_frame(0)?;
+    b.receive_authorized(&b.observe(), &policy("101")?, &a_frame)?;
+    create_thread(&mut b, "Depends on the original birth")?;
+    let b_frame = b.export_frame(0)?;
+    let mut c = owner("303")?;
+    c.receive_authorized(&c.observe(), &policy("101")?, &a_frame)?;
+    c.receive_authorized(&c.observe(), &policy("202")?, &b_frame)?;
+    create_thread(&mut c, "References both actors in its frontier")?;
+    let mut frame: Value = serde_json::from_str(&c.export_frame(0)?)?;
+    assert!(
+        frame["events"][0]["dependencies"]
+            .as_object_mut()
+            .ok_or("frontier")?
+            .remove("101")
+            .is_some()
+    );
+    let frame = frame.to_string();
+
+    let mut receiver = owner("404")?;
+    let verified = policy("303")?;
+    assert!(matches!(
+        receiver.receive_authorized_with_anchor_validation(
+            &receiver.observe(), &verified, &frame, |_| panic!("pending frame called the backend")
+        )?,
+        ReviewImportOutcome::Pending(missing) if missing.len() == 1 && missing[0].actor().as_str() == "202"
+    ));
+    receiver.receive_authorized(&receiver.observe(), &policy("101")?, &a_frame)?;
+    receiver.receive_authorized(&receiver.observe(), &policy("202")?, &b_frame)?;
+    let observed = receiver.observe();
+    let exact = receiver.checkpoint_json()?;
+    let mut checks = 0;
+    assert!(matches!(
+        receiver.receive_authorized_with_anchor_validation(&observed, &verified, &frame, |_| {
+            checks += 1;
+            Err(ReviewError::Contract("backend anchor refusal"))
+        }),
+        Err(ReviewError::Contract("backend anchor refusal"))
+    ));
+    assert!(matches!(
+        receiver.receive_authorized_with_anchor_validation(&observed, &verified, &frame, |_| {
+            checks += 1;
+            Ok(())
+        }),
+        Err(ReviewError::Contract("missing or cyclic review dependencies"))
+    ));
+    assert_eq!(checks, 2);
+    receiver.check(&observed)?;
+    assert_eq!(receiver.checkpoint_json()?, exact);
+    Ok(())
+}
+
+#[test]
+fn invalid_staged_visibility_refuses_before_publishing_any_batch_prefix() -> Result {
+    let original = source()?;
+    let original_frame: Value = serde_json::from_str(&original.export_frame(0)?)?;
+    let mut author = owner("303")?;
+    author.receive_authorized(&author.observe(), &policy("101")?, &original_frame.to_string())?;
+    create_thread(&mut author, "Native action in the incoming frame")?;
+    author.undo(&author.observe())?;
+    author.redo(&author.observe())?;
+    let mut frame: Value = serde_json::from_str(&author.export_frame(0)?)?;
+    frame["events"][1]["payload"]["data"]["target"] = original_frame["events"][0]["id"].clone();
+    let mut receiver = owner("404")?;
+    receiver.receive_authorized(
+        &receiver.observe(),
+        &policy("101")?,
+        &original_frame.to_string(),
+    )?;
+    let observed = receiver.observe();
+    let exact = receiver.checkpoint_json()?;
+    let mut checks = 0;
+    assert!(matches!(
+        receiver.receive_authorized_with_anchor_validation(
+            &observed,
+            &policy("303")?,
+            &frame.to_string(),
+            |_| {
+                checks += 1;
+                Ok(())
+            }
+        ),
+        Err(ReviewError::Contract("review visibility target"))
+    ));
+    assert_eq!(checks, 1);
+    receiver.check(&observed)?;
+    assert_eq!(receiver.checkpoint_json()?, exact);
     Ok(())
 }

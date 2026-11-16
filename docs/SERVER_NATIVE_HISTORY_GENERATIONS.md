@@ -140,6 +140,17 @@ at most. This avoids repeatedly scanning a blocked stream while another stream
 advances. Native replay and the private suggestion author's reconstruction
 still have costs that grow with retained history.
 
+Live review frames and extra retained-branch events share one actor-counter
+index per staged batch. A closed, bounded causal frontier gives direct access
+to the original thread or message author for each permission check. The host
+still supplies the actor's live or historical grant and verifies anchors.
+Live history toggles reuse their admitted anchor. Retained-branch history
+toggles still validate the original anchor under the host's callback.
+Unproven frontiers or staged history use the original causal projection for
+refusal and callback behavior. Final native admission still precedes publication
+or a durable receipt. Relay preparation uses one decoded frame and one staged
+metadata copy for admission and the existing receipt digest.
+
 Server-log generations, matching client/relay negotiation, complete asset and
 outbox dependency closure, historic-copy decisions, coordinated recovery and
 authenticated room activation remain separate architectural requirements.

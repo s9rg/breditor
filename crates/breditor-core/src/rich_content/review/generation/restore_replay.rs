@@ -1,24 +1,19 @@
 //! Validate new archive events against an already verified prefix during cold restore.
 use super::super::{
-    ReviewActorId, ReviewError, ReviewSession,
-    event::{self, Event},
-    identity::Counter,
+    ReviewError, ReviewSession,
+    event::{self, Event, EventPositions},
     replay::ReviewReplay,
 };
-use std::collections::BTreeMap;
 
 pub(super) struct RestoreReplay {
     replay: ReviewReplay,
-    positions: BTreeMap<ReviewActorId, Vec<usize>>,
+    positions: EventPositions,
 }
 
 impl RestoreReplay {
-    pub(super) fn new(replay: ReviewReplay, root: &ReviewSession) -> Self {
-        let mut positions = BTreeMap::<_, Vec<usize>>::new();
-        for (position, event) in root.events.iter().enumerate() {
-            positions.entry(event.id.actor.clone()).or_default().push(position);
-        }
-        Self { replay, positions }
+    pub(super) fn new(replay: ReviewReplay, root: &ReviewSession) -> Result<Self, ReviewError> {
+        let positions = EventPositions::from_events(&root.events).ok_or(ReviewError::Fork)?;
+        Ok(Self { replay, positions })
     }
 
     pub(super) fn append_cut(
@@ -29,7 +24,7 @@ impl RestoreReplay {
         let start = owner.events.len();
         for event in events {
             self.check_append_order(&owner.events, &event)?;
-            self.positions.entry(event.id.actor.clone()).or_default().push(owner.events.len());
+            self.positions.record(&event.id, owner.events.len());
             owner.events.push(event);
         }
         if owner.events.len() > owner.event_limit() {
@@ -49,7 +44,7 @@ impl RestoreReplay {
                 return Err(ReviewError::Limit("causal actors"));
             }
             event::validate_causal_frontier(event, |actor, counter| {
-                self.lookup(&owner.events, actor, counter)
+                self.positions.lookup(&owner.events, actor, counter)
             })?;
         }
         for event in suffix {
@@ -59,34 +54,16 @@ impl RestoreReplay {
     }
 
     fn check_append_order(&self, retained: &[Event], event: &Event) -> Result<(), ReviewError> {
-        let previous = self
-            .positions
-            .get(&event.id.actor)
-            .and_then(|stream| stream.last())
-            .map_or(0, |&position| retained[position].id.counter.0);
-        if previous.checked_add(1) != Some(event.id.counter.0)
-            || event.dependencies.get(&event.id.actor).map_or(0, |c| c.0) != previous
-        {
+        if !self.positions.continues(event) {
             return Err(ReviewError::Fork);
         }
         if event
             .dependencies
             .iter()
-            .any(|(actor, counter)| self.lookup(retained, actor, *counter).is_none())
+            .any(|(actor, counter)| self.positions.lookup(retained, actor, *counter).is_none())
         {
             return Err(ReviewError::Contract("review generation append dependencies"));
         }
         Ok(())
-    }
-
-    fn lookup<'a>(
-        &self,
-        events: &'a [Event],
-        actor: &ReviewActorId,
-        counter: Counter,
-    ) -> Option<&'a Event> {
-        let index = usize::try_from(counter.0.checked_sub(1)?).ok()?;
-        let position = *self.positions.get(actor)?.get(index)?;
-        events.get(position)
     }
 }

@@ -7,6 +7,7 @@ mod reply;
 mod retract_message;
 mod set_thread_state;
 mod undo;
+mod validate;
 pub use create_thread::CreateReviewThread;
 pub use edit_message::EditReviewMessage;
 pub use reanchor_thread::ReanchorReviewThread;
@@ -14,6 +15,7 @@ pub use reply::ReplyToReviewThread;
 pub use retract_message::RetractReviewMessage;
 use serde::{Deserialize, Serialize};
 pub use set_thread_state::SetReviewThreadState;
+pub(super) use validate::validate_action;
 /// One original review action, never a rich document edit or an arbitrary HTML command.
 #[derive(Clone, Debug, Eq, PartialEq, Serialize, Deserialize)]
 #[serde(tag = "kind", content = "data", rename_all = "snake_case", deny_unknown_fields)]

@@ -63,7 +63,7 @@ impl ReviewSession {
         generation_id(&saved.root_generation)?;
         let mut ids = BTreeSet::from([saved.root_generation.clone()]);
         let (mut owner, replay) = Self::restore_original_with_replay(binding, policy, &saved.root)?;
-        let mut replay = RestoreReplay::new(replay, &owner);
+        let mut replay = RestoreReplay::new(replay, &owner)?;
         owner.generations = Some(ReviewGenerations::new(
             saved.root_generation,
             saved.root,

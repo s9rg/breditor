@@ -3,7 +3,6 @@ mod commit;
 mod input;
 mod order;
 mod prepare;
-mod validate_event;
 mod verify;
 use super::{ReviewObservation, ReviewSession};
 

@@ -1,11 +1,13 @@
 //! Immutable review events and causal frontiers; writer policy is supplied outside these values.
 mod order;
+mod positions;
 
 use super::{
     ReviewActorId, ReviewBinding, ReviewError, ReviewEventId, ReviewPrincipalId,
     actions::ReviewAction, identity::Counter,
 };
 pub(super) use order::ordered;
+pub(super) use positions::EventPositions;
 use serde::{Deserialize, Serialize};
 use std::collections::BTreeMap;
 pub(super) type Clock = BTreeMap<ReviewActorId, Counter>;

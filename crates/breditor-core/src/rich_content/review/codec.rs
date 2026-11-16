@@ -3,7 +3,8 @@ mod transport;
 use super::{
     ReviewActorId, ReviewActorPolicy, ReviewBinding, ReviewError, ReviewEventId,
     ReviewImportOutcome, ReviewObservation, ReviewSession,
-    event::{self, Event, Payload},
+    batch_admission::{AnchorCheck, BatchAdmission},
+    event::{self, Event},
     materialize::Projection,
     replay::ReviewReplay,
 };
@@ -181,9 +182,22 @@ impl ReviewSession {
         observed: &ReviewObservation,
         verified: &ReviewActorPolicy,
         input: &str,
-        mut validate_anchor: impl FnMut(&str) -> Result<(), ReviewError>,
+        validate_anchor: impl FnMut(&str) -> Result<(), ReviewError>,
     ) -> Result<ReviewImportOutcome, ReviewError> {
         self.check(observed)?;
+        let frame = self.decode_frame(input)?;
+        if frame.events.is_empty() {
+            return Ok(ReviewImportOutcome::Unchanged);
+        }
+        let mut candidate = self.staged();
+        let outcome = candidate.apply_frame(verified, &frame, validate_anchor)?;
+        if outcome == ReviewImportOutcome::Applied {
+            self.adopt(candidate);
+        }
+        Ok(outcome)
+    }
+
+    fn decode_frame(&self, input: &str) -> Result<Frame, ReviewError> {
         if input.len() > event::MAX_FRAME_BYTES {
             return Err(ReviewError::Limit("frame bytes"));
         }
@@ -197,14 +211,25 @@ impl ReviewSession {
         if frame.events.len() > 128 {
             return Err(ReviewError::Limit("frame events"));
         }
-        let mut candidate = self.staged();
-        let mut changed = false;
-        for event in frame.events {
+        Ok(frame)
+    }
+
+    // Only used on a private staged owner. Incomplete or refused frames can
+    // leave a private prefix here, which the caller discards without publication.
+    fn apply_frame(
+        &mut self,
+        verified: &ReviewActorPolicy,
+        frame: &Frame,
+        mut validate_anchor: impl FnMut(&str) -> Result<(), ReviewError>,
+    ) -> Result<ReviewImportOutcome, ReviewError> {
+        let mut admission = BatchAdmission::new(self);
+        let start = self.events.len();
+        for event in &frame.events {
             if event.id.actor != verified.actor || event.principal != verified.principal {
                 return Err(ReviewError::Permission);
             }
-            if let Some(known) = candidate.events.iter().find(|e| e.id == event.id) {
-                if *known != event {
+            if let Some(known) = admission.lookup(&self.events, &event.id) {
+                if known != event {
                     return Err(ReviewError::Fork);
                 }
                 continue;
@@ -220,61 +245,22 @@ impl ReviewSession {
             {
                 return Err(ReviewError::Fork);
             }
-            let known = event::clock(&candidate.events);
-            let missing = event
-                .dependencies
-                .iter()
-                .filter(|(a, c)| known.get(a).is_none_or(|n| n < *c))
-                .map(|(a, c)| ReviewEventId { actor: a.clone(), counter: *c })
-                .collect::<Vec<_>>();
+            let missing = admission.missing_dependencies(&self.events, event);
             if !missing.is_empty() {
                 return Ok(ReviewImportOutcome::Pending(missing));
             }
-            let base = candidate
-                .events
-                .iter()
-                .filter(|e| event::observes(&event.dependencies, &e.id))
-                .cloned()
-                .collect::<Vec<_>>();
-            if let Payload::Action(action) = &event.payload {
-                match action {
-                    super::actions::ReviewAction::CreateThread(a) => {
-                        validate_anchor(&a.anchor_json)?;
-                    }
-                    super::actions::ReviewAction::ReanchorThread(a) => {
-                        validate_anchor(&a.anchor_json)?;
-                    }
-                    _ => {}
-                }
-                self.projection(&base)?.validate_action(
-                    &self.binding,
-                    action,
-                    Some(verified),
-                    &event.dependencies,
-                )?;
-            } else if let Payload::Visibility { target, .. } = &event.payload {
-                let original = base
-                    .iter()
-                    .find(|e| e.id == *target)
-                    .ok_or(ReviewError::Contract("unobserved history target"))?;
-                let Payload::Action(action) = &original.payload else {
-                    return Err(ReviewError::Contract("history toggle target"));
-                };
-                self.projection(&base)?.validate_action(
-                    &self.binding,
-                    action,
-                    Some(verified),
-                    &event.dependencies,
-                )?;
-            }
-            candidate.events.push(event);
-            changed = true;
+            admission.append(
+                self,
+                event.clone(),
+                verified,
+                AnchorCheck::IncomingAction,
+                &mut validate_anchor,
+            )?;
         }
-        if !changed {
+        if self.events.len() == start {
             return Ok(ReviewImportOutcome::Unchanged);
         }
-        candidate.admit()?;
-        self.adopt(candidate);
+        self.admit()?;
         Ok(ReviewImportOutcome::Applied)
     }
 }

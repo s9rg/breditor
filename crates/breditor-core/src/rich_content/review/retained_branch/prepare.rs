@@ -2,7 +2,9 @@
 use super::{
     super::{
         ReviewActorPolicy, ReviewError, ReviewEventId, ReviewObservation, ReviewPrincipalId,
-        ReviewSession, event,
+        ReviewSession,
+        batch_admission::{AnchorCheck, BatchAdmission},
+        event,
     },
     PreparedReviewBranch,
 };
@@ -42,10 +44,19 @@ impl ReviewSession {
         }
         let ordered = super::order::missing(self, source)?;
         let mut candidate = self.staged();
+        let mut admission = BatchAdmission::new(self);
         for event in ordered {
             let verified = authorize(&event.id, &event.principal)?;
-            super::validate_event::validate(&candidate, event, &verified, &mut validate_anchor)?;
-            candidate.events.push(event.clone());
+            if event.id.actor != verified.actor || event.principal != verified.principal {
+                return Err(ReviewError::Permission);
+            }
+            admission.append(
+                &mut candidate,
+                event.clone(),
+                &verified,
+                AnchorCheck::IncludeHistoryTarget,
+                &mut validate_anchor,
+            )?;
         }
         candidate.admit()?;
         candidate.verify_retained_branch_guarded(&candidate.observe(), source, source_observed)?;

@@ -1,7 +1,6 @@
 //! Native preparation allows a host to fsync acceptance before publishing metadata or acknowledging.
 use super::{
-    Frame, ReviewActorPolicy, ReviewError, ReviewImportOutcome, ReviewObservation, ReviewSession,
-    event,
+    ReviewActorPolicy, ReviewError, ReviewImportOutcome, ReviewObservation, ReviewSession, event,
 };
 use crate::rich_content::review::{ReviewActorId, ReviewEventId, ReviewPrincipalId};
 use serde::{Deserialize, Serialize};
@@ -153,19 +152,7 @@ impl ReviewSession {
         validate_anchor: impl FnMut(&str) -> Result<(), ReviewError>,
     ) -> Result<ReviewBatchPreparation, ReviewError> {
         self.check(observed)?;
-        if input.len() > event::MAX_FRAME_BYTES {
-            return Err(ReviewError::Limit("frame bytes"));
-        }
-        let frame: Frame = serde_json::from_str(input)?;
-        if frame.format != "breditor/review-events"
-            || frame.format_version != 1
-            || frame.binding != self.binding
-        {
-            return Err(ReviewError::Contract("review frame binding"));
-        }
-        if frame.events.len() > 128 {
-            return Err(ReviewError::Limit("frame events"));
-        }
+        let frame = self.decode_frame(input)?;
         let Some(first) = frame.events.first() else {
             return Ok(ReviewBatchPreparation::Empty);
         };
@@ -183,12 +170,7 @@ impl ReviewSession {
         }
         let through = previous.ok_or(ReviewError::Contract("nonempty review batch"))?;
         let mut candidate = self.staged();
-        let outcome = candidate.receive_authorized_with_anchor_validation(
-            &candidate.observe(),
-            verified,
-            input,
-            validate_anchor,
-        )?;
+        let outcome = candidate.apply_frame(verified, &frame, validate_anchor)?;
         if let ReviewImportOutcome::Pending(missing) = outcome {
             return Ok(ReviewBatchPreparation::Pending(missing));
         }
