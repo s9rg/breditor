@@ -2,6 +2,21 @@
 
 ## November 16 collaboration recovery
 
+[Continued raster generation rollover](qualification/2026-11-16-continued-raster-rollover.json)
+seals a nonempty active store into an ordered pack of the exact original
+archives and creates a fresh writable generation. At 1,024 images in each
+of two stores, ordinary restore still refuses a new upload. The native
+regression rolls forward twice, cold-reopens the pack, checks original
+image bytes and duplicate receipts, and refuses a pack with trailing data
+before allocating a target. The owner can select staged client images for
+the fresh store. Source and clean-installed workflows bind rollover to the
+portable source seal, stage the queued image needed for Redo, verify the
+recaptured archive bytes and admit a new HTTP upload. They then repair
+interrupted native and image stages, restart, and deliver offline Undo and
+Redo. All 99 focused Rust tests, 69 candidate-plan tests and legacy handover
+checks pass. The pack has a 64-archive limit and preparation copies the
+retained bytes to a new target.
+
 [Explicit continued-room native rotation recovery](qualification/2026-11-16-continued-native-rotation.json)
 lets the authenticated owner rotate under the current serving lease and
 recover the inspected transition under the retained epoch. It verifies the

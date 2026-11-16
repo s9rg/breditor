@@ -194,8 +194,8 @@ Save the original archives and the resulting selection independently.
 A completed rollover can be recaptured and rolled again. The format holds up
 to 64 immutable archives behind one active store, with the existing per-store
 count and byte limits. Each preparation needs disk space for a complete copy
-of its retained pack. A refused or interrupted preparation leaves the source
-available under its existing authority.
+of its retained pack. Preparation writes into the new target. The host seals
+or activates through the deployment authority described below.
 
 ### Serve a continued store from the reference relay
 
