@@ -2,6 +2,18 @@
 
 ## November 16 collaboration recovery
 
+[Retain upload queues at the raster ceiling](qualification/2026-11-16-retained-uploads-at-capacity.json)
+adds an explicit restore path for room backups with pending client uploads.
+It keeps upload-only bytes in their verified original queues and stages
+participant dependencies, including those backed by an upload archive.
+The 1,024-asset native fixture reproduces the old restore refusal, activates
+and cold-reopens the new target, preserves the original queue, and checks
+both a refused unique upload and a duplicate receipt at capacity. An asset
+needed by offline Redo still requires live availability before activation.
+In source and clean-installed workflows a pending upload survives linked
+takeover, portable relocation and restart. A regular SDK upload then earns
+its first receipt. Legacy handover and all 61 focused relay tests pass.
+
 [Handoff at the exact WAL record ceiling](qualification/2026-11-16-full-wal-handoff.json)
 fills all 64 physical slots and the 4,096 records in the last active file.
 The predecessor refuses a new edit and a native history boundary, preserves
