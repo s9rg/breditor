@@ -225,7 +225,8 @@ impl PackedSource {
     }
 
     fn check(&self, directory: &GenerationDirectory) -> Result<()> {
-        self.input.check_named(&self.witness, &directory.path.join(FILE))
+        self.input.check_named(&self.witness, &directory.path.join(FILE))?;
+        check_layout(directory)
     }
 
     fn finish(&self, directory: &GenerationDirectory) -> Result<()> {
