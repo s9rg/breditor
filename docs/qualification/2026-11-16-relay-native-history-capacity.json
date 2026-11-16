@@ -1,0 +1,218 @@
+{
+  "format": "breditor/relay-native-history-capacity-qualification",
+  "formatVersion": 1,
+  "date": "2026-11-16",
+  "source": {
+    "commit": "782bf48874e23e50fe08527bc3c4b6ff13d2df67",
+    "dirty": false,
+    "sha256": "5a8cad916532a02f410c2939aea1b999b506704b69ff20b7dea6f43ad4da3318",
+    "files": 9002,
+    "bytes": 76419123
+  },
+  "capacityChecks": {
+    "exactDocumentReviewAndEffectCheckpointBytes": true,
+    "activeFileChargesMatchCanonicalEncoding": true,
+    "saturatedV1ReviewFileCountAndContinuedHeadroom": true,
+    "ownerOnlyFencedSourceAndRelocatedHandles": true,
+    "staleEpochRefusesCapacity": true,
+    "continuationAndNewDurableInputsChangeOnlyRelevantCounters": true,
+    "restartAndBoundaryRetriesKeepTheExactReport": true
+  },
+  "coreReviewTests": {
+    "passed": 14,
+    "failed": 0,
+    "ignored": 0,
+    "executableSha256": [
+      "e1cea1cc21bca24ca4b2f715bca6f411930f205a44151a06ea8ac79c5c10e5a5"
+    ],
+    "logSha256": "2c6a7f588ebd21258d87abdefab3d9904f1921ca99969c6cf308424a878c2aba"
+  },
+  "coreReviewContracts": {
+    "passed": 45,
+    "failed": 0,
+    "ignored": 0,
+    "executableSha256": [
+      "6a36e90984528e9178704350d9e07d5a4d82207baefb79283846d404cbc836d6",
+      "6a0f8bb5772746b1aa4726e373e9aad09048b06b55618ac5d89f8d68165a09a5",
+      "037ccde1f9def2248f67dd190d4f4c38b15ae46efbfdf6a19f1247b5c1506942",
+      "777dcfa62804156d6ac6cf1ab41a28538219f87a230dbd3530e5939a7ba299f9",
+      "3002c6b5cc2cd2b6376b21a7229713c6ff46f48ea80b421f441c0bc0a3721683",
+      "aa3de6c2dc22efb8dc5328371d866d6f96a65a70e736da14d05846972764badf"
+    ],
+    "logSha256": "23bb8ed396054aa1df67f8c762689ca1bcdc0a20906b5d8e96cadf96f5fb0dd1"
+  },
+  "nativeRelayTests": {
+    "room-native_history": {
+      "passed": 15,
+      "failed": 0,
+      "ignored": 0,
+      "executableSha256": [
+        "eb9e5f68f4aab6a02aad1d36d84f9b6357b42ed83725f0b0f06e40e5871295eb"
+      ],
+      "logSha256": "72c58b56b7c6d5ab159c6ae75127eb0595310a725766b37a13b9ec9782365170"
+    },
+    "room-log_generations-tests-staging_capacity": {
+      "passed": 6,
+      "failed": 0,
+      "ignored": 0,
+      "executableSha256": [
+        "eb9e5f68f4aab6a02aad1d36d84f9b6357b42ed83725f0b0f06e40e5871295eb"
+      ],
+      "logSha256": "9ee7f411b9a31eb288346797bc399936c9549c439f051e9571da8e05089b90f8"
+    },
+    "room-materialized_checkpoint": {
+      "passed": 3,
+      "failed": 0,
+      "ignored": 0,
+      "executableSha256": [
+        "eb9e5f68f4aab6a02aad1d36d84f9b6357b42ed83725f0b0f06e40e5871295eb"
+      ],
+      "logSha256": "8d46d86168cf9a68b618cca67d80ee2c985c7c92aee8cf103546d861f4eb93b8"
+    },
+    "server-segment_handover-tests": {
+      "passed": 32,
+      "failed": 0,
+      "ignored": 0,
+      "executableSha256": [
+        "eb9e5f68f4aab6a02aad1d36d84f9b6357b42ed83725f0b0f06e40e5871295eb"
+      ],
+      "logSha256": "b6f0a7c71b632c2621fdb5b2459877f5c668692b5abaa32dcdd783701bde44ca"
+    },
+    "server-generation_backup-tests-native_history": {
+      "passed": 1,
+      "failed": 0,
+      "ignored": 0,
+      "executableSha256": [
+        "eb9e5f68f4aab6a02aad1d36d84f9b6357b42ed83725f0b0f06e40e5871295eb"
+      ],
+      "logSha256": "20f63555d8c7be55fe5c1ebaa47b272846e42fd03cdb1b48b1257979bd75554e"
+    }
+  },
+  "nativeCollaborationContracts": {
+    "passed": 4,
+    "failed": 0,
+    "ignored": 1,
+    "executableSha256": [
+      "c2870681b1506a0782ba253dc01cbc1da3973d7ca3f5c3e90d25878d2c7653d4"
+    ],
+    "logSha256": "73def5914b2ce126a593984bde4d2ab4bd51f8231123f406ba2fee69cb742765"
+  },
+  "exactSaturatedReviewRetest": {
+    "passed": 1,
+    "failed": 0,
+    "ignored": 0,
+    "executableSha256": [
+      "e1cea1cc21bca24ca4b2f715bca6f411930f205a44151a06ea8ac79c5c10e5a5"
+    ],
+    "logSha256": "324106ebe39715eb1d8e7bdee1946422b954cf4db497e9686e0e78097d35aa75"
+  },
+  "strictRelayLibraryLint": {
+    "server": {
+      "passed": true,
+      "logSha256": "93b4df57c4128bb1a2a079ac53019206504c20889c73153751639baa751cb394"
+    },
+    "noServer": {
+      "passed": true,
+      "logSha256": "8a47fa06d2b2c02d1f0a20c340e603eafd3089c9d26cd4579fb0022f67b2b558"
+    }
+  },
+  "strictCoreLibraryLint": {
+    "passed": true,
+    "logSha256": "bd40bfc7ecbfe8f7ec0cc556338cfbd4a0c67f60a7de5eb9b37d7e861e5955e4"
+  },
+  "localRichWasm": {
+    "passed": true,
+    "logSha256": "22100d8ee6da34a465576403421f5b7173597a467235832de2a54904942543dd",
+    "sha256": "bc020ce07ed80600b85735c1e592d5ae163d921f5556fef05269a12bc1d59ec5"
+  },
+  "sharedWasm": {
+    "passed": true,
+    "logSha256": "bb56b607174c431c87c03566e318ba0917d956bd8c574d264a55a9b4bdbdf5a3",
+    "sha256": "4bd769ac853ccc377dcbb45ebcfd5fc8f7f0f200850b1f5a106f7a4a0beddca4"
+  },
+  "candidatePlan": {
+    "passed": 69,
+    "failed": 0,
+    "logSha256": "36fa45a741f8638d5844977451326ebf898c837855236e3dae467f1d63a8a526"
+  },
+  "workflows": {
+    "relaySha256": "0064c844d5476175492032d36c0102e7cd89134421c182f42b4427909c195e27",
+    "runtimeSha256": "4bd769ac853ccc377dcbb45ebcfd5fc8f7f0f200850b1f5a106f7a4a0beddca4",
+    "portableRelocation": {
+      "reportSha256": "122a8fc99a25574cf0a487debc4a3ee1559b2c2bab6e028a8c7f3d4aa0cd1dc3",
+      "runs": {
+        "source": {
+          "offlineLanes": 6,
+          "undoRedoLanes": 2,
+          "coldResumes": 5,
+          "liveNativeHistoryBoundaries": 2,
+          "nativeHistoryColdRetries": 2,
+          "reportedNativeCapacityLanes": 3,
+          "deniedNativeCapacityRequests": 2,
+          "nativeCapacityMatchesColdRestart": true,
+          "proof": null
+        },
+        "installed": {
+          "offlineLanes": 6,
+          "undoRedoLanes": 2,
+          "coldResumes": 5,
+          "liveNativeHistoryBoundaries": 2,
+          "nativeHistoryColdRetries": 2,
+          "reportedNativeCapacityLanes": 3,
+          "deniedNativeCapacityRequests": 2,
+          "nativeCapacityMatchesColdRestart": true,
+          "proof": {
+            "registryArtifacts": 45,
+            "archives": [
+              {
+                "name": "@breditor/browser",
+                "sha256": "79f5b486d3742d1234e4eb21c18822e0a494551d49a73039f5b856908c124f3f"
+              },
+              {
+                "name": "@breditor/experimental-rich-content",
+                "sha256": "06fc9770ef5b26cd5f4c10d7d55d9b1d91e352392a599f277cee25d431d6f4b7"
+              },
+              {
+                "name": "@breditor/collaboration",
+                "sha256": "05aeaf3cedf9431890bb10b8cdc9c92b70c4410bfeeb52ff421d59b5a72dd2e2"
+              }
+            ]
+          }
+        }
+      }
+    },
+    "legacyHandover": {
+      "reportSha256": "0af5cd8ceef7b3362191be76c5260a13542d60243ca3e3eb27abf20ba651bf56",
+      "runs": {
+        "source": {
+          "offlineLanes": 6,
+          "undoRedoLanes": 2,
+          "coldResumes": 3,
+          "proof": null
+        },
+        "installed": {
+          "offlineLanes": 6,
+          "undoRedoLanes": 2,
+          "coldResumes": 3,
+          "proof": {
+            "registryArtifacts": 45,
+            "archives": [
+              {
+                "name": "@breditor/browser",
+                "sha256": "79f5b486d3742d1234e4eb21c18822e0a494551d49a73039f5b856908c124f3f"
+              },
+              {
+                "name": "@breditor/experimental-rich-content",
+                "sha256": "06fc9770ef5b26cd5f4c10d7d55d9b1d91e352392a599f277cee25d431d6f4b7"
+              },
+              {
+                "name": "@breditor/collaboration",
+                "sha256": "05aeaf3cedf9431890bb10b8cdc9c92b70c4410bfeeb52ff421d59b5a72dd2e2"
+              }
+            ]
+          }
+        }
+      }
+    }
+  }
+}

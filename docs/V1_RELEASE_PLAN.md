@@ -2,6 +2,18 @@
 
 ## November 16 collaboration recovery
 
+[Native history capacity](qualification/2026-11-16-relay-native-history-capacity.json)
+reports exact current document, review and private suggestion-effect usage
+through the fenced owner handles. The report separates active-file and
+whole-checkpoint bytes, input counts, generation slots and native history depths.
+The canonical files agree with the measured charges. The saturated review
+fixture moves from 64 of 64 file slots to 65 of 256 on continuation, retaining
+the existing inputs and history. Source and clean-installed relocation verify
+both continuation boundaries, new durable client inputs, owner and reader
+permissions, and identical capacity after restart and boundary retries.
+Legacy handover also passes. Both Wasm builds, 59 core review checks, four
+native document encoding tests and 57 focused relay tests pass.
+
 [Indexed review batch admission](qualification/2026-11-16-indexed-review-batch-admission.json)
 uses one actor-counter index for live frames and retained branches. Closed
 causal frontiers give direct access to the exact author for each permission
