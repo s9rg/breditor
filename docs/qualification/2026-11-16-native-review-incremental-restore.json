@@ -1,0 +1,230 @@
+{
+  "format": "breditor/native-review-incremental-restore-qualification",
+  "formatVersion": 1,
+  "date": "2026-11-16",
+  "source": {
+    "commit": "9e17d74ae89f501553420b76b98b36019b9a46d1",
+    "dirty": false,
+    "sha256": "428ea1c8b41d0e837c4f6416d7a9fe6abcc78a51ac717b6638f0d427e8ee139f",
+    "files": 8994,
+    "bytes": 76367083
+  },
+  "recoveryChecks": {
+    "lateConcurrentPeerRetainsItsArchivePosition": true,
+    "exactContinuedCheckpointAndFutureUndoRedo": true,
+    "rehashedInvalidIntermediateHistoryRefused": true,
+    "rehashedNonclosedTerminalFrontierRefused": true,
+    "independentCorruptionsKeepCanonicalFailureOrder": true,
+    "propertyCasesPerOracle": 1024,
+    "reachedNativeEventLimitAndColdRestored": true
+  },
+  "coreReviewTests": {
+    "passed": 14,
+    "failed": 0,
+    "ignored": 0,
+    "executableSha256": [
+      "b1dd5189bcf1dce2924d39bdc62173863d75c61ea16635842f1726c298fbe7e9"
+    ],
+    "logSha256": "d18403ed3cffb5d031ede9d95f5aaf8a58980b92d259b7be0a06f5dccdd8ba4a"
+  },
+  "coreReviewContracts": {
+    "passed": 9,
+    "failed": 0,
+    "ignored": 0,
+    "executableSha256": [
+      "6cb9f529df36fd9be83c09300ece687f78f090459a268807d4787dcfa4c4b5d6",
+      "78e1e8ad5f1381411a4dc248a4fba0a2f6bf6fc7f59343246c55d5056b1c5bd2"
+    ],
+    "logSha256": "43be28866e68d96f177c7920e750f859c00985f1c743bbac30f6e15a053ec90c"
+  },
+  "nativeRelayTests": {
+    "room-native_history": {
+      "passed": 15,
+      "failed": 0,
+      "ignored": 0,
+      "executableSha256": [
+        "6fc31126e6f9f50f0f29326ef323c440dd7b6148e8772c6cd2ad51aead30d977"
+      ],
+      "logSha256": "0dcddb8bcf778580b9a7d90d2fddf793e084493ff6c5f86b4400d5a202a0b2f9"
+    },
+    "room-review": {
+      "passed": 7,
+      "failed": 0,
+      "ignored": 0,
+      "executableSha256": [
+        "6fc31126e6f9f50f0f29326ef323c440dd7b6148e8772c6cd2ad51aead30d977"
+      ],
+      "logSha256": "8a5b08b4eec467c2f98ecdf95d13e5c34bfa7ba5c7c5057b8020123ddd9d8205"
+    },
+    "room-backup-tests-generation_migration": {
+      "passed": 2,
+      "failed": 0,
+      "ignored": 0,
+      "executableSha256": [
+        "6fc31126e6f9f50f0f29326ef323c440dd7b6148e8772c6cd2ad51aead30d977"
+      ],
+      "logSha256": "f0ca4a5d2f2986206c31efc4f91c87154b68766426e390e25e4b005995043f53"
+    },
+    "room-asset_references": {
+      "passed": 12,
+      "failed": 0,
+      "ignored": 0,
+      "executableSha256": [
+        "6fc31126e6f9f50f0f29326ef323c440dd7b6148e8772c6cd2ad51aead30d977"
+      ],
+      "logSha256": "9900eba99399206d3a79198fd42ba5184e10eec1a6e77bc3583a97ec6ffddc7c"
+    },
+    "room-materialized_checkpoint": {
+      "passed": 3,
+      "failed": 0,
+      "ignored": 0,
+      "executableSha256": [
+        "6fc31126e6f9f50f0f29326ef323c440dd7b6148e8772c6cd2ad51aead30d977"
+      ],
+      "logSha256": "d4260a3c47a7593efc67648f08d56816653ece959d4e8941247e298eb821c9ac"
+    },
+    "server-segment_handover-tests": {
+      "passed": 32,
+      "failed": 0,
+      "ignored": 0,
+      "executableSha256": [
+        "6fc31126e6f9f50f0f29326ef323c440dd7b6148e8772c6cd2ad51aead30d977"
+      ],
+      "logSha256": "86b12eeb3b8016c7697a1256a9f762649635698b600724a9c09b9310a637779a"
+    }
+  },
+  "strictCoreLibraryLint": {
+    "passed": true,
+    "logSha256": "9a30d54c8b16d7e49510b182028079bca120aeebb7d662e88f8566e6196a49f6"
+  },
+  "localRichWasm": {
+    "passed": true,
+    "logSha256": "3b4c6395a292054571cdde0bf799b08afb3b67226401f13c808a597618652053",
+    "sha256": "bc020ce07ed80600b85735c1e592d5ae163d921f5556fef05269a12bc1d59ec5"
+  },
+  "sharedWasm": {
+    "passed": true,
+    "logSha256": "b655e5f80e5fc2a870b4052784e29f3307a675d543b256da4e098639876c9da5",
+    "sha256": "823540e6e69d3dd61a9d8513e2909235b80e453ca9ebc65932497fc51d2a41b3"
+  },
+  "candidatePlan": {
+    "passed": 69,
+    "failed": 0,
+    "logSha256": "a581aa5d4594d0db8d1944d9cd914149486835561f25073c74ccf4c0859c89a0"
+  },
+  "workflows": {
+    "relaySha256": "b89017f5252aff618d74745e6494254a06ab54ed1d66c784f5f255d8b432f15c",
+    "runtimeSha256": "823540e6e69d3dd61a9d8513e2909235b80e453ca9ebc65932497fc51d2a41b3",
+    "portableRelocation": {
+      "reportSha256": "7b6495539ef33f3f0c5c178f955fb963374eeb4807f18205547dec7b73ecb897",
+      "runs": {
+        "source": {
+          "offlineLanes": 6,
+          "undoRedoLanes": 2,
+          "coldResumes": 5,
+          "liveNativeHistoryBoundaries": 2,
+          "nativeHistoryColdRetries": 2,
+          "proof": null
+        },
+        "installed": {
+          "offlineLanes": 6,
+          "undoRedoLanes": 2,
+          "coldResumes": 5,
+          "liveNativeHistoryBoundaries": 2,
+          "nativeHistoryColdRetries": 2,
+          "proof": {
+            "registryArtifacts": 45,
+            "archives": [
+              {
+                "name": "@breditor/browser",
+                "sha256": "79f5b486d3742d1234e4eb21c18822e0a494551d49a73039f5b856908c124f3f"
+              },
+              {
+                "name": "@breditor/experimental-rich-content",
+                "sha256": "06fc9770ef5b26cd5f4c10d7d55d9b1d91e352392a599f277cee25d431d6f4b7"
+              },
+              {
+                "name": "@breditor/collaboration",
+                "sha256": "581c6df964535c16a3066d253d275b81d9c28aabeb3124354c5beae2fb5bcd76"
+              }
+            ]
+          }
+        }
+      }
+    },
+    "legacyHandover": {
+      "reportSha256": "31d2dc8f2044a663e2a8508143a32d45787dddf6381d7162c296854090c3f71b",
+      "runs": {
+        "source": {
+          "offlineLanes": 6,
+          "undoRedoLanes": 2,
+          "coldResumes": 3,
+          "proof": null
+        },
+        "installed": {
+          "offlineLanes": 6,
+          "undoRedoLanes": 2,
+          "coldResumes": 3,
+          "proof": {
+            "registryArtifacts": 45,
+            "archives": [
+              {
+                "name": "@breditor/browser",
+                "sha256": "79f5b486d3742d1234e4eb21c18822e0a494551d49a73039f5b856908c124f3f"
+              },
+              {
+                "name": "@breditor/experimental-rich-content",
+                "sha256": "06fc9770ef5b26cd5f4c10d7d55d9b1d91e352392a599f277cee25d431d6f4b7"
+              },
+              {
+                "name": "@breditor/collaboration",
+                "sha256": "581c6df964535c16a3066d253d275b81d9c28aabeb3124354c5beae2fb5bcd76"
+              }
+            ]
+          }
+        }
+      }
+    },
+    "recoveredCommentIntent": {
+      "reportSha256": "a000fe680e72af49c78cbac2598dcfcc7a219de685790083e42a91b2e550fe49",
+      "runs": {
+        "source": {
+          "offlineLanes": 6,
+          "undoRedoLanes": 2,
+          "coldResumes": 4,
+          "committedRecoveredComments": 1,
+          "discardedDurableReviewReplies": 1,
+          "coldAcknowledgedReviewIntents": 1,
+          "recoveredReviewSubmissions": 1,
+          "proof": null
+        },
+        "installed": {
+          "offlineLanes": 6,
+          "undoRedoLanes": 2,
+          "coldResumes": 4,
+          "committedRecoveredComments": 1,
+          "discardedDurableReviewReplies": 1,
+          "coldAcknowledgedReviewIntents": 1,
+          "recoveredReviewSubmissions": 1,
+          "proof": {
+            "registryArtifacts": 45,
+            "archives": [
+              {
+                "name": "@breditor/browser",
+                "sha256": "79f5b486d3742d1234e4eb21c18822e0a494551d49a73039f5b856908c124f3f"
+              },
+              {
+                "name": "@breditor/experimental-rich-content",
+                "sha256": "06fc9770ef5b26cd5f4c10d7d55d9b1d91e352392a599f277cee25d431d6f4b7"
+              },
+              {
+                "name": "@breditor/collaboration",
+                "sha256": "581c6df964535c16a3066d253d275b81d9c28aabeb3124354c5beae2fb5bcd76"
+              }
+            ]
+          }
+        }
+      }
+    }
+  }
+}

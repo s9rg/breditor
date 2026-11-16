@@ -2,6 +2,17 @@
 
 ## November 16 collaboration recovery
 
+[Incremental native review recovery](qualification/2026-11-16-native-review-incremental-restore.json)
+carries the validated prefix across sealed cuts and checks each appended
+event's causal frontier, actor digest, births and Undo/Redo. Every saved
+history, byte limit and exact canonical cut is checked. A late peer event
+survives continuation with identical checkpoint bytes and future Undo/Redo.
+Rehashed intermediate history and an invalid terminal frontier refuse,
+and two independent faults report the original canonical failure. Both
+Wasm builds, 23 Rust review tests and contracts, and 71 focused relay
+tests pass. Source and clean-installed workflows verify portable relocation,
+legacy handover and cold recovery of a comment whose durable reply was lost.
+
 [Native review causal ordering](qualification/2026-11-16-native-review-causal-order.json)
 indexes blocked events by their next prerequisite. A 65,536-event fixture
 keeps a lower-sorting stream blocked until a higher-sorting stream reaches
@@ -12,8 +23,8 @@ and original-family checkpoint capacity. Both Wasm builds, 22 Rust review
 tests and contracts, and 69 focused relay tests pass. Source and
 clean-installed workflows verify portable relocation, legacy handover,
 offline edits and Undo/Redo. In the lost-reply case, cold recovery recognizes
-the original durable comment and preserves its single submission. Cold restore
-still validates retained prefixes at each generation boundary.
+the original durable comment and preserves its single submission. At this
+checkpoint, cold restore replayed the retained prefix at every boundary.
 
 [Exact native admission budget](qualification/2026-11-16-native-admission-budget.json)
 charges the canonical JSON bytes of immutable review history when each file
