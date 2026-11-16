@@ -1,8 +1,11 @@
 //! Immutable review events and causal frontiers; writer policy is supplied outside these values.
+mod order;
+
 use super::{
     ReviewActorId, ReviewBinding, ReviewError, ReviewEventId, ReviewPrincipalId,
     actions::ReviewAction, identity::Counter,
 };
+pub(super) use order::ordered;
 use serde::{Deserialize, Serialize};
 use std::collections::BTreeMap;
 pub(super) type Clock = BTreeMap<ReviewActorId, Counter>;
@@ -66,61 +69,6 @@ pub(super) fn clock(events: &[Event]) -> Clock {
     }
     result
 }
-pub(super) fn ordered(events: &[Event], limit: usize) -> Result<Vec<&Event>, ReviewError> {
-    if events.len() > limit {
-        return Err(ReviewError::Limit("events"));
-    }
-    let mut waiting = events.iter().map(|e| (&e.id, e)).collect::<BTreeMap<_, _>>();
-    if waiting.len() != events.len() {
-        return Err(ReviewError::Fork);
-    }
-    let indexed = waiting.clone();
-    let mut result: Vec<&Event> = Vec::with_capacity(events.len());
-    let mut applied = Clock::new();
-    while !waiting.is_empty() {
-        let Some(id) = waiting
-            .iter()
-            .find(|(_, event)| {
-                event.dependencies.iter().all(|(a, c)| applied.get(a).is_some_and(|seen| seen >= c))
-            })
-            .map(|(id, _)| (*id).clone())
-        else {
-            return Err(ReviewError::Contract("missing or cyclic review dependencies"));
-        };
-        let event = waiting.remove(&id).ok_or(ReviewError::Contract("review event order"))?;
-        if event.dependencies.len() > 1024 {
-            return Err(ReviewError::Limit("causal actors"));
-        }
-        let previous = applied.get(&id.actor).map_or(0, |c| c.0);
-        if previous.checked_add(1) != Some(id.counter.0)
-            || event.dependencies.get(&id.actor).map_or(0, |c| c.0) != previous
-        {
-            return Err(ReviewError::Fork);
-        }
-        // Each accepted actor prefix already closes over its earlier events.
-        // Checking the last observed event of each actor therefore proves the
-        // same transitive closure without rescanning the entire retained past.
-        for (actor, through) in &event.dependencies {
-            if through.0 == 0 {
-                continue;
-            }
-            let dependency = indexed
-                .get(&ReviewEventId { actor: actor.clone(), counter: *through })
-                .ok_or(ReviewError::Contract("nonclosed review causal frontier"))?;
-            if dependency
-                .dependencies
-                .iter()
-                .any(|(a, c)| event.dependencies.get(a).is_none_or(|seen| seen < c))
-            {
-                return Err(ReviewError::Contract("nonclosed review causal frontier"));
-            }
-        }
-        applied.insert(id.actor.clone(), id.counter);
-        result.push(event);
-    }
-    Ok(result)
-}
-
 #[cfg(test)]
 mod ordering_tests;
 pub(super) fn text(input: &str) -> Result<(), ReviewError> {

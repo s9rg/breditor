@@ -93,10 +93,10 @@ fn vectors(spec: &[u8]) -> Result<Vec<Event>, ReviewError> {
 
 proptest! {
     #[test]
-    fn frontier_checks_match_the_preserved_full_past_scan(spec in prop::collection::vec(any::<u8>(), 0..64), corruption in 0_u8..7) {
+    fn frontier_checks_match_the_preserved_full_past_scan(spec in prop::collection::vec(any::<u8>(), 0..64), point in any::<usize>(), corruption in 0_u8..10) {
         let mut events = vectors(&spec).map_err(|e| TestCaseError::fail(e.to_string()))?;
         if !events.is_empty() {
-            let index = usize::from(corruption) % events.len();
+            let index = point % events.len();
             match corruption {
                 1 => { events[index].dependencies.pop_first(); }
                 2 => { events.push(events[index].clone()); }
@@ -104,9 +104,50 @@ proptest! {
                 4 => { events[index].dependencies.insert(ReviewActorId::try_new("missing").map_err(|e| TestCaseError::fail(e.to_string()))?, Counter(1)); }
                 5 => { events.reverse(); }
                 6 => { let actor = events[0].id.actor.clone(); let last = events.len() - 1; events[last].dependencies.insert(actor, Counter(0)); }
+                7 => { let id = events[index].id.clone(); events[index].dependencies.insert(id.actor, id.counter); }
+                8 => { events.remove(index); }
+                9 => { events.rotate_right(index); }
                 _ => {}
             }
         }
         prop_assert_eq!(spelling(ordered(&events, MAX_EVENTS)), spelling(reference(&events, MAX_EVENTS)));
     }
+}
+
+#[test]
+fn long_blocked_stream_wakes_at_its_prerequisite_and_regains_canonical_priority()
+-> Result<(), ReviewError> {
+    const HALF: u64 = 32_768;
+    let early = ReviewActorId::try_new("a-blocked")?;
+    let late = ReviewActorId::try_new("z-prerequisite")?;
+    let principal = ReviewPrincipalId::try_new("fixture")?;
+    let make_event = |actor: &ReviewActorId, counter: u64| -> Result<Event, ReviewError> {
+        let mut dependencies = Clock::new();
+        if counter > 1 {
+            dependencies.insert(actor.clone(), Counter(counter - 1));
+        }
+        if actor == &early {
+            dependencies.insert(late.clone(), Counter(HALF));
+        }
+        let id = ReviewEventId::try_new(actor.clone(), counter)?;
+        Ok(Event {
+            payload: Payload::Visibility { target: id.clone(), visible: true },
+            id,
+            principal: principal.clone(),
+            dependencies,
+            previous_digest: String::new(),
+        })
+    };
+    let events = (1..HALF)
+        .rev()
+        .map(|counter| make_event(&early, counter))
+        .chain((1..=HALF + 1).rev().map(|counter| make_event(&late, counter)))
+        .collect::<Result<Vec<_>, _>>()?;
+    let result = ordered(&events, events.len())?;
+    let expected = (1..=HALF)
+        .map(|counter| (&late, counter))
+        .chain((1..HALF).map(|counter| (&early, counter)))
+        .chain(std::iter::once((&late, HALF + 1)));
+    assert!(result.iter().map(|event| (event.id.actor(), event.id.counter())).eq(expected));
+    Ok(())
 }

@@ -213,6 +213,12 @@ fn fixture(spec: &[u8]) -> TestResult<ReviewSession> {
 fn spelling(result: Result<(), ReviewError>) -> Result<(), String> {
     result.map_err(|e| e.to_string())
 }
+
+fn validate(session: &ReviewSession) -> Result<(), ReviewError> {
+    let ordered = event::ordered(&session.events, session.event_limit())?;
+    codec::validate_ordered(session, &ordered)
+}
+
 fn rehash(owner: &mut ReviewSession) -> TestResult<()> {
     let mut streams = BTreeMap::<ReviewActorId, String>::new();
     for event in &mut owner.events {
@@ -231,7 +237,7 @@ proptest! {
         let mut owner=fixture(&spec).map_err(|e|TestCaseError::fail(e.to_string()))?;
         owner.events.reverse();
         prop_assert_eq!(spelling(reference(&owner)),Ok(()));
-        prop_assert_eq!(spelling(codec::validate_all(&owner)),Ok(()));
+        prop_assert_eq!(spelling(validate(&owner)),Ok(()));
     }
     #[test]
     fn corrupt_histories_keep_the_full_prefix_oracle_refusals(spec in prop::collection::vec(any::<u8>(),1..40),corruption in 0_u8..12) {
@@ -254,6 +260,6 @@ proptest! {
         }
         rehash(&mut owner).map_err(|e|TestCaseError::fail(e.to_string()))?;
         owner.events.reverse();
-        prop_assert_eq!(spelling(codec::validate_all(&owner)),spelling(reference(&owner)));
+        prop_assert_eq!(spelling(validate(&owner)),spelling(reference(&owner)));
     }
 }

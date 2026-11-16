@@ -13,13 +13,13 @@ pub use transport::{
 
 #[derive(Serialize, Deserialize)]
 #[serde(deny_unknown_fields, rename_all = "camelCase")]
-struct Checkpoint {
+struct Checkpoint<Events> {
     format: String,
     format_version: u32,
     binding: ReviewBinding,
     actor: ReviewActorId,
     principal: super::ReviewPrincipalId,
-    events: Vec<Event>,
+    events: Events,
     history: Vec<ReviewEventId>,
     cursor: usize,
 }
@@ -39,13 +39,19 @@ impl ReviewSession {
         if self.generations.is_some() {
             return Err(ReviewError::Contract("review history family"));
         }
+        self.checkpoint_json_with_order(&event::ordered(&self.events, event::MAX_EVENTS)?)
+    }
+    pub(super) fn checkpoint_json_with_order(
+        &self,
+        ordered: &[&Event],
+    ) -> Result<String, ReviewError> {
         let json = serde_json::to_string(&Checkpoint {
             format: "breditor/review-session".into(),
             format_version: 1,
             binding: self.binding.clone(),
             actor: self.policy.actor.clone(),
             principal: self.policy.principal.clone(),
-            events: event::ordered(&self.events, event::MAX_EVENTS)?.into_iter().cloned().collect(),
+            events: ordered,
             history: self.history.clone(),
             cursor: self.cursor,
         })?;
@@ -65,7 +71,7 @@ impl ReviewSession {
         if input.len() > event::MAX_BYTES {
             return Err(ReviewError::Limit("checkpoint bytes"));
         }
-        let saved: Checkpoint = serde_json::from_str(input)?;
+        let saved: Checkpoint<Vec<Event>> = serde_json::from_str(input)?;
         if saved.format != "breditor/review-session"
             || saved.format_version != 1
             || saved.binding != *binding
@@ -260,14 +266,16 @@ impl ReviewSession {
         Ok(ReviewImportOutcome::Applied)
     }
 }
-pub(super) fn validate_all(session: &ReviewSession) -> Result<(), ReviewError> {
-    let ordered = event::ordered(&session.events, session.event_limit())?;
+pub(super) fn validate_ordered(
+    session: &ReviewSession,
+    ordered: &[&Event],
+) -> Result<(), ReviewError> {
     let mut principals = BTreeMap::new();
     let mut local_targets = BTreeSet::new();
     let mut streams = BTreeMap::<ReviewActorId, &Event>::new();
     let mut histories = BTreeMap::<_, (Vec<ReviewEventId>, usize)>::new();
     let mut births = super::causal_births::CausalBirths::default();
-    for event in ordered {
+    for &event in ordered {
         let expected = streams.get(&event.id.actor).map_or_else(
             || event::genesis(&session.binding, &event.id.actor, &event.principal),
             |previous| event::digest(previous),

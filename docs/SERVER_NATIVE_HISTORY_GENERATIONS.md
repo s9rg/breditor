@@ -120,9 +120,16 @@ active file. JSON escapes and the continuation boundary count toward the same
 limits used by the full checkpoint writer. The relay uses this native check for
 prepared comments and segmented or continued writer groups, including the
 receiver of an accepted suggestion. Explicit export and boundary hashing still
-write the complete canonical archive. Event validation, native replay, and the
-private suggestion author's reconstruction still have costs that grow with
-retained history.
+write the complete canonical archive.
+
+Review admission computes canonical causal order once for validation, projection
+and the original-family checkpoint byte check. Each blocked event waits on
+the first prerequisite it still needs. Once that prerequisite arrives, the
+event checks its remaining dependencies. Among ready events, the lowest actor
+and counter still come first. The scheduler retains one queue entry per event
+at most. This avoids repeatedly scanning a blocked stream while another stream
+advances. Native replay and the private suggestion author's reconstruction
+still have costs that grow with retained history.
 
 Server-log generations, matching client/relay negotiation, complete asset and
 outbox dependency closure, historic-copy decisions, coordinated recovery and

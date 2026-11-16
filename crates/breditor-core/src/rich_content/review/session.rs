@@ -180,17 +180,14 @@ impl ReviewSession {
         *self = candidate;
     }
     pub(super) fn admit(&self) -> Result<(), ReviewError> {
-        super::codec::validate_all(self)?;
-        event::ordered(&self.events, self.event_limit())?;
-        if self.events.len() > self.event_limit() {
-            return Err(ReviewError::Limit("events"));
-        }
+        let ordered = event::ordered(&self.events, self.event_limit())?;
+        super::codec::validate_ordered(self, &ordered)?;
         if let Some(state) = &self.generations {
             self.check_generation_checkpoint_budget(state)?;
         } else {
-            self.checkpoint_json()?;
+            self.checkpoint_json_with_order(&ordered)?;
         }
-        self.projection(&self.events)?;
+        Projection::from_ordered(&ordered)?;
         Ok(())
     }
     pub(super) const fn event_limit(&self) -> usize {
