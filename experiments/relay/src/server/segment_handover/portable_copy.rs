@@ -11,7 +11,10 @@ use crate::{
     MAX_SERVER_LOG_GENERATION_BACKUP_BYTES, RelaySegmentBaseFile, Result,
     assets::MAX_SERVER_ASSET_BACKUP_BYTES,
     log::generations::GenerationDirectory,
-    server::{RelaySegmentPortableBackupIdentity, RelaySegmentRetainedBackup},
+    server::{
+        RelaySegmentPortableBackupIdentity, RelaySegmentRetainedBackup,
+        RelaySegmentRetiredHistorySelection,
+    },
 };
 use std::{collections::BTreeSet, path::Path};
 
@@ -37,6 +40,7 @@ impl RelaySegmentRetainedBackup {
             ClientLayout::Split,
             Encoding::Raw,
         )
+        .map(|_| ())
     }
 
     /// Copy into a fresh portable directory with native predecessors and retained
@@ -58,6 +62,7 @@ impl RelaySegmentRetainedBackup {
             ClientLayout::Packed,
             Encoding::Raw,
         )
+        .map(|_| ())
     }
 
     /// Copy an existing portable backup with lossless predecessor checkpoint compression.
@@ -78,6 +83,7 @@ impl RelaySegmentRetainedBackup {
             ClientLayout::Packed,
             Encoding::Compressed,
         )
+        .map(|_| ())
     }
 
     /// Verify the selected portable backup and copy it into a fresh directory.
@@ -99,6 +105,30 @@ impl RelaySegmentRetainedBackup {
             ClientLayout::Packed,
             Encoding::Compacted,
         )
+        .map(|_| ())
+    }
+
+    /// Copy an independently selected backup into a new portable directory.
+    /// Retire every predecessor archive after verifying its original cut and
+    /// carry a supplemental proof for each older checkpoint. Keep the returned
+    /// selection in trusted recovery storage outside the backup.
+    ///
+    /// # Errors
+    /// Refuses changed input, missing ancestry, oversized proof data,
+    /// occupied destinations and inputs that already require a retirement selection.
+    pub fn copy_portable_with_retired_history(
+        source: &Path,
+        destination: &Path,
+        expected: &RelaySegmentPortableBackupIdentity,
+    ) -> Result<RelaySegmentRetiredHistorySelection> {
+        let lineage_sha256 = Self::copy_portable_with_layout(
+            source,
+            destination,
+            expected,
+            ClientLayout::Packed,
+            Encoding::Retired,
+        )?;
+        Ok(RelaySegmentRetiredHistorySelection { backup: expected.clone(), lineage_sha256 })
     }
 
     fn copy_portable_with_layout(
@@ -107,11 +137,11 @@ impl RelaySegmentRetainedBackup {
         expected: &RelaySegmentPortableBackupIdentity,
         layout: ClientLayout,
         encoding: Encoding,
-    ) -> Result<()> {
+    ) -> Result<Option<[u8; 32]>> {
         expected.retained.verify_pins(&BTreeSet::new())?;
         let source = GenerationDirectory::open(source)?;
         let destination = source.create_outside(destination)?;
-        native_lineage::copy_packed(
+        let digest = native_lineage::copy_packed(
             &source,
             &destination,
             &expected.native_predecessors,
@@ -132,7 +162,7 @@ impl RelaySegmentRetainedBackup {
         }
         source.guard()?;
         destination.sync()?;
-        NamedPortableBackup::open_at(destination, expected)?;
-        Ok(())
+        NamedPortableBackup::open_at_digest(destination, expected, digest)?;
+        Ok(digest)
     }
 }

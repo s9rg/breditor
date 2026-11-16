@@ -59,6 +59,12 @@ fn long_lineage_moves_and_reopens_under_a_small_descriptor_limit() -> TestResult
                 &mut archive_output,
                 &mut checkpoint_output,
             )?
+        } else if i == 1 {
+            room.write_relay_segment_base_with_indexed_asset_history(
+                "owner",
+                &mut archive_output,
+                &mut checkpoint_output,
+            )?
         } else {
             room.write_relay_segment_base("owner", &mut archive_output, &mut checkpoint_output)?
         };
@@ -244,6 +250,16 @@ fn cold_lineage_worker() -> TestResult {
                 .is_err()
             );
             fs::write(packed_path, compressed_bytes)?;
+            let migrated = root.join("retired-legacy");
+            let retirement = RelaySegmentRetainedBackup::copy_portable_with_retired_history(
+                &compacted, &migrated, &selected,
+            )?;
+            assert_eq!(retirement.backup(), &selected);
+            let backup = RelaySegmentRetainedBackup::open_portable_with_retired_history(
+                &migrated,
+                &retirement,
+            )?;
+            reopen_backup(&root, "retired-legacy", &backup)?;
             assert!(matches!(
                 RelaySegmentRetainedBackup::copy_portable_fully_packed(
                     &compacted,
@@ -288,6 +304,10 @@ fn restore_and_reopen(
     selected: &RelaySegmentPortableBackupIdentity,
 ) -> TestResult {
     let backup = RelaySegmentRetainedBackup::open_portable(&root.join(name), selected)?;
+    reopen_backup(root, name, &backup)
+}
+
+fn reopen_backup(root: &Path, name: &str, backup: &RelaySegmentRetainedBackup) -> TestResult {
     let path = root.join(format!("cold-room-{name}"));
     let target = backup.restore(&path, "cold-one", POLICY)?;
     assert_eq!(

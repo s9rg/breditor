@@ -3,9 +3,9 @@ use super::portable_backup::NamedPortableBackup;
 use crate::{
     Error, Result, credentials,
     server::{
-        LogGenerationHandoverStatus, RelaySegmentPortableBackupIdentity, RoomDeploymentAuthority,
-        RoomDeploymentSelection, ServerBackupHandle, deployment_fence,
-        generation_backup::durable::Interruption,
+        LogGenerationHandoverStatus, RelaySegmentPortableBackupIdentity,
+        RelaySegmentRetiredHistorySelection, RoomDeploymentAuthority, RoomDeploymentSelection,
+        ServerBackupHandle, deployment_fence, generation_backup::durable::Interruption,
     },
 };
 use serde::{Deserialize, Serialize};
@@ -104,6 +104,41 @@ impl ServerBackupHandle {
         intent: &RelaySegmentPortableSeal,
         stop: &Interruption,
     ) -> Result<RoomDeploymentSelection> {
+        self.seal_selected_portable(principal, token, path, intent, stop, None)
+    }
+
+    /// Seal a portable backup whose older archives were retired under a
+    /// separately selected lineage digest. The operator retains both selections.
+    ///
+    /// # Errors
+    /// Refuses invalid authority, a mismatched source cut, changed files or a different pack.
+    pub fn seal_portable_relay_segment_with_retired_history(
+        &self,
+        principal: &str,
+        token: &str,
+        path: &Path,
+        intent: &RelaySegmentPortableSeal,
+        retired: &RelaySegmentRetiredHistorySelection,
+    ) -> Result<RoomDeploymentSelection> {
+        self.seal_selected_portable(
+            principal,
+            token,
+            path,
+            intent,
+            &Interruption::default(),
+            Some(retired),
+        )
+    }
+
+    fn seal_selected_portable(
+        &self,
+        principal: &str,
+        token: &str,
+        path: &Path,
+        intent: &RelaySegmentPortableSeal,
+        stop: &Interruption,
+        retired: Option<&RelaySegmentRetiredHistorySelection>,
+    ) -> Result<RoomDeploymentSelection> {
         let host = &self.host;
         host.authentication.authenticate(principal, token)?;
         intent.planned_selection()?;
@@ -118,7 +153,14 @@ impl ServerBackupHandle {
                     .recovery_inventory_owner(principal)
             })
         })?;
-        let bundle = NamedPortableBackup::open(path, intent.backup())?;
+        let bundle = if let Some(selected) = retired {
+            if selected.backup() != intent.backup() {
+                return Err(Error::Contract("portable retirement seal selection differs"));
+            }
+            NamedPortableBackup::open_retired(path, selected)?
+        } else {
+            NamedPortableBackup::open(path, intent.backup())?
+        };
         deployment_fence::seal_portable_segment(host, principal, intent, &bundle, stop)
     }
 }

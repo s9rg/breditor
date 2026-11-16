@@ -32,7 +32,9 @@ pub use inputs::{
 };
 pub use portable_activation::SealedRelaySegmentActivation;
 pub(in crate::server) use portable_backup::NamedPortableBackup;
-pub use portable_backup::RelaySegmentPortableBackupIdentity;
+pub use portable_backup::{
+    RelaySegmentPortableBackupIdentity, RelaySegmentRetiredHistorySelection,
+};
 pub use portable_seal::RelaySegmentPortableSeal;
 pub use retained_backup::{RelaySegmentRetainedBackup, RelaySegmentRetainedBackupIdentity};
 

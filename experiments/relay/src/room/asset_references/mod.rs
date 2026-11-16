@@ -3,7 +3,7 @@ mod capture;
 mod generations;
 mod inventory;
 mod packet_history;
-pub(in crate::room) use packet_history::{PacketHistory, PacketRecord};
+pub(in crate::room) use packet_history::{MAX_PACKET_HISTORY_BYTES, PacketHistory, PacketRecord};
 mod packets;
 mod read_budget;
 mod segment;

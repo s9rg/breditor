@@ -5,8 +5,8 @@ use breditor_collab_relay::{
     server::{
         Authentication, ContentAddressedServerAssets, LogGenerationHandoverStatus,
         RelaySegmentHandoverApproval, RelaySegmentHandoverInputCoverage, RelaySegmentPortableSeal,
-        RelaySegmentRetainedBackup, RoomDeploymentSelection, SealedRelaySegmentActivation,
-        ServerBackupHandle, ServerRecoveryAssetProvider,
+        RelaySegmentRetainedBackup, RelaySegmentRetiredHistorySelection, RoomDeploymentSelection,
+        SealedRelaySegmentActivation, ServerBackupHandle, ServerRecoveryAssetProvider,
     },
 };
 use serde::Deserialize;
@@ -20,6 +20,7 @@ use std::{
 
 const ROOM: &str = "relocated";
 const SEAL: &str = "portable-relocation-seal.json";
+const RETIRED: &str = "portable-relocation-retired-selection.json";
 const APPROVAL: &str = "portable-relocation-approval.json";
 
 pub(super) fn seal(
@@ -63,10 +64,25 @@ pub(super) fn seal(
         captured.retained.backup.native.checkpoint.sha256
     );
     assert_same_lineage(&path, &compacted_copy)?;
+    let retired_path = parent.join("portable-relocation-retired");
+    let retired = RelaySegmentRetainedBackup::copy_portable_with_retired_history(
+        &path,
+        &retired_path,
+        &compacted,
+    )?;
+    assert_eq!(retired.backup(), &compacted);
+    assert!(RelaySegmentRetainedBackup::open_portable(&retired_path, &compacted).is_err());
     let intent = RelaySegmentPortableSeal::select(compacted)?;
     storage::write_new(&parent.join(SEAL), &serde_json::to_vec(&intent)?)?;
+    storage::write_new(&parent.join(RETIRED), &serde_json::to_vec(&retired)?)?;
     File::open(parent)?.sync_all()?;
-    let selected = handle.seal_portable_relay_segment("owner", token, &path, &intent)?;
+    let selected = handle.seal_portable_relay_segment_with_retired_history(
+        "owner",
+        token,
+        &retired_path,
+        &intent,
+        &retired,
+    )?;
     let authority = deployment(parent)?;
     assert_eq!(selected, intent.planned_selection()?);
     assert_eq!(authority.current_selection()?, selected);
@@ -135,8 +151,11 @@ pub(crate) fn router(
     let command: Command = serde_json::from_slice(&input()?)?;
     let seal: RelaySegmentPortableSeal =
         serde_json::from_str(&read(&parent.join(SEAL), 128 * 1024)?)?;
+    let retired: RelaySegmentRetiredHistorySelection =
+        serde_json::from_str(&read(&parent.join(RETIRED), 128 * 1024)?)?;
+    assert_eq!(retired.backup(), seal.backup());
     let moved = parent.join("portable-relocation-arrived");
-    let bundle = RelaySegmentRetainedBackup::open_portable(&moved, seal.backup())?;
+    let bundle = RelaySegmentRetainedBackup::open_portable_with_retired_history(&moved, &retired)?;
     let room_path = parent.join(ROOM);
     let approval_path = parent.join(APPROVAL);
     match command {

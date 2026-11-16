@@ -53,6 +53,7 @@ pub(in crate::server) fn seal_portable_segment(
             return Err(Error::Contract("portable relay seal source cut advanced"));
         }
         stop.after(Point::SourceChecked)?;
+        bundle.check_retired_history(room.hold_relay_segment_parent().as_deref())?;
         bundle.check_files()?;
         rasters.check()?;
         if let Some(custody) = &host.relay_segment_custody {

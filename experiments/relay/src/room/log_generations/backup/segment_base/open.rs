@@ -1,5 +1,7 @@
 //! Select the exact paired artifacts and replay a suffix only after proving its predecessor.
-use super::{RelaySegmentBaseFile, RelaySegmentBaseIdentity};
+use super::{
+    RelaySegmentBaseFile, RelaySegmentBaseIdentity, archive_retirement::ArchiveRetirement,
+};
 use crate::{
     Error, Result, Room,
     archive_input::{ArchiveInput, CheckpointInput},
@@ -100,6 +102,28 @@ impl RelaySegmentBaseFile {
         expected: &RelaySegmentBaseIdentity,
         parent: Option<Arc<Self>>,
     ) -> Result<Self> {
+        Self::open_storage(archive, checkpoint, None, expected, parent)
+    }
+
+    /// Only the portable reader can supply a supplemental range after checking its
+    /// independently selected packed-file digest.
+    #[cfg(feature = "server")]
+    pub(crate) fn open_retired(
+        checkpoint: CheckpointInput,
+        retirement: ArchiveInput,
+        expected: &RelaySegmentBaseIdentity,
+        parent: Option<Arc<Self>>,
+    ) -> Result<Self> {
+        Self::open_storage(None, checkpoint, Some(retirement), expected, parent)
+    }
+
+    fn open_storage(
+        archive: Option<ArchiveInput>,
+        checkpoint: CheckpointInput,
+        retirement: Option<ArchiveInput>,
+        expected: &RelaySegmentBaseIdentity,
+        parent: Option<Arc<Self>>,
+    ) -> Result<Self> {
         if archive
             .as_ref()
             .is_some_and(|input| input.all().len() > crate::MAX_SERVER_LOG_GENERATION_BACKUP_BYTES)
@@ -121,6 +145,17 @@ impl RelaySegmentBaseFile {
         let first = parent.as_ref().map_or(0, |base| base.identity.predecessor.source.records);
         let SelectedHeader { encoding, closure, .. } =
             read_header(&checkpoint, &expected.checkpoint, first)?;
+        let binding = segment_history_digest(parent.as_deref(), expected)?;
+        let closure = if let Some(input) = &retirement {
+            if closure.is_some() || archive.is_some() {
+                return Err(Error::Contract(
+                    "relay archive retirement has competing representations",
+                ));
+            }
+            Some(ArchiveRetirement::read(input, expected, binding, parent.as_deref())?.closure)
+        } else {
+            closure
+        };
         let projected = closure
             .map(|proof| proof.select(&expected.predecessor, parent.as_deref()))
             .transpose()?;
@@ -166,10 +201,11 @@ impl RelaySegmentBaseFile {
         }
         let result = Self {
             identity: expected.clone(),
-            binding: segment_history_digest(parent.as_deref(), expected)?,
+            binding,
             root_generation,
             parent,
             archive,
+            retirement,
             checkpoint,
             checkpoint_encoding: encoding,
             sections,
@@ -186,10 +222,12 @@ impl RelaySegmentBaseFile {
 
     pub(crate) fn check(&self) -> Result<()> {
         let mut checked = None;
-        for input in self
-            .lineage()
-            .flat_map(|base| base.archive.iter().chain(std::iter::once(&base.checkpoint.input)))
-        {
+        for input in self.lineage().flat_map(|base| {
+            base.archive
+                .iter()
+                .chain(&base.retirement)
+                .chain(std::iter::once(&base.checkpoint.input))
+        }) {
             if checked.is_some_and(|previous| input.shares_handle(previous)) {
                 continue;
             }
@@ -239,7 +277,13 @@ impl RelaySegmentBaseFile {
         self.check()?;
         let lineage = self.lineage().collect::<Vec<_>>();
         for base in lineage.into_iter().rev() {
-            if base.checkpoint_encoding.has_asset_history() {
+            if let Some(input) = &base.retirement {
+                let proof =
+                    ArchiveRetirement::read(input, &base.identity, base.binding, base.parent())?;
+                for packet in proof.history.into_records() {
+                    visit(packet)?;
+                }
+            } else if base.checkpoint_encoding.has_asset_history() {
                 let first =
                     base.parent().map_or(0, |base| base.identity.predecessor.source.records);
                 let history = read_header(&base.checkpoint, &base.identity.checkpoint, first)?
@@ -248,34 +292,39 @@ impl RelaySegmentBaseFile {
                 for packet in history.into_records() {
                     visit(packet)?;
                 }
-                continue;
-            }
-            let input = base.archive.as_ref().ok_or(Error::NeedsRecovery)?.all();
-            let files = base
-                .sections
-                .iter()
-                .map(|(name, entry)| Ok((name.as_str(), input.section(entry.offset, entry.bytes)?)))
-                .collect::<Result<_>>()?;
-            let origin = base.parent().map(|base| SegmentArchiveOrigin { base });
-            let cut = crate::log::generations::visit_generation_sections(
-                &files,
-                origin.as_ref(),
-                |record| {
+            } else {
+                base.visit_original_records(|record| {
                     if let Some(packet) = PacketRecord::from_log(record) {
                         visit(packet)?;
                     }
                     Ok(())
-                },
-            )?;
-            let predecessor = &base.identity.predecessor;
-            if cut.manifest != predecessor.manifest
-                || cut.records != predecessor.source.records
-                || cut.previous != predecessor.source.terminal_log_digest
-            {
-                return Err(Error::Contract("relay segment predecessor record cut differs"));
+                })?;
             }
         }
         self.check()
+    }
+
+    pub(super) fn visit_original_records(
+        &self,
+        visit: impl FnMut(crate::log::Record) -> Result<()>,
+    ) -> Result<()> {
+        let input = self.archive.as_ref().ok_or(Error::NeedsRecovery)?.all();
+        let files = self
+            .sections
+            .iter()
+            .map(|(name, entry)| Ok((name.as_str(), input.section(entry.offset, entry.bytes)?)))
+            .collect::<Result<_>>()?;
+        let origin = self.parent().map(|base| SegmentArchiveOrigin { base });
+        let cut =
+            crate::log::generations::visit_generation_sections(&files, origin.as_ref(), visit)?;
+        let predecessor = &self.identity.predecessor;
+        if cut.manifest != predecessor.manifest
+            || cut.records != predecessor.source.records
+            || cut.previous != predecessor.source.terminal_log_digest
+        {
+            return Err(Error::Contract("relay segment predecessor record cut differs"));
+        }
+        Ok(())
     }
 
     pub(in crate::room::log_generations) fn checkpoint_state(&self) -> Result<Checkpoint> {

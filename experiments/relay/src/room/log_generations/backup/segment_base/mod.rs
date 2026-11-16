@@ -1,4 +1,5 @@
 //! Exact predecessors for a continuation that keeps original event positions.
+mod archive_retirement;
 mod capture;
 mod open;
 #[cfg(feature = "server")]
@@ -36,6 +37,7 @@ pub struct RelaySegmentBaseFile {
     root_generation: String,
     parent: Option<Arc<Self>>,
     archive: Option<ArchiveInput>,
+    retirement: Option<ArchiveInput>,
     checkpoint: CheckpointInput,
     checkpoint_encoding: SegmentCheckpointEncoding,
     sections: BTreeMap<String, ArchiveEntry>,

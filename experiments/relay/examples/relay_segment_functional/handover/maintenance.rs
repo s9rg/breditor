@@ -29,7 +29,7 @@ enum Action {
     Checkpoint,
     Pack { generation: String },
     Archive { generation: String },
-    RecaptureCompacted,
+    RecaptureRetired,
 }
 
 impl Command {
@@ -70,19 +70,21 @@ impl Command {
                     handle.archive_sealed_wal(&principal, &token, checkpoint, &generation).await?,
                 )?
             }
-            Action::RecaptureCompacted => {
-                let path = parent.join("portable-compacted-recapture");
-                let selection = handle.capture_portable_relay_segment_with_compacted_history(
+            Action::RecaptureRetired => {
+                let path = parent.join("portable-retired-recapture");
+                let selection = handle.capture_portable_relay_segment_with_retired_history(
                     &principal, &token, &path,
                 )?;
-                let backup = RelaySegmentRetainedBackup::open_portable(&path, &selection)?;
-                let target = parent.join("portable-compacted-recapture-proof");
+                let backup = RelaySegmentRetainedBackup::open_portable_with_retired_history(
+                    &path, &selection,
+                )?;
+                let target = parent.join("portable-retired-recapture-proof");
                 let restored = backup.restore(&target, "recaptured-one", POLICY)?;
                 let catchup = restored.components().0.catchup(&principal)?;
                 drop(restored);
                 let reopened = backup.backup().reopen(&target, POLICY)?;
                 assert_eq!(catchup, reopened.components().0.catchup(&principal)?);
-                json!({"nativePredecessors": selection.native_predecessors.len()})
+                json!({"nativePredecessors": selection.backup().native_predecessors.len()})
             }
         })
     }

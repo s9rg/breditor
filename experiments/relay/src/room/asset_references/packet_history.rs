@@ -6,7 +6,7 @@ use crate::{
 use serde::{Deserialize, Deserializer, Serialize, de};
 use std::{fmt, io};
 
-const MAX_PACKET_HISTORY_BYTES: usize = 64 * 1024 * 1024;
+pub(in crate::room) const MAX_PACKET_HISTORY_BYTES: usize = 64 * 1024 * 1024;
 
 #[derive(Deserialize, Serialize)]
 #[serde(rename_all = "camelCase", deny_unknown_fields)]
@@ -58,10 +58,17 @@ impl PacketHistory {
     pub(in crate::room) fn capture(stream: &StreamGenerationCapture<'_>) -> Result<Result<Self>> {
         let first_sequence =
             stream.segment_base().map_or(0, |base| base.identity().predecessor.source.records);
+        Self::capture_from(first_sequence, |visit| stream.visit_records(visit))
+    }
+
+    pub(in crate::room) fn capture_from(
+        first_sequence: u64,
+        read: impl FnOnce(&mut dyn FnMut(Record) -> Result<()>) -> Result<()>,
+    ) -> Result<Result<Self>> {
         let mut records = Vec::new();
         let mut budget = Budget::default();
         let mut admission = Ok(());
-        stream.visit_records(|record| {
+        read(&mut |record| {
             if admission.is_ok()
                 && let Some(packet) = PacketRecord::from_log(record)
             {

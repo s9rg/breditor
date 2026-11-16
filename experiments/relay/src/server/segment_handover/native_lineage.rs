@@ -4,7 +4,8 @@ use super::{
     packed_native_lineage::{self as packed, PackedNativeLineage},
 };
 use crate::{
-    MAX_SERVER_LOG_GENERATION_BACKUP_BYTES, RelaySegmentBaseFile, RelaySegmentBaseIdentity, Result,
+    Error, MAX_SERVER_LOG_GENERATION_BACKUP_BYTES, RelaySegmentBaseFile, RelaySegmentBaseIdentity,
+    Result,
     log::generations::{GenerationDirectory, GenerationFileWitness},
 };
 use std::{fs, io, sync::Arc};
@@ -19,6 +20,7 @@ struct Part {
 
 pub(super) struct NativeLineage {
     held: Option<(GenerationDirectory, LineageFiles)>,
+    retired_digest: Option<[u8; 32]>,
 }
 
 enum LineageFiles {
@@ -30,6 +32,7 @@ enum LineageFiles {
 pub(super) enum LineageLayout {
     Split,
     Packed(packed::Encoding),
+    Retired,
 }
 
 impl NativeLineage {
@@ -41,16 +44,27 @@ impl NativeLineage {
         let mut chain = std::iter::successors(parent, |base| base.parent()).collect::<Vec<_>>();
         chain.reverse();
         let identities = chain.iter().map(|base| base.identity().clone()).collect::<Vec<_>>();
-        if !chain.is_empty() {
+        let retired_digest = if chain.is_empty() {
+            None
+        } else {
             let directory = GenerationDirectory::create(&destination.path.join(LINEAGE))?;
-            match layout {
-                LineageLayout::Split => write_split(&directory, &chain)?,
-                LineageLayout::Packed(encoding) => packed::write(&directory, &chain, encoding)?,
-            }
+            let digest = match layout {
+                LineageLayout::Split => {
+                    write_split(&directory, &chain)?;
+                    None
+                }
+                LineageLayout::Packed(encoding) => {
+                    packed::write(&directory, &chain, encoding)?;
+                    None
+                }
+                LineageLayout::Retired => Some(packed::write_retired(&directory, &chain)?),
+            };
             directory.sync()?;
             directory.guard()?;
-        }
-        let lineage = Self::open(destination, &identities)?;
+            digest
+        };
+        let lineage = Self::open_with_retired_digest(destination, &identities, retired_digest)?;
+        lineage.check_retired_history(parent)?;
         Ok((identities, lineage))
     }
 
@@ -58,20 +72,57 @@ impl NativeLineage {
         root: &GenerationDirectory,
         expected: &[RelaySegmentBaseIdentity],
     ) -> Result<Self> {
+        Self::open_with_retired_digest(root, expected, None)
+    }
+
+    pub(super) fn open_with_retired_digest(
+        root: &GenerationDirectory,
+        expected: &[RelaySegmentBaseIdentity],
+        digest: Option<[u8; 32]>,
+    ) -> Result<Self> {
         if expected.is_empty() {
-            return Ok(Self { held: None });
+            if digest.is_some() {
+                return Err(Error::Contract("empty portable ancestry has a retirement selection"));
+            }
+            return Ok(Self { held: None, retired_digest: None });
         }
         let directory = GenerationDirectory::open(&root.path.join(LINEAGE))?;
         let files = if has_packed_file(&directory)? {
-            LineageFiles::Packed(PackedNativeLineage::open(&directory, expected)?)
+            LineageFiles::Packed(PackedNativeLineage::open(&directory, expected, digest)?)
         } else {
+            if digest.is_some() {
+                return Err(Error::Contract("portable retirement requires a packed lineage"));
+            }
             LineageFiles::Split(open_split(&directory, expected)?)
         };
-        let lineage = Self { held: Some((directory, files)) };
+        let lineage = Self { held: Some((directory, files)), retired_digest: digest };
         lineage.check()?;
         Ok(lineage)
     }
 
+    pub(super) fn retired_digest(&self) -> Option<[u8; 32]> {
+        self.retired_digest
+    }
+
+    pub(super) fn check_retired_history(
+        &self,
+        mut source: Option<&RelaySegmentBaseFile>,
+    ) -> Result<()> {
+        if self.retired_digest.is_none() {
+            return Ok(());
+        }
+        let parent = self.parent();
+        let mut retired = parent.as_deref();
+        while let Some((current, original)) = retired.zip(source) {
+            current.check_retirement_against(original)?;
+            retired = current.parent();
+            source = original.parent();
+        }
+        if retired.is_some() || source.is_some() {
+            return Err(Error::Contract("retired portable predecessor count differs"));
+        }
+        Ok(())
+    }
     pub(super) fn parent(&self) -> Option<Arc<RelaySegmentBaseFile>> {
         match &self.held.as_ref()?.1 {
             LineageFiles::Split(parts) => parts.last().map(|part| part.base.clone()),
@@ -104,16 +155,22 @@ pub(super) fn copy_packed(
     destination: &GenerationDirectory,
     expected: &[RelaySegmentBaseIdentity],
     encoding: packed::Encoding,
-) -> Result<()> {
+) -> Result<Option<[u8; 32]>> {
     let count = expected.len();
     if count == 0 {
-        return Ok(());
+        return Ok(None);
     }
-    if encoding == packed::Encoding::Compacted {
+    if matches!(encoding, packed::Encoding::Compacted | packed::Encoding::Retired) {
         let lineage = NativeLineage::open(source, expected)?;
         let parent = lineage.parent();
-        NativeLineage::export(destination, parent.as_deref(), LineageLayout::Packed(encoding))?;
-        return lineage.check();
+        let layout = if encoding == packed::Encoding::Retired {
+            LineageLayout::Retired
+        } else {
+            LineageLayout::Packed(encoding)
+        };
+        let (_, exported) = NativeLineage::export(destination, parent.as_deref(), layout)?;
+        lineage.check()?;
+        return Ok(exported.retired_digest());
     }
     let source = GenerationDirectory::open(&source.path.join(LINEAGE))?;
     let destination = GenerationDirectory::create(&destination.path.join(LINEAGE))?;
@@ -143,7 +200,8 @@ pub(super) fn copy_packed(
         output.sync_all()?;
     }
     source.guard()?;
-    destination.sync()
+    destination.sync()?;
+    Ok(None)
 }
 
 fn has_packed_file(directory: &GenerationDirectory) -> Result<bool> {

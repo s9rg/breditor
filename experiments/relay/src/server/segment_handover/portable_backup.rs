@@ -9,7 +9,7 @@ use super::{
     },
 };
 use crate::{
-    RelaySegmentBaseIdentity, RelaySegmentRoomBackupIdentity, Result,
+    Error, RelaySegmentBaseFile, RelaySegmentBaseIdentity, RelaySegmentRoomBackupIdentity, Result,
     log::generations::GenerationDirectory, room::SegmentCheckpointEncoding,
     server::ServerBackupHandle,
 };
@@ -28,6 +28,23 @@ pub struct RelaySegmentPortableBackupIdentity {
     pub native_predecessors: Vec<RelaySegmentBaseIdentity>,
 }
 
+/// Independently retained selection for a portable pack that retires older archives.
+/// The original room backup identity still names the same absolute cut and histories.
+#[derive(Clone, Debug, Deserialize, Eq, PartialEq, Serialize)]
+#[serde(rename_all = "camelCase", deny_unknown_fields)]
+pub struct RelaySegmentRetiredHistorySelection {
+    pub(super) backup: RelaySegmentPortableBackupIdentity,
+    pub(super) lineage_sha256: Option<[u8; 32]>,
+}
+
+impl RelaySegmentRetiredHistorySelection {
+    /// Original portable room cut to use for seal and deployment decisions.
+    #[must_use]
+    pub fn backup(&self) -> &RelaySegmentPortableBackupIdentity {
+        &self.backup
+    }
+}
+
 impl RelaySegmentRetainedBackup {
     /// Open a portable bundle using its independently saved identity.
     /// Every linked predecessor is verified from the bundle itself.
@@ -39,6 +56,17 @@ impl RelaySegmentRetainedBackup {
         expected: &RelaySegmentPortableBackupIdentity,
     ) -> Result<Self> {
         Ok(NamedPortableBackup::open(path, expected)?.copies.into_backup())
+    }
+
+    /// Open a migrated backup with its original cut and separately retained pack digest.
+    ///
+    /// # Errors
+    /// Refuses absent or changed files, stale selections and inconsistent retirement proofs.
+    pub fn open_portable_with_retired_history(
+        path: &Path,
+        expected: &RelaySegmentRetiredHistorySelection,
+    ) -> Result<Self> {
+        Ok(NamedPortableBackup::open_retired(path, expected)?.copies.into_backup())
     }
 }
 
@@ -62,7 +90,33 @@ impl NamedPortableBackup {
         directory: GenerationDirectory,
         expected: &RelaySegmentPortableBackupIdentity,
     ) -> Result<Self> {
-        let lineage = NativeLineage::open(&directory, &expected.native_predecessors)?;
+        Self::open_at_digest(directory, expected, None)
+    }
+
+    pub(super) fn open_retired(
+        path: &Path,
+        expected: &RelaySegmentRetiredHistorySelection,
+    ) -> Result<Self> {
+        if expected.lineage_sha256.is_some() == expected.backup.native_predecessors.is_empty() {
+            return Err(Error::Contract("portable archive retirement selection shape"));
+        }
+        Self::open_at_digest(
+            GenerationDirectory::open(path)?,
+            &expected.backup,
+            expected.lineage_sha256,
+        )
+    }
+
+    pub(super) fn open_at_digest(
+        directory: GenerationDirectory,
+        expected: &RelaySegmentPortableBackupIdentity,
+        digest: Option<[u8; 32]>,
+    ) -> Result<Self> {
+        let lineage = NativeLineage::open_with_retired_digest(
+            &directory,
+            &expected.native_predecessors,
+            digest,
+        )?;
         let copies = RetainedBackupCopies::open(&directory, lineage.parent(), &expected.retained)?;
         let backup = Self { directory, lineage, copies };
         backup.check_files()?;
@@ -77,6 +131,13 @@ impl NamedPortableBackup {
         self.directory.guard()?;
         self.lineage.check()?;
         self.copies.check(&self.directory)
+    }
+
+    pub(in crate::server) fn check_retired_history(
+        &self,
+        source: Option<&RelaySegmentBaseFile>,
+    ) -> Result<()> {
+        self.lineage.check_retired_history(source)
     }
 }
 
@@ -229,6 +290,49 @@ impl ServerBackupHandle {
         client_layout: ClientLayout,
         encoding: SegmentCheckpointEncoding,
     ) -> Result<RelaySegmentPortableBackupIdentity> {
+        self.capture_portable_with_lineage(
+            principal,
+            token,
+            destination,
+            lineage_layout,
+            client_layout,
+            encoding,
+        )
+        .map(|selection| selection.backup)
+    }
+
+    /// Capture an authenticated portable cut and retire all verified predecessor archives,
+    /// including those written before compactable checkpoints were supported.
+    /// Retain the returned selection independently of the backup files.
+    ///
+    /// # Errors
+    /// Refuses unauthorized or superseded sources, changed files, oversized history
+    /// and occupied destinations. Retry at a fresh absent path after failure.
+    pub fn capture_portable_relay_segment_with_retired_history(
+        &self,
+        principal: &str,
+        token: &str,
+        destination: &Path,
+    ) -> Result<RelaySegmentRetiredHistorySelection> {
+        self.capture_portable_with_lineage(
+            principal,
+            token,
+            destination,
+            LineageLayout::Retired,
+            ClientLayout::Packed,
+            SegmentCheckpointEncoding::Compactable,
+        )
+    }
+
+    fn capture_portable_with_lineage(
+        &self,
+        principal: &str,
+        token: &str,
+        destination: &Path,
+        lineage_layout: LineageLayout,
+        client_layout: ClientLayout,
+        encoding: SegmentCheckpointEncoding,
+    ) -> Result<RelaySegmentRetiredHistorySelection> {
         let host = &self.host;
         host.authentication.authenticate(principal, token)?;
         let (captured, source_epoch) = begin_capture(host, principal, destination, encoding)?;
@@ -243,6 +347,9 @@ impl ServerBackupHandle {
             lineage.check()?;
             client_copies.check(&captured.directory)
         })?;
-        Ok(RelaySegmentPortableBackupIdentity { retained, native_predecessors })
+        Ok(RelaySegmentRetiredHistorySelection {
+            backup: RelaySegmentPortableBackupIdentity { retained, native_predecessors },
+            lineage_sha256: lineage.retired_digest(),
+        })
     }
 }
