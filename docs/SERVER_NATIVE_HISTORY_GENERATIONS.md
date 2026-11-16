@@ -197,6 +197,16 @@ A stale host and a prepared control cannot run maintenance. The relay uses the
 existing native receipts, authentication and client editing protocol. Existing
 sockets keep their document and comment leases across the boundary.
 
+A linked or portably restored relay exposes the same boundary intent on its
+`ServerBackupHandle`. Its host-local `native_history_descriptor` authenticates
+the current reader. The owner can also call `storage_capacity` and
+`rotate_log_generation` on this handle. Each call holds the current serving
+epoch and checks custody of the restored room and retained client inputs.
+A native boundary appends its own durable receipt. Physical rotation uses
+the separate WAL receipt and preserves the global native record cut.
+Cold retries of either action return the original receipt. Clients can keep
+their existing connections and writer identities through both operations.
+
 The November 13 checkpoint `00b3e729` exercises the source handle through cold
 reopen and epoch replacement. The published-room test continues both lanes
 with the original client socket still open, then delivers outstanding offline

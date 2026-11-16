@@ -2,6 +2,15 @@
 
 ## November 15 collaboration recovery
 
+[Live maintenance after portable activation](qualification/2026-11-15-linked-relay-native-maintenance.json)
+continues the document and comment receivers independently and rotates the
+writable WAL under the same authenticated owner and current deployment epoch.
+Source and clean-installed runs deliver document and review Undo through the
+same sockets after the boundaries, crash the relay, compare the original
+receipts on cold retry and restore Redo. Wrong credentials and a read-only
+principal cannot change the cut. The legacy workflow and 79 native handover,
+fencing and process-recovery tests pass.
+
 [The upload queue recovery fix](qualification/2026-11-15-retained-upload-descriptors.json)
 resolves a reproduced `Too many open files` error in both restore and cold startup.
 With the same 48-file limit, the relay restores, reopens and exports all 52
