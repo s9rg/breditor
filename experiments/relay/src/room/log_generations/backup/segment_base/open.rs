@@ -2,7 +2,7 @@
 use super::{RelaySegmentBaseFile, RelaySegmentBaseIdentity};
 use crate::{
     Error, Result, Room,
-    archive_input::ArchiveInput,
+    archive_input::{ArchiveInput, CheckpointInput},
     log::{
         Log,
         generations::{SegmentArchiveOrigin, SelectedFile},
@@ -64,17 +64,17 @@ impl RelaySegmentBaseFile {
     ) -> Result<Self> {
         let archive = ArchiveInput::new(archive, crate::MAX_SERVER_LOG_GENERATION_BACKUP_BYTES)?;
         let checkpoint = ArchiveInput::new(checkpoint, MAX_CHECKPOINT_BYTES as u64)?;
-        Self::open_inputs(archive, checkpoint, expected, parent)
+        Self::open_inputs(archive, CheckpointInput::raw(checkpoint), expected, parent)
     }
 
     pub(crate) fn open_inputs(
         archive: ArchiveInput,
-        checkpoint: ArchiveInput,
+        checkpoint: CheckpointInput,
         expected: &RelaySegmentBaseIdentity,
         parent: Option<Arc<Self>>,
     ) -> Result<Self> {
         if archive.all().len() > crate::MAX_SERVER_LOG_GENERATION_BACKUP_BYTES
-            || checkpoint.all().len() > MAX_CHECKPOINT_BYTES as u64
+            || checkpoint.len() > MAX_CHECKPOINT_BYTES as u64
         {
             return Err(Error::Contract("relay segment base input budget"));
         }
@@ -115,11 +115,12 @@ impl RelaySegmentBaseFile {
             checkpoint,
             sections,
         };
-        let input = result.checkpoint.all();
+        let input = &result.checkpoint;
         if input.len() == 0 || input.digest()? != expected.checkpoint.sha256 {
             return Err(Error::Contract("relay segment base checkpoint digest differs"));
         }
-        let header: Header = serde_json::from_reader(BufReader::new(input.reader()))?;
+        let header: Header =
+            input.visit(|reader| Ok(serde_json::from_reader(BufReader::new(reader))?))?;
         header.check_selection(&expected.checkpoint)?;
         result.check()?;
         Ok(result)
@@ -133,7 +134,7 @@ impl RelaySegmentBaseFile {
 
     pub(crate) fn check(&self) -> Result<()> {
         let mut checked = None;
-        for input in self.lineage().flat_map(|base| [&base.archive, &base.checkpoint]) {
+        for input in self.lineage().flat_map(|base| [&base.archive, &base.checkpoint.input]) {
             if checked.is_some_and(|previous| input.shares_handle(previous)) {
                 continue;
             }
@@ -204,8 +205,8 @@ impl RelaySegmentBaseFile {
 
     pub(in crate::room::log_generations) fn checkpoint_state(&self) -> Result<Checkpoint> {
         self.check()?;
-        let input = self.checkpoint.all();
-        let state: Checkpoint = serde_json::from_reader(BufReader::new(input.reader()))?;
+        let state: Checkpoint =
+            self.checkpoint.visit(|reader| Ok(serde_json::from_reader(BufReader::new(reader))?))?;
         state.check_selection(&self.identity.checkpoint)?;
         self.check()?;
         Ok(state)

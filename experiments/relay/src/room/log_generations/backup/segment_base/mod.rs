@@ -12,7 +12,7 @@ mod tests;
 
 use crate::{
     RelayCheckpointIdentity, ServerLogGenerationBackupIdentity,
-    archive_input::{ArchiveEntry, ArchiveInput},
+    archive_input::{ArchiveEntry, ArchiveInput, CheckpointInput},
 };
 use serde::{Deserialize, Serialize};
 use std::{collections::BTreeMap, sync::Arc};
@@ -35,6 +35,6 @@ pub struct RelaySegmentBaseFile {
     root_generation: String,
     parent: Option<Arc<Self>>,
     archive: ArchiveInput,
-    checkpoint: ArchiveInput,
+    checkpoint: CheckpointInput,
     sections: BTreeMap<String, ArchiveEntry>,
 }

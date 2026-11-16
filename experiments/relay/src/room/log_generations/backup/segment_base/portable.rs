@@ -1,7 +1,9 @@
 //! Reuse exact admitted ancestor bytes when producing an independent portable copy.
 use super::RelaySegmentBaseFile;
 use crate::{
-    Error, Result, Room, archive_input::ArchiveInput, log::generations::GenerationFileWitness,
+    Error, Result, Room,
+    archive_input::{ArchiveInput, CheckpointInput},
+    log::generations::GenerationFileWitness,
 };
 use std::{
     io::{self, Write},
@@ -18,14 +20,8 @@ impl Room {
 impl RelaySegmentBaseFile {
     pub(crate) const CHECKPOINT_LIMIT: u64 =
         crate::room::materialized_checkpoint::MAX_CHECKPOINT_BYTES as u64;
-    pub(crate) const PACKED_PAIR_LIMIT: u64 =
-        crate::MAX_SERVER_LOG_GENERATION_BACKUP_BYTES + Self::CHECKPOINT_LIMIT;
-
-    pub(crate) fn write_framed_pair(&self, output: &mut impl Write) -> Result<()> {
-        output.write_all(&self.archive.all().len().to_be_bytes())?;
-        output.write_all(&self.checkpoint.all().len().to_be_bytes())?;
-        write_original(&self.archive, output)?;
-        write_original(&self.checkpoint, output)
+    pub(crate) fn original_inputs(&self) -> (&ArchiveInput, &CheckpointInput) {
+        (&self.archive, &self.checkpoint)
     }
 
     pub(crate) fn write_original_pair(
@@ -34,7 +30,7 @@ impl RelaySegmentBaseFile {
         checkpoint: &mut impl Write,
     ) -> Result<()> {
         write_original(&self.archive, archive)?;
-        write_original(&self.checkpoint, checkpoint)
+        self.checkpoint.write_to(checkpoint)
     }
 
     pub(crate) fn check_named_pair(
@@ -43,7 +39,7 @@ impl RelaySegmentBaseFile {
         checkpoint: (&GenerationFileWitness, &Path),
     ) -> Result<()> {
         self.archive.check_named(archive.0, archive.1)?;
-        self.checkpoint.check_named(checkpoint.0, checkpoint.1)
+        self.checkpoint.input.check_named(checkpoint.0, checkpoint.1)
     }
 }
 

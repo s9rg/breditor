@@ -30,14 +30,20 @@ pub(super) fn seal(
     let path = parent.join("portable-relocation-source");
     let original = parent.join("portable-relocation-split");
     let captured = handle.capture_portable_relay_segment("owner", token, &original)?;
-    RelaySegmentRetainedBackup::copy_portable_fully_packed(&original, &path, &captured)?;
+    RelaySegmentRetainedBackup::copy_portable_with_compressed_checkpoints(
+        &original, &path, &captured,
+    )?;
     let direct = parent.join("portable-relocation-direct");
-    let direct_identity =
-        handle.capture_fully_packed_portable_relay_segment("owner", token, &direct)?;
+    let direct_identity = handle
+        .capture_portable_relay_segment_with_compressed_checkpoints("owner", token, &direct)?;
     assert_eq!(direct_identity, captured);
     assert_eq!(
         fs::read(direct.join("client-inputs.bin"))?,
         fs::read(path.join("client-inputs.bin"))?
+    );
+    assert_eq!(
+        fs::read(direct.join("native-lineage/packed.bin"))?,
+        fs::read(path.join("native-lineage/packed.bin"))?
     );
     fs::rename(original, parent.join("portable-relocation-retired-split"))?;
     let intent = RelaySegmentPortableSeal::select(captured)?;

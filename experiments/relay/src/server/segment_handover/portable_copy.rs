@@ -3,6 +3,7 @@ use super::{
     backup_files::copy_file,
     capture::{CHECKPOINT, NATIVE, RASTERS},
     native_lineage, packed_clients,
+    packed_native_lineage::Encoding,
     portable_backup::NamedPortableBackup,
     retained_backup::ClientLayout,
 };
@@ -29,7 +30,13 @@ impl RelaySegmentRetainedBackup {
         destination: &Path,
         expected: &RelaySegmentPortableBackupIdentity,
     ) -> Result<()> {
-        Self::copy_portable_with_layout(source, destination, expected, ClientLayout::Split)
+        Self::copy_portable_with_layout(
+            source,
+            destination,
+            expected,
+            ClientLayout::Split,
+            Encoding::Raw,
+        )
     }
 
     /// Copy into a fresh portable directory with native predecessors and retained
@@ -44,7 +51,33 @@ impl RelaySegmentRetainedBackup {
         destination: &Path,
         expected: &RelaySegmentPortableBackupIdentity,
     ) -> Result<()> {
-        Self::copy_portable_with_layout(source, destination, expected, ClientLayout::Packed)
+        Self::copy_portable_with_layout(
+            source,
+            destination,
+            expected,
+            ClientLayout::Packed,
+            Encoding::Raw,
+        )
+    }
+
+    /// Copy an existing portable backup with lossless predecessor checkpoint compression.
+    /// Supply the independently saved selection and a fresh path. The ordinary packed
+    /// copy methods can export the exact original checkpoint representation again.
+    /// # Errors
+    /// Refuses invalid inputs or invalid destinations. A failed attempt may leave a
+    /// partial target. Retry at a fresh path.
+    pub fn copy_portable_with_compressed_checkpoints(
+        source: &Path,
+        destination: &Path,
+        expected: &RelaySegmentPortableBackupIdentity,
+    ) -> Result<()> {
+        Self::copy_portable_with_layout(
+            source,
+            destination,
+            expected,
+            ClientLayout::Packed,
+            Encoding::Compressed,
+        )
     }
 
     fn copy_portable_with_layout(
@@ -52,11 +85,17 @@ impl RelaySegmentRetainedBackup {
         destination: &Path,
         expected: &RelaySegmentPortableBackupIdentity,
         layout: ClientLayout,
+        encoding: Encoding,
     ) -> Result<()> {
         expected.retained.verify_pins(&BTreeSet::new())?;
         let source = GenerationDirectory::open(source)?;
         let destination = source.create_outside(destination)?;
-        native_lineage::copy_packed(&source, &destination, expected.native_predecessors.len())?;
+        native_lineage::copy_packed(
+            &source,
+            &destination,
+            expected.native_predecessors.len(),
+            encoding,
+        )?;
         for (name, limit) in [
             (NATIVE, MAX_SERVER_LOG_GENERATION_BACKUP_BYTES),
             (CHECKPOINT, RelaySegmentBaseFile::CHECKPOINT_LIMIT),

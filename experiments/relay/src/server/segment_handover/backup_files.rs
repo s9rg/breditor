@@ -101,7 +101,7 @@ impl<'a> BackupCopyInput<'a> {
         self.input.all().len()
     }
 
-    pub(super) fn write(&self, output: &mut impl Write) -> Result<()> {
+    pub(super) fn write(&self, output: &mut dyn Write) -> Result<()> {
         self.check()?;
         if io::copy(&mut self.input.all().reader(), output)? != self.len() {
             return Err(Error::Contract("portable backup source copy was truncated"));

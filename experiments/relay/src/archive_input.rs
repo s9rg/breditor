@@ -1,5 +1,7 @@
 //! Bounded, independent reads from archive bytes or a held archive inode.
+mod checkpoint;
 use crate::{Error, Result, archive_digest::ArchiveDigest, log::generations::GenerationFileStamp};
+pub(crate) use checkpoint::CheckpointInput;
 use serde::{Serialize, de::DeserializeOwned};
 use sha2::{Digest, Sha256};
 use std::{

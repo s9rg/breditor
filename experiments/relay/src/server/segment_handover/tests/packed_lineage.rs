@@ -20,6 +20,29 @@ const PREDECESSORS: u32 = 26;
 const EMFILE: i32 = 24;
 
 #[test]
+fn compact_frame_uses_raw_bytes_when_gzip_would_grow_the_checkpoint() -> TestResult {
+    use super::super::packed_native_lineage::{Encoding, write_frame};
+    let source = super::Source::open()?;
+    let path = source.parent.join("raw-checkpoint-frame");
+    let mut output = File::create_new(&path)?;
+    write_frame(
+        &mut output,
+        Encoding::Compressed,
+        0,
+        4,
+        |_| Ok(()),
+        |writer| Ok(writer.write_all(b"tiny")?),
+    )?;
+    let frame = fs::read(path)?;
+    assert_eq!(frame.len(), 24 + 4);
+    assert_eq!(&frame[..8], &0_u64.to_be_bytes());
+    assert_eq!(&frame[8..16], &4_u64.to_be_bytes());
+    assert_eq!(&frame[16..24], &4_u64.to_be_bytes());
+    assert_eq!(&frame[24..], b"tiny");
+    Ok(())
+}
+
+#[test]
 fn long_lineage_moves_and_reopens_under_a_small_descriptor_limit() -> TestResult {
     let (files, mut room, _) = segment_handover_test_source(3, true, true)?;
     let parent = files.room().parent().ok_or("fixture directory")?.to_owned();
@@ -69,7 +92,13 @@ fn long_lineage_moves_and_reopens_under_a_small_descriptor_limit() -> TestResult
     let split = handle.capture_portable_relay_segment("owner", &token, &parent.join("split"))?;
     let packed =
         handle.capture_packed_portable_relay_segment("owner", &token, &parent.join("packed"))?;
+    let compressed = handle.capture_portable_relay_segment_with_compressed_checkpoints(
+        "owner",
+        &token,
+        &parent.join("compressed"),
+    )?;
     assert_eq!(packed, split);
+    assert_eq!(compressed, packed);
     assert_eq!(packed.native_predecessors.len(), PREDECESSORS as usize);
     fs::write(parent.join("selection.json"), serde_json::to_vec(&packed)?)?;
     fs::write(parent.join("expected-catchup"), document)?;
@@ -84,6 +113,7 @@ fn long_lineage_moves_and_reopens_under_a_small_descriptor_limit() -> TestResult
     }
     fs::rename(parent.join("packed"), parent.join("moved"))?;
     check_bad_pack(&parent, &packed)?;
+    check_bad_compression(&parent.join("compressed"), &compressed)?;
     check_copy_refusals(&parent, &split)?;
 
     for layout in ["split", "moved"] {
@@ -134,6 +164,31 @@ fn cold_lineage_worker() -> TestResult {
             assert_eq!(fs::read(original)?, before);
             assert!(!source.join("native-lineage/packed.bin").exists());
             restore_and_reopen(&root, "converted", &selected)?;
+            let converted = root.join("converted-compressed");
+            RelaySegmentRetainedBackup::copy_portable_with_compressed_checkpoints(
+                &source, &converted, &selected,
+            )?;
+            let filename = "native-lineage/packed.bin";
+            assert_eq!(
+                fs::read(converted.join(filename))?,
+                fs::read(root.join("compressed").join(filename))?
+            );
+            assert!(
+                fs::metadata(converted.join(filename))?.len()
+                    < fs::metadata(root.join("moved").join(filename))?.len()
+            );
+            restore_and_reopen(&root, "converted-compressed", &selected)?;
+            let restored_raw = root.join("uncompressed");
+            RelaySegmentRetainedBackup::copy_portable_fully_packed(
+                &converted,
+                &restored_raw,
+                &selected,
+            )?;
+            assert_eq!(
+                fs::read(restored_raw.join(filename))?,
+                fs::read(root.join("moved").join(filename))?
+            );
+            restore_and_reopen(&root, "uncompressed", &selected)?;
         }
         "moved" => {
             restore_and_reopen(&root, "moved", &selected)?;
@@ -143,9 +198,44 @@ fn cold_lineage_worker() -> TestResult {
                 &selected,
             )?;
             restore_and_reopen(&root, "packed-copy", &selected)?;
+            let compressed = root.join("compressed-from-packed");
+            RelaySegmentRetainedBackup::copy_portable_with_compressed_checkpoints(
+                &root.join("moved"),
+                &compressed,
+                &selected,
+            )?;
+            assert_eq!(
+                fs::read(compressed.join("native-lineage/packed.bin"))?,
+                fs::read(root.join("compressed/native-lineage/packed.bin"))?
+            );
+            restore_and_reopen(&root, "compressed-from-packed", &selected)?;
         }
         _ => return Err("unknown fixture layout".into()),
     }
+    Ok(())
+}
+
+fn check_bad_compression(path: &Path, selected: &RelaySegmentPortableBackupIdentity) -> TestResult {
+    let packed = path.join("native-lineage/packed.bin");
+    let original = fs::read(&packed)?;
+    assert_eq!(&original[..8], b"BRLINE2\n");
+    let archive = usize::try_from(u64::from_be_bytes(original[12..20].try_into()?))?;
+    let decoded = u64::from_be_bytes(original[20..28].try_into()?);
+    let stored = u64::from_be_bytes(original[28..36].try_into()?);
+    assert!(stored + 1 < decoded);
+    let end = 36 + archive + usize::try_from(stored)?;
+    let mut wrong_trailer = original.clone();
+    wrong_trailer[end - 8] ^= 1;
+    let mut wrong_length = original.clone();
+    wrong_length[20..28].copy_from_slice(&(decoded - 1).to_be_bytes());
+    let mut trailing = original.clone();
+    trailing[28..36].copy_from_slice(&(stored + 1).to_be_bytes());
+    trailing.insert(end, 0);
+    for invalid in [wrong_trailer, wrong_length, trailing] {
+        fs::write(&packed, invalid)?;
+        assert!(RelaySegmentRetainedBackup::open_portable(path, selected).is_err());
+    }
+    fs::write(packed, original)?;
     Ok(())
 }
 

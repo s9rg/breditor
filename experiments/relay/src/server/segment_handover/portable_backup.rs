@@ -2,6 +2,7 @@
 use super::{
     capture::begin_capture,
     native_lineage::{LineageLayout, NativeLineage},
+    packed_native_lineage::Encoding,
     retained_backup::{
         ClientLayout, RelaySegmentRetainedBackup, RelaySegmentRetainedBackupIdentity,
         RetainedBackupCopies, RetainedCopies,
@@ -116,7 +117,7 @@ impl ServerBackupHandle {
             principal,
             token,
             destination,
-            LineageLayout::Packed,
+            LineageLayout::Packed(Encoding::Raw),
             ClientLayout::Split,
         )
     }
@@ -138,7 +139,28 @@ impl ServerBackupHandle {
             principal,
             token,
             destination,
-            LineageLayout::Packed,
+            LineageLayout::Packed(Encoding::Raw),
+            ClientLayout::Packed,
+        )
+    }
+
+    /// Capture a fully packed portable backup using lossless compression for predecessor
+    /// checkpoints. The original checkpoint bytes and independently saved identity are
+    /// verified before the capture is confirmed. Run off async I/O workers.
+    /// # Errors
+    /// Refuses invalid owner authentication, stale authority, changed files,
+    /// occupied destinations and I/O failures. Retry at a fresh absent path.
+    pub fn capture_portable_relay_segment_with_compressed_checkpoints(
+        &self,
+        principal: &str,
+        token: &str,
+        destination: &Path,
+    ) -> Result<RelaySegmentPortableBackupIdentity> {
+        self.capture_portable_relay_segment_with_layout(
+            principal,
+            token,
+            destination,
+            LineageLayout::Packed(Encoding::Compressed),
             ClientLayout::Packed,
         )
     }

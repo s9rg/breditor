@@ -1,18 +1,13 @@
 //! Copy and verify the exact linked native predecessor chain in oldest-first order.
 use super::{
-    backup_files::{BackupCopyInput, copy_file, read_owned},
+    backup_files::{BackupCopyInput, read_owned},
     packed_native_lineage::{self as packed, PackedNativeLineage},
 };
 use crate::{
-    Error, MAX_SERVER_LOG_GENERATION_BACKUP_BYTES, RelaySegmentBaseFile, RelaySegmentBaseIdentity,
-    Result,
+    MAX_SERVER_LOG_GENERATION_BACKUP_BYTES, RelaySegmentBaseFile, RelaySegmentBaseIdentity, Result,
     log::generations::{GenerationDirectory, GenerationFileWitness},
 };
-use std::{
-    fs,
-    io::{self, Write},
-    sync::Arc,
-};
+use std::{fs, io, sync::Arc};
 
 const LINEAGE: &str = "native-lineage";
 
@@ -34,7 +29,7 @@ enum LineageFiles {
 #[derive(Clone, Copy)]
 pub(super) enum LineageLayout {
     Split,
-    Packed,
+    Packed(packed::Encoding),
 }
 
 impl NativeLineage {
@@ -50,7 +45,7 @@ impl NativeLineage {
             let directory = GenerationDirectory::create(&destination.path.join(LINEAGE))?;
             match layout {
                 LineageLayout::Split => write_split(&directory, &chain)?,
-                LineageLayout::Packed => packed::write(&directory, &chain)?,
+                LineageLayout::Packed(encoding) => packed::write(&directory, &chain, encoding)?,
             }
             directory.sync()?;
             directory.guard()?;
@@ -108,6 +103,7 @@ pub(super) fn copy_packed(
     source: &GenerationDirectory,
     destination: &GenerationDirectory,
     count: usize,
+    encoding: packed::Encoding,
 ) -> Result<()> {
     if count == 0 {
         return Ok(());
@@ -115,11 +111,9 @@ pub(super) fn copy_packed(
     let source = GenerationDirectory::open(&source.path.join(LINEAGE))?;
     let destination = GenerationDirectory::create(&destination.path.join(LINEAGE))?;
     if has_packed_file(&source)? {
-        packed::check_layout(&source)?;
-        let count = u32::try_from(count).map_err(|_| Error::Contract("packed lineage count"))?;
-        copy_file(&source, &destination, packed::FILE, packed::maximum_bytes(count)?)?;
+        packed::copy(&source, &destination, count, encoding)?;
     } else {
-        let mut output = packed::create(&destination, count)?;
+        let mut output = packed::create(&destination, count, encoding)?;
         for index in 0..count {
             let archive = archive_name(index);
             let checkpoint = checkpoint_name(index);
@@ -130,10 +124,14 @@ pub(super) fn copy_packed(
                 &checkpoint,
                 RelaySegmentBaseFile::CHECKPOINT_LIMIT,
             )?;
-            output.write_all(&archive.len().to_be_bytes())?;
-            output.write_all(&checkpoint.len().to_be_bytes())?;
-            archive.write(&mut output)?;
-            checkpoint.write(&mut output)?;
+            packed::write_frame(
+                &mut output,
+                encoding,
+                archive.len(),
+                checkpoint.len(),
+                |out| archive.write(out),
+                |out| checkpoint.write(out),
+            )?;
         }
         output.sync_all()?;
     }

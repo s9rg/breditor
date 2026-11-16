@@ -707,7 +707,15 @@ async function run(mode, {distribution, rich}, executable, parent, journalKind, 
         assert.ok(statSync(join(split, '0.archive')).isFile());
         assert.throws(() => readFileSync(join(split, 'packed.bin')), {code:'ENOENT'});
         const packed = join(parent, 'portable-relocation-source', 'native-lineage');
-        assert.ok(readFileSync(join(packed, 'packed.bin')).subarray(0, 8).equals(Buffer.from('BRLINE1\n')));
+        const packedFile = join(packed, 'packed.bin');
+        assert.ok(readFileSync(packedFile).subarray(0, 8).equals(Buffer.from('BRLINE2\n')));
+        let rawLineageBytes = 12;
+        for (let i = 0; i < result.portableSeal.nativePredecessors; i++) {
+          rawLineageBytes += 16 + statSync(join(split, i + '.archive')).size
+            + statSync(join(split, i + '.checkpoint')).size;
+        }
+        const compressedLineageBytes = statSync(packedFile).size;
+        assert.ok(compressedLineageBytes < rawLineageBytes);
         assert.throws(() => readFileSync(join(packed, '0.archive')), {code:'ENOENT'});
         const converted = join(parent, 'portable-relocation-source');
         assert.ok(readFileSync(join(converted, 'client-inputs.bin')).subarray(0, 8).equals(Buffer.from('BRCLNT1\n')));
@@ -749,6 +757,9 @@ async function run(mode, {distribution, rich}, executable, parent, journalKind, 
           sealedCaptureRefusals: 1,
           sealedNativePredecessors: result.portableSeal.nativePredecessors,
           packedNativeLineages: 1,
+          compressedCheckpointLineages: 1,
+          rawLineageBytes,
+          compressedLineageBytes,
           packedCopiesOfExistingSplit: 1,
           packedClientCohorts: 1,
           retiredOriginalPaths: originalPaths.length,
