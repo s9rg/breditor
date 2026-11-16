@@ -2,6 +2,7 @@
 use super::{POLICY, Result, next_input, read, storage};
 use breditor_collab_relay::{
     RelayCheckpoint, RelayCheckpointIdentity, ServerNativeHistoryBoundary, ServerNativeHistoryLane,
+    ServerNativeHistorySelection,
     server::{RelaySegmentRetainedBackup, ServerBackupHandle},
 };
 use serde::Deserialize;
@@ -26,6 +27,9 @@ enum Action {
     Capacity,
     NativeCapacity,
     Boundary { lane: ServerNativeHistoryLane, boundary: ServerNativeHistoryBoundary },
+    PrepareBoundary { lane: ServerNativeHistoryLane, boundary: ServerNativeHistoryBoundary },
+    ApplyPreparedBoundary { selection: Box<ServerNativeHistorySelection> },
+    ResolveBoundary { selection: Box<ServerNativeHistorySelection> },
     Rotate { next: String },
     Checkpoint,
     Pack { generation: String },
@@ -48,6 +52,17 @@ impl Command {
             }
             Action::Boundary { lane, boundary } => serde_json::to_value(
                 handle.apply_native_history_boundary(&principal, &token, lane, boundary).await?,
+            )?,
+            Action::PrepareBoundary { lane, boundary } => serde_json::to_value(
+                handle.prepare_native_history_boundary(&principal, &token, lane, boundary).await?,
+            )?,
+            Action::ApplyPreparedBoundary { selection } => serde_json::to_value(
+                handle
+                    .apply_prepared_native_history_boundary(&principal, &token, *selection)
+                    .await?,
+            )?,
+            Action::ResolveBoundary { selection } => serde_json::to_value(
+                handle.resolve_native_history_boundary(&principal, &token, *selection).await?,
             )?,
             Action::Rotate { next } => serde_json::to_value(
                 handle.rotate_log_generation(&principal, &token, &next).await?,

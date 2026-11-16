@@ -174,6 +174,29 @@ point-in-time observation. Host maintenance chooses when to seal or continue,
 and each write independently checks its available capacity. Existing log and
 raster capacity reports continue to describe those separate resources.
 
+## Prepare an explicitly selected native boundary
+
+`prepare_native_history_boundary` stages the same authenticated native
+operation on a private candidate and measures the projected capacity. The
+preview checks the exact typed WAL frame size, record allowance and any
+required physical rotation. Preparing keeps durable storage and all live
+owners untouched. The caller selects the resulting
+`breditor/relay-native-history-selection` version 1 value.
+
+`apply_prepared_native_history_boundary` checks current owner authority,
+the original room binding, exact next WAL sequence and terminal digest,
+native before and after digests, and the measured append cost. A changed
+cut requires a new preview. Application appends the existing boundary
+record and uses its normal durable receipt. The private source and
+relocated-handle methods additionally require the active serving epoch
+and verify the held custody around each operation.
+
+After a lost reply, `resolve_native_history_boundary` reads the stored
+receipt by its exact intent, sequence and native cuts. It can resolve it
+after subsequent writes or cold recovery and issues no append. Prepared
+selections are detached values and each call authenticates independently.
+The ordinary boundary methods still support their original exact-intent retry.
+
 Server-log generations, matching client/relay negotiation, complete asset and
 outbox dependency closure, historic-copy decisions, coordinated recovery and
 authenticated room activation remain separate architectural requirements.

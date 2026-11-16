@@ -2,11 +2,59 @@
 use crate::{
     Error, Result, Room, ServerLogGenerationReceipt, ServerNativeHistoryBoundary,
     ServerNativeHistoryCapacity, ServerNativeHistoryDescriptor, ServerNativeHistoryLane,
-    ServerNativeHistoryReceipt, ServerRoomStorageCapacity,
+    ServerNativeHistoryPlan, ServerNativeHistoryReceipt, ServerNativeHistorySelection,
+    ServerRoomStorageCapacity,
     server::{Host, ServerBackupHandle, deployment_fence},
 };
 
 impl ServerBackupHandle {
+    /// Preview a native boundary on the currently fenced room and its actual WAL.
+    /// # Errors
+    /// Refuses non-owner credentials, stale service, uncertain custody or an inadmissible boundary.
+    pub async fn prepare_native_history_boundary(
+        &self,
+        principal: &str,
+        token: &str,
+        lane: ServerNativeHistoryLane,
+        boundary: ServerNativeHistoryBoundary,
+    ) -> Result<ServerNativeHistoryPlan> {
+        self.maintain(principal, token, move |_, room, principal| {
+            room.prepare_native_history_boundary(principal, lane, boundary)
+        })
+        .await
+    }
+
+    /// Apply a selected native boundary under the current serving lease.
+    /// A started operation can finish after its waiter is cancelled.
+    /// # Errors
+    /// Refuses non-owner credentials, stale service or selection, drifted append cost or storage.
+    pub async fn apply_prepared_native_history_boundary(
+        &self,
+        principal: &str,
+        token: &str,
+        selection: ServerNativeHistorySelection,
+    ) -> Result<ServerNativeHistoryReceipt> {
+        self.maintain(principal, token, move |_, room, principal| {
+            room.apply_prepared_native_history_boundary(principal, selection)
+        })
+        .await
+    }
+
+    /// Inspect the exact durable receipt for this selected operation under the current serving lease.
+    /// # Errors
+    /// Refuses non-owner credentials, stale service, uncertain storage or mismatched receipts.
+    pub async fn resolve_native_history_boundary(
+        &self,
+        principal: &str,
+        token: &str,
+        selection: ServerNativeHistorySelection,
+    ) -> Result<Option<ServerNativeHistoryReceipt>> {
+        self.maintain(principal, token, move |_, room, principal| {
+            room.resolve_native_history_boundary(principal, &selection)
+        })
+        .await
+    }
+
     /// Observe native journal and review capacity as the current authenticated room owner.
     /// # Errors
     /// Refuses non-owner credentials, unfenced or stale hosts, uncertain custody or an invalid cut.

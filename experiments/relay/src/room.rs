@@ -84,8 +84,9 @@ pub use backup::{
 };
 pub(crate) use native_history::NativeHistoryBoundary;
 pub use native_history::{
-    ServerNativeHistoryBoundary, ServerNativeHistoryCapacity, ServerNativeHistoryDescriptor,
-    ServerNativeHistoryFamily, ServerNativeHistoryLane, ServerNativeHistoryReceipt,
+    ServerNativeBoundaryAppend, ServerNativeHistoryBoundary, ServerNativeHistoryCapacity,
+    ServerNativeHistoryDescriptor, ServerNativeHistoryFamily, ServerNativeHistoryLane,
+    ServerNativeHistoryPlan, ServerNativeHistoryReceipt, ServerNativeHistorySelection,
     ServerNativeLaneCapacity,
 };
 pub use participant_inventory::{

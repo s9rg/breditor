@@ -304,6 +304,29 @@ impl Log {
         let encoded = frame::encode(event, self.family, self.next, self.previous)?;
         self.append_encoded(&encoded)
     }
+    pub(crate) fn append_cut(&self) -> Result<(u64, [u8; 32])> {
+        self.ready()?;
+        if self.file.metadata()?.len() != self.bytes {
+            return Err(Error::Contract("live log append cut length differs"));
+        }
+        Ok((self.next, self.previous))
+    }
+
+    pub(crate) fn preview_append(&self, event: Event) -> Result<(u64, bool)> {
+        let (sequence, previous) = self.append_cut()?;
+        let encoded = frame::encode(event, self.family, sequence, previous)?;
+        let rotate = self.check_append_capacity(1, encoded.bytes)?;
+        if rotate {
+            let state =
+                self.generations.as_ref().ok_or(Error::Contract("original log does not rotate"))?;
+            if !generations::Generations::can_stage_rotation(state.rotation_stage_count()?) {
+                return Err(Error::Contract("physical rotation staging capacity"));
+            }
+        }
+        self.ready()?;
+        Ok((encoded.bytes, rotate))
+    }
+
     fn check_append_capacity(&self, records: u64, bytes: u64) -> Result<bool> {
         if let Some(state) = &self.generations {
             if self.next.checked_add(records).is_none_or(|next| {

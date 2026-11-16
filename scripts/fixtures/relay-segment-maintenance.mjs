@@ -2,6 +2,9 @@
 import assert from 'node:assert/strict';
 
 const native = (lane, boundary) => ({kind: 'boundary', lane, boundary});
+const preview = intent => ({...intent, kind: 'prepareBoundary'});
+const apply = selection => ({kind: 'applyPreparedBoundary', selection});
+const resolve = selection => ({kind: 'resolveBoundary', selection});
 const describe = {kind: 'describe'};
 const capacity = {kind: 'capacity'};
 const nativeCapacity = {kind: 'nativeCapacity'};
@@ -54,6 +57,7 @@ export async function advanceRelocatedHistories(host, token, readerToken) {
   assert.deepEqual(await host.maintenance('reader', readerToken, capacity), denied);
   assert.deepEqual(await host.maintenance('reader', readerToken, nativeCapacity), denied);
   assert.deepEqual(await host.maintenance('owner', readerToken, nativeCapacity), denied);
+  assert.deepEqual(await host.maintenance('reader', readerToken, preview(intents[0])), denied);
   const descriptor = await accepted(host, readerToken, describe, 'reader');
   assert.equal(descriptor.document, 'segmented-v1');
   assert.equal(descriptor.review, 'segmented-v1');
@@ -63,17 +67,42 @@ export async function advanceRelocatedHistories(host, token, readerToken) {
     ['continued-v2', 'continued-v2'],
   ];
   const receipts = [];
+  const selections = [];
+  const staleReview = await accepted(host, token, preview(intents[1]));
+  assert.deepEqual(staleReview.capacityBefore, beforeNative);
   let expectedNative = beforeNative;
   for (const [index, intent] of intents.entries()) {
-    const receipt = await accepted(host, token, intent);
+    const beforeAppend = await accepted(host, token, capacity);
+    const plan = await accepted(host, token, preview(intent));
+    assert.deepEqual(plan.capacityBefore, expectedNative);
+    assert.deepEqual(plan.selection.source.terminalLogDigest, beforeAppend.log.terminalDigest);
+    assert.equal(String(plan.selection.source.records), beforeAppend.log.nextSequence);
+    assert.equal(plan.selection.append.rotatesWal, false);
+    assert.ok(plan.selection.append.framedBytes > 72);
+    assert.equal(await accepted(host, token, resolve(plan.selection)), null);
+    assert.deepEqual(await accepted(host, token, capacity), beforeAppend);
+    if (index === 0) {
+      assert.deepEqual(await host.maintenance('owner', readerToken, apply(plan.selection)), denied);
+      assert.deepEqual(await host.maintenance('reader', readerToken, resolve(plan.selection)), denied);
+    }
+    const receipt = await accepted(host, token, apply(plan.selection));
     assert.equal(receipt.sequence, String(BigInt(before.log.nextSequence) + BigInt(index)));
+    assert.deepEqual([receipt.before, receipt.after], [plan.selection.before, plan.selection.after]);
     assert.equal(receipt.duplicate, false);
     assert.deepEqual(receipt.boundary, intent.boundary);
     assert.equal(receipt.lane, intent.lane);
     const families = await accepted(host, token, describe);
     assert.deepEqual([families.document, families.review], expectedFamilies[index]);
     const observedNative = await readNativeHistoryCapacity(host, token);
+    assert.deepEqual(observedNative, plan.capacityAfter);
+    const afterAppend = await accepted(host, token, capacity);
+    assert.equal(afterAppend.log.active.framedBytesRemaining,
+      beforeAppend.log.active.framedBytesRemaining - plan.selection.append.framedBytes);
     if (index === 0) {
+      assert.deepEqual(await host.maintenance('owner', token, apply(staleReview.selection)), {
+        kind: 'maintenance', error: 'relay contract: native history selection is stale',
+      });
+      assert.deepEqual(await accepted(host, token, capacity), afterAppend);
       advancedLane(beforeNative.document, observedNative.document);
       advancedLane(beforeNative.suggestionEffect, observedNative.suggestionEffect);
       assert.equal(observedNative.document.retainedEntries, beforeNative.document.retainedEntries);
@@ -96,6 +125,7 @@ export async function advanceRelocatedHistories(host, token, readerToken) {
     });
     expectedNative = observedNative;
     receipts.push(receipt);
+    selections.push(plan.selection);
   }
   const continued = await accepted(host, token, capacity);
   assert.equal(continued.log.nextSequence, String(BigInt(before.log.nextSequence) + BigInt(intents.length)));
@@ -122,7 +152,8 @@ export async function advanceRelocatedHistories(host, token, readerToken) {
   assert.deepEqual(archived, {generation: pack.generation, storedBytes: packed.storedBytes, duplicate: false});
   assert.deepEqual(await accepted(host, token, capacity), rotated);
   assert.deepEqual(await readNativeHistoryCapacity(host, token), expectedNative);
-  return {intents, receipts, rotation, packed, archived, nativeAfterMaintenance: expectedNative};
+  return {intents, selections, receipts, rotation, packed, archived,
+    nativeAfterMaintenance: expectedNative};
 }
 
 export async function verifyRelocatedMaintenanceRetries(host, token, state, nativeBeforeCrash) {
@@ -133,6 +164,8 @@ export async function verifyRelocatedMaintenanceRetries(host, token, state, nati
   assert.equal(descriptor.document, 'continued-v2');
   assert.equal(descriptor.review, 'continued-v2');
   for (const [index, intent] of state.intents.entries()) {
+    assert.deepEqual(await accepted(host, token, resolve(state.selections[index])),
+      {...state.receipts[index], duplicate: true});
     assert.deepEqual(await accepted(host, token, intent), {...state.receipts[index], duplicate: true});
   }
   assert.deepEqual(await accepted(host, token, rotate), {...state.rotation, duplicate: true});
@@ -149,6 +182,10 @@ export async function verifyRelocatedMaintenanceRetries(host, token, state, nati
     deniedNativeCapacityRequests: 2,
     nativeCapacityMatchesColdRestart: true,
     reportedNativeCapacityLanes: 3,
+    guardedNativeBoundaries: state.selections.length,
+    preparedNativeBoundariesResolvedAfterRestart: state.selections.length,
+    stalePreparedBoundaryRefusals: 1,
+    deniedPreparedBoundaryRequests: 3,
     retainedLiveClientSockets: 2,
     relocatedSealedWalPacks: 1,
     relocatedSealedWalArchives: 1,

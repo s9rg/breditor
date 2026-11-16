@@ -1,9 +1,9 @@
 //! Detached capacity of all native owners at one authenticated room cut.
-use super::ServerNativeHistoryFamily;
+use super::{NativeHistoryBoundary, ServerNativeHistoryFamily, prepare::NativeHistoryCandidate};
 use crate::{Result, Room};
 use breditor_collab_feasibility::{
     NativeHistoryUsage,
-    review::ReviewHistoryCapacity,
+    review::{ReviewHistoryCapacity, ReviewSession},
     rich_replica::{DocumentHistoryCapacity, RichReplica},
 };
 use serde::Serialize;
@@ -44,6 +44,13 @@ fn document(owner: &RichReplica) -> Result<ServerNativeLaneCapacity<DocumentHist
     })
 }
 
+fn review(owner: &ReviewSession) -> Result<ServerNativeLaneCapacity<ReviewHistoryCapacity>> {
+    Ok(ServerNativeLaneCapacity {
+        family: ServerNativeHistoryFamily::review(owner),
+        capacity: owner.review_history_capacity()?,
+    })
+}
+
 impl Room {
     /// Read native capacity for the current owner without granting storage or writer rights.
     /// Log, raster and client journal limits are measured separately.
@@ -51,16 +58,7 @@ impl Room {
     /// Non-owner access, uncertain storage or an invalid native capacity cut refuses the read.
     pub fn native_history_capacity(&self, principal: &str) -> Result<ServerNativeHistoryCapacity> {
         self.recovery_inventory_owner(principal)?;
-        let review = self
-            .review
-            .as_ref()
-            .map(|state| {
-                Ok::<_, crate::Error>(ServerNativeLaneCapacity {
-                    family: ServerNativeHistoryFamily::review(&state.session),
-                    capacity: state.session.review_history_capacity()?,
-                })
-            })
-            .transpose()?;
+        let review = self.review.as_ref().map(|state| review(&state.session)).transpose()?;
         let suggestion_effect =
             self.suggestions.as_ref().map(|state| document(&state.effect_owner)).transpose()?;
         Ok(ServerNativeHistoryCapacity {
@@ -74,5 +72,25 @@ impl Room {
                 limit: self.native_boundary_limit(None),
             },
         })
+    }
+
+    pub(super) fn projected_native_history_capacity(
+        &self,
+        mut capacity: ServerNativeHistoryCapacity,
+        candidate: &NativeHistoryCandidate,
+        boundary: &NativeHistoryBoundary,
+    ) -> Result<ServerNativeHistoryCapacity> {
+        match candidate {
+            NativeHistoryCandidate::Document { receiver, effect } => {
+                capacity.document = document(receiver)?;
+                capacity.suggestion_effect = effect.as_deref().map(document).transpose()?;
+            }
+            NativeHistoryCandidate::Review(owner) => {
+                capacity.review = Some(review(owner)?);
+            }
+        }
+        capacity.boundary_records.used += 1;
+        capacity.boundary_records.limit = self.native_boundary_limit(Some(boundary));
+        Ok(capacity)
     }
 }

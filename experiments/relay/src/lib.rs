@@ -103,8 +103,9 @@ pub use room::{
     RelaySegmentJournalOwner, RelaySegmentReviewJournalFamily,
 };
 pub use room::{
-    ServerNativeHistoryBoundary, ServerNativeHistoryCapacity, ServerNativeHistoryDescriptor,
-    ServerNativeHistoryFamily, ServerNativeHistoryLane, ServerNativeHistoryReceipt,
+    ServerNativeBoundaryAppend, ServerNativeHistoryBoundary, ServerNativeHistoryCapacity,
+    ServerNativeHistoryDescriptor, ServerNativeHistoryFamily, ServerNativeHistoryLane,
+    ServerNativeHistoryPlan, ServerNativeHistoryReceipt, ServerNativeHistorySelection,
     ServerNativeLaneCapacity,
 };
 pub use room::{ServerRasterStorageCapacity, ServerRoomStorageCapacity};

@@ -53,11 +53,21 @@ async fn fenced_source_history_maintenance_retains_the_original_receipt_and_refu
     assert_eq!(handle.native_history_capacity("owner", &owner).await?, native_before);
     handle.apply_native_history_boundary("owner", &owner, Lane::Document, enable).await?;
     let continuation = Boundary::ContinueDocument { next: "continued".into() };
+    let plan = handle
+        .prepare_native_history_boundary("owner", &owner, Lane::Document, continuation.clone())
+        .await?;
+    assert!(matches!(
+        handle
+            .apply_prepared_native_history_boundary("reader", &reader, plan.selection.clone())
+            .await,
+        Err(Error::Permission)
+    ));
     let receipt = handle
-        .apply_native_history_boundary("owner", &owner, Lane::Document, continuation.clone())
+        .apply_prepared_native_history_boundary("owner", &owner, plan.selection.clone())
         .await?;
     let after = handle.storage_capacity("owner", &owner).await?.log;
     let native_after = handle.native_history_capacity("owner", &owner).await?;
+    assert_eq!(native_after, plan.capacity_after);
     assert_eq!(native_after.document.family, Family::ContinuedV2);
     assert_eq!(
         native_after.document.capacity.generation_files.ok_or("generation capacity")?.used,
@@ -74,6 +84,10 @@ async fn fenced_source_history_maintenance_retains_the_original_receipt_and_refu
     assert_eq!(handle.native_history_capacity("owner", &owner).await?, native_after);
 
     authority.claim(&lease.selection())?.close();
+    assert!(matches!(
+        handle.resolve_native_history_boundary("owner", &owner, plan.selection.clone()).await,
+        Err(Error::Lease)
+    ));
     assert!(matches!(handle.native_history_capacity("owner", &owner).await, Err(Error::Lease)));
     assert!(matches!(
         handle.apply_native_history_boundary("owner", &owner, Lane::Document, continuation).await,
@@ -81,6 +95,7 @@ async fn fenced_source_history_maintenance_retains_the_original_receipt_and_refu
     ));
     drop((router, handle));
     let (room, _) = Room::open_log_generations(&directory.0.join("source"))?;
+    assert_eq!(room.resolve_native_history_boundary("owner", &plan.selection)?, Some(retry));
     let descriptor = room.native_history_descriptor("owner")?;
     assert_eq!(descriptor.document, Family::ContinuedV2);
     assert_eq!(descriptor.review, Some(Family::Original));
