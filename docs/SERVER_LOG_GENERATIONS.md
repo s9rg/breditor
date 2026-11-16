@@ -720,6 +720,23 @@ backup directory first. Retain the original until the new path verifies.
 A failed copy can leave a partial target. Retry at a fresh path. Verification
 uses the usual file handles for retained client journals and upload queues.
 
+The opt-in `capture_portable_relay_segment_with_compressed_checkpoints`
+and `copy_portable_with_compressed_checkpoints` use the same selected room
+and client inputs. They write a `BRLINE2\n` lineage marker followed by an
+unsigned 32-bit predecessor count. Each predecessor has three unsigned
+64-bit lengths in order for the raw archive, original checkpoint and
+stored checkpoint. All integers are big-endian. The bytes are the original
+archive followed by the checkpoint. A smaller stored length selects one
+gzip member. Equal lengths select the original raw bytes.
+
+Admission reads each checkpoint as a bounded original stream, verifies its
+digest and cut against the independent selection and rejects a corrupt
+trailer, changed length or trailing member data. Live capture and offline
+conversion share the same framing and restore path. The ordinary
+`copy_portable_fully_packed` converts a compressed lineage to the original
+`BRLINE1\n` representation with byte-identical checkpoints. The format stores the
+newest checkpoint and original WAL artifacts as raw bytes.
+
 For backups with many retained client originals, opt in through
 `ServerBackupHandle::capture_fully_packed_portable_relay_segment` or
 `RelaySegmentRetainedBackup::copy_portable_fully_packed`. Both keep the native

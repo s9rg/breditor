@@ -2,6 +2,16 @@
 
 ## November 15 collaboration recovery
 
+[Compressed predecessor checkpoints](qualification/2026-11-15-compressed-portable-checkpoints.json)
+reduce backup bytes and preserve the independent portable identity. A
+26-predecessor backup converts, restores and reopens under a 48-descriptor
+worker. Converting it back reproduces the exact original packed lineage.
+Live capture and the offline conversion produce identical compressed
+contents. Source and clean-installed workflows seal the smaller copy,
+relocate it, then preserve offline work, Undo/Redo, review packets and assets
+through activation and restart. The four-predecessor fixtures use about
+12.5% fewer lineage bytes. All 167 targeted native tests pass.
+
 [Cold replay at the 64-WAL ceiling](qualification/2026-11-15-saturated-relay-cold-replay.json)
 shares the already held WAL handles. A portable successor previously failed
 with `Too many open files` under a 160-file limit. The regression now reopens

@@ -1,0 +1,145 @@
+{
+  "format": "breditor/compressed-portable-checkpoints-qualification",
+  "formatVersion": 1,
+  "date": "2026-11-15",
+  "source": {
+    "commit": "9c72d0e312fff035d685622cf00b5121b3397fc4",
+    "dirty": false,
+    "sha256": "c55e1f606a7c9ab7c872a159a7f17f3b6435123e307f0a1843a985728c2e2f02",
+    "files": 8975,
+    "bytes": 76204682
+  },
+  "relaySha256": "7577b479ca7f8cad2ac1d04006e3aeb5618f1d7e229ead89ea80ba6a91a325b6",
+  "runtimeSha256": "38b17b58126858fd4ef014e877e85806c323c675e88cd191222badbe9a36a6d5",
+  "historicalCompression": {
+    "fileLimit": 48,
+    "predecessorCount": 26,
+    "directAndConvertedBytesIdentical": true,
+    "compressedCaptureRestoresAndReopens": true,
+    "originalRawPackRoundTripsByteForByte": true,
+    "rawFallbackAndGzipLengthTrailerAndTrailingDataChecked": true
+  },
+  "nativeHandover": {
+    "passed": 29,
+    "failed": 0,
+    "ignored": 0,
+    "executableSha256": "f87cf3588283e55ed196373c0f1c537464fe18aaeee3fd323fbb57551b7fe4c9",
+    "logSha256": "500f138885b31add9d89c116d86b5f84707809b4ad5c3d5873868b5ad69f3b28"
+  },
+  "nativeFencingAndProcessRecovery": {
+    "passed": 53,
+    "failed": 0,
+    "ignored": 0,
+    "logSha256": "06901c5b9b3693e7717a77cf4aff8086ab9c9c0cbde5c06d07fffd16dc712ff3"
+  },
+  "nativeStorage": {
+    "passed": 84,
+    "failed": 0,
+    "logSha256": "e2a24b1b2b08608561b797dfb8bd88caf1151a11625e2c617b4e9e00e7616ac1"
+  },
+  "crossVolumeArchiveInterruption": {
+    "passed": 1,
+    "failed": 0,
+    "logSha256": "b2b252167da0bc817ea399e0857ab1746a8204e509d3c9353217fe83308172af"
+  },
+  "strictRelayLibraryLint": {
+    "server": {
+      "passed": true,
+      "logSha256": "2d58b41636fb8d6414b0eab9e6eb59a38637830d4eeb2ba995bad2da3dd719ac"
+    },
+    "noServer": {
+      "passed": true,
+      "logSha256": "736a8dd62ac6163c897bd81c92254c59b24563146f3740865a37a1893057c2ed"
+    }
+  },
+  "live": {
+    "reportSha256": "41f903f341f3a42f32ef2d986e72ef3280351de44bbb42e0986841dbf6a126cc",
+    "runs": {
+      "source": {
+        "packedCopiesOfExistingSplit": 1,
+        "compressedCheckpointLineages": 1,
+        "rawLineageBytes": 2374465,
+        "compressedLineageBytes": 2076750,
+        "saturatedSuccessorColdReopens": 1,
+        "saturatedSuccessorDescriptorLimit": 160,
+        "packedClientCohorts": 1,
+        "liveNativeHistoryBoundaries": 2,
+        "nativeHistoryColdRetries": 2,
+        "physicalWalRotations": 1,
+        "physicalWalColdRetries": 1,
+        "deniedMaintenanceRequests": 7,
+        "relocatedSealedWalPacks": 1,
+        "relocatedSealedWalArchives": 1,
+        "sealedWalColdRetries": 2,
+        "walPhysicalBytesReclaimed": 443,
+        "retainedLiveClientSockets": 2,
+        "predecessors": 4,
+        "coldResumes": 5,
+        "offlineLanes": 6,
+        "undoRedoLanes": 2,
+        "archivedDiscussionEvents": 40,
+        "retainedBackup": {
+          "alternateJournals": 1,
+          "selectedJournals": 2,
+          "standaloneUploads": 1
+        },
+        "proof": null
+      },
+      "installed": {
+        "packedCopiesOfExistingSplit": 1,
+        "compressedCheckpointLineages": 1,
+        "rawLineageBytes": 2371192,
+        "compressedLineageBytes": 2073411,
+        "saturatedSuccessorColdReopens": 1,
+        "saturatedSuccessorDescriptorLimit": 160,
+        "packedClientCohorts": 1,
+        "liveNativeHistoryBoundaries": 2,
+        "nativeHistoryColdRetries": 2,
+        "physicalWalRotations": 1,
+        "physicalWalColdRetries": 1,
+        "deniedMaintenanceRequests": 7,
+        "relocatedSealedWalPacks": 1,
+        "relocatedSealedWalArchives": 1,
+        "sealedWalColdRetries": 2,
+        "walPhysicalBytesReclaimed": 445,
+        "retainedLiveClientSockets": 2,
+        "predecessors": 4,
+        "coldResumes": 5,
+        "offlineLanes": 6,
+        "undoRedoLanes": 2,
+        "archivedDiscussionEvents": 40,
+        "retainedBackup": {
+          "alternateJournals": 1,
+          "selectedJournals": 2,
+          "standaloneUploads": 1
+        },
+        "proof": {
+          "registryArtifacts": 45,
+          "archives": [
+            {
+              "name": "@breditor/browser",
+              "sha256": "79f5b486d3742d1234e4eb21c18822e0a494551d49a73039f5b856908c124f3f"
+            },
+            {
+              "name": "@breditor/experimental-rich-content",
+              "sha256": "c181984cc8f737861adf4886398d00413af6a42178d8542d789710c5b3faf371"
+            },
+            {
+              "name": "@breditor/collaboration",
+              "sha256": "c5d79a56da7f48c4e4e10a298bfc2bca5cb9cee46642c0c0586df828396ed7b8"
+            }
+          ]
+        }
+      }
+    }
+  },
+  "legacy": {
+    "reportSha256": "10663024c5e0835cd04a7eef0360a12bd2d69718f92039495fe3ed594bda7e0f",
+    "matchesEarlierSourceAndInstalledResults": true
+  },
+  "candidatePlan": {
+    "passed": 69,
+    "failed": 0,
+    "logSha256": "9497a6dd4d52169d28246ffd7bfbe6392648025cc3642e04b9018825c775865d"
+  }
+}
