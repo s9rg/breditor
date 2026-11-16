@@ -22,10 +22,10 @@ const FORMAT: &str = "breditor/recovered-continued-raster-room";
 
 #[derive(Serialize, Deserialize)]
 #[serde(rename_all = "camelCase", deny_unknown_fields)]
-struct Completion {
+pub(super) struct Completion {
     format: String,
     format_version: u32,
-    backup: ContinuedRasterRoomBackupIdentity,
+    pub(super) backup: ContinuedRasterRoomBackupIdentity,
     directory: GenerationDirectoryWitness,
     native: GenerationDirectoryWitness,
     active_generation: String,
@@ -80,7 +80,7 @@ impl ContinuedRasterRoomBackupFiles {
         let identity = completion_identity(&bytes);
         files::insert(&directory, COMPLETE, &bytes)?;
         directory.guard_witness(&completed.directory)?;
-        Ok(RecoveredContinuedRasterRoom { directory, room, assets, clients, identity })
+        Ok(RecoveredContinuedRasterRoom { directory, room, assets, clients, identity, completed })
     }
 
     /// Reopen the exact unserved recovery cut. A fresh process must supply the independent
@@ -133,6 +133,7 @@ impl ContinuedRasterRoomBackupFiles {
             assets,
             clients,
             identity: selected.clone(),
+            completed,
         })
     }
 
@@ -157,4 +158,23 @@ impl ContinuedRasterRoomBackupFiles {
 
 fn completion_identity(bytes: &[u8]) -> RecoveredContinuedRasterRoomIdentity {
     RecoveredContinuedRasterRoomIdentity { completion_sha256: Sha256::digest(bytes).into() }
+}
+
+impl RecoveredContinuedRasterRoom {
+    pub(crate) fn check_exact_restored_cut(&self) -> Result<()> {
+        self.directory.guard_witness(&self.completed.directory)?;
+        let completion = self.directory.path.join(COMPLETE);
+        GenerationFileWitness::of_metadata(&fs::symlink_metadata(&completion)?)?;
+        let selected: Completion = files::read(&completion)?;
+        if completion_identity(&files::encode(&selected)?) != self.identity
+            || self.room.log.segment_directory_witness()? != self.completed.native
+            || self.assets.identity() != &self.completed.rasters
+        {
+            return Err(Error::Contract("continued raster room completion differs"));
+        }
+        self.room.log.check_fresh_segment_restoration(&self.completed.active_generation)?;
+        self.assets.check_backup_cut(&self.completed.backup.rasters)?;
+        self.clients.check(&self.room.recovered_discussion_source_digests())?;
+        self.directory.guard()
+    }
 }

@@ -2,7 +2,7 @@
 use super::{ServerAssetAvailabilityMissing, ServerAssetResolution, ServerRecoveryAssetProvider};
 use crate::{
     Error, Result,
-    assets::{AssetInfo, AssetStore},
+    assets::{AssetInfo, AssetStore, StoredAsset},
 };
 use breditor_collab_feasibility::rich_replica::VersionAssetReference;
 use std::collections::BTreeMap;
@@ -66,6 +66,14 @@ pub(in crate::server) fn resolve(
     references: &[VersionAssetReference],
     provider: &dyn ServerRecoveryAssetProvider,
 ) -> Result<Resolved> {
+    resolve_from(|asset| assets.get(asset), references, provider)
+}
+
+pub(in crate::server) fn resolve_from(
+    read: impl Fn(&str) -> Result<Option<StoredAsset>>,
+    references: &[VersionAssetReference],
+    provider: &dyn ServerRecoveryAssetProvider,
+) -> Result<Resolved> {
     guard(provider)?;
     let mut resolutions = Vec::new();
     let mut payloads = BTreeMap::new();
@@ -86,7 +94,7 @@ pub(in crate::server) fn resolve(
             return Err(Error::Contract("server asset changed immutable bytes across generations"));
         }
         if !payloads.contains_key(&content) {
-            let value = assets.get(&content)?;
+            let value = read(&content)?;
             guard(provider)?;
             if let Some(value) = value {
                 payloads.insert(content.clone(), value.info);

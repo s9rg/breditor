@@ -2,7 +2,7 @@
 use crate::{Error, RelaySegmentClientUploadPin, Result, RoomParticipantInventoryMetadata};
 use std::collections::BTreeSet;
 
-pub(super) fn missing(
+pub(in crate::server) fn missing(
     pins: &[RelaySegmentClientUploadPin],
     participants: &RoomParticipantInventoryMetadata,
 ) -> Result<Vec<String>> {

@@ -1,5 +1,7 @@
 //! Explicit live serving and exact backup for the continued raster storage family.
 mod backup;
+mod reconcile;
+pub use reconcile::ContinuedRasterRoomInputReport;
 mod store;
 #[cfg(all(test, unix))]
 mod tests;

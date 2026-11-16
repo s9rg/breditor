@@ -61,36 +61,47 @@ pub struct RelaySegmentHandoverInputReport {
     pub alternate_branches: Vec<RelaySegmentParticipantBranch>,
 }
 
+pub(in crate::server) fn required_handover_assets<'a>(
+    accepted: &'a ServerAssetReferenceOutcome,
+    journals: Option<&'a RelaySegmentClientJournalCoverage>,
+) -> Result<Option<Cow<'a, [VersionAssetReference]>>> {
+    let ServerAssetReferenceOutcome::Ready { references } = accepted else {
+        return Ok(None);
+    };
+    let Some(journals) = journals else {
+        return Ok(Some(Cow::Borrowed(references)));
+    };
+    let merged: BTreeSet<_> = references.iter().chain(&journals.asset_references).collect();
+    if merged.len() > MAX_SERVER_ASSET_REFERENCE_PAIRS {
+        return Err(Error::Contract("relay segment handover raster binding budget"));
+    }
+    Ok(Some(Cow::Owned(merged.into_iter().cloned().collect())))
+}
+
+pub(in crate::server) fn check_participant_asset_bindings(
+    journals: Option<&RelaySegmentClientJournalCoverage>,
+    resolutions: &[ServerAssetResolution],
+) -> Result<()> {
+    let Some(journals) = journals else {
+        return Ok(());
+    };
+    for expected in &journals.participant_raster_bindings {
+        if let Ok(i) = resolutions.binary_search_by(|row| row.reference.cmp(&expected.reference))
+            && resolutions[i].content_asset != expected.content_asset
+        {
+            return Err(Error::Contract("participant archive and live raster mapping disagree"));
+        }
+    }
+    Ok(())
+}
+
 impl RelaySegmentHandoverInputReport {
     fn required_assets(&self) -> Result<Option<Cow<'_, [VersionAssetReference]>>> {
-        let ServerAssetReferenceOutcome::Ready { references } = &self.references.outcome else {
-            return Ok(None);
-        };
-        let Some(journals) = &self.client_journal_coverage else {
-            return Ok(Some(Cow::Borrowed(references)));
-        };
-        let merged: BTreeSet<_> = references.iter().chain(&journals.asset_references).collect();
-        if merged.len() > MAX_SERVER_ASSET_REFERENCE_PAIRS {
-            return Err(Error::Contract("relay segment handover raster binding budget"));
-        }
-        Ok(Some(Cow::Owned(merged.into_iter().cloned().collect())))
+        required_handover_assets(&self.references.outcome, self.client_journal_coverage.as_ref())
     }
 
     fn check_participant_bindings(&self, resolutions: &[ServerAssetResolution]) -> Result<()> {
-        let Some(journals) = &self.client_journal_coverage else {
-            return Ok(());
-        };
-        for expected in &journals.participant_raster_bindings {
-            if let Ok(i) =
-                resolutions.binary_search_by(|row| row.reference.cmp(&expected.reference))
-                && resolutions[i].content_asset != expected.content_asset
-            {
-                return Err(Error::Contract(
-                    "participant archive and live raster mapping disagree",
-                ));
-            }
-        }
-        Ok(())
+        check_participant_asset_bindings(self.client_journal_coverage.as_ref(), resolutions)
     }
 }
 

@@ -33,7 +33,7 @@ pub(super) fn run(parent: &Path, reopen: bool) -> Result {
     let files = ContinuedRasterRoomBackupFiles::open(&parent.join("capture"), &selected, None)?;
     let destination = parent.join("prepared");
     let local = parent.join("prepared-selection.json");
-    let target = if reopen {
+    let mut target = if reopen {
         let pin: RecoveredContinuedRasterRoomIdentity = serde_json::from_str(&read(&local, 4096)?)?;
         files.reopen(&destination, &pin)?
     } else {
@@ -83,6 +83,7 @@ pub(super) fn run(parent: &Path, reopen: bool) -> Result {
         .ok_or("captured queue unavailable")?;
     let mut queue = Vec::new();
     io::copy(&mut uploads.take(original.uploads.bytes + 1), &mut queue)?;
+    let reconciliation = super::continued_reconcile::verify(parent, &mut target)?;
     println!(
         "{}",
         json!({
@@ -91,6 +92,7 @@ pub(super) fn run(parent: &Path, reopen: bool) -> Result {
             "rasters": rasters,
             "journal": String::from_utf8(journal)?,
             "queue": queue,
+            "reconciliation": reconciliation,
         })
     );
     Ok(())

@@ -8,7 +8,7 @@ pub use crate::room::{
     RecoveredContinuedRasterRoom, RecoveredContinuedRasterRoomIdentity,
 };
 pub use continued_assets::{
-    ContinuedAssetServerHandle, ContinuedRasterRoomBackupIdentity,
+    ContinuedAssetServerHandle, ContinuedRasterRoomBackupIdentity, ContinuedRasterRoomInputReport,
     router_with_continued_assets_and_deployment_lease,
 };
 mod authentication;

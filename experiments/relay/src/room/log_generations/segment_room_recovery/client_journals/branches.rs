@@ -78,18 +78,26 @@ impl RecoveredRelaySegmentRoom {
         &self,
         participants: &RoomParticipantInventoryMetadata,
     ) -> Result<Vec<RelaySegmentParticipantBranch>> {
-        let Some(alternatives) = &self.alternatives else {
-            return Ok(Vec::new());
-        };
-        let mut branches = Vec::with_capacity(alternatives.pins().len());
-        for (index, pin) in alternatives.pins().iter().enumerate() {
-            let part = alternatives.part(index)?;
-            let archive = ParticipantArchive::open(part, &pin.owner)?;
-            branches.push(inspect_part(&self.room, participants, pin, &archive, part)?);
-        }
-        alternatives.check()?;
-        Ok(branches)
+        compare_alternates(&self.room, participants, self.alternatives.as_ref())
     }
+}
+
+pub(in crate::room::log_generations::segment_room_recovery) fn compare_alternates(
+    room: &Room,
+    participants: &RoomParticipantInventoryMetadata,
+    alternatives: Option<&super::RetainedJournals>,
+) -> Result<Vec<RelaySegmentParticipantBranch>> {
+    let Some(alternatives) = alternatives else {
+        return Ok(Vec::new());
+    };
+    let mut branches = Vec::with_capacity(alternatives.pins().len());
+    for (index, pin) in alternatives.pins().iter().enumerate() {
+        let part = alternatives.part(index)?;
+        let archive = ParticipantArchive::open(part, &pin.owner)?;
+        branches.push(inspect_part(room, participants, pin, &archive, part)?);
+    }
+    alternatives.check()?;
+    Ok(branches)
 }
 
 fn inspect_part(

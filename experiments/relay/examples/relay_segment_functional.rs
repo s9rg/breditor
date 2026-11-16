@@ -1,4 +1,6 @@
 //! Loopback fixture with separate old, handoff, and successor process lifetimes.
+#[path = "relay_segment_functional/continued_reconcile.rs"]
+mod continued_reconcile;
 #[path = "relay_segment_functional/continued_restore.rs"]
 mod continued_restore;
 #[path = "relay_segment_functional/continued_serving.rs"]

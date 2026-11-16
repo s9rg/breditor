@@ -99,7 +99,7 @@ export async function verifyContinuedRasterServing(api, rich, wasm, executable, 
     const portableRestore = await verifyPortableCapture({
       api, rich, profile, executable, root, parent, accepted,
       acceptedRasters: [pixel, queued], capture: before.result,
-      writer: registration.identity.writer, offline: client.documentJson(),
+      identity: registration.identity, token, offline: client.documentJson(),
       journal: readFileSync(journal), queue,
     });
     client.dispose();
@@ -132,34 +132,42 @@ export async function verifyContinuedRasterServing(api, rich, wasm, executable, 
 
 async function verifyPortableCapture({
   api, rich, profile, executable, root, parent, accepted, acceptedRasters,
-  capture, writer, offline, journal, queue,
+  capture, identity: {writer, credential}, token, offline, journal, queue,
 }) {
-  const portable = join(root, 'continued-raster-portable');
-  mkdirSync(portable, {mode: 0o700});
-  cpSync(join(parent, 'captured'), join(portable, 'capture'), {recursive: true});
-  const write = (name, bytes) => writeFileSync(join(portable, name), bytes, {flag: 'wx', mode: 0o600});
-  const hash = bytes => createHash('sha256').update(bytes).digest();
-  write('capture-selection.json', JSON.stringify(capture));
-  write('original.journal', journal);
-  write('original.uploads', queue);
-  write('originals.json', JSON.stringify({
-    journal: {owner: {kind: 'document', writer, family: 'original'}, bytes: journal.length, sha256: [...hash(journal)]},
-    uploads: {writer, bytes: queue.length, sha256: hash(queue).toString('hex')},
-    rasters: [pixelAsset, unavailableAsset],
-    queued: secondAsset,
-  }));
-  let exact = null;
-  for (const operation of ['restore', 'reopen']) {
-    const observed = JSON.parse(execFileSync(executable, [portable, 'continued-raster-' + operation, '127.0.0.1:0'], {
+  const load = (directory, original, operation) => {
+    const observed = JSON.parse(execFileSync(executable, [directory, 'continued-raster-' + operation, '127.0.0.1:0'], {
       encoding: 'utf8', timeout: 30_000, maxBuffer: 8 * 1024 * 1024,
     }));
     assert.equal(observed.kind, 'prepared');
     assert.deepEqual(observed.rasters.map(bytes => Buffer.from(bytes)), acceptedRasters);
-    assert.deepEqual(Buffer.from(observed.journal), journal);
+    assert.deepEqual(Buffer.from(observed.journal), original);
     assert.deepEqual(Buffer.from(observed.queue), queue);
-    if (exact) assert.deepEqual(observed, exact);
-    exact = observed;
-  }
+    return observed;
+  };
+  const prepareCapture = (name, original) => {
+    const portable = join(root, name);
+    mkdirSync(portable, {mode: 0o700});
+    cpSync(join(parent, 'captured'), join(portable, 'capture'), {recursive: true});
+    const write = (name, bytes) => writeFileSync(join(portable, name), bytes, {flag: 'wx', mode: 0o600});
+    const hash = bytes => createHash('sha256').update(bytes).digest();
+    write('auth.json', readFileSync(join(parent, 'auth.json')));
+    write('protected.json', JSON.stringify({token, writer, documentCredential: credential}));
+    write('capture-selection.json', JSON.stringify(capture));
+    write('original.journal', original);
+    write('original.uploads', queue);
+    write('originals.json', JSON.stringify({
+      journal: {owner: {kind: 'document', writer, family: 'original'}, bytes: original.length, sha256: [...hash(original)]},
+      uploads: {writer, bytes: queue.length, sha256: hash(queue).toString('hex')},
+      rasters: [pixelAsset, unavailableAsset],
+      queued: secondAsset,
+    }));
+    return portable;
+  };
+  const portable = prepareCapture('continued-raster-portable', journal);
+  const exact = load(portable, journal, 'restore');
+  assert.deepEqual(load(portable, journal, 'reopen'), exact);
+  const matchedAssets = [pixelAsset, unavailableAsset].sort();
+  assert.deepEqual(exact.reconciliation, {inputsComplete: true, matchedAssets, missingAssets: []});
   const inspectionWriter = (BigInt(writer) + 1n).toString();
   const restored = new api.SharedRichEditor(profile.join_frame('room', inspectionWriter, exact.frame));
   const retained = new api.SharedRichEditor(profile.restore('room', exact.journal));
@@ -176,7 +184,26 @@ async function verifyPortableCapture({
     const acknowledged = archive.entries().find(row => row.asset === unavailableAsset);
     assert.equal(acknowledged.status, 'uploaded');
     assert.equal(acknowledged.storageRef, 'breditor:relay-asset:1:' + unavailableAsset);
-    return {coldReopens: 1, exactImages: 2, retainedOfflineRedo: true, pendingQueueAndReceipt: true};
+    retained.dispatch({commands: [{kind: 'replace_image', data: {
+      block: 'image-block', asset: secondAsset, generation: 'portable-pending-redo-image',
+    }}]});
+    assert.equal(retained.undo(), true);
+    assert.equal(retained.documentJson(), accepted);
+    const missingJournal = Buffer.from(retained.checkpointJson());
+    const missing = prepareCapture('continued-raster-pending-redo', missingJournal);
+    const pendingInputs = load(missing, missingJournal, 'restore');
+    assert.deepEqual(load(missing, missingJournal, 'reopen'), pendingInputs);
+    assert.deepEqual(pendingInputs.reconciliation, {
+      inputsComplete: false, matchedAssets, missingAssets: [{
+        kind: 'bytes',
+        reference: {asset: secondAsset, generation: 'portable-pending-redo-image'},
+        content_asset: secondAsset,
+      }],
+    });
+    return {
+      coldReopens: 2, exactImages: 2, retainedOfflineRedo: true, pendingQueueAndReceipt: true,
+      verifiedInputsFromBothGenerations: true, queuedBytesNeededForRedoReportedMissing: true,
+    };
   } finally {
     archive.dispose();
     retained.dispose();

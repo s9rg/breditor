@@ -9,6 +9,15 @@ use crate::{
         ContinuedRasterRoomClientArchives, RoomDeploymentAuthority,
     },
 };
+use crate::{
+    RecoveryDocumentCredential, RecoveryRegistrationCredentials, RecoveryReviewCredential,
+    assets::prepare_asset,
+    server::{
+        ContentAddressedServerAssets, RecoveredContinuedRasterRoom, ServerAssetAvailabilityMissing,
+        ServerRecoveryAssetProvider,
+    },
+};
+use breditor_collab_feasibility::{review::ReviewActorId, rich_replica::VersionAssetReference};
 use serde_json::json;
 use std::{
     fs::{self, File, OpenOptions},
@@ -105,6 +114,21 @@ fn linked_capture_requires_its_exact_native_parent() -> TestResult {
     let directory = source.parent().ok_or("fixture parent")?;
     let wal = directory.join("parent.archive");
     let checkpoint = directory.join("parent.checkpoint");
+    room.enable_review("owner")?;
+    let document = room.register("owner")?;
+    let review = room.register_review("owner", ReviewActorId::try_new("review")?)?;
+    let credentials = RecoveryRegistrationCredentials {
+        documents: vec![RecoveryDocumentCredential {
+            principal: "owner".into(),
+            writer: document.lease.writer.clone(),
+            credential: document.credential,
+        }],
+        reviews: vec![RecoveryReviewCredential {
+            principal: "owner".into(),
+            actor: "review".into(),
+            credential: review.credential,
+        }],
+    };
     let first = room.write_relay_segment_base(
         "owner",
         &mut File::create_new(&wal)?,
@@ -122,11 +146,14 @@ fn linked_capture_requires_its_exact_native_parent() -> TestResult {
     let assets = AssetStore::open(&directory.join("seed-rasters"), room.asset_binding())?;
     let original = directory.join("seed-rasters.archive");
     let empty = assets.write_backup(&mut File::create_new(&original)?)?;
-    let continued = ContinuedAssetStore::create_from_backup(
+    let mut continued = ContinuedAssetStore::create_from_backup(
         &directory.join("rasters"),
         File::open(original)?,
         &empty,
     )?;
+    let image = super::image(9001)?;
+    let content = asset_id(&image);
+    continued.put(prepare_asset(&content, "image/png", image)?)?;
     let authority =
         RoomDeploymentAuthority::create(&directory.join("authority"), &room.deployment_binding()?)?;
     let lease = authority.claim(&authority.current_selection()?)?;
@@ -139,7 +166,7 @@ fn linked_capture_requires_its_exact_native_parent() -> TestResult {
     let expected = handle.capture("owner", &token, &captured)?;
     assert!(ContinuedRasterRoomBackupFiles::open(&captured, &expected, None).is_err());
     let files = ContinuedRasterRoomBackupFiles::open(&captured, &expected, Some(parent))?;
-    let target = files.restore(
+    let mut target = files.restore(
         &directory.join("restore"),
         "linked-restored",
         ContinuedRasterRoomClientArchives::default(),
@@ -149,5 +176,63 @@ fn linked_capture_requires_its_exact_native_parent() -> TestResult {
         target.room().log_generation_descriptor("owner")?.next_sequence,
         expected.native.predecessor.source.records.to_string()
     );
+    check_pending_rosters(
+        &mut target,
+        &handle.host.authentication,
+        &token,
+        &credentials,
+        &content,
+    )?;
+    Ok(())
+}
+
+struct OpaqueMapping<'a>(&'a str);
+impl ServerRecoveryAssetProvider for OpaqueMapping<'_> {
+    fn check(&self) -> crate::Result<()> {
+        Ok(())
+    }
+
+    fn resolve(&self, reference: &VersionAssetReference) -> crate::Result<Option<String>> {
+        assert_eq!(reference.asset, "asset");
+        assert_eq!(reference.generation, "generation");
+        Ok(Some(self.0.to_owned()))
+    }
+}
+
+fn check_pending_rosters(
+    restored: &mut RecoveredContinuedRasterRoom,
+    authentication: &Authentication,
+    token: &str,
+    credentials: &RecoveryRegistrationCredentials,
+    content: &str,
+) -> TestResult {
+    let pending = restored.verify_recovery_inputs(
+        authentication,
+        "owner",
+        token,
+        credentials,
+        &ContentAddressedServerAssets,
+    )?;
+    assert!(!pending.inputs_complete());
+    assert!(pending.missing_registrations.is_empty());
+    let writer = &credentials.documents[0].writer;
+    assert_eq!(&pending.missing_upload_writers, std::slice::from_ref(writer));
+    assert_eq!(&pending.client_journals.missing_document_writers, std::slice::from_ref(writer));
+    assert_eq!(pending.client_journals.missing_review_actors, ["review"]);
+    assert!(
+        matches!(&pending.missing_assets[..], [ServerAssetAvailabilityMissing::Mapping { reference }] if reference.asset == "asset")
+    );
+
+    let mapped = restored.verify_recovery_inputs(
+        authentication,
+        "owner",
+        token,
+        credentials,
+        &OpaqueMapping(content),
+    )?;
+    assert!(!mapped.inputs_complete());
+    assert!(mapped.missing_assets.is_empty());
+    assert_eq!(mapped.assets.len(), 1);
+    assert_eq!(mapped.assets[0].asset, content);
     Ok(())
 }

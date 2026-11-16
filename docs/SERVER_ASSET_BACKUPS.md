@@ -220,3 +220,25 @@ The host can inspect the reconstructed room, read images from both generations,
 and export the selected client originals before serving. Authenticated
 takeover still requires complete client and provider reconciliation, a fresh
 operator decision and the deployment authority's epoch transition.
+
+### Verify the restored room's inputs
+
+Call `RecoveredContinuedRasterRoom::verify_recovery_inputs` with the original
+owner's authenticated account, their separately protected registration records,
+and the current raster provider guard. The verifier checks the completed
+restore's custody, reads the native participant roster, and compares the
+selected document and review journals to the accepted histories. The report
+includes missing originals for registered streams, independently retained
+alternate branches, and the writers whose original upload queues are absent.
+
+The relay collects image references from retained native records and the
+selected client journals, including bindings still reachable by Undo and Redo.
+It checks the provider's generation-exact mappings and reads and admits the
+actual bytes from the predecessor or active raster store. A required image held
+only in a retained client queue appears as missing live bytes. The queue keeps
+its original upload state and receipt history.
+
+The detached report's `inputs_complete()` result describes the inspected cut.
+Keep the room unserved pending fresh reconciliation at the approved deployment
+transition. Bind any future use of this report to its exact local restore and
+trusted capture selections.

@@ -17,7 +17,11 @@ mod tests;
 mod verify;
 
 #[cfg(feature = "server")]
+pub(super) use branches::compare_alternates;
+#[cfg(feature = "server")]
 pub use branches::{RelaySegmentBranchClock, RelaySegmentParticipantBranch};
+#[cfg(feature = "server")]
+pub(super) use verify::verify_selected;
 
 pub(super) use custody::{JournalDirectory, JournalSelection, RetainedJournals};
 #[cfg(feature = "server")]

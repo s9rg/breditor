@@ -2,6 +2,7 @@
 mod clients;
 mod inspect;
 mod open;
+mod reconciliation;
 mod restore;
 
 use super::super::asset_continuation::ContinuedAssetBackupFiles;
@@ -39,4 +40,5 @@ pub struct RecoveredContinuedRasterRoom {
     assets: ContinuedAssetStore,
     clients: clients::RetainedClients,
     identity: RecoveredContinuedRasterRoomIdentity,
+    completed: restore::Completion,
 }

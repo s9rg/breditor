@@ -17,7 +17,7 @@ pub use asset_availability::{
 };
 pub(in crate::server) use asset_availability::{
     ResolvedServerAssets, check_complete_asset_read_budget, check_server_asset_mappings,
-    check_server_asset_provider, resolve_server_assets,
+    check_server_asset_provider, resolve_server_assets, resolve_server_assets_from,
 };
 pub use deployment::router_with_server_backups_and_deployment_lease;
 pub use recovery_check::{

@@ -21,6 +21,8 @@ mod retained_backup;
 #[cfg(all(test, unix))]
 mod tests;
 mod upload_coverage;
+pub(in crate::server) use inputs::{check_participant_asset_bindings, required_handover_assets};
+pub(in crate::server) use upload_coverage::missing as missing_upload_writers;
 mod wal_maintenance;
 
 pub use approval::RelaySegmentHandoverApproval;

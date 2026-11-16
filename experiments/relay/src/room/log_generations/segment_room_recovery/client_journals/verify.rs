@@ -82,6 +82,22 @@ enum PairedInput<'a> {
     Delivery(Box<DeliveryRecord<'a>>),
 }
 
+pub(in crate::room::log_generations::segment_room_recovery) fn verify_selected(
+    room: &Room,
+    participants: &RoomParticipantInventoryMetadata,
+    originals: Option<&RetainedJournals>,
+) -> Result<RelaySegmentClientJournalCoverage> {
+    if let Some(originals) = originals {
+        return verify(room, participants, originals);
+    }
+    let selected = SelectedSources::read(participants, &[])?;
+    Ok(RelaySegmentClientJournalCoverage {
+        missing_document_writers: selected.missing_document_writers,
+        missing_review_actors: selected.review_rows.keys().map(|actor| (*actor).into()).collect(),
+        ..RelaySegmentClientJournalCoverage::default()
+    })
+}
+
 fn verify(
     room: &Room,
     participants: &RoomParticipantInventoryMetadata,
