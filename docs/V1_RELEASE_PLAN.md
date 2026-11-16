@@ -2,6 +2,18 @@
 
 ## November 16 collaboration recovery
 
+[Guarded native maintenance](qualification/2026-11-16-guarded-native-history-maintenance.json)
+previews exact native capacity and WAL frame cost before the owner selects
+a boundary. Apply checks the complete logical cut and both native digests
+before appending the existing boundary record. The direct regression
+matches projected and actual bytes, refuses a changed selection without
+writes, applies a selection reopened at the same cut, and reads an original
+receipt after later writes. Both source and clean-installed relocation
+apply the two continued-history boundaries, refuse a stale review plan,
+and resolve both receipts after restart. Legacy handover and all 58 focused
+relay tests pass. The release check verified the existing Wasm artifacts
+against the preceding qualified hashes and identical runtime sources.
+
 [Native history capacity](qualification/2026-11-16-relay-native-history-capacity.json)
 reports exact current document, review and private suggestion-effect usage
 through the fenced owner handles. The report separates active-file and

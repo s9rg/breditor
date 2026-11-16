@@ -1,0 +1,167 @@
+{
+  "format": "breditor/guarded-native-history-maintenance-qualification",
+  "formatVersion": 1,
+  "date": "2026-11-16",
+  "source": {
+    "commit": "c80482ea9ccdee096fe93fa72272aea4a77abd6b",
+    "dirty": false,
+    "sha256": "f606284b79094488263e477162f7d66e836d927fcf8b0963fe600542c7a35e17",
+    "files": 9007,
+    "bytes": 76451354
+  },
+  "maintenanceChecks": {
+    "exactLogicalRoomAndNativeCutRequired": true,
+    "previewMakesNoDurableWrites": true,
+    "tamperedNativeDigestAndFramedByteCostRefused": true,
+    "projectedUsageAndFramedBytesMatchActualAppend": true,
+    "prepareCanSurviveColdOpenAtSameCut": true,
+    "readOnlyReceiptRecoveryAfterLaterWrites": true,
+    "fencedSourceAndRelocatedHandlesRequireOwnerAuthority": true
+  },
+  "nativeRelayTests": {
+    "room-native_history": {
+      "passed": 16,
+      "failed": 0,
+      "ignored": 0,
+      "executableSha256": [
+        "f596f73c4cefad7da17c153796bae2605b5e1470c9ef362cafd3d8fd738aeed5"
+      ],
+      "logSha256": "519530d110e779206d9d812936e2c68f119cc4a115def4efbcba57eebbba6892"
+    },
+    "room-log_generations-tests-staging_capacity": {
+      "passed": 6,
+      "failed": 0,
+      "ignored": 0,
+      "executableSha256": [
+        "f596f73c4cefad7da17c153796bae2605b5e1470c9ef362cafd3d8fd738aeed5"
+      ],
+      "logSha256": "509989c6604194dca1fd6848892960a0dcdf34108be8276d1dd656c576e50309"
+    },
+    "room-materialized_checkpoint": {
+      "passed": 3,
+      "failed": 0,
+      "ignored": 0,
+      "executableSha256": [
+        "f596f73c4cefad7da17c153796bae2605b5e1470c9ef362cafd3d8fd738aeed5"
+      ],
+      "logSha256": "ff0a62df8df4aebd4a3e81bc5e75cb2d4845ad999fe07875847cf81757311361"
+    },
+    "server-segment_handover-tests": {
+      "passed": 32,
+      "failed": 0,
+      "ignored": 0,
+      "executableSha256": [
+        "f596f73c4cefad7da17c153796bae2605b5e1470c9ef362cafd3d8fd738aeed5"
+      ],
+      "logSha256": "e40b4cb4e608eb4b3d4d8a3dc63fdaef2dbbbcbf91eec92fa086bdfeaad80e59"
+    },
+    "server-generation_backup-tests-native_history": {
+      "passed": 1,
+      "failed": 0,
+      "ignored": 0,
+      "executableSha256": [
+        "f596f73c4cefad7da17c153796bae2605b5e1470c9ef362cafd3d8fd738aeed5"
+      ],
+      "logSha256": "1a38ab7b96f92d5138194e1b54c71dae20068534ca963b009dc862bd25f65f79"
+    }
+  },
+  "strictRelayLibraryLint": {
+    "server": {
+      "passed": true,
+      "logSha256": "482e631c636cf2d432caaa4f9d5a2b5b4c534f376a005c957e3baec18e675bc1"
+    },
+    "noServer": {
+      "passed": true,
+      "logSha256": "a65a212a3026cf206fff3d8f821a959a818fe1083b773e76360439a0ced8e0b2"
+    }
+  },
+  "reusedRuntimeArtifacts": {
+    "byteIdenticalSourceSince": "782bf48874e23e50fe08527bc3c4b6ff13d2df67",
+    "localRichWasmSha256": "bc020ce07ed80600b85735c1e592d5ae163d921f5556fef05269a12bc1d59ec5",
+    "sharedWasmSha256": "4bd769ac853ccc377dcbb45ebcfd5fc8f7f0f200850b1f5a106f7a4a0beddca4",
+    "verificationLogSha256": "c8df6ab3bd34bf3bd84ec875560a15b984d6bfa81ce1c1425a3427cf73f1045a"
+  },
+  "candidatePlan": {
+    "passed": 69,
+    "failed": 0,
+    "logSha256": "7a1959ff09bf65e39af4ad8e1d1ecfa2417308f7da613c6b2709dc1b34cd2e2d"
+  },
+  "workflows": {
+    "relaySha256": "278f5c043b0ecb5dbe56b566791ebd40bf482cf25a2713fb3528b155c5edc58b",
+    "runtimeSha256": "4bd769ac853ccc377dcbb45ebcfd5fc8f7f0f200850b1f5a106f7a4a0beddca4",
+    "portableRelocation": {
+      "reportSha256": "9761b0515965c06e417e24914b12a651e66af90f09bdf5ea753ccd421beb44f6",
+      "runs": {
+        "source": {
+          "offlineLanes": 6,
+          "undoRedoLanes": 2,
+          "coldResumes": 5,
+          "guardedNativeBoundaries": 2,
+          "preparedNativeBoundariesResolvedAfterRestart": 2,
+          "stalePreparedBoundaryRefusals": 1,
+          "deniedPreparedBoundaryRequests": 3,
+          "proof": null
+        },
+        "installed": {
+          "offlineLanes": 6,
+          "undoRedoLanes": 2,
+          "coldResumes": 5,
+          "guardedNativeBoundaries": 2,
+          "preparedNativeBoundariesResolvedAfterRestart": 2,
+          "stalePreparedBoundaryRefusals": 1,
+          "deniedPreparedBoundaryRequests": 3,
+          "proof": {
+            "registryArtifacts": 45,
+            "archives": [
+              {
+                "name": "@breditor/browser",
+                "sha256": "79f5b486d3742d1234e4eb21c18822e0a494551d49a73039f5b856908c124f3f"
+              },
+              {
+                "name": "@breditor/experimental-rich-content",
+                "sha256": "06fc9770ef5b26cd5f4c10d7d55d9b1d91e352392a599f277cee25d431d6f4b7"
+              },
+              {
+                "name": "@breditor/collaboration",
+                "sha256": "05aeaf3cedf9431890bb10b8cdc9c92b70c4410bfeeb52ff421d59b5a72dd2e2"
+              }
+            ]
+          }
+        }
+      }
+    },
+    "legacyHandover": {
+      "reportSha256": "4c59140e7e298cc4c81c4917de99d77fc1aad7f2f5f081e1e8d381c48d427512",
+      "runs": {
+        "source": {
+          "offlineLanes": 6,
+          "undoRedoLanes": 2,
+          "coldResumes": 3,
+          "proof": null
+        },
+        "installed": {
+          "offlineLanes": 6,
+          "undoRedoLanes": 2,
+          "coldResumes": 3,
+          "proof": {
+            "registryArtifacts": 45,
+            "archives": [
+              {
+                "name": "@breditor/browser",
+                "sha256": "79f5b486d3742d1234e4eb21c18822e0a494551d49a73039f5b856908c124f3f"
+              },
+              {
+                "name": "@breditor/experimental-rich-content",
+                "sha256": "06fc9770ef5b26cd5f4c10d7d55d9b1d91e352392a599f277cee25d431d6f4b7"
+              },
+              {
+                "name": "@breditor/collaboration",
+                "sha256": "05aeaf3cedf9431890bb10b8cdc9c92b70c4410bfeeb52ff421d59b5a72dd2e2"
+              }
+            ]
+          }
+        }
+      }
+    }
+  }
+}
