@@ -75,14 +75,17 @@ pub(super) fn generation_id(value: &str) -> Result<(), ReviewError> {
     Ok(())
 }
 
+pub(super) const fn generation_limit(continued: bool) -> usize {
+    if continued { CONTINUED_MAX_GENERATIONS } else { MAX_GENERATIONS }
+}
+
 pub(super) fn check_budget(
     files: usize,
     events: usize,
     continued: bool,
 ) -> Result<(), ReviewError> {
-    let file_limit = if continued { CONTINUED_MAX_GENERATIONS } else { MAX_GENERATIONS };
     let event_limit = if continued { CONTINUED_MAX_EVENTS } else { MAX_RETAINED_EVENTS };
-    if files > file_limit {
+    if files > generation_limit(continued) {
         return Err(ReviewError::Limit("review history generations"));
     }
     if events > event_limit {

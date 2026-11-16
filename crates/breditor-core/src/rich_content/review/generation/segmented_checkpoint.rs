@@ -61,7 +61,7 @@ impl ReviewSession {
         state: &ReviewGenerations,
     ) -> Result<(), ReviewError> {
         let active = self.encode_generation_active(state)?;
-        checkpoint_budget::check_size(state, &active, state.archive_byte_limit())
+        checkpoint_budget::check_size(state, &active, state.archive_byte_limit()).map(|_| ())
     }
 
     pub(super) fn check_restored_generation_checkpoint(
@@ -78,7 +78,10 @@ impl ReviewSession {
         Ok(())
     }
 
-    fn encode_generation_active(&self, state: &ReviewGenerations) -> Result<String, ReviewError> {
+    pub(super) fn encode_generation_active(
+        &self,
+        state: &ReviewGenerations,
+    ) -> Result<String, ReviewError> {
         check_budget(state.sealed.len() + 2, self.events.len(), state.continued_after.is_some())?;
         encode_active(self)
     }
@@ -97,7 +100,7 @@ impl ReviewGenerations {
         }
     }
 
-    const fn archive_byte_limit(&self) -> usize {
+    pub(super) const fn archive_byte_limit(&self) -> usize {
         if self.continued_after.is_some() { CONTINUED_MAX_ARCHIVE_BYTES } else { MAX_ARCHIVE_BYTES }
     }
 }

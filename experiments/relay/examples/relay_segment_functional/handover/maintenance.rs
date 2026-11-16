@@ -24,6 +24,7 @@ struct Command {
 enum Action {
     Describe,
     Capacity,
+    NativeCapacity,
     Boundary { lane: ServerNativeHistoryLane, boundary: ServerNativeHistoryBoundary },
     Rotate { next: String },
     Checkpoint,
@@ -41,6 +42,9 @@ impl Command {
             }
             Action::Capacity => {
                 serde_json::to_value(handle.storage_capacity(&principal, &token).await?)?
+            }
+            Action::NativeCapacity => {
+                serde_json::to_value(handle.native_history_capacity(&principal, &token).await?)?
             }
             Action::Boundary { lane, boundary } => serde_json::to_value(
                 handle.apply_native_history_boundary(&principal, &token, lane, boundary).await?,

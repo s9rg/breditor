@@ -88,7 +88,7 @@ impl SegmentedHistory {
             active_generation: active.record.generation.clone(),
             continuation: None,
         };
-        super::archive::check_size(&predecessor, &active.json, MAX_ARCHIVE_BYTES)
+        super::archive::check_size(&predecessor, &active.json, MAX_ARCHIVE_BYTES).map(|_| ())
     }
     pub(super) fn start(&self) -> usize {
         self.root.journal.entries.len()
@@ -202,6 +202,15 @@ impl SegmentedHistory {
             owner.typing.as_ref().map(|h| h.joins.as_slice()),
             owner.replay_capabilities(),
         )?;
+        self.active_record(owner)
+    }
+
+    // Render the active part of an admitted owner. Capacity reads can reuse
+    // immutable prefix charges without re-encoding entries to compare them again.
+    pub(super) fn active_record<'a>(
+        &self,
+        owner: &'a RichReplica,
+    ) -> Result<Segment<&'a [Entry]>, Error> {
         let start = self.start();
         let (parent, hash) = self.parent();
         Ok(Segment {
@@ -211,7 +220,7 @@ impl SegmentedHistory {
             parent_generation: parent.into(),
             parent_sha256: hash.into(),
             start: u32::try_from(start).map_err(|_| Error::Limit("segmented entry coordinate"))?,
-            entries: &owner.journal.entries[start..],
+            entries: owner.journal.entries.get(start..).ok_or(Error::ReplayMismatch)?,
             joins: owner.typing.as_ref().map_or_else(Vec::new, |h| {
                 h.joins
                     .iter()

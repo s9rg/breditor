@@ -1,6 +1,7 @@
 //! Explicit segmented native history; old journal codecs and causal transport meanings stay separate.
 mod archive;
 mod binding;
+mod capacity;
 mod checkpoint_segmented_history;
 mod continue_history;
 #[cfg(test)]
@@ -33,5 +34,6 @@ mod tests;
 #[cfg(test)]
 mod workflow_tests;
 
+pub use capacity::DocumentHistoryCapacity;
 pub use info::SegmentedHistoryInfo;
 pub(super) use state::SegmentedHistory;

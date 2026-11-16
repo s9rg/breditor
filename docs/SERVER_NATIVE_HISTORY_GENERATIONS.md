@@ -151,6 +151,29 @@ refusal and callback behavior. Final native admission still precedes publication
 or a durable receipt. Relay preparation uses one decoded frame and one staged
 metadata copy for admission and the existing receipt digest.
 
+## Observe native history capacity on a serving relay
+
+`Room::native_history_capacity` reads the admitted cut after the caller
+authenticates the room owner. `ServerBackupHandle` and
+`LogGenerationServerBackupHandle` do the same under the current serving
+lease. The `breditor/relay-native-history-capacity` version 1 report carries
+separate document, review and private suggestion-effect usage. Optional
+lanes are null when disabled. Each lane names its selected family and
+reports exact canonical active-file and whole-checkpoint bytes, active
+inputs, retained inputs, generation files and Undo/Redo depths. Generation
+files include the root and active file. Original history has no separate
+generation count. The room also reports the stored native boundary receipts
+and their limit under the families it currently uses.
+
+Segmented byte charges reuse the exact immutable file charges used by
+admission. An active file can reach its own ceiling before the whole archive
+does. The native Undo depth ceiling describes its policy, including eviction
+of older steps by the original document policy. A segmented author can
+exhaust its own Undo depth independently of the receiver. The report is a
+point-in-time observation. Host maintenance chooses when to seal or continue,
+and each write independently checks its available capacity. Existing log and
+raster capacity reports continue to describe those separate resources.
+
 Server-log generations, matching client/relay negotiation, complete asset and
 outbox dependency closure, historic-copy decisions, coordinated recovery and
 authenticated room activation remain separate architectural requirements.

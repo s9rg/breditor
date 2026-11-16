@@ -27,6 +27,7 @@ mod inline_format_state;
 mod input_rules;
 mod list_draft;
 pub(crate) mod local_session;
+mod native_history_usage;
 mod navigate_flow;
 mod navigate_grid;
 pub mod review;
@@ -84,6 +85,7 @@ pub use local_session::{
     RichLocalOutcome, RichLocalSession, RichLocalSessionError, RichLocalSnapshot, RichLocalState,
     RichPendingFormatsUpdate, RichSelectionUpdate, RichTypingDeleteDirection,
 };
+pub use native_history_usage::NativeHistoryUsage;
 pub use navigate_flow::{FlowMove, FlowNavigationOutcome, navigate_flow};
 pub use navigate_grid::{
     GridBoundary, GridMove, GridNavigationMode, GridNavigationOutcome, navigate_grid,

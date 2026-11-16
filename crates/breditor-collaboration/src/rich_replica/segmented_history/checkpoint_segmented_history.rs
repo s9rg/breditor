@@ -32,7 +32,7 @@ impl RichReplica {
 
     pub(in crate::rich_replica) fn check_segmented_checkpoint_budget(&self) -> Result<(), Error> {
         let (state, active) = self.segmented_checkpoint_parts()?;
-        archive::check_size(state, &active, state.max_archive_bytes())
+        archive::check_size(state, &active, state.max_archive_bytes()).map(|_| ())
     }
 
     fn segmented_checkpoint_parts(&self) -> Result<(&SegmentedHistory, String), Error> {

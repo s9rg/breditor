@@ -26,7 +26,7 @@ pub(super) fn check_size(
     state: &ReviewGenerations,
     active: &str,
     limit: usize,
-) -> Result<(), ReviewError> {
+) -> Result<usize, ReviewError> {
     // The empty envelope includes both empty string literals and the array brackets.
     let empty_file_bytes = b"\"\"".len();
     let overhead = serde_json::to_vec(&state.archive_envelope())?.len();
@@ -40,5 +40,5 @@ pub(super) fn check_size(
     if bytes > limit {
         return Err(ReviewError::Limit("review history archive bytes"));
     }
-    Ok(())
+    Ok(bytes)
 }

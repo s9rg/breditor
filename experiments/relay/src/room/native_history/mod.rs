@@ -1,5 +1,6 @@
 //! Explicit native retention boundaries; original room defaults and global receipts remain intact.
 mod boundary;
+mod capacity;
 pub(in crate::room) mod checkpoint;
 mod continue_document;
 mod continue_review;
@@ -19,6 +20,7 @@ mod transaction;
 
 pub use boundary::ServerNativeHistoryBoundary;
 pub(crate) use boundary::ServerNativeHistoryBoundary as NativeHistoryBoundary;
+pub use capacity::{ServerNativeHistoryCapacity, ServerNativeLaneCapacity};
 pub use descriptor::{ServerNativeHistoryDescriptor, ServerNativeHistoryFamily};
 pub use lane::ServerNativeHistoryLane;
 pub use receipt::ServerNativeHistoryReceipt;

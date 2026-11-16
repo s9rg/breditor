@@ -58,6 +58,10 @@ fn immutable_file_charges_match_exact_archive_bytes_after_seal_and_cold_restore(
     }
     let (profile, mut owner) = setup(3, true, 2, 7)?;
     insert(&mut owner, "Root \" 🙂 \\ ")?;
+    let original = owner.document_history_capacity()?;
+    assert_eq!(original.checkpoint_bytes, original.active_bytes);
+    assert_eq!(original.generation_files, None);
+    assert_eq!(original.undo_items, 1);
     enable(&mut owner)?;
     for generation in 0..3 {
         insert(&mut owner, "Active \" 日本語 \\ ")?;
@@ -71,6 +75,20 @@ fn immutable_file_charges_match_exact_archive_bytes_after_seal_and_cold_restore(
                 archive::check_size(state, &parsed.active, archive.len() - 1),
                 Err(Error::Limit("segmented history bytes"))
             ));
+            let capacity = owner.document_history_capacity()?;
+            let info = owner.segmented_history_info().ok_or("missing segmented information")?;
+            assert_eq!(capacity.checkpoint_bytes.used, archive.len());
+            assert_eq!(capacity.active_bytes.used, parsed.active.len());
+            assert_eq!(capacity.active_entries.used, info.active_entries);
+            assert_eq!(capacity.retained_entries, info.retained_entries);
+            assert_eq!(
+                capacity.generation_files.ok_or("missing generation usage")?.used,
+                info.sealed_generations + 1
+            );
+            assert_eq!(
+                (capacity.undo_items, capacity.redo_items),
+                (info.undo_items, info.redo_items)
+            );
         }
         assert!(owner.redo()?);
         seal(&mut owner, &format!("quoted-generation-{generation}"))?;

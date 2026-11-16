@@ -36,6 +36,17 @@ fn check_exact_budget(owner: &ReviewSession, canonical: &str) -> Result {
         check_size(state, &active, canonical.len() - 1),
         Err(ReviewError::Limit("review history archive bytes"))
     ));
+    let capacity = owner.review_history_capacity()?;
+    assert_eq!(capacity.checkpoint_bytes.used, canonical.len());
+    assert_eq!(capacity.active_bytes.used, active.len());
+    assert_eq!(capacity.active_events.used, owner.events.len() - state.active_start);
+    assert_eq!(capacity.retained_events.used, owner.events.len());
+    assert_eq!(
+        capacity.generation_files.ok_or("missing generation usage")?.used,
+        state.sealed.len() + 2
+    );
+    assert_eq!(capacity.undo_items, owner.cursor);
+    assert_eq!(capacity.redo_items, owner.history.len() - owner.cursor);
     Ok(())
 }
 
@@ -47,6 +58,11 @@ fn counts_actual_encoded_bytes_before_and_after_seals_continuation_and_restore()
 
     let mut owner = ReviewSession::new(binding()?, policy()?)?;
     add_thread(&mut owner, "root")?;
+    let original = owner.review_history_capacity()?;
+    assert_eq!(original.checkpoint_bytes.used, owner.checkpoint_json()?.len());
+    assert_eq!(original.checkpoint_bytes, original.active_bytes);
+    assert_eq!(original.active_events, original.retained_events);
+    assert_eq!(original.generation_files, None);
     owner.enable_segmented_history_guarded(&owner.observe(), "root".into(), "first".into())?;
     for index in 0..3 {
         add_thread(&mut owner, "sealed")?;

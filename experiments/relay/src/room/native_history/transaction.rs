@@ -16,7 +16,7 @@ impl Room {
         if let Some(receipt) = self.native_history_retry(lane, &boundary)? {
             return Ok(receipt);
         }
-        if self.native_history_boundaries.len() >= self.native_boundary_limit(&boundary) {
+        if self.native_history_boundaries.len() >= self.native_boundary_limit(Some(&boundary)) {
             return Err(Error::Contract("native boundary record budget"));
         }
         let prepared = self.prepare_native_history(lane, &boundary)?;

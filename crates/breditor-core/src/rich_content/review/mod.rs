@@ -23,6 +23,7 @@ pub use codec::{
     PreparedReviewBatch, ReviewBatchPreparation, ReviewBatchReceipt, ReviewWriterClock,
 };
 pub use event::Payload as ReviewThreadHistoryPayload;
+pub use generation::ReviewHistoryCapacity;
 pub use identity::{
     ReviewActorId, ReviewEventId, ReviewMessageId, ReviewPrincipalId, ReviewThreadId,
 };

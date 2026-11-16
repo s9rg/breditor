@@ -31,7 +31,17 @@ async fn fenced_source_history_maintenance_retains_the_original_receipt_and_refu
     .await?;
     let enable = Boundary::Enable { root: "document-root".into(), active: "first".into() };
     let before = handle.storage_capacity("owner", &owner).await?.log;
+    let native_before = handle.native_history_capacity("owner", &owner).await?;
+    assert_eq!(native_before.document.family, Family::Original);
+    assert_eq!(native_before.document.capacity.generation_files, None);
+    assert_eq!(native_before.review.ok_or("review capacity")?.family, Family::Original);
+    assert_eq!(native_before.suggestion_effect, None);
+    assert_eq!(native_before.boundary_records.limit, 128);
     for (principal, token) in [("owner", &reader), ("reader", &reader)] {
+        assert!(matches!(
+            handle.native_history_capacity(principal, token).await,
+            Err(Error::Permission)
+        ));
         assert!(matches!(
             handle
                 .apply_native_history_boundary(principal, token, Lane::Document, enable.clone())
@@ -40,19 +50,31 @@ async fn fenced_source_history_maintenance_retains_the_original_receipt_and_refu
         ));
     }
     assert_eq!(handle.storage_capacity("owner", &owner).await?.log, before);
+    assert_eq!(handle.native_history_capacity("owner", &owner).await?, native_before);
     handle.apply_native_history_boundary("owner", &owner, Lane::Document, enable).await?;
     let continuation = Boundary::ContinueDocument { next: "continued".into() };
     let receipt = handle
         .apply_native_history_boundary("owner", &owner, Lane::Document, continuation.clone())
         .await?;
     let after = handle.storage_capacity("owner", &owner).await?.log;
+    let native_after = handle.native_history_capacity("owner", &owner).await?;
+    assert_eq!(native_after.document.family, Family::ContinuedV2);
+    assert_eq!(
+        native_after.document.capacity.generation_files.ok_or("generation capacity")?.used,
+        3
+    );
+    assert_eq!(native_after.review, native_before.review);
+    assert_eq!(native_after.boundary_records.limit, 320);
+    assert_eq!(native_after.boundary_records.used, 2);
     let retry = handle
         .apply_native_history_boundary("owner", &owner, Lane::Document, continuation.clone())
         .await?;
     assert_eq!(retry, crate::ServerNativeHistoryReceipt { duplicate: true, ..receipt });
     assert_eq!(handle.storage_capacity("owner", &owner).await?.log, after);
+    assert_eq!(handle.native_history_capacity("owner", &owner).await?, native_after);
 
     authority.claim(&lease.selection())?.close();
+    assert!(matches!(handle.native_history_capacity("owner", &owner).await, Err(Error::Lease)));
     assert!(matches!(
         handle.apply_native_history_boundary("owner", &owner, Lane::Document, continuation).await,
         Err(Error::Lease)
@@ -62,6 +84,11 @@ async fn fenced_source_history_maintenance_retains_the_original_receipt_and_refu
     let descriptor = room.native_history_descriptor("owner")?;
     assert_eq!(descriptor.document, Family::ContinuedV2);
     assert_eq!(descriptor.review, Some(Family::Original));
+    assert_eq!(room.native_history_capacity("owner")?, native_after);
+    assert_eq!(
+        native_after.document.capacity.checkpoint_bytes.used,
+        room.native_history_checkpoint("owner", Lane::Document)?.len()
+    );
     let assets = AssetStore::open_retained(&directory.0.join("assets"), room.asset_binding())?;
     assert_eq!(room.storage_capacity(&assets, "owner")?.log, after);
     Ok(())

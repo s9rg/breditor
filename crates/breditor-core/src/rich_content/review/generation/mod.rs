@@ -1,4 +1,5 @@
 //! Explicit native comment retention; no document, transport or permission upgrade.
+mod capacity;
 mod checkpoint_budget;
 mod continue_history;
 mod enable_observer_segmented_history;
@@ -18,6 +19,7 @@ mod seal_observer_history_generation;
 mod seal_read_only_history_generation;
 mod segmented_checkpoint;
 
+pub use capacity::ReviewHistoryCapacity;
 pub(super) use history::ReviewGenerations;
 pub(super) use recovery_origin::check_generation_origin;
 pub(super) use retained_branch::check_retained_branch_generations;

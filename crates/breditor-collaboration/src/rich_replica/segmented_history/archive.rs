@@ -138,7 +138,7 @@ pub(super) fn check_size(
     state: &SegmentedHistory,
     active: &str,
     limit: usize,
-) -> Result<(), Error> {
+) -> Result<usize, Error> {
     let envelope = Encoding {
         format: FORMAT,
         format_version: if state.continuation.is_some() { 2 } else { 1 },
@@ -163,5 +163,5 @@ pub(super) fn check_size(
     if bytes > limit {
         return Err(Error::Limit("segmented history bytes"));
     }
-    Ok(())
+    Ok(bytes)
 }

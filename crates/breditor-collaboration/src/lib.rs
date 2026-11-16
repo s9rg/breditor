@@ -32,6 +32,7 @@ pub mod rich_paste_fixture;
 #[cfg(feature = "research")]
 pub mod rich_recovery_fixture;
 pub mod rich_replica;
+pub use breditor_core::rich_content::NativeHistoryUsage;
 /// Canonical opt-in Rust review metadata types; host authority remains separate from payload claims.
 pub use breditor_core::rich_content::review;
 #[cfg(feature = "research")]

@@ -21,6 +21,9 @@ fn continuation_seals_exact_v1_input_at_generation_capacity_and_keeps_future_his
     let observed = owner.observe();
     let predecessor = owner.segmented_checkpoint_json()?;
     let before: Value = serde_json::from_str(&predecessor)?;
+    let saturated =
+        owner.review_history_capacity()?.generation_files.ok_or("missing file usage")?;
+    assert_eq!((saturated.used, saturated.limit), (MAX_GENERATIONS, MAX_GENERATIONS));
     let clock = owner.local_writer_clock()?;
     let view = owner.view()?;
     assert!(matches!(
@@ -33,6 +36,9 @@ fn continuation_seals_exact_v1_input_at_generation_capacity_and_keeps_future_his
     assert_eq!(owner.local_writer_clock()?, clock);
     assert_eq!(owner.view()?, view);
     let saved = owner.continued_checkpoint_json()?;
+    let continued =
+        owner.review_history_capacity()?.generation_files.ok_or("missing continued file usage")?;
+    assert_eq!((continued.used, continued.limit), (MAX_GENERATIONS + 1, CONTINUED_MAX_GENERATIONS));
     let encoded: Value = serde_json::from_str(&saved)?;
     assert_eq!(encoded["continuedAfter"], MAX_GENERATIONS - 1);
     assert_eq!(encoded["root"], before["root"]);

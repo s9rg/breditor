@@ -4,6 +4,7 @@ import assert from 'node:assert/strict';
 const native = (lane, boundary) => ({kind: 'boundary', lane, boundary});
 const describe = {kind: 'describe'};
 const capacity = {kind: 'capacity'};
+const nativeCapacity = {kind: 'nativeCapacity'};
 const rotate = {kind: 'rotate', next: 'portable-maintenance-wal'};
 const checkpoint = {kind: 'checkpoint'};
 const pack = {kind: 'pack', generation: 'relocated-one'};
@@ -15,8 +16,33 @@ async function accepted(host, token, action, principal = 'owner') {
   return row.result;
 }
 
+export async function readNativeHistoryCapacity(host, token) {
+  const report = await accepted(host, token, nativeCapacity);
+  assert.equal(report.format, 'breditor/relay-native-history-capacity');
+  assert.equal(report.formatVersion, 1);
+  for (const lane of [report.document, report.review, report.suggestionEffect]) {
+    assert.ok(lane);
+    for (const charge of [lane.checkpointBytes, lane.activeBytes, lane.generationFiles]) {
+      assert.ok(Number.isSafeInteger(charge.used) && charge.used > 0 && charge.used <= charge.limit);
+    }
+  }
+  return report;
+}
+
+function advancedLane(before, after) {
+  assert.equal(before.family, 'segmented-v1');
+  assert.equal(after.family, 'continued-v2');
+  assert.equal(before.checkpointBytes.limit, 64 * 1024 * 1024);
+  assert.equal(after.checkpointBytes.limit, 256 * 1024 * 1024);
+  assert.deepEqual(after.generationFiles, {used: before.generationFiles.used + 1, limit: 256});
+  assert.equal(after.activeBytes.limit, before.activeBytes.limit);
+  assert.equal(after.undoItems, before.undoItems);
+  assert.equal(after.redoItems, before.redoItems);
+}
+
 export async function advanceRelocatedHistories(host, token, readerToken) {
   const before = await accepted(host, token, capacity);
+  const beforeNative = await readNativeHistoryCapacity(host, token);
   const intents = [
     native('document', {kind: 'continueDocument', next: 'portable-doc-two'}),
     native('review', {kind: 'continueReview', next: 'portable-review-two'}),
@@ -26,6 +52,8 @@ export async function advanceRelocatedHistories(host, token, readerToken) {
   assert.deepEqual(await host.maintenance('reader', readerToken, intents[0]), denied);
   assert.deepEqual(await host.maintenance('reader', readerToken, rotate), denied);
   assert.deepEqual(await host.maintenance('reader', readerToken, capacity), denied);
+  assert.deepEqual(await host.maintenance('reader', readerToken, nativeCapacity), denied);
+  assert.deepEqual(await host.maintenance('owner', readerToken, nativeCapacity), denied);
   const descriptor = await accepted(host, readerToken, describe, 'reader');
   assert.equal(descriptor.document, 'segmented-v1');
   assert.equal(descriptor.review, 'segmented-v1');
@@ -35,6 +63,7 @@ export async function advanceRelocatedHistories(host, token, readerToken) {
     ['continued-v2', 'continued-v2'],
   ];
   const receipts = [];
+  let expectedNative = beforeNative;
   for (const [index, intent] of intents.entries()) {
     const receipt = await accepted(host, token, intent);
     assert.equal(receipt.sequence, String(BigInt(before.log.nextSequence) + BigInt(index)));
@@ -43,6 +72,29 @@ export async function advanceRelocatedHistories(host, token, readerToken) {
     assert.equal(receipt.lane, intent.lane);
     const families = await accepted(host, token, describe);
     assert.deepEqual([families.document, families.review], expectedFamilies[index]);
+    const observedNative = await readNativeHistoryCapacity(host, token);
+    if (index === 0) {
+      advancedLane(beforeNative.document, observedNative.document);
+      advancedLane(beforeNative.suggestionEffect, observedNative.suggestionEffect);
+      assert.equal(observedNative.document.retainedEntries, beforeNative.document.retainedEntries);
+      assert.equal(observedNative.suggestionEffect.retainedEntries,
+        beforeNative.suggestionEffect.retainedEntries);
+      assert.equal(observedNative.document.activeEntries.used, 0);
+      assert.equal(observedNative.document.undoItemLimit, 16000);
+      assert.deepEqual(observedNative.review, beforeNative.review);
+    } else {
+      advancedLane(beforeNative.review, observedNative.review);
+      assert.equal(observedNative.review.retainedEvents.used, beforeNative.review.retainedEvents.used);
+      assert.equal(observedNative.review.retainedEvents.limit, 262144);
+      assert.equal(observedNative.review.activeEvents.used, 0);
+      assert.deepEqual(observedNative.document, expectedNative.document);
+      assert.deepEqual(observedNative.suggestionEffect, expectedNative.suggestionEffect);
+    }
+    assert.deepEqual(observedNative.boundaryRecords, {
+      used: beforeNative.boundaryRecords.used + index + 1,
+      limit: 128 + 192 * (index + 1),
+    });
+    expectedNative = observedNative;
     receipts.push(receipt);
   }
   const continued = await accepted(host, token, capacity);
@@ -69,11 +121,13 @@ export async function advanceRelocatedHistories(host, token, readerToken) {
   const archived = await accepted(host, token, archive);
   assert.deepEqual(archived, {generation: pack.generation, storedBytes: packed.storedBytes, duplicate: false});
   assert.deepEqual(await accepted(host, token, capacity), rotated);
-  return {intents, receipts, rotation, packed, archived};
+  assert.deepEqual(await readNativeHistoryCapacity(host, token), expectedNative);
+  return {intents, receipts, rotation, packed, archived, nativeAfterMaintenance: expectedNative};
 }
 
-export async function verifyRelocatedMaintenanceRetries(host, token, state) {
+export async function verifyRelocatedMaintenanceRetries(host, token, state, nativeBeforeCrash) {
   const before = await accepted(host, token, capacity);
+  assert.deepEqual(await readNativeHistoryCapacity(host, token), nativeBeforeCrash);
   const descriptor = await accepted(host, token, describe);
   assert.equal(descriptor.formatVersion, 2);
   assert.equal(descriptor.document, 'continued-v2');
@@ -85,12 +139,16 @@ export async function verifyRelocatedMaintenanceRetries(host, token, state) {
   assert.deepEqual(await accepted(host, token, pack), state.packed);
   assert.deepEqual(await accepted(host, token, archive), {...state.archived, duplicate: true});
   assert.deepEqual(await accepted(host, token, capacity), before);
+  assert.deepEqual(await readNativeHistoryCapacity(host, token), nativeBeforeCrash);
   return {
     liveNativeHistoryBoundaries: state.intents.length,
     nativeHistoryColdRetries: state.intents.length,
     physicalWalRotations: 1,
     physicalWalColdRetries: 1,
     deniedMaintenanceRequests: 7,
+    deniedNativeCapacityRequests: 2,
+    nativeCapacityMatchesColdRestart: true,
+    reportedNativeCapacityLanes: 3,
     retainedLiveClientSockets: 2,
     relocatedSealedWalPacks: 1,
     relocatedSealedWalArchives: 1,

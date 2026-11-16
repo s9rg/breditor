@@ -83,6 +83,12 @@ fn all_ten_effect_lifecycles_keep_accepted_history_across_native_boundaries_and_
                 room.suggestions.as_ref().ok_or("effects")?.effect_owner.segmented_checkpoint()?;
             let effect_undo = room.suggestions.as_ref().ok_or("effects")?.effect_owner.undo_count();
             let receiver = room.native_history_checkpoint("owner", Lane::Document)?;
+            let capacities = room.native_history_capacity("owner")?;
+            assert_eq!(capacities.document.capacity.checkpoint_bytes.used, receiver.len());
+            let effect_capacity = capacities.suggestion_effect.ok_or("missing effect capacity")?;
+            assert_eq!(effect_capacity.capacity.checkpoint_bytes.used, effect.len());
+            assert_eq!(effect_capacity.capacity.undo_items, effect_undo);
+            assert_eq!(capacities.review, None);
             let native = room.replica.document_json().to_owned();
             let archive = room.export_backup()?;
             let identity = room.backup_identity()?;
@@ -94,6 +100,7 @@ fn all_ten_effect_lifecycles_keep_accepted_history_across_native_boundaries_and_
                 &identity,
                 RoomRecoveryPolicy::HostReacquired,
             )?;
+            assert_eq!(room.native_history_capacity("owner")?, capacities);
             assert_eq!(
                 room.suggestions.as_ref().ok_or("effects")?.effect_owner.segmented_checkpoint()?,
                 effect

@@ -11,7 +11,7 @@ import {WebSocket as Socket} from 'undici';
 import {environment} from './fixtures/room-participant-inventory/environment.mjs';
 import {pixel, proposalAsset, proposalPixel, secondAsset, secondPixel, recoveredAsset, recoveredPixel} from './fixtures/review-assets/pixels.mjs';
 import {assertOlderAuthorityRefused, startSegmentHandoverHost} from './fixtures/relay-segment-handover-host.mjs';
-import {advanceRelocatedHistories, verifyRelocatedMaintenanceRetries} from './fixtures/relay-segment-maintenance.mjs';
+import {advanceRelocatedHistories, readNativeHistoryCapacity, verifyRelocatedMaintenanceRetries} from './fixtures/relay-segment-maintenance.mjs';
 import {captureParticipant, checkRecoveredAlternate, checkRetainedSelected, proposalAlias, reopenParticipant, withWrongReviewReceipt} from './fixtures/relay-segment-participant.mjs';
 import {captureClientRaster, resumeClientRaster} from './fixtures/relay-segment-client-raster.mjs';
 import {recoveredText, reviewRecoveredText} from './fixtures/relay-segment-recovered-text.mjs';
@@ -930,6 +930,13 @@ async function run(mode, {distribution, rich}, executable, parent, journalKind, 
       assert.ok(maintenance.sockets.every(socket => socket.readyState === Socket.OPEN));
       assert.equal(document.state().pending, false);
       assert.equal(review.state().pending, false);
+      const current = await readNativeHistoryCapacity(host, token);
+      const previous = maintenance.state.nativeAfterMaintenance;
+      assert.equal(current.document.activeEntries.used, previous.document.activeEntries.used + 1);
+      assert.equal(current.review.activeEvents.used, previous.review.activeEvents.used + 1);
+      assert.deepEqual(current.suggestionEffect, previous.suggestionEffect);
+      assert.deepEqual(current.boundaryRecords, previous.boundaryRecords);
+      maintenance.nativeBeforeCrash = current;
     }
     await stopClients();
     await host.crash();
@@ -939,7 +946,8 @@ async function run(mode, {distribution, rich}, executable, parent, journalKind, 
     }
     host = await startSegmentHandoverHost(executable, [parent, restoredRoot, address], token);
     if (maintenance) {
-      Object.assign(relocationEvidence, await verifyRelocatedMaintenanceRetries(host, token, maintenance.state));
+      Object.assign(relocationEvidence, await verifyRelocatedMaintenanceRetries(
+        host, token, maintenance.state, maintenance.nativeBeforeCrash));
       assert.deepEqual(await host.maintenance('owner', token, {kind: 'recaptureProofs'}),
         {kind: 'maintenance', result: {nativePredecessors: 5}});
       const recapturedPack = readFileSync(join(

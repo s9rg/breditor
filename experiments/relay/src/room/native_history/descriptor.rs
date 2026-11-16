@@ -1,5 +1,6 @@
 //! Detached capability reads do not authorize a boundary, writer lease or room activation.
 use crate::{Result, Room};
+use breditor_collab_feasibility::{review::ReviewSession, rich_replica::RichReplica};
 use serde::Serialize;
 
 /// Explicit recovery family of one actual server-native owner.
@@ -14,6 +15,26 @@ pub enum ServerNativeHistoryFamily {
     /// Exact V1 predecessor with independent continued native retention.
     #[serde(rename = "continued-v2")]
     ContinuedV2,
+}
+
+impl ServerNativeHistoryFamily {
+    pub(super) fn document(owner: &RichReplica) -> Self {
+        Self::selected(owner.segmented_history_enabled(), owner.continued_history_enabled())
+    }
+
+    pub(super) fn review(owner: &ReviewSession) -> Self {
+        Self::selected(owner.has_segmented_history(), owner.has_continued_history())
+    }
+
+    fn selected(segmented: bool, continued: bool) -> Self {
+        if continued {
+            Self::ContinuedV2
+        } else if segmented {
+            Self::SegmentedV1
+        } else {
+            Self::Original
+        }
+    }
 }
 
 /// Current native receiver families; not server-log rotation or client capability negotiation.
@@ -39,25 +60,9 @@ impl Room {
         principal: &str,
     ) -> Result<ServerNativeHistoryDescriptor> {
         self.reader(principal)?;
-        let family = |enabled| {
-            if enabled {
-                ServerNativeHistoryFamily::SegmentedV1
-            } else {
-                ServerNativeHistoryFamily::Original
-            }
-        };
-        let review = self.review.as_ref().map(|state| {
-            if state.session.has_continued_history() {
-                ServerNativeHistoryFamily::ContinuedV2
-            } else {
-                family(state.session.has_segmented_history())
-            }
-        });
-        let document = if self.replica.continued_history_enabled() {
-            ServerNativeHistoryFamily::ContinuedV2
-        } else {
-            family(self.replica.segmented_history_enabled())
-        };
+        let review =
+            self.review.as_ref().map(|state| ServerNativeHistoryFamily::review(&state.session));
+        let document = ServerNativeHistoryFamily::document(&self.replica);
         Ok(ServerNativeHistoryDescriptor {
             format: "breditor/relay-native-history",
             format_version: if review == Some(ServerNativeHistoryFamily::ContinuedV2)

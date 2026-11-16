@@ -18,7 +18,7 @@ impl Room {
         if self.native_history_retry(lane, boundary)?.is_some() {
             return Err(Error::Contract("duplicate durable native history boundary"));
         }
-        if self.native_history_boundaries.len() >= self.native_boundary_limit(boundary) {
+        if self.native_history_boundaries.len() >= self.native_boundary_limit(Some(boundary)) {
             return Err(Error::Contract("native boundary record budget"));
         }
         let prepared = self.prepare_native_history(lane, boundary)?;

@@ -30,12 +30,12 @@ fn key(lane: ServerNativeHistoryLane, boundary: &NativeHistoryBoundary) -> Resul
 }
 
 impl Room {
-    pub(super) fn native_boundary_limit(&self, boundary: &NativeHistoryBoundary) -> usize {
+    pub(super) fn native_boundary_limit(&self, boundary: Option<&NativeHistoryBoundary>) -> usize {
         let document = self.replica.continued_history_enabled()
-            || matches!(boundary, NativeHistoryBoundary::ContinueDocument { .. });
+            || matches!(boundary, Some(NativeHistoryBoundary::ContinueDocument { .. }));
         let review =
             self.review.as_ref().is_some_and(|state| state.session.has_continued_history())
-                || matches!(boundary, NativeHistoryBoundary::ContinueReview { .. });
+                || matches!(boundary, Some(NativeHistoryBoundary::ContinueReview { .. }));
         // The generation ceilings are independent for the two native lanes.
         128 + 192 * (usize::from(document) + usize::from(review))
     }
@@ -61,7 +61,7 @@ impl Room {
     ) -> Result<ServerNativeHistoryReceipt> {
         let key = key(lane, &boundary)?;
         if self.native_history_boundaries.contains_key(&key)
-            || self.native_history_boundaries.len() >= self.native_boundary_limit(&boundary)
+            || self.native_history_boundaries.len() >= self.native_boundary_limit(Some(&boundary))
         {
             return Err(Error::Contract("duplicate or over-budget native boundary record"));
         }

@@ -84,8 +84,9 @@ pub use backup::{
 };
 pub(crate) use native_history::NativeHistoryBoundary;
 pub use native_history::{
-    ServerNativeHistoryBoundary, ServerNativeHistoryDescriptor, ServerNativeHistoryFamily,
-    ServerNativeHistoryLane, ServerNativeHistoryReceipt,
+    ServerNativeHistoryBoundary, ServerNativeHistoryCapacity, ServerNativeHistoryDescriptor,
+    ServerNativeHistoryFamily, ServerNativeHistoryLane, ServerNativeHistoryReceipt,
+    ServerNativeLaneCapacity,
 };
 pub use participant_inventory::{
     MAX_ROOM_PARTICIPANT_INVENTORY_BYTES, MissingRecoveryRegistration, RecoveryAccount,

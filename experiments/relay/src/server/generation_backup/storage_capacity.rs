@@ -1,8 +1,24 @@
 //! Capacity snapshots from the actual authenticated live generation source.
 use super::LogGenerationServerBackupHandle;
-use crate::{Error, Result, ServerRoomStorageCapacity, server::deployment_fence};
+use crate::{
+    Error, Result, ServerNativeHistoryCapacity, ServerRoomStorageCapacity,
+    server::{ServerBackupHandle, deployment_fence},
+};
 
 impl LogGenerationServerBackupHandle {
+    /// Observe native journal and review capacity as the current authenticated room owner.
+    /// # Errors
+    /// Refuses non-owner credentials, unfenced or stale sources, uncertain custody or an invalid cut.
+    pub async fn native_history_capacity(
+        &self,
+        principal: &str,
+        token: &str,
+    ) -> Result<ServerNativeHistoryCapacity> {
+        ServerBackupHandle { host: self.host.clone() }
+            .native_history_capacity(principal, token)
+            .await
+    }
+
     /// Authenticate the current owner and capture capacity while holding the live deployment lease
     /// and both storage owners. This reads counters and inventory without building a room archive.
     /// # Errors

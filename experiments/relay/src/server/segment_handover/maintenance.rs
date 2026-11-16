@@ -1,12 +1,26 @@
 //! Host-local maintenance for a currently fenced relay and its retained room data.
 use crate::{
     Error, Result, Room, ServerLogGenerationReceipt, ServerNativeHistoryBoundary,
-    ServerNativeHistoryDescriptor, ServerNativeHistoryLane, ServerNativeHistoryReceipt,
-    ServerRoomStorageCapacity,
+    ServerNativeHistoryCapacity, ServerNativeHistoryDescriptor, ServerNativeHistoryLane,
+    ServerNativeHistoryReceipt, ServerRoomStorageCapacity,
     server::{Host, ServerBackupHandle, deployment_fence},
 };
 
 impl ServerBackupHandle {
+    /// Observe native journal and review capacity as the current authenticated room owner.
+    /// # Errors
+    /// Refuses non-owner credentials, unfenced or stale hosts, uncertain custody or an invalid cut.
+    pub async fn native_history_capacity(
+        &self,
+        principal: &str,
+        token: &str,
+    ) -> Result<ServerNativeHistoryCapacity> {
+        self.maintain(principal, token, |_, room, principal| {
+            room.native_history_capacity(principal)
+        })
+        .await
+    }
+
     /// Observe the actual native history families as an authenticated current room reader.
     /// # Errors
     /// Refuses missing read permission, unfenced or stale hosts and uncertain custody.

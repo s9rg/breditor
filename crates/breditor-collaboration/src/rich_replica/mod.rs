@@ -167,7 +167,7 @@ pub use review_comments::{
 };
 pub use reviewed_history::{OwnedSuggestionAcceptance, ReviewedHistoryIdentity};
 pub use search::SharedSearchResults;
-pub use segmented_history::SegmentedHistoryInfo;
+pub use segmented_history::{DocumentHistoryCapacity, SegmentedHistoryInfo};
 pub use session::RichReplica;
 pub use suggestions::{
     DocumentSuggestionClipboardPlan, DocumentSuggestionDraft, DocumentSuggestionEdit,
