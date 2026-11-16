@@ -2,6 +2,15 @@
 
 ## November 15 collaboration recovery
 
+[Cold replay at the 64-WAL ceiling](qualification/2026-11-15-saturated-relay-cold-replay.json)
+shares the already held WAL handles. A portable successor previously failed
+with `Too many open files` under a 160-file limit. The regression now reopens
+the same raw, packed and archived WALs, accepts the original writer's offline
+edit, Undo and Redo and verifies an additional cold reopen. Source and
+clean-installed SDK workflows cold-open the saturated successor under the
+same limit before handing off a second time. All 166 targeted native tests
+pass, including the separate APFS cross-volume interruption test.
+
 [Sealed WAL reclamation after portable activation](qualification/2026-11-15-linked-relay-wal-reclamation.json)
 shrinks the relocated relay's selected sealed WAL, archives it under an exact
 checkpoint and compares the complete portable backup identity and native

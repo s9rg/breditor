@@ -424,6 +424,15 @@ This removes the recovery-time vector of decoded events. Recovery still replays
 the retained history, and live state and portable archives have separate memory
 requirements. The history bounds and durable receipts have the same meanings.
 
+Cold replay shares the sealed WAL handles already held by the room owner.
+The directory, active WAL, sealed WALs and selected manifests stay under
+custody through the replay. A full 64-WAL segment now cold-opens under a
+160-descriptor process limit, including selected raw, packed and archived
+WALs. The relocated room accepts offline edits and their Undo/Redo through
+the original registered writer and cold-opens again at the same result.
+Source and independently installed clients also complete a handover across
+this full-segment cold reopen.
+
 Checkpoint `3a51298e` passes 90 distinct Rust generation, sealed recovery,
 and legacy backup tests. The source and independently installed provider
 workflows each publish the recovered room and reconnect seven clients after
