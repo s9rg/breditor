@@ -2,6 +2,14 @@
 
 ## November 15 collaboration recovery
 
+[Packed-lineage seal custody](qualification/2026-11-15-packed-lineage-final-seal.json)
+rechecks the directory during final seal validation. The
+regression added a file after the live cut comparison. The earlier relay
+sealed a bundle that a cold open would refuse. Both raw and compressed
+layouts now refuse the seal, keep the original epoch writable and
+successfully seal a fresh capture. All 30 native handover tests pass.
+Source and clean-installed portable relocation and legacy handover pass.
+
 [Compressed predecessor checkpoints](qualification/2026-11-15-compressed-portable-checkpoints.json)
 reduce backup bytes and preserve the independent portable identity. A
 26-predecessor backup converts, restores and reopens under a 48-descriptor

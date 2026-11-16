@@ -1,0 +1,70 @@
+{
+  "format": "breditor/packed-lineage-final-seal-qualification",
+  "formatVersion": 1,
+  "date": "2026-11-15",
+  "source": {
+    "commit": "9de484fac6c7b577291ba71c80eebf8ed19f14b7",
+    "dirty": false,
+    "sha256": "fbead4ec50b8818fb99e9baf5a74b7edf3c746b4e2c211c87d7000473be0309a",
+    "files": 8976,
+    "bytes": 76212222
+  },
+  "baseline": {
+    "librarySource": "803ec3e89deb8066d2458a5829685de710274576",
+    "regression": "seal_refuses_a_late_unexpected_file_in_packed_native_lineage",
+    "failed": 1,
+    "sourceSealCommittedAfterUnexpectedEntry": true,
+    "logSha256": "f268acc2eba191dd9d233eab53ded4d488c3889ccd0f02f76cfa2c8f08a9d6e0"
+  },
+  "nativeHandover": {
+    "passed": 30,
+    "failed": 0,
+    "rawAndCompressedRefuseBeforeAuthorityAppend": true,
+    "oldSourceRemainsWritable": true,
+    "freshCaptureSeals": true,
+    "executableSha256": "9b5a118e61e8f8a35f8da34689f5880639a7e341bbcceb821998240e5991752d",
+    "logSha256": "ecddd513c5dc8397e3e5b16dec5e1e5491568f303341be826c56536cff6b30b5"
+  },
+  "strictServerLibraryLint": {
+    "passed": true,
+    "logSha256": "ee125e9b9e3580e20670dc6201fe8719630a4267548a6c85cf5c7b2fb6da5bae"
+  },
+  "workflows": {
+    "portableRelocationReportSha256": "e26e962835ff403a96cc03bf716ca3f50638c14a953642eff40eb5d450af9aa9",
+    "legacyHandoverReportSha256": "b64ac2efe3aec640342cc3201934c05e94d7f0da5363771bb555886c13c2fdf1",
+    "relaySha256": "c0617096dc04a3f0e992d53eca2d24cc77ca0e35e636959ae71f75c8e2a0098b",
+    "runtimeSha256": "38b17b58126858fd4ef014e877e85806c323c675e88cd191222badbe9a36a6d5",
+    "runs": {
+      "source": {
+        "offlineLanes": 6,
+        "undoRedoLanes": 2,
+        "coldResumes": 5,
+        "portableAndLegacyMatchPriorBehavior": true,
+        "proof": null
+      },
+      "installed": {
+        "offlineLanes": 6,
+        "undoRedoLanes": 2,
+        "coldResumes": 5,
+        "portableAndLegacyMatchPriorBehavior": true,
+        "proof": {
+          "registryArtifacts": 45,
+          "archives": [
+            {
+              "name": "@breditor/browser",
+              "sha256": "79f5b486d3742d1234e4eb21c18822e0a494551d49a73039f5b856908c124f3f"
+            },
+            {
+              "name": "@breditor/experimental-rich-content",
+              "sha256": "c181984cc8f737861adf4886398d00413af6a42178d8542d789710c5b3faf371"
+            },
+            {
+              "name": "@breditor/collaboration",
+              "sha256": "c5d79a56da7f48c4e4e10a298bfc2bca5cb9cee46642c0c0586df828396ed7b8"
+            }
+          ]
+        }
+      }
+    }
+  }
+}

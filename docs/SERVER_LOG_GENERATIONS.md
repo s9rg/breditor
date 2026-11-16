@@ -737,6 +737,12 @@ conversion share the same framing and restore path. The ordinary
 `BRLINE1\n` representation with byte-identical checkpoints. The format stores the
 newest checkpoint and original WAL artifacts as raw bytes.
 
+Before committing a source seal, both packed layouts recheck the named
+pack and its directory membership after comparing the live cut. The
+lineage directory accepts only `.owner` and `packed.bin`. An unexpected
+entry at this check leaves the original relay writable. A new capture at
+an absent path can seal the room normally.
+
 For backups with many retained client originals, opt in through
 `ServerBackupHandle::capture_fully_packed_portable_relay_segment` or
 `RelaySegmentRetainedBackup::copy_portable_fully_packed`. Both keep the native
