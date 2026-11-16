@@ -4,9 +4,9 @@ use crate::{Error, Result};
 use std::{collections::BTreeSet, fs::File, io::Write, path::Path};
 
 pub(in crate::room::log_generations) struct ContinuedAssetBackupFiles {
-    retained: AssetArchive,
-    active: AssetArchive,
-    lineage: Lineage,
+    pub(super) retained: AssetArchive,
+    pub(super) active: AssetArchive,
+    pub(super) lineage: Lineage,
 }
 
 impl ContinuedAssetBackupFiles {
@@ -65,21 +65,5 @@ impl ContinuedAssetStore {
             lineage: self.identity.lineage.clone(),
             active,
         })
-    }
-}
-
-#[cfg(feature = "server")]
-impl ContinuedAssetStore {
-    pub(in crate::room::log_generations) fn check_backup_cut(
-        &self,
-        expected: &ContinuedAssetBackupIdentity,
-    ) -> Result<()> {
-        self.guard()?;
-        if self.identity.lineage != expected.lineage
-            || self.active.prepare_backup_stream()?.identity != expected.active
-        {
-            return Err(Error::Contract("restored continued assets advanced"));
-        }
-        self.guard()
     }
 }

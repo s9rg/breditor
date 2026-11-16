@@ -4,7 +4,7 @@ import {execFileSync} from 'node:child_process';
 import {createHash} from 'node:crypto';
 import {closeSync, cpSync, fsyncSync, mkdirSync, openSync, readFileSync, renameSync, writeFileSync} from 'node:fs';
 import {join} from 'node:path';
-import {pixel, pixelAsset, secondAsset, secondPixel} from './review-assets/pixels.mjs';
+import {pixel, pixelAsset, proposalAsset, proposalPixel, secondAsset, secondPixel} from './review-assets/pixels.mjs';
 import {unavailableAsset} from './physical-recovery-control/unavailable-upload.mjs';
 import {startSegmentHandoverHost} from './relay-segment-handover-host.mjs';
 
@@ -87,6 +87,9 @@ export async function verifyContinuedRasterServing(api, rich, wasm, executable, 
     const pendingQueue = await store.ingest(new Blob([secondPixel], {type: 'image/png'}));
     assert.equal(pendingQueue.asset, secondAsset);
     assert.equal(pendingQueue.status, 'pending');
+    const deferred = await store.ingest(new Blob([proposalPixel], {type: 'image/png'}));
+    assert.equal(deferred.asset, proposalAsset);
+    assert.equal(deferred.status, 'pending');
     const queue = Buffer.from(await (await store.exportBackup()).arrayBuffer());
     store.close();
     store = undefined;
@@ -144,7 +147,7 @@ async function verifyPortableCapture({
     assert.deepEqual(Buffer.from(observed.queue), queue);
     return observed;
   };
-  const prepareCapture = (name, original) => {
+  const prepareCapture = (name, original, staged = []) => {
     const portable = join(root, name);
     mkdirSync(portable, {mode: 0o700});
     cpSync(join(parent, 'captured'), join(portable, 'capture'), {recursive: true});
@@ -159,7 +162,7 @@ async function verifyPortableCapture({
       journal: {owner: {kind: 'document', writer, family: 'original'}, bytes: original.length, sha256: [...hash(original)]},
       uploads: {writer, bytes: queue.length, sha256: hash(queue).toString('hex')},
       rasters: [pixelAsset, unavailableAsset],
-      queued: secondAsset,
+      queued: secondAsset, deferred: proposalAsset, staged,
     }));
     return portable;
   };
@@ -167,7 +170,7 @@ async function verifyPortableCapture({
   const exact = load(portable, journal, 'restore');
   assert.deepEqual(load(portable, journal, 'reopen'), exact);
   const matchedAssets = [pixelAsset, unavailableAsset].sort();
-  assert.deepEqual(exact.reconciliation, {inputsComplete: true, matchedAssets, missingAssets: []});
+  assert.deepEqual(exact.reconciliation, {inputsComplete: true, matchedAssets, missingAssets: [], stagedRasters: []});
   const inspectionWriter = (BigInt(writer) + 1n).toString();
   const restored = new api.SharedRichEditor(profile.join_frame('room', inspectionWriter, exact.frame));
   const retained = new api.SharedRichEditor(profile.restore('room', exact.journal));
@@ -181,6 +184,9 @@ async function verifyPortableCapture({
     assert.equal(pending.status, 'pending');
     assert.equal(pending.storageRef, null);
     assert.deepEqual(Buffer.from(await archive.blob(secondAsset).arrayBuffer()), secondPixel);
+    const deferred = archive.entries().find(row => row.asset === proposalAsset);
+    assert.equal(deferred.status, 'pending');
+    assert.equal(deferred.storageRef, null);
     const acknowledged = archive.entries().find(row => row.asset === unavailableAsset);
     assert.equal(acknowledged.status, 'uploaded');
     assert.equal(acknowledged.storageRef, 'breditor:relay-asset:1:' + unavailableAsset);
@@ -194,15 +200,33 @@ async function verifyPortableCapture({
     const pendingInputs = load(missing, missingJournal, 'restore');
     assert.deepEqual(load(missing, missingJournal, 'reopen'), pendingInputs);
     assert.deepEqual(pendingInputs.reconciliation, {
-      inputsComplete: false, matchedAssets, missingAssets: [{
+      inputsComplete: false, matchedAssets, stagedRasters: [], missingAssets: [{
         kind: 'bytes',
         reference: {asset: secondAsset, generation: 'portable-pending-redo-image'},
         content_asset: secondAsset,
       }],
     });
+    const staged = prepareCapture('continued-raster-staged-redo', missingJournal, [secondAsset]);
+    const stagedInputs = load(staged, missingJournal, 'restore');
+    assert.deepEqual(load(staged, missingJournal, 'reopen'), stagedInputs);
+    assert.deepEqual(Buffer.from(stagedInputs.stagedBytes), secondPixel);
+    assert.deepEqual(stagedInputs.reconciliation, {
+      inputsComplete: true,
+      matchedAssets: [...matchedAssets, secondAsset].sort(),
+      missingAssets: [],
+      stagedRasters: [secondAsset],
+    });
+    const restoredRedo = new api.SharedRichEditor(profile.restore('room', stagedInputs.journal));
+    try {
+      assert.equal(restoredRedo.redo(), true);
+      assert.ok(restoredRedo.documentJson().includes(secondAsset));
+    } finally {
+      restoredRedo.dispose();
+    }
     return {
-      coldReopens: 2, exactImages: 2, retainedOfflineRedo: true, pendingQueueAndReceipt: true,
+      coldReopens: 3, exactImages: 2, retainedOfflineRedo: true, pendingQueueAndReceipt: true,
       verifiedInputsFromBothGenerations: true, queuedBytesNeededForRedoReportedMissing: true,
+      selectedRasterStagedAfterReopen: true, unrelatedUploadDeferred: true,
     };
   } finally {
     archive.dispose();

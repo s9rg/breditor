@@ -242,3 +242,22 @@ The detached report's `inputs_complete()` result describes the inspected cut.
 Keep the room unserved pending fresh reconciliation at the approved deployment
 transition. Bind any future use of this report to its exact local restore and
 trusted capture selections.
+
+### Stage selected images required for recovery
+
+When reconciliation reports missing live bytes, select the required canonical
+content IDs in sorted, unique order. Call
+`ContinuedRasterRoomBackupFiles::restore_staging_client_rasters` with that
+selection, the original client archives, and a new absent target. The payloads
+must exist in the selected standalone upload queues or participant originals.
+An ID from either captured server generation is already available and is
+refused as a staged addition. The active generation's existing limits apply to
+the combined captured and staged contents.
+
+The resulting completion record binds the exact additions and the new active
+raster cut to the original room capture. Cold reopening verifies all captured
+active records and the exact additions. The selected client files are retained
+byte-for-byte, so uploads keep their original states and receipts. The restored
+native document keeps its accepted cut while the client history retains work
+such as an offline Redo that needs one of the staged images. Run the normal
+input verification on the new target before selecting it for takeover.

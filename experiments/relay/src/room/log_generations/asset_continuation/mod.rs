@@ -5,6 +5,8 @@ mod backup;
 pub(super) use backup::ContinuedAssetBackupFiles;
 mod open;
 mod operations;
+#[cfg(feature = "server")]
+mod staged_cut;
 #[cfg(test)]
 mod tests;
 

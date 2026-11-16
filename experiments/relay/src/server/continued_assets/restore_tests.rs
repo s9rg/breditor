@@ -42,6 +42,28 @@ pub(super) fn check_combined_restore(
     ));
 
     let files = ContinuedRasterRoomBackupFiles::open(captured, backup, None)?;
+    let absent = parent.join("unstaged-refusal");
+    let originals = ContinuedRasterRoomClientArchives::default();
+    assert!(matches!(
+        files.restore_staging_client_rasters(
+            &absent,
+            "refused",
+            originals,
+            &[asset_id(rasters[0])]
+        ),
+        Err(Error::Contract("selected client raster already belongs to the capture"))
+    ));
+    assert!(matches!(
+        files.restore_staging_client_rasters(
+            &absent,
+            "refused",
+            originals,
+            &[asset_id(b"not a retained payload")]
+        ),
+        Err(Error::Contract("selected raster absent from client originals"))
+    ));
+    assert!(!absent.exists());
+
     let restored =
         files.restore(&target, "combined-next", ContinuedRasterRoomClientArchives::default())?;
     assert_eq!(restored.room().catchup("owner")?, before);

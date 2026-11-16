@@ -24,6 +24,9 @@ struct Originals {
     uploads: RelaySegmentClientUploadPin,
     rasters: [String; 2],
     queued: String,
+    deferred: String,
+    #[serde(default)]
+    staged: Vec<String>,
 }
 
 pub(super) fn run(parent: &Path, reopen: bool) -> Result {
@@ -45,15 +48,21 @@ pub(super) fn run(parent: &Path, reopen: bool) -> Result {
             File::open(parent.join("original.uploads"))?,
             original.uploads.clone(),
         )?;
-        let target = files.restore(
-            &destination,
-            "continued-portable-next",
-            ContinuedRasterRoomClientArchives {
-                journals: &[journal],
-                uploads: &[uploads],
-                alternatives: &[],
-            },
-        )?;
+        let inputs = ContinuedRasterRoomClientArchives {
+            journals: &[journal],
+            uploads: &[uploads],
+            alternatives: &[],
+        };
+        let target = if original.staged.is_empty() {
+            files.restore(&destination, "continued-portable-next", inputs)?
+        } else {
+            files.restore_staging_client_rasters(
+                &destination,
+                "continued-portable-next",
+                inputs,
+                &original.staged,
+            )?
+        };
         storage::write_new(&local, &serde_json::to_vec(target.identity())?)?;
         File::open(parent)?.sync_all()?;
         target
@@ -72,7 +81,10 @@ pub(super) fn run(parent: &Path, reopen: bool) -> Result {
             Ok::<_, Box<dyn std::error::Error + Send + Sync>>(stored.bytes)
         })
         .collect::<Result<Vec<_>>>()?;
-    assert!(target.asset(&original.queued)?.is_none());
+    assert_eq!(target.staged_rasters(), original.staged);
+    assert!(target.asset(&original.deferred)?.is_none());
+    let staged_bytes = target.asset(&original.queued)?.map(|asset| asset.bytes);
+    assert_eq!(staged_bytes.is_some(), original.staged.contains(&original.queued));
     assert_eq!(target.client_journal_pins(false)?, [original.journal.clone()]);
     assert!(target.client_journal_pins(true)?.is_empty());
     assert_eq!(target.client_upload_pins()?, [original.uploads.clone()]);
@@ -90,6 +102,7 @@ pub(super) fn run(parent: &Path, reopen: bool) -> Result {
             "kind": "prepared",
             "frame": frame,
             "rasters": rasters,
+            "stagedBytes": staged_bytes,
             "journal": String::from_utf8(journal)?,
             "queue": queue,
             "reconciliation": reconciliation,

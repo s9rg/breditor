@@ -83,6 +83,11 @@ impl AssetArchive {
         self.input.check()
     }
 
+    #[cfg(feature = "server")]
+    pub(super) fn entries(&self) -> &BTreeMap<String, ArchiveEntry> {
+        &self.files
+    }
+
     pub(super) fn keys(&self) -> impl Iterator<Item = &str> {
         self.files.keys().filter_map(|name| name.strip_suffix(".asset"))
     }

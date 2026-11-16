@@ -95,7 +95,7 @@ impl RelaySegmentRoomBackupFiles {
     }
 }
 
-fn check_queued_rasters(ids: &[String]) -> Result<()> {
+pub(super) fn check_queued_rasters(ids: &[String]) -> Result<()> {
     if ids.len() > MAX_ASSETS {
         return Err(Error::Contract("selected queued raster count budget"));
     }

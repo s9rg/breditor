@@ -4,6 +4,7 @@ mod inspect;
 mod open;
 mod reconciliation;
 mod restore;
+mod stage_rasters;
 
 use super::super::asset_continuation::ContinuedAssetBackupFiles;
 use crate::{

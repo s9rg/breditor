@@ -2,7 +2,8 @@
 use super::super::{
     RelaySegmentClientJournal, RelaySegmentClientUploadArchive,
     client_journals::{self, JournalDirectory, JournalSelection, RetainedJournals},
-    client_uploads::{self, RetainedUploadSelection, RetainedUploads},
+    client_rasters::SelectedRaster,
+    client_uploads::{self, RetainedUploadSelection, RetainedUploads, UploadSource},
     discussion_sources::check_sources,
     restore::OriginalJournals,
 };
@@ -36,31 +37,60 @@ pub(super) struct RetainedClients {
     pub alternatives: Option<RetainedJournals>,
 }
 
-impl RetainedClients {
-    pub fn create(
+pub(super) struct ClientSources<'a> {
+    originals: OriginalJournals<'a>,
+    uploads: Vec<UploadSource<'a>>,
+}
+
+impl<'a> ClientSources<'a> {
+    pub fn select(
         required: &BTreeSet<[u8; 32]>,
-        inputs: ContinuedRasterRoomClientArchives<'_>,
-        create: impl FnOnce() -> Result<GenerationDirectory>,
-    ) -> Result<(GenerationDirectory, Self)> {
+        inputs: ContinuedRasterRoomClientArchives<'a>,
+    ) -> Result<Self> {
         let originals =
             OriginalJournals { selected: inputs.journals, alternatives: inputs.alternatives };
-        let sources = originals.uploads(inputs.uploads)?;
-        client_uploads::select(&sources, Some(&BTreeSet::new()))?;
+        let uploads = originals.uploads(inputs.uploads)?;
         check_sources(
             required,
             inputs.journals.iter().chain(inputs.alternatives).map(RelaySegmentClientJournal::pin),
         )?;
-        let directory = create()?;
-        let uploads = (!sources.is_empty())
-            .then(|| RetainedUploads::create(&directory, &sources))
-            .transpose()?;
-        let (journals, alternatives) =
-            if inputs.journals.is_empty() { (None, None) } else { originals.retain(&directory)? };
-        let clients = Self { uploads, journals, alternatives };
-        clients.check(required)?;
-        Ok((directory, clients))
+        Ok(Self { originals, uploads })
     }
 
+    pub fn staging_sources(&self, ids: &[String]) -> Result<Vec<SelectedRaster<'a>>> {
+        let requested: BTreeSet<_> = ids.iter().map(String::as_str).collect();
+        let from_queues = client_uploads::select(&self.uploads, Some(&requested))?;
+        if ids.is_empty() {
+            return Ok(from_queues);
+        }
+        let mut rasters = self.originals.rasters(from_queues)?;
+        rasters.retain(|raster| requested.contains(raster.info.asset.as_str()));
+        if !rasters.iter().map(|raster| &raster.info.asset).eq(ids) {
+            return Err(Error::Contract("selected raster absent from client originals"));
+        }
+        Ok(rasters)
+    }
+
+    pub fn retain(
+        self,
+        directory: &GenerationDirectory,
+        required: &BTreeSet<[u8; 32]>,
+    ) -> Result<RetainedClients> {
+        let uploads = (!self.uploads.is_empty())
+            .then(|| RetainedUploads::create(directory, &self.uploads))
+            .transpose()?;
+        let (journals, alternatives) = if self.originals.selected.is_empty() {
+            (None, None)
+        } else {
+            self.originals.retain(directory)?
+        };
+        let clients = RetainedClients { uploads, journals, alternatives };
+        clients.check(required)?;
+        Ok(clients)
+    }
+}
+
+impl RetainedClients {
     pub fn selection(&self) -> ClientSelection {
         ClientSelection {
             uploads: self.uploads.as_ref().map(|uploads| uploads.selection().clone()),

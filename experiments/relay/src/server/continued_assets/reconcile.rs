@@ -44,6 +44,9 @@ pub struct ContinuedRasterRoomInputReport {
     pub client_uploads: Vec<RelaySegmentClientUploadPin>,
     /// Every registered writer without an upload archive, including zero-work and revoked writers.
     pub missing_upload_writers: Vec<String>,
+    /// Exact missing raster IDs staged from client originals during restoration.
+    #[serde(skip_serializing_if = "Vec::is_empty")]
+    pub staged_rasters: Vec<String>,
     /// Missing live provider mappings or complete bytes through either captured raster generation.
     pub missing_assets: Vec<ServerAssetAvailabilityMissing>,
     /// Verified generation-exact provider mappings.
@@ -109,6 +112,7 @@ impl RecoveredContinuedRasterRoom {
             alternate_branches: cut.alternate_branches,
             client_uploads,
             missing_upload_writers,
+            staged_rasters: self.staged_rasters().to_vec(),
             missing_assets,
             resolutions,
             assets,

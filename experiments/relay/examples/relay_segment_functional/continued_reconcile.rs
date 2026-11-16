@@ -66,5 +66,6 @@ pub(super) fn verify(parent: &Path, target: &mut RecoveredContinuedRasterRoom) -
         "inputsComplete": complete.inputs_complete(),
         "matchedAssets": complete.assets.into_iter().map(|entry| entry.asset).collect::<Vec<_>>(),
         "missingAssets": complete.missing_assets,
+        "stagedRasters": complete.staged_rasters,
     }))
 }
