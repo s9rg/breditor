@@ -2,6 +2,21 @@
 
 ## November 16 collaboration recovery
 
+[Explicit continued-room upload recovery](qualification/2026-11-16-continued-raster-upload.json)
+holds the current serving epoch and authenticates the original room owner.
+Inspection saves the exact pending upload and any incomplete native WAL
+suffix in independent files. Repair verifies and syncs both files, checks
+the accepted history floor and exact image cut, then completes the native
+tail before removing the staging name. Source and clean-installed clients
+exercise an unpublished partial upload and a staging name linked to a
+published image. They verify that changed evidence and multiple stages
+refuse and that cold restart recovers the accepted edit and all four
+images. A killed native worker leaves the upload evidence intact between WAL
+truncation and stage retirement. The same plan resumes and synchronizes the
+cut under the original serving epoch. All 92 focused Rust tests, 69
+candidate-plan tests and carried-alternate checks pass. Interrupted
+native rotation in a continued room remains open.
+
 [Explicit continued-room native tail repair](qualification/2026-11-16-continued-raster-tail.json)
 authenticates the original owner under the retained serving epoch, verifies
 the complete native prefix against an independently retained minimum, and
