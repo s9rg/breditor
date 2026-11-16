@@ -2,6 +2,19 @@
 
 ## November 16 collaboration recovery
 
+[Migration of older relay archives](qualification/2026-11-16-retired-legacy-relay-history.json)
+retires legacy WAL payloads while keeping their original checkpoint bytes
+and selections. A 26-predecessor chain with all three checkpoint versions
+migrates and reopens with 48 descriptors. A changed proof refuses under
+the original selection. A separately selected changed proof also refuses
+the live seal and leaves the original epoch writable. Source and
+clean-installed clients relocate with all four raw predecessor archives
+omitted, recover the original legacy version packet, offline edits and
+Undo/Redo, and recapture five retired predecessors for a second cold restore.
+Both fixtures use about 95.4% fewer predecessor lineage bytes than the
+compressed pack that retained the original WAL payloads. All 169 targeted
+native tests and the separate APFS archive interruption test pass.
+
 [Compacted portable relay history](qualification/2026-11-16-compacted-relay-history.json)
 omits a certified predecessor's raw archive while preserving its exact
 independently selected identity. Native recovery keeps orphaned review asset
