@@ -2,6 +2,21 @@
 
 ## November 16 collaboration recovery
 
+[Restored room input reconciliation](qualification/2026-11-16-continued-raster-reconcile.json)
+authenticates the native owner, checks protected registrations and compares
+the selected original client journals to the captured server histories.
+It reports missing document, review and upload originals separately. It
+also checks generation-exact mappings and actual admitted bytes through
+both restored raster stores. The source and clean-installed SDK fixtures
+check complete inputs, then preserve another offline Redo whose raster exists
+only in the retained queue. That required image remains missing from the
+relay after cold reopen, and the queue keeps its original pending state.
+The linked native fixture reports missing streams and resolves an opaque
+reference from active raster bytes. All 82 focused Rust tests, the
+69 candidate-plan tests and the carried-alternate checks pass. Staging
+required queue bytes into this storage family and committing an approved
+serving epoch remain open.
+
 [Unserved combined room restore](qualification/2026-11-16-continued-raster-restore.json)
 admits the native archive and checkpoint with both continued raster archives
 against the independent capture selection. It preserves the accepted native
