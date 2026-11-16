@@ -2,6 +2,22 @@
 
 ## November 16 collaboration recovery
 
+[Authenticated continued-raster takeover](qualification/2026-11-16-continued-raster-activation.json)
+commits a separately approved restore under the live source's exclusive
+deployment permit. It checks fresh client and provider inputs and both
+source raster generations. A newer source upload and changed provider
+mapping both refuse without advancing the serving epoch. After an injected
+interruption following the synced epoch, the approved target restarts
+through the original authority and the earlier relay stays fenced. Source
+and clean-installed clients start the target after commit and before any
+new listener has served it. They deliver offline Redo, add an image, and
+cold-restart again. A fresh peer reads the accepted edit before the
+original writer reconnects, and HTTP reads return all four exact images.
+All 83 focused Rust tests, 69 candidate-plan tests and the carried-alternate
+checks pass. First activation requires the live source. Portable activation
+from an independently sealed source and interrupted native-tail recovery
+for this storage family remain open.
+
 [Selected raster staging for continued rooms](qualification/2026-11-16-continued-raster-staging.json)
 copies an explicitly selected missing image from original client files into
 the fresh active store and binds the exact addition in the completion record.
