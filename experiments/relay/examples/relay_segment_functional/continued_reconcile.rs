@@ -4,7 +4,7 @@ use breditor_collab_relay::{
     Error, MissingRecoveryRegistration, RecoveryDocumentCredential,
     RecoveryRegistrationCredentials,
     server::{
-        ContentAddressedServerAssets, ContinuedRasterActivationApproval,
+        ContentAddressedServerAssets, ContinuedRasterActivationApproval, ContinuedRasterSeal,
         RecoveredContinuedRasterRoom,
     },
 };
@@ -72,7 +72,15 @@ pub(super) fn verify(
     let complete =
         target.verify_recovery_inputs(&authentication, "owner", token, &credentials, &provider)?;
     if approve {
-        let approval = ContinuedRasterActivationApproval::select(&complete)?;
+        let source_seal = parent.join("seal.json");
+        let approval = if source_seal.is_file() {
+            let seal = serde_json::from_str(&read(&source_seal, 32 * 1024)?)?;
+            ContinuedRasterActivationApproval::select_sealed(&complete, &seal)?
+        } else {
+            let seal = ContinuedRasterSeal::select(&complete)?;
+            storage::write_new(&source_seal, &serde_json::to_vec(&seal)?)?;
+            ContinuedRasterActivationApproval::select(&complete)?
+        };
         storage::write_new(&parent.join("approval.json"), &serde_json::to_vec(&approval)?)?;
         File::open(parent)?.sync_all()?;
     }

@@ -29,6 +29,7 @@ struct Originals {
     staged: Vec<String>,
     #[serde(default)]
     approve: bool,
+    generation: Option<String>,
 }
 
 pub(super) fn run(parent: &Path, reopen: bool) -> Result {
@@ -55,12 +56,13 @@ pub(super) fn run(parent: &Path, reopen: bool) -> Result {
             uploads: &[uploads],
             alternatives: &[],
         };
+        let generation = original.generation.as_deref().unwrap_or("continued-portable-next");
         let target = if original.staged.is_empty() {
-            files.restore(&destination, "continued-portable-next", inputs)?
+            files.restore(&destination, generation, inputs)?
         } else {
             files.restore_staging_client_rasters(
                 &destination,
-                "continued-portable-next",
+                generation,
                 inputs,
                 &original.staged,
             )?

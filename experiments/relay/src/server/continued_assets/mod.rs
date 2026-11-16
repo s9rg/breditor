@@ -6,6 +6,8 @@ pub use activation::{ContinuedRasterActivation, ContinuedRasterRestart};
 pub use approval::ContinuedRasterActivationApproval;
 mod reconcile;
 pub use reconcile::ContinuedRasterRoomInputReport;
+mod seal;
+pub use seal::{ContinuedRasterSeal, ContinuedRasterSealing, SealedContinuedRasterActivation};
 mod store;
 #[cfg(all(test, unix))]
 mod tests;

@@ -4,7 +4,7 @@ use crate::{
     archive_digest::ArchiveDigest,
     credentials,
     server::{
-        ContinuedRasterRoomBackupIdentity, ContinuedRasterRoomInputReport,
+        ContinuedRasterRoomBackupIdentity, ContinuedRasterRoomInputReport, ContinuedRasterSeal,
         MAX_SERVER_ASSET_AVAILABILITY_BYTES, RecoveredContinuedRasterRoom,
         RecoveredContinuedRasterRoomIdentity, RoomDeploymentSelection,
         deployment_fence::handover_selection,
@@ -26,6 +26,8 @@ pub struct ContinuedRasterActivationApproval {
     backup: ContinuedRasterRoomBackupIdentity,
     target: RecoveredContinuedRasterRoomIdentity,
     inputs_sha256: [u8; 32],
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    sealed_from: Option<RoomDeploymentSelection>,
 }
 
 impl ContinuedRasterActivationApproval {
@@ -34,6 +36,25 @@ impl ContinuedRasterActivationApproval {
     /// # Errors
     /// Refuses incomplete reports, invalid selections or unresolved epoch budgets.
     pub fn select(report: &ContinuedRasterRoomInputReport) -> Result<Self> {
+        Self::select_at(report, None)
+    }
+
+    /// Select a complete report for a new local restore of the independently sealed cut.
+    ///
+    /// # Errors
+    /// Refuses an incomplete report or different portable client and provider inputs.
+    pub fn select_sealed(
+        report: &ContinuedRasterRoomInputReport,
+        seal: &ContinuedRasterSeal,
+    ) -> Result<Self> {
+        seal.check_report(report)?;
+        Self::select_at(report, Some(seal.planned_selection()?))
+    }
+
+    fn select_at(
+        report: &ContinuedRasterRoomInputReport,
+        sealed_from: Option<RoomDeploymentSelection>,
+    ) -> Result<Self> {
         let approval = Self {
             format: FORMAT.into(),
             format_version: 1,
@@ -41,6 +62,7 @@ impl ContinuedRasterActivationApproval {
             backup: report.backup.clone(),
             target: report.target.clone(),
             inputs_sha256: input_digest(report)?,
+            sealed_from,
         };
         approval.planned_selection()?;
         Ok(approval)
@@ -60,8 +82,24 @@ impl ContinuedRasterActivationApproval {
         handover_selection(self.previous(), &self.nonce()?)
     }
 
-    pub(in crate::server) const fn previous(&self) -> &RoomDeploymentSelection {
-        &self.backup.source_epoch
+    pub(in crate::server) fn previous(&self) -> &RoomDeploymentSelection {
+        self.sealed_from.as_ref().unwrap_or(&self.backup.source_epoch)
+    }
+
+    pub(in crate::server) fn check_live_source(&self) -> Result<()> {
+        if self.sealed_from.is_some() {
+            return Err(Error::Contract("continued raster approval requires its portable seal"));
+        }
+        Ok(())
+    }
+
+    pub(in crate::server) fn check_sealed_source(&self, seal: &ContinuedRasterSeal) -> Result<()> {
+        if self.sealed_from.as_ref() != Some(&seal.planned_selection()?)
+            || &self.backup != seal.backup()
+        {
+            return Err(Error::Contract("continued raster approval seal differs"));
+        }
+        Ok(())
     }
 
     pub(in crate::server) fn check_target(
@@ -89,6 +127,12 @@ impl ContinuedRasterActivationApproval {
             return Err(Error::Contract("continued raster activation approval format"));
         }
         self.backup.check_selection()?;
+        if let Some(sealed) = &self.sealed_from
+            && (sealed.identity != self.backup.source_epoch.identity
+                || sealed.validate_pin()? != self.backup.source_epoch.validate_pin()? + 1)
+        {
+            return Err(Error::Contract("continued raster approval seal epoch"));
+        }
         credentials::hash(&self.salt)?;
         Ok(Sha256::digest(serde_json::to_vec(self)?).into())
     }

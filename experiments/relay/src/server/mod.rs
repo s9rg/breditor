@@ -10,6 +10,7 @@ pub use crate::room::{
 pub use continued_assets::{
     ContinuedAssetServerHandle, ContinuedRasterActivation, ContinuedRasterActivationApproval,
     ContinuedRasterRestart, ContinuedRasterRoomBackupIdentity, ContinuedRasterRoomInputReport,
+    ContinuedRasterSeal, ContinuedRasterSealing, SealedContinuedRasterActivation,
     router_with_continued_assets_and_deployment_lease,
 };
 mod authentication;

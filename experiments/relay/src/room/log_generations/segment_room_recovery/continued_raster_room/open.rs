@@ -76,7 +76,11 @@ impl ContinuedRasterRoomBackupFiles {
         Ok(backup)
     }
 
-    pub(super) fn check(&self) -> Result<()> {
+    pub(crate) fn selection(&self) -> &ContinuedRasterRoomBackupIdentity {
+        &self.identity
+    }
+
+    pub(crate) fn check(&self) -> Result<()> {
         self.files.guard(&self.directory)?;
         self.native.check()?;
         self.rasters.check()

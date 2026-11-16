@@ -143,7 +143,7 @@ export async function verifyContinuedRasterServing(api, rich, wasm, executable, 
     }));
     assert.equal(approved.reconciliation.inputsComplete, true);
     assert.deepEqual(approved.reconciliation.stagedRasters, [secondAsset]);
-    const prohibited = await host.maintenance('owner', 'wrong-owner-token', {kind: 'activate'});
+    const prohibited = await host.maintenance('owner', 'wrong-owner-token', {kind: 'sealActivation'});
     assert.ok(prohibited.error);
     const headers = {Origin: origin, Authorization: 'Bearer ' + token, 'X-Breditor-Principal': 'owner'};
     const get = id => fetch(base + id, {headers});
@@ -152,23 +152,56 @@ export async function verifyContinuedRasterServing(api, rich, wasm, executable, 
     const beforeActivation = await get(pixelAsset);
     assert.equal(beforeActivation.status, 200);
     await beforeActivation.arrayBuffer();
-    const committed = await host.maintenance('owner', token, {kind: 'activate'});
-    assert.ok(committed.result, committed.error);
-    assert.equal(BigInt(committed.result.generation), BigInt(next.generation) + 1n);
+    const sealed = await host.maintenance('owner', token, {kind: 'sealActivation'});
+    assert.ok(sealed.result, sealed.error);
+    assert.equal(BigInt(sealed.result.generation), BigInt(next.generation) + 1n);
     for (const denied of [await get(pixelAsset), await upload(proposalAsset, proposalPixel)]) {
       assert.equal(denied.status, 403);
       await denied.arrayBuffer();
     }
     await host.crash();
     host = undefined;
-
+    const preflight = join(parent, 'sealed-preflight');
+    renameSync(activation, preflight);
+    renameSync(join(parent, 'source-native'), join(parent, 'sealed-native'));
+    renameSync(join(parent, 'continued'), join(parent, 'sealed-rasters'));
+    prepareContinuedCapture({
+      directory: activation, source: join(preflight, 'capture'), parent,
+      capture: captured.result, writer: registration.identity.writer, credential: registration.identity.credential,
+      token, original: readFileSync(journal), queue, staged: [secondAsset], approve: true,
+      generation: 'relocated-continued-raster', seal: readFileSync(join(preflight, 'seal.json')),
+    });
+    const invoke = (directory, mode) => JSON.parse(execFileSync(executable, [directory, mode, '127.0.0.1:0'], {
+      encoding: 'utf8', timeout: 30_000, maxBuffer: 8 * 1024 * 1024, stdio: ['ignore', 'pipe', 'pipe'],
+    }));
+    const changedOriginal = new api.SharedRichEditor(profile.restore('room', readFileSync(journal, 'utf8')));
+    const incompatible = join(parent, 'different-portable-original');
+    try {
+      assert.equal(changedOriginal.redo(), true);
+      prepareContinuedCapture({
+        directory: incompatible, source: join(preflight, 'capture'), parent, capture: captured.result,
+        writer: registration.identity.writer, credential: registration.identity.credential, token,
+        original: Buffer.from(changedOriginal.checkpointJson()), queue, staged: [secondAsset], approve: true,
+        seal: readFileSync(join(preflight, 'seal.json')),
+      });
+      assert.throws(() => invoke(incompatible, 'continued-raster-restore'),
+        error => error.status === 1 && error.stderr.includes('continued raster sealed inputs differ'));
+    } finally {
+      changedOriginal.dispose();
+    }
+    assert.equal(invoke(activation, 'continued-raster-restore').reconciliation.inputsComplete, true);
+    const localPin = directory => JSON.parse(readFileSync(join(directory, 'prepared-selection.json'), 'utf8'));
+    assert.notDeepEqual(localPin(activation), localPin(preflight));
     const saveExpected = selection => writeFileSync(join(activation, 'expected.json'), JSON.stringify(selection), {mode: 0o600});
     const startApproved = () => startSegmentHandoverHost(executable, [parent, 'continued-raster-activated', address]);
     const newEpoch = selection => JSON.parse(readFileSync(join(activation, 'started-after-' + selection.generation + '.json'), 'utf8'));
-    saveExpected(committed.result);
+    saveExpected(sealed.result);
+    const committed = invoke(parent, 'continued-raster-portable-commit');
+    assert.equal(BigInt(committed.generation), BigInt(sealed.result.generation) + 1n);
+    saveExpected(committed);
     host = await startApproved();
-    const firstServing = newEpoch(committed.result);
-    assert.equal(BigInt(firstServing.generation), BigInt(committed.result.generation) + 1n);
+    const firstServing = newEpoch(committed);
+    assert.equal(BigInt(firstServing.generation), BigInt(committed.generation) + 1n);
     await connect();
     assert.equal(client.redo(), true);
     await sync.flush();
@@ -201,7 +234,7 @@ export async function verifyContinuedRasterServing(api, rich, wasm, executable, 
     return {
       httpRastersRecovered: 2, stagedUploadReceipts: 1, offlineUndoAndRedo: true, combinedCapture: true, portableRestore,
       authenticatedTakeover: {staleRelayReadsAndWritesRefused: true, coldStarts: 2, offlineRedoDelivered: true,
-        postActivationRasterAndEditSurvived: true, exactRastersRead: 4},
+        postActivationRasterAndEditSurvived: true, exactRastersRead: 4, portableSealAndRelocation: true, changedClientOriginalRefused: true},
     };
   } finally {
     if (sync) {
@@ -310,6 +343,7 @@ async function verifyPortableCapture({
 
 function prepareContinuedCapture({
   directory, source, parent, capture, writer, credential, token, original, queue, staged, approve = false,
+  generation, seal,
 }) {
   mkdirSync(directory, {mode: 0o700});
   cpSync(source, join(directory, 'capture'), {recursive: true});
@@ -318,12 +352,13 @@ function prepareContinuedCapture({
   write('auth.json', readFileSync(join(parent, 'auth.json')));
   write('protected.json', JSON.stringify({token, writer, documentCredential: credential}));
   write('capture-selection.json', JSON.stringify(capture));
+  if (seal) write('seal.json', seal);
   write('original.journal', original);
   write('original.uploads', queue);
   write('originals.json', JSON.stringify({
     journal: {owner: {kind: 'document', writer, family: 'original'}, bytes: original.length, sha256: [...hash(original)]},
     uploads: {writer, bytes: queue.length, sha256: hash(queue).toString('hex')},
     rasters: [pixelAsset, unavailableAsset],
-    queued: secondAsset, deferred: proposalAsset, staged, approve,
+    queued: secondAsset, deferred: proposalAsset, staged, approve, generation,
   }));
 }

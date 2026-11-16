@@ -95,7 +95,7 @@ impl ContinuedRasterRoomBackupFiles {
     }
 }
 
-fn serve(
+pub(super) fn serve(
     target: RecoveredContinuedRasterRoom,
     authentication: Authentication,
     lease: &RoomDeploymentLease,

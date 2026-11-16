@@ -288,3 +288,28 @@ the exact same approval and the original owner credentials. It checks the
 approval's committed epoch in the authority ledger, reopens the same restored
 owner and its later complete native and raster work, and commits a fresh epoch.
 A torn native tail requires a separate explicit recovery path.
+
+### Seal a portable cut before source shutdown
+
+For a room whose authority uses coordinated recovery, verify a preflight
+restore while the source is still live. Persist a `ContinuedRasterSeal`
+from that complete report separately from the room files. The decision binds
+the native capture, both image archives, the original client files and the
+resolved image mappings. Keep the validated backup and its required parent
+archives open and call `ContinuedAssetServerHandle::seal_recovered_room`
+with the authenticated original owner and freshly verified inputs. The
+exclusive authority permit serializes this check with source reads and
+writes. Committing the seal retires the old lease and leaves the room offline.
+Query `ContinuedRasterSeal::status` after an interrupted reply.
+
+Keep the independently saved seal and authority selection. Relocate the four
+capture files, any required native parents, and the exact selected client
+originals. Restore into a new absent directory and verify the inputs there.
+Select a `ContinuedRasterActivationApproval::select_sealed` for the new target
+and retain it separately. Reopen the actual authority with
+`RoomDeploymentAuthority::open_at_least` against the sealed epoch. Then
+activate through `RecoveredContinuedRasterRoom::activate_sealed_room` with
+fresh credentials, mapping checks and the same seal. The new directory has
+its own completion pin. The old host and its live directories can be offline
+during this step. Cold restarts after activation use
+`restart_activated_room` with the new approval and retained serving epoch.

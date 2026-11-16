@@ -88,6 +88,7 @@ struct Command {
 enum Action {
     Capture,
     CaptureActivation,
+    SealActivation,
     Activate,
 }
 
@@ -105,6 +106,11 @@ fn control(parent: &Path, handle: ContinuedAssetServerHandle) -> tokio::task::Jo
                     .capture(&principal, &token, &parent.join("activation-capture"))
                     .map(|capture| json!(capture))
                     .map_err(|error| error.to_string()),
+                Action::SealActivation => {
+                    super::continued_activation::seal(&parent, &handle, &principal, &token)
+                        .map(|selection| json!(selection))
+                        .map_err(|error| error.to_string())
+                }
                 Action::Activate => {
                     super::continued_activation::commit(&parent, &handle, &principal, &token)
                         .map(|selection| json!(selection))

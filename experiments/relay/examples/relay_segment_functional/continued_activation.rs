@@ -3,7 +3,8 @@ use super::{Result, configured_auth, continued_reconcile, read, storage};
 use breditor_collab_relay::server::{
     Authentication, ContentAddressedServerAssets, ContinuedAssetServerHandle,
     ContinuedRasterActivation, ContinuedRasterActivationApproval, ContinuedRasterRestart,
-    ContinuedRasterRoomBackupFiles, RoomDeploymentAuthority, RoomDeploymentSelection,
+    ContinuedRasterRoomBackupFiles, ContinuedRasterSeal, ContinuedRasterSealing,
+    RoomDeploymentAuthority, RoomDeploymentSelection, SealedContinuedRasterActivation,
 };
 use std::{fs::File, path::Path};
 
@@ -62,4 +63,62 @@ pub(super) fn restart(parent: &Path, authentication: Authentication) -> Result<a
     )?;
     File::open(&path)?.sync_all()?;
     Ok(router)
+}
+
+pub(super) fn seal(
+    parent: &Path,
+    source: &ContinuedAssetServerHandle,
+    principal: &str,
+    token: &str,
+) -> Result<RoomDeploymentSelection> {
+    let path = parent.join("activation");
+    let (backup, approval) = inputs(&path)?;
+    let seal: ContinuedRasterSeal =
+        serde_json::from_str(&read(&path.join("seal.json"), 32 * 1024)?)?;
+    let mut preflight = backup.reopen(&path.join("prepared"), approval.target())?;
+    let credentials = continued_reconcile::read_protected(&path)?.credentials();
+    Ok(source.seal_recovered_room(
+        principal,
+        token,
+        &backup,
+        &mut preflight,
+        &ContinuedRasterSealing {
+            seal: &seal,
+            credentials: &credentials,
+            provider: &ContentAddressedServerAssets,
+        },
+    )?)
+}
+
+pub(super) fn commit_portable(
+    parent: &Path,
+    authentication: Authentication,
+) -> Result<RoomDeploymentSelection> {
+    let path = parent.join("activation");
+    let (backup, approval) = inputs(&path)?;
+    let seal: ContinuedRasterSeal =
+        serde_json::from_str(&read(&path.join("seal.json"), 32 * 1024)?)?;
+    let expected: RoomDeploymentSelection =
+        serde_json::from_str(&read(&path.join("expected.json"), 4096)?)?;
+    assert_eq!(expected, seal.planned_selection()?);
+    let authority = RoomDeploymentAuthority::open_at_least(&parent.join("authority"), &expected)?;
+    let target = backup.reopen(&path.join("prepared"), approval.target())?;
+    let protected = continued_reconcile::read_protected(&path)?;
+    let credentials = protected.credentials();
+    let (_, _, selection) = target.activate_sealed_room(
+        authentication,
+        "owner",
+        &protected.token,
+        &SealedContinuedRasterActivation {
+            authority: &authority,
+            seal: &seal,
+            target: ContinuedRasterActivation {
+                approval: &approval,
+                credentials: &credentials,
+                provider: &ContentAddressedServerAssets,
+            },
+        },
+    )?;
+    assert_eq!(selection, approval.planned_selection()?);
+    Ok(selection)
 }

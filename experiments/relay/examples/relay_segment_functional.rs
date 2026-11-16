@@ -196,6 +196,13 @@ async fn main() -> Result {
             continued_serving::router(parent, auth, &png, mode == "continued-raster-resume")?
         }
         "continued-raster-activated" => (continued_activation::restart(parent, auth)?, None),
+        "continued-raster-portable-commit" => {
+            println!(
+                "{}",
+                serde_json::to_string(&continued_activation::commit_portable(parent, auth)?)?
+            );
+            return Ok(());
+        }
         "claim-unverified" => {
             let authority = deployment(parent)?;
             authority.claim(&authority.current_selection()?)?;

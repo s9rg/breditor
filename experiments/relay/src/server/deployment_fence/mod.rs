@@ -1,7 +1,10 @@
 //! Separate host-owned serving epochs. No archive, receipt or editor token can
 //! construct a lease; room recovery/reconciliation remains a separate decision.
 mod activate_continued_raster;
+mod continued_source_cut;
+mod seal_continued_raster;
 pub(super) use activate_continued_raster::activate_continued_raster;
+pub(super) use seal_continued_raster::{activate_sealed_continued_raster, seal_continued_raster};
 mod activate_durable_generation;
 pub(super) use activate_durable_generation::activate_durable_native_generation;
 mod activate_generation;

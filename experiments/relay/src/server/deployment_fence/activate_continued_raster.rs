@@ -1,5 +1,5 @@
 //! Compare both live source generations and fresh recovery inputs under the actual write fence.
-use super::{RoomDeploymentLease, permit::Permit};
+use super::{RoomDeploymentLease, continued_source_cut::ContinuedSourceCut, permit::Permit};
 use crate::{
     Error, Result,
     server::{
@@ -8,7 +8,6 @@ use crate::{
         generation_backup::durable::{Interruption, Point},
     },
 };
-use std::io::sink;
 
 pub(in crate::server) fn activate_continued_raster(
     host: &Host,
@@ -20,6 +19,7 @@ pub(in crate::server) fn activate_continued_raster(
     stop: &Interruption,
 ) -> Result<RoomDeploymentLease> {
     let approval = selected.approval;
+    approval.check_live_source()?;
     let planned = approval.planned_selection()?;
     approval.check_target(target)?;
     host.deployment.fenced(|old| {
@@ -38,36 +38,11 @@ pub(in crate::server) fn activate_continued_raster(
             selected.provider,
         )?;
         approval.check_inputs(&inputs)?;
-        let mut room = host.room.lock().map_err(|_| Error::NeedsRecovery)?;
-        if let Some(custody) = &host.continued_custody {
-            custody.check(&room)?;
-            custody.check_retained_alternates(target)?;
-        }
-        let rasters = host
-            .continued_assets
-            .as_ref()
-            .ok_or(Error::NeedsRecovery)?
-            .lock()
-            .map_err(|_| Error::NeedsRecovery)?;
-        let native = room.write_relay_segment_base_with_compactable_history(
-            principal,
-            &mut sink(),
-            &mut sink(),
-        )?;
-        if native != inputs.backup.native
-            || rasters.write_backup(&mut sink(), &mut sink())? != inputs.backup.rasters
-        {
-            return Err(Error::Contract("continued raster activation live source advanced"));
-        }
-
+        let source = ContinuedSourceCut::compare(host, principal, &inputs.backup, target)?;
         stop.after(Point::SourceChecked)?;
         target.check_exact_restored_cut()?;
         check_server_asset_mappings(selected.provider, &inputs.resolutions)?;
-        rasters.guard()?;
-        room.recovery_inventory_owner(principal)?;
-        if let Some(custody) = &host.continued_custody {
-            custody.check(&room)?;
-        }
+        source.check(principal)?;
         target.check_exact_restored_cut()?;
         old.check_held(&mut epoch)?;
         let lease = authority.claim_activation_held(

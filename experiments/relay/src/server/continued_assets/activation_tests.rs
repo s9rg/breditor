@@ -7,7 +7,9 @@ use crate::{
     server::{
         Authentication, ContinuedRasterActivation, ContinuedRasterActivationApproval,
         ContinuedRasterRestart, ContinuedRasterRoomBackupFiles, ContinuedRasterRoomClientArchives,
-        RoomDeploymentAuthority, ServerRecoveryAssetProvider, deployment_fence,
+        ContinuedRasterSeal, ContinuedRasterSealing, LogGenerationHandoverStatus,
+        RoomDeploymentAuthority, SealedContinuedRasterActivation, ServerRecoveryAssetProvider,
+        deployment_fence,
         generation_backup::durable::{Interruption, Point},
     },
 };
@@ -154,5 +156,119 @@ async fn activation_refuses_advanced_source_and_changed_mapping_then_resumes_syn
     assert_eq!(authority.current_selection()?, next);
     assert_eq!(next.generation.parse::<u64>()?, planned.generation.parse::<u64>()? + 1);
     assert!(handle.capture("owner", &token, &root.join("restarted")).is_ok());
+    Ok(())
+}
+
+#[test]
+fn portable_seal_survives_lost_reply_and_refuses_changed_inputs_after_relocation() -> TestResult {
+    let (fixture, room, _) = segment_handover_test_source(3, true, true)?;
+    let root_path = fixture.room();
+    let root = root_path.parent().ok_or("fixture root")?;
+    let mut predecessor = AssetStore::open(&root.join("initial"), room.asset_binding())?;
+    let first = image(201)?;
+    let first_id = asset_id(&first);
+    predecessor.put(prepare_asset(&first_id, "image/png", first)?)?;
+    let archive = root.join("predecessor.archive");
+    let pin = predecessor.write_backup(&mut File::create_new(&archive)?)?;
+    let mut assets = ContinuedAssetStore::create_from_backup(
+        &root.join("continued"),
+        File::open(archive)?,
+        &pin,
+    )?;
+    let other = image(202)?;
+    let other_id = asset_id(&other);
+    assets.put(prepare_asset(&other_id, "image/png", other)?)?;
+    let epochs = root.join("authority");
+    let authority = RoomDeploymentAuthority::create_with_coordinated_recovery(
+        &epochs,
+        &room.deployment_binding()?,
+    )?;
+    let lease = authority.claim(&authority.current_selection()?)?;
+    let (token, hash) = Authentication::issue_token()?;
+    let auth = || {
+        Authentication::from_json(&json!({
+        "format": "breditor/relay-auth", "formatVersion": 1, "origins": ["http://127.0.0.1:4187"],
+        "accounts": [{"principal": "owner", "tokenHash": hash}],
+    }).to_string())
+    };
+    let (_, source) =
+        router_with_continued_assets_and_deployment_lease(room, auth()?, assets, lease)?;
+    let capture = root.join("capture");
+    let selection = source.capture("owner", &token, &capture)?;
+    let backup = ContinuedRasterRoomBackupFiles::open(&capture, &selection, None)?;
+    let credentials = RecoveryRegistrationCredentials::default();
+    let provider = Mapping(&first_id);
+    let mut preflight = backup.restore(
+        &root.join("preflight"),
+        "preflight",
+        ContinuedRasterRoomClientArchives::default(),
+    )?;
+    let report =
+        preflight.verify_recovery_inputs(&auth()?, "owner", &token, &credentials, &provider)?;
+    let seal = ContinuedRasterSeal::select(&report)?;
+    let planned = seal.planned_selection()?;
+    assert!(matches!(seal.status(&authority)?, LogGenerationHandoverStatus::Prepared));
+    assert!(RoomDeploymentAuthority::open_at_least(&epochs, &planned).is_err());
+    assert!(matches!(
+        deployment_fence::seal_continued_raster(
+            &source.host,
+            "owner",
+            &token,
+            &backup,
+            &mut preflight,
+            &ContinuedRasterSealing { seal: &seal, credentials: &credentials, provider: &provider },
+            &Interruption { stop: Some(Point::EpochSynced), ..Interruption::default() },
+        ),
+        Err(Error::Contract("injected durable handover interruption")),
+    ));
+    assert!(matches!(seal.status(&authority)?, LogGenerationHandoverStatus::Sealed));
+    assert!(matches!(source.capture("owner", &token, &root.join("denied")), Err(Error::Lease)));
+    assert!(authority.claim(&planned).is_err());
+    drop(source);
+
+    let cold = RoomDeploymentAuthority::open_at_least(&epochs, &planned)?;
+    let path = root.join("relocated");
+    let mut target =
+        backup.restore(&path, "relocated", ContinuedRasterRoomClientArchives::default())?;
+    assert_ne!(target.identity(), preflight.identity());
+    let report =
+        target.verify_recovery_inputs(&auth()?, "owner", &token, &credentials, &provider)?;
+    let approval = ContinuedRasterActivationApproval::select_sealed(&report, &seal)?;
+    assert!(matches!(
+        target.activate_sealed_room(
+            auth()?,
+            "owner",
+            &token,
+            &SealedContinuedRasterActivation {
+                authority: &cold,
+                seal: &seal,
+                target: ContinuedRasterActivation {
+                    approval: &approval,
+                    credentials: &credentials,
+                    provider: &Mapping(&other_id)
+                },
+            }
+        ),
+        Err(Error::Contract("continued raster sealed inputs differ")),
+    ));
+    assert_eq!(cold.current_selection()?, planned);
+    let target = backup.reopen(&path, approval.target())?;
+    let (_, replacement, active) = target.activate_sealed_room(
+        auth()?,
+        "owner",
+        &token,
+        &SealedContinuedRasterActivation {
+            authority: &cold,
+            seal: &seal,
+            target: ContinuedRasterActivation {
+                approval: &approval,
+                credentials: &credentials,
+                provider: &provider,
+            },
+        },
+    )?;
+    assert_eq!(cold.current_selection()?, active);
+    assert_eq!(active, approval.planned_selection()?);
+    assert!(replacement.capture("owner", &token, &root.join("final")).is_ok());
     Ok(())
 }
