@@ -1,0 +1,247 @@
+{
+  "format": "breditor/indexed-review-batch-admission-qualification",
+  "formatVersion": 1,
+  "date": "2026-11-16",
+  "source": {
+    "commit": "bc174362707f968454d5e1d4828432e094a99127",
+    "dirty": false,
+    "sha256": "60795337e19f8d489198ff5f90dca83b8b3f5b92d7c3b11b03562cc6c42890eb",
+    "files": 8997,
+    "bytes": 76387251
+  },
+  "admissionChecks": {
+    "liveAndRetainedInputsAtMaximumFrameEvents": 128,
+    "liveAnchorChecks": 1,
+    "retainedBranchAnchorChecks": 3,
+    "exactReceiptAndCanonicalPeerCheckpoint": true,
+    "backendAnchorRefusalAndCausalPendingOrderPreserved": true,
+    "malformedStagedVisibilityPublishesNothing": true,
+    "propertyCasesPerOracle": 1024
+  },
+  "coreReviewTests": {
+    "passed": 14,
+    "failed": 0,
+    "ignored": 0,
+    "executableSha256": [
+      "365389c3c3093159be3bdbe9dfc06803a838d51922154074a69bc117c565b437"
+    ],
+    "logSha256": "29c6f4c3d1b6283ee03ee87359e4e2938ba403ba0723470c1da802ed3bb8c5bf"
+  },
+  "coreReviewContracts": {
+    "passed": 45,
+    "failed": 0,
+    "ignored": 0,
+    "executableSha256": [
+      "2b81869c8e118350028086bc14971c6d1f6b0f16e7df4ed08719f8736ce635ae",
+      "c026f3263b7a429ef583461bd76ddab134a31b54d70b84217b43d05ec068fa96",
+      "887786a5de0e9c10fce8072709faf82a731fde2789a410a47df91ddf0d8185df",
+      "f97a3cb6a46cb6c4de451a48cf0d5dd6f24484f34ceb8c5d4cc60f947174f16a",
+      "aae9621849e1771dd53b3f18d7af0172b1437a4d396c81924ede9668bd1583bc",
+      "8725608009c87dfecc7041e23facbf7330a3d081fb53422f4d56a535d39942c7"
+    ],
+    "logSha256": "c92b661c33406637ad1c8b15d7164b555ce77d6066e018b183550700e3d7cf37"
+  },
+  "nativeRelayTests": {
+    "room-native_history": {
+      "passed": 15,
+      "failed": 0,
+      "ignored": 0,
+      "executableSha256": [
+        "1045d17e6468b0c3bcb753283583e392c97ae258a0fa85df6fb7efcd8c26ada6"
+      ],
+      "logSha256": "2103b0bfea306654e120893eafc7b707618999cd5d995287300c7e15606fec8d"
+    },
+    "room-review": {
+      "passed": 7,
+      "failed": 0,
+      "ignored": 0,
+      "executableSha256": [
+        "1045d17e6468b0c3bcb753283583e392c97ae258a0fa85df6fb7efcd8c26ada6"
+      ],
+      "logSha256": "f9eb833951379232f395a8f152bd1e18d387de75fbea153301557b91b3969530"
+    },
+    "room-backup-tests-generation_migration": {
+      "passed": 2,
+      "failed": 0,
+      "ignored": 0,
+      "executableSha256": [
+        "1045d17e6468b0c3bcb753283583e392c97ae258a0fa85df6fb7efcd8c26ada6"
+      ],
+      "logSha256": "7237262349731c803818f6fb3617dee4a640924f7e062c34c96ec853502f41cf"
+    },
+    "room-asset_references": {
+      "passed": 12,
+      "failed": 0,
+      "ignored": 0,
+      "executableSha256": [
+        "1045d17e6468b0c3bcb753283583e392c97ae258a0fa85df6fb7efcd8c26ada6"
+      ],
+      "logSha256": "080452fa3b03eb1750772ceb49f0e4f3fc055ed8f6e2612733dceed054698617"
+    },
+    "room-materialized_checkpoint": {
+      "passed": 3,
+      "failed": 0,
+      "ignored": 0,
+      "executableSha256": [
+        "1045d17e6468b0c3bcb753283583e392c97ae258a0fa85df6fb7efcd8c26ada6"
+      ],
+      "logSha256": "761dca658be23aad9db93123118caecbf2450f676e620de147114433a01f8013"
+    },
+    "server-segment_handover-tests": {
+      "passed": 32,
+      "failed": 0,
+      "ignored": 0,
+      "executableSha256": [
+        "1045d17e6468b0c3bcb753283583e392c97ae258a0fa85df6fb7efcd8c26ada6"
+      ],
+      "logSha256": "56675707b0b0e3bf1ae8f0c5d3b0eaeb9a29514ff8fc41272c1ff9c0d94a1292"
+    }
+  },
+  "nativeCollaborationContracts": {
+    "passed": 33,
+    "failed": 0,
+    "ignored": 0,
+    "executableSha256": [
+      "f35cf23226093a908eb41c82341ecfddf96274798456b4218d247ecf363ef162",
+      "5d8a64040ce167cb14d40d5a7da55e144754b20dedc75b21ae4d1a738d99c1b9",
+      "ffbcc40785565ec8f38fc2ba5fad8e1330d215c059ca88e1337d2ee3bdc27ba7",
+      "aef21f90b18add89e3ae18a4a45c19aee337b3dc8894f977b8531a0baa8d1eb0",
+      "611003a0e8563fb520a8d316055a080377233f2606a264e713290ecc2e2c1c5a"
+    ],
+    "logSha256": "4d3d608358e24d9064bb23a825a2ab1ba8a7037d46efea90214dc93ef927c41c"
+  },
+  "strictCoreLibraryLint": {
+    "passed": true,
+    "logSha256": "e6cbef4520bbcc6dc0706c359e53a40653b9a86689145b30cab88c1813f1f88f"
+  },
+  "localRichWasm": {
+    "passed": true,
+    "logSha256": "d117931d0df69077a1585c1d59e4f9829bff350159d545f1caddaafd6174413e",
+    "sha256": "bc020ce07ed80600b85735c1e592d5ae163d921f5556fef05269a12bc1d59ec5"
+  },
+  "sharedWasm": {
+    "passed": true,
+    "logSha256": "afb3fbfc9b1361813e1720e19e896b23c4a9b1064c57f64e3eb5ed04d6bb6fe7",
+    "sha256": "39bc707a839f59182ae4caa7c8eaa8dc4aac16157fdbab4cdc05e4183e8f2fb6"
+  },
+  "candidatePlan": {
+    "passed": 69,
+    "failed": 0,
+    "logSha256": "c63e1d1ee0a2bcfe310645b3efcd835dce8b3688e1daf57e834b2cf81033a6a6"
+  },
+  "workflows": {
+    "relaySha256": "8d05d1228e5f5786b8a2d5b5c4c225d476a8f7a27387639c870b83b51652bb52",
+    "runtimeSha256": "39bc707a839f59182ae4caa7c8eaa8dc4aac16157fdbab4cdc05e4183e8f2fb6",
+    "portableRelocation": {
+      "reportSha256": "3db06b39d6b9dd5abee20ba27cd1ded317d2389e2a70ff86e8f44b9d29f792e1",
+      "runs": {
+        "source": {
+          "offlineLanes": 6,
+          "undoRedoLanes": 2,
+          "coldResumes": 5,
+          "liveNativeHistoryBoundaries": 2,
+          "nativeHistoryColdRetries": 2,
+          "proof": null
+        },
+        "installed": {
+          "offlineLanes": 6,
+          "undoRedoLanes": 2,
+          "coldResumes": 5,
+          "liveNativeHistoryBoundaries": 2,
+          "nativeHistoryColdRetries": 2,
+          "proof": {
+            "registryArtifacts": 45,
+            "archives": [
+              {
+                "name": "@breditor/browser",
+                "sha256": "79f5b486d3742d1234e4eb21c18822e0a494551d49a73039f5b856908c124f3f"
+              },
+              {
+                "name": "@breditor/experimental-rich-content",
+                "sha256": "06fc9770ef5b26cd5f4c10d7d55d9b1d91e352392a599f277cee25d431d6f4b7"
+              },
+              {
+                "name": "@breditor/collaboration",
+                "sha256": "c0e44aad1e106740e36c51dadfd695e6245022757070be20fa2c73bbaf2365e0"
+              }
+            ]
+          }
+        }
+      }
+    },
+    "legacyHandover": {
+      "reportSha256": "a78ca886942721d6fb1f88b97841aa5233b695fbf4f3465e0e1ace91a2eaa6f7",
+      "runs": {
+        "source": {
+          "offlineLanes": 6,
+          "undoRedoLanes": 2,
+          "coldResumes": 3,
+          "proof": null
+        },
+        "installed": {
+          "offlineLanes": 6,
+          "undoRedoLanes": 2,
+          "coldResumes": 3,
+          "proof": {
+            "registryArtifacts": 45,
+            "archives": [
+              {
+                "name": "@breditor/browser",
+                "sha256": "79f5b486d3742d1234e4eb21c18822e0a494551d49a73039f5b856908c124f3f"
+              },
+              {
+                "name": "@breditor/experimental-rich-content",
+                "sha256": "06fc9770ef5b26cd5f4c10d7d55d9b1d91e352392a599f277cee25d431d6f4b7"
+              },
+              {
+                "name": "@breditor/collaboration",
+                "sha256": "c0e44aad1e106740e36c51dadfd695e6245022757070be20fa2c73bbaf2365e0"
+              }
+            ]
+          }
+        }
+      }
+    },
+    "recoveredCommentIntent": {
+      "reportSha256": "70e89c128c28468d9fa9104fdcf7efc39b128a57e01a7c6b98aa846579a15524",
+      "runs": {
+        "source": {
+          "offlineLanes": 6,
+          "undoRedoLanes": 2,
+          "coldResumes": 4,
+          "committedRecoveredComments": 1,
+          "discardedDurableReviewReplies": 1,
+          "coldAcknowledgedReviewIntents": 1,
+          "recoveredReviewSubmissions": 1,
+          "proof": null
+        },
+        "installed": {
+          "offlineLanes": 6,
+          "undoRedoLanes": 2,
+          "coldResumes": 4,
+          "committedRecoveredComments": 1,
+          "discardedDurableReviewReplies": 1,
+          "coldAcknowledgedReviewIntents": 1,
+          "recoveredReviewSubmissions": 1,
+          "proof": {
+            "registryArtifacts": 45,
+            "archives": [
+              {
+                "name": "@breditor/browser",
+                "sha256": "79f5b486d3742d1234e4eb21c18822e0a494551d49a73039f5b856908c124f3f"
+              },
+              {
+                "name": "@breditor/experimental-rich-content",
+                "sha256": "06fc9770ef5b26cd5f4c10d7d55d9b1d91e352392a599f277cee25d431d6f4b7"
+              },
+              {
+                "name": "@breditor/collaboration",
+                "sha256": "c0e44aad1e106740e36c51dadfd695e6245022757070be20fa2c73bbaf2365e0"
+              }
+            ]
+          }
+        }
+      }
+    }
+  }
+}

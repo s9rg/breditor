@@ -2,6 +2,18 @@
 
 ## November 16 collaboration recovery
 
+[Indexed review batch admission](qualification/2026-11-16-indexed-review-batch-admission.json)
+uses one actor-counter index for live frames and retained branches. Closed
+causal frontiers give direct access to the exact author for each permission
+check. Relay preparation shares one decoded frame and one staged metadata
+copy with receipt generation. A 128-event frame preserves exact receipts,
+peer checkpoints and the distinct anchor checks for live and retained history.
+Nonclosed inputs preserve pending dependency and backend refusal order.
+Malformed staged visibility publishes no prefix. Both Wasm builds, 59 Rust
+review tests and contracts, 33 native collaboration contracts and 71 focused
+relay tests pass. Portable relocation, legacy handover and lost comment reply
+recovery pass from source and clean-installed clients.
+
 [Incremental native review recovery](qualification/2026-11-16-native-review-incremental-restore.json)
 carries the validated prefix across sealed cuts and checks each appended
 event's causal frontier, actor digest, births and Undo/Redo. Every saved
