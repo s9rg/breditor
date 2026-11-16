@@ -57,6 +57,7 @@ pub use log_generations::{
 };
 #[cfg(all(feature = "server", test, unix))]
 pub(crate) use log_generations::{SegmentHandoverTestFiles, segment_handover_test_source};
+pub(crate) use materialized_checkpoint::SegmentCheckpointEncoding;
 pub use materialized_checkpoint::{RelayCheckpoint, RelayCheckpointIdentity};
 #[cfg(feature = "server")]
 pub(crate) mod metadata_receipts;

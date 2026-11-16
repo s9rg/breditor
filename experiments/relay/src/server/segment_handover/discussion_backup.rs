@@ -7,6 +7,7 @@ use crate::{
     Error, RelaySegmentBaseFile, RelaySegmentClientJournal, RelaySegmentClientJournalPin,
     RelaySegmentJournalOwner, RelaySegmentRoomBackupFiles, RelaySegmentRoomBackupIdentity, Result,
     log::generations::GenerationDirectory,
+    room::SegmentCheckpointEncoding,
     server::{RoomDeploymentSelection, ServerBackupHandle},
 };
 use serde::{Deserialize, Serialize};
@@ -105,7 +106,8 @@ impl ServerBackupHandle {
     ) -> Result<RelaySegmentDiscussionBackupIdentity> {
         let host = &self.host;
         host.authentication.authenticate(principal, token)?;
-        let (captured, source_epoch) = begin_capture(host, principal, destination)?;
+        let (captured, source_epoch) =
+            begin_capture(host, principal, destination, SegmentCheckpointEncoding::Original)?;
         after_cut()?;
         let discussion_sources = if captured.discussion_sources.is_empty() {
             Vec::new()

@@ -1,11 +1,9 @@
 //! Walk typed complete log events, retaining inert Prepare dependencies without publishing them.
 use super::{
     MAX_SERVER_ASSET_REFERENCE_PAIRS, ServerAssetReferencePending, ServerAssetReferenceSource,
+    packet_history::{PacketEvent, PacketRecord},
 };
-use crate::{
-    Error, Result, Room,
-    log::{Event, Record},
-};
+use crate::{Error, Result, Room, log::Record};
 use breditor_collab_feasibility::rich_replica::{
     PacketAssetIdentity, PacketAssetOutcome, PacketAssetReferences, RichReplica, SharedObservation,
     VersionAssetReference,
@@ -79,15 +77,30 @@ impl PacketScanner {
         record: Record,
         output: &mut References,
     ) -> Result<()> {
+        if let Some(packet) = PacketRecord::from_log(record) {
+            self.accept_packet(replica, observed, packet, output)?;
+        } else {
+            self.prepared = None;
+        }
+        Ok(())
+    }
+
+    pub fn accept_packet(
+        &mut self,
+        replica: &RichReplica,
+        observed: &SharedObservation,
+        record: PacketRecord,
+        output: &mut References,
+    ) -> Result<()> {
         let previous = self.prepared.take();
         match record.event {
-            Event::PublishDocumentVersionV1 { packet, .. } => {
+            PacketEvent::Version { packet } => {
                 output.packet(
                     record.sequence,
                     replica.document_version_asset_references_guarded(observed, &packet)?,
                 )?;
             }
-            Event::PublishDocumentSuggestionV1 { packet, .. } => {
+            PacketEvent::Suggestion { packet } => {
                 let PacketAssetIdentity::Suggestion { id } = output.packet(
                     record.sequence,
                     replica.document_suggestion_asset_references_guarded(observed, &packet)?,
@@ -99,28 +112,25 @@ impl PacketScanner {
                     return Err(Error::Contract("server asset duplicate proposal record"));
                 }
             }
-            Event::PrepareDocumentSuggestionRevisionV1 { request, .. } => {
+            PacketEvent::RevisionPrepare { previous, packet } => {
                 let parent = self
                     .proposals
-                    .get(&request.previous_suggestion_id)
+                    .get(&previous)
                     .ok_or(Error::Contract("server asset revision predecessor absent"))?;
                 let PacketAssetIdentity::SuggestionRevision { id, suggestion_id, .. } = output
                     .packet(
                         record.sequence,
                         replica.document_suggestion_revision_asset_references_guarded(
-                            observed,
-                            parent,
-                            &request.revision_packet,
+                            observed, parent, &packet,
                         )?,
                     )?
                 else {
                     return Err(Error::Contract("server asset revision identity differs"));
                 };
-                let child = replica
-                    .document_suggestion_revision_packet(parent, &request.revision_packet)?;
+                let child = replica.document_suggestion_revision_packet(parent, &packet)?;
                 self.prepared = Some((record.sequence, id, suggestion_id, child));
             }
-            Event::CommitDocumentSuggestionRevisionV1 { prepared_at, revision_id } => {
+            PacketEvent::RevisionCommit { prepared_at, revision_id } => {
                 let (at, id, child_id, child) = previous
                     .ok_or(Error::Contract("server asset revision commit has no preparation"))?;
                 if prepared_at != at.to_string()
@@ -131,7 +141,6 @@ impl PacketScanner {
                     return Err(Error::Contract("server asset revision commit differs"));
                 }
             }
-            _ => {}
         }
         Ok(())
     }

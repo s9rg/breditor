@@ -10,7 +10,8 @@ use super::{
 };
 use crate::{
     RelaySegmentBaseIdentity, RelaySegmentRoomBackupIdentity, Result,
-    log::generations::GenerationDirectory, server::ServerBackupHandle,
+    log::generations::GenerationDirectory, room::SegmentCheckpointEncoding,
+    server::ServerBackupHandle,
 };
 use serde::{Deserialize, Serialize};
 use std::path::Path;
@@ -49,6 +50,10 @@ pub(in crate::server) struct NamedPortableBackup {
 }
 
 impl NamedPortableBackup {
+    pub(in crate::server) fn checkpoint_encoding(&self) -> SegmentCheckpointEncoding {
+        self.copies.room.backup.checkpoint_encoding()
+    }
+
     pub(super) fn open(path: &Path, expected: &RelaySegmentPortableBackupIdentity) -> Result<Self> {
         Self::open_at(GenerationDirectory::open(path)?, expected)
     }
@@ -96,6 +101,7 @@ impl ServerBackupHandle {
             destination,
             LineageLayout::Split,
             ClientLayout::Split,
+            SegmentCheckpointEncoding::Original,
         )
     }
 
@@ -119,6 +125,7 @@ impl ServerBackupHandle {
             destination,
             LineageLayout::Packed(Encoding::Raw),
             ClientLayout::Split,
+            SegmentCheckpointEncoding::Original,
         )
     }
 
@@ -141,6 +148,7 @@ impl ServerBackupHandle {
             destination,
             LineageLayout::Packed(Encoding::Raw),
             ClientLayout::Packed,
+            SegmentCheckpointEncoding::Original,
         )
     }
 
@@ -162,6 +170,30 @@ impl ServerBackupHandle {
             destination,
             LineageLayout::Packed(Encoding::Compressed),
             ClientLayout::Packed,
+            SegmentCheckpointEncoding::Original,
+        )
+    }
+
+    /// Capture a portable backup that preserves literal asset packet history at the terminal cut.
+    /// On recovery, asset inventory reads that checkpoint projection for the indexed segment.
+    /// The backup still includes the original WAL and uses compressed ancestor checkpoints.
+    ///
+    /// # Errors
+    /// Refuses unauthorized or superseded sources, changed files, oversized history,
+    /// occupied destinations and I/O failures. Retry at a fresh absent path.
+    pub fn capture_portable_relay_segment_with_indexed_asset_history(
+        &self,
+        principal: &str,
+        token: &str,
+        destination: &Path,
+    ) -> Result<RelaySegmentPortableBackupIdentity> {
+        self.capture_portable_relay_segment_with_layout(
+            principal,
+            token,
+            destination,
+            LineageLayout::Packed(Encoding::Compressed),
+            ClientLayout::Packed,
+            SegmentCheckpointEncoding::IndexedAssetHistory,
         )
     }
 
@@ -172,10 +204,11 @@ impl ServerBackupHandle {
         destination: &Path,
         lineage_layout: LineageLayout,
         client_layout: ClientLayout,
+        encoding: SegmentCheckpointEncoding,
     ) -> Result<RelaySegmentPortableBackupIdentity> {
         let host = &self.host;
         host.authentication.authenticate(principal, token)?;
-        let (captured, source_epoch) = begin_capture(host, principal, destination)?;
+        let (captured, source_epoch) = begin_capture(host, principal, destination, encoding)?;
         let (retained, client_copies) =
             RetainedCopies::capture(host, &captured, source_epoch, client_layout)?;
         let (native_predecessors, lineage) =

@@ -1,6 +1,7 @@
 //! Read predecessor packets and the current bounded suffix as a single chronological source.
 use super::{
-    ServerAssetReferenceOutcome, ServerAssetReferenceSource, packets::PacketScanner, read_budget,
+    PacketRecord, ServerAssetReferenceOutcome, ServerAssetReferenceSource, packets::PacketScanner,
+    read_budget,
 };
 use crate::{
     Error, RelaySegmentBaseIdentity, Result, Room, RoomBackupIdentity,
@@ -58,15 +59,20 @@ impl Room {
         let (base, suffix_files_sha256) = self.log.stream_held_generation(
             |stream| {
                 let base = stream.segment_base().ok_or(Error::NeedsRecovery)?;
-                let mut visit = |record| {
+                let mut visit = |packet| {
                     if packet_error.is_none() {
                         packet_error =
-                            packets.accept(replica, &observed, record, &mut output).err();
+                            packets.accept_packet(replica, &observed, packet, &mut output).err();
                     }
                     Ok(())
                 };
-                base.visit_records(&mut visit)?;
-                stream.visit_records(visit)?;
+                base.visit_asset_packets(&mut visit)?;
+                stream.visit_records(|record| {
+                    if let Some(packet) = PacketRecord::from_log(record) {
+                        visit(packet)?;
+                    }
+                    Ok(())
+                })?;
                 if stream.cut.manifest != head.manifest
                     || stream.cut.records != room.records
                     || stream.cut.previous != room.terminal_log_digest

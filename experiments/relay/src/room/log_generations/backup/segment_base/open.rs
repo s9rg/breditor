@@ -7,7 +7,11 @@ use crate::{
         Log,
         generations::{SegmentArchiveOrigin, SelectedFile},
     },
-    room::materialized_checkpoint::{Checkpoint, Header, MAX_CHECKPOINT_BYTES},
+    room::{
+        SegmentCheckpointEncoding,
+        asset_references::{PacketHistory, PacketRecord},
+        materialized_checkpoint::{Checkpoint, Header, MAX_CHECKPOINT_BYTES},
+    },
 };
 use sha2::{Digest, Sha256};
 use std::{fs::File, io::BufReader, path::Path, sync::Arc};
@@ -106,6 +110,16 @@ impl RelaySegmentBaseFile {
                 }
             }
         }
+        if checkpoint.len() == 0 || checkpoint.digest()? != expected.checkpoint.sha256 {
+            return Err(Error::Contract("relay segment base checkpoint digest differs"));
+        }
+        let first = parent.as_ref().map_or(0, |base| base.identity.predecessor.source.records);
+        let checkpoint_encoding =
+            if read_asset_history(&checkpoint, &expected.checkpoint, first)?.is_some() {
+                SegmentCheckpointEncoding::IndexedAssetHistory
+            } else {
+                SegmentCheckpointEncoding::Original
+            };
         let result = Self {
             identity: expected.clone(),
             binding: segment_history_digest(parent.as_deref(), expected)?,
@@ -113,15 +127,9 @@ impl RelaySegmentBaseFile {
             parent,
             archive,
             checkpoint,
+            checkpoint_encoding,
             sections,
         };
-        let input = &result.checkpoint;
-        if input.len() == 0 || input.digest()? != expected.checkpoint.sha256 {
-            return Err(Error::Contract("relay segment base checkpoint digest differs"));
-        }
-        let header: Header =
-            input.visit(|reader| Ok(serde_json::from_reader(BufReader::new(reader))?))?;
-        header.check_selection(&expected.checkpoint)?;
         result.check()?;
         Ok(result)
     }
@@ -173,13 +181,28 @@ impl RelaySegmentBaseFile {
             .collect()
     }
 
-    pub(crate) fn visit_records(
+    pub(crate) fn checkpoint_encoding(&self) -> SegmentCheckpointEncoding {
+        self.checkpoint_encoding
+    }
+
+    pub(in crate::room) fn visit_asset_packets(
         &self,
-        mut visit: impl FnMut(crate::log::Record) -> Result<()>,
+        mut visit: impl FnMut(PacketRecord) -> Result<()>,
     ) -> Result<()> {
         self.check()?;
         let lineage = self.lineage().collect::<Vec<_>>();
         for base in lineage.into_iter().rev() {
+            if base.checkpoint_encoding == SegmentCheckpointEncoding::IndexedAssetHistory {
+                let first =
+                    base.parent().map_or(0, |base| base.identity.predecessor.source.records);
+                let history =
+                    read_asset_history(&base.checkpoint, &base.identity.checkpoint, first)?
+                        .ok_or(Error::Contract("relay checkpoint asset packet history missing"))?;
+                for packet in history.into_records() {
+                    visit(packet)?;
+                }
+                continue;
+            }
             let input = base.archive.all();
             let files = base
                 .sections
@@ -190,7 +213,12 @@ impl RelaySegmentBaseFile {
             let cut = crate::log::generations::visit_generation_sections(
                 &files,
                 origin.as_ref(),
-                &mut visit,
+                |record| {
+                    if let Some(packet) = PacketRecord::from_log(record) {
+                        visit(packet)?;
+                    }
+                    Ok(())
+                },
             )?;
             let predecessor = &base.identity.predecessor;
             if cut.manifest != predecessor.manifest
@@ -211,6 +239,16 @@ impl RelaySegmentBaseFile {
         self.check()?;
         Ok(state)
     }
+}
+
+fn read_asset_history(
+    checkpoint: &CheckpointInput,
+    identity: &crate::RelayCheckpointIdentity,
+    first: u64,
+) -> Result<Option<PacketHistory>> {
+    let header: Header =
+        checkpoint.visit(|reader| Ok(serde_json::from_reader(BufReader::new(reader))?))?;
+    header.select_asset_history(identity, first)
 }
 
 impl Room {

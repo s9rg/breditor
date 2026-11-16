@@ -1,7 +1,7 @@
 //! Stage an empty WAL and durably fence its exact source before allowing writes.
 use super::RelaySegmentBaseFile;
-use crate::{Error, Recovery, Result, Room, log::Log};
-use std::{path::Path, sync::Arc};
+use crate::{Error, Recovery, Result, Room, log::Log, room::SegmentCheckpointEncoding};
+use std::{cell::Cell, path::Path, sync::Arc};
 
 impl Room {
     /// Move the native append owner to a new, absent directory with a fresh physical WAL budget.
@@ -40,11 +40,18 @@ impl Room {
         let mut digest = crate::archive_digest::ArchiveDigest::new(
             crate::room::materialized_checkpoint::MAX_CHECKPOINT_BYTES as u64,
         );
-        let observed = crate::room::materialized_checkpoint::Checkpoint::capture(
+        let mut observed = crate::room::materialized_checkpoint::Checkpoint::capture(
             self,
             selected.source.clone(),
             selected.manifest,
         )?;
+        if base.checkpoint_encoding() == SegmentCheckpointEncoding::IndexedAssetHistory {
+            let history =
+                self.with_relay_segment_base_stream(principal, &Cell::new(false), |stream| {
+                    stream.capture_asset_packet_history()
+                })??;
+            observed.include_asset_history(history);
+        }
         serde_json::to_writer(&mut digest, &observed)?;
         if digest.finish().0 != base.identity.checkpoint.sha256 {
             return Err(Error::Contract("relay segment checkpoint differs from live room"));

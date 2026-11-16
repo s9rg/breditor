@@ -2,6 +2,7 @@
 use crate::{
     Error, RelaySegmentClientJournal, RelaySegmentParticipantBranch,
     RelaySegmentRoomBackupIdentity, Result,
+    room::SegmentCheckpointEncoding,
     server::{RoomDeploymentSelection, ServerBackupHandle, deployment_fence},
 };
 use serde::Serialize;
@@ -59,6 +60,7 @@ impl ServerBackupHandle {
                     &mut sink(),
                     &mut sink(),
                     &mut sink(),
+                    SegmentCheckpointEncoding::Original,
                 )?;
                 if &backup != expected {
                     return Err(Error::Contract("relay participant branch source cut changed"));

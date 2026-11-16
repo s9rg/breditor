@@ -3,7 +3,9 @@ use super::RelaySegmentBaseIdentity;
 use crate::{
     Error, RelayCheckpointIdentity, Result, Room,
     archive_digest::ArchiveDigest,
-    room::{log_generations::backup::BackupOutput, materialized_checkpoint},
+    room::{
+        SegmentCheckpointEncoding, log_generations::backup::BackupOutput, materialized_checkpoint,
+    },
 };
 use std::{
     cell::Cell,
@@ -27,6 +29,43 @@ impl Room {
         archive: &mut impl Write,
         checkpoint: &mut impl Write,
     ) -> Result<RelaySegmentBaseIdentity> {
+        self.write_relay_segment_base_with_encoding(
+            principal,
+            archive,
+            checkpoint,
+            SegmentCheckpointEncoding::Original,
+        )
+    }
+
+    /// Capture an exact segment base with a version-two native checkpoint.
+    /// The checkpoint retains this segment's original packet-bearing events
+    /// for future asset inventory, including abandoned revision preparations.
+    /// The archive remains byte-identical to the original capture format.
+    ///
+    /// # Errors
+    /// Refuses the same conditions as [`Self::write_relay_segment_base`] and
+    /// any packet history exceeding the indexed checkpoint's byte budget.
+    pub fn write_relay_segment_base_with_indexed_asset_history(
+        &mut self,
+        principal: &str,
+        archive: &mut impl Write,
+        checkpoint: &mut impl Write,
+    ) -> Result<RelaySegmentBaseIdentity> {
+        self.write_relay_segment_base_with_encoding(
+            principal,
+            archive,
+            checkpoint,
+            SegmentCheckpointEncoding::IndexedAssetHistory,
+        )
+    }
+
+    pub(in crate::room) fn write_relay_segment_base_with_encoding(
+        &mut self,
+        principal: &str,
+        archive: &mut impl Write,
+        checkpoint: &mut impl Write,
+        encoding: SegmentCheckpointEncoding,
+    ) -> Result<RelaySegmentBaseIdentity> {
         self.recovery_inventory_owner(principal)?;
         let head = self.log.generation_descriptor()?;
         let records = head
@@ -34,7 +73,7 @@ impl Room {
             .parse()
             .map_err(|_| Error::Contract("relay segment base absolute cut"))?;
         let source = self.native_identity_at(records, head.terminal_digest);
-        let state =
+        let mut state =
             materialized_checkpoint::Checkpoint::capture(self, source.clone(), head.manifest)?;
         let failed = Cell::new(false);
         self.with_relay_segment_base_stream(principal, &failed, |mut stream| {
@@ -42,6 +81,11 @@ impl Room {
                 || stream.info.identity.manifest != head.manifest
             {
                 return Err(Error::Contract("relay segment base predecessor changed"));
+            }
+            if encoding == SegmentCheckpointEncoding::IndexedAssetHistory {
+                let history =
+                    stream.capture_asset_packet_history()?.inspect_err(|_| failed.set(true))?;
+                state.include_asset_history(history);
             }
             stream.write_and_pin(archive, &failed)?;
             let predecessor = stream.info.identity.clone();

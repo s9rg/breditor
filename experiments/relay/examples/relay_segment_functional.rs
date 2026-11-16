@@ -67,7 +67,15 @@ fn continue_room(
 ) -> Result {
     let mut archive = create_base_file(&parent.join(format!("{lane}.archive")))?;
     let mut checkpoint = create_base_file(&parent.join(format!("{lane}.checkpoint")))?;
-    let identity = room.write_relay_segment_base("owner", &mut archive, &mut checkpoint)?;
+    let identity = if lane == "base" && parent.join("fixture-coordinated-recovery").is_file() {
+        room.write_relay_segment_base_with_indexed_asset_history(
+            "owner",
+            &mut archive,
+            &mut checkpoint,
+        )?
+    } else {
+        room.write_relay_segment_base("owner", &mut archive, &mut checkpoint)?
+    };
     archive.sync_all()?;
     checkpoint.sync_all()?;
     storage::write_new(&parent.join(format!("{lane}.json")), &serde_json::to_vec(&identity)?)?;

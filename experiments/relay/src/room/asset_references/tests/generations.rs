@@ -1,5 +1,6 @@
 //! Real retained history and packet ancestry across files, independent from visible AST/catalogs.
 use super::*;
+use crate::room::SegmentCheckpointEncoding::{self, IndexedAssetHistory, Original};
 use crate::room::log_generations::tests::setup_profile;
 
 fn generation_pairs(
@@ -72,6 +73,20 @@ fn all_ten_generation_readers_keep_deleted_intermediate_and_version_images_at_on
 #[test]
 fn rejected_and_abandoned_packets_in_retained_files_keep_images_that_never_became_accepted()
 -> TestResult {
+    retained_packet_ancestry(Original, Original)
+}
+
+#[test]
+fn indexed_packet_history_matches_live_and_legacy_reads_across_mixed_relay_segments() -> TestResult
+{
+    retained_packet_ancestry(IndexedAssetHistory, Original)?;
+    retained_packet_ancestry(Original, IndexedAssetHistory)
+}
+
+fn retained_packet_ancestry(
+    root: SegmentCheckpointEncoding,
+    suffix: SegmentCheckpointEncoding,
+) -> TestResult {
     let (files, mut room, profile) = setup_profile(3, true, true)?;
     room.enable_document_suggestions("owner")?;
     room.enable_document_suggestion_revisions("owner")?;
@@ -148,16 +163,47 @@ fn rejected_and_abandoned_packets_in_retained_files_keep_images_that_never_becam
     let checkpoint = parent.join("successor-base.checkpoint");
     drop(restored);
     let (mut old, _) = Room::open_log_generations(&source)?;
-    let identity = old.write_relay_segment_base(
+    let identity = old.write_relay_segment_base_with_encoding(
         "owner",
         &mut fs::File::create_new(&archive)?,
         &mut fs::File::create_new(&checkpoint)?,
+        root,
     )?;
     let base = std::sync::Arc::new(crate::RelaySegmentBaseFile::open(
-        fs::File::open(archive)?,
-        fs::File::open(checkpoint)?,
+        fs::File::open(&archive)?,
+        fs::File::open(&checkpoint)?,
         &identity,
     )?);
+    assert_eq!(base.checkpoint_encoding() == IndexedAssetHistory, root == IndexedAssetHistory);
+    if root == IndexedAssetHistory {
+        use crate::room::materialized_checkpoint::Checkpoint;
+        use sha2::{Digest, Sha256};
+        let exact = fs::read(&checkpoint)?;
+        let decoded: Checkpoint = serde_json::from_slice(&exact)?;
+        assert_eq!(serde_json::to_vec(&decoded)?, exact);
+        let mut changed = serde_json::to_value(decoded)?;
+        let records =
+            changed["assetPacketHistory"]["records"].as_array_mut().ok_or("packet history")?;
+        assert_eq!(records.len(), 2);
+        let removed = records.pop().ok_or("abandoned packet")?;
+        assert_eq!(removed["event"]["kind"], "revisionPrepare");
+        let changed: Checkpoint = serde_json::from_value(changed)?;
+        let bytes = serde_json::to_vec(&changed)?;
+        let replaced = parent.join("incomplete.checkpoint");
+        fs::write(&replaced, &bytes)?;
+        let mut replacement = identity.clone();
+        replacement.checkpoint.sha256 = Sha256::digest(&bytes).into();
+        let incomplete = std::sync::Arc::new(crate::RelaySegmentBaseFile::open(
+            fs::File::open(&archive)?,
+            fs::File::open(replaced)?,
+            &replacement,
+        )?);
+        assert!(matches!(
+            old.continue_into_relay_segment("owner", &destination, incomplete, "fresh"),
+            Err(Error::Contract("relay segment checkpoint differs from live room"))
+        ));
+        assert!(!destination.exists());
+    }
     let mut successor =
         old.continue_into_relay_segment("owner", &destination, base.clone(), "fresh")?;
     successor.grant("owner", "suffix-reader", Some(Role::Reader))?;
@@ -182,10 +228,11 @@ fn rejected_and_abandoned_packets_in_retained_files_keep_images_that_never_becam
     assert_eq!(&references.sources[..2], &result.sources);
     let archive = parent.join("linked.archive");
     let checkpoint = parent.join("linked.checkpoint");
-    let identity = reopened.write_relay_segment_base(
+    let identity = reopened.write_relay_segment_base_with_encoding(
         "owner",
         &mut fs::File::create_new(&archive)?,
         &mut fs::File::create_new(&checkpoint)?,
+        suffix,
     )?;
     let linked = std::sync::Arc::new(crate::RelaySegmentBaseFile::open_linked(
         fs::File::open(archive)?,
@@ -193,6 +240,7 @@ fn rejected_and_abandoned_packets_in_retained_files_keep_images_that_never_becam
         &identity,
         base,
     )?);
+    assert_eq!(linked.checkpoint_encoding() == IndexedAssetHistory, suffix == IndexedAssetHistory);
     let last = parent.join("final");
     let successor =
         reopened.continue_into_relay_segment("owner", &last, linked.clone(), "final-first")?;
@@ -294,6 +342,30 @@ fn a_committed_revision_spanning_physical_files_keeps_its_full_packet_ancestry_a
     let (mut reopened, retry) = Room::open_log_generations(&files.room())?;
     assert_eq!(retry.truncated_bytes, 0);
     assert_eq!(reopened.log_generation_retained_asset_references("owner")?, references);
+    let source = files.room();
+    let parent = source.parent().ok_or("fixture parent")?;
+    let archive = parent.join("committed.archive");
+    let checkpoint = parent.join("committed.checkpoint");
+    let identity = reopened.write_relay_segment_base_with_indexed_asset_history(
+        "owner",
+        &mut fs::File::create_new(&archive)?,
+        &mut fs::File::create_new(&checkpoint)?,
+    )?;
+    let base = std::sync::Arc::new(crate::RelaySegmentBaseFile::open(
+        fs::File::open(archive)?,
+        fs::File::open(checkpoint)?,
+        &identity,
+    )?);
+    let destination = parent.join("committed-successor");
+    let continued =
+        reopened.continue_into_relay_segment("owner", &destination, base.clone(), "fresh")?;
+    drop(continued);
+    drop(reopened);
+    let (mut continued, _) = Room::open_relay_segment_successor(&source, &destination, base)?;
+    let indexed = continued.relay_segment_retained_asset_references("owner")?;
+    assert_eq!(indexed.sources, references.sources);
+    assert_eq!(indexed.outcome, references.outcome);
+    assert!(continued.document_suggestion_packet("owner", &child_id)?.is_some());
     Ok(())
 }
 

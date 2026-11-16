@@ -29,9 +29,10 @@ pub(super) fn seal(
 ) -> Result<serde_json::Value> {
     let path = parent.join("portable-relocation-source");
     let original = parent.join("portable-relocation-split");
+    let converted = parent.join("portable-relocation-converted");
     let captured = handle.capture_portable_relay_segment("owner", token, &original)?;
     RelaySegmentRetainedBackup::copy_portable_with_compressed_checkpoints(
-        &original, &path, &captured,
+        &original, &converted, &captured,
     )?;
     let direct = parent.join("portable-relocation-direct");
     let direct_identity = handle
@@ -39,14 +40,30 @@ pub(super) fn seal(
     assert_eq!(direct_identity, captured);
     assert_eq!(
         fs::read(direct.join("client-inputs.bin"))?,
-        fs::read(path.join("client-inputs.bin"))?
+        fs::read(converted.join("client-inputs.bin"))?
     );
     assert_eq!(
         fs::read(direct.join("native-lineage/packed.bin"))?,
-        fs::read(path.join("native-lineage/packed.bin"))?
+        fs::read(converted.join("native-lineage/packed.bin"))?
     );
     fs::rename(original, parent.join("portable-relocation-retired-split"))?;
-    let intent = RelaySegmentPortableSeal::select(captured)?;
+    let indexed =
+        handle.capture_portable_relay_segment_with_indexed_asset_history("owner", token, &path)?;
+    assert_eq!(indexed.native_predecessors, captured.native_predecessors);
+    assert_eq!(
+        indexed.retained.backup.native.predecessor,
+        captured.retained.backup.native.predecessor
+    );
+    assert_eq!(indexed.retained.backup.assets, captured.retained.backup.assets);
+    assert_ne!(
+        indexed.retained.backup.native.checkpoint.sha256,
+        captured.retained.backup.native.checkpoint.sha256
+    );
+    assert_eq!(
+        fs::read(path.join("native-lineage/packed.bin"))?,
+        fs::read(converted.join("native-lineage/packed.bin"))?
+    );
+    let intent = RelaySegmentPortableSeal::select(indexed)?;
     storage::write_new(&parent.join(SEAL), &serde_json::to_vec(&intent)?)?;
     File::open(parent)?.sync_all()?;
     let selected = handle.seal_portable_relay_segment("owner", token, &path, &intent)?;

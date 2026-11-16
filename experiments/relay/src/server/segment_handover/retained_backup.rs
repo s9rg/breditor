@@ -9,6 +9,7 @@ use crate::{
     RelaySegmentClientJournalPin, RelaySegmentClientUploadArchive, RelaySegmentClientUploadPin,
     RelaySegmentRoomBackupFiles, RelaySegmentRoomBackupIdentity, Result, RoomRecoveryPolicy,
     log::generations::GenerationDirectory,
+    room::SegmentCheckpointEncoding,
     server::{Host, RoomDeploymentSelection, ServerBackupHandle},
 };
 use serde::{Deserialize, Serialize};
@@ -324,7 +325,8 @@ impl ServerBackupHandle {
     ) -> Result<RelaySegmentRetainedBackupIdentity> {
         let host = &self.host;
         host.authentication.authenticate(principal, token)?;
-        let (captured, source_epoch) = begin_capture(host, principal, destination)?;
+        let (captured, source_epoch) =
+            begin_capture(host, principal, destination, SegmentCheckpointEncoding::Original)?;
         let (expected, retained) =
             RetainedCopies::capture(host, &captured, source_epoch, ClientLayout::Split)?;
         captured.confirm(host, &expected.source_epoch, || retained.check(&captured.directory))?;

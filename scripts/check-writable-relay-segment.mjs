@@ -706,6 +706,17 @@ async function run(mode, {distribution, rich}, executable, parent, journalKind, 
         const split = join(parent, 'portable-relocation-retired-split', 'native-lineage');
         assert.ok(statSync(join(split, '0.archive')).isFile());
         assert.throws(() => readFileSync(join(split, 'packed.bin')), {code:'ENOENT'});
+        const firstCheckpoint = JSON.parse(readFileSync(join(split, '0.checkpoint'), 'utf8'));
+        assert.equal(firstCheckpoint.formatVersion, 2);
+        assert.equal(firstCheckpoint.assetPacketHistory.firstSequence, 0);
+        assert.ok(firstCheckpoint.assetPacketHistory.records.some(({event}) =>
+          event.kind === 'version' && event.packet === packet));
+        assert.equal(JSON.parse(readFileSync(join(split, '1.checkpoint'), 'utf8')).formatVersion, 1);
+        const indexed = join(parent, 'portable-relocation-source');
+        const terminal = JSON.parse(readFileSync(join(indexed, 'native.checkpoint'), 'utf8'));
+        assert.equal(terminal.formatVersion, 2);
+        assert.ok(terminal.assetPacketHistory.firstSequence > 0);
+        assert.ok(Array.isArray(terminal.assetPacketHistory.records));
         const packed = join(parent, 'portable-relocation-source', 'native-lineage');
         const packedFile = join(packed, 'packed.bin');
         assert.ok(readFileSync(packedFile).subarray(0, 8).equals(Buffer.from('BRLINE2\n')));
@@ -758,6 +769,7 @@ async function run(mode, {distribution, rich}, executable, parent, journalKind, 
           sealedNativePredecessors: result.portableSeal.nativePredecessors,
           packedNativeLineages: 1,
           compressedCheckpointLineages: 1,
+          indexedAssetHistorySegments: 2,
           rawLineageBytes,
           compressedLineageBytes,
           packedCopiesOfExistingSplit: 1,

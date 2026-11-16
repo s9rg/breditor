@@ -11,6 +11,23 @@ pub(super) use state::Checkpoint;
 pub(in crate::room) use state::ReplicaCheckpoint;
 use std::io::Write;
 
+use super::asset_references::PacketHistory;
+
+#[derive(Clone, Copy, PartialEq, Eq)]
+pub(crate) enum SegmentCheckpointEncoding {
+    Original,
+    IndexedAssetHistory,
+}
+
+impl SegmentCheckpointEncoding {
+    fn version(self) -> u32 {
+        match self {
+            Self::Original => 1,
+            Self::IndexedAssetHistory => 2,
+        }
+    }
+}
+
 /// Independently retain this identity in host recovery configuration.
 #[derive(Clone, Debug, Eq, PartialEq, Serialize, Deserialize)]
 #[serde(rename_all = "camelCase", deny_unknown_fields)]
@@ -41,19 +58,59 @@ pub(super) struct Header {
     format_version: u32,
     source: RoomBackupIdentity,
     manifest: [u8; 32],
+    #[serde(default, deserialize_with = "present_asset_history")]
+    asset_packet_history: Option<PacketHistory>,
+}
+
+fn present_asset_history<'de, D: serde::Deserializer<'de>>(
+    deserializer: D,
+) -> std::result::Result<Option<PacketHistory>, D::Error> {
+    PacketHistory::deserialize(deserializer).map(Some)
 }
 
 impl Header {
-    pub(super) fn check_selection(&self, expected: &RelayCheckpointIdentity) -> Result<()> {
-        if self.format != FORMAT
-            || self.format_version != 1
-            || self.source != expected.source
-            || self.manifest != expected.manifest
-        {
-            return Err(Error::Contract("relay checkpoint selected cut differs"));
+    pub(super) fn select_asset_history(
+        self,
+        expected: &RelayCheckpointIdentity,
+        first_sequence: u64,
+    ) -> Result<Option<PacketHistory>> {
+        let Self { format, format_version, source, manifest, asset_packet_history } = self;
+        check_selection(
+            &format,
+            format_version,
+            &source,
+            manifest,
+            asset_packet_history.is_some(),
+            expected,
+        )?;
+        if let Some(history) = &asset_packet_history {
+            history.check_range(first_sequence, source.records)?;
         }
-        Ok(())
+        Ok(asset_packet_history)
     }
+}
+
+fn check_selection(
+    format: &str,
+    format_version: u32,
+    source: &RoomBackupIdentity,
+    manifest: [u8; 32],
+    has_indexed_history: bool,
+    expected: &RelayCheckpointIdentity,
+) -> Result<()> {
+    let encoding = if has_indexed_history {
+        SegmentCheckpointEncoding::IndexedAssetHistory
+    } else {
+        SegmentCheckpointEncoding::Original
+    };
+    if format != FORMAT
+        || format_version != encoding.version()
+        || source != &expected.source
+        || manifest != expected.manifest
+    {
+        return Err(Error::Contract("relay checkpoint selected cut differs"));
+    }
+    Ok(())
 }
 
 pub(in crate::room) fn sequence(value: &str, end: u64) -> Result<u64> {
@@ -88,7 +145,9 @@ impl RelayCheckpoint {
             return Err(Error::Contract("relay checkpoint digest differs"));
         }
         let value: Header = serde_json::from_slice(&bytes)?;
-        value.check_selection(expected)?;
+        if value.select_asset_history(expected, 0)?.is_some() {
+            return Err(Error::Contract("indexed checkpoint requires a relay segment"));
+        }
         Ok(Self { identity: expected.clone(), bytes })
     }
 }

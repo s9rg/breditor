@@ -2,6 +2,7 @@
 use crate::{
     Error, RelaySegmentBaseFile, RelaySegmentRoomBackupIdentity, Result,
     log::generations::{GenerationDirectory, GenerationFileStamp, GenerationFileWitness},
+    room::SegmentCheckpointEncoding,
     server::{Host, RoomDeploymentSelection, ServerBackupHandle, deployment_fence},
 };
 use std::{collections::BTreeSet, fs::File, path::Path, sync::Arc};
@@ -70,15 +71,21 @@ pub(super) fn begin_capture(
     host: &Host,
     principal: &str,
     destination: &Path,
+    encoding: SegmentCheckpointEncoding,
 ) -> Result<(CapturedSegment, RoomDeploymentSelection)> {
     host.deployment.fenced(|lease| {
         deployment_fence::transaction(Some(lease), || {
-            Ok((capture(host, principal, destination)?, lease.selection()))
+            Ok((capture(host, principal, destination, encoding)?, lease.selection()))
         })
     })
 }
 
-pub(super) fn capture(host: &Host, principal: &str, destination: &Path) -> Result<CapturedSegment> {
+fn capture(
+    host: &Host,
+    principal: &str,
+    destination: &Path,
+    encoding: SegmentCheckpointEncoding,
+) -> Result<CapturedSegment> {
     if let Some(custody) = &host.relay_segment_custody {
         custody.check()?;
     }
@@ -91,12 +98,13 @@ pub(super) fn capture(host: &Host, principal: &str, destination: &Path) -> Resul
     let mut native = directory.create_file(NATIVE, &[])?;
     let mut checkpoint = directory.create_file(CHECKPOINT, &[])?;
     let mut raster = directory.create_file(RASTERS, &[])?;
-    let backup = room.write_relay_segment_room_backup(
+    let (backup, _) = room.write_relay_segment_room_backup_with_custody(
         principal,
         &assets,
         &mut native,
         &mut checkpoint,
         &mut raster,
+        encoding,
     )?;
     let discussion_sources = room.recovered_discussion_source_digests();
     let parent = room.hold_relay_segment_parent();
@@ -134,7 +142,8 @@ impl ServerBackupHandle {
         host.authentication.authenticate(principal, token)?;
         host.deployment.fenced(|lease| {
             deployment_fence::transaction(Some(lease), || {
-                let capture = capture(host, principal, destination)?;
+                let capture =
+                    capture(host, principal, destination, SegmentCheckpointEncoding::Original)?;
                 Ok((capture.backup, lease.selection()))
             })
         })

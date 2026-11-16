@@ -5,7 +5,10 @@ use crate::{
     archive_digest::ArchiveDigest,
     archive_input::ArchiveInput,
     assets::{AssetBackupStream, AssetStore, MAX_SERVER_ASSET_BACKUP_BYTES, admit_asset_file},
-    room::log_generations::backup::{BackupOutput, segment_history_digest},
+    room::{
+        SegmentCheckpointEncoding,
+        log_generations::backup::{BackupOutput, segment_history_digest},
+    },
 };
 use std::{cell::Cell, fs::File, io::Write, sync::Arc};
 
@@ -36,6 +39,7 @@ impl Room {
             archive,
             checkpoint,
             raster_archive,
+            SegmentCheckpointEncoding::Original,
         )
         .map(|(identity, _)| identity)
     }
@@ -47,6 +51,7 @@ impl Room {
         archive: &mut impl Write,
         checkpoint: &mut impl Write,
         raster_archive: &mut impl Write,
+        encoding: SegmentCheckpointEncoding,
     ) -> Result<(RelaySegmentRoomBackupIdentity, AssetBackupStream<'a>)> {
         self.recovery_inventory_owner(principal)?;
         if assets.binding() != self.asset_binding() {
@@ -65,7 +70,8 @@ impl Room {
         if output.digest.finish() != (rasters.identity.archive_sha256, rasters.bytes) {
             return Err(Error::Contract("relay segment room raster output differs"));
         }
-        let native = self.write_relay_segment_base(principal, archive, checkpoint)?;
+        let native =
+            self.write_relay_segment_base_with_encoding(principal, archive, checkpoint, encoding)?;
         rasters.check()?;
         let history_sha256 = segment_history_digest(self.log.segment_base(), &native)?;
         let identity = RelaySegmentRoomBackupIdentity {
@@ -78,6 +84,11 @@ impl Room {
 }
 
 impl RelaySegmentRoomBackupFiles {
+    #[cfg(feature = "server")]
+    pub(crate) fn checkpoint_encoding(&self) -> SegmentCheckpointEncoding {
+        self.native.checkpoint_encoding()
+    }
+
     /// Verify all native and raster components against an independently retained whole-room cut.
     ///
     /// # Errors

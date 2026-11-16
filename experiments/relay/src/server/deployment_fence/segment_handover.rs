@@ -4,6 +4,7 @@ use super::{
 };
 use crate::{
     Error, RecoveredRelaySegmentRoom, Result,
+    room::SegmentCheckpointEncoding,
     server::{
         Host, RelaySegmentHandoverApproval, VerifiedRelaySegmentHandoverInputs,
         generation_backup::durable::{Interruption, Point},
@@ -47,6 +48,7 @@ pub(in crate::server) fn commit_segment_handover(
             &mut sink(),
             &mut sink(),
             &mut sink(),
+            SegmentCheckpointEncoding::Original,
         )?;
         if current != *approval.backup() {
             return Err(Error::Contract("relay segment handover source cut changed"));

@@ -1,11 +1,15 @@
 //! Exact durable room state. Connection leases and presence never appear here.
-use super::{FORMAT, RelayCheckpointIdentity};
+use super::{
+    FORMAT, RelayCheckpointIdentity, SegmentCheckpointEncoding, check_selection,
+    present_asset_history,
+};
 use crate::{
-    DurableReceipt, Error, Result, Role, Room, RoomBackupIdentity, ServerNativeHistoryBoundary,
+    DurableReceipt, Result, Role, Room, RoomBackupIdentity, ServerNativeHistoryBoundary,
     ServerNativeHistoryLane,
     room::{
-        native_history::checkpoint::document_checkpoint, recovered_discussion::StoredDiscussion,
-        review::ReviewCheckpoint, suggestions::SuggestionCheckpoint, versions::VersionCheckpoint,
+        asset_references::PacketHistory, native_history::checkpoint::document_checkpoint,
+        recovered_discussion::StoredDiscussion, review::ReviewCheckpoint,
+        suggestions::SuggestionCheckpoint, versions::VersionCheckpoint,
     },
 };
 use serde::{Deserialize, Serialize};
@@ -30,6 +34,12 @@ pub(in crate::room) struct Checkpoint {
     pub(super) discussions: Vec<StoredDiscussion>,
     pub(super) versions: Option<VersionCheckpoint>,
     pub(super) suggestions: Option<SuggestionCheckpoint>,
+    #[serde(
+        default,
+        deserialize_with = "present_asset_history",
+        skip_serializing_if = "Option::is_none"
+    )]
+    asset_packet_history: Option<PacketHistory>,
 }
 
 #[derive(Serialize, Deserialize)]
@@ -93,14 +103,19 @@ impl Checkpoint {
         &self,
         expected: &RelayCheckpointIdentity,
     ) -> Result<()> {
-        if self.format != FORMAT
-            || self.format_version != 1
-            || self.source != expected.source
-            || self.manifest != expected.manifest
-        {
-            return Err(Error::Contract("relay checkpoint selected cut differs"));
-        }
-        Ok(())
+        check_selection(
+            &self.format,
+            self.format_version,
+            &self.source,
+            self.manifest,
+            self.asset_packet_history.is_some(),
+            expected,
+        )
+    }
+
+    pub(in crate::room) fn include_asset_history(&mut self, history: PacketHistory) {
+        self.format_version = SegmentCheckpointEncoding::IndexedAssetHistory.version();
+        self.asset_packet_history = Some(history);
     }
 
     pub fn capture(room: &Room, source: RoomBackupIdentity, manifest: [u8; 32]) -> Result<Self> {
@@ -143,6 +158,7 @@ impl Checkpoint {
                 .as_ref()
                 .map(SuggestionCheckpoint::capture)
                 .transpose()?,
+            asset_packet_history: None,
         })
     }
 }

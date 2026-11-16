@@ -2,6 +2,8 @@
 mod capture;
 mod generations;
 mod inventory;
+mod packet_history;
+pub(in crate::room) use packet_history::{PacketHistory, PacketRecord};
 mod packets;
 mod read_budget;
 mod segment;

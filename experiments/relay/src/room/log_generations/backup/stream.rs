@@ -45,6 +45,12 @@ pub(in crate::room) struct NativeBackupStream<'a> {
 }
 
 impl NativeBackupStream<'_> {
+    pub(super) fn capture_asset_packet_history(
+        &self,
+    ) -> Result<Result<crate::room::asset_references::PacketHistory>> {
+        crate::room::asset_references::PacketHistory::capture(&self.capture)
+    }
+
     pub(in crate::room) fn measure(&mut self) -> Result<()> {
         let mut hash = ArchiveDigest::new(MAX_SERVER_LOG_GENERATION_BACKUP_BYTES);
         self.write_to(&mut hash)?;
