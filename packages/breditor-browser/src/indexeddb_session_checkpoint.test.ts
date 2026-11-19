@@ -1279,6 +1279,39 @@ describe("IndexedDbSessionCheckpointStore", () => {
     expect((await abnormal.save(reloaded.token, "{}")).ok).toBe(true);
     abnormal.close();
 
+    // A close that lands after schema validation but before the handle is
+    // cached must not leave the store holding a dead connection.
+    const raceFactory = new IDBFactory();
+    let raced = false;
+    const raceProxy = new Proxy(raceFactory, {
+      get(target, property, receiver) {
+        if (property !== "open") return Reflect.get(target, property, receiver);
+        return (name: string, version?: number) => {
+          const request =
+            version === undefined ? target.open(name) : target.open(name, version);
+          request.addEventListener("success", () => {
+            if (raced) return;
+            raced = true;
+            const database = request.result;
+            const transaction = database.transaction.bind(database);
+            database.transaction = ((...args: Parameters<IDBDatabase["transaction"]>) => {
+              const created = transaction(...args);
+              created.addEventListener("complete", () => {
+                (forceCloseDatabase as unknown as (database: IDBDatabase) => void)(database);
+              });
+              return created;
+            }) as IDBDatabase["transaction"];
+          });
+          return request;
+        };
+      },
+    });
+    const racing = createStore(raceProxy).store;
+    await racing.load();
+    expect(racing.closed).toBe(false);
+    expect((await racing.load()).ok).toBe(true);
+    racing.close();
+
     const explicit = createStore().store;
     explicit.close();
     expect(explicit.closed).toBe(true);
