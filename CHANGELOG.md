@@ -6,6 +6,17 @@ its durable formats and Wasm transport.
 
 ## Unreleased
 
+- Add text-run language to the unreleased local-only candidate rich V4: a native
+  `breditor/text-language` inline format holding one canonical, bounded BCP 47
+  tag (no extlang, extensions, private use or grandfathered tags; at most 35
+  bytes; strict canonical storage, case canonicalized at input boundaries), a
+  `setTextLanguage` command over the native selection (one history group, caret
+  pending formats), `<span lang>` live/static rendering through the new
+  `safeLanguageTagV1` policy, V4 **Language** / **Clear language** toolbar
+  controls and V4-only HTML `lang`/`xml:lang` interchange with Markdown HTML
+  fallback. The V4 fingerprint changes; V1–V3, their fingerprints and their
+  interchange behavior are unchanged.
+
 - Add the explicit, unreleased, local-only candidate rich language V4 (bootstrap
   format 9, `richLanguage: 4`) with bounded ordered-list numbering: marker style
   (decimal, lower/upper alpha, lower/upper roman) and reversal per list, a guarded

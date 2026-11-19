@@ -40,8 +40,10 @@ byte for byte, to the vanilla string with the default wrapper.
 
 The renderer checks the input against the rich content grammar, which is the union of rich
 languages V1 to V3 plus the candidate V4 ordered-list numbering properties (`list-style` 1–5,
-`list-reversed: true`; see `RICH_LANGUAGE_V4.md`), emitted as `<ol type reversed>`. It checks the
-following:
+`list-reversed: true`; see `RICH_LANGUAGE_V4.md`), emitted as `<ol type reversed>`, and the
+candidate V4 `breditor/text-language` inline format (a canonical bounded BCP 47 tag), emitted as
+`<span class="breditor-text-language" lang="…">` in the same recipe order as the live renderer
+(`staticInlineRecipesV4`). It checks the following:
 
 - Exact node and envelope fields. `entityId` must be `null`.
 - Required and allowed `breditor/*` properties for each element type. An unexpected property,

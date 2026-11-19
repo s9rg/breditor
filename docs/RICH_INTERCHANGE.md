@@ -150,6 +150,14 @@ numbering, HTML export emits them and Markdown export falls back to HTML for
 letter, roman or reversed lists. Other owners keep the original notices. See
 [RICH_LANGUAGE_V4.md](RICH_LANGUAGE_V4.md).
 
+V4 owners also report `supportsTextLanguage()`. For them, `lang` and `xml:lang`
+on inline or block elements become the native `breditor/text-language` format on
+every text run below (canonical case; `lang=""` clears an inherited value;
+malformed, private-use or extension tags report `unsupported-attribute`), HTML
+export emits `<span lang>`, and Markdown export falls back to HTML for tagged
+runs with a `markdown-feature` notice. Other owners keep accepting and dropping
+`lang`/`xml:lang` silently.
+
 Remaining gaps: real captured clipboard dumps per producer/platform/version,
 Word for the web non-decimal formats (reported, rendered as decimal), CSS
 `font` shorthand, Excel/Sheets hidden rows and columns (still rejected), cell
