@@ -92,6 +92,27 @@ DOM focus stays in the editor. The surface gets `aria-controls`,
 
 See [the contract](../../docs/SLASH_COMMANDS.md).
 
+## Chrome localization
+
+Pass an opt-in `ui` catalog to `mountRichEditor` / `mountDocumentRichEditor` to
+localize the editor chrome and set its direction. It never changes the editing
+surface or content direction, which stays with each block's layout direction:
+
+```ts
+const editor = mountRichEditor(root, {core, ui: {
+  lang: "ar", direction: "rtl",
+  strings: {richToolbarLabel: "تنسيق النص", controlApply: "تطبيق {label}"},
+  controls: {bold: {label: "عريض"}},
+  slashItems: {"heading-1": {label: "عنوان 1"}},
+}});
+mountRichContextMenu(editor);  // label, dir and lang come from editor.uiLocale()
+```
+
+Catalogs are validated by `resolveRichUi` (typed keys, unknown keys rejected,
+bounded non-empty strings, `{name}` placeholders only, no plural syntax). With
+no catalog the output is unchanged English. See
+[the localization contract](../../docs/UI_LOCALIZATION.md).
+
 ## Document placeholder
 
 `placeholder: 'Start writing…'` on a DOM mount admits a literal document-level prompt

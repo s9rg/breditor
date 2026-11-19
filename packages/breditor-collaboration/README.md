@@ -372,6 +372,15 @@ may be replaced without exiting; await the separately owned controller's
 `dispose()` before replacing its target/editor. Failed native cleanup retains a
 retryable retirement handle and never exits a foreign session. See [the contract](../../docs/RICH_WRITING_TOOLS.md#native-fullscreen).
 
+## Chrome localization
+
+`mountSharedEditor` / `mountSharedDocumentEditor` accept the same opt-in `ui`
+catalog as the local rich editor (`RichUiOptions`): shared toolbar and status
+strings, control labels, and `dir`/`lang` for the chrome only. The block drag
+handle, context UI and column separators read `editor.uiLocale()`; the editing
+surface and peers' content direction are untouched, and nothing is published or
+synchronized. See [the localization contract](../../docs/UI_LOCALIZATION.md).
+
 ## Document placeholder
 
 `placeholder: 'Start writing…'` on DOM/managed startup selects a literal prompt

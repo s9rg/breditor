@@ -1,5 +1,5 @@
 /** Explicit document-family SDK owner. Original local startup and checkpoint discriminators stay closed. */
-import {validatePlaceholderOption} from "@breditor/experimental-rich-content/rendering";
+import {validatePlaceholderOption,resolveRichUi} from "@breditor/experimental-rich-content/rendering";
 import {compileStandardRichProfileV1,compileStandardStructuralRichProfileV2,compileStandardLayoutRichProfileV3,createStandardRichInlinePresentationV1,createStandardRichToolbarV1,createStructuralRichToolbarV2,createLayoutRichToolbarV3,mountDocumentRichEditor,type RichCoreProfile,type RichDocumentCoreEditor,type RichDocumentEditorOptions,type RichDomEditor,type RichDocumentView,type ToolbarControl,type RenderOptions} from "@breditor/experimental-rich-content";
 import {refreshAssets,validateMarkdownInputPolicy} from "@breditor/experimental-rich-content/rendering";
 import type {RichSearchHost} from "@breditor/experimental-rich-content";
@@ -25,10 +25,12 @@ export interface LocalDocumentEditor extends Omit<LocalEditor,"view"|"insertImag
  replaceDocumentPlainText(...args:Parameters<RichDomEditor<"document-v1">["replaceDocumentPlainText"]>):ReturnType<RichDomEditor<"document-v1">["replaceDocumentPlainText"]>;
  pasteDocumentClipboard(...args:Parameters<RichDomEditor<"document-v1">["pasteDocumentClipboard"]>):ReturnType<RichDomEditor<"document-v1">["pasteDocumentClipboard"]>;
  collapseDocumentSelection(...args:Parameters<RichDomEditor<"document-v1">["collapseDocumentSelection"]>):ReturnType<RichDomEditor<"document-v1">["collapseDocumentSelection"]>;
+ /** Opt-in HTML source port; usable only when a clipboard interchange factory was supplied. */
+ source():import("@breditor/experimental-rich-content").RichDocumentSourceHost;
 }
 class DocumentOwner implements LocalDocumentEditor {
  readonly surface:HTMLDivElement;readonly toolbar:HTMLDivElement;readonly status:HTMLParagraphElement;
- #dom:RichDomEditor<"document-v1">;#release:()=>void;#render:RenderOptions;#disposed=false;
+ #dom:RichDomEditor<"document-v1">;#release:()=>void;#render:RenderOptions;#disposed=false;#source:import("@breditor/experimental-rich-content").RichDocumentSourceHost|undefined;
  constructor(dom:RichDomEditor<"document-v1">,release:()=>void,render:RenderOptions){this.#dom=dom;this.#release=release;this.#render=render;this.surface=dom.surface;this.toolbar=dom.toolbar;this.status=dom.status;}
  selectionPolicy():"document-v1"{return "document-v1";}
  supportsRetainedAssetReferences():boolean{return this.#dom.supportsRetainedAssetReferences();}
@@ -43,7 +45,9 @@ class DocumentOwner implements LocalDocumentEditor {
  writing():import("@breditor/experimental-rich-content").RichWritingToolsHost{this.#dom.view();return this.#dom;}
  fullscreen():import("@breditor/experimental-rich-content").RichFullscreenHost{this.#dom.view();return this.#dom;}
  contextUi():import("@breditor/experimental-rich-content").RichContextUiHost{this.#dom.view();return this.#dom;}
+ source():import("@breditor/experimental-rich-content").RichDocumentSourceHost{this.#dom.view();return this.#source??=this.#dom.documentSource();}
  setPlaceholderLabel(label:string|null):void{this.#dom.setPlaceholderLabel(label);}
+ uiLocale():import("@breditor/experimental-rich-content").RichUiLocale{this.#dom.view();return this.#dom.uiLocale();}
  selectDocument(...args:Parameters<LocalDocumentEditor["selectDocument"]>):ReturnType<LocalDocumentEditor["selectDocument"]>{return this.#dom.selectDocument(...args);}
  replaceDocumentPlainText(...args:Parameters<LocalDocumentEditor["replaceDocumentPlainText"]>):ReturnType<LocalDocumentEditor["replaceDocumentPlainText"]>{return this.#dom.replaceDocumentPlainText(...args);}
  pasteDocumentClipboard(...args:Parameters<LocalDocumentEditor["pasteDocumentClipboard"]>):ReturnType<LocalDocumentEditor["pasteDocumentClipboard"]>{return this.#dom.pasteDocumentClipboard(...args);}
@@ -54,7 +58,7 @@ class DocumentOwner implements LocalDocumentEditor {
 export async function openLocalDocumentEditor(options:LocalDocumentEditorOptions):Promise<LocalDocumentEditor>{
  options={...options};
  validateMarkdownInputPolicy(options.inputRules);
- validatePlaceholderOption(options.placeholder);
+ validatePlaceholderOption(options.placeholder);resolveRichUi(options.ui);
  if(options.selectionEditing!=="document-v1")throw new TypeError("Expected explicit selectionEditing document-v1");
  if(options.rangeEditing!==undefined&&options.rangeEditing!=="general-v1")throw new TypeError("Document editing requires general-v1 ranges");
  if(options.richLanguage!==undefined&&![1,2,3].includes(options.richLanguage))throw new TypeError("Expected richLanguage 1, 2 or 3");

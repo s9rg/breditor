@@ -23,6 +23,8 @@ export class Stylesheets {
       try{
         const ast=parse(source,{context:"stylesheet",positions:false,onParseError(){b.loss("unsupported-style");}});if(ast.type!=="StyleSheet")continue;
         ast.children.forEach(item=>{
+          // Legacy `<!-- … -->` hiding tokens (Word/Excel/Sheets wrap every sheet) carry no rules.
+          if(item.type==="CDO"||item.type==="CDC")return;
           if(item.type!=="Rule"||item.prelude?.type!=="SelectorList"){b.loss("unsupported-style");return;}
           const declarations=new Map<string,Value>();item.block.children.forEach(d=>{
             if(d.type!=="Declaration"){b.loss("unsupported-style");return;}if(++this.#declarations>8192)fail("resource-limit");const declaration=d as Declaration,name=declaration.property.toLowerCase(),prior=declarations.get(name);if(!prior?.important||declaration.important)declarations.set(name,{value:generate(declaration.value),important:Boolean(declaration.important)});

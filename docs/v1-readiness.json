@@ -156,9 +156,9 @@
     {
       "id":"office-paste","area":"Interchange","status":"partial",
       "summary":"Word, Google Docs and spreadsheet rich paste",
-      "current":"Representative Word/Docs/Excel markup fixtures exercise bounded stylesheet/list/table/merge conversion, formatting, links and host-owned images through the same Rust admission and paste actions. Combined installed offline/history/restart workflows cover those fixtures and explicit destination losses. They are authored representative snippets, not captured application-native clipboard certification; real producer fixtures and broader fidelity remain required.",
+      "current":"Representative Word/Docs/Excel markup fixtures exercise bounded stylesheet/list/table/merge conversion, formatting, links and host-owned images through the same Rust admission and paste actions. Combined installed offline/history/restart workflows cover those fixtures and explicit destination losses. They are authored representative snippets, not captured application-native clipboard certification; real producer fixtures and broader fidelity remain required. A reconstructed producer corpus (Word desktop/web, Google Docs/Sheets, Excel, LibreOffice, Cocoa), explicitly not captured certification, now drives exact structure/loss tests; nested Docs/Cocoa lists, Word lettered/roman/skipped levels, Word web list rebuilding, Docs script marks and file: image losses are handled. Real captured dumps remain required.",
       "acceptance":"Maintain real producer fixtures and sanitization/loss policies; test lists, styles, tables, links and images through the same Rust admission boundary.",
-      "evidence":["packages/breditor-collaboration/src/controller.ts","packages/breditor-browser/src/clipboard_html.ts","docs/RICH_INTERCHANGE.md","packages/breditor-interchange/tests/fixtures/word.html","packages/breditor-interchange/tests/fixtures/google-docs.html","packages/breditor-interchange/tests/fixtures/excel.html","docs/qualification/2026-10-16-mixed-workflow-functional.json","docs/qualification/2026-10-18-v1-candidate-functional.json"],
+      "evidence":["packages/breditor-collaboration/src/controller.ts","packages/breditor-browser/src/clipboard_html.ts","docs/RICH_INTERCHANGE.md","packages/breditor-interchange/tests/fixtures/word.html","packages/breditor-interchange/tests/fixtures/google-docs.html","packages/breditor-interchange/tests/fixtures/excel.html","docs/qualification/2026-10-16-mixed-workflow-functional.json","docs/qualification/2026-10-18-v1-candidate-functional.json","packages/breditor-interchange/tests/producer_fixtures.test.ts"],
       "sources":["ckeditor-office","tiptap-catalog"]
     },
     {
@@ -292,9 +292,9 @@
     {
       "id":"drag-and-drop","area":"Integration","status":"partial",
       "summary":"Block rearrangement and drop feedback",
-      "current":"File drop and typed block/axis moves exist; a general block drag handle, semantic drop target and drop cursor UI are incomplete. Shared editors now have an opt-in block drag handle with a semantic drop resolver, drop cursor, keyboard pick-up/move and Alt+Shift+Arrow steps, each sending one retained-ID move_block at the planned revision; local single-user editors still lack a general block move.",
+      "current":"File drop and typed block/axis moves exist; a general block drag handle, semantic drop target and drop cursor UI are incomplete. Shared editors now have an opt-in block drag handle with a semantic drop resolver, drop cursor, keyboard pick-up/move and Alt+Shift+Arrow steps, each sending one retained-ID move_block at the planned revision. Local single-user editors now have a native retained-ID MoveBlock action (one exact history group) behind the same shared drag handle and host port.",
       "acceptance":"Move retained IDs rather than copy/delete; add keyboard equivalents and test invalid/cyclic/cross-container targets and shared Undo.",
-      "evidence":["packages/breditor-collaboration/src/controller.ts","experiments/shared-browser/placements.spec.mjs","docs/SHARED_BLOCK_DRAG.md","packages/breditor-collaboration/src/block_move.ts"],
+      "evidence":["packages/breditor-collaboration/src/controller.ts","experiments/shared-browser/placements.spec.mjs","docs/SHARED_BLOCK_DRAG.md","packages/breditor-collaboration/src/block_move.ts","docs/BLOCK_DRAG.md","crates/breditor-core/src/rich_content/actions/move_block.rs"],
       "sources":["tiptap-catalog","ckeditor-digest"]
     },
     {
@@ -308,9 +308,9 @@
     {
       "id":"framework-integrations","area":"Integration","status":"partial",
       "summary":"Framework integrations and static rendering",
-      "current":"The private SDK supplies installed local and durable shared vanilla/React entry points. Shared replacement waits for exact old-writer closure; failed save or startup cleanup hands off journal recovery without implicit discard. Tests cover StrictMode, cancellation, rerenders, actual reload, quota failures and database upgrade retention in all three engines. Local-only and shared-without-React installs remain independent. SSR is a starting placeholder, not a static document renderer. Public API/package decisions, remaining source promotion and broader framework/static-renderer examples remain open.",
+      "current":"The private SDK supplies installed local and durable shared vanilla/React entry points. Shared replacement waits for exact old-writer closure; failed save or startup cleanup hands off journal recovery without implicit discard. Tests cover StrictMode, cancellation, rerenders, actual reload, quota failures and database upgrade retention in all three engines. Local-only and shared-without-React installs remain independent. SSR is a starting placeholder, not a static document renderer. Public API/package decisions, remaining source promotion and broader framework/static-renderer examples remain open. An inert DOM-free static renderer (@breditor/editor/static) and React BreditorStaticDocument now render validated documents with the live link policy, table merge resolution and block layout; docs cover Vue/Svelte/Angular adapter responsibility.",
       "acceptance":"Ship installed-package React and vanilla examples, stable lifecycle hooks and an inert data renderer; document adapter responsibility for other frameworks.",
-      "evidence":["packages/breditor-editor/README.md","packages/breditor-editor/src/react.tsx","packages/breditor-editor/src/shared_react.tsx","packages/breditor-editor/src/shared_session.ts","scripts/check-editor-package.mjs","experiments/editor-browser/editor.spec.mjs","experiments/editor-browser/shared-lifecycle.spec.mjs"],
+      "evidence":["packages/breditor-editor/README.md","packages/breditor-editor/src/react.tsx","packages/breditor-editor/src/shared_react.tsx","packages/breditor-editor/src/shared_session.ts","scripts/check-editor-package.mjs","experiments/editor-browser/editor.spec.mjs","experiments/editor-browser/shared-lifecycle.spec.mjs","docs/STATIC_RENDERING.md","packages/breditor-editor/src/static_document.ts"],
       "sources":["tiptap-extension","ckeditor-overview"]
     },
     {
@@ -370,11 +370,11 @@
       "sources":["tiptap-catalog","ckeditor-overview"]
     },
     {
-      "id":"html-source-and-email","area":"Extended parity","status":"missing",
+      "id":"html-source-and-email","area":"Extended parity","status":"partial",
       "summary":"Source editing, general HTML and email layouts",
-      "current":"Canonical schema-bound AST editing deliberately does not preserve arbitrary HTML/CSS, full-page metadata or email layout markup.",
+      "current":"Canonical schema-bound AST editing deliberately does not preserve arbitrary HTML/CSS, full-page metadata or email layout markup. The scope is now explicit: page metadata, email layout, scripts and stored CSS are out of scope. An opt-in document-selection source view edits sanitized semantic HTML in a textarea, previews bounded allowlist losses before any change and applies one guarded whole-document paste; shared and ordinary families have no source view.",
       "acceptance":"Resolve the compatibility scope explicitly. Any source UI must import through a bounded allowlist and loss report; never store executable HTML as trusted editor state.",
-      "evidence":["packages/breditor-browser/src/clipboard_html.ts","crates/breditor-core/src/rich_content/drafts.rs"],
+      "evidence":["packages/breditor-browser/src/clipboard_html.ts","crates/breditor-core/src/rich_content/drafts.rs","docs/HTML_SOURCE_VIEW.md","packages/breditor-experimental-rich-content/src/source_view_host.ts"],
       "sources":["ckeditor-digest"]
     },
     {
@@ -388,9 +388,9 @@
     {
       "id":"localization-and-bidi","area":"Integration","status":"partial",
       "summary":"Localized UI, bidirectional content and language metadata",
-      "current":"Unicode text is retained, but shared controls are English and RTL/bidirectional editing, localized commands and text-part language are not qualified as a supported product surface.",
+      "current":"Unicode text is retained, but shared controls are English and RTL/bidirectional editing, localized commands and text-part language are not qualified as a supported product surface. An opt-in validated UI catalog (56 keys plus per-control and slash labels, closed placeholder templates) now localizes local/shared chrome, toolbars, context UI, slash, column resize and block drag, with chrome-only lang/dir that never changes content direction; default English output is byte-identical. Text-part language metadata, search/writing/review panels and native error strings remain open.",
       "acceptance":"Separate UI language from content direction, localize control strings and qualify mixed-direction navigation/selection with language metadata.",
-      "evidence":["packages/breditor-collaboration/src/toolbar.ts","packages/breditor-collaboration/src/controller.ts"],
+      "evidence":["packages/breditor-collaboration/src/toolbar.ts","packages/breditor-collaboration/src/controller.ts","docs/UI_LOCALIZATION.md","packages/breditor-experimental-rich-content/src/ui_locale.ts"],
       "sources":["ckeditor-overview","ckeditor-digest"]
     }
   ],

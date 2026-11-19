@@ -1097,3 +1097,39 @@ fn closed_command_and_selection_shapes_reject_without_partial_publication() -> T
     }
     Ok(())
 }
+
+#[test]
+fn move_block_is_one_exact_history_group_and_rejects_without_publication() -> TestResult {
+    let profile = profile()?;
+    let mut editor = editor(&profile)?;
+    command(&mut editor, &select("1", "1"), "selection")?;
+    let moved = action("moveBlock", json!({"block":"image-block","parent":"cell","before":"p"}));
+    roundtrip(&mut editor, &moved)?;
+    let document: Value = serde_json::from_str(&read(editor.observe().document_json())?)?;
+    let body = &document["root"]["children"][0]["children"][0]["children"][0]["children"];
+    assert_eq!(body[0]["properties"]["breditor/block-id"], "image-block");
+    assert_eq!(body[1]["properties"]["breditor/block-id"], "p");
+    let checkpoint = read(editor.checkpoint_json())?;
+    for (request, code) in [
+        (json!({"block":"missing","parent":null,"before":null}), "breditor_rich.command_rejected"),
+        (
+            json!({"block":"table-block","parent":"cell","before":null}),
+            "breditor_rich.command_rejected",
+        ),
+        (
+            json!({"block":"p","parent":null,"before":"image-block"}),
+            "breditor_rich.command_rejected",
+        ),
+        (json!({"block":"caption","parent":null,"before":null}), "breditor_rich.command_rejected"),
+        (json!({"block":"p","parent":null}), "breditor_rich.command_json"),
+        (json!({"block":"p","parent":null,"before":null,"extra":1}), "breditor_rich.command_json"),
+    ] {
+        let result = editor.execute(&editor.observe(), &action("moveBlock", request).to_string());
+        assert_eq!(result.error().ok_or("error")?.code(), code);
+        assert_eq!(read(editor.checkpoint_json())?, checkpoint);
+    }
+    assert_eq!(read(editor.set_read_only(&editor.observe(), true))?, "true");
+    let result = editor.execute(&editor.observe(), &moved.to_string());
+    assert_eq!(result.error().ok_or("read only")?.code(), "breditor_rich.read_only");
+    Ok(())
+}

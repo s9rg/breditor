@@ -67,6 +67,7 @@ pub(super) fn execute(
         CommandTag::DeleteTableColumn => {
             super::delete_table_column::execute(owner, observation, input)
         }
+        CommandTag::MoveBlock => super::move_block::execute(owner, observation, input),
         CommandTag::MoveTableRow => super::move_table_row::execute(owner, observation, input),
         CommandTag::MoveTableColumn => super::move_table_column::execute(owner, observation, input),
         CommandTag::ResizeTableColumn => {

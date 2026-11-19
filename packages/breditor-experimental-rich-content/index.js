@@ -11,8 +11,12 @@ export {createRichFullscreen} from "./dist/browser/fullscreen_controller.js";
 export {mountRichFullscreenControls} from "./dist/browser/fullscreen_controls.js";
 export {mountRichTableColumnResize,richTableColumnResizeCommit,clampRichTableColumnWidth,richTableColumnResizeStyles,RICH_TABLE_COLUMN_WIDTH_MIN,RICH_TABLE_COLUMN_WIDTH_MAX} from "./dist/browser/table_column_resize.js";
 export {createRichSlashCommands,filterRichSlashItems,standardRichSlashPicks} from "./dist/browser/slash_command_items.js";
+export {mountRichBlockDrag,mountRichBlockDragPort,richBlockDragStyles} from "./dist/browser/block_drag.js";
+export {resolveRichBlockMove,resolveRichBlockStep,richBlockDropTargets,richHandleBlock,richSelectionBlock,isMovableBlock} from "./dist/browser/block_move.js";
 export {mountRichSlashCommands} from "./dist/browser/slash_command_session.js";
 export {mountRichSelectionToolbar,mountRichContextMenu,richSelectionToolbarDefaults,richContextMenuDefaults,richContextUiStyles} from "./dist/browser/context_ui.js";
+export {mountRichSourceView} from "./dist/browser/source_view.js";
+export {RICH_DOCUMENT_SOURCE_MAX_BYTES} from "./dist/browser/source_view_types.js";
 
 const searchResults=new WeakMap();
 class OwnedRichSearchResults {
@@ -266,3 +270,4 @@ class RichCoreEditor {
   checkpointJson() { const raw=this.#live();return read(this.#selectionPolicy==="document-v1"?raw.documentCheckpointJson():raw.checkpointJson()); }
   dispose() { for(const results of [...this.#searches])results.dispose();this.#observation?.free(); this.#observation = undefined; this.#raw?.free(); this.#raw = undefined; }
 }
+export {resolveRichUi,defaultRichUi,richUiStringsEn,richChromeIsRtl} from "./dist/browser/ui_locale.js";

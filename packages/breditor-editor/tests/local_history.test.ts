@@ -18,6 +18,15 @@ it("placeholder rejection precedes local owner creation/recovery in both scopes,
  const t=setup(),editor=await openLocalEditor({host:t.host,initial:{kind:"document",documentJson:"native"}});expect(t.profile.createEditor).toHaveBeenCalledOnce();editor.dispose();
  mocks.runtime.mockClear();const bad=setup();await expect(openLocalEditor({host:bad.host,placeholder:"\ud800"})).rejects.toThrow("placeholder");expect(mocks.runtime).not.toHaveBeenCalled();expect(bad.host.firstChild).toBe(bad.original);
 });
+it("validates the chrome catalog before runtime work and passes it to the DOM owner",async()=>{
+ for(const documentScope of [false,true]){
+  mocks.runtime.mockClear();const bad=setup(),ui={strings:{nope:"x"}} as never;
+  const pending=documentScope?openLocalDocumentEditor({host:bad.host,selectionEditing:"document-v1",ui}):openLocalEditor({host:bad.host,ui});
+  await expect(pending).rejects.toThrow("Unknown UI string");expect(mocks.runtime).not.toHaveBeenCalled();expect(bad.host.firstChild).toBe(bad.original);
+ }
+ mocks.mount.mockClear();const t=setup(),ui={lang:"ar",direction:"rtl" as const,strings:{slashEmpty:"لا شيء"}};
+ const editor=await openLocalEditor({host:t.host,ui,initial:{kind:"document",documentJson:"native"}});expect(mocks.mount.mock.calls[0]![1]).toMatchObject({ui});editor.dispose();
+});
 it("general input routing is explicit, capability checked before mutation, and independent from local save family",async()=>{
  const t=setup(),editor=await openLocalEditor({host:t.host,rangeEditing:"general-v1",history:"typing-v1",initial:{kind:"typingCheckpoint",checkpointJson:"opaque natural local"}});expect(t.profile.restoreTypingEditor).toHaveBeenCalledWith("opaque natural local");expect(mocks.mount.mock.calls[0]![1].rangeEditing).toBe("general-v1");editor.dispose();
  const old=setup(false);mocks.mount.mockClear();await expect(openLocalEditor({host:old.host,rangeEditing:"general-v1",initial:{kind:"document",documentJson:"native"}})).rejects.toThrow("matching native general-range");expect(mocks.mount).not.toHaveBeenCalled();expect(old.core.setReadOnly).not.toHaveBeenCalled();expect(old.core.dispose).toHaveBeenCalledOnce();expect(old.host.firstChild).toBe(old.original);

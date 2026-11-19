@@ -23,3 +23,7 @@ export type {RichFullscreenHost,RichFullscreenHostState} from "./dist/browser/fu
 export {RichSearchEvents,type RichSearchHost,type RichSearchHostState,type RichSearchCompletion} from "./dist/browser/search_host.js";
 export {prepareRichPlaceholder,validatePlaceholderOption,RichPlaceholderPresentation,richPlaceholderStyles} from "./dist/browser/placeholder.js";
 export * from "./dist/browser/input_rule_intent.js";
+export {mountRichBlockDragPort,richBlockDragStyles,type RichBlockDrag,type RichBlockDragOptions,type RichBlockDragPort} from "./dist/browser/block_drag.js";
+export * from "./dist/browser/block_move.js";
+export {compileInlineFormatRecipes,createInlineFormatRenderManifest,resolveInlineFormatRenderAttributes,type BrowserProfileFormatDescriptor,type InlineFormatRenderRecipe,type InlineFormatRenderAttribute} from "@breditor/browser/presentation";
+export * from "./dist/browser/ui_locale.js";

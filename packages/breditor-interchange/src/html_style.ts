@@ -53,13 +53,24 @@ export function styleFor(node:HtmlElement,parent:StyleState,b:Budget,css:Map<str
     const value=source.trim().toLowerCase();if(value==="inherit")continue;
     switch(name){
       case "font-weight":if(value==="bold"||value==="bolder"||/^([6-9]00|1000)$/.test(value))set("strong");else if(value==="normal"||/^[1-5]00$/.test(value))remove("strong");else b.loss("unsupported-style");break;
+      // Initial/no-op values Office and Docs write on every run are not presentation loss.
+      case "font-variant":if(value!=="normal")b.loss("unsupported-style");break;
+      case "vertical-align":
+        if(value==="super"){remove("subscript");set("superscript");}else if(value==="sub"){remove("superscript");set("subscript");}
+        else if(value==="baseline"){remove("superscript");remove("subscript");}else b.loss("unsupported-style");break;
+      case "list-style-type":
+        if(!["ul","ol","li"].includes(node.tagName))b.loss("unsupported-style");
+        else if(!["disc","circle","square","decimal"].includes(value))b.loss("list-numbering");break;
+      // Excel/Sheets: a <br> stays inside its cell, which is the only native meaning.
+      case "mso-data-placement":if(node.tagName!=="br"||value!=="same-cell")b.loss("unsupported-style");break;
       case "font-style":if(value==="italic"||value==="oblique")set("italic");else if(value==="normal")remove("italic");else b.loss("unsupported-style");break;
       case "text-decoration":case "text-decoration-line":{
         const words=value.split(/\s+/);if(words.includes("none")){remove("underline");remove("strike");}
         if(words.includes("underline"))set("underline");if(words.includes("line-through"))set("strike");
         if(words.some(v=>!["none","underline","line-through"].includes(v)))b.loss("unsupported-style");break;
       }
-      case "color":case "background-color":{const n=rgb(value);if(n!==null){set(name==="color"?"text-color":"background-color",{"breditor-inline/rgb24":n});if(name==="background-color"&&!["span","mark","font","b","strong","i","em","u","s","a"].includes(node.tagName))b.loss("style-approximation");}else b.loss("unsupported-style");break;}
+      // Transparent paints nothing; an inherited highlight still shows through, so keep it.
+      case "color":case "background-color":{if(name==="background-color"&&value==="transparent")break;const n=rgb(value);if(n!==null){set(name==="color"?"text-color":"background-color",{"breditor-inline/rgb24":n});if(name==="background-color"&&!["span","mark","font","b","strong","i","em","u","s","a"].includes(node.tagName))b.loss("style-approximation");}else b.loss("unsupported-style");break;}
       case "font-size":{
         const match=/^(\d+(?:\.\d+)?)(px|pt)$/.exec(value),pixels=match?Number(match[1])*(match[2]==="pt"?4/3:1):NaN;
         if(pixels>=8&&pixels<=96){if(!Number.isInteger(pixels))b.loss("style-approximation");set("text-size",{"breditor-inline/pixels":Math.round(pixels)});}else b.loss("unsupported-style");break;

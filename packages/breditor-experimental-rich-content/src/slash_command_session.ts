@@ -6,6 +6,7 @@
 import type {RichCommand,RichCommandOutcome,RichCoreEditor,RichEditorView,RichSelection,RichSelectionPolicy} from "./core.js";
 import type {RichSearchHostState} from "./search_host.js";
 import {id,isProse,presentationModel,text,type RichPresentationModel} from "./model.js";
+import {defaultRichUi,richChromeIsRtl,type RichUiLocale} from "./ui_locale.js";
 import {filterRichSlashItems,requireRichSlashItems,type RichSlashContext,type RichSlashItem} from "./slash_command_items.js";
 
 /** Structural port satisfied by `RichDomEditor` (local or document scope). */
@@ -17,6 +18,8 @@ export interface RichSlashCommandHost {
  view():RichEditorView<RichSelectionPolicy>;
  execute(command:RichCommand,focus?:boolean,expectedRevision?:string):RichCommandOutcome|"queued";
  focus():void;
+ /** Optional chrome catalog: menu strings, standard item labels and the menu's `dir`/`lang`. */
+ uiLocale?():RichUiLocale;
 }
 export type RichSlashCancelReason=
  |"dismissed"|"composition"|"trigger-invalidated"|"selection-left"|"query-ended"|"blur"|"read-only"|"editor-closed"|"disposed";
@@ -32,6 +35,7 @@ export interface RichSlashCommandOptions {
  maxQueryLength?:number;
  /** Displayed item limit. Default 10, maximum 50. */
  maxItems?:number;
+ /** Overrides the host catalog's slashLabel. */
  label?:string;
  /** Menu parent; defaults to the surface document body. Must be outside the editing surface. */
  container?:HTMLElement;
@@ -65,7 +69,7 @@ class SlashCommands implements RichSlashCommands {
  readonly #host:RichSlashCommandHost;readonly #options:RichSlashCommandOptions;readonly #abort:AbortController;
  readonly #root:HTMLDivElement;readonly #list:HTMLDivElement;readonly #status:HTMLParagraphElement;readonly #prefix:string;
  readonly #unsubscribe:()=>void;readonly #maxQuery:number;readonly #maxItems:number;readonly #namespace:string;
- readonly #aria=new Map<string,string|null>();
+ readonly #aria=new Map<string,string|null>();readonly #ui:RichUiLocale;
  #session:Session|undefined;#counter=0;#allocated=0n;#armed:{documentJson:string}|undefined;#disposed=false;#lastCancel:RichSlashCancelReason|null=null;
  constructor(host:RichSlashCommandHost,options:RichSlashCommandOptions){
   const surface=host.surface,document=surface.ownerDocument,window=document.defaultView;
@@ -77,12 +81,12 @@ class SlashCommands implements RichSlashCommands {
   const container=options.container??document.body;
   if(container===surface||surface.contains(container)||container.ownerDocument!==document)throw Error("Slash-command menus must be mounted outside the editing surface");
   const state=host.searchState();if(state.closed)throw Error("Use an open editor for slash commands");
-  this.#host=host;this.#options={...options};this.#maxQuery=maxQuery;this.#maxItems=maxItems;
+  this.#host=host;this.#options={...options};this.#ui=host.uiLocale?.()??defaultRichUi;this.#maxQuery=maxQuery;this.#maxItems=maxItems;
   const realm=window as unknown as {AbortController:typeof AbortController};this.#abort=new realm.AbortController();
   const unique=globalThis.crypto.randomUUID();this.#prefix=`breditor-slash-${unique.slice(0,8)}`;this.#namespace=`br:${unique}`;
-  this.#root=document.createElement("div");this.#root.dataset["breditorSlash"]="";this.#root.hidden=true;
+  this.#root=document.createElement("div");this.#root.dataset["breditorSlash"]="";this.#ui.applyChrome(this.#root);this.#root.hidden=true;
   this.#root.style.cssText="position:fixed;z-index:20;min-width:200px;max-width:320px;max-height:280px;overflow:auto;border:1px solid #aabbb3;border-radius:6px;background:#fff;color:#173d37;box-shadow:0 4px 16px #0002;font:14px system-ui,sans-serif;padding:4px";
-  this.#list=document.createElement("div");this.#list.id=`${this.#prefix}-list`;this.#list.setAttribute("role","listbox");this.#list.setAttribute("aria-label",options.label??"Commands");
+  this.#list=document.createElement("div");this.#list.id=`${this.#prefix}-list`;this.#list.setAttribute("role","listbox");this.#list.setAttribute("aria-label",options.label??this.#ui.text("slashLabel"));
   this.#status=document.createElement("p");this.#status.dataset["slashStatus"]="";this.#status.setAttribute("role","status");this.#status.setAttribute("aria-live","polite");this.#status.style.cssText="margin:4px;font-size:12px;color:#4a615b";
   this.#root.append(this.#list,this.#status);
   // Options never take focus: the caret and native selection stay in the editor.
@@ -158,7 +162,7 @@ class SlashCommands implements RichSlashCommands {
   const realm=this.#host.surface.ownerDocument.defaultView as unknown as {AbortController:typeof AbortController};const abort=new realm.AbortController();session.abort=abort;
   const live=():boolean=>this.#session===session&&session.generation===generation&&!abort.signal.aborted&&!this.#disposed;
   const apply=(items:unknown):void=>{
-   const admitted=requireRichSlashItems(items,Number.MAX_SAFE_INTEGER);
+   const admitted=requireRichSlashItems(items,Number.MAX_SAFE_INTEGER).map(item=>this.#ui.slashItem(item));
    // Enablement is re-read from the newest Rust view, not the one the provider started from.
    const current=this.#check(session.trigger);if(!current.ok){this.cancel(current.reason);return;}
    const context=this.#context(current.model,current.view.revision);
@@ -166,7 +170,7 @@ class SlashCommands implements RichSlashCommands {
    session.active=Math.min(session.active,Math.max(0,session.items.length-1));session.loading=false;this.#render();
   };
   let result:unknown;
-  try{result=typeof provider==="function"?provider(check.query,Object.freeze({signal:abort.signal,revision:check.view.revision,session:session.id})):filterRichSlashItems(provider,check.query);}
+  try{result=typeof provider==="function"?provider(check.query,Object.freeze({signal:abort.signal,revision:check.view.revision,session:session.id})):filterRichSlashItems(provider.map(item=>this.#ui.slashItem(item)),check.query);}
   catch(error){session.loading=false;session.items=[];this.#report(error);return;}
   if(result&&typeof (result as Promise<unknown>).then==="function"){
    session.loading=true;this.#render();
@@ -194,7 +198,7 @@ class SlashCommands implements RichSlashCommands {
   const item=session.items[index??session.active];if(!item)throw Error("Choose an available slash command");
   const state=this.#host.searchState();if(state.busy)throw Error("Slash commands wait for the current editor operation");
   const check=this.#check(session.trigger);if(!check.ok){this.cancel(check.reason);throw Error("The slash-command trigger is no longer valid");}
-  if(!item.enabled(this.#context(check.model,check.view.revision)))throw Error(`${item.label} is not available here`);
+  if(!item.enabled(this.#context(check.model,check.view.revision)))throw Error(this.#ui.text("slashUnavailable",{label:item.label}));
   // End the session first: the following publications are this execution, not invalidations.
   this.#end("executed");
   const block=session.trigger.block,selection:Extract<RichSelection,{kind:"text"}>={kind:"text",anchor:{block,offset:String(session.trigger.start),affinity:"after"},focus:{block,offset:String(check.caret),affinity:check.affinity}};
@@ -205,7 +209,7 @@ class SlashCommands implements RichSlashCommands {
   let outcome:RichCommandOutcome|null=null;
   if(command){const result=this.#host.execute(command,true,after.revision);if(result==="queued")throw Error("The slash command was queued after its trigger was removed");outcome=result;}
   const execution=Object.freeze({item:item.id,removal:removed,outcome});
-  if(!command)this.#report(Error(`${item.label} is no longer applicable; only the typed trigger was removed`));
+  if(!command)this.#report(Error(this.#ui.text("slashInapplicable",{label:item.label})));
   try{this.#options.onExecute?.(execution);}catch(error){this.#report(error);}
   return execution;
  }
@@ -231,13 +235,15 @@ class SlashCommands implements RichSlashCommands {
   const options=session.items.map((item,index)=>{const option=document.createElement("div");option.id=`${this.#prefix}-option-${index}`;option.setAttribute("role","option");option.dataset["slashIndex"]=String(index);option.dataset["slashItem"]=item.id;option.setAttribute("aria-selected",String(index===session.active));option.textContent=item.label;option.style.cssText=`padding:6px 8px;border-radius:4px;cursor:pointer;${index===session.active?"background:#dcebe5;":""}`;if(item.description){const detail=document.createElement("span");detail.textContent=` ${item.description}`;detail.style.cssText="color:#4a615b;font-size:12px";option.append(detail);}return option;});
   this.#list.replaceChildren(...options);this.#list.setAttribute("aria-busy",String(session.loading));
   const active=options[session.active];if(active&&!session.loading)surface.setAttribute("aria-activedescendant",active.id);else surface.removeAttribute("aria-activedescendant");
-  this.#status.textContent=session.error??(session.loading?"Loading commands…":session.items.length?`${session.items.length} command${session.items.length===1?"":"s"} available`:"No matching commands");
+  this.#status.textContent=session.error??(session.loading?this.#ui.text("slashLoading"):session.items.length===1?this.#ui.text("slashCountOne"):session.items.length?this.#ui.text("slashCount",{count:session.items.length}):this.#ui.text("slashEmpty"));
   this.#root.hidden=false;this.#position();active?.scrollIntoView?.({block:"nearest"});
  }
  #position():void{
-  const surface=this.#host.surface,window=surface.ownerDocument.defaultView!;let rect:{left:number;bottom:number}=surface.getBoundingClientRect();
+  const surface=this.#host.surface,window=surface.ownerDocument.defaultView!;let rect:{left:number;bottom:number;width?:number}=surface.getBoundingClientRect();
   try{const selection=surface.ownerDocument.getSelection(),range=selection?.rangeCount?selection.getRangeAt(0):null;if(range&&surface.contains(range.startContainer)&&typeof range.getClientRects==="function"){const first=range.getClientRects()[0];if(first)rect=first;}}catch{/* Layout is presentation only. */}
-  const left=Math.max(0,Math.min(rect.left,(window.innerWidth||0)-200)),top=Math.max(0,rect.bottom+4);
+  // Under right-to-left chrome the menu extends toward inline-start from the caret.
+  const start=richChromeIsRtl(this.#root)?rect.left+(rect.width??0)-(this.#root.offsetWidth||200):rect.left;
+  const left=Math.max(0,Math.min(start,(window.innerWidth||0)-200)),top=Math.max(0,rect.bottom+4);
   this.#root.style.left=`${left}px`;this.#root.style.top=`${top}px`;
  }
  state():RichSlashCommandState{

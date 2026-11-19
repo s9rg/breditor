@@ -7,6 +7,7 @@
  * owner records one Undo step. Keyboard steps are focusable `role="separator"`
  * value controls; each accepted key commits one command.
  */
+import {defaultRichUi} from "./ui_locale.js";
 
 /** Admitted Rust column width domain (`ResizeColumn::capture`, logical pixels). */
 export const RICH_TABLE_COLUMN_WIDTH_MIN=32;
@@ -17,6 +18,8 @@ export interface RichTableColumnGeometry {readonly id:string;readonly hidden:boo
 /** Structural port satisfied by both `RichDomEditor` and the shared DOM editor. */
 export interface RichTableColumnResizeHost {
  readonly surface:HTMLElement;
+ /** Optional chrome catalog for separator names/values and the badge's `dir`/`lang`. */
+ uiLocale?():import("./ui_locale.js").RichUiLocale;
  writingState():RichTableColumnResizeHostState;
  /** Must notify after every local or remote publication. */
  subscribeWriting(listener:()=>void):()=>void;
@@ -30,6 +33,7 @@ export interface RichTableColumnResizeOptions {
  commit(request:RichTableColumnResizeRequest):unknown;
  /** Arrow-key step in logical pixels (default 8). Shift+Arrow and PageUp/PageDown use `largeStep` (default 64). */
  step?:number;largeStep?:number;
+ /** Overrides the host catalog's columnResizeLabel. `index` is zero-based. */
  label?:(index:number,count:number)=>string;
  onCancel?:(reason:RichTableColumnResizeCancel)=>void;
  onError?:(error:unknown)=>void;
@@ -42,6 +46,8 @@ export function richTableColumnResizeCommit(dom:{execute(command:{kind:"resizeTa
  return request=>dom.execute({kind:"resizeTableColumn",data:{table:request.table,column:request.column,width:request.width}},false,request.revision);
 }
 
+/** Computed content direction of a rendered table (block-direction or inherited); never the chrome direction. */
+const isRtl=(table:HTMLElement):boolean=>{try{return table.ownerDocument.defaultView?.getComputedStyle(table).direction==="rtl";}catch{return false;}};
 export function clampRichTableColumnWidth(width:number):number {
  if(!Number.isFinite(width))throw RangeError("Expected a finite column width");
  return Math.min(RICH_TABLE_COLUMN_WIDTH_MAX,Math.max(RICH_TABLE_COLUMN_WIDTH_MIN,Math.round(width)));
@@ -52,7 +58,7 @@ const positiveStep=(value:number|undefined,fallback:number,name:string):number=>
 const roots=new WeakSet<HTMLElement>();
 export const richTableColumnResizeStyles=`[data-breditor-column-resize]{position:absolute;left:0;top:0;width:0;height:0;overflow:visible;pointer-events:none}[data-breditor-column-resize] [role=separator]{position:absolute;width:9px;margin-left:-4px;cursor:col-resize;pointer-events:auto;touch-action:none;background:transparent;outline:none}[data-breditor-column-resize] [role=separator]:hover,[data-breditor-column-resize] [role=separator]:focus-visible,[data-breditor-column-resize] [role=separator][data-dragging]{background:linear-gradient(90deg,transparent 3px,#398a79 3px,#398a79 6px,transparent 6px)}[data-breditor-column-resize] [role=separator][aria-disabled=true]{cursor:default;background:none}[data-breditor-column-resize] [data-column-resize-guide]{position:absolute;width:0;border-left:2px dashed #398a79;pointer-events:none}[data-breditor-column-resize] [data-column-resize-badge]{position:absolute;font:11px system-ui,sans-serif;background:#173d37;color:white;padding:1px 5px;border-radius:3px;white-space:nowrap;pointer-events:none}`;
 
-interface Drag {pointer:number;handle:HTMLElement;table:string;block:string;column:string;start:number;width:number;startX:number;scale:number;signature:string;edge:number}
+interface Drag {rtl:boolean;pointer:number;handle:HTMLElement;table:string;block:string;column:string;start:number;width:number;startX:number;scale:number;signature:string;edge:number}
 
 /**
  * Mount handles for every visible table column boundary in `host.surface`.
@@ -63,7 +69,7 @@ export function mountRichTableColumnResize(overlay:HTMLElement,host:RichTableCol
  if(typeof options?.commit!=="function")throw TypeError("Column resize handles need an explicit commit command");
  const step=positiveStep(options.step,8,"step"),largeStep=positiveStep(options.largeStep,64,"largeStep");
  const d=overlay.ownerDocument,win=d.defaultView!,abort=new win.AbortController(),layer=d.createElement("div"),guide=d.createElement("div"),badge=d.createElement("div"),handles=new Map<string,HTMLElement>();
- let disposed=false,drag:Drag|undefined;
+ let disposed=false,drag:Drag|undefined;const ui=host.uiLocale?.()??defaultRichUi;ui.applyChrome(badge);
  layer.dataset["breditorColumnResize"]="";guide.dataset["columnResizeGuide"]="";badge.dataset["columnResizeBadge"]="";guide.setAttribute("aria-hidden","true");badge.setAttribute("aria-hidden","true");guide.hidden=badge.hidden=true;
  const style=d.createElement("style");style.textContent=richTableColumnResizeStyles;layer.append(style,guide,badge);
  const report=(error:unknown)=>{try{options.onError?.(error);}catch{/* A reporter cannot change document ownership. */}};
@@ -76,10 +82,10 @@ export function mountRichTableColumnResize(overlay:HTMLElement,host:RichTableCol
  };
  const paintPreview=()=>{
   if(!drag){guide.hidden=badge.hidden=true;return;}
-  const x=drag.edge+(drag.width-drag.start)*drag.scale,origin=layer.getBoundingClientRect(),dom=element(drag.table),rect=dom?.getBoundingClientRect();
+  const x=drag.edge+(drag.width-drag.start)*drag.scale*(drag.rtl?-1:1),origin=layer.getBoundingClientRect(),dom=element(drag.table),rect=dom?.getBoundingClientRect();
   guide.hidden=badge.hidden=false;guide.style.left=`${x-origin.left}px`;guide.style.top=`${(rect?.top??0)-origin.top}px`;guide.style.height=`${rect?.height??0}px`;
-  badge.style.left=`${x-origin.left+6}px`;badge.style.top=`${(rect?.top??0)-origin.top}px`;badge.textContent=`${drag.width}px`;
-  drag.handle.setAttribute("aria-valuetext",`${drag.width} pixels (preview)`);
+  badge.textContent=ui.text("columnResizeBadge",{width:drag.width});badge.style.left=`${drag.rtl?x-origin.left-6-badge.offsetWidth:x-origin.left+6}px`;badge.style.top=`${(rect?.top??0)-origin.top}px`;
+  drag.handle.setAttribute("aria-valuetext",ui.text("columnResizePreview",{width:drag.width}));
  };
  const cancel=(reason:RichTableColumnResizeCancel)=>{
   if(!drag)return;const current=drag;drag=undefined;current.handle.removeAttribute("data-dragging");
@@ -100,14 +106,15 @@ export function mountRichTableColumnResize(overlay:HTMLElement,host:RichTableCol
   const seen=new Set<string>();
   if(!state.closed&&!state.readOnly)for(const table of list){
    if(table.hidden)continue;const dom=element(table.id);if(!dom)continue;
-   const {rect,origin,scale}=measure(table,dom);let edge=rect.left;
+   // Column boundaries follow the table's own content direction: a right-to-left table lays column 1 out on the right.
+   const {rect,origin,scale}=measure(table,dom),rtl=isRtl(dom);let edge=rtl?rect.right:rect.left;
    table.columns.forEach((column,index)=>{
-    edge+=column.width*scale;const key=JSON.stringify([table.id,column.id]);seen.add(key);
+    edge+=column.width*scale*(rtl?-1:1);const key=JSON.stringify([table.id,column.id]);seen.add(key);
     let handle=handles.get(key);
     if(!handle){handle=create(table.id,column.id);handles.set(key,handle);layer.append(handle);}
-    handle.dataset["block"]=dom.dataset["richBlock"]??"";handle.dataset["edge"]=String(edge);handle.dataset["scale"]=String(scale);
-    handle.setAttribute("aria-label",options.label?.(index,table.columns.length)??`Resize column ${index+1} of ${table.columns.length}`);
-    handle.setAttribute("aria-valuenow",String(column.width));if(drag?.handle!==handle)handle.setAttribute("aria-valuetext",`${column.width} pixels`);
+    handle.dataset["block"]=dom.dataset["richBlock"]??"";handle.dataset["edge"]=String(edge);handle.dataset["scale"]=String(scale);if(rtl)handle.dataset["rtl"]="true";else delete handle.dataset["rtl"];
+    handle.setAttribute("aria-label",options.label?.(index,table.columns.length)??ui.text("columnResizeLabel",{index:index+1,count:table.columns.length}));
+    handle.setAttribute("aria-valuenow",String(column.width));if(drag?.handle!==handle)handle.setAttribute("aria-valuetext",ui.text("columnResizeValue",{width:column.width}));
     const enabled=editable(state);handle.setAttribute("aria-disabled",String(!enabled));
     handle.style.left=`${edge-origin.left}px`;handle.style.top=`${rect.top-origin.top}px`;handle.style.height=`${rect.height}px`;
    });
@@ -125,7 +132,9 @@ export function mountRichTableColumnResize(overlay:HTMLElement,host:RichTableCol
    if(drag||event.altKey||event.ctrlKey||event.metaKey)return;
    const current=width();if(current===undefined)return;
    const large=event.shiftKey?largeStep:step;let next:number|undefined;
-   switch(event.key){case "ArrowLeft":next=current-large;break;case "ArrowRight":next=current+large;break;case "PageDown":next=current-largeStep;break;case "PageUp":next=current+largeStep;break;case "Home":next=RICH_TABLE_COLUMN_WIDTH_MIN;break;case "End":next=RICH_TABLE_COLUMN_WIDTH_MAX;break;default:return;}
+   // Arrows move the separator visually: in a right-to-left table ArrowLeft widens the column.
+   const outward=handle.dataset["rtl"]==="true"?"ArrowLeft":"ArrowRight";
+   switch(event.key){case "ArrowLeft":case "ArrowRight":next=event.key===outward?current+large:current-large;break;case "PageDown":next=current-largeStep;break;case "PageUp":next=current+largeStep;break;case "Home":next=RICH_TABLE_COLUMN_WIDTH_MIN;break;case "End":next=RICH_TABLE_COLUMN_WIDTH_MAX;break;default:return;}
    event.preventDefault();commit(table,handle.dataset["block"]??"",column,clampRichTableColumnWidth(next),current);
   },{signal:abort.signal});
   handle.addEventListener("pointerdown",event=>{
@@ -133,12 +142,12 @@ export function mountRichTableColumnResize(overlay:HTMLElement,host:RichTableCol
    const current=width(),state=host.writingState();if(current===undefined||!editable(state))return;
    event.preventDefault();handle.focus({preventScroll:true});
    try{handle.setPointerCapture?.(event.pointerId);}catch{/* Synthetic or detached pointer. */}
-   drag={pointer:event.pointerId,handle,table,block:handle.dataset["block"]??"",column,start:current,width:current,startX:event.clientX,scale:Number(handle.dataset["scale"])||1,edge:Number(handle.dataset["edge"])||0,signature:signature(tables().find(t=>t.id===table))};
+   drag={rtl:handle.dataset["rtl"]==="true",pointer:event.pointerId,handle,table,block:handle.dataset["block"]??"",column,start:current,width:current,startX:event.clientX,scale:Number(handle.dataset["scale"])||1,edge:Number(handle.dataset["edge"])||0,signature:signature(tables().find(t=>t.id===table))};
    handle.dataset["dragging"]="";paintPreview();
   },{signal:abort.signal});
   handle.addEventListener("pointermove",event=>{
    if(!drag||drag.handle!==handle||event.pointerId!==drag.pointer)return;event.preventDefault();
-   drag.width=clampRichTableColumnWidth(drag.start+(event.clientX-drag.startX)/drag.scale);paintPreview();
+   drag.width=clampRichTableColumnWidth(drag.start+(event.clientX-drag.startX)*(drag.rtl?-1:1)/drag.scale);paintPreview();
   },{signal:abort.signal});
   handle.addEventListener("pointerup",event=>{
    if(!drag||drag.handle!==handle||event.pointerId!==drag.pointer)return;event.preventDefault();

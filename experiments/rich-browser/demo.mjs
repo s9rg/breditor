@@ -2,7 +2,10 @@
 import init,* as wasm from "/wasm.js";
 import {compileRichProfile,mountRichEditor,RichAssetStore,RichLocalSessionStore,insertImageFiles,defaultToolbar,
  mountRichSlashCommands,createRichSlashCommands,mountRichSelectionToolbar,mountRichContextMenu,
- mountRichTableColumnResize,richTableColumnResizeCommit} from "/rich.js";
+ mountRichTableColumnResize,richTableColumnResizeCommit,mountRichBlockDrag,richUiStringsEn,standardRichSlashPicks} from "/rich.js";
+// ?ui=pseudo wraps every chrome string to show the opt-in catalog; &dir=rtl mirrors the chrome only, never content.
+const query=new URLSearchParams(location.search);
+const ui=query.get("ui")==="pseudo"?{strings:Object.fromEntries(Object.entries(richUiStringsEn).map(([key,value])=>[key,`⟦${value}⟧`])),lang:"en-XA",direction:query.get("dir")==="rtl"?"rtl":"ltr"}:undefined;
 await init();
 const profile=compileRichProfile(wasm,JSON.stringify({format:"breditor/profile-bootstrap",formatVersion:6,schema:{name:"example/rich-demo",version:1},extensions:[]}));
 const binding=profile.descriptor(),canonical=value=>Array.isArray(value)?value.map(canonical):value!==null&&typeof value==="object"?Object.fromEntries(Object.keys(value).sort().map(key=>[key,canonical(value[key])])):value;
@@ -36,10 +39,11 @@ let extras=[];
 function mountExtras(editor){
  for(const extra of extras)extra.dispose();
  extras=[
-  mountRichSlashCommands(editor,{items:createRichSlashCommands(defaultToolbar),onError:report}),
+  mountRichSlashCommands(editor,{items:createRichSlashCommands(defaultToolbar,standardRichSlashPicks,editor.uiLocale()),onError:report}),
   mountRichSelectionToolbar(editor,{onError:report}),
   mountRichContextMenu(editor,{onError:report}),
   mountRichTableColumnResize(overlay,editor,{commit:richTableColumnResizeCommit(editor),onError:report}),
+  mountRichBlockDrag(editor),
  ];
 }
 let editor=mount(owner),saveSequence=0;mountExtras(editor);
@@ -49,7 +53,7 @@ function save(){
  catch(error){report(error);}
 }
 function report(error){document.getElementById("saved").textContent="Not saved";document.getElementById("notice").textContent=error instanceof Error?error.message:"Local operation failed";}
-function mount(owner){return mountRichEditor(document.getElementById("editor"),{core:owner,
+function mount(owner){return mountRichEditor(document.getElementById("editor"),{core:owner,...(ui?{ui}:{}),
  resolveAsset:binding=>assets.get(binding.asset)??assetStore.resolve(binding.asset),
  onFiles:async(files,position)=>{await insertImageFiles(editor,assetStore,files,position);await showAssets();},
  onError:report,onChange:view=>{document.getElementById("revision").textContent=`Revision ${view.revision} · ${view.undoDepth} undo groups`;save();}});}

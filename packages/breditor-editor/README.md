@@ -110,6 +110,22 @@ React hosts use `BreditorSelectionToolbar` / `BreditorContextMenu` with
 `editor={editor.contextUi()}`. Both hide for read-only editors and during
 composition and never edit document DOM. See [the contextual UI contract](../../docs/CONTEXT_UI.md).
 
+## Chrome localization
+
+Every open function and React component accepts an opt-in `ui` catalog
+(`initialOptions.ui` in React). It localizes the toolbar, status line and the
+opt-in tools, and sets `dir`/`lang` on that chrome only; content direction stays
+with each block's layout direction:
+
+```ts
+const editor = await openLocalEditor({host, ui: {lang: "ar", direction: "rtl", strings: {richToolbarLabel: "تنسيق النص"}, controls: {bold: {label: "عريض"}}}});
+mountSlashCommands(editor, {items});   // menu strings and standard item labels follow editor.uiLocale()
+```
+
+An invalid catalog rejects before the runtime loads or the host changes.
+`resolveUiLocale`, `uiStringsEn` and the `Ui*` types are exported from both
+entry points. See [the localization contract](../../docs/UI_LOCALIZATION.md).
+
 ## Document placeholder
 
 Use `placeholder: 'Start writing…'` in a managed local/shared opening or React
