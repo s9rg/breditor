@@ -13,10 +13,12 @@ export type FlowDraft = ({kind:"paragraph"}&TextDraft)|({kind:"heading";level:nu
  |{kind:"blockquote";block:string;body:readonly FlowDraft[]}
  |{kind:"codeBlock";block:string;text:string;language:string|null}
  |{kind:"horizontalRule";block:string}
+ /** Candidate rich V4 collapsible section: summary identity and runs, persisted open state, nonempty body. */
+ |{kind:"details";block:string;summary:string;text:string;formatsJson:string;open:boolean;body:readonly FlowDraft[]}
  |{kind:"taskList";block:string;items:readonly {block:string;checked:boolean;body:readonly FlowDraft[]}[]}
  |{kind:"list";block:string;start:number|null;items:readonly {block:string;body:readonly FlowDraft[]}[]}
  |({kind:"image"}&ImageDraft)|({kind:"table"}&TableDraft);
-export interface FlowPosition {parent:{kind:"document"}|{kind:"cell";cell:RichCell}|{kind:"listItem"|"blockquote"|"taskItem";block:string};before:string|null}
+export interface FlowPosition {parent:{kind:"document"}|{kind:"cell";cell:RichCell}|{kind:"listItem"|"blockquote"|"taskItem"|"details";block:string};before:string|null}
 /** Use a unique prefix for every authored paste, including failed/undone ones. */
 export interface ClipboardAllocation {prefix:string;replica:string;counter:string;lamport:string}
 /** Full admitted literals are retained for removals; Rust chooses all selected targets. */
@@ -47,6 +49,14 @@ export type RichCommand =
  |{kind:"setTaskChecked";data:{item:string;checked:boolean}}
  |{kind:"wrapBlockquote";data:{first:string;last:string;wrapper:string}}
  |{kind:"unwrapBlockquote";data:{wrapper:string}}
+ /** Candidate rich V4 collapsible sections (each refused by V1–V3 owners). The wrapped siblings become
+  * the body of a new section with an empty summary; unwrap keeps the summary text as a paragraph. */
+ |{kind:"wrapDetails";data:{first:string;last:string;wrapper:string;summary:string;open:boolean}}
+ |{kind:"unwrapDetails";data:{wrapper:string}}
+ /** Persisted open state; collapsing moves a selection inside the hidden body to the summary end. */
+ |{kind:"setDetailsOpen";data:{block:string;open:boolean}}
+ /** Enter from a summary caret: a fresh first body paragraph (expanding a collapsed section). */
+ |{kind:"enterDetailsBody";data:{paragraph:string}}
  |{kind:"wrapTaskList";data:{first:string;last:string;container:string;items:readonly {block:string;checked:boolean}[]}}
  |{kind:"unwrapTaskList";data:{list:string}}
  |{kind:"insertHorizontalRule";data:{position:FlowPosition;block:string}}

@@ -19,14 +19,15 @@ export type RichBlockMoveResolution=
  |{readonly kind:"unchanged"}
  |{readonly kind:"rejected";readonly reason:RichBlockMoveRejection};
 
-const FLOW=["breditor/paragraph","breditor/heading","breditor/bullet-list","breditor/ordered-list","breditor/image","breditor/blockquote","breditor/code-block","breditor/horizontal-rule","breditor/task-list"];
+const FLOW=["breditor/paragraph","breditor/heading","breditor/bullet-list","breditor/ordered-list","breditor/image","breditor/blockquote","breditor/code-block","breditor/horizontal-rule","breditor/task-list","breditor/details"];
 const FLOW_WITH_TABLES=[...FLOW,"breditor/table"];
-/** Mirrors the closed V1/V2 child grammars. V1 documents contain only the V1 subset, whose
- * admissions are identical, so one table serves every rich language. */
+/** Mirrors the closed V1/V2/V4 child grammars. Older documents contain only their own subset,
+ * whose admissions are identical, so one table serves every rich language. A candidate V4
+ * section's body admits flow; its summary is not a movable block (the section moves whole). */
 const ADMITS:Readonly<Record<string,readonly string[]>>={
  "breditor/document":FLOW_WITH_TABLES,"breditor/blockquote":FLOW_WITH_TABLES,
  "breditor/list-item":FLOW_WITH_TABLES,"breditor/task-item":FLOW_WITH_TABLES,
- "breditor/table-cell":FLOW,
+ "breditor/table-cell":FLOW,"breditor/details":FLOW_WITH_TABLES,
  "breditor/bullet-list":["breditor/list-item"],"breditor/ordered-list":["breditor/list-item"],
  "breditor/task-list":["breditor/task-item"],
 };
@@ -69,7 +70,7 @@ export function resolveRichBlockMove(model:RichPresentationModel,block:string,ta
  if(LEAD_ITEMS.has(destination.type)&&!isLead([...siblings.slice(0,index),node,...siblings.slice(index)][0]))return reject("item_lead");
  if(source!==destination){
   const remaining=current.filter(child=>child!==node);
-  if(remaining.length===0)return reject("empties_source");
+  if(remaining.length===0||source.type==="breditor/details"&&remaining.length===1)return reject("empties_source");
   if(LEAD_ITEMS.has(source.type)&&!isLead(remaining[0]))return reject("item_lead");
  }
  const beforeId=before?id(before):null;

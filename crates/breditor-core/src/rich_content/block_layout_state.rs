@@ -85,7 +85,12 @@ pub fn inspect_block_layout(
     let Some(selection) = selection else { return Ok(state) };
     let coverage = RichSelectionCoverage::capture(document, selection)
         .map_err(|_| RichBlockLayoutError::Target)?;
-    for span in coverage.text() {
+    // A candidate V4 section summary carries no block layout; it is not a layout target.
+    for span in coverage
+        .text()
+        .iter()
+        .filter(|span| super::block_layout::supports_kind(span.kind().as_str()))
+    {
         let value = RichBlockLayout::read(context, document, span.block())?;
         state.blocks = state.blocks.checked_add(1).ok_or(RichBlockLayoutError::Value)?;
         state.alignment.observe(value.alignment());

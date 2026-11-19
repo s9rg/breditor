@@ -710,3 +710,32 @@ fn clipboard_copies_whole_and_partial_sections_and_v3_refuses_them() -> Result {
     assert_eq!(tail[1]["children"][0]["text"], "Body");
     Ok(())
 }
+
+#[test]
+fn block_layout_skips_summaries() -> Result {
+    use breditor_core::rich_content::{
+        RichBlockAlignment, RichBlockLayoutPatch, RichLayoutChange, inspect_block_layout,
+    };
+    let c = context(4)?;
+    let patch = RichBlockLayoutPatch::try_new(
+        RichLayoutChange::Set(RichBlockAlignment::Center),
+        RichLayoutChange::Keep,
+        RichLayoutChange::Keep,
+        RichLayoutChange::Keep,
+    )?;
+    // A summary caret has no layout target: the read reports zero blocks and a change is refused.
+    let mut a = owner(&c, &root(true), caret("s", 1)?)?;
+    let read = inspect_block_layout(&c, a.state().document(), a.state().selection())?;
+    assert_eq!(read.blocks, 0);
+    assert!(a.change_selection_layout(&a.snapshot(), &patch).is_err());
+    // A range across the summary changes only the paragraphs around it.
+    a.set_selection(&a.snapshot(), Some(range("p", 0, "b1", 2)?))?;
+    assert_eq!(inspect_block_layout(&c, a.state().document(), a.state().selection())?.blocks, 2);
+    a.change_selection_layout(&a.snapshot(), &patch)?;
+    let after = encode(&c, a.state().document())?;
+    assert_eq!(after["children"][0]["properties"]["breditor/block-align"], json!(2));
+    assert!(after["children"][1]["children"][0]["properties"].get("breditor/block-align").is_none());
+    assert_eq!(after["children"][1]["children"][1]["properties"]["breditor/block-align"], json!(2));
+    assert_eq!(a.undo_depth(), 1);
+    Ok(())
+}

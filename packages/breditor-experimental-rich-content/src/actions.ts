@@ -1,7 +1,7 @@
 import {isStructuralRichLanguage} from "./rich_language.js";
 // Browser command preparation only. The Rust owner checks and commits each complete semantic action.
 import type {FlowPosition,FormatLiteral,RichCell,RichCommand,RichCoreEditor,RichSelection,TableCellDraft,TableDraft} from "./core.js";
-import {formatsAt,id,isProse,property,selectedImage,selectedTable,selectedText,sourceCell,text,textTargets,type ElementNode,type RichModel} from "./model.js";
+import {formatsAt,id,isInlineText,isProse,isSummary,isText,property,selectedImage,selectedTable,selectedText,sourceCell,text,textTargets,type ElementNode,type RichModel} from "./model.js";
 import type {RichToolbarField,RichToolbarReading} from "./toolbar_control_view.js";
 import {exitEmptyTask} from "./task_actions_v2.js";
 import {selectedFlowAtom} from "./flow_controls.js";
@@ -37,6 +37,7 @@ export function positionAfter(context:IntentContext):FlowPosition {
  }else if(parent?.type==="breditor/list-item")target={kind:"listItem",block:id(parent)};
  else if(parent?.type==="breditor/blockquote")target={kind:"blockquote",block:id(parent)};
  else if(parent?.type==="breditor/task-item")target={kind:"taskItem",block:id(parent)};
+ else if(parent?.type==="breditor/details")target={kind:"details",block:id(parent)};
  return {parent:target,before:next?.kind==="element"?id(next):null};
 }
 export function selectedCell(context:IntentContext):RichCell|undefined {
@@ -79,7 +80,10 @@ export function enter(context:IntentContext,general=false,target?:Extract<RichSe
  const exit=target?null:exitEmptyTask(context);if(exit)return exit;
  const value=context.model,a=value.textBlocks.findIndex(node=>id(node)===selection.anchor.block),f=value.textBlocks.findIndex(node=>id(node)===selection.focus.block);
  const point=a<f||(a===f&&BigInt(selection.anchor.offset)<=BigInt(selection.focus.offset))?selection.anchor:selection.focus;
- const parent=value.parents.get(point.block);
+ const parent=value.parents.get(point.block),summary=value.nodes.get(point.block);
+ // Candidate V4: Enter in a summary never splits it. A caret opens a fresh first body paragraph
+ // (expanding a collapsed section); a range inside a summary is left unchanged.
+ if(summary&&isSummary(summary)&&!cross)return selection.anchor.offset===selection.focus.offset?{kind:"enterDetailsBody",data:{paragraph:context.allocate("p")}}:null;
  if(parent?.type==="breditor/image"||value.nodes.get(point.block)?.type==="breditor/code-block")return general&&cross?{kind:"replaceGeneralRangePlainText",data:{selection,text:"\n",prefix:context.allocate("range")}}:{kind:"insertHardBreak"};
  if(general&&cross){if(context.core?.supportsGeneralParagraph?.()!==true)throw Error("Use matching native general paragraph editing");return {kind:"insertGeneralParagraph",data:{selection,prefix:context.allocate("range")}};}
  const right=context.allocate("p");
@@ -98,10 +102,18 @@ export function boundaryDelete(context:IntentContext,backward:boolean):RichComma
   return a&&b?{kind:list.list.type==="breditor/task-list"?"joinTaskItems":"joinListItems",data:{container:id(list.list),left:id(a),right:id(b)}}:null;
  }
  const position=parent.children.indexOf(node),other=parent.children[position+(backward?-1:1)];
+ // Candidate V4 section boundaries never merge summary and body text. Backspace at a summary start
+ // removes the section (its summary becomes a paragraph); the other boundaries only move the caret.
+ if(isSummary(node)){
+  if(backward)return {kind:"unwrapDetails",data:{wrapper:id(parent)}};
+  return other?.kind==="element"&&isText(other)&&property(parent,"details-open")===true?caretAt(id(other),0):caretAt(id(node),offset);
+ }
+ if(backward&&other?.kind==="element"&&isSummary(other))return caretAt(id(other),text(other).length,"before");
  if(other?.kind!=="element")return null;
  if(isProse(other)&&isProse(node))return {kind:"joinTextBlocks",data:{left:id(backward?other:node),right:id(backward?node:other)}};
  return {kind:"setSelection",selection:{kind:"node",block:id(other)}};
 }
+const caretAt=(block:string,offset:number,affinity:"before"|"after"="after"):RichCommand=>{const point={block,offset:String(offset),affinity};return {kind:"setSelection",selection:{kind:"text",anchor:point,focus:{...point}}};};
 export function deleteSelection(context:IntentContext,movement:"before"|"after"="after"):RichCommand|null {
  const value=context.model,selection=value.view.selection;
  if(selection?.kind==="text")return {kind:"deleteSelection"};
@@ -128,7 +140,7 @@ function listCommand(context:IntentContext,start:number|null):RichCommand|null {
 const textEnabled=(context:IntentContext):boolean=>{
  const value=context.model,s=value.view.selection;if(s?.kind!=="text")return false;
  const a=value.textBlocks.findIndex(n=>id(n)===s.anchor.block),f=value.textBlocks.findIndex(n=>id(n)===s.focus.block);
- return a>=0&&f>=0&&value.textBlocks.slice(Math.min(a,f),Math.max(a,f)+1).every(isProse);
+ return a>=0&&f>=0&&value.textBlocks.slice(Math.min(a,f),Math.max(a,f)+1).every(isInlineText);
 };
 const flowTextEnabled=(context:IntentContext):boolean=>{
  if(!textEnabled(context))return false;
@@ -137,12 +149,14 @@ const flowTextEnabled=(context:IntentContext):boolean=>{
  // without an explicit policy for the task's completion state and rich tail.
  for(const point of [selection.anchor,selection.focus]){
   const node=value.nodes.get(point.block),parent=value.parents.get(point.block);
-  if(parent?.type==="breditor/image"||parent?.type==="breditor/task-item"&&parent.children[0]===node)return false;
+  if(parent?.type==="breditor/image"||parent?.type==="breditor/task-item"&&parent.children[0]===node||node&&isSummary(node))return false;
  }
  return true;
 };
 const anyTextEnabled=(context:IntentContext):boolean=>context.model.view.selection?.kind==="text";
-const headingEnabled=(context:IntentContext):boolean=>anyTextEnabled(context)&&context.model.parents.get(selectedText(context.model)?id(selectedText(context.model)!):"")?.type!=="breditor/image";
+// A V4 section summary keeps its kind: heading/paragraph conversion is unavailable there.
+const blockKindEnabled=(context:IntentContext):boolean=>{const node=selectedText(context.model);return anyTextEnabled(context)&&!(node&&isSummary(node));};
+const headingEnabled=(context:IntentContext):boolean=>blockKindEnabled(context)&&context.model.parents.get(selectedText(context.model)?id(selectedText(context.model)!):"")?.type!=="breditor/image";
 const gridEnabled=(context:IntentContext):boolean=>context.model.view.selection?.kind==="grid";
 const tableEnabled=(context:IntentContext):boolean=>selectedTable(context.model)!==undefined;
 const imageEnabled=(context:IntentContext):boolean=>selectedImage(context.model)!==undefined;
@@ -169,7 +183,7 @@ const commonToolbar:readonly Omit<ToolbarControl<RichSelectionPolicy>,"owner">[]
  {id:"redo",label:"Redo",enabled:c=>c.model.view.redoDepth>0,command:()=>({kind:"redo"})},
  {id:"bold",label:"Bold",enabled:textEnabled,command:bold},
  {id:"heading",label:"Heading 2",enabled:headingEnabled,command:c=>{const node=selectedText(c.model);return node?{kind:"setHeading",block:id(node),level:2}:null;}},
- {id:"paragraph",label:"Paragraph",enabled:anyTextEnabled,command:c=>{const node=selectedText(c.model);return node?{kind:"setHeading",block:id(node),level:null}:null;}},
+ {id:"paragraph",label:"Paragraph",enabled:blockKindEnabled,command:c=>{const node=selectedText(c.model);return node?{kind:"setHeading",block:id(node),level:null}:null;}},
  {id:"bullet",label:"Bullet list",enabled:flowTextEnabled,command:c=>listCommand(c,null)},
  {id:"numbered",label:"Numbered list",enabled:flowTextEnabled,command:c=>listCommand(c,1)},
  {id:"unlist",label:"Remove list",enabled:c=>listContext(c.model)!==undefined,command:c=>{const list=listContext(c.model);return list?{kind:"unwrapList",data:{list:id(list.list)}}:null;}},

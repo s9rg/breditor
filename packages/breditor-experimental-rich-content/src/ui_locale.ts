@@ -63,8 +63,8 @@ const parameters:Readonly<Partial<Record<RichUiStringKey,readonly string[]>>>={
  blockDragPickedUp:["count"],blockDragPosition:["index","count"],
 };
 /** Ids of `standardRichSlashPicks`; other provider items carry their own labels. */
-export type RichStandardSlashItemId="paragraph"|"heading-1"|"heading-2"|"heading-3"|"bullet-list"|"numbered-list"|"task-list"|"blockquote"|"code-block"|"horizontal-rule"|"table";
-const slashIds:ReadonlySet<string>=new Set(["paragraph","heading-1","heading-2","heading-3","bullet-list","numbered-list","task-list","blockquote","code-block","horizontal-rule","table"]);
+export type RichStandardSlashItemId="paragraph"|"heading-1"|"heading-2"|"heading-3"|"bullet-list"|"numbered-list"|"task-list"|"blockquote"|"code-block"|"horizontal-rule"|"table"|"details";
+const slashIds:ReadonlySet<string>=new Set(["paragraph","heading-1","heading-2","heading-3","bullet-list","numbered-list","task-list","blockquote","code-block","horizontal-rule","table","details"]);
 export interface RichUiFieldStrings {
  readonly label?:string;readonly placeholder?:string;
  /** Select option labels keyed by the option's existing value. */

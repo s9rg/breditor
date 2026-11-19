@@ -143,8 +143,11 @@ const directions=["ltr","rtl","auto"] as const;
 /** Ordered-list marker types of candidate rich V4, identical to `applyListNumbering` and Rust `list_numbering.rs`. */
 const listTypes=["1","a","A","i","I"] as const;
 
-/** Rich child grammar: the union of rich languages V1–V3 plus the candidate V4 list numbering and image-link properties. */
-const flowKinds=["paragraph","heading","bullet-list","ordered-list","image","blockquote","code-block","horizontal-rule","task-list"].map(local=>`breditor/${local}`);
+/** Rich child grammar: the union of rich languages V1–V3 plus the candidate V4 list numbering,
+ * image-link properties and collapsible sections (`breditor/details`, Rust `details.rs`). */
+const flowKinds=["paragraph","heading","bullet-list","ordered-list","image","blockquote","code-block","horizontal-rule","task-list","details"].map(local=>`breditor/${local}`);
+/** Candidate V4: at most this many sections on any root-to-leaf path (Rust `RICH_DETAILS_MAX_DEPTH`). */
+const MAX_DETAILS_DEPTH=8;
 const flowWithTables=[...flowKinds,"breditor/table"];
 interface Grammar {readonly children:readonly string[]|"text"|"none";readonly minimum:number;readonly maximum?:number;readonly required:readonly string[];readonly optional?:readonly string[];readonly firstTextBlock?:boolean}
 const layout=["block-align","block-direction","block-indent","line-height-percent"];
@@ -160,6 +163,8 @@ const grammar:Readonly<Record<string,Grammar>>={
  "breditor/task-item":{children:flowWithTables,minimum:1,required:["block-id","checked"],firstTextBlock:true},
  "breditor/blockquote":{children:flowWithTables,minimum:1,required:["block-id"]},
  "breditor/horizontal-rule":{children:"none",minimum:0,maximum:0,required:["block-id"]},
+ "breditor/details":{children:["breditor/details-summary",...flowWithTables],minimum:2,required:["block-id"],optional:["details-open"]},
+ "breditor/details-summary":{children:"text",minimum:0,required:["block-id"]},
  "breditor/image":{children:["breditor/paragraph"],minimum:0,maximum:1,required:["block-id","image-id","asset-id","asset-generation","alt-text","decorative"],optional:["width","height","image-href","image-link-new-window"]},
  "breditor/table":{children:["breditor/table-row"],minimum:0,maximum:256,required:["block-id","table-id","columns","merges","retracted-merges"]},
  "breditor/table-row":{children:["breditor/table-cell"],minimum:0,maximum:128,required:["block-id","row-id"]},
@@ -224,7 +229,7 @@ class Renderer {
  readonly inactiveMerges:{table:string;merge:string;reason:StaticMergeConflictReason}[]=[];
  readonly #skip:boolean;readonly #ids:boolean;readonly #resolve:StaticRenderOptions["resolveAsset"];
  readonly #maxBytes:number;readonly #maxDepth:number;readonly #maxNodes:number;
- #nodes=0;#textBytes=0;
+ #nodes=0;#textBytes=0;#detailsDepth=0;
  constructor(options:StaticRenderOptions){
   if(typeof options!=="object"||options===null||Array.isArray(options))throw new TypeError("Static render options must be an object");
   if(options.unknown!==undefined&&options.unknown!=="error"&&options.unknown!=="skip")throw new TypeError("unknown must be \"error\" or \"skip\"");
@@ -283,14 +288,17 @@ class Renderer {
   const props=this.#properties(type,rule,properties,`${path}.properties`);
   const raw=children as unknown[];
   if(raw.length<rule.minimum||(rule.maximum!==undefined&&raw.length>rule.maximum))this.#fail("grammar","Child count is outside the rich grammar",path);
-  const admitted:Node[]=[];
+  const admitted:Node[]=[],section=type==="breditor/details";
+  if(section&&++this.#detailsDepth>MAX_DETAILS_DEPTH)this.#fail("grammar","Collapsible sections exceed the nesting bound",path);
   for(let index=0;index<raw.length;index++){
    const childPath=`${path}.children[${index}]`,child=this.#node(raw[index],childPath,depth+1,type);
    if(!child)continue;
    if(child.kind==="text"){if(rule.children!=="text")this.#fail("grammar","Text is not allowed here",childPath);}
    else if(rule.children==="text"||rule.children==="none"||!rule.children.includes(child.type))this.#fail("grammar",`${child.type} is not allowed inside ${type}`,childPath);
+   if(child.kind==="element"&&(child.type==="breditor/details-summary")!==(section&&index===0))this.#fail("grammar","A collapsible section has exactly one leading summary",childPath);
    admitted.push(child);
   }
+  if(section)this.#detailsDepth--;
   if(rule.firstTextBlock){
    const first=raw[0],firstType=isRecord(first)?own(first,"type"):undefined;
    if(firstType!=="breditor/paragraph"&&firstType!=="breditor/heading")this.#fail("grammar","List item must begin with a paragraph or heading",path);
@@ -350,6 +358,7 @@ class Renderer {
    case "breditor/heading":integer("level",1,6);break;
    case "breditor/ordered-list":integer("start",1,MAX_ORDINAL);if(Object.hasOwn(result,"list-style"))integer("list-style",1,5);if(Object.hasOwn(result,"list-reversed")&&result["list-reversed"]!==true)this.#fail("property","List reversal is only canonical as true",at("list-reversed"));break;
    case "breditor/task-item":boolean("checked");break;
+   case "breditor/details":if(Object.hasOwn(result,"details-open")&&result["details-open"]!==true)this.#fail("property","Section open state is only canonical as true",at("details-open"));break;
    case "breditor/code-block":if(Object.hasOwn(result,"language")&&(typeof result["language"]!=="string"||!codeLanguage.test(result["language"])))this.#fail("property","Invalid code language token",at("language"));break;
    case "breditor/table-row":id("row-id");break;
    case "breditor/table-cell":id("column-id");boolean("header");break;
@@ -432,6 +441,9 @@ class Renderer {
    }
    case "breditor/blockquote":return `<blockquote${this.#blockAttributes(node,false)}>${inner()}</blockquote>`;
    case "breditor/horizontal-rule":return `<hr${this.#blockAttributes(node,false)}>`;
+   // Native disclosure: `open` mirrors persisted state; readers may toggle the static output freely.
+   case "breditor/details":return `<details${this.#blockAttributes(node,false)}${this.#ids?` data-rich-details="${escapeHtmlAttribute(String(p["block-id"]))}"`:""}${p["details-open"]===true?' open=""':""}>${inner()}</details>`;
+   case "breditor/details-summary":return `<summary${this.#blockAttributes(node,true)}>${node.children.length?inner():"<br>"}</summary>`;
    case "breditor/image":return this.#image(node);
    case "breditor/table":return this.#table(node);
   }

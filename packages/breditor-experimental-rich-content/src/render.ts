@@ -5,7 +5,7 @@ import {requireRichInlinePresentation,richInlineRecipes,type RichInlinePresentat
 import {applyBlockLayout} from "./block_layout_presentation.js";
 import {applyListNumbering} from "./list_numbering_presentation.js";
 import {wrapImageLink} from "./image_link.js";
-export const structuralBlockStylesV2=`[data-breditor-rich] [data-rich-text]{white-space:pre-wrap;min-height:1em}[data-breditor-rich] blockquote{border-left:3px solid #9dbbb0;margin:12px 0;padding:1px 16px}[data-breditor-rich] pre{font-family:ui-monospace,monospace;background:#f1f5f2;padding:12px;overflow:auto}[data-breditor-rich] [data-task-list]{list-style:none;padding-left:12px}[data-breditor-rich] [data-rich-task]{display:grid;grid-template-columns:24px minmax(0,1fr);gap:8px;margin:8px 0}[data-breditor-rich] input[data-task-check]{width:18px;height:18px;margin:4px 0}[data-breditor-rich] [data-task-body]>:first-child{margin-top:0}[data-breditor-rich] hr{border:0;border-top:2px solid #9dbbb0;margin:16px 0}`;
+export const structuralBlockStylesV2=`[data-breditor-rich] [data-rich-text]{white-space:pre-wrap;min-height:1em}[data-breditor-rich] blockquote{border-left:3px solid #9dbbb0;margin:12px 0;padding:1px 16px}[data-breditor-rich] pre{font-family:ui-monospace,monospace;background:#f1f5f2;padding:12px;overflow:auto}[data-breditor-rich] [data-task-list]{list-style:none;padding-left:12px}[data-breditor-rich] [data-rich-task]{display:grid;grid-template-columns:24px minmax(0,1fr);gap:8px;margin:8px 0}[data-breditor-rich] input[data-task-check]{width:18px;height:18px;margin:4px 0}[data-breditor-rich] [data-task-body]>:first-child{margin-top:0}[data-breditor-rich] hr{border:0;border-top:2px solid #9dbbb0;margin:16px 0}[data-breditor-rich] details[data-rich-details]{border:1px solid #c9d8d2;border-radius:6px;margin:12px 0;padding:4px 12px}[data-breditor-rich] summary[data-rich-text]{font-weight:600;cursor:text;padding:4px 0}[data-breditor-rich] details[data-rich-details][open]>summary[data-rich-text]{border-bottom:1px solid #e3ece8;margin-bottom:4px}`;
 export interface AssetBinding {image:string;asset:string;generation:string}
 export interface RenderOptions {
  resolveAsset?:(binding:AssetBinding)=>string|undefined|Promise<string|undefined>;
@@ -67,6 +67,17 @@ export function render(surface:HTMLElement,value:RichPresentationModel,options:R
    const item=document.createElement("li");item.dataset["richBlock"]=id(node);item.dataset["richTask"]=id(node);
    const check=document.createElement("input");check.type="checkbox";check.contentEditable="false";check.checked=property(node,"checked")===true;check.dataset["taskCheck"]=id(node);check.setAttribute("aria-label","Task completed");item.append(check);
    const body=document.createElement("div");body.dataset["taskBody"]="";for(const child of node.children)body.append(flow(child));item.append(body);return item;
+  }
+  if(node.type==="breditor/details"){
+   // Candidate V4 section: native disclosure semantics; `open` mirrors persisted document state.
+   // While editing, the controller cancels native summary toggling (see applyEditingPolicy).
+   const details=document.createElement("details");details.dataset["richBlock"]=id(node);details.dataset["richDetails"]=id(node);details.open=property(node,"details-open")===true;
+   for(const child of node.children)details.append(flow(child));return details;
+  }
+  if(node.type==="breditor/details-summary"){
+   const summary=document.createElement("summary");summary.dataset["richBlock"]=id(node);summary.dataset["richText"]=id(node);
+   if(node.children.length===0)summary.append(document.createElement("br"));
+   for(const child of node.children)summary.append(flow(child));return summary;
   }
   if(node.type==="breditor/code-block"){
    const pre=document.createElement("pre");pre.dataset["richBlock"]=id(node);pre.dataset["richText"]=id(node);applyBlockLayout(pre,node);const language=property(node,"language");if(typeof language==="string")pre.dataset["language"]=language;
