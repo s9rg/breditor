@@ -13,6 +13,8 @@ export {mountRichTableColumnResize,richTableColumnResizeCommit,clampRichTableCol
 export {createRichSlashCommands,filterRichSlashItems,standardRichSlashPicks} from "./dist/browser/slash_command_items.js";
 export {mountRichSlashCommands} from "./dist/browser/slash_command_session.js";
 export {mountRichSelectionToolbar,mountRichContextMenu,richSelectionToolbarDefaults,richContextMenuDefaults,richContextUiStyles} from "./dist/browser/context_ui.js";
+export {mountRichSourceView} from "./dist/browser/source_view.js";
+export {RICH_DOCUMENT_SOURCE_MAX_BYTES} from "./dist/browser/source_view_types.js";
 
 const searchResults=new WeakMap();
 class OwnedRichSearchResults {

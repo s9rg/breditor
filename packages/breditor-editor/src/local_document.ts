@@ -25,10 +25,12 @@ export interface LocalDocumentEditor extends Omit<LocalEditor,"view"|"insertImag
  replaceDocumentPlainText(...args:Parameters<RichDomEditor<"document-v1">["replaceDocumentPlainText"]>):ReturnType<RichDomEditor<"document-v1">["replaceDocumentPlainText"]>;
  pasteDocumentClipboard(...args:Parameters<RichDomEditor<"document-v1">["pasteDocumentClipboard"]>):ReturnType<RichDomEditor<"document-v1">["pasteDocumentClipboard"]>;
  collapseDocumentSelection(...args:Parameters<RichDomEditor<"document-v1">["collapseDocumentSelection"]>):ReturnType<RichDomEditor<"document-v1">["collapseDocumentSelection"]>;
+ /** Opt-in HTML source port; usable only when a clipboard interchange factory was supplied. */
+ source():import("@breditor/experimental-rich-content").RichDocumentSourceHost;
 }
 class DocumentOwner implements LocalDocumentEditor {
  readonly surface:HTMLDivElement;readonly toolbar:HTMLDivElement;readonly status:HTMLParagraphElement;
- #dom:RichDomEditor<"document-v1">;#release:()=>void;#render:RenderOptions;#disposed=false;
+ #dom:RichDomEditor<"document-v1">;#release:()=>void;#render:RenderOptions;#disposed=false;#source:import("@breditor/experimental-rich-content").RichDocumentSourceHost|undefined;
  constructor(dom:RichDomEditor<"document-v1">,release:()=>void,render:RenderOptions){this.#dom=dom;this.#release=release;this.#render=render;this.surface=dom.surface;this.toolbar=dom.toolbar;this.status=dom.status;}
  selectionPolicy():"document-v1"{return "document-v1";}
  supportsRetainedAssetReferences():boolean{return this.#dom.supportsRetainedAssetReferences();}
@@ -43,6 +45,7 @@ class DocumentOwner implements LocalDocumentEditor {
  writing():import("@breditor/experimental-rich-content").RichWritingToolsHost{this.#dom.view();return this.#dom;}
  fullscreen():import("@breditor/experimental-rich-content").RichFullscreenHost{this.#dom.view();return this.#dom;}
  contextUi():import("@breditor/experimental-rich-content").RichContextUiHost{this.#dom.view();return this.#dom;}
+ source():import("@breditor/experimental-rich-content").RichDocumentSourceHost{this.#dom.view();return this.#source??=this.#dom.documentSource();}
  setPlaceholderLabel(label:string|null):void{this.#dom.setPlaceholderLabel(label);}
  selectDocument(...args:Parameters<LocalDocumentEditor["selectDocument"]>):ReturnType<LocalDocumentEditor["selectDocument"]>{return this.#dom.selectDocument(...args);}
  replaceDocumentPlainText(...args:Parameters<LocalDocumentEditor["replaceDocumentPlainText"]>):ReturnType<LocalDocumentEditor["replaceDocumentPlainText"]>{return this.#dom.replaceDocumentPlainText(...args);}

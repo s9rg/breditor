@@ -9,6 +9,7 @@ export {BreditorFullscreenControls,type BreditorFullscreenControlsProps,type Bre
 export {BreditorSlashCommands,type BreditorSlashCommandsProps,type BreditorSlashCommandsHandle} from "./slash_commands_react.js";
 export {BreditorStaticDocument,type BreditorStaticDocumentProps} from "./static_document_react.js";
 export {BreditorSelectionToolbar,BreditorContextMenu,type BreditorSelectionToolbarProps,type BreditorSelectionToolbarHandle,type BreditorContextMenuProps,type BreditorContextMenuHandle} from "./context_ui_react.js";
+export {BreditorSourceView,type BreditorSourceViewProps,type BreditorSourceViewHandle} from "./source_view_react.js";
 /** Initial configuration is applied once per sessionKey, like an uncontrolled input's defaultValue. */
 export interface BreditorEditorProps {
  initialOptions?:Omit<LocalEditorOptions,"host"|"signal"|"onChange"|"onError">;
