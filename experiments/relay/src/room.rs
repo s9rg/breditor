@@ -144,6 +144,10 @@ enum ProfileSeed {
 }
 
 const MAX_WRITERS: usize = 1024;
+/// Live registrations one non-owner account may create. Identities are never recycled, so without
+/// a per-account bound a single reader (observers) or editor could exhaust the room registry.
+/// Replay never applies this bound, so existing logs remain readable.
+const MAX_WRITERS_PER_PRINCIPAL: usize = 32;
 const MAX_PRINCIPALS: usize = 1024;
 struct Writer {
     principal: String,
@@ -678,6 +682,16 @@ impl Room {
         self.apply_grant(principal.into(), role);
         Ok(())
     }
+    pub(super) fn check_principal_writer_budget(&self, principal: &str) -> Result<()> {
+        // The owner already controls every account and role, so only grantees are bounded.
+        if principal != self.owner
+            && self.writers.values().filter(|w| w.principal == principal).count()
+                >= MAX_WRITERS_PER_PRINCIPAL
+        {
+            return Err(Error::Contract("account writer budget"));
+        }
+        Ok(())
+    }
     fn next_writer(&self) -> Result<String> {
         if self.writers.len() >= MAX_WRITERS {
             return Err(Error::Contract("room writer budget"));
@@ -695,6 +709,7 @@ impl Room {
     /// Rejects missing write permission, allocation budget, entropy and persistence failures.
     pub fn register(&mut self, principal: &str) -> Result<Registration> {
         self.editor(principal)?;
+        self.check_principal_writer_budget(principal)?;
         if self.suggestions.is_some() {
             self.check_suggestion_author_budget(1)?;
         }
@@ -871,6 +886,9 @@ impl Room {
             WriterGroupPreparation::Prepared(prepared) => {
                 // Prove that exact recovery remains inside the native journal budget before I/O.
                 self.check_prepared_document_history(&prepared)?;
+                // Every reader joins through one full-state catch-up frame. Refuse a group whose
+                // committed state could no longer be exported, or no client could ever join again.
+                prepared.update_frame()?;
                 let receipt = Receipt::from(prepared.receipt().clone());
                 let sequence = self.log.append(Event::Commit {
                     principal: principal.into(),

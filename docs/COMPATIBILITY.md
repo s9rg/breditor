@@ -705,10 +705,12 @@ policy emits no ARIA metadata. Intent auto-repeat is suppressed and uses a
 `closeBefore` history boundary; history repeat is supported. Alt/AltGraph, a
 secondary primary modifier, punctuation, function keys, sequences, callbacks,
 typed-input launchers, and runtime replacement are outside the contract.
-Matching uses only exact physical `KeyboardEvent.code` values; generated
-`KeyboardEvent.key` text does not select a binding. Codes follow US physical-key
-positions, so devices without conforming exact codes may not invoke shortcuts,
-and browser/operating-system reservation conflicts remain possible.
+Chords are declared as `KeyA`..`KeyZ`. When `KeyboardEvent.key` is a Latin
+letter, that labelled letter selects the binding, so Ctrl+Z is undo on QWERTZ,
+AZERTY and Dvorak alike; the clipboard and Select All reservations follow the
+same rule. Only layouts that produce no Latin letter (Cyrillic, Greek, ...) fall
+back to the US physical position in `KeyboardEvent.code`. Browser and
+operating-system reservation conflicts remain possible.
 
 The reference package adds
 `REFERENCE_SHOWCASE_KEYBOARD_SHORTCUT_MANIFEST` without changing its schema or

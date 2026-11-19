@@ -41,6 +41,11 @@ const TEST_TARGET_RANGES = new WeakMap<
   InputEvent,
   readonly AbstractRange[]
 >();
+const TEST_DATA_TRANSFERS = new WeakMap<InputEvent, unknown>();
+const ORIGINAL_DATA_TRANSFER = Object.getOwnPropertyDescriptor(
+  InputEvent.prototype,
+  "dataTransfer",
+);
 const ORIGINAL_GET_TARGET_RANGES = Object.getOwnPropertyDescriptor(
   InputEvent.prototype,
   "getTargetRanges",
@@ -60,6 +65,12 @@ const TEST_DELIVERY_AUTHORITY = issueEditorDeliveryAuthority((token) => {
 });
 
 beforeAll(() => {
+  Object.defineProperty(InputEvent.prototype, "dataTransfer", {
+    configurable: true,
+    get(this: InputEvent): unknown {
+      return TEST_DATA_TRANSFERS.get(this) ?? null;
+    },
+  });
   Object.defineProperty(InputEvent.prototype, "getTargetRanges", {
     configurable: true,
     value(this: InputEvent): readonly AbstractRange[] {
@@ -69,6 +80,11 @@ beforeAll(() => {
 });
 
 afterAll(() => {
+  if (ORIGINAL_DATA_TRANSFER === undefined) {
+    Reflect.deleteProperty(InputEvent.prototype, "dataTransfer");
+  } else {
+    Object.defineProperty(InputEvent.prototype, "dataTransfer", ORIGINAL_DATA_TRANSFER);
+  }
   if (ORIGINAL_GET_TARGET_RANGES === undefined) {
     Reflect.deleteProperty(InputEvent.prototype, "getTargetRanges");
   } else {
@@ -1019,7 +1035,10 @@ describe("BreditorBrowserEventController", () => {
     expect(delivered).toHaveLength(0);
   });
 
-  it("requires replacement target ranges to equal the captured selection", () => {
+  it.each([
+    {name: "event data", data: "word" as string | null, transfer: undefined as string | undefined},
+    {name: "dataTransfer when data is null", data: null, transfer: "word"},
+  ])("replaces the word named by the target range, not the caret, from $name", ({data, transfer}) => {
     const fixture = createFixture();
     installCollapsedDomSelection(fixture.host, 2);
     const delivered: EditorCommandRequest[] = [];
@@ -1031,12 +1050,12 @@ describe("BreditorBrowserEventController", () => {
       endContainer: text,
       endOffset: 4,
     });
-    const event = inputEvent(
-      "beforeinput",
-      "insertReplacementText",
-      "word",
-      [target],
-    );
+    const event = inputEvent("beforeinput", "insertReplacementText", data, [target]);
+    if (transfer !== undefined) {
+      TEST_DATA_TRANSFERS.set(event, {
+        getData: (format: string) => format === "text/plain" ? transfer : "",
+      });
+    }
 
     const disposition = dispatch(fixture.host, event, (observed) =>
       controller.handleBeforeInput(
@@ -1045,15 +1064,40 @@ describe("BreditorBrowserEventController", () => {
         fixture.delivery,
       ),
     );
-    expect(disposition).toEqual({
+    expect(disposition.kind).toBe("handled");
+    expect(event.defaultPrevented).toBe(true);
+    expect(delivered).toHaveLength(1);
+    const selection = delivered[0]?.selection;
+    expect(selection?.kind === "range" ? selection.selection.order : undefined).toBe("forward");
+    expect(selection?.kind === "range" ? selection.selection.anchor : undefined)
+      .toMatchObject({kind: "text", utf16Offset: 0});
+    expect(selection?.kind === "range" ? selection.selection.focus : undefined)
+      .toMatchObject({kind: "text", utf16Offset: 4});
+    expect(delivered[0]?.command).toEqual({
+      kind: "action",
+      actionId: "breditor/insert-text",
+      input: {kind: "string", value: "word"},
+    });
+  });
+
+  it("blocks a replacement whose text is missing from both data and dataTransfer", () => {
+    const fixture = createFixture();
+    installCollapsedDomSelection(fixture.host, 2);
+    const delivered: EditorCommandRequest[] = [];
+    const controller = createController(fixture.bridge, delivered);
+    const text = canonicalText(fixture.host);
+    const target = new StaticRange({startContainer: text, startOffset: 0, endContainer: text, endOffset: 4});
+    const event = inputEvent("beforeinput", "insertReplacementText", null, [target]);
+    expect(dispatch(fixture.host, event, observed => controller.handleBeforeInput(
+      observed as InputEvent, fixture.rendered, fixture.delivery))).toEqual({
       kind: "blocked",
       defaultPrevented: true,
-      reason: "targetRangeMismatch",
+      reason: "invalidText",
     });
     expect(delivered).toHaveLength(0);
   });
 
-  it.each(["insertText", "insertParagraph", "insertReplacementText"])(
+  it.each(["insertText", "insertParagraph"])(
     "accepts the text-run alias of a child-boundary %s target without rewriting the selection",
     (inputType) => {
       const fixture = createFixture();
@@ -1082,7 +1126,7 @@ describe("BreditorBrowserEventController", () => {
     const target = new StaticRange({startContainer: text, startOffset: 0, endContainer: text, endOffset: 5});
     const delivered: EditorCommandRequest[] = [];
     const controller = createController(fixture.bridge, delivered);
-    const event = inputEvent("beforeinput", "insertReplacementText", "X", [target]);
+    const event = inputEvent("beforeinput", "insertText", "X", [target]);
     expect(dispatch(fixture.host, event, observed => controller.handleBeforeInput(
       observed as InputEvent, fixture.rendered, fixture.delivery)).kind).toBe("handled");
     expect(delivered[0]?.selection).toEqual({kind: "range", selection: exact});
@@ -1126,17 +1170,6 @@ describe("BreditorBrowserEventController", () => {
   });
 
   it.each([
-    {
-      name: "replacement input",
-      text: "text  ",
-      inputType: "insertReplacementText",
-      selectionRun: 0,
-      selectionStart: 6,
-      selectionEnd: 6,
-      targetRun: 0,
-      targetStart: 4,
-      targetEnd: 4,
-    },
     {
       name: "noncollapsed captured selection",
       text: "text  ",

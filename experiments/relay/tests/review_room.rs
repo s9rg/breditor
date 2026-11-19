@@ -565,3 +565,33 @@ fn torn_review_append_recovers_to_previous_prefix_and_exact_retry_after_complete
     assert_eq!(fs::read(&files.path)?, complete);
     Ok(())
 }
+
+#[test]
+fn one_reader_cannot_exhaust_the_shared_writer_registry_with_observers() -> Result {
+    let files = Files::new()?;
+    let (_, mut room) = start(&files)?;
+    room.grant("owner", "dana", Some(Role::Reader))?;
+    room.grant("owner", "erin", Some(Role::Editor))?;
+    let mut issued = 0;
+    let refused = loop {
+        match room.register_observer("dana") {
+            Ok(_) => issued += 1,
+            Err(error) => break error,
+        }
+        if issued > 64 {
+            return Err("observer registrations were not bounded".into());
+        }
+    };
+    assert_eq!(issued, 32);
+    assert!(matches!(refused, Error::Contract("account writer budget")));
+    // Other accounts can still register, and the bound survives recovery without failing replay.
+    room.register("erin")?;
+    drop(room);
+    let (mut room, _) = Room::open(&files.path)?;
+    assert!(matches!(
+        room.register_observer("dana"),
+        Err(Error::Contract("account writer budget"))
+    ));
+    room.register("erin")?;
+    Ok(())
+}

@@ -58,6 +58,26 @@ describe("explicit parser staging contracts",()=>{
     const exported=adapter.exportMarkdown(first.value.structuredJson);expect(exported.ok).toBe(true);if(!exported.ok)throw Error(exported.error);const back=root(adapter.importMarkdown(exported.value));
     expect(nodes(back).filter(n=>n.type==="breditor/task-item")).toHaveLength(2);expect(nodes(back).some(n=>n.type==="breditor/code-block")).toBe(false);expect(r.children[0].children[0].children).toHaveLength(2);
   });
+  it("exports Markdown that re-imports with the same block structure and text",()=>{
+    const adapter=staging().adapter;
+    const doc=(children:any[])=>JSON.stringify({kind:"flow",document:{root:{kind:"element",type:"breditor/document",entityId:null,properties:{"breditor/document-id":"d"},children}}});
+    const paragraph=(...children:any[])=>({kind:"element",type:"breditor/paragraph",entityId:null,properties:{"breditor/block-id":"p"},children});
+    const run=(text:string,...formats:string[])=>({kind:"text",text,formats:formats.map(type=>({type,properties:{}}))});
+    const cases:[string,any[]][]=[
+      ["- foo",[run("- foo")]],["---",[run("---")]],["1) one",[run("1) one")]],["AT&amp;T &copy;",[run("AT&amp;T &copy;")]],
+      ["Note.text",[run("Note.","breditor/strong"),run("text")]],
+      ["ab",[run("a","breditor/strong"),run("b","breditor/strong","breditor-inline/italic")]],
+      ["a\n\n*b*",[run("a\n\n*b*")]],
+    ];
+    for(const [text,children] of cases){
+      const exported=adapter.exportMarkdown(doc([paragraph(...children)]));if(!exported.ok)throw Error(exported.error);
+      const back=root(adapter.importMarkdown(exported.value));
+      expect(back.children.map((n:any)=>n.type),text).toEqual(["breditor/paragraph"]);
+      expect(back.children[0].children.map((n:any)=>n.text).join(""),exported.value).toBe(text.replace(/\\n/g,"\n"));
+      const formats=(n:any)=>n.children.map((t:any)=>[t.text,t.formats.map((f:any)=>f.type).sort().join("+")]);
+      if(!text.includes("\\n"))expect(formats(back[0]??back.children[0]),exported.value).toEqual(formats(paragraph(...children)));
+    }
+  });
   it("never passes active markup or dangerous URLs to native literals",()=>{
     const value=staging().adapter.importHtml('<p onclick="SECRET">Before<script>SECRET</script><svg><text>SECRET</text></svg><a href="javascript:SECRET">keep</a><span style="background-image:url(SECRET);color:#123456">after</span></p>');
     expect(JSON.stringify(root(value))).not.toContain("SECRET");expect(value.losses.map(l=>l.code)).toEqual(expect.arrayContaining(["removed-content","unsafe-link","unsupported-style","unsupported-attribute"]));expect(JSON.stringify(value.losses)).not.toContain("SECRET");

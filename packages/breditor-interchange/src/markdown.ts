@@ -37,7 +37,41 @@ function simpleInline(node:Element):boolean {
   if(Object.keys(node.properties).some(k=>k!=="breditor/block-id"&&k!=="breditor/level"))return false;
   return node.children.every(n=>n.kind==="text"&&!/(^ | $| {2}|[\t\r\n])/.test(n.text)&&n.formats.every(f=>simpleFormats.has(f.type))&&(!n.formats.some(f=>f.type==="breditor-inline/code")||n.formats.length===1)&&!n.formats.some(f=>f.type==="breditor-inline/link"&&f.properties["breditor-inline/new-window"]===true));
 }
-const escape=(value:string)=>{if(value.includes("\u0000"))fail("unsupported-content");return value.replace(/[\\`*_[\]{}()#+.!<>~|]/g,"\\$&");};
+// `&` would start an entity and a run-leading `-` a list or thematic break, so both are escaped too.
+const escape=(value:string)=>{if(value.includes("\u0000"))fail("unsupported-content");return value.replace(/[\\`*_[\]{}()#+.!<>~|&]/g,"\\$&").replace(/^-/,"\\-");};
+const verifier=new MarkdownIt({html:false,linkify:false,typographer:false,breaks:false});
+const tokenFormats:Record<string,string>={strong:"breditor/strong",em:"breditor-inline/italic",s:"breditor-inline/strike",link:"breditor-inline/link"};
+type Segment=[text:string,formats:string];
+function pushSegment(out:Segment[],text:string,formats:string):void {
+  if(!text)return;const last=out.at(-1);if(last&&last[1]===formats)last[0]+=text;else out.push([text,formats]);
+}
+/**
+ * Emphasis delimiters only open/close at CommonMark flanking positions, and adjacent runs
+ * sharing a format emit touching delimiters. Rather than model those rules, re-parse the
+ * emitted inline Markdown and require the same text/format sequence before using it.
+ */
+function inlineRoundTrips(nodes:readonly Node[],markdown:string):boolean {
+  const expected:Segment[]=[];
+  for(const n of nodes){
+    if(n.kind!=="text")return false;
+    const keys=n.formats.filter(f=>f.type!=="breditor-inline/link"||(typeof f.properties["breditor-inline/href"]==="string"&&safeUrl(f.properties["breditor-inline/href"])!==null)).map(f=>f.type).sort().join("+");
+    pushSegment(expected,n.text,keys);
+  }
+  let tokens:Token[];
+  try{tokens=verifier.parseInline(markdown,{})[0]?.children??[];}catch{return false;}
+  const active=new Map<string,number>(),actual:Segment[]=[];
+  const keys=(extra?:string)=>[...[...active].filter(([,count])=>count>0).map(([type])=>type),...(extra?[extra]:[])].sort().join("+");
+  for(const token of tokens){
+    const match=/^(strong|em|s|link)_(open|close)$/.exec(token.type);
+    if(match){const type=tokenFormats[match[1]!]!;active.set(type,(active.get(type)??0)+(match[2]==="open"?1:-1));continue;}
+    if(token.type==="text")pushSegment(actual,token.content,keys());
+    else if(token.type==="code_inline")pushSegment(actual,token.content,keys("breditor-inline/code"));
+    else return false;
+  }
+  return actual.length===expected.length&&actual.every(([text,formats],i)=>text===expected[i]![0]&&formats===expected[i]![1]);
+}
+/** An HTML block ends at a blank line, so blank lines inside fallback HTML become character references. */
+const htmlBlock=(html:string)=>html.replace(/\n(?=[ \t]*\n)/g,"&#10;");
 function inlineMarkdown(nodes:readonly Node[],b:Budget):string {
   return nodes.map(n=>{
     if(n.kind!=="text")fail("native-admission");let value=escape(n.text);
@@ -58,9 +92,9 @@ export function exportMarkdownRoot(nodes:Node[],b:Budget,options:InterchangeOpti
   const html=new HtmlExport(b,options);
   const block=(n:Node,depth=0):string=>{
     if(depth>limits.depth)fail("resource-limit");if(n.kind!=="element")fail("native-admission");
-    const fallback=()=>{b.loss("markdown-feature");return html.blocks([n],depth);};
+    const fallback=()=>{b.loss("markdown-feature");return htmlBlock(html.blocks([n],depth));};
     if(n.type==="breditor/paragraph"||n.type==="breditor/heading"){
-      if(!n.children.length||!simpleInline(n))return fallback();
+      if(!n.children.length||!simpleInline(n)||!inlineRoundTrips(n.children,inlineMarkdown(n.children,new Budget())))return fallback();
       const inline=inlineMarkdown(n.children,b);return n.type==="breditor/heading"?`${"#".repeat(Number(property(n,"level")))} ${inline}`:inline;
     }
     if(n.type==="breditor/horizontal-rule")return"---";
@@ -81,7 +115,7 @@ export function exportMarkdownRoot(nodes:Node[],b:Budget,options:InterchangeOpti
       const rows=n.children as Element[],columns=property(n,"columns") as {id:string;width:number}[],merges=property(n,"merges") as unknown[];
       const cell=(r:Element,c:string)=>r.children.find((n):n is Element=>n.kind==="element"&&property(n,"column-id")===c)??fail("native-admission");
       const simple=rows.length>0&&columns.every(c=>c.width===120)&&merges.length===0&&rows.every((r,i)=>columns.every(c=>{const v=cell(r,c.id);return property(v,"header")===(i===0)&&v.children.length===1&&v.children[0]?.kind==="element"&&v.children[0].type==="breditor/paragraph"&&simpleInline(v.children[0])&&!v.children[0].children.some(t=>t.kind==="text"&&t.text.includes("|"));}));
-      if(!simple)return fallback();
+      if(!simple||!rows.every(r=>columns.every(c=>{const cells=(cell(r,c.id).children[0] as Element).children;return inlineRoundTrips(cells,inlineMarkdown(cells,new Budget()));})))return fallback();
       const lines=rows.map(r=>`| ${columns.map(c=>inlineMarkdown((cell(r,c.id).children[0] as Element).children,b)).join(" | ")} |`);lines.splice(1,0,`| ${columns.map(()=>"---").join(" | ")} |`);return lines.join("\n");
     }
     if(n.type==="breditor/image"){

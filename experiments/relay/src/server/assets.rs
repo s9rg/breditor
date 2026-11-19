@@ -17,6 +17,9 @@ use axum::{
 };
 use serde_json::json;
 
+/// Whole-body deadline for one asset upload: about 1.4 Mbit/s for the 10 MiB maximum.
+const UPLOAD_BODY_TIMEOUT: std::time::Duration = std::time::Duration::from_secs(60);
+
 pub(super) async fn preflight(State(host): State<Host>, headers: HeaderMap) -> Response {
     let Some(allowed) = origin(&host, &headers) else {
         return StatusCode::FORBIDDEN.into_response();
@@ -113,9 +116,11 @@ pub(super) async fn upload(
     let Ok(limit) = usize::try_from(MAX_ASSET_BYTES) else {
         return cors(StatusCode::SERVICE_UNAVAILABLE.into_response(), allowed);
     };
-    let bytes = match to_bytes(body, limit).await {
-        Ok(bytes) => bytes.to_vec(),
-        Err(_) => return cors(StatusCode::PAYLOAD_TOO_LARGE.into_response(), allowed),
+    // The permit is shared with downloads, so a stalled body must not hold it indefinitely.
+    let bytes = match tokio::time::timeout(UPLOAD_BODY_TIMEOUT, to_bytes(body, limit)).await {
+        Ok(Ok(bytes)) => bytes.to_vec(),
+        Ok(Err(_)) => return cors(StatusCode::PAYLOAD_TOO_LARGE.into_response(), allowed),
+        Err(_) => return cors(StatusCode::REQUEST_TIMEOUT.into_response(), allowed),
     };
     let prepared = tokio::task::spawn_blocking(move || assets::prepare_asset(&asset, &mime, bytes))
         .await

@@ -175,10 +175,16 @@ describe("translateKeyDown", () => {
     },
   );
 
-  it("uses physical codes for browser-reserved clipboard and selection chords", () => {
+  it("reserves clipboard and selection chords by labelled Latin key, else physical code", () => {
+    // Dvorak: the key labelled Q sits at the US C position and is not copy.
     expect(
       translate(keyboard("q", { code: "KeyC", ctrlKey: true })),
+    ).toEqual({ kind: "native", reason: "selectionOrPageCommand" });
+    // Dvorak: the key labelled C sits at the US I position and is still copy.
+    expect(
+      translate(keyboard("c", { code: "KeyI", ctrlKey: true })),
     ).toEqual({ kind: "native", reason: "clipboardOwns" });
+    // Cyrillic produces no Latin letter, so the physical position decides.
     expect(
       translate(keyboard("ш", { code: "KeyV", ctrlKey: true })),
     ).toEqual({ kind: "native", reason: "clipboardOwns" });
@@ -202,8 +208,8 @@ describe("translateKeyDown", () => {
     });
   });
 
-  it.each(["b", "q", "ш", "é", "😀", "Unidentified"])(
-    "routes physical KeyB independently of logical key %j",
+  it.each(["b", "B", "ш", "é", "😀", "Unidentified"])(
+    "routes KeyB for non-Latin or matching logical key %j",
     (key) => {
       expect(
         command(
@@ -219,21 +225,29 @@ describe("translateKeyDown", () => {
   );
 
   it.each(["", "Keyb", "KeyBB", "Digit2", "Unidentified"])(
-    "does not execute a shortcut for invalid or missing physical code %j",
+    "does not execute a non-Latin key's shortcut for invalid or missing physical code %j",
     (code) => {
-      const result = translate(keyboard("b", { code, ctrlKey: true }));
+      const result = translate(keyboard("и", { code, ctrlKey: true }));
       expect(result.kind).not.toBe("command");
-      expect(result).toEqual({
-        kind: "blocked",
-        reason: "unsupportedEditingShortcut",
-      });
+      expect(result).toEqual({ kind: "native", reason: "selectionOrPageCommand" });
     },
   );
 
-  it("does not let a matching logical key override a different valid physical code", () => {
+  it.each([
+    ["QWERTZ undo", "z", "KeyY", false, "undo"],
+    ["QWERTZ redo", "y", "KeyZ", false, "redo"],
+    ["AZERTY undo", "z", "KeyW", false, "undo"],
+    ["AZERTY redo", "Z", "KeyW", true, "redo"],
+  ] as const)("matches the labelled key for %s", (_name, key, code, shiftKey, operation) => {
     expect(
-      translate(keyboard("b", { code: "KeyQ", ctrlKey: true })),
-    ).toEqual({ kind: "blocked", reason: "unsupportedEditingShortcut" });
+      command(keyboard(key, { code, ctrlKey: true, shiftKey }), BEFOREINPUT_POLICY).command,
+    ).toEqual({ kind: "history", operation });
+  });
+
+  it("lets a Latin logical key override a different physical code", () => {
+    expect(
+      command(keyboard("b", { code: "KeyQ", ctrlKey: true }), BEFOREINPUT_POLICY).command,
+    ).toEqual({ kind: "intent", intentId: "breditor/format-strong", input: { kind: "none" } });
   });
 
   it("maps enabled bold and history shortcuts with exact history boundaries", () => {

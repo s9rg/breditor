@@ -210,8 +210,10 @@ Opening a database whose physical version is newer reports
 
 An open request's `blocked` event is progress, not proof of failure. A host can
 observe it while the request remains pending. Every connection closes and
-invalidates itself on `versionchange`; an abnormal database `close` event also
-makes that connection terminal. Explicit close refuses new work while already
+invalidates itself on `versionchange`. An abnormal database `close` event
+(cleared site data, storage pressure, a dropped background connection) discards
+only that connection; the next load or save reopens and revalidates the schema,
+so `retryPersistence()` can recover. Explicit close refuses new work while already
 created transactions settle through their own terminal events. Callers waiting
 for this owner's database open (including schema validation) promptly receive
 `session_checkpoint.connection` on close. The underlying open cannot be

@@ -78,11 +78,18 @@ pub fn find_rich_text(
                     start = found.end() + next.len_utf8();
                     continue;
                 }
-                start = found.end();
-                last_end = Some(found.end());
                 if !whole_word(boundaries.as_deref(), found.start(), found.end()) {
+                    // A rejected candidate must not hide a later whole-word occurrence that
+                    // starts inside it, so resume one scalar after its start, not its end.
+                    let Some(next) = text.get(found.start()..).and_then(|tail| tail.chars().next())
+                    else {
+                        break;
+                    };
+                    start = found.start() + next.len_utf8();
                     continue;
                 }
+                start = found.end();
+                last_end = Some(found.end());
                 let spans = (0..captures.group_len())
                     .map(|index| captures.get_group(index).map(|span| span.start..span.end))
                     .collect();
@@ -96,22 +103,44 @@ pub fn find_rich_text(
                 )?;
             }
         } else {
-            for (start, matched) in text.match_indices(query.pattern()) {
-                let end = start + matched.len();
-                if whole_word(boundaries.as_deref(), start, end) {
-                    record(
-                        &mut result.matches,
-                        &block,
-                        &text,
-                        start..end,
-                        vec![Some(start..end)],
-                        &mut cursor,
-                    )?;
-                }
-            }
+            scan_literal(
+                &mut result.matches,
+                &block,
+                &text,
+                query.pattern(),
+                boundaries.as_deref(),
+                &mut cursor,
+            )?;
         }
     }
     Ok(result)
+}
+
+/// Literal occurrences, retrying overlapping candidates so a rejected occurrence cannot hide a
+/// whole-word occurrence that starts inside it.
+fn scan_literal(
+    output: &mut Vec<RichSearchMatch>,
+    block: &BlockId,
+    text: &str,
+    pattern: &str,
+    boundaries: Option<&[usize]>,
+    cursor: &mut Coordinates,
+) -> Result<(), RichSearchError> {
+    let mut from = 0usize;
+    while let Some(offset) = text.get(from..).and_then(|tail| tail.find(pattern)) {
+        let start = from + offset;
+        let end = start + pattern.len();
+        if whole_word(boundaries, start, end) {
+            record(output, block, text, start..end, vec![Some(start..end)], cursor)?;
+            from = end;
+        } else {
+            let Some(next) = text.get(start..).and_then(|tail| tail.chars().next()) else {
+                break;
+            };
+            from = start + next.len_utf8();
+        }
+    }
+    Ok(())
 }
 
 #[derive(Default)]

@@ -350,6 +350,21 @@ export function readDomCompositionEvent(
     : Object.freeze({ base, data: data.data });
 }
 
+/**
+ * Reads InputEvent.dataTransfer without reading Event.target.
+ *
+ * Browsers deliver contenteditable `insertReplacementText` (spellcheck and
+ * autocorrect) with a null `data` and the replacement in this DataTransfer.
+ */
+export function readDomInputEventDataTransfer(
+  value: unknown,
+): Readonly<{ source: DomEventSource; dataTransfer: unknown }> | null {
+  const read = readInterfaceValue(value, "InputEvent", "dataTransfer", "dataTransfer");
+  return read === null
+    ? null
+    : Object.freeze({ source: read.source, dataTransfer: read.data });
+}
+
 /** Reads ClipboardEvent.clipboardData without reading Event.target. */
 export function readDomClipboardData(
   value: unknown,

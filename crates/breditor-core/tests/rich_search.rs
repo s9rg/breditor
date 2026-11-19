@@ -126,6 +126,19 @@ fn whole_words_use_unicode_segments_and_do_not_reorder_regex_alternatives() -> R
 }
 
 #[test]
+fn whole_words_retry_candidates_that_overlap_a_rejected_occurrence() -> Result {
+    let (_, document) = setup(prose("banana na na"))?;
+    for mode in [RichSearchMode::Literal, RichSearchMode::Regex] {
+        let result = find_rich_text(&document, &query("na na", mode, true, true)?)?;
+        assert_eq!(coordinates(&result), [(7, 12)], "{mode:?}");
+    }
+    let (_, document) = setup(prose("aaa aa"))?;
+    let result = find_rich_text(&document, &query("aa", RichSearchMode::Literal, true, true)?)?;
+    assert_eq!(coordinates(&result), [(4, 6)]);
+    Ok(())
+}
+
+#[test]
 fn merged_cell_sources_follow_visible_master_order_once_and_metadata_is_excluded() -> Result {
     let (_, document) = setup(fixture::root())?;
     let result = literal(&document, "🙂")?;

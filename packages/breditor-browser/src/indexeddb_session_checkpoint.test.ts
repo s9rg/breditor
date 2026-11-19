@@ -1239,7 +1239,7 @@ describe("IndexedDbSessionCheckpointStore", () => {
     store.close();
   });
 
-  it("becomes terminal on versionchange, abnormal close, and explicit close", async () => {
+  it("becomes terminal on versionchange and explicit close, and reopens after abnormal close", async () => {
     const versionFactory = new IDBFactory();
     const versionStore = createStore(versionFactory).store;
     expect((await versionStore.load()).ok).toBe(true);
@@ -1269,8 +1269,15 @@ describe("IndexedDbSessionCheckpointStore", () => {
     const abnormal = createStore(proxy).store;
     expect((await abnormal.load()).ok).toBe(true);
     if (captured === undefined) throw new Error("database was not captured");
-    (forceCloseDatabase as unknown as (database: IDBDatabase) => void)(captured);
-    expect(abnormal.closed).toBe(true);
+    const first = captured;
+    (forceCloseDatabase as unknown as (database: IDBDatabase) => void)(first);
+    expect(abnormal.closed).toBe(false);
+    const reloaded = await abnormal.load();
+    expect(reloaded.ok).toBe(true);
+    expect(captured).not.toBe(first);
+    if (!reloaded.ok) throw new Error(reloaded.error.code);
+    expect((await abnormal.save(reloaded.token, "{}")).ok).toBe(true);
+    abnormal.close();
 
     const explicit = createStore().store;
     explicit.close();
