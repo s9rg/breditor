@@ -43,7 +43,10 @@ languages V1 to V3 plus the candidate V4 ordered-list numbering properties (`lis
 `list-reversed: true`; see `RICH_LANGUAGE_V4.md`), emitted as `<ol type reversed>`, and the
 candidate V4 `breditor/text-language` inline format (a canonical bounded BCP 47 tag), emitted as
 `<span class="breditor-text-language" lang="…">` in the same recipe order as the live renderer
-(`staticInlineRecipesV4`). It checks the following:
+(`staticInlineRecipesV4`), and the candidate V4 image link (`image-href`, a canonical safe
+HTTP(S) target, and `image-link-new-window: true`; never on a decorative image), emitted as
+`<a data-rich-image-link class="breditor-image-link" href [rel target]>` around the `<img>` only,
+with the inline `safeLinkV1` attribute set. It checks the following:
 
 - Exact node and envelope fields. `entityId` must be `null`.
 - Required and allowed `breditor/*` properties for each element type. An unexpected property,

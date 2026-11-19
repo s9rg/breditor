@@ -41,6 +41,13 @@ recipe and emits only `lang`, and only for a canonical bounded BCP 47 tag
 (`canonicalLanguageTagV1` / `isCanonicalLanguageTagV1` are exported from the
 same subpath). Any other value renders an inert span.
 
+Candidate rich V4 image links reuse `safeLinkV1` unchanged:
+`imageLinkRenderAttributesV1(href, newWindow)` returns exactly the inline link
+attribute set, `canonicalImageLinkHrefV1` canonicalizes input with the
+`safeLinkV1` canonicalizer and then requires the native canonical subset, and
+`isImageLinkHrefV1` checks that subset (mirroring Rust `image_link.rs`). All
+three are exported from the same subpath.
+
 Two additive closed style policies support the explicit rich standard preset:
 `safeRgb24V1` binds one required `0..=16777215` integer property to text or
 background color, and `safeTextSizeV1` binds one required `8..=96` integer property

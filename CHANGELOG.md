@@ -6,6 +6,19 @@ its durable formats and Wasm transport.
 
 ## Unreleased
 
+- Add image links to the unreleased local-only candidate rich V4: optional
+  `breditor/image-href` (a canonical credential-free HTTP(S) URL under the inline
+  `safeLinkV1` policy with canonical storage, at most 2,048 bytes) and
+  `breditor/image-link-new-window` (only `true`) on `breditor/image`, never on a
+  decorative image. A guarded `setImageLink` command sets, replaces or clears a
+  link in one history group; live and static renderers wrap only the image in a
+  `safeLinkV1` anchor that stays inert while editing (clicking selects the
+  image); the V4 toolbar adds **Image link** / **Remove image link**; V4-only
+  HTML and `[![alt](src)](href)` Markdown interchange and native clipboard keep
+  the link. `breditor/image` is persisted type revision 2 in V4, so the V4
+  fingerprint changes; V1–V3, their fingerprints and their interchange are
+  unchanged.
+
 - Add text-run language to the unreleased local-only candidate rich V4: a native
   `breditor/text-language` inline format holding one canonical, bounded BCP 47
   tag (no extlang, extensions, private use or grandfathered tags; at most 35

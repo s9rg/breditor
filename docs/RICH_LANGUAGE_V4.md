@@ -1,9 +1,9 @@
 # Rich language V4 (unreleased candidate)
 
 Rich V4 is an explicit, opt-in rich language under construction. It is **not
-released**. It is built in five slices; this document records the first two
-(ordered-list numbering and text-run language). The remaining slices (image
-links, collapsible details/summary blocks and mention entities) will extend this
+released**. It is built in five slices; this document records the first three
+(ordered-list numbering, text-run language and image links). The remaining
+slices (collapsible details/summary blocks and mention entities) will extend this
 same language before it is released.
 
 Because each slice changes V4's grammar or rule revision, **the V4 schema
@@ -23,11 +23,11 @@ reinterprets an older document, and older profiles reject every V4 property.
 | Layer | V4 selector |
 | --- | --- |
 | Rust | `CompiledSchema::try_compile_rich_content_profile_v4`, `rich_content_revision() == Some(4)`, sealed rich rule revision 4 under compiler contract 6 |
-| Capability queries | `supports_rich_block_layout()` (V3 and V4), `supports_rich_list_numbering()` and `supports_rich_text_language()` (V4 only) |
-| Wasm | explicit profile bootstrap **format 9**: `BreditorRichProfile.fromBootstrapJsonV4` / `fromStandardBootstrapJsonV4`; descriptor `richLanguageVersion: 4`, `taskStructureVersion: 1`, `blockLayoutVersion: 1`, `listNumberingVersion: 1`, `textLanguageVersion: 1`; owner `listNumberingVersion() === "1"` and `textLanguageVersion() === "1"` |
+| Capability queries | `supports_rich_block_layout()` (V3 and V4), `supports_rich_list_numbering()`, `supports_rich_text_language()` and `supports_rich_image_links()` (V4 only) |
+| Wasm | explicit profile bootstrap **format 9**: `BreditorRichProfile.fromBootstrapJsonV4` / `fromStandardBootstrapJsonV4`; descriptor `richLanguageVersion: 4`, `taskStructureVersion: 1`, `blockLayoutVersion: 1`, `listNumberingVersion: 1`, `textLanguageVersion: 1`, `imageLinkVersion: 1`; owner `listNumberingVersion()`, `textLanguageVersion()` and `imageLinkVersion()` all `"1"` |
 | JavaScript factories | `compileRichProfileV4`, `compileStandardRichProfileV4` (`@breditor/experimental-rich-content`); `createLocalProfileV4`, `profileBootstrapJsonV4` (`@breditor/editor`, schema `breditor-editor/standard@4`) |
 | SDK openings | `openLocalEditor({richLanguage: 4})`, `openLocalDocumentEditor({richLanguage: 4, ...})` and both local React components' `initialOptions` |
-| Toolbar | `createRichToolbarV4(core, presentation)`: the V3 structural/layout controls plus **List numbering**, **Language** and **Clear language** |
+| Toolbar | `createRichToolbarV4(core, presentation)`: the V3 structural/layout controls plus **List numbering**, **Language**, **Clear language**, **Image link** and **Remove image link** |
 
 Each factory checks its exact descriptor tuple. A V3 factory refuses a V9
 bootstrap and a V4 factory refuses a V8 bootstrap. `createRichToolbarV4`
@@ -44,9 +44,9 @@ model, journal or configuration. `openSharedEditor`, `openSharedSearchEditor`,
 React components reject `richLanguage: 4` with the explicit error *"richLanguage
 4 is the unreleased local-only candidate; shared editing supports richLanguage
 1, 2 or 3"* before claiming the host or initializing Wasm. They never fall back
-to V3. Shared interchange owners do not report list numbering or text language,
-so imports into a shared owner keep the original `list-numbering` notices and
-keep dropping `lang` silently.
+to V3. Shared interchange owners do not report list numbering, text language or image
+links, so imports into a shared owner keep the original `list-numbering` notices,
+keep dropping `lang` silently and keep the original image-link conversion.
 
 ## Slice 1: ordered-list numbering (audit gap `list-properties`)
 
@@ -326,9 +326,7 @@ owners report `true`; V1–V3 and shared owners do not.
   table with case, length (35 versus 36 bytes) and edge tags. Schema unit test:
   V4 differs from V3 only by its rule revision and the one native format.
 - Rust core `tests/rich_text_language_v4.rs`: exact V1–V3 fingerprints and the
-  V4 lock for this slice
-  (`sha256:65b0ae435b5815cc12431c6d6098f1e115d43047c48db00de71aa98513fd044c`
-  for schema `example/layout@1` with the standard inline preset), admission only
+  current V4 lock (see slice 3), admission only
   of canonical tags and only in V4, contract violations, set/replace/clear in
   one history group each with Undo/Redo and checkpoint restore, caret pending
   formats, read-only/stale/code/V3 refusal, strict command decoding and native
@@ -347,3 +345,184 @@ owners report `true`; V1–V3 and shared owners do not.
   CSS matching, one Undo group with Undo/Redo/restore, the toolbar field
   (validation, canonicalization, clear), native copy/paste keeping the tag, and
   native interchange admission for V4 versus V3.
+
+## Slice 3: image links (audit gap `advanced-images`, image links)
+
+Before this slice no rich language could link an image: HTML import silently
+dropped the `<a href>` around an `<img>`. V4 adds an optional link to the
+`breditor/image` node itself. Only image links are in scope; inline/wrapped
+layouts, drag handles, responsive variants and remote-URL ingestion remain open
+gaps of `advanced-images`.
+
+### Property domains
+
+| AST key | Type | Domain |
+| --- | --- | --- |
+| `breditor/image-href` | string | one canonical absolute HTTP(S) URL in the closed subset below, at most 2,048 bytes |
+| `breditor/image-link-new-window` | Boolean | only `true`, and only with an `image-href`; same window is represented by absence |
+
+Both properties belong only to `breditor/image`. V1–V3 reject them everywhere.
+V4 records the changed image property contract as **persisted type revision 2
+of `breditor/image`** (V1–V3 keep revision 1), which is why the V4 fingerprint
+changes with this slice.
+
+**Accessible name.** A link needs an accessible name and a linked image's name
+is its alternative text. A decorative image (`decorative: true`, empty alt) can
+therefore never carry a link: admission rejects the combination (a
+`RichContentContract` violation), `SetImageLink` refuses it with
+`RichImageLinkError::Decorative`, and making a linked image decorative
+(`setImageAlt` decorative, or the *Decorative image* toolbar control) is
+refused by native admission. Remove the link first.
+
+### URL policy (shared with inline links)
+
+The policy is the inline link policy `safeLinkV1` (`breditor-inline/link`):
+HTTP or HTTPS only (no `mailto:`, `javascript:`, `data:` or relative URLs), no
+credentials, no raw whitespace, controls or backslashes, at most 2,048 UTF-8
+bytes, WHATWG canonical spelling. Image links add **canonical storage**: the
+stored value must already be its own WHATWG serialization, and Rust enforces a
+closed fixed-point subset of it (`rich_content/image_link.rs`,
+`RichImageHref::try_new`):
+
+```text
+href      = ("http" / "https") "://" host [":" port] path ["?" query] ["#" fragment]
+host      = ipv4 / domain              ; lowercase a-z 0-9 - _ labels, none empty, no trailing dot;
+                                       ; a numeric final label must be a canonical dotted IPv4
+port      = 0-65535, no leading zero, never the scheme default (80 / 443)
+path      = "/" segments               ; no ".", "..", "%2e" dot segments
+pchar     = ALPHA / DIGIT / "-._~!$&'()*+,;=:@" / %HH
+query     = *(pchar / "/" / "?") except "'"
+fragment  = *(pchar / "/" / "?")
+```
+
+IPv6 hosts, raw `"<>`^{}|` and similar characters (which a browser keeps or
+escapes differently) are outside the subset and rejected rather than repaired.
+Internationalized hosts use their `xn--` spelling; punycode validity itself is
+checked by the browser canonicalizer at input boundaries, and a value the
+renderer cannot canonicalize renders without a link.
+
+Every input boundary canonicalizes with the unchanged `safeLinkV1` canonicalizer
+first and then requires the subset: `canonicalImageLinkHrefV1` /
+`isImageLinkHrefV1` / `imageLinkRenderAttributesV1`
+(`@breditor/browser/presentation`, reusing `resolveInlineFormatRenderAttributes`
+with a `safeLinkV1` policy), `canonicalImageLinkHref` in
+`@breditor/experimental-rich-content`, and an identical copy of the subset check
+in `@breditor/interchange` (a test compares the copies byte for byte). The same
+accept/reject table runs in Rust, the browser package and interchange, and the
+browser test checks that every admitted value is its own `new URL(value).href`.
+
+### Native action and commands
+
+`actions::SetImageLink::capture(document, image, Option<&RichImageLink>)`
+patches one image node (`None` removes both properties); asset, alt, size,
+caption and identities are untouched. It uses the guarded node-patch precedent
+of `SetListNumbering`: a full-source guard, an exact inverse for Undo/Redo, one
+history group per command, an admitted exact no-op (`Unchanged`), read-only and
+stale-observation refusal, and `RichImageLinkError::Profile` outside V4.
+Other image actions (`resizeImage`, `replaceImage`, `setImageAlt` with a
+description, `setImageCaption`) keep the link. `RichImageLink::read` returns the
+exact admitted link.
+
+The Wasm/TS command is
+`{kind: "setImageLink", data: {image, href, newWindow?}}`: `href` is a canonical
+target string or `null` to clear; `newWindow` (Boolean) is allowed only with a
+target and defaults to same window. The strict decoder
+(`codec::decode_rich_image_link_command`) rejects unknown/duplicate fields, a
+missing `href`, `newWindow` with a clear, a non-canonical or unsafe target (no
+repair), an 8 KiB overflow and a non-V4 context with
+`breditor_rich.image_link_intent`. JavaScript snapshots the intent to
+primitives (`encodeImageLinkIntent`) before serializing it; the facade reports
+`supportsImageLinks()`, and a V4 profile or owner without `imageLinkVersion` 1
+is refused.
+
+### Rendering and editing behavior
+
+The link wraps **the image only, never its caption**:
+`<figure …><a data-rich-image-link class="breditor-image-link" href="…" [rel="noopener noreferrer" target="_blank"]><img …></a><figcaption>…</figcaption></figure>`.
+The attribute list is exactly what the inline `safeLinkV1` policy emits
+(`imageLinkRenderAttributesV1`). A value outside the admitted subset renders the
+image without an anchor. The live renderer (`wrapImageLink`) and the static
+renderer emit the same structure and attributes; the live anchor additionally
+carries the editing affordances `draggable="false"` and, while editable,
+`tabindex="-1"`.
+
+**Links are inert while editing.** Inline links are inert in the editable
+surface because the browser never follows a link inside `contenteditable`. The
+image figure, however, is a non-editable island, so the controller cancels
+`click`/`auxclick` activation of `a[data-rich-image-link]` while the owner is
+editable, and the anchor leaves the tab order. Clicking a linked image therefore
+selects the image node exactly as before and never navigates or opens a window
+(checked in Chromium, Firefox and WebKit for same- and new-window links). In a
+read-only surface the anchor is an ordinary focusable link, like inline links.
+
+The V4 toolbar adds **Image link** (an "Image link URL" field, at most 2,048
+characters, canonicalized through `safeLinkV1` before any command, plus the same
+"Link opens in: Same window / New window" choice as the inline Link control —
+the shared toolbar field vocabulary has no checkbox type) and **Remove image
+link**. Both target the selected image (the image node, or a caret in its
+caption, like the existing alt/caption controls), send only `setImageLink`, and
+the Image link control explains that a decorative image must be described
+before it can be linked. Localization uses the existing per-control map (ids
+`image-link`, `reset-image-link`).
+
+### Interchange
+
+`@breditor/interchange` reads `supportsImageLinks()` once at creation. Local V4
+owners report `true`; V1–V3 and shared owners do not.
+
+- **HTML import, V4 owner:** an `<img>` inside `<a href>` (inline, or
+  `<figure><a href><img></a><figcaption>`) takes the anchor's link; `target` and
+  `rel` follow the inline link rules (`target="_blank"` → new window). An unsafe
+  href is dropped with the existing `unsafe-link` notice, a canonical target
+  outside the native subset (for example an IPv6 host) also reports
+  `unsafe-link`, and a decorative image (`alt=""`) keeps no link and reports
+  `image-alt`.
+- **HTML import, V1–V3 owners:** unchanged. The link around an image is dropped
+  silently (an unsafe href still reports `unsafe-link`), and
+  `<figure><a><img></a></figure>` keeps its original `block-structure` fallback.
+- **HTML export:** `<figure><a href [target rel]><img></a><figcaption>`; when the
+  host has no portable image URL the alt-text paragraph keeps the link. V4 HTML
+  round trips exactly.
+- **Markdown:** a same-window linked image that is otherwise Markdown-exportable
+  exports as `[![alt](<src>)](<href>)` after the image round-trip verifier
+  re-parses exactly one link around exactly one image; captions, sizes and
+  new-window links fall back to HTML with `markdown-feature`. Importing that
+  Markdown shape gives a V4 owner the image link (V1–V3 drop it).
+- **Clipboard:** native copy and paste inside a V4 owner keep both properties
+  through the native clipboard record (the pasted image gets fresh identities).
+  A V1–V3 owner refuses a V4 clipboard record that carries an image link.
+
+### Fingerprint
+
+Current candidate V4 lock for schema `example/layout@1` with the standard
+inline preset:
+`sha256:f17cf0d20d317b80d5081e8093981cdb3e3f2674fe53c285dbd5a6b5110422c0`
+(asserted in the core and Wasm text-language and image-link tests). V1–V3 locks
+are unchanged.
+
+### Tests
+
+- Rust core unit test (`rich_content/image_link.rs`): the subset accept/reject
+  table. Schema unit test: V4 differs from V3 only by its rule revision, the
+  text-language format and the image element revision.
+- Rust core `tests/rich_image_link_v4.rs`: fingerprint locks, admission only of
+  canonical targets and only in V4, flag/target/misplacement rules, the
+  decorative rule (admission, capture and `setImageAlt`), set/replace/clear in
+  one history group each with Undo/Redo, checkpoint restore and exact no-ops,
+  other image actions keeping the link, read-only/stale/missing/V1–V3 refusal,
+  strict decoding and native clipboard copy/paste with V3 refusal.
+- Wasm `tests/rich_image_link_v4.rs`: descriptor and owner capability, V1–V3
+  refusal, set/replace/clear/Undo/Redo/restore, decorative/read-only/stale and
+  malformed intent.
+- TypeScript: browser `image_link_href.test.ts` (parity table, WHATWG fixed
+  point, canonicalization, `safeLinkV1` attribute identity), rich-content
+  `tests/image_link.test.ts` (render, inert editing policy, intent, controls,
+  toolbar and facade boundary), editor `tests/static_image_link.test.ts` (static
+  output, rejection, live parity), interchange `tests/image_link.test.ts`
+  (subset copy parity, per-profile HTML/Markdown import/export/round trip).
+- Playwright `experiments/rich-browser/image-link-v4.spec.mjs` in Chromium,
+  Firefox and WebKit on a real Wasm V4 owner: capability and V3 refusal, the
+  toolbar control (rejection, canonicalization, new window, remove), the `<a>`
+  around only the `<img>`, one Undo group with Undo/Redo/restore, clicking the
+  linked image selecting it without navigation or popups, native copy/paste
+  keeping the link with V3 refusing the record, and interchange for V4 versus V3.
