@@ -35,3 +35,4 @@ export {mountRichWritingTools,type RichWritingToolsPanel,type RichWritingToolsPa
 export type {RichFullscreenHost,RichFullscreenHostState,RichFullscreenOptions,RichFullscreenState,RichFullscreenController} from "./fullscreen_types.js";
 export {createRichFullscreen} from "./fullscreen_controller.js";
 export {mountRichFullscreenControls,type RichFullscreenControls,type RichFullscreenControlsOptions} from "./fullscreen_controls.js";
+export {mountRichTableColumnResize,richTableColumnResizeCommit,clampRichTableColumnWidth,richTableColumnResizeStyles,RICH_TABLE_COLUMN_WIDTH_MIN,RICH_TABLE_COLUMN_WIDTH_MAX,type RichTableColumnResize,type RichTableColumnResizeHost,type RichTableColumnResizeHostState,type RichTableColumnResizeOptions,type RichTableColumnResizeRequest,type RichTableColumnResizePreview,type RichTableColumnResizeCancel,type RichTableColumnGeometry} from "./table_column_resize.js";

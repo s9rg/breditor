@@ -614,3 +614,15 @@ collaborative undo. Encoding a checkpoint is not a durable-storage acknowledgeme
 Host asset bytes and pending uploads are stored separately by the optional asset
 store. Shared causal state, selective undo, presence and relay persistence remain
 separate implementation gates.
+
+## Table column resize handles
+
+`mountRichTableColumnResize(overlayHost, dom, {commit: richTableColumnResizeCommit(dom)})`
+adds focusable `role="separator"` handles on column boundaries in an overlay
+outside editable content. You opt in to it. A pointer drag previews in the
+overlay only and publishes exactly one existing `resizeTableColumn` command on
+release (one Undo step). Widths are clamped to the admitted 32–4096 domain.
+Escape, blur, pointer cancel or a publication that changes the dragged table
+cancel the drag. Arrow keys, PageUp/PageDown and Home/End publish one command
+per key. See [the table contract](../../docs/RICH_TABLES.md), which also states
+the nested-table policy.
