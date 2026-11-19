@@ -734,7 +734,9 @@ fn block_layout_skips_summaries() -> Result {
     a.change_selection_layout(&a.snapshot(), &patch)?;
     let after = encode(&c, a.state().document())?;
     assert_eq!(after["children"][0]["properties"]["breditor/block-align"], json!(2));
-    assert!(after["children"][1]["children"][0]["properties"].get("breditor/block-align").is_none());
+    assert!(
+        after["children"][1]["children"][0]["properties"].get("breditor/block-align").is_none()
+    );
     assert_eq!(after["children"][1]["children"][1]["properties"]["breditor/block-align"], json!(2));
     assert_eq!(a.undo_depth(), 1);
     Ok(())
