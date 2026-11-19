@@ -10,6 +10,7 @@ import type {RichSearchHost} from "@breditor/experimental-rich-content";
 import type {SharedSearchResults} from "@breditor/collaboration";
 import {supportsSharedSearchHistory,restoreSharedSearchEditor} from "@breditor/collaboration";
 import {initializeSharedRuntime,standardSharedProfileConfiguration,structuralSharedProfileConfigurationV2,layoutSharedProfileConfigurationV3} from "./shared_profile.js";
+import {checkSharedRichLanguage} from "./shared_language.js";
 import {claimHost,awaitInitialization} from "./host.js";
 import {emptyDocumentJson} from "./empty_document.js";
 import {clipboardInterchangeOptions,type ClipboardInterchangeFactory} from "./clipboard_interchange.js";
@@ -144,7 +145,7 @@ async function openSharedEditorFamily(options:SharedEditorSessionOptions|SharedS
  validateMarkdownInputPolicy(options.inputRules);
  validatePlaceholderOption(options.placeholder);resolveRichUi(options.ui);
  if(options.coreOptions&&"searchHistory" in options.coreOptions&&options.coreOptions.searchHistory!==undefined)throw new TypeError("Use the separately named search startup factory");
- if(options.richLanguage!==undefined&&options.richLanguage!==1&&options.richLanguage!==2&&options.richLanguage!==3)throw new TypeError("Expected richLanguage 1, 2 or 3");
+ checkSharedRichLanguage(options.richLanguage);
  if(options.readOnly!==undefined&&typeof options.readOnly!=="boolean")throw new TypeError("readOnly must be Boolean");
  if(options.history!==undefined&&options.history!=="explicit"&&options.history!=="typing-v1")throw new TypeError("Expected history explicit or typing-v1");
  if(options.rangeEditing!==undefined&&options.rangeEditing!=="original"&&options.rangeEditing!=="general-v1")throw new TypeError("Expected rangeEditing original or general-v1");

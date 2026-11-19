@@ -26,6 +26,8 @@ export {createStandardRichToolbarV1} from "./standard_toolbar.js";
 export {createSelectionRichToolbarV1} from "./selection_toolbar.js";
 export {createStructuralRichToolbarV2} from "./structural_controls_v2.js";
 export {createLayoutRichToolbarV3} from "./layout_toolbar_v3.js";
+export {createRichToolbarV4} from "./rich_toolbar_v4.js";
+export {listNumberingControl,selectedOrderedList,type ListNumberingControl} from "./list_numbering_controls.js";
 export {createFlowNavigationControls,flowEdgeEligible,selectedFlowAtom} from "./flow_controls.js";
 export type {RichToolbarField,RichToolbarReading} from "./toolbar_control_view.js";
 export type {RichSearchHost,RichSearchHostState} from "./search_host.js";

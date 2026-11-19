@@ -21,7 +21,7 @@ export function createStructuralRichToolbarV2<P extends RichSelectionPolicy="ori
  return structuralRichControlsForOwner(core,presentation,2);
 }
 /** Internal composition preserves the public V2 constructor's exact language guard. */
-export function structuralRichControlsForOwner<P extends RichSelectionPolicy="original">(core:RichCoreEditor<P>,presentation:RichInlinePresentation,language:2|3):readonly ToolbarControl<P>[]{
+export function structuralRichControlsForOwner<P extends RichSelectionPolicy="original">(core:RichCoreEditor<P>,presentation:RichInlinePresentation,language:2|3|4):readonly ToolbarControl<P>[]{
  if(core.richLanguageVersion?.()!==language)throw Error(`Structural controls require an explicitly selected V${language} owner`);
  const controls:ToolbarControl<P>[]=[
   {id:"blockquote",label:"Blockquote",enabled:c=>interval(c)!==undefined,command:c=>{const r=interval(c);return r?{kind:"wrapBlockquote",data:{first:r.first,last:r.last,wrapper:c.allocate("quote")}}:null;}},

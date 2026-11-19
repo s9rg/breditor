@@ -2,6 +2,7 @@
 // All logical mutation and retained history remain Rust-owned. Asset storage and
 // uploads are explicit host services, never command side effects.
 import {encodeBlockLayoutPatch} from "./dist/browser/block_layout_serialization.js";
+import {encodeListNumberingPatch} from "./dist/browser/list_numbering_serialization.js";
 import {parseRichSearchMetadata} from "./dist/browser/search_metadata.js";
 import {parseRichWritingTools} from "./dist/browser/writing_tools_metadata.js";
 import {RichRetainedAssetReferenceRegistry} from "./dist/browser/retained_asset_references_registry.js";
@@ -39,6 +40,7 @@ export {createStandardRichInlinePresentationV1,standardInlineKindsV1,standardInl
 export {createStandardRichToolbarV1} from "./dist/browser/index.js";
 export {createStructuralRichToolbarV2} from "./dist/browser/index.js";
 export {createLayoutRichToolbarV3} from "./dist/browser/index.js";
+export {createRichToolbarV4,listNumberingControl,selectedOrderedList} from "./dist/browser/index.js";
 export {createFlowNavigationControls} from "./dist/browser/index.js";
 export {createSelectionRichToolbarV1} from "./dist/browser/index.js";
 export {RichDocumentSessionStore} from "./dist/browser/index.js";
@@ -86,11 +88,12 @@ function compiledProfile(result,language=1) {
   const raw = transfer(result, "profile", "takeProfile");
   try {
     const descriptor = JSON.parse(read(raw.descriptorJson()));
-    if (descriptor.kind !== "rich" || descriptor.abiVersion !== 1 || (language===1?descriptor.richLanguageVersion!==undefined:descriptor.richLanguageVersion!==language) || ![1,2,3].includes(language)) {
+    if (descriptor.kind !== "rich" || descriptor.abiVersion !== 1 || (language===1?descriptor.richLanguageVersion!==undefined:descriptor.richLanguageVersion!==language) || ![1,2,3,4].includes(language)) {
       throw new RichCommandError("breditor_rich.abi", "Unsupported rich owner ABI");
     }
-    if((language===2||language===3)&&descriptor.taskStructureVersion!==1)throw new RichCommandError("breditor_rich.structural_runtime","Use matching structural Wasm with task structure V1 support");
-    if(language===3?descriptor.blockLayoutVersion!==1:descriptor.blockLayoutVersion!==undefined)throw new RichCommandError("breditor_rich.layout_runtime","Use the matching explicitly selected layout profile");
+    if((language===2||language===3||language===4)&&descriptor.taskStructureVersion!==1)throw new RichCommandError("breditor_rich.structural_runtime","Use matching structural Wasm with task structure V1 support");
+    if(language===3||language===4?descriptor.blockLayoutVersion!==1:descriptor.blockLayoutVersion!==undefined)throw new RichCommandError("breditor_rich.layout_runtime","Use the matching explicitly selected layout profile");
+    if(language===4?descriptor.listNumberingVersion!==1:descriptor.listNumberingVersion!==undefined)throw new RichCommandError("breditor_rich.list_numbering_runtime","Use the matching explicitly selected rich V4 profile");
     return new RichCoreProfile(raw, descriptor);
   } catch (error) { raw.free(); throw error; }
 }
@@ -113,6 +116,16 @@ export function compileLayoutRichProfileV3(wasm,bootstrapJson){
 export function compileStandardLayoutRichProfileV3(wasm,bootstrapJson){
  if(typeof wasm?.BreditorRichProfile?.fromStandardLayoutBootstrapJsonV3!=="function")throw new RichCommandError("breditor_rich.module","Use a matching Wasm module with standard layout V3 support");
  return compiledProfile(wasm.BreditorRichProfile.fromStandardLayoutBootstrapJsonV3(bootstrapJson),3);
+}
+/** Bootstrap V9 selects the unreleased candidate rich V4 (V3 plus ordered-list numbering). Its
+ * fingerprint changes while the candidate grows; earlier factories and defaults stay strict. */
+export function compileRichProfileV4(wasm,bootstrapJson){
+ if(typeof wasm?.BreditorRichProfile?.fromBootstrapJsonV4!=="function")throw new RichCommandError("breditor_rich.module","Use a matching Wasm module with rich V4 support");
+ return compiledProfile(wasm.BreditorRichProfile.fromBootstrapJsonV4(bootstrapJson),4);
+}
+export function compileStandardRichProfileV4(wasm,bootstrapJson){
+ if(typeof wasm?.BreditorRichProfile?.fromStandardBootstrapJsonV4!=="function")throw new RichCommandError("breditor_rich.module","Use a matching Wasm module with standard rich V4 support");
+ return compiledProfile(wasm.BreditorRichProfile.fromStandardBootstrapJsonV4(bootstrapJson),4);
 }
 
 class RichCoreProfile {
@@ -154,7 +167,7 @@ class RichCoreEditor {
   #raw; #observation; #language; #selectionPolicy;
   #assetReferences=new RichRetainedAssetReferenceRegistry();
   #searches=new Set();
-  constructor(raw,descriptor,selectionPolicy="original") { this.#raw = raw;this.#selectionPolicy=selectionPolicy;try{this.#language=JSON.parse(descriptor).richLanguageVersion??1;this.#observation = raw.observe();if(this.#language===3&&!this.supportsBlockLayout())throw new RichCommandError("breditor_rich.layout_runtime","Use matching native layout V3 commands and reads");if(selectionPolicy==="document-v1"&&!this.supportsDocumentSelection())throw new RichCommandError("breditor_rich.document_selection_unavailable","Use complete matching native document-selection capabilities");}catch(error){this.#observation?.free();raw.free();this.#raw=undefined;throw error;} }
+  constructor(raw,descriptor,selectionPolicy="original") { this.#raw = raw;this.#selectionPolicy=selectionPolicy;try{this.#language=JSON.parse(descriptor).richLanguageVersion??1;this.#observation = raw.observe();if((this.#language===3||this.#language===4)&&!this.supportsBlockLayout())throw new RichCommandError("breditor_rich.layout_runtime","Use matching native layout V3 commands and reads");if(this.#language===4&&!this.supportsListNumbering())throw new RichCommandError("breditor_rich.list_numbering_runtime","Use matching native rich V4 list numbering commands");if(selectionPolicy==="document-v1"&&!this.supportsDocumentSelection())throw new RichCommandError("breditor_rich.document_selection_unavailable","Use complete matching native document-selection capabilities");}catch(error){this.#observation?.free();raw.free();this.#raw=undefined;throw error;} }
   richLanguageVersion(){this.#live();return this.#language;}
   supportsRetainedAssetReferences(){const raw=this.#live();return raw.retainedAssetReferencesVersion?.()==="1"&&typeof raw.retainedAssetReferencesJson==="function";}
   retainedAssetReferences(revision){const raw=this.#live(),current=this.#observation.revision;if(revision!==undefined&&revision!==current)throw new RichCommandError("breditor_rich.stale_observation","The asset read was prepared from an older rich publication");if(!this.supportsRetainedAssetReferences())throw new RichCommandError("breditor_rich.asset_references_unavailable","Use complete matching native retained asset reads");return this.#assetReferences.retain(read(raw.retainedAssetReferencesJson(this.#observation)),current,"local-history",this.view().documentJson);}
@@ -192,7 +205,7 @@ class RichCoreEditor {
     if (expectedRevision !== undefined && expectedRevision !== this.#observation.revision) {
       throw new RichCommandError("breditor_rich.stale_observation", "The command was prepared from an older rich view");
     }
-    const input = typeof command === "string" ? command : JSON.stringify(command?.kind==="changeSelectionLayout"?{...command,data:JSON.parse(encodeBlockLayoutPatch(command.data))}:command);
+    const input = typeof command === "string" ? command : JSON.stringify(command?.kind==="changeSelectionLayout"?{...command,data:JSON.parse(encodeBlockLayoutPatch(command.data))}:command?.kind==="setListNumbering"?{...command,data:encodeListNumberingPatch(command.data)}:command);
     return this.#publish(raw.execute(this.#observation,input));
   }
   #publish(result){
@@ -239,7 +252,8 @@ class RichCoreEditor {
   supportsClipboardTextPolicy(){const raw=this.#live();return typeof raw.clipboardTextPolicyVersion==="function"&&raw.clipboardTextPolicyVersion()==="1"&&typeof this.#observation.projectClipboardText==="function";}
   projectClipboardText(selection,clipboardJson,revision){this.#live();if(revision!==undefined&&revision!==this.#observation.revision)throw new RichCommandError("breditor_rich.stale_observation","The clipboard projection was prepared from an older rich view");if(!this.supportsClipboardTextPolicy())throw new RichCommandError("breditor_rich.clipboard_text_policy_unavailable","Use matching native clipboard text policy");return JSON.parse(read(this.#observation.projectClipboardText(JSON.stringify({selection,clipboardJson}))));}
   supportsSelectionFormatting(){const raw=this.#live();return typeof raw.selectionFormattingVersion==="function"&&raw.selectionFormattingVersion()==="1"&&typeof this.#observation.selectionCoverageJson==="function"&&typeof this.#observation.selectionFormatStateJson==="function";}
-  supportsBlockLayout(){const raw=this.#live();return this.#language===3&&typeof raw.blockLayoutVersion==="function"&&raw.blockLayoutVersion()==="1"&&typeof this.#observation.blockLayoutStateJson==="function";}
+  supportsBlockLayout(){const raw=this.#live();return (this.#language===3||this.#language===4)&&typeof raw.blockLayoutVersion==="function"&&raw.blockLayoutVersion()==="1"&&typeof this.#observation.blockLayoutStateJson==="function";}
+  supportsListNumbering(){const raw=this.#live();return this.#language===4&&typeof raw.listNumberingVersion==="function"&&raw.listNumberingVersion()==="1";}
   blockLayoutState(){this.#live();if(!this.supportsBlockLayout())throw new RichCommandError("breditor_rich.layout_unavailable","Use an explicitly selected matching native layout V3 owner");return JSON.parse(read(this.#observation.blockLayoutStateJson()));}
   selectionCoverage(scope="selection"){this.#live();if(!this.supportsSelectionFormatting())throw new RichCommandError("breditor_rich.selection_formatting_unavailable","Use a matching native selection-formatting owner");return JSON.parse(read(this.#observation.selectionCoverageJson(scope)));}
   selectionFormatState(kind){this.#live();if(!this.supportsSelectionFormatting())throw new RichCommandError("breditor_rich.selection_formatting_unavailable","Use a matching native selection-formatting owner");return JSON.parse(read(this.#observation.selectionFormatStateJson(kind)));}

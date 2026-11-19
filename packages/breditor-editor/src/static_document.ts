@@ -120,7 +120,10 @@ const linkPolicy=staticInlineRecipesV1.find(recipe=>recipe.formatKind===K.link)!
 const alignments=["start","center","end","justify","left","right"] as const;
 const directions=["ltr","rtl","auto"] as const;
 
-/** Rich V3 child grammar (the union of rich languages V1–V3). */
+/** Ordered-list marker types of candidate rich V4, identical to `applyListNumbering` and Rust `list_numbering.rs`. */
+const listTypes=["1","a","A","i","I"] as const;
+
+/** Rich child grammar: the union of rich languages V1–V3 plus the candidate V4 list numbering properties. */
 const flowKinds=["paragraph","heading","bullet-list","ordered-list","image","blockquote","code-block","horizontal-rule","task-list"].map(local=>`breditor/${local}`);
 const flowWithTables=[...flowKinds,"breditor/table"];
 interface Grammar {readonly children:readonly string[]|"text"|"none";readonly minimum:number;readonly maximum?:number;readonly required:readonly string[];readonly optional?:readonly string[];readonly firstTextBlock?:boolean}
@@ -131,7 +134,7 @@ const grammar:Readonly<Record<string,Grammar>>={
  "breditor/heading":{children:"text",minimum:0,required:["block-id","level"],optional:layout},
  "breditor/code-block":{children:"text",minimum:0,required:["block-id"],optional:["language",...layout]},
  "breditor/bullet-list":{children:["breditor/list-item"],minimum:1,required:["block-id"]},
- "breditor/ordered-list":{children:["breditor/list-item"],minimum:1,required:["block-id","start"]},
+ "breditor/ordered-list":{children:["breditor/list-item"],minimum:1,required:["block-id","start"],optional:["list-style","list-reversed"]},
  "breditor/list-item":{children:flowWithTables,minimum:1,required:["block-id"],firstTextBlock:true},
  "breditor/task-list":{children:["breditor/task-item"],minimum:1,required:["block-id"]},
  "breditor/task-item":{children:flowWithTables,minimum:1,required:["block-id","checked"],firstTextBlock:true},
@@ -325,7 +328,7 @@ class Renderer {
   id("block-id");
   switch(type){
    case "breditor/heading":integer("level",1,6);break;
-   case "breditor/ordered-list":integer("start",1,MAX_ORDINAL);break;
+   case "breditor/ordered-list":integer("start",1,MAX_ORDINAL);if(Object.hasOwn(result,"list-style"))integer("list-style",1,5);if(Object.hasOwn(result,"list-reversed")&&result["list-reversed"]!==true)this.#fail("property","List reversal is only canonical as true",at("list-reversed"));break;
    case "breditor/task-item":boolean("checked");break;
    case "breditor/code-block":if(Object.hasOwn(result,"language")&&(typeof result["language"]!=="string"||!codeLanguage.test(result["language"])))this.#fail("property","Invalid code language token",at("language"));break;
    case "breditor/table-row":id("row-id");break;
@@ -393,7 +396,7 @@ class Renderer {
     return `<pre${this.#blockAttributes(node,true)}${this.#layout(node)}${language}><code>${node.children.length?inner():"<br>"}</code></pre>`;
    }
    case "breditor/bullet-list":return `<ul${this.#blockAttributes(node,false)}>${inner()}</ul>`;
-   case "breditor/ordered-list":return `<ol${this.#blockAttributes(node,false)} start="${String(p["start"])}">${inner()}</ol>`;
+   case "breditor/ordered-list":return `<ol${this.#blockAttributes(node,false)} start="${String(p["start"])}"${p["list-style"]!==undefined?` type="${listTypes[(p["list-style"] as number)-1]!}"`:""}${p["list-reversed"]===true?" reversed":""}>${inner()}</ol>`;
    case "breditor/list-item":return `<li${this.#blockAttributes(node,false)}>${inner()}</li>`;
    case "breditor/task-list":return `<ul${this.#blockAttributes(node,false)} data-task-list="" role="list">${inner()}</ul>`;
    case "breditor/task-item":{

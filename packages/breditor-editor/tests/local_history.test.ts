@@ -1,7 +1,7 @@
 import {beforeEach,expect,it,vi} from "vitest";
-const mocks=vi.hoisted(()=>({compile:vi.fn(),compileV3:vi.fn(),runtime:vi.fn(),mount:vi.fn(),layoutToolbar:vi.fn(()=>[])}));
+const mocks=vi.hoisted(()=>({compile:vi.fn(),compileV3:vi.fn(),compileV4:vi.fn(),runtime:vi.fn(),mount:vi.fn(),layoutToolbar:vi.fn(()=>[]),toolbarV4:vi.fn(()=>[])}));
 vi.mock("../src/runtime.js",()=>({initializeLocalRuntime:mocks.runtime}));
-vi.mock("@breditor/experimental-rich-content",()=>({compileStandardRichProfileV1:mocks.compile,compileStandardStructuralRichProfileV2:mocks.compile,compileStandardLayoutRichProfileV3:mocks.compileV3,createStandardRichInlinePresentationV1:()=>({}),createStandardRichToolbarV1:()=>[],createStructuralRichToolbarV2:()=>[],createLayoutRichToolbarV3:mocks.layoutToolbar,mountRichEditor:mocks.mount,mountDocumentRichEditor:mocks.mount,insertImageFiles:vi.fn()}));
+vi.mock("@breditor/experimental-rich-content",()=>({compileStandardRichProfileV1:mocks.compile,compileStandardStructuralRichProfileV2:mocks.compile,compileStandardLayoutRichProfileV3:mocks.compileV3,compileStandardRichProfileV4:mocks.compileV4,createRichToolbarV4:mocks.toolbarV4,createStandardRichInlinePresentationV1:()=>({}),createStandardRichToolbarV1:()=>[],createStructuralRichToolbarV2:()=>[],createLayoutRichToolbarV3:mocks.layoutToolbar,mountRichEditor:mocks.mount,mountDocumentRichEditor:mocks.mount,insertImageFiles:vi.fn()}));
 import {openLocalEditor} from "../src/local.js";
 import {openLocalDocumentEditor} from "../src/local_document.js";
 function setup(capable=true){
@@ -9,7 +9,7 @@ function setup(capable=true){
  const core={supportsGeneralRanges:()=>capable,supportsTypingHistory:()=>capable,enableTypingHistory:vi.fn(()=>{const changed=!natural;natural=true;return changed;}),supportsReadOnly:()=>true,setReadOnly:vi.fn(()=>true),dispose:vi.fn(),view:()=>({historyGrouping:natural?"typing-v1":undefined})};
  const profile={descriptor:()=>({schema:{name:"example/unit",version:1},schemaFingerprint:"test"}),inlineCatalogJson:()=>"[]",createEditor:vi.fn(()=>core),restoreEditor:vi.fn(()=>core),supportsTypingHistory:()=>capable,restoreTypingEditor:vi.fn(()=>{natural=true;return core;}),dispose:vi.fn()};
  const dom={surface:document.createElement("div"),toolbar:document.createElement("div"),status:document.createElement("p"),dispose:vi.fn(()=>core.dispose()),closeTypingGroup:vi.fn(()=>true)};
- mocks.compile.mockReturnValue(profile);mocks.compileV3.mockReturnValue(profile);mocks.mount.mockReturnValue(dom);const host=document.createElement("main"),original=document.createElement("button");host.append(original);document.body.append(host);
+ mocks.compile.mockReturnValue(profile);mocks.compileV3.mockReturnValue(profile);mocks.compileV4.mockReturnValue(profile);mocks.mount.mockReturnValue(dom);const host=document.createElement("main"),original=document.createElement("button");host.append(original);document.body.append(host);
  return {host,original,core,profile,dom};
 }
 beforeEach(()=>{vi.clearAllMocks();mocks.runtime.mockResolvedValue({});document.body.replaceChildren();});
@@ -53,5 +53,16 @@ it("conflicting or malformed mode rejects before claiming a host or loading Wasm
 it("V3 opening selects only bootstrap8 and its owner-bound layout toolbar",async()=>{
  const t=setup(),editor=await openLocalEditor({host:t.host,richLanguage:3,initial:{kind:"document",documentJson:"native document"}});
  expect(mocks.compile).not.toHaveBeenCalled();expect(JSON.parse(mocks.compileV3.mock.calls[0]![1])).toMatchObject({formatVersion:8,schema:{version:3}});expect(mocks.layoutToolbar).toHaveBeenCalledWith(t.core,{});editor.dispose();
- const other=setup();mocks.runtime.mockClear();await expect(openLocalEditor({host:other.host,richLanguage:4 as 3})).rejects.toThrow("1, 2 or 3");expect(mocks.runtime).not.toHaveBeenCalled();expect(other.host.firstChild).toBe(other.original);
+ const other=setup();mocks.runtime.mockClear();await expect(openLocalEditor({host:other.host,richLanguage:5 as 3})).rejects.toThrow("1, 2, 3 or 4");expect(mocks.runtime).not.toHaveBeenCalled();expect(other.host.firstChild).toBe(other.original);
+});
+it("candidate V4 opening selects only bootstrap9 and its owner-bound V4 toolbar in both local scopes",async()=>{
+ for(const documentScope of [false,true]){
+  vi.clearAllMocks();mocks.runtime.mockResolvedValue({});
+  const t=setup();(t.profile as Record<string,unknown>)["supportsDocumentSelection"]=()=>true;(t.profile as Record<string,unknown>)["createDocumentEditor"]=t.profile.createEditor;(t.profile as Record<string,unknown>)["restoreDocumentEditor"]=t.profile.restoreEditor;(t.profile as Record<string,unknown>)["restoreDocumentTypingEditor"]=t.profile.restoreTypingEditor;
+  const initial={kind:"document" as const,documentJson:"native document"};
+  const editor=documentScope?await openLocalDocumentEditor({host:t.host,selectionEditing:"document-v1",richLanguage:4,initial}):await openLocalEditor({host:t.host,richLanguage:4,initial});
+  expect(mocks.compile).not.toHaveBeenCalled();expect(mocks.compileV3).not.toHaveBeenCalled();
+  expect(JSON.parse(mocks.compileV4.mock.calls[0]![1])).toEqual({format:"breditor/profile-bootstrap",formatVersion:9,schema:{name:"breditor-editor/standard",version:4},extensions:[]});
+  expect(mocks.toolbarV4).toHaveBeenCalledWith(t.core,{});expect(mocks.layoutToolbar).not.toHaveBeenCalled();editor.dispose();
+ }
 });

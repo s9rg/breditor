@@ -3,6 +3,7 @@ import type {FormatLiteral,RichCell} from "./core.js";
 import {cellKey,id,property,type AstNode,type ElementNode,type RichPresentationModel} from "./model.js";
 import {requireRichInlinePresentation,richInlineRecipes,type RichInlinePresentation} from "./inline_presentation.js";
 import {applyBlockLayout} from "./block_layout_presentation.js";
+import {applyListNumbering} from "./list_numbering_presentation.js";
 export const structuralBlockStylesV2=`[data-breditor-rich] [data-rich-text]{white-space:pre-wrap;min-height:1em}[data-breditor-rich] blockquote{border-left:3px solid #9dbbb0;margin:12px 0;padding:1px 16px}[data-breditor-rich] pre{font-family:ui-monospace,monospace;background:#f1f5f2;padding:12px;overflow:auto}[data-breditor-rich] [data-task-list]{list-style:none;padding-left:12px}[data-breditor-rich] [data-rich-task]{display:grid;grid-template-columns:24px minmax(0,1fr);gap:8px;margin:8px 0}[data-breditor-rich] input[data-task-check]{width:18px;height:18px;margin:4px 0}[data-breditor-rich] [data-task-body]>:first-child{margin-top:0}[data-breditor-rich] hr{border:0;border-top:2px solid #9dbbb0;margin:16px 0}`;
 export interface AssetBinding {image:string;asset:string;generation:string}
 export interface RenderOptions {
@@ -69,7 +70,7 @@ export function render(surface:HTMLElement,value:RichPresentationModel,options:R
   const tag=node.type==="breditor/paragraph"?"p":node.type==="breditor/heading"?`h${String(property(node,"level"))}`:node.type==="breditor/bullet-list"||node.type==="breditor/task-list"?"ul":node.type==="breditor/ordered-list"?"ol":node.type==="breditor/list-item"?"li":node.type==="breditor/blockquote"?"blockquote":"div";
   const element=document.createElement(tag);element.dataset["richBlock"]=id(node);
   if(node.type==="breditor/task-list"){element.dataset["taskList"]="";element.setAttribute("role","list");}
-  if(node.type==="breditor/ordered-list")element.setAttribute("start",String(property(node,"start")));
+  if(node.type==="breditor/ordered-list")applyListNumbering(element,node);
   if(node.type==="breditor/paragraph"||node.type==="breditor/heading"){
    element.dataset["richText"]=id(node);
    applyBlockLayout(element,node);

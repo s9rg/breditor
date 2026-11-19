@@ -11,6 +11,8 @@ export {flowEdgeEligible,selectedFlowAtom} from "./dist/browser/flow_controls.js
 export {applyBlockLayout} from "./dist/browser/block_layout_presentation.js";
 export {blockLayoutControls,blockLayoutShortcut} from "./dist/browser/block_layout_controls.js";
 export {encodeBlockLayoutPatch} from "./dist/browser/block_layout_serialization.js";
+export {applyListNumbering,listNumberingOf,listNumberStyles,listNumberHtmlTypes} from "./dist/browser/list_numbering_presentation.js";
+export {encodeListNumberingPatch} from "./dist/browser/list_numbering_serialization.js";
 export {parseRichSearchMetadata} from "./dist/browser/search_metadata.js";
 export {parseRichWritingTools} from "./dist/browser/writing_tools_metadata.js";
 export {parseRichRetainedAssetReferences} from "./dist/browser/retained_asset_references_metadata.js";
