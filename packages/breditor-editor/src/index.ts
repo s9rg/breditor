@@ -4,6 +4,7 @@ export {initializeLocalRuntime,type RuntimeInput} from "./runtime.js";
 export {openLocalDocumentEditor,type LocalDocumentEditor,type LocalDocumentEditorOptions,type LocalDocumentInitial} from "./local_document.js";
 export {emptyDocumentJson} from "./empty_document.js";
 export {createRichFullscreen as createFullscreen,mountRichFullscreenControls as mountFullscreenControls,type RichFullscreenHost,type RichFullscreenHostState,type RichFullscreenOptions,type RichFullscreenState,type RichFullscreenController,type RichFullscreenControls,type RichFullscreenControlsOptions} from "@breditor/experimental-rich-content";
+export {mountRichSelectionToolbar as mountSelectionToolbar,mountRichContextMenu as mountContextMenu,type RichContextUiHost,type RichContextUiHostState,type RichContextSelectionKind,type RichContextControlView,type RichContextUiOptions,type RichSelectionToolbar,type RichSelectionToolbarOptions,type RichSelectionToolbarState,type RichContextMenu,type RichContextMenuOptions,type RichContextMenuState} from "@breditor/experimental-rich-content";
 export {mountRichSearchPanel as mountSearchPanel,type RichSearchHost,type RichSearchHostState,type RichSearchPanel,type RichSearchPanelOptions,type RichSearchPanelState,type RichSearchResults,type RichSearchQuery,type RichSearchReplacement,type RichSearchMetadata} from "@breditor/experimental-rich-content";
 export type {ClipboardInterchangeFactory} from "./clipboard_interchange.js";
 export {mountSlashCommands,slashCommandHost,type SlashCommandEditor} from "./slash_commands.js";
