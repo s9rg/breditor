@@ -7,6 +7,8 @@ export {mountRichWritingTools,type RichWritingToolsPanel,type RichWritingToolsPa
 export type {RichFullscreenHost,RichFullscreenHostState,RichFullscreenOptions,RichFullscreenState,RichFullscreenController} from "./dist/browser/fullscreen_types.js";
 export {createRichFullscreen} from "./dist/browser/fullscreen_controller.js";
 export {mountRichFullscreenControls,type RichFullscreenControls,type RichFullscreenControlsOptions} from "./dist/browser/fullscreen_controls.js";
+export type {RichContextUiHost,RichContextUiHostState,RichContextSelectionKind,RichContextControlView,RichContextUiOptions,RichSelectionToolbar,RichSelectionToolbarOptions,RichSelectionToolbarState,RichContextMenu,RichContextMenuOptions,RichContextMenuState} from "./dist/browser/context_ui_types.js";
+export {mountRichSelectionToolbar,mountRichContextMenu,richSelectionToolbarDefaults,richContextMenuDefaults,richContextUiStyles} from "./dist/browser/context_ui.js";
 export type {RichClipboardInterchange,RichClipboardInterchangeReport,RichInterchangeFormatReport,RichInterchangeNotice,RichInterchangeResult} from "./dist/browser/clipboard_interchange.js";
 export {mountRichEditor,mountDocumentRichEditor,RichDomEditor,defaultToolbar,RichAssetStore,defaultAssetLimits,insertImageFiles,type RichEditorOptions,type RichDocumentEditorOptions,type ToolbarControl,type ActionContext,type AssetBinding,type RenderOptions,type RichAssetOptions,type AssetInfo,type AssetLimits,type AssetStatus,type AssetUploader,type RasterMime} from "./dist/browser/index.js";
 export {RichAssetStoreCustody,RichAssetCustodyError} from './dist/browser/index.js';

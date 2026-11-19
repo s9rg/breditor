@@ -64,6 +64,7 @@ export class SharedDomEditor<P extends SharedSelectionPolicy="original"> {
  readonly #writingEvents=new RichWritingEvents();readonly #writingReads=new RichWritingReadRegistry();
  readonly #placeholder:RichPlaceholderPresentation|undefined;
  #prefix=`shared:${crypto.randomUUID()}`;#counter=0n;#controls:{control:SharedToolbarControl<P>;view:RichControlView<ActionContext<P>>}[]=[];
+ readonly #borrowed=new Set<{control:SharedToolbarControl<P>;view:RichControlView<ActionContext<P>>}>();
  readonly #selectionPolicy:P;readonly #document:SharedRichEditor<"document-v1">|undefined;
  readonly #interchange:RichClipboardInterchange|undefined;
  readonly #inputRules:boolean;
@@ -84,7 +85,7 @@ export class SharedDomEditor<P extends SharedSelectionPolicy="original"> {
   this.toolbar=d.createElement("div");this.toolbar.className="breditor-shared-toolbar";this.toolbar.setAttribute("role","toolbar");this.toolbar.setAttribute("aria-label","Shared rich text controls");this.status=d.createElement("p");this.status.setAttribute("role","status");
   const seen=new Set<string>();for(const control of options.toolbar??[...defaultSharedToolbarFor<P>(),...moveSharedToolbarFor<P>()]){
    if(seen.has(control.id))throw Error("Duplicate shared toolbar control");seen.add(control.id);
-   const view=mountToolbarControl(this.toolbar,control,{prefix:"shared",signal:this.#abort.signal,sync:()=>this.#sync(),stamp:()=>JSON.stringify(options.core.view()),attempt:work=>this.#attempt(work),focus:()=>this.focus(),run:(value,fields)=>this.#perform(c=>control.run(c,value,fields))});this.#controls.push({control,view});
+   const view=this.#mountControl(this.toolbar,control,this.#abort.signal);this.#controls.push({control,view});
   }
   this.#placeholder=placeholder?new RichPlaceholderPresentation(this.surface,placeholder.label):undefined;
   root.replaceChildren(style,this.toolbar,this.#placeholder?.container??this.surface,this.status);render(this.surface,this.#model,options);this.#refreshControls();
@@ -114,7 +115,25 @@ export class SharedDomEditor<P extends SharedSelectionPolicy="original"> {
  #report(error:unknown):void{if(this.#disposed)return;this.#reportedError={error};this.status.textContent=error instanceof Error?error.message:String(error);try{this.#options.onError?.(error);}catch{/* A callback cannot rewind committed state. */}}
  #alreadyReported(error:unknown):boolean{return this.#reportedError!==undefined&&this.#reportedError.error===error;}
  #attempt(run:()=>void):void{this.#reportedError=undefined;try{run();}catch(error){if(!this.#alreadyReported(error)){this.#refresh(false);this.#report(error);}}}
- #refreshControls():void{const context=this.#context(),stamp=JSON.stringify(this.#options.core.view());for(const {control,view}of this.#controls)view.refresh(context,control.enabled(context)&&(this.#model.view.readOnly!==true||control.readOnlySafe===true),stamp);}
+ #mountControl(container:HTMLElement,control:SharedToolbarControl<P>,signal:AbortSignal):RichControlView<ActionContext<P>>{return mountToolbarControl(container,control,{prefix:"shared",signal,sync:()=>this.#sync(),stamp:()=>JSON.stringify(this.#options.core.view()),attempt:work=>this.#attempt(work),focus:()=>this.focus(),run:(value,fields)=>this.#perform(c=>control.run(c,value,fields))});}
+ /** Context UI port (see RichContextUiHost): the same admitted control, widget, gating and command path in another presentation. */
+ contextUiState():{readonly revision:string;readonly closed:boolean;readonly busy:boolean;readonly composing:boolean;readonly readOnly:boolean;readonly selection:"none"|"caret"|"text"|"node"|"grid"|"document"}{
+  const view=this.#model.view,s=view.selection,selection=!s?"none" as const:s.kind==="text"?(s.anchor.block===s.focus.block&&s.anchor.offset===s.focus.offset?"caret" as const:"text" as const):s.kind;
+  return Object.freeze({revision:view.revision,closed:this.#disposed,busy:this.#busy,composing:!!this.#composition,readOnly:view.readOnly===true,selection});
+ }
+ subscribeContextUi(listener:()=>void):()=>void{this.#live();return this.#writingEvents.subscribe(listener);}
+ contextControlIds():readonly string[]{return Object.freeze(this.#controls.map(entry=>entry.control.id));}
+ mountContextControl(container:HTMLElement,id:string,signal:AbortSignal):{readonly id:string;readonly element:HTMLElement;readonly button:HTMLButtonElement;activate():void}{
+  this.#live();const found=this.#controls.find(item=>item.control.id===id);if(!found)throw Error(`Toolbar control ${id} is not admitted by this editor`);
+  if(signal.aborted||this.#abort.signal.aborted)throw Error("Context control lease is already closed");
+  if(container.ownerDocument!==this.surface.ownerDocument||container===this.surface||this.surface.contains(container)||container.contains(this.surface))throw Error("Context controls need a host outside editable content in the editor document");
+  const abort=new AbortController(),stop=()=>abort.abort();this.#abort.signal.addEventListener("abort",stop,{signal:abort.signal});signal.addEventListener("abort",stop,{signal:abort.signal});
+  const view=this.#mountControl(container,found.control,abort.signal),element=view.button.parentElement as HTMLElement,entry={control:found.control,view},boundary=()=>this.#boundary();
+  element.addEventListener("pointerdown",boundary,{capture:true,signal:abort.signal});element.addEventListener("focusin",boundary,{capture:true,signal:abort.signal});
+  this.#borrowed.add(entry);abort.signal.addEventListener("abort",()=>{this.#borrowed.delete(entry);element.remove();},{once:true});this.#refreshControls(entry);
+  return Object.freeze({id,element,button:view.button,activate:()=>{if(!abort.signal.aborted)view.activate();}});
+ }
+ #refreshControls(only?:{control:SharedToolbarControl<P>;view:RichControlView<ActionContext<P>>}):void{const context=this.#context(),stamp=JSON.stringify(this.#options.core.view());for(const {control,view}of only?[only]:[...this.#controls,...this.#borrowed])view.refresh(context,control.enabled(context)&&(this.#model.view.readOnly!==true||control.readOnlySafe===true),stamp);}
  #refresh(focus:boolean,force=false):void{
   if(this.#disposed||this.#composition)return;this.#refreshing=true;try{const previous=this.#model.view.documentJson,policy=this.#model.view.readOnlyRevision,active=this.surface.ownerDocument.activeElement,ownedFocus=active===this.surface||!!active&&this.surface.contains(active);
   this.#model=this.#read();this.#logical=this.#isLogical();

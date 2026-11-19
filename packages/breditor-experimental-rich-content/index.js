@@ -9,6 +9,7 @@ export {mountRichSearchPanel} from "./dist/browser/search_panel.js";
 export {mountRichWritingTools} from "./dist/browser/writing_tools_panel.js";
 export {createRichFullscreen} from "./dist/browser/fullscreen_controller.js";
 export {mountRichFullscreenControls} from "./dist/browser/fullscreen_controls.js";
+export {mountRichSelectionToolbar,mountRichContextMenu,richSelectionToolbarDefaults,richContextMenuDefaults,richContextUiStyles} from "./dist/browser/context_ui.js";
 
 const searchResults=new WeakMap();
 class OwnedRichSearchResults {

@@ -42,6 +42,8 @@ export interface SharedDocumentEditorSession extends SharedDocumentEditorRecover
  search():RichSearchHost<SharedSearchResults>;
  writing():import("@breditor/experimental-rich-content").RichWritingToolsHost;
  fullscreen():import("@breditor/experimental-rich-content").RichFullscreenHost;
+ /** Borrowed port for the opt-in selection toolbar and context menu; it never publishes. */
+ contextUi():import("@breditor/experimental-rich-content").RichContextUiHost;
  setPlaceholderLabel(label:string|null):void;
  view():SharedDocumentView;state():SharedSaveState;flush():Promise<void>;retrySave():Promise<void>;
 }
@@ -66,6 +68,7 @@ class DocumentSessionOwner implements SharedDocumentEditorSession {
  search():RichSearchHost<SharedSearchResults>{this.#active();return this.#dom;}
  writing():import("@breditor/experimental-rich-content").RichWritingToolsHost{this.#active();return this.#dom;}
  fullscreen():import("@breditor/experimental-rich-content").RichFullscreenHost{this.#active();return this.#dom;}
+ contextUi():import("@breditor/experimental-rich-content").RichContextUiHost{this.#active();return this.#dom;}
  setPlaceholderLabel(label:string|null):void{this.#active();this.#dom.setPlaceholderLabel(label);}
  view():SharedDocumentView{return this.core.view();}checkpointJson():string{return this.core.checkpointJson();}
  state():SharedSaveState{return this.#session.state();}flush():Promise<void>{return this.#session.flush();}retrySave():Promise<void>{return this.#session.retry();}
