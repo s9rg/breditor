@@ -39,7 +39,9 @@ byte for byte, to the vanilla string with the default wrapper.
 - A bare `breditor/document` root element is also accepted.
 
 The renderer checks the input against the rich content grammar, which is the union of rich
-languages V1 to V3. It checks the following:
+languages V1 to V3 plus the candidate V4 ordered-list numbering properties (`list-style` 1–5,
+`list-reversed: true`; see `RICH_LANGUAGE_V4.md`), emitted as `<ol type reversed>`. It checks the
+following:
 
 - Exact node and envelope fields. `entityId` must be `null`.
 - Required and allowed `breditor/*` properties for each element type. An unexpected property,

@@ -7,6 +7,10 @@ remain in progress.
 
 ## Profile and property decisions
 
+The unreleased local-only candidate rich V4 ([RICH_LANGUAGE_V4.md](RICH_LANGUAGE_V4.md))
+includes these layout semantics unchanged; V3 itself and its fingerprint are not
+affected, and shared layout remains V3 only.
+
 Rich V1 and V2 remain exact. Rich V3 explicitly adds optional layout properties
 to paragraphs, headings and code blocks while retaining the V2 structural
 grammar. Its fingerprint differs even when every layout property is absent.

@@ -6,6 +6,13 @@ its durable formats and Wasm transport.
 
 ## Unreleased
 
+- Add the explicit, unreleased, local-only candidate rich language V4 (bootstrap
+  format 9, `richLanguage: 4`) with bounded ordered-list numbering: marker style
+  (decimal, lower/upper alpha, lower/upper roman) and reversal per list, a guarded
+  `setListNumbering` command, live/static rendering, a V4 toolbar control and
+  profile-aware HTML/Markdown interchange. V1–V3, their fingerprints and defaults
+  are unchanged; shared openings reject `richLanguage: 4`. V4's fingerprint will
+  change as later candidate slices land; do not persist V4 data yet.
 - Verify original review/metadata journals under actual cold target custody.
   Preserve retained packets, receipts and future Native histories across the
   canonical shutdown checkpoint. Real journal invalidation now revokes the
