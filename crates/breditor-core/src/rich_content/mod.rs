@@ -23,6 +23,7 @@ mod grid_destination;
 mod identity;
 mod image_binding;
 mod image_draft;
+pub(crate) mod image_link;
 mod inline_format_state;
 mod input_rules;
 mod list_draft;
@@ -73,6 +74,9 @@ pub use drafts::{RichBlockDraft, RichDraftError, TableCellDraft, TableColumnDraf
 pub use flow_position::{RichFlowParent, RichFlowPosition};
 pub use general_range_ids::allocate_general_range_paragraphs;
 pub use image_draft::ImageDraft;
+pub use image_link::{
+    RICH_IMAGE_LINK_HREF_MAX_BYTES, RichImageHref, RichImageLink, RichImageLinkError,
+};
 pub use inline_format_state::{
     RichInlineFormatState, RichInlineFormatStateError, inspect_inline_format,
 };

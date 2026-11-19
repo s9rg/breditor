@@ -1,6 +1,6 @@
 import MarkdownIt,{type Token} from "markdown-it";
 import {Budget,bytes,fail,limits,sourceWithinBudget} from "./budget.js";
-import {HtmlExport} from "./html_export.js";
+import {HtmlExport,imageLink} from "./html_export.js";
 import {property,type Element,type Node,type Text} from "./wire.js";
 import {safeUrl} from "./safe_url.js";
 import type {InterchangeOptions} from "./types.js";
@@ -79,13 +79,19 @@ function inlineRoundTrips(nodes:readonly Node[],markdown:string):boolean {
   }
   return actual.length===expected.length&&actual.every(([text,formats],i)=>text===expected[i]![0]&&formats===expected[i]![1]);
 }
-/** The image must re-parse as exactly one image with the same URL and plain alt text. */
-function imageRoundTrips(markdown:string,src:string,alt:string):boolean {
+/** The image must re-parse as exactly one image with the same URL and plain alt text, wrapped
+ * in exactly one link to `href` when the candidate V4 image is linked. */
+function imageRoundTrips(markdown:string,src:string,alt:string,href?:string):boolean {
   let tokens:Token[];try{tokens=verifier.parseInline(markdown,{})[0]?.children??[];}catch{return false;}
+  if(href!==undefined){
+    if(tokens.length!==3||tokens[0]?.type!=="link_open"||tokens[0].attrGet("href")!==href||tokens[2]?.type!=="link_close")return false;
+    tokens=tokens.slice(1,2);
+  }
   const image=tokens[0],label=image?.children??[];
   return tokens.length===1&&image?.type==="image"&&image.attrGet("src")===src&&label.every(t=>t.type==="text")&&label.map(t=>t.content).join("")===alt;
 }
-const imageKeys=new Set(["breditor/block-id","breditor/image-id","breditor/asset-id","breditor/asset-generation","breditor/decorative","breditor/alt-text"]);
+// A same-window candidate V4 image link is expressible as `[![alt](src)](href)`; a new-window one is not.
+const imageKeys=new Set(["breditor/block-id","breditor/image-id","breditor/asset-id","breditor/asset-generation","breditor/decorative","breditor/alt-text","breditor/image-href"]);
 const alignMarkers:Readonly<Record<string,string>>={none:"---",5:":---",2:":---:",6:"---:"};
 const destination=(url:string)=>`<${url.replace(/</g,"%3C").replace(/>/g,"%3E")}>`;
 /** An HTML block ends at a blank line, so blank lines inside fallback HTML become character references. */
@@ -151,7 +157,8 @@ export function exportMarkdownRoot(nodes:Node[],b:Budget,options:InterchangeOpti
       const alt=property(n,"alt-text");
       if(n.children.length||Object.keys(n.properties).some(k=>!imageKeys.has(k))||typeof alt!=="string"||property(n,"decorative")!==(alt==="")||alt!==""&&!alt.trim())return fallback();
       const src=new HtmlExport(new Budget(),options).imageUrl(n);if(!src)return fallback();
-      const markdown=`![${escape(alt)}](${destination(src)})`;return imageRoundTrips(markdown,src,alt)?markdown:fallback();
+      const link=imageLink(n),image=`![${escape(alt)}](${destination(src)})`,markdown=link?`[${image}](${destination(link.href)})`:image;
+      return imageRoundTrips(markdown,src,alt,link?.href)?markdown:fallback();
     }
     return fallback();
   };

@@ -37,7 +37,10 @@ impl ValidationState<'_> {
                 && crate::rich_content::block_layout::allows_property(kind, name);
             let numbering = self.schema.supports_rich_list_numbering()
                 && crate::rich_content::list_numbering::allows_property(kind, name);
-            if !ast_properties::allows_property(kind, name) && !layout && !numbering {
+            let image_link = self.schema.supports_rich_image_links()
+                && crate::rich_content::image_link::allows_property(kind, name);
+            if !ast_properties::allows_property(kind, name) && !layout && !numbering && !image_link
+            {
                 self.element_property_issue(
                     ValidationCode::UnknownElementProperty,
                     path,
@@ -63,6 +66,12 @@ impl ValidationState<'_> {
         if self.schema.supports_rich_list_numbering()
             && crate::rich_content::list_numbering::supports_kind(kind)
             && let Err(reason) = crate::rich_content::list_numbering::validate(element)
+        {
+            self.rich_issue(ValidationCode::RichContentContract, path, reason);
+        }
+        if self.schema.supports_rich_image_links()
+            && crate::rich_content::image_link::supports_kind(kind)
+            && let Err(reason) = crate::rich_content::image_link::validate(element)
         {
             self.rich_issue(ValidationCode::RichContentContract, path, reason);
         }

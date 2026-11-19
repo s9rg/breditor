@@ -188,9 +188,9 @@
     {
       "id":"advanced-images","area":"Images","status":"partial",
       "summary":"Image layouts, handles, links and external sources",
-      "current":"Numeric dimensions and block captions work. Inline/wrapped images, drag handles, image links, responsive variants and safe remote-URL ingestion are not a complete product workflow.",
+      "current":"Numeric dimensions and block captions work. Inline/wrapped images, drag handles, responsive variants and safe remote-URL ingestion are not a complete product workflow. Candidate local rich V4 adds image links: canonical http(s) targets under the inline link policy, an optional new-window flag, mandatory alt text, inert navigation while editing, one-group SetImageLink history, live/static rendering and HTML/Markdown interchange.",
       "acceptance":"Define supported layouts and ingestion policy, then test resize gestures, responsive output, link/alt behavior and asset lifecycle. Do not turn remote URLs into implicit server fetches.",
-      "evidence":["packages/breditor-experimental-rich-content/src/render.ts","packages/breditor-collaboration/src/toolbar.ts"],
+      "evidence":["packages/breditor-experimental-rich-content/src/render.ts","packages/breditor-collaboration/src/toolbar.ts","crates/breditor-core/src/rich_content/image_link.rs"],
       "sources":["tiptap-image","ckeditor-overview"]
     },
     {

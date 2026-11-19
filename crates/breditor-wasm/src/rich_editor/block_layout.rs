@@ -24,6 +24,12 @@ impl BreditorRichEditor {
     pub fn text_language_version(&self) -> String {
         if self.inner.context().schema().supports_rich_text_language() { "1" } else { "0" }.into()
     }
+    /// String1 selects candidate V4 image links (`setImageLink`); String0 means unsupported.
+    #[must_use]
+    #[wasm_bindgen(js_name=imageLinkVersion)]
+    pub fn image_link_version(&self) -> String {
+        if self.inner.context().schema().supports_rich_image_links() { "1" } else { "0" }.into()
+    }
 }
 #[wasm_bindgen]
 impl BreditorRichObservation {

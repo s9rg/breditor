@@ -499,7 +499,7 @@ for bounds, independent shared fields, history and qualification scope.
 
 `richLanguage: 4` selects the unreleased candidate V4 for local openings
 (`openLocalEditor`, `openLocalDocumentEditor` and the local React components'
-`initialOptions`). It is V3 plus bounded ordered-list numbering and will gain
+`initialOptions`). It is V3 plus bounded ordered-list numbering, text-run language and image links, and will gain
 more features before release, so its fingerprint changes and V4 data must not be
 persisted yet. Shared openings reject `richLanguage: 4` explicitly; shared
 editing stays on languages 1–3. The standard schema is
@@ -532,6 +532,18 @@ editor.execute({kind: 'setTextLanguage', data: {language: null}});    // clear
 Tags are a bounded, well-formed subset of BCP 47 (language, optional script,
 region and variants; at most 35 characters; no private-use `x-` or extension
 subtags). The static renderer emits the same `lang` spans.
+
+V4 images can be links. The link wraps the image only (never its caption), uses
+the same safe URL policy as inline links (canonical credential-free HTTP(S), at
+most 2,048 bytes) and needs alternative text: a decorative image cannot be
+linked. While editing, clicking a linked image selects it and never navigates.
+The V4 toolbar adds **Image link** (URL plus same/new window) and **Remove image
+link**; the static renderer emits the same `<a>` around the `<img>`.
+
+```js
+editor.execute({kind: 'setImageLink', data: {image: 'img-1', href: 'https://example.com/', newWindow: true}});
+editor.execute({kind: 'setImageLink', data: {image: 'img-1', href: null}}); // remove
+```
 
 See `docs/RICH_LANGUAGE_V4.md` in the repository for domains, semantics,
 interchange behavior and what is not included (legal multilevel counters).

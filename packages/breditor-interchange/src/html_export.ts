@@ -3,6 +3,7 @@ import {escapeAttribute as a,escapeText as t,safeUrl} from "./safe_url.js";
 import {nodeText,property,stringProperty,type Element,type Literal,type Node} from "./wire.js";
 import type {InterchangeOptions} from "./types.js";
 import {isCanonicalLanguageTagV1} from "./language_tag.js";
+import {isImageLinkHrefV1} from "./image_link_href.js";
 /** Export only native-admitted DTOs. Every output tag, attribute and CSS property is library-owned. */
 export class HtmlExport {
   constructor(readonly b:Budget,readonly options:InterchangeOptions){}
@@ -72,9 +73,11 @@ export class HtmlExport {
   }
   #image(node:Element,depth:number):string {
     const src=this.imageUrl(node),alt=stringProperty(node,"alt-text"),caption=node.children.length?this.blocks(node.children,depth+1):"";
-    if(!src)return `<p style="white-space:pre-wrap">${t(alt)}</p>${caption}`;
+    const link=imageLink(node);
+    if(!src)return `<p style="white-space:pre-wrap">${link?`${link.open}${t(alt)}</a>`:t(alt)}</p>${caption}`;
     const width=property(node,"width"),height=property(node,"height"),size=typeof width==="number"&&typeof height==="number"&&Number.isInteger(width)&&Number.isInteger(height)&&width>=1&&height>=1&&width<=4096&&height<=4096?` width="${width}" height="${height}"`:"";
-    return `<figure><img src="${a(src)}" alt="${a(alt)}"${size}>${caption?`<figcaption>${caption}</figcaption>`:""}</figure>`;
+    const image=`<img src="${a(src)}" alt="${a(alt)}"${size}>`;
+    return `<figure>${link?`${link.open}${image}</a>`:image}${caption?`<figcaption>${caption}</figcaption>`:""}</figure>`;
   }
   #table(node:Element,depth:number):string {
     const rows=node.children.filter((n):n is Element=>n.kind==="element"),columns=property(node,"columns") as {id:string;width:number}[],merges=property(node,"merges") as Record<string,unknown>[];
@@ -92,6 +95,13 @@ export class HtmlExport {
     }).join("")}</tr>`).join("");
     return `<table><colgroup>${columns.map(c=>{if(!Number.isInteger(c.width)||c.width<32||c.width>4096)fail("native-admission");return `<col width="${c.width}">`;}).join("")}</colgroup><tbody>${body}</tbody></table>`;
   }
+}
+/** Candidate V4 image link: the opening `<a>` from admitted canonical values only (link wraps the image, not the caption). */
+export function imageLink(node:Element):{href:string;newWindow:boolean;open:string}|undefined {
+  const href=property(node,"image-href"),newWindow=property(node,"image-link-new-window");
+  if(href===undefined&&newWindow===undefined)return undefined;
+  if(!isImageLinkHrefV1(href)||newWindow!==undefined&&newWindow!==true||property(node,"decorative")!==false)fail("native-admission");
+  return {href,newWindow:newWindow===true,open:`<a href="${a(href)}"${newWindow===true?' target="_blank" rel="noopener noreferrer"':""}>`};
 }
 export function exportHtmlRoot(nodes:Node[],b:Budget,options:InterchangeOptions,kind:"text"|"flow"|"grid"):string {
   const writer=new HtmlExport(b,options),wrapper=nodes[0];

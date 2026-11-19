@@ -28,7 +28,7 @@ function view(json:string,selection:RichView["selection"]=null):RichView{
  return {format:"breditor/rich-view",formatVersion:1,revision:"1",documentJson:json,readOnly:false,selection,pendingFormatsJson:null,undoDepth:0,redoDepth:0,historyCapacity:100,grid:null,tables:[]} as unknown as RichView;
 }
 const catalogJson=JSON.stringify({format:"breditor/inline-format-catalog",formatVersion:1,schema:{name:"breditor/rich-test",version:1,fingerprint},formats:[...staticInlineCatalogV1].sort((a,b)=>a.kind<b.kind?-1:1)});
-const owner=(language:1|2|3|4,numbering=language===4)=>({supportsStandardInlineControls:()=>true,caretFormats:()=>[],inlineFormatState:(kind:string)=>({format:"breditor/rich-inline-format-state",formatVersion:1,formatKind:kind,schema:{name:"breditor/rich-test",version:1,fingerprint},state:{kind:"unset"}}),richLanguageVersion:()=>language,supportsListNumbering:()=>numbering,supportsTextLanguage:()=>numbering,supportsBlockLayout:()=>language>=3,blockLayoutState:()=>({format:"breditor/rich-block-layout-state",formatVersion:1,schema:{name:"t",version:1,fingerprint},blocks:"0",alignment:{kind:"unavailable"},direction:{kind:"unavailable"},indent:{kind:"unavailable"},lineHeightPercent:{kind:"unavailable"}})}) as unknown as RichCoreEditor;
+const owner=(language:1|2|3|4,numbering=language===4)=>({supportsStandardInlineControls:()=>true,caretFormats:()=>[],inlineFormatState:(kind:string)=>({format:"breditor/rich-inline-format-state",formatVersion:1,formatKind:kind,schema:{name:"breditor/rich-test",version:1,fingerprint},state:{kind:"unset"}}),richLanguageVersion:()=>language,supportsListNumbering:()=>numbering,supportsTextLanguage:()=>numbering,supportsImageLinks:()=>numbering,supportsBlockLayout:()=>language>=3,blockLayoutState:()=>({format:"breditor/rich-block-layout-state",formatVersion:1,schema:{name:"t",version:1,fingerprint},blocks:"0",alignment:{kind:"unavailable"},direction:{kind:"unavailable"},indent:{kind:"unavailable"},lineHeightPercent:{kind:"unavailable"}})}) as unknown as RichCoreEditor;
 
 describe("candidate rich V4 list numbering presentation",()=>{
  it("renders start, closed type tokens and reversed per list without inheritance",()=>{
@@ -95,13 +95,13 @@ describe("explicit V4 Wasm factory boundary",()=>{
  function stringResult(value:string){return {status:"value",takeValue:()=>value,free:vi.fn()};}
  function local(binding:object,capability:unknown="1"){
   const observation={revision:"1",blockLayoutStateJson:vi.fn(),free:vi.fn()};
-  const editor={observe:()=>observation,blockLayoutVersion:()=>"1",listNumberingVersion:()=>capability,textLanguageVersion:()=>"1",execute:vi.fn(()=>({status:"content",takeObservation:()=>observation,free:vi.fn()})),free:vi.fn()};
+  const editor={observe:()=>observation,blockLayoutVersion:()=>"1",listNumberingVersion:()=>capability,textLanguageVersion:()=>"1",imageLinkVersion:()=>"1",execute:vi.fn(()=>({status:"content",takeObservation:()=>observation,free:vi.fn()})),free:vi.fn()};
   const raw={descriptorJson:()=>stringResult(JSON.stringify({kind:"rich",abiVersion:1,...binding})),createEditor:()=>({status:"editor",takeEditor:()=>editor,free:vi.fn()}),free:vi.fn()};
   const factory=vi.fn(()=>({status:"profile",takeProfile:()=>raw,free:vi.fn()}));
   const wasm={BreditorRichProfile:{fromBootstrapJson:factory,fromBootstrapJsonV4:factory,fromStandardBootstrapJsonV4:factory,fromStandardLayoutBootstrapJsonV3:factory}} as unknown as RichWasmModule;
   return {wasm,raw,editor,factory};
  }
- const v4={richLanguageVersion:4,taskStructureVersion:1,blockLayoutVersion:1,listNumberingVersion:1,textLanguageVersion:1};
+ const v4={richLanguageVersion:4,taskStructureVersion:1,blockLayoutVersion:1,listNumberingVersion:1,textLanguageVersion:1,imageLinkVersion:1};
  it("selects V4 only explicitly with every matching capability",()=>{
   const a=local(v4),profile=compileStandardRichProfileV4(a.wasm,"bootstrap"),core=profile.createEditor("document");
   expect(core.richLanguageVersion?.()).toBe(4);expect(core.supportsListNumbering?.()).toBe(true);expect(core.supportsBlockLayout?.()).toBe(true);

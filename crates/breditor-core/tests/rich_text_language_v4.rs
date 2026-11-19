@@ -23,8 +23,9 @@ use breditor_core::{
 use serde_json::{Value, json};
 type Result<T = ()> = std::result::Result<T, Box<dyn std::error::Error>>;
 
+/// Current candidate V4 (the image-link slice bumped the `breditor/image` type revision).
 const V4_FINGERPRINT: &str =
-    "sha256:65b0ae435b5815cc12431c6d6098f1e115d43047c48db00de71aa98513fd044c";
+    "sha256:f17cf0d20d317b80d5081e8093981cdb3e3f2674fe53c285dbd5a6b5110422c0";
 
 fn schema(revision: u32) -> Result<CompiledSchema> {
     let id = SchemaId::new(QualifiedName::try_new("example/layout")?, SchemaVersion::try_new(1)?);
@@ -111,7 +112,7 @@ fn v4_fingerprint_is_locked_and_v1_to_v3_stay_exact_without_the_format() -> Resu
         assert!(!old.supports_rich_text_language());
         assert!(old.inline_format_property_contract(&RichLanguageTag::format_kind()).is_none());
     }
-    // Candidate V4 changes as later slices land; this pins the language slice exactly.
+    // Candidate V4 changes as later slices land; this pins the current candidate exactly.
     assert_eq!(d.fingerprint().to_string(), V4_FINGERPRINT);
     assert!(d.supports_rich_text_language() && d.supports_rich_list_numbering());
     let contract =

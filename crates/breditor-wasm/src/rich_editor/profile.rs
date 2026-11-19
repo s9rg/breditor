@@ -104,6 +104,9 @@ impl BreditorRichProfile {
         if self.schema.supports_rich_text_language() {
             value["textLanguageVersion"] = serde_json::json!(1);
         }
+        if self.schema.supports_rich_image_links() {
+            value["imageLinkVersion"] = serde_json::json!(1);
+        }
         BreditorStringResult::from_value(value.to_string())
     }
     /// Read complete typed inline declarations without exposing the schema proof.

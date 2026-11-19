@@ -158,6 +158,15 @@ export emits `<span lang>`, and Markdown export falls back to HTML for tagged
 runs with a `markdown-feature` notice. Other owners keep accepting and dropping
 `lang`/`xml:lang` silently.
 
+V4 owners also report `supportsImageLinks()`. For them, an `<img>` inside a safe
+`<a href>` (including `<figure><a href><img></a><figcaption>`) becomes the
+image's own `breditor/image-href` (plus `image-link-new-window` for
+`target="_blank"`); unsafe or out-of-subset targets report `unsafe-link` and a
+decorative image keeps no link (`image-alt`). HTML export wraps only the image
+in `<a>`, and Markdown export writes `[![alt](src)](href)` for same-window links
+that round trip, else HTML with `markdown-feature`. Other owners keep dropping
+the link around an image silently. See [RICH_LANGUAGE_V4.md](RICH_LANGUAGE_V4.md).
+
 Remaining gaps: real captured clipboard dumps per producer/platform/version,
 Word for the web non-decimal formats (reported, rendered as decimal), CSS
 `font` shorthand, Excel/Sheets hidden rows and columns (still rejected), cell

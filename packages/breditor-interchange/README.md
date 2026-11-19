@@ -122,6 +122,24 @@ original behavior and notices are unchanged. With a V4 owner:
 - Markdown export keeps decimal lists as `N.` lists. Letter, roman and reversed
   lists are exported as safe HTML with a `markdown-feature` notice.
 
+### Image links (candidate rich V4 owners)
+
+The adapter also reads the owner's optional `supportsImageLinks()` once. Only a
+local candidate rich V4 owner reports `true`; every other owner keeps the
+original conversion (the link around an image is dropped silently, an unsafe
+href reports `unsafe-link`, and `<figure><a><img></a></figure>` falls back with
+`block-structure`). With a V4 owner:
+
+- `<a href><img></a>` and `<figure><a href><img></a><figcaption>` give the
+  image its own link (`target="_blank"` → new window); the caption is not
+  linked. Unsafe or out-of-subset targets report `unsafe-link`; a decorative
+  image (`alt=""`) keeps no link and reports `image-alt`.
+- HTML export wraps only the `<img>` in `<a href [target rel]>`; V4 HTML round
+  trips exactly.
+- Markdown export writes `[![alt](src)](href)` for a same-window link when it
+  re-parses exactly; captions, sizes and new-window links fall back to HTML with
+  `markdown-feature`. That Markdown shape imports back as the image link.
+
 ### Text language (candidate rich V4 owners)
 
 The adapter also reads the owner's optional `supportsTextLanguage()` once. Only a

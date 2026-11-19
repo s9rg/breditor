@@ -4,6 +4,7 @@ import {cellKey,id,property,type AstNode,type ElementNode,type RichPresentationM
 import {requireRichInlinePresentation,richInlineRecipes,type RichInlinePresentation} from "./inline_presentation.js";
 import {applyBlockLayout} from "./block_layout_presentation.js";
 import {applyListNumbering} from "./list_numbering_presentation.js";
+import {wrapImageLink} from "./image_link.js";
 export const structuralBlockStylesV2=`[data-breditor-rich] [data-rich-text]{white-space:pre-wrap;min-height:1em}[data-breditor-rich] blockquote{border-left:3px solid #9dbbb0;margin:12px 0;padding:1px 16px}[data-breditor-rich] pre{font-family:ui-monospace,monospace;background:#f1f5f2;padding:12px;overflow:auto}[data-breditor-rich] [data-task-list]{list-style:none;padding-left:12px}[data-breditor-rich] [data-rich-task]{display:grid;grid-template-columns:24px minmax(0,1fr);gap:8px;margin:8px 0}[data-breditor-rich] input[data-task-check]{width:18px;height:18px;margin:4px 0}[data-breditor-rich] [data-task-body]>:first-child{margin-top:0}[data-breditor-rich] hr{border:0;border-top:2px solid #9dbbb0;margin:16px 0}`;
 export interface AssetBinding {image:string;asset:string;generation:string}
 export interface RenderOptions {
@@ -33,9 +34,13 @@ function resolveImage(figure:HTMLElement,options:RenderOptions):void {
 export function refreshAssets(surface:HTMLElement,options:RenderOptions):void {
  for(const figure of surface.querySelectorAll<HTMLElement>("figure[data-rich-image]"))resolveImage(figure,options);
 }
-/** Apply native host policy to every browser editing island, not only the outer surface. */
+/** Apply native host policy to every browser editing island, not only the outer surface.
+ * Candidate V4 image links are inert while editing (like inline links inside the editable
+ * surface): they leave the tab order and the controller cancels their activation, so a click
+ * selects the image node. A read-only surface lets them behave as ordinary links. */
 export function applyEditingPolicy(surface:HTMLElement,readOnly:boolean):void {
  surface.contentEditable=readOnly?"false":"true";surface.setAttribute("aria-readonly",String(readOnly));
+ for(const link of surface.querySelectorAll<HTMLElement>("a[data-rich-image-link]")){if(readOnly)link.removeAttribute("tabindex");else link.tabIndex=-1;}
  if(readOnly)surface.tabIndex=0;else surface.removeAttribute("tabindex");
  for(const caption of surface.querySelectorAll<HTMLElement>("figcaption"))caption.contentEditable=readOnly?"false":"true";
  for(const check of surface.querySelectorAll<HTMLInputElement>("input[data-task-check]"))check.disabled=readOnly;
@@ -85,7 +90,7 @@ export function render(surface:HTMLElement,value:RichPresentationModel,options:R
   const width=property(node,"width"),height=property(node,"height");if(typeof width==="number"&&typeof height==="number"){bitmap.width=width;bitmap.height=height;}
   const binding={image:String(property(node,"image-id")),asset:String(property(node,"asset-id")),generation:String(property(node,"asset-generation"))};
   assetBindings.set(figure,{bitmap,binding,attempt:0});resolveImage(figure,options);
-  figure.append(bitmap);
+  figure.append(wrapImageLink(bitmap,node));
   const pick=document.createElement("button");pick.type="button";pick.dataset["selectNode"]=id(node);pick.textContent="Select image";figure.append(pick);
   if(node.children.length){const caption=document.createElement("figcaption");caption.contentEditable="true";for(const child of node.children)caption.append(flow(child));figure.append(caption);}
   return figure;
