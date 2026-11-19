@@ -2,7 +2,7 @@
 // or keyboard move is one guarded `move_block` dispatch through the editor queue, so the retained
 // block ID moves (never copy/delete), Rust validates the complete group, and one dispatch is one
 // native Undo step. Rejected or stale targets publish nothing.
-import {id,type RichPresentationModel,type ElementNode} from "@breditor/experimental-rich-content/rendering";
+import {id,defaultRichUi,type RichPresentationModel,type ElementNode,type RichUiStringKey} from "@breditor/experimental-rich-content/rendering";
 import type {SharedDomEditor} from "./controller.js";
 import type {SharedSelectionPolicy} from "./types.js";
 import {sharedPresentationModel} from "./document_presentation.js";
@@ -11,7 +11,7 @@ import {resolveSharedBlockMove,resolveSharedBlockStep,sharedBlockDropTargets,sha
 export interface SharedBlockDragOptions {
  /** Default `sibling-v1`; `flow-v1` additionally offers grammar-legal cross-container drops. */
  policy?:SharedBlockMovePolicy;
- /** Accessible handle label. */
+ /** Accessible handle label; overrides the editor catalog's blockDragLabel. Announcements use `editor.uiLocale()`. */
  label?:string;
  /** Reserve Alt+Shift+ArrowUp/ArrowDown inside the editor to move the caret's block (default true). On macOS
   * this replaces the native Option+Shift+Up/Down "extend selection to paragraph" shortcut; pass false to keep
@@ -33,26 +33,29 @@ export interface SharedBlockDrag {
  dispose():void;
 }
 
-const MESSAGES:Readonly<Record<SharedBlockMoveRejection|"native",string>>={
- read_only:"The document is read-only.",unknown_block:"That block no longer exists.",not_movable:"This block cannot be moved.",
- invalid_target:"Blocks cannot be dropped there.",cyclic:"A block cannot be moved inside itself.",cross_container:"Blocks can only be reordered within their container.",
- grammar:"That container does not accept this block.",empties_source:"Moving the last block would leave its container empty.",item_lead:"A list or task item must start with a text line.",
- boundary:"The block is already at the edge of its container.",native:"The editor refused the move.",
+const MESSAGES:Readonly<Record<SharedBlockMoveRejection|"native",RichUiStringKey>>={
+ read_only:"blockDragReadOnly",unknown_block:"blockDragUnknownBlock",not_movable:"blockDragNotMovable",
+ invalid_target:"blockDragInvalidTarget",cyclic:"blockDragCyclic",cross_container:"blockDragCrossContainer",
+ grammar:"blockDragGrammar",empties_source:"blockDragEmptiesSource",item_lead:"blockDragItemLead",
+ boundary:"blockDragBoundary",native:"blockDragNative",
 };
 export const sharedBlockDragStyles=`.breditor-block-drag-handle{position:fixed;z-index:20;display:inline-flex;align-items:center;justify-content:center;width:20px;height:22px;padding:0;border:0;border-radius:4px;background:transparent;color:#6b7280;cursor:grab;touch-action:none;user-select:none;font:14px/1 system-ui}.breditor-block-drag-handle:hover,.breditor-block-drag-handle:focus-visible,.breditor-block-drag-handle[aria-pressed=true]{background:#e5e7eb;color:#111827}.breditor-block-drag-handle[hidden]{display:none}.breditor-block-drag[data-dragging] .breditor-block-drag-handle{cursor:grabbing;pointer-events:none}.breditor-block-drop-indicator{position:fixed;z-index:19;height:0;border-top:2px solid var(--breditor-drop-color,#2563eb);pointer-events:none}.breditor-block-drop-indicator[data-state=invalid]{border-top-style:dashed;border-color:var(--breditor-drop-invalid-color,#dc2626)}.breditor-block-drop-indicator[hidden]{display:none}.breditor-block-drag-live{position:absolute;width:1px;height:1px;overflow:hidden;clip:rect(0 0 0 0);white-space:nowrap}`;
 
 type Located=SharedBlockDropTarget&{parent:string|null;before:string|null};
 interface Hit {resolution:SharedBlockMoveResolution;target:SharedBlockDropTarget|null;element:HTMLElement|null}
 
+/** Content direction of a rendered block (its block-direction or inherited), never the chrome direction. */
+function blockIsRtl(element:HTMLElement):boolean{try{return element.ownerDocument.defaultView?.getComputedStyle(element).direction==="rtl";}catch{return false;}}
+
 export function mountSharedBlockDrag<P extends SharedSelectionPolicy>(editor:SharedDomEditor<P>,options:SharedBlockDragOptions={}):SharedBlockDrag{
  const policy=options.policy??"sibling-v1";if(policy!=="sibling-v1"&&policy!=="flow-v1")throw new TypeError("Expected block move policy sibling-v1 or flow-v1");
  const surface=editor.surface,d=surface.ownerDocument,win=d.defaultView!,abort=new AbortController(),signal=abort.signal;
- const layer=d.createElement("div");layer.className="breditor-block-drag";
+ const ui=editor.uiLocale?.()??defaultRichUi,layer=d.createElement("div");layer.className="breditor-block-drag";ui.applyChrome(layer);
  const style=d.createElement("style");style.textContent=sharedBlockDragStyles;
  const handle=d.createElement("button");handle.type="button";handle.className="breditor-block-drag-handle";handle.textContent="⋮⋮";handle.hidden=true;handle.draggable=false;
- handle.setAttribute("aria-label",options.label??"Move block");handle.setAttribute("aria-pressed","false");
+ handle.setAttribute("aria-label",options.label??ui.text("blockDragLabel"));handle.setAttribute("aria-pressed","false");
  const help=d.createElement("span");help.className="breditor-block-drag-live";help.id=`breditor-block-drag-help-${Math.random().toString(36).slice(2)}`;
- help.textContent="Drag to move. Or press Enter to pick up, arrow keys to choose a position, Enter to drop, Escape to cancel. Alt+Shift+Up or Down moves one step.";
+ help.textContent=ui.text("blockDragHelp");
  handle.setAttribute("aria-describedby",help.id);
  const indicator=d.createElement("div");indicator.className="breditor-block-drop-indicator";indicator.hidden=true;indicator.setAttribute("aria-hidden","true");
  const live=d.createElement("p");live.className="breditor-block-drag-live";live.setAttribute("role","status");live.setAttribute("aria-live","polite");
@@ -68,7 +71,7 @@ export function mountSharedBlockDrag<P extends SharedSelectionPolicy>(editor:Sha
  function place():void{
   if(disposed)return;const element=active&&!readOnly()?elementFor(active):null;
   if(!element){if(!mode&&!drag){handle.hidden=true;active=null;}return;}
-  const rect=element.getBoundingClientRect();handle.hidden=false;handle.style.top=`${rect.top}px`;handle.style.left=`${Math.max(0,rect.left-24)}px`;
+  const rect=element.getBoundingClientRect();handle.hidden=false;handle.style.top=`${rect.top}px`;handle.style.left=`${blockIsRtl(element)?rect.right+4:Math.max(0,rect.left-24)}px`;
   if(mode)showTarget(mode.targets[mode.index]);
  }
  function setActive(block:string|null):void{if(drag||mode)return;active=block;place();}
@@ -90,7 +93,7 @@ export function mountSharedBlockDrag<P extends SharedSelectionPolicy>(editor:Sha
   }
   return first;
  }
- function reject(block:string,reason:SharedBlockMoveRejection|"native"):false{announce(MESSAGES[reason]);try{options.onReject?.({block,reason});}catch{/* host callback cannot rewind */}return false;}
+ function reject(block:string,reason:SharedBlockMoveRejection|"native"):false{announce(ui.text(MESSAGES[reason]));try{options.onReject?.({block,reason});}catch{/* host callback cannot rewind */}return false;}
  /** Close an open typing group first, then plan against the fresh publication and dispatch with its
   * exact revision: a stale plan is refused by the native guard and nothing is published. */
  function plan(block:string,produce:(value:RichPresentationModel)=>SharedBlockMoveResolution,source:"pointer"|"keyboard",focus:boolean):boolean{
@@ -100,11 +103,11 @@ export function mountSharedBlockDrag<P extends SharedSelectionPolicy>(editor:Sha
   const state=editor.contextUiState();if(state.closed||state.busy||state.composing)return reject(block,"native");
   try{if(editor.view().historyGrouping==="typing-v1")editor.closeTypingGroup();}catch{return reject(block,"native");}
   const value=model(),resolution=produce(value);
-  if(resolution.kind==="unchanged"){announce("Block left in place.");return false;}
+  if(resolution.kind==="unchanged"){announce(ui.text("blockDragUnchanged"));return false;}
   if(resolution.kind==="rejected")return reject(block,resolution.reason);
   try{editor.execute({commands:[resolution.command]},focus,value.view.revision);}catch{return reject(block,"native");}
   if(editor.view().revision===value.view.revision)return reject(block,"native");
-  announce("Block moved.");
+  announce(ui.text("blockDragMoved"));
   try{options.onMove?.({block,parent:resolution.parent,before:resolution.before,source});}catch{/* host callback cannot rewind */}
   return true;
  }
@@ -113,12 +116,12 @@ export function mountSharedBlockDrag<P extends SharedSelectionPolicy>(editor:Sha
  surface.addEventListener("pointermove",event=>{if(drag||mode)return;const element=(event.target as Element|null)?.closest?.<HTMLElement>("[data-rich-block]");const block=element?.dataset["richBlock"];setActive(block?sharedHandleBlock(model(),block):null);},{signal});
  surface.addEventListener("focusin",()=>{if(!handle.matches(":hover"))setActive(sharedSelectionBlock(model()));},{signal});
  handle.addEventListener("focus",()=>{if(!active)setActive(sharedSelectionBlock(model()));},{signal});
- handle.addEventListener("blur",()=>{if(mode)cancelMode("Move cancelled.");},{signal});
+ handle.addEventListener("blur",()=>{if(mode)cancelMode(ui.text("blockDragCancelled"));},{signal});
 
  // Pointer drag.
  handle.addEventListener("pointerdown",event=>{
   if(event.button!==0||!active||readOnly()||mode)return;event.preventDefault();
-  drag={block:active,pointer:event.pointerId,hit:null};layer.dataset["dragging"]="";announce("Dragging block.");
+  drag={block:active,pointer:event.pointerId,hit:null};layer.dataset["dragging"]="";announce(ui.text("blockDragDragging"));
  },{signal});
  win.addEventListener("pointermove",event=>{
   if(!drag||event.pointerId!==drag.pointer)return;event.preventDefault();
@@ -129,7 +132,7 @@ export function mountSharedBlockDrag<P extends SharedSelectionPolicy>(editor:Sha
  },{signal});
  const endDrag=(drop:boolean):void=>{
   if(!drag)return;const {block,hit}=drag;drag=undefined;delete layer.dataset["dragging"];hideIndicator();
-  if(!drop){announce("Move cancelled.");return;}
+  if(!drop){announce(ui.text("blockDragCancelled"));return;}
   if(!hit){reject(block,"invalid_target");return;}
   const target=hit.target!;plan(block,value=>resolveSharedBlockMove(value,block,target,policy),"pointer",true);place();
  };
@@ -141,8 +144,8 @@ export function mountSharedBlockDrag<P extends SharedSelectionPolicy>(editor:Sha
  const order=():{pre:Map<string,number>;end:Map<string,number>}=>{const pre=new Map<string,number>(),end=new Map<string,number>();let n=0;const walk=(node:ElementNode):void=>{for(const child of node.children){if(child.kind!=="element")continue;const key=id(child);pre.set(key,n++);walk(child);end.set(key,n-1);}};walk(model().root);return {pre,end};};
  function startMode():void{
   const block=active;if(!block||readOnly())return;const targets=sharedBlockDropTargets(model(),block,policy);
-  if(!targets.length){announce("No other position accepts this block.");return;}
-  mode={block,targets,index:-1};handle.setAttribute("aria-pressed","true");announce(`Picked up block. ${targets.length} positions available.`);
+  if(!targets.length){announce(ui.text("blockDragNoTargets"));return;}
+  mode={block,targets,index:-1};handle.setAttribute("aria-pressed","true");announce(ui.text("blockDragPickedUp",{count:targets.length}));
  }
  function cancelMode(message:string):void{if(!mode)return;mode=undefined;handle.setAttribute("aria-pressed","false");hideIndicator();announce(message);}
  function cycle(direction:-1|1|"first"|"last"):void{
@@ -152,17 +155,17 @@ export function mountSharedBlockDrag<P extends SharedSelectionPolicy>(editor:Sha
    if(direction<0){let found=-1;mode.targets.forEach((t,i)=>{if(key(t)<at)found=i;});mode.index=found<0?0:found;}
    else{const found=mode.targets.findIndex(t=>key(t)>tail);mode.index=found<0?count-1:found;}}
   else mode.index=Math.min(count-1,Math.max(0,mode.index+direction));
-  showTarget(mode.targets[mode.index]);announce(`Position ${mode.index+1} of ${count}.`);
+  showTarget(mode.targets[mode.index]);announce(ui.text("blockDragPosition",{index:mode.index+1,count}));
  }
  handle.addEventListener("keydown",event=>{
   if(event.isComposing)return;const k=event.key;
   if(mode){
-   if(k==="Escape"){event.preventDefault();cancelMode("Move cancelled.");return;}
+   if(k==="Escape"){event.preventDefault();cancelMode(ui.text("blockDragCancelled"));return;}
    if(k==="ArrowUp"||k==="ArrowLeft"){event.preventDefault();cycle(-1);return;}
    if(k==="ArrowDown"||k==="ArrowRight"){event.preventDefault();cycle(1);return;}
    if(k==="Home"||k==="End"){event.preventDefault();cycle(k==="Home"?"first":"last");return;}
    if(k==="Enter"||k===" "){event.preventDefault();const {block,targets,index}=mode;const target=targets[index];mode=undefined;handle.setAttribute("aria-pressed","false");hideIndicator();
-    if(!target){announce("Move cancelled.");return;}plan(block,value=>resolveSharedBlockMove(value,block,target,policy),"keyboard",false);place();return;}
+    if(!target){announce(ui.text("blockDragCancelled"));return;}plan(block,value=>resolveSharedBlockMove(value,block,target,policy),"keyboard",false);place();return;}
    return;
   }
   if(event.altKey&&event.shiftKey&&!event.ctrlKey&&!event.metaKey&&(k==="ArrowUp"||k==="ArrowDown")){event.preventDefault();if(active){plan(active,value=>resolveSharedBlockStep(value,active!,k==="ArrowUp"?-1:1),"keyboard",false);place();}return;}
@@ -174,7 +177,7 @@ export function mountSharedBlockDrag<P extends SharedSelectionPolicy>(editor:Sha
   if(options.editorShortcut===false||event.isComposing||!(event.target instanceof Node)||!surface.contains(event.target))return;
   if(!event.altKey||!event.shiftKey||event.ctrlKey||event.metaKey||(event.key!=="ArrowUp"&&event.key!=="ArrowDown"))return;
   event.preventDefault();event.stopPropagation();
-  const block=sharedSelectionBlock(model());if(!block){announce(MESSAGES.not_movable);return;}
+  const block=sharedSelectionBlock(model());if(!block){announce(ui.text(MESSAGES.not_movable));return;}
   plan(block,value=>resolveSharedBlockStep(value,block,event.key==="ArrowUp"?-1:1),"keyboard",true);setActive(block);
  },{signal,capture:true});
 

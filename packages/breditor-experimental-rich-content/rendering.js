@@ -21,3 +21,4 @@ export {prepareRichPlaceholder,validatePlaceholderOption,RichPlaceholderPresenta
 export {requireMarkdownInputRules,validateMarkdownInputPolicy,isPlainInputScalar,captureMarkdownInputSource,checkMarkdownInputSource,publishMarkdownInput} from "./dist/browser/input_rule_intent.js";
 export {isStructuralRichLanguage} from "./dist/browser/rich_language.js";
 export {requireClipboardInterchange,readClipboardInput,exportClipboard,writeClipboard,clipboardInterchangeReport,clipboardInterchangeStatus} from "./dist/browser/clipboard_interchange.js";
+export {resolveRichUi,defaultRichUi,richUiStringsEn,richChromeIsRtl} from "./dist/browser/ui_locale.js";

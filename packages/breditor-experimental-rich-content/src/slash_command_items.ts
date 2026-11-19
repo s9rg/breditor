@@ -2,6 +2,7 @@
 import type {RichCommand,RichSelectionPolicy} from "./core.js";
 import type {ActionContext,ToolbarControl} from "./actions.js";
 import {id,selectedText} from "./model.js";
+import type {RichUiLocale} from "./ui_locale.js";
 
 export type RichSlashContext=ActionContext<RichSelectionPolicy>;
 /**
@@ -55,7 +56,8 @@ export function requireRichSlashItems(items:unknown,limit=50):readonly RichSlash
  return Object.freeze(out);
 }
 /** Map existing toolbar controls into items; never creates a new command family. */
-export function createRichSlashCommands<P extends RichSelectionPolicy>(controls:readonly ToolbarControl<P>[],picks:readonly RichSlashPick[]=standardRichSlashPicks):readonly RichSlashItem[] {
+/** `ui` (an editor's `uiLocale()`) relabels standard item ids, so a custom provider can filter on localized labels. */
+export function createRichSlashCommands<P extends RichSelectionPolicy>(controls:readonly ToolbarControl<P>[],picks:readonly RichSlashPick[]=standardRichSlashPicks,ui?:RichUiLocale):readonly RichSlashItem[] {
  const byId=new Map(controls.map(control=>[control.id,control as unknown as ToolbarControl<RichSelectionPolicy>]));
  const items:RichSlashItem[]=[];
  for(const pick of picks){
@@ -65,7 +67,7 @@ export function createRichSlashCommands<P extends RichSelectionPolicy>(controls:
    enabled:(context:RichSlashContext)=>context.model.view.readOnly!==true&&control.enabled(context),
    command:(context:RichSlashContext)=>prepare?prepare(context):control.command(context,pick.value,fields)}));
  }
- return requireRichSlashItems(items,Number.MAX_SAFE_INTEGER);
+ return requireRichSlashItems(ui?items.map(item=>ui.slashItem(item)):items,Number.MAX_SAFE_INTEGER);
 }
 /** Deterministic local ranking: label prefix, word prefix, keyword/id prefix, then substring. */
 export function filterRichSlashItems(items:readonly RichSlashItem[],query:string):readonly RichSlashItem[] {

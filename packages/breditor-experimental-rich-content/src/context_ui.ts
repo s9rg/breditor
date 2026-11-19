@@ -3,6 +3,7 @@
  * toolbar controls through RichContextUiHost: one widget, one Rust-derived read/enabled state, one command path.
  * Nothing here edits document DOM, copies selection state or publishes; it only positions and focuses widgets.
  */
+import {defaultRichUi,richChromeIsRtl,type RichUiLocale} from "./ui_locale.js";
 import type {RichContextControlView,RichContextMenu,RichContextMenuOptions,RichContextUiHost,RichContextUiOptions,RichSelectionToolbar,RichSelectionToolbarOptions} from "./context_ui_types.js";
 /** Inline formatting and link controls, when the editor's toolbar admits them. */
 export const richSelectionToolbarDefaults:readonly string[]=Object.freeze(["bold","italic","underline","strike","code","link","unlink","clear-inline"]);
@@ -13,7 +14,7 @@ export const richContextUiStyles=`[data-breditor-context-ui]{position:fixed;z-in
 type Kind="selection-toolbar"|"menu";
 const leases=new WeakMap<HTMLElement,Set<Kind>>();
 const GAP=8;
-interface Mounted {d:Document;element:HTMLElement;views:readonly RichContextControlView[];ids:readonly string[];abort:AbortController;release():void;report(error:unknown):void}
+interface Mounted {ui:RichUiLocale;d:Document;element:HTMLElement;views:readonly RichContextControlView[];ids:readonly string[];abort:AbortController;release():void;report(error:unknown):void}
 function prepare(host:RichContextUiHost,kind:Kind,options:RichContextUiOptions,defaults:readonly string[]):Mounted{
  if(options.controls!==undefined&&(!Array.isArray(options.controls)||options.controls.some(id=>typeof id!=="string"||!id)||new Set(options.controls).size!==options.controls.length||options.controls.length>64))throw TypeError("Expected unique nonempty context control ids");
  if(options.label!==undefined&&(typeof options.label!=="string"||!options.label||options.label.length>256))throw TypeError("Expected a nonempty bounded context UI label");
@@ -24,11 +25,11 @@ function prepare(host:RichContextUiHost,kind:Kind,options:RichContextUiOptions,d
  const root=options.container??surface.closest<HTMLElement>("[data-breditor-rich],[data-breditor-shared]")??surface.parentElement;
  if(!root||root.ownerDocument!==d||root===surface||surface.contains(root))throw Error("Context UI needs a container outside editable content in the editor document");
  const used=leases.get(surface)??new Set<Kind>();if(used.has(kind))throw Error(`This editor already has a ${kind==="menu"?"context menu":"selection toolbar"}`);
- const abort=new AbortController(),element=d.createElement("div"),style=d.createElement("style");
- element.dataset["breditorContextUi"]=kind;element.hidden=true;style.textContent=richContextUiStyles;element.append(style);
+ const abort=new AbortController(),element=d.createElement("div"),style=d.createElement("style"),ui=host.uiLocale?.()??defaultRichUi;
+ element.dataset["breditorContextUi"]=kind;ui.applyChrome(element);element.hidden=true;style.textContent=richContextUiStyles;element.append(style);
  const report=(error:unknown)=>{try{options.onError?.(error);}catch{/* A host reporter cannot change editor ownership. */}};
  try{const views=ids.map(id=>host.mountContextControl(element,id,abort.signal));used.add(kind);leases.set(surface,used);root.append(element);
-  return {d,element,views,ids,abort,report,release:()=>{used.delete(kind);}};
+  return {ui,d,element,views,ids,abort,report,release:()=>{used.delete(kind);}};
  }catch(error){abort.abort();element.remove();throw error;}
 }
 function itemOf(view:RichContextControlView):HTMLElement{return view.element.tagName==="DETAILS"?view.element.querySelector<HTMLElement>(":scope>summary")??view.button:view.button;}
@@ -49,7 +50,9 @@ function place(element:HTMLElement,rect:{left:number;top:number;bottom:number;wi
  const view=element.ownerDocument.defaultView!,width=element.offsetWidth,height=element.offsetHeight,vw=view.innerWidth,vh=view.innerHeight;
  let top=prefer==="above"?rect.top-height-GAP:rect.bottom+GAP;
  if(prefer==="above"&&top<GAP)top=rect.bottom+GAP;else if(prefer==="below"&&top+height>vh-GAP)top=Math.max(GAP,rect.top-height-GAP);
- const left=Math.min(Math.max(GAP,prefer==="above"?rect.left+rect.width/2-width/2:rect.left),Math.max(GAP,vw-width-GAP));
+ // Under right-to-left chrome a menu opens toward inline-start: its right edge meets the anchor.
+ const start=prefer==="above"?rect.left+rect.width/2-width/2:richChromeIsRtl(element)?rect.left+rect.width-width:rect.left;
+ const left=Math.min(Math.max(GAP,start),Math.max(GAP,vw-width-GAP));
  element.style.top=`${Math.round(top)}px`;element.style.left=`${Math.round(left)}px`;
 }
 function rove(event:KeyboardEvent,views:readonly RichContextControlView[],next:string,previous:string):boolean{
@@ -62,8 +65,8 @@ function owned(surface:HTMLElement,element:HTMLElement,node:unknown):boolean{ret
 
 /** Shows the admitted inline controls over a non-collapsed text selection while the editor (or toolbar) has focus. */
 export function mountRichSelectionToolbar(host:RichContextUiHost,options:RichSelectionToolbarOptions={}):RichSelectionToolbar{
- const {d,element,views,ids,abort,release,report}=prepare(host,"selection-toolbar",options,richSelectionToolbarDefaults),surface=host.surface,realm=d.defaultView!,signal=abort.signal;
- element.setAttribute("role","toolbar");element.setAttribute("aria-label",options.label??"Selection formatting");element.setAttribute("aria-orientation","horizontal");
+ const {ui,d,element,views,ids,abort,release,report}=prepare(host,"selection-toolbar",options,richSelectionToolbarDefaults),surface=host.surface,realm=d.defaultView!,signal=abort.signal;
+ element.setAttribute("role","toolbar");element.setAttribute("aria-label",options.label??ui.text("selectionToolbarLabel"));element.setAttribute("aria-orientation","horizontal");
  let disposed=false,visible=false,dragging=false,composing=false,dismissed:string|null=null,range:Range|null=null,unsubscribe=()=>{};
  const hide=(restore:boolean)=>{const inside=element.contains(d.activeElement);element.hidden=true;visible=false;if(restore&&inside&&!host.contextUiState().closed)host.focus();};
  const update=()=>{
@@ -100,7 +103,7 @@ export function mountRichSelectionToolbar(host:RichContextUiHost,options:RichSel
    if(event.altKey&&event.key==="F10"&&visible){const item=first();if(item){event.preventDefault();itemOf(item).focus({preventScroll:true});}}
    else if(event.key==="Escape"&&visible&&!event.defaultPrevented)dismiss();
   },{signal});
-  element.addEventListener("keydown",event=>{if(event.isComposing)return;if(event.key==="Escape"){event.preventDefault();dismiss();return;}rove(event,views,"ArrowRight","ArrowLeft");},{signal});
+  element.addEventListener("keydown",event=>{if(event.isComposing)return;if(event.key==="Escape"){event.preventDefault();dismiss();return;}if(richChromeIsRtl(element))rove(event,views,"ArrowLeft","ArrowRight");else rove(event,views,"ArrowRight","ArrowLeft");},{signal});
   // Background clicks must not blur the editor; control widgets own their own pointer policy.
   element.addEventListener("pointerdown",event=>{if(event.target===element)event.preventDefault();},{signal});
   update();
@@ -114,8 +117,8 @@ export function mountRichSelectionToolbar(host:RichContextUiHost,options:RichSel
 /** Right click, Shift+F10 or the ContextMenu key in the editor; arrow keys rove, Escape/Tab return focus to the editor. */
 export function mountRichContextMenu(host:RichContextUiHost,options:RichContextMenuOptions={}):RichContextMenu{
  if(options.hideDisabled!==undefined&&typeof options.hideDisabled!=="boolean")throw TypeError("Expected boolean hideDisabled");
- const {d,element,views,ids,abort,release,report}=prepare(host,"menu",options,richContextMenuDefaults),surface=host.surface,realm=d.defaultView!,signal=abort.signal,hideDisabled=options.hideDisabled!==false;
- element.setAttribute("role","menu");element.setAttribute("aria-label",options.label??"Editor actions");element.setAttribute("aria-orientation","vertical");
+ const {ui,d,element,views,ids,abort,release,report}=prepare(host,"menu",options,richContextMenuDefaults),surface=host.surface,realm=d.defaultView!,signal=abort.signal,hideDisabled=options.hideDisabled!==false;
+ element.setAttribute("role","menu");element.setAttribute("aria-label",options.label??ui.text("contextMenuLabel"));element.setAttribute("aria-orientation","vertical");
  let disposed=false,open=false,anchor:{dx:number;dy:number}|{range:Range|null}|null=null,unsubscribe=()=>{};
  const decorate=()=>{
   for(const view of views){

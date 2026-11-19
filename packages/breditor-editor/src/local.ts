@@ -1,5 +1,5 @@
 import {compileStandardRichProfileV1,compileStandardStructuralRichProfileV2,compileStandardLayoutRichProfileV3,createStandardRichInlinePresentationV1,createStandardRichToolbarV1,createStructuralRichToolbarV2,createLayoutRichToolbarV3,mountRichEditor,insertImageFiles,type RichCoreEditor,type RichCoreProfile,type RichDomEditor,type RichEditorOptions,type RichCommand,type RichView,type RichCommandOutcome,type RichAssetStore,type AssetInfo,type FlowPosition,type ToolbarControl,type RenderOptions} from "@breditor/experimental-rich-content";
-import {validatePlaceholderOption} from "@breditor/experimental-rich-content/rendering";
+import {validatePlaceholderOption,resolveRichUi} from "@breditor/experimental-rich-content/rendering";
 import {refreshAssets,validateMarkdownInputPolicy} from "@breditor/experimental-rich-content/rendering";
 import type {RichSearchHost} from "@breditor/experimental-rich-content";
 import {initializeLocalRuntime,type RuntimeInput} from "./runtime.js";
@@ -35,6 +35,8 @@ export interface LocalEditor {
  /** Borrowed port for the opt-in selection toolbar and context menu; it never publishes. */
  contextUi():import("@breditor/experimental-rich-content").RichContextUiHost;
  setPlaceholderLabel(label:string|null):void;
+ /** The validated chrome catalog from the `ui` option (English, direction-neutral by default). */
+ uiLocale():import("@breditor/experimental-rich-content").RichUiLocale;
  readonly surface:HTMLDivElement;readonly toolbar:HTMLDivElement;readonly status:HTMLParagraphElement;
  execute(command:RichCommand,focus?:boolean,revision?:string):RichCommandOutcome|"queued";
  view():RichView;checkpointJson():string;focus():void;refreshAssets():void;
@@ -74,6 +76,7 @@ class LocalEditorOwner implements LocalEditor {
  fullscreen():import("@breditor/experimental-rich-content").RichFullscreenHost{this.#dom.view();return this.#dom;}
  contextUi():import("@breditor/experimental-rich-content").RichContextUiHost{this.#dom.view();return this.#dom;}
  setPlaceholderLabel(label:string|null):void{this.#dom.setPlaceholderLabel(label);}
+ uiLocale():import("@breditor/experimental-rich-content").RichUiLocale{this.#dom.view();return this.#dom.uiLocale();}
  insertImageFiles(store:RichAssetStore,files:readonly File[],position:FlowPosition):Promise<readonly AssetInfo[]>{return insertImageFiles(this.#dom,store,files,position);}
  dispose():void{if(this.#disposed)return;this.#disposed=true;try{this.#dom.dispose();}finally{this.#release();}}
 }
@@ -81,7 +84,7 @@ class LocalEditorOwner implements LocalEditor {
 export async function openLocalEditor(options:LocalEditorOptions):Promise<LocalEditor>{
  options={...options};
  validateMarkdownInputPolicy(options.inputRules);
- validatePlaceholderOption(options.placeholder);
+ validatePlaceholderOption(options.placeholder);resolveRichUi(options.ui);
  if(options.richLanguage!==undefined&&options.richLanguage!==1&&options.richLanguage!==2&&options.richLanguage!==3)throw new TypeError("Expected richLanguage 1, 2 or 3");
  if(options.readOnly!==undefined&&typeof options.readOnly!=="boolean")throw new TypeError("readOnly must be Boolean");
  if(options.history!==undefined&&options.history!=="explicit"&&options.history!=="typing-v1")throw new TypeError("Expected history explicit or typing-v1");
