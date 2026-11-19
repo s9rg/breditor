@@ -12,6 +12,7 @@ mod collapse_document_selection;
 mod commit_content;
 mod delete_atom;
 mod delete_typing_range;
+mod details;
 mod dispatch;
 pub(crate) mod durable;
 mod enable_typing_history;

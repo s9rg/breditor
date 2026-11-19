@@ -111,7 +111,10 @@ impl RichFormatPropertyPatch {
         }
         let node = super::text_patch::block_node(document, block)?;
         if !node.as_element().is_some_and(|element| {
-            matches!(element.kind().as_str(), "breditor/paragraph" | "breditor/heading")
+            matches!(
+                element.kind().as_str(),
+                "breditor/paragraph" | "breditor/heading" | "breditor/details-summary"
+            )
         }) {
             return Err(RichActionError::TextTarget);
         }

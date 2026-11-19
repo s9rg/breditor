@@ -132,7 +132,10 @@ pub fn inspect_inline_format(
             .ok()
             .and_then(crate::document::NodeRef::as_element)
             .ok_or(RichInlineFormatStateError::Invariant)?;
-        if !matches!(node.kind().as_str(), "breditor/paragraph" | "breditor/heading") {
+        if !matches!(
+            node.kind().as_str(),
+            "breditor/paragraph" | "breditor/heading" | "breditor/details-summary"
+        ) {
             continue;
         }
         let lower = if path == start_path { start.offset().get() } else { 0 };

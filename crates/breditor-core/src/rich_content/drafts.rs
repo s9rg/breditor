@@ -18,6 +18,9 @@ pub enum RichDraftError {
     /// A blockquote must retain one or more flow children.
     #[error("a rich blockquote draft must contain flow content")]
     EmptyBlockquote,
+    /// A collapsible section must retain one or more body blocks.
+    #[error("a rich collapsible section draft must contain body content")]
+    EmptyDetails,
     /// Code blocks admit text only, never semantic inline formats.
     #[error("code block text must not contain inline formats")]
     CodeFormats,
@@ -146,6 +149,7 @@ impl RichBlockDraft {
                     | "breditor/code-block"
                     | "breditor/horizontal-rule"
                     | "breditor/task-list"
+                    | "breditor/details"
             )
         }) {
             return Err(RichDraftError::FlowBlock);

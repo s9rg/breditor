@@ -279,7 +279,10 @@ mod scope;
 fn is_text(node: &ElementNode) -> bool {
     matches!(
         node.kind().as_str(),
-        "breditor/paragraph" | "breditor/heading" | "breditor/code-block"
+        "breditor/paragraph"
+            | "breditor/heading"
+            | "breditor/code-block"
+            | "breditor/details-summary"
     )
 }
 fn element<'a>(

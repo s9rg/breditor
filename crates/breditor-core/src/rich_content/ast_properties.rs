@@ -51,7 +51,9 @@ pub(crate) fn required_properties(kind: &str) -> &'static [&'static str] {
         | "breditor/blockquote"
         | "breditor/code-block"
         | "breditor/horizontal-rule"
-        | "breditor/task-list" => &["block-id"],
+        | "breditor/task-list"
+        | "breditor/details"
+        | "breditor/details-summary" => &["block-id"],
         "breditor/task-item" => &["block-id", "checked"],
         "breditor/heading" => &["block-id", "level"],
         "breditor/ordered-list" => &["block-id", "start"],

@@ -62,7 +62,8 @@ impl Tree {
 /// Their prefix/suffix, kinds, metadata and structural owners survive. Fully enclosed
 /// subtrees are removed. A partially crossed table retains every axis, header and merge;
 /// emptied base bodies receive fresh paragraphs. Partial list/task items retain a prose
-/// head without flattening their unselected tail. Code never silently loses formats.
+/// head without flattening their unselected tail. A partial V4 section keeps its summary
+/// (emptied when wholly covered) and a nonempty body. Code never silently loses formats.
 /// This is a local semantic plan, not a serialized selection or shared root replacement.
 #[derive(Clone, Debug)]
 pub struct RichRangeReplacementPlan {
@@ -311,10 +312,12 @@ impl Builder<'_> {
             match self.covered.get(id) {
                 None => return Ok(Decision::Retained(self.push(Tree::Keep(node.clone())))),
                 Some(RichCoverageExtent::Whole)
-                    if !matches!(kind, "breditor/table-row" | "breditor/table-cell")
-                        && self.mask.is_none_or(|mask| {
-                            !super::masked_text::is_text(kind) || mask.full_text(id, node)
-                        }) =>
+                    if !matches!(
+                        kind,
+                        "breditor/table-row" | "breditor/table-cell" | "breditor/details-summary"
+                    ) && self.mask.is_none_or(|mask| {
+                        !super::masked_text::is_text(kind) || mask.full_text(id, node)
+                    }) =>
                 {
                     if let Some(mask) = self.mask {
                         mask.require_whole(node)?;
@@ -385,6 +388,11 @@ impl Builder<'_> {
                     | "breditor/task-item"
             )
         {
+            children.push(self.floor(id.clone(), None));
+        }
+        // A partially covered section keeps its (possibly emptied) summary; a body
+        // emptied by the range receives one fresh paragraph.
+        if kind == "breditor/details" && children.len() == 1 {
             children.push(self.floor(id.clone(), None));
         }
         if matches!(kind, "breditor/list-item" | "breditor/task-item")

@@ -1,9 +1,13 @@
 //! Explicit unreleased candidate rich V4: V3 grammar plus bounded ordered-list numbering,
-//! one native text-language inline format and bounded image links.
+//! one native text-language inline format, bounded image links and collapsible sections.
 //!
 //! V1–V3 specifications and fingerprints stay exact. Later V4 candidate slices
 //! change this revision's rules before release, so no V4 data is persisted yet.
-use super::{DeclarationOwner, InlineFormatSpec, PersistedTypeRevision, SchemaSpec};
+use super::{
+    ChildConstraint, ChildKind, DeclarationOwner, ElementSpec, InlineFormatSpec,
+    PersistedTypeRevision, SchemaSpec,
+};
+use crate::schema::child_grammar::ChildGroup;
 use crate::{
     extension::{
         InlineFormatPropertyContractV1, InlineFormatPropertySpecV1, InlineFormatPropertyTypeV1,
@@ -22,9 +26,79 @@ const IMAGE_REVISION: u32 = 2;
 /// Native formats V4 adds to the extension-declared set (counted against the 256 ceiling).
 pub(super) const NATIVE_INLINE_FORMATS: u32 = 1;
 
+/// V4 flow: the V2/V3 flow kinds plus the collapsible section container.
+fn flow_kinds(include_tables: bool) -> Vec<ChildKind> {
+    let mut kinds = [
+        "paragraph",
+        "heading",
+        "bullet-list",
+        "ordered-list",
+        "image",
+        "blockquote",
+        "code-block",
+        "horizontal-rule",
+        "task-list",
+        "details",
+    ]
+    .map(|local| ChildKind::Element(super::rich_content_profile::name(local)))
+    .to_vec();
+    if include_tables {
+        kinds.push(ChildKind::Element(super::rich_content_profile::name("table")));
+    }
+    kinds
+}
+
+fn flow(include_tables: bool) -> ChildConstraint {
+    ChildConstraint {
+        groups: vec![ChildGroup { kinds: flow_kinds(include_tables), minimum: 1, maximum: None }],
+    }
+}
+
+/// A section is exactly one leading summary followed by one or more flow blocks.
+/// Its nesting bound and `details-open` value law are sealed V4 rich rules.
+fn details() -> ChildConstraint {
+    ChildConstraint {
+        groups: vec![
+            ChildGroup {
+                kinds: vec![ChildKind::Element(super::rich_content_profile::name(
+                    "details-summary",
+                ))],
+                minimum: 1,
+                maximum: Some(1),
+            },
+            ChildGroup { kinds: flow_kinds(true), minimum: 1, maximum: None },
+        ],
+    }
+}
+
 pub(super) fn specification(spec: SchemaSpec) -> SchemaSpec {
     let mut spec = super::rich_content_profile_v3::specification(spec);
     spec.rich_content_contract = Some(4);
+    // Every V2 flow container also admits a collapsible section.
+    for element in &mut spec.elements {
+        match element.kind.as_str() {
+            "breditor/document"
+            | "breditor/list-item"
+            | "breditor/blockquote"
+            | "breditor/task-item" => element.children = flow(true),
+            "breditor/table-cell" => element.children = flow(false),
+            _ => {}
+        }
+    }
+    for (local, children) in [
+        ("details", details()),
+        ("details-summary", ChildConstraint::repeated(ChildKind::Text, 0, None)),
+    ] {
+        spec.elements.push(ElementSpec {
+            kind: super::rich_content_profile::name(local),
+            owner: DeclarationOwner::Breditor,
+            revision: PersistedTypeRevision::one(),
+            allows_properties: true,
+            property_contract: None,
+            allows_entity_id: false,
+            children,
+        });
+    }
     // The image element gains optional link properties (`image-href`,
     // `image-link-new-window`) and the "a linked image is never decorative" law.
     // Its persisted type revision records that changed property contract.

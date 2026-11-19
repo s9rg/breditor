@@ -119,6 +119,10 @@ fn candidate_v4(
         CommandTag::SetListNumbering => super::list_numbering::execute(owner, observation, input),
         CommandTag::SetTextLanguage => super::set_text_language::execute(owner, observation, input),
         CommandTag::SetImageLink => super::set_image_link::execute(owner, observation, input),
+        CommandTag::WrapDetails => super::details::wrap(owner, observation, input),
+        CommandTag::UnwrapDetails => super::details::unwrap(owner, observation, input),
+        CommandTag::SetDetailsOpen => super::details::set_open(owner, observation, input),
+        CommandTag::EnterDetailsBody => super::details::enter_body(owner, observation, input),
         _ => Err(super::invalid()),
     }
 }

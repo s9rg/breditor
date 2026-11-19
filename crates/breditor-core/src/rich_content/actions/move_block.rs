@@ -16,9 +16,10 @@ use crate::{
 };
 
 /// Containers whose direct children may be rearranged by a general block move.
-const CONTAINERS: [&str; 8] = [
+const CONTAINERS: [&str; 9] = [
     "breditor/document",
     "breditor/blockquote",
+    "breditor/details",
     "breditor/list-item",
     "breditor/task-item",
     "breditor/table-cell",
@@ -89,6 +90,10 @@ fn source(
         document.document().node_at(&parent).map_err(|_| RichActionError::MissingTarget)?;
     // Rows, cells, captions and other non-container children have dedicated actions.
     if !kind(parent_node).is_some_and(|parent| CONTAINERS.contains(&parent)) {
+        return Err(RichActionError::MoveSource);
+    }
+    // A section summary is part of its section, never an independently movable block.
+    if document.document().node_at(&path).is_ok_and(crate::rich_content::details::is_summary_node) {
         return Err(RichActionError::MoveSource);
     }
     Ok((path, parent))
@@ -217,7 +222,8 @@ fn find<'a>(node: &'a NodeRef, id: &str) -> Option<&'a NodeRef> {
     node.as_element()?.children().iter().find_map(|child| find(child, id))
 }
 
-/// Every list/task item touched by the move must still start with a text line.
+/// Every list/task item touched by the move must still start with a text line, and every
+/// touched section must keep its leading summary and a nonempty body.
 fn check_leads(
     document: &RichDocument,
     replacement: &NodeRef,
@@ -227,6 +233,21 @@ fn check_leads(
         let before =
             document.document().node_at(container).map_err(|_| RichActionError::Rewrite)?;
         let Some(element) = before.as_element() else { continue };
+        if element.kind().as_str() == "breditor/details" {
+            // A section keeps its summary first and at least one body block.
+            let id = block_id(before).ok_or(RichActionError::Rewrite)?;
+            let children = find(replacement, id)
+                .and_then(NodeRef::as_element)
+                .ok_or(RichActionError::Rewrite)?
+                .children();
+            if children.len() < 2
+                || !children.get(0).is_some_and(crate::rich_content::details::is_summary_node)
+                || children.iter().skip(1).any(crate::rich_content::details::is_summary_node)
+            {
+                return Err(crate::rich_content::RichDetailsError::Shape.into());
+            }
+            continue;
+        }
         if !LEAD_ITEMS.contains(&element.kind().as_str()) {
             continue;
         }

@@ -53,7 +53,14 @@ impl ReplaceTextRange {
         // remain separate, well-defined operations.
         if start.block() != end.block()
             && [first, last].iter().any(|node| {
-                node.as_element().is_some_and(|node| node.kind().as_str() == "breditor/code-block")
+                node.as_element().is_some_and(|node| {
+                    // A section summary never absorbs or donates text across its boundary:
+                    // the general planner keeps both boundary blocks distinct instead.
+                    matches!(
+                        node.kind().as_str(),
+                        "breditor/code-block" | "breditor/details-summary"
+                    )
+                })
             })
         {
             return Err(RichActionError::FlowRange);
@@ -169,7 +176,10 @@ pub(super) fn removed_text(
     };
     if matches!(
         element.kind().as_str(),
-        "breditor/paragraph" | "breditor/heading" | "breditor/code-block"
+        "breditor/paragraph"
+            | "breditor/heading"
+            | "breditor/code-block"
+            | "breditor/details-summary"
     ) {
         let id = BlockId::try_new(
             ast_properties::string(element, "block-id").map_err(|_| RichActionError::Rewrite)?,
