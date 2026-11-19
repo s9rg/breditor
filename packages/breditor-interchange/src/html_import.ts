@@ -73,7 +73,8 @@ export class HtmlConversion {
     const output:Element[]=[],layout={...state.layout,...(heading===undefined?{}:{"breditor/level":heading})};let runs:Node[]=[];
     const flush=()=>{if(runs.length){output.push(element(this.b,heading===undefined?"paragraph":"heading",runs,layout));runs=[];}};
     for(const piece of pieces){if(piece.kind==="element"){flush();output.push(piece);}else runs.push(piece);}flush();
-    if(pieces.some(p=>p.kind==="element"))this.b.loss("block-structure");
+    // Lifting images out of an unstyled paragraph that holds nothing else (a Markdown block image) loses nothing.
+    if(pieces.some(p=>p.kind==="element")&&!(heading===undefined&&!Object.keys(state.layout).length&&pieces.every(p=>p.kind==="element")))this.b.loss("block-structure");
     if(!output.length)output.push(element(this.b,heading===undefined?"paragraph":"heading",[],layout));
     return output;
   }
@@ -142,7 +143,9 @@ export class HtmlConversion {
   }
   #list(node:HtmlElement,state:StyleState,insideTable:boolean):Element[] {
     const output:Element[]=[];let current:Element|undefined,ordinal=Number(attribute(node,"start")??1);
-    if(!Number.isSafeInteger(ordinal)||ordinal<1||ordinal>1_000_000_000)fail("unsupported-content");
+    if(!Number.isSafeInteger(ordinal)||ordinal>1_000_000_000)fail("unsupported-content");
+    // Native ordered lists count from 1; CommonMark `0.` and HTML zero/negative starts are approximated, not rejected.
+    if(ordinal<1){this.b.loss("list-numbering");ordinal=1;}
     const ordered=node.tagName==="ol";
     if(attribute(node,"type")!==undefined&&attribute(node,"type")!==(ordered?"1":"disc")||attribute(node,"reversed")!==undefined)this.b.loss("list-numbering");
     for(const child of node.childNodes){
