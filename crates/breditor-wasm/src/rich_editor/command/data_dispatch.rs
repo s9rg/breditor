@@ -89,7 +89,6 @@ pub(super) fn execute(
         CommandTag::WrapList => super::wrap_list::execute(owner, observation, input),
         CommandTag::UnwrapList => super::unwrap_list::execute(owner, observation, input),
         CommandTag::SetListKind => super::set_list_kind::execute(owner, observation, input),
-        CommandTag::SetListNumbering => super::list_numbering::execute(owner, observation, input),
         CommandTag::OutdentListItems => {
             super::outdent_list_items::execute(owner, observation, input)
         }
@@ -106,6 +105,19 @@ pub(super) fn execute(
         }
         CommandTag::SplitTextBlock => super::split_text_block::execute(owner, observation, input),
         CommandTag::SplitListItem => super::split_list_item::execute(owner, observation, input),
+        _ => candidate_v4(tag, owner, observation, input),
+    }
+}
+/// Candidate rich V4 commands; each decoder refuses a non-V4 context itself.
+fn candidate_v4(
+    tag: CommandTag,
+    owner: &mut RichLocalSession,
+    observation: &RichLocalSnapshot,
+    input: &str,
+) -> Result<RichLocalOutcome, BreditorError> {
+    match tag {
+        CommandTag::SetListNumbering => super::list_numbering::execute(owner, observation, input),
+        CommandTag::SetTextLanguage => super::set_text_language::execute(owner, observation, input),
         _ => Err(super::invalid()),
     }
 }

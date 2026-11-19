@@ -3,7 +3,7 @@
 use std::{collections::btree_map::Entry, sync::Arc};
 
 use crate::{
-    document::ElementNode,
+    document::{ElementNode, Format, PropertyValue},
     identity::QualifiedName,
     position::NodePathCursor,
     rich_content::{BlockId, ImageId, TableId, ast_properties},
@@ -93,6 +93,35 @@ impl ValidationState<'_> {
             if let Err(reason) = ast_properties::table_view(element) {
                 self.rich_issue(ValidationCode::RichContentContract, path, reason);
             }
+        }
+    }
+
+    /// Candidate V4: a text-language value must be the canonical bounded BCP 47 form.
+    pub(super) fn validate_rich_text_language(
+        &mut self,
+        format: &Format,
+        path: &NodePathCursor,
+        index: usize,
+    ) {
+        use crate::rich_content::{RICH_TEXT_LANGUAGE_FORMAT, RICH_TEXT_LANGUAGE_TAG_PROPERTY};
+        if !self.schema.supports_rich_text_language()
+            || format.kind().as_str() != RICH_TEXT_LANGUAGE_FORMAT
+        {
+            return;
+        }
+        let name = QualifiedName::from_known_static(RICH_TEXT_LANGUAGE_TAG_PROPERTY);
+        // Presence and the string type/byte bounds are the declared property contract.
+        if let Some(value) = format.properties().get(&name).and_then(PropertyValue::as_string)
+            && !crate::rich_content::text_language::is_canonical_tag(value)
+        {
+            self.format_property_issue(
+                ValidationCode::RichContentContract,
+                path,
+                index,
+                &name,
+                ValidationDetail::None,
+                "text language is not a canonical bounded language tag".to_owned(),
+            );
         }
     }
 

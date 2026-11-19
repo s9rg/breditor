@@ -77,6 +77,7 @@ mod set_pending_formats;
 mod set_selection;
 mod set_table_header;
 mod set_task_checked;
+mod set_text_language;
 mod split_list_item;
 mod split_support;
 mod split_table_cell;
@@ -166,6 +167,7 @@ enum CommandTag {
     UnwrapList,
     SetListKind,
     SetListNumbering,
+    SetTextLanguage,
     OutdentListItems,
     JoinTextBlocks,
     JoinListItems,

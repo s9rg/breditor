@@ -128,6 +128,15 @@ pub(in crate::schema) fn compile_rich_content_profile_v4(
     schema_id: SchemaId,
     extensions: &ExtensionSet,
 ) -> Result<CompiledSchema, SchemaCompilationError> {
+    // V4 adds native formats, so the extension share of the 256-format ceiling shrinks.
+    let maximum = super::MAX_BASE_TEXT_EXTENSION_INLINE_FORMATS
+        - super::rich_content_profile_v4::NATIVE_INLINE_FORMATS;
+    let actual = extensions.manifests().fold(0_u32, |total, manifest| {
+        total.saturating_add(u32::try_from(manifest.inline_formats().len()).unwrap_or(u32::MAX))
+    });
+    if actual > maximum {
+        return Err(SchemaCompilationError::TooManyInlineFormats { actual, maximum });
+    }
     let spec = super::rich_content_profile_v4::specification(base_text_profile_spec(
         schema_id, extensions,
     )?);
