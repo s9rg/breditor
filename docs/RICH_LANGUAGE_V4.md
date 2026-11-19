@@ -1,10 +1,10 @@
 # Rich language V4 (unreleased candidate)
 
 Rich V4 is an explicit, opt-in rich language under construction. It is **not
-released**. It is built in five slices; this document records the first three
-(ordered-list numbering, text-run language and image links). The remaining
-slices (collapsible details/summary blocks and mention entities) will extend this
-same language before it is released.
+released**. It is built in five slices; this document records the first four
+(ordered-list numbering, text-run language, image links and collapsible
+sections). The remaining slice (mention entities) will extend this same language
+before it is released.
 
 Because each slice changes V4's grammar or rule revision, **the V4 schema
 fingerprint changes as later slices land**. No persisted V4 data exists, and
@@ -23,11 +23,11 @@ reinterprets an older document, and older profiles reject every V4 property.
 | Layer | V4 selector |
 | --- | --- |
 | Rust | `CompiledSchema::try_compile_rich_content_profile_v4`, `rich_content_revision() == Some(4)`, sealed rich rule revision 4 under compiler contract 6 |
-| Capability queries | `supports_rich_block_layout()` (V3 and V4), `supports_rich_list_numbering()`, `supports_rich_text_language()` and `supports_rich_image_links()` (V4 only) |
-| Wasm | explicit profile bootstrap **format 9**: `BreditorRichProfile.fromBootstrapJsonV4` / `fromStandardBootstrapJsonV4`; descriptor `richLanguageVersion: 4`, `taskStructureVersion: 1`, `blockLayoutVersion: 1`, `listNumberingVersion: 1`, `textLanguageVersion: 1`, `imageLinkVersion: 1`; owner `listNumberingVersion()`, `textLanguageVersion()` and `imageLinkVersion()` all `"1"` |
+| Capability queries | `supports_rich_block_layout()` (V3 and V4), `supports_rich_list_numbering()`, `supports_rich_text_language()`, `supports_rich_image_links()` and `supports_rich_details()` (V4 only) |
+| Wasm | explicit profile bootstrap **format 9**: `BreditorRichProfile.fromBootstrapJsonV4` / `fromStandardBootstrapJsonV4`; descriptor `richLanguageVersion: 4`, `taskStructureVersion: 1`, `blockLayoutVersion: 1`, `listNumberingVersion: 1`, `textLanguageVersion: 1`, `imageLinkVersion: 1`, `detailsVersion: 1`; owner `listNumberingVersion()`, `textLanguageVersion()`, `imageLinkVersion()` and `detailsVersion()` all `"1"` |
 | JavaScript factories | `compileRichProfileV4`, `compileStandardRichProfileV4` (`@breditor/experimental-rich-content`); `createLocalProfileV4`, `profileBootstrapJsonV4` (`@breditor/editor`, schema `breditor-editor/standard@4`) |
 | SDK openings | `openLocalEditor({richLanguage: 4})`, `openLocalDocumentEditor({richLanguage: 4, ...})` and both local React components' `initialOptions` |
-| Toolbar | `createRichToolbarV4(core, presentation)`: the V3 structural/layout controls plus **List numbering**, **Language**, **Clear language**, **Image link** and **Remove image link** |
+| Toolbar | `createRichToolbarV4(core, presentation)`: the V3 structural/layout controls plus **List numbering**, **Language**, **Clear language**, **Image link**, **Remove image link**, **Collapsible section**, **Remove collapsible section** and **Expand/Collapse section** |
 
 Each factory checks its exact descriptor tuple. A V3 factory refuses a V9
 bootstrap and a V4 factory refuses a V8 bootstrap. `createRichToolbarV4`
@@ -44,9 +44,9 @@ model, journal or configuration. `openSharedEditor`, `openSharedSearchEditor`,
 React components reject `richLanguage: 4` with the explicit error *"richLanguage
 4 is the unreleased local-only candidate; shared editing supports richLanguage
 1, 2 or 3"* before claiming the host or initializing Wasm. They never fall back
-to V3. Shared interchange owners do not report list numbering, text language or image
-links, so imports into a shared owner keep the original `list-numbering` notices,
-keep dropping `lang` silently and keep the original image-link conversion.
+to V3. Shared interchange owners do not report list numbering, text language, image
+links or sections, so imports into a shared owner keep the original `list-numbering` notices,
+keep dropping `lang` silently and keep the original image-link and `<details>` conversion.
 
 ## Slice 1: ordered-list numbering (audit gap `list-properties`)
 
@@ -494,11 +494,8 @@ owners report `true`; V1–V3 and shared owners do not.
 
 ### Fingerprint
 
-Current candidate V4 lock for schema `example/layout@1` with the standard
-inline preset:
-`sha256:f17cf0d20d317b80d5081e8093981cdb3e3f2674fe53c285dbd5a6b5110422c0`
-(asserted in the core and Wasm text-language and image-link tests). V1–V3 locks
-are unchanged.
+The image-link slice moved the V4 lock; the collapsible-section slice moved it
+again (see slice 4 for the current value).
 
 ### Tests
 
@@ -526,3 +523,179 @@ are unchanged.
   around only the `<img>`, one Undo group with Undo/Redo/restore, clicking the
   linked image selecting it without navigation or popups, native copy/paste
   keeping the link with V3 refusing the record, and interchange for V4 versus V3.
+
+## Slice 4: collapsible sections (audit gap `widgets-and-embeds`, collapsible section)
+
+Before this slice no rich language had a disclosure widget: HTML import unwrapped
+`<details>`/`<summary>` into ordinary flow. V4 adds an original section node. It
+is plain document structure with inert native rendering, not an embed or a
+provider-backed widget.
+
+### Grammar and placement
+
+| Node | Children | Properties |
+| --- | --- | --- |
+| `breditor/details` | exactly one leading `breditor/details-summary`, then one or more V4 flow blocks | `block-id` (required), `details-open` (optional Boolean, only `true`) |
+| `breditor/details-summary` | text runs only (may be empty) | `block-id` (required) |
+
+Decisions:
+
+- **Body.** The body admits exactly what a blockquote admits in V4: paragraphs,
+  headings, lists, task lists, images, blockquotes, code blocks, rules, tables
+  and nested sections. Tables stay forbidden below a table cell, even through a
+  section.
+- **Placement.** A section is a V4 flow block wherever V2 flow is admitted: the
+  document, list-item and task-item tails (never an item's leading line), a
+  blockquote, a table cell and another section's body. Image captions keep their
+  paragraph-only grammar. V4 overrides those containers' child grammar, so the
+  section is a grammar change recorded in the fingerprint.
+- **Nesting.** Sections may nest, but at most `RICH_DETAILS_MAX_DEPTH = 8`
+  sections lie on any root-to-leaf path (a sealed V4 rich rule).
+- **Summary content.** A summary is one inline text line like a paragraph: every
+  catalog inline format, inline links and text language are allowed (HTML
+  admits phrasing content in `<summary>`). It carries **no block layout**
+  (alignment, direction, indent and line height are rejected on it; layout
+  reads and commands skip it) and no other property. A summary outside a
+  section, a second summary, a summary that is not first, a section without a
+  body and `details-open: false` are rejected. V1–V3 reject both node kinds.
+
+### Open state
+
+`details-open` is **persisted document state**, as HTML's `open` attribute is:
+it is in history (every change is one Undo group), checkpoints, clipboard
+records and interchange. Only `true` is canonical; collapsed is absence. It is
+not view state, so collapsing a section publishes a new revision.
+
+### Native actions and commands
+
+| Rust | Wasm/TS command | Semantics |
+| --- | --- | --- |
+| `actions::WrapDetails::capture(doc, first, last, wrapper, summary, open)` | `{kind:"wrapDetails",data:{first,last,wrapper,summary,open}}` | Wraps a direct-sibling flow range (keeping every identity) as the body of a new section with an empty summary. A range containing a summary is refused. Wrapping an empty paragraph inserts an empty section (summary plus one empty paragraph). |
+| `actions::UnwrapDetails::capture(doc, wrapper)` | `{kind:"unwrapDetails",data:{wrapper}}` | Replaces the section with a paragraph carrying the summary's identity, runs and formats, followed by the whole body. A caret in the summary keeps its offset. |
+| `RichLocalSession::set_details_open(snapshot, section, open)` (`actions::SetDetailsOpen`) | `{kind:"setDetailsOpen",data:{block,open}}` | Guarded node patch; the current state is an admitted no-op. Collapsing moves a selection with any endpoint, node or grid inside the hidden body to a caret at the end of the summary in the same publication. |
+| `RichLocalSession::enter_details_body(snapshot, paragraph)` | `{kind:"enterDetailsBody",data:{paragraph}}` | From a collapsed caret in a summary: inserts one empty paragraph as the first body block (expanding a collapsed section in the same group) and moves the caret there. The summary text is never split. |
+
+Each is one exact history group with an exact inverse, refuses read-only owners,
+stale observations and non-V4 contexts (`RichDetailsError::Profile`), and
+survives checkpoint restore. `insertBlocks` accepts a `details` flow draft
+(`{kind:"details",block,summary,text,formatsJson,open,body}`) and a
+`{kind:"details",block}` flow parent; inserting before the summary is refused.
+
+Existing actions:
+
+- **Typing, formats, search, coverage.** A summary is a text block for
+  selection, plain and grouped typing, inline and pending formats, selection
+  coverage and search/replace (summary and body are both traversed, collapsed or
+  not).
+- **Never split, joined, converted or moved.** `SplitTextBlock`,
+  `JoinTextBlocks`, `SetHeading` and `SetCodeBlock` refuse a summary
+  (`TextTarget`); block input rules never convert it; `MoveBlock` refuses it as a
+  source (`MoveSource`).
+- **Enter / Backspace / Delete (browser).** Enter at any summary caret sends
+  `enterDetailsBody`; Enter with a range inside a summary does nothing.
+  Backspace at a summary start sends `unwrapDetails`. Backspace at the start of
+  the first body block moves the caret to the summary end; Delete at the summary
+  end moves the caret to the first body block when the section is open (and
+  stays put when collapsed). Summary and body text are never merged.
+- **Ranges across a section boundary.** The original sibling join refuses a
+  summary endpoint (`FlowRange`), so original-routing range edits across it are
+  refused with an error; the general range planner keeps both boundary blocks
+  distinct, keeps a wholly covered summary (emptied) inside a partially covered
+  section and asks for one fresh floor paragraph when the body would become
+  empty. A range covering a whole section removes it. A general Enter or flow
+  paste whose caret lands in a summary is refused (it would split the summary).
+- **Block move.** A section is a move container: blocks move into and out of its
+  body, and the whole section moves with its summary (a summary's drag handle is
+  the section's). Moving the last body block out or anything before the summary
+  is refused (`RichDetailsError::Shape`).
+- **Lists, headings, layout.** List/task wrapping and heading/paragraph controls
+  are disabled in a summary; layout commands skip it; tables can be inserted in a
+  body (except below a table cell).
+- **Clipboard.** A node or whole-range copy keeps the section with its open
+  state; paste rekeys every identity. A partial copy keeps a section only while it
+  has its summary and some body; otherwise its parts become ordinary flow (a
+  summary becomes a paragraph). A V1–V3 owner refuses a record containing a
+  section.
+- **Navigation.** Logical flow navigation treats sections as transparent, but a
+  collapsed section exposes only its summary: its hidden body is never a stop.
+  A selection set explicitly inside a hidden body is still admitted (the host's
+  responsibility); collapsing always moves the selection out.
+
+### Rendering and editing behavior
+
+The live renderer emits
+`<details data-rich-block data-rich-details [open]><summary data-rich-block data-rich-text>…</summary>…</details>`
+with `open` from document state. While the owner is editable the controller
+cancels the summary's native toggle (the `click` default) and reverts any
+browser-initiated toggle (for example find-in-page) to document state, so
+clicking a summary only places the caret. Toggling happens only through
+`setDetailsOpen` (**Expand/Collapse section**). A collapsed body is hidden by the
+browser's native `<details>` rendering. A read-only live surface allows native
+toggling as presentation only. The static renderer emits the same structure with
+`open=""`, leaves native toggling to readers and validates the same grammar, open
+value and nesting bound.
+
+The V4 toolbar adds **Collapsible section** (wraps the selected sibling blocks,
+or the caret's block, into an open section), **Remove collapsible section** and
+**Expand/Collapse section** (pressed when open), targeting the nearest section
+around the selection. The standard slash menu gains a **Collapsible section**
+item (`details`) that appears only with a V4 toolbar.
+
+### Interchange
+
+`@breditor/interchange` reads `supportsDetails()` once at creation (local V4
+owners only).
+
+- **HTML import, V4 owner:** `<details>` becomes a section; the first `<summary>`
+  child is its summary and `open` maps to `details-open`. Block markup inside a
+  summary is flattened (first line) or moved to the start of the body; a missing
+  summary becomes an empty summary; both report `block-structure`. An empty body
+  gets one empty paragraph. Sections deeper than 8 are lifted (summary text as a
+  paragraph, then the body) with `block-structure`.
+- **HTML import, V1–V3 owners:** unchanged: `<details>`/`<summary>` are unwrapped
+  into ordinary flow (the summary becomes a paragraph) with `unsupported-element`,
+  and `open` reports `unsupported-attribute`.
+- **HTML export:** `<details [open]><summary>…</summary>…</details>`; V4 HTML
+  round trips exactly.
+- **Markdown:** no syntax. A section is exported as a safe HTML block with
+  `markdown-feature` (nested content stays on one line and blank lines inside
+  text are escaped as `&#10;`); importing that Markdown maps it through the
+  sanitized HTML importer, so a V4 owner gets the section back and V1–V3 unwrap
+  it.
+
+### Fingerprint (current)
+
+Current candidate V4 lock for schema `example/layout@1` with the standard inline
+preset:
+`sha256:f19134f8bf95a5170a36eb2f5a9f5e3819dbfd2b0dcd9507ab846c60cffb5428`
+(asserted in the core and Wasm text-language, image-link and section tests).
+V1–V3 locks are unchanged. The schema unit test proves V4 differs from V3 only by
+its rule revision, the text-language format, the image revision and the section
+grammar (two new elements plus the section in five flow containers).
+
+### Not included
+
+Section anchors for fragment links, `name`-grouped exclusive accordions, custom
+disclosure markers, an in-surface toggle button and shared-collaboration rules
+(V4 is local only).
+
+### Tests
+
+- Rust core `tests/rich_details_v4.rs`: fingerprint locks, placement accept table,
+  malformed/old-profile/nesting/nested-table reject table, wrap/toggle/type/unwrap
+  history with checkpoint restore, collapse selection relocation, read-only/stale
+  refusal, Enter from a summary, summary refusals, block moves, general ranges
+  across the boundary, flow navigation over collapsed bodies, search/replace,
+  clipboard whole/partial copy with V3 refusal and layout skipping.
+- Wasm `tests/rich_details_v4.rs`: descriptor and owner capability, V1–V3
+  refusal, the four commands with Undo/Redo/restore, the `details` draft and
+  parent, malformed, read-only and stale intent.
+- TypeScript: rich-content `tests/details.test.ts`, editor
+  `tests/static_details.test.ts` (static output, rejection, live parity),
+  interchange `tests/details.test.ts` (per-profile import/export/Markdown
+  fallback and round trip).
+- Playwright `experiments/rich-browser/details-v4.spec.mjs` on a real Wasm V4
+  owner: capability and V3 refusal, toolbar insertion, typing in summary and
+  body, Enter from the summary, Undo/Redo/restore, collapse/expand with a body
+  caret, summary clicks never toggling, browser toggles reverted, Backspace
+  unwrap, copy/paste with V3 refusing the record and interchange for V4 versus V3.

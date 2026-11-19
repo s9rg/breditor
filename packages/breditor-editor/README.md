@@ -499,7 +499,7 @@ for bounds, independent shared fields, history and qualification scope.
 
 `richLanguage: 4` selects the unreleased candidate V4 for local openings
 (`openLocalEditor`, `openLocalDocumentEditor` and the local React components'
-`initialOptions`). It is V3 plus bounded ordered-list numbering, text-run language and image links, and will gain
+`initialOptions`). It is V3 plus bounded ordered-list numbering, text-run language, image links and collapsible sections, and will gain
 more features before release, so its fingerprint changes and V4 data must not be
 persisted yet. Shared openings reject `richLanguage: 4` explicitly; shared
 editing stays on languages 1–3. The standard schema is
@@ -543,6 +543,21 @@ link**; the static renderer emits the same `<a>` around the `<img>`.
 ```js
 editor.execute({kind: 'setImageLink', data: {image: 'img-1', href: 'https://example.com/', newWindow: true}});
 editor.execute({kind: 'setImageLink', data: {image: 'img-1', href: null}}); // remove
+```
+
+V4 adds collapsible sections: a summary line followed by a body of ordinary
+blocks, rendered as native `<details>`/`<summary>`. Open state is part of the
+document (Undo, checkpoints, clipboard). While editing, clicking a summary only
+places the caret; use **Expand/Collapse section** to toggle. **Collapsible
+section** wraps the selected blocks (or the caret's block) in an open section with
+an empty summary; **Remove collapsible section** turns the summary into a
+paragraph. Enter in a summary opens a fresh first body paragraph and Backspace at
+a summary start removes the section. The static renderer emits `<details open>`.
+
+```js
+editor.execute({kind: 'wrapDetails', data: {first: 'p1', last: 'p2', wrapper: 'sec-1', summary: 'sum-1', open: true}});
+editor.execute({kind: 'setDetailsOpen', data: {block: 'sec-1', open: false}});
+editor.execute({kind: 'unwrapDetails', data: {wrapper: 'sec-1'}});
 ```
 
 See `docs/RICH_LANGUAGE_V4.md` in the repository for domains, semantics,

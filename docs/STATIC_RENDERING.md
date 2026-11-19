@@ -46,7 +46,10 @@ candidate V4 `breditor/text-language` inline format (a canonical bounded BCP 47 
 (`staticInlineRecipesV4`), and the candidate V4 image link (`image-href`, a canonical safe
 HTTP(S) target, and `image-link-new-window: true`; never on a decorative image), emitted as
 `<a data-rich-image-link class="breditor-image-link" href [rel target]>` around the `<img>` only,
-with the inline `safeLinkV1` attribute set. It checks the following:
+with the inline `safeLinkV1` attribute set, and candidate V4 collapsible sections (`breditor/details`
+with one leading `breditor/details-summary`, at most 8 nested, `details-open: true` only), emitted as
+native `<details data-rich-details [open]><summary data-rich-text>…</summary>…</details>` so readers
+can toggle static output. It checks the following:
 
 - Exact node and envelope fields. `entityId` must be `null`.
 - Required and allowed `breditor/*` properties for each element type. An unexpected property,
