@@ -11,13 +11,13 @@
  * closed rich-content grammar before output. Unknown node types and format kinds either
  * throw or are skipped with a report; nothing from document data is ever passed through as
  * markup. Links resolve through the shared `safeLinkV1` policy from
- * `@breditor/browser/presentation`, the same canonicalizer the live editor uses. Style
+ * `@breditor/experimental-rich-content/rendering` (re-exported from the browser presentation module), the same canonicalizer the live editor uses. Style
  * attributes appear only as values computed from bounded integers.
  */
 import {
  compileInlineFormatRecipes,createInlineFormatRenderManifest,resolveInlineFormatRenderAttributes,
  type BrowserProfileFormatDescriptor,type InlineFormatRenderRecipe,type InlineFormatRenderAttribute,
-} from "@breditor/browser/presentation";
+} from "@breditor/experimental-rich-content/rendering";
 
 /** Immutable image binding handed to the host resolver; mirrors the live `AssetBinding`. */
 export interface StaticAssetBinding {readonly image:string;readonly asset:string;readonly generation:string}

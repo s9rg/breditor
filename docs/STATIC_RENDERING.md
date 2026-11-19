@@ -11,7 +11,8 @@ an HTML string. It does not need a DOM, the Wasm module or an editor owner, so i
 Node, edge workers, build-time static generation and server-side rendering.
 
 ```ts
-import {renderStaticDocument,renderStaticDocumentWithReport} from "@breditor/editor";
+// The lean entry avoids loading the interactive editor module graph during SSR.
+import {renderStaticDocument,renderStaticDocumentWithReport} from "@breditor/editor/static";
 
 const html=renderStaticDocument(editor.view().documentJson,{
  resolveAsset:({image,asset,generation})=>assetUrls.get(`${asset}@${generation}`),

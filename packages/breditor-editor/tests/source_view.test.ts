@@ -80,7 +80,8 @@ describe("opt-in HTML source view (real interchange sanitizer, stubbed native ow
   const t=fixture(),view=mountRichSourceView(t.panelRoot,t.dom.documentSource());view.open();
   view.setSource(`<!doctype html><html><head><title>Page title</title><meta name="viewport" content="x"><base href="https://example.com/"><link rel="stylesheet" href="x.css"></head><body bgcolor="#eeeeee"><table width="600" bgcolor="#ffffff" align="center" cellpadding="0"><tr><td valign="top" style="padding:20px;font-family:Arial">Hello <b>reader</b></td></tr></table><!--[if mso]><p>Outlook only</p><![endif]--></body></html>`);
   const preview=view.review()!;expect(preview.applicable).toBe(true);
-  expect(preview.losses.map(n=>n.code)).toEqual(expect.arrayContaining(["removed-content","unsupported-attribute"]));
+  // Page metadata is ignored without a notice; layout attributes and the stylesheet link are reported.
+  expect(preview.losses.map(n=>n.code)).toEqual(expect.arrayContaining(["unsupported-attribute","unsupported-style"]));
   view.apply();const stored=JSON.stringify(t.root());
   for(const forbidden of ["Page title","viewport","example.com","x.css","bgcolor","#eeeeee","cellpadding","valign","padding","Outlook only"])expect(stored).not.toContain(forbidden);
   expect(stored).toContain("Hello ");expect(stored).toContain("reader");expect(stored).toContain(`"type":"breditor/table"`);

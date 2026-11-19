@@ -23,3 +23,5 @@ export {isStructuralRichLanguage} from "./dist/browser/rich_language.js";
 export {requireClipboardInterchange,readClipboardInput,exportClipboard,writeClipboard,clipboardInterchangeReport,clipboardInterchangeStatus} from "./dist/browser/clipboard_interchange.js";
 export {mountRichBlockDragPort,richBlockDragStyles} from "./dist/browser/block_drag.js";
 export {resolveRichBlockMove,resolveRichBlockStep,richBlockDropTargets,richHandleBlock,richSelectionBlock,isMovableBlock} from "./dist/browser/block_move.js";
+// Profile-independent inline presentation helpers, re-exported so DOM-free renderers depend only on this package.
+export {compileInlineFormatRecipes,createInlineFormatRenderManifest,resolveInlineFormatRenderAttributes} from "@breditor/browser/presentation";
