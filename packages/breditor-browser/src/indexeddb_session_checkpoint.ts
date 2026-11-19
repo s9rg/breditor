@@ -226,6 +226,8 @@ export class IndexedDbSessionCheckpointStore {
   readonly #binding: ResolvedBinding;
   readonly #owner = Object.freeze({});
   #database: IDBDatabase | undefined;
+  /** A handle that closed abnormally before it was cached; never cache it. */
+  #closedBeforeCached: IDBDatabase | undefined;
   #opening: Promise<ConnectionResult> | undefined;
   #cancelOpening: (() => void) | undefined;
   #terminalError: IndexedDbSessionCheckpointError | undefined;
@@ -465,6 +467,12 @@ export class IndexedDbSessionCheckpointStore {
       safeClose(result.database);
       return failure(this.#terminalError);
     }
+    if (this.#closedBeforeCached === result.database) {
+      // It closed while schema validation was pending; fail this operation and
+      // let the next one open a fresh connection instead of caching a dead one.
+      this.#closedBeforeCached = undefined;
+      return failure(error("session_checkpoint.connection"));
+    }
     this.#database = result.database;
     return result;
   }
@@ -537,6 +545,7 @@ export class IndexedDbSessionCheckpointStore {
           // the database and reopening at this version would be refused.
           openedDatabase.onclose = () => {
             if (this.#database === openedDatabase) this.#database = undefined;
+            else this.#closedBeforeCached = openedDatabase;
           };
           const validation = validateSchema(openedDatabase, this.#binding.slot);
           Reflect.apply(PROMISE_THEN, validation, [
