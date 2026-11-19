@@ -7,6 +7,11 @@ import {
   type BrowserProfileFormatDescriptor,
   type BrowserProfileFormatPropertyDescriptor,
 } from "./wasm_profile_descriptor.js";
+import {
+  MAX_LANGUAGE_TAG_V1_BYTES,
+  MIN_LANGUAGE_TAG_V1_BYTES,
+  isCanonicalLanguageTagV1,
+} from "./language_tag.js";
 
 /** Exact UTF-8 ceiling accepted by the built-in safe-link policy. */
 export const MAX_INLINE_FORMAT_SAFE_LINK_HREF_UTF8_BYTES = 2_048;
@@ -64,6 +69,15 @@ export interface InlineFormatRenderSafeIntegerTokenV1Entry {
   readonly token: string;
 }
 
+/**
+ * Candidate rich V4 text language: one required string property holding a
+ * canonical bounded BCP 47 tag, emitted only as the inert `lang` attribute.
+ */
+export interface InlineFormatRenderSafeLanguageTagV1Policy {
+  readonly kind: "safeLanguageTagV1";
+  readonly propertyName: string;
+}
+
 /** Closed, exhaustive rendering policy for one bounded integer property. */
 export interface InlineFormatRenderSafeIntegerTokenV1Policy {
   readonly kind: "safeIntegerTokenV1";
@@ -77,7 +91,8 @@ export type InlineFormatRenderAttributePolicy =
   | InlineFormatRenderSafeTextColorV1Policy
   | InlineFormatRenderSafeRgb24V1Policy
   | InlineFormatRenderSafeTextSizeV1Policy
-  | InlineFormatRenderSafeIntegerTokenV1Policy;
+  | InlineFormatRenderSafeIntegerTokenV1Policy
+  | InlineFormatRenderSafeLanguageTagV1Policy;
 
 /** Prevalidated fields retained only for detached, frozen policies we create. */
 const SAFE_INTEGER_TOKEN_POLICY_FIELDS = new WeakMap<
@@ -90,6 +105,7 @@ export interface InlineFormatRenderAttribute {
   readonly name:
     | "data-breditor-integer-token"
     | "href"
+    | "lang"
     | "rel"
     | "style"
     | "target";
@@ -144,6 +160,12 @@ export function createInlineFormatRenderAttributePolicy(
       throw new TypeError("inline-format render attribute policy kind is invalid");
     }
     return Object.freeze({ kind: policyKind });
+  }
+  if(policyKind==="safeLanguageTagV1"){
+    const record=readExactDataRecord(value,["kind","propertyName"],"inline-format language policy");
+    const propertyName=record["propertyName"];
+    if(!isQualifiedName(propertyName))throw new TypeError("inline-format language property name is invalid");
+    return Object.freeze({kind:policyKind,propertyName});
   }
   if(policyKind==="safeRgb24V1"||policyKind==="safeTextSizeV1"){
     const record=readExactDataRecord(value,policyKind==="safeRgb24V1"?["kind","propertyName","channel"]:["kind","propertyName"],"inline-format scalar style policy");
@@ -220,6 +242,8 @@ export function inlineFormatRenderAttributePolicyMatchesFormatDescriptor(
     }
     const style=scalarStyleFields(policy);
     if(style!==null)return formatMatchesRequiredInteger(format,style.propertyName,style.minimum,style.maximum);
+    const languageProperty=safeLanguageTagPropertyName(policy);
+    if(languageProperty!==null)return formatMatchesLanguageTag(format,languageProperty);
     const integerToken = safeIntegerTokenPolicyFields(policy);
     if (integerToken !== null) {
       return formatMatchesSafeIntegerTokenV1(format, integerToken);
@@ -273,6 +297,14 @@ export function resolveInlineFormatRenderAttributes(
   properties: readonly InlineFormatPropertyProjection[],
 ): readonly InlineFormatRenderAttribute[] {
   try {
+    const languageProperty=safeLanguageTagPropertyName(policy);
+    if(languageProperty!==null){
+      if(exactDenseArrayLength(properties,1)!==1)return EMPTY_ATTRIBUTES;
+      const property=ownArrayValue(properties,0);
+      if(!hasExactOwnDataKeys(property,["name","value"])||ownDataValue(property,"name")!==languageProperty)return EMPTY_ATTRIBUTES;
+      const value=ownDataValue(property,"value");
+      return isCanonicalLanguageTagV1(value)?Object.freeze([Object.freeze({name:"lang" as const,value})]):EMPTY_ATTRIBUTES;
+    }
     const scalarStyle=scalarStyleFields(policy);
     if(scalarStyle!==null){
       if(exactDenseArrayLength(properties,1)!==1)return EMPTY_ATTRIBUTES;
@@ -447,6 +479,11 @@ export function inlineFormatRenderAttributesAreCanonicalForPolicy(
   value: unknown,
 ): value is readonly InlineFormatRenderAttribute[] {
   try {
+    if(safeLanguageTagPropertyName(policy)!==null){
+      if(exactDenseArrayLength(value,1)!==1)return false;
+      const attribute=readExactRenderAttribute(ownArrayValue(value,0));
+      return attribute?.name==="lang"&&isCanonicalLanguageTagV1(attribute.value);
+    }
     const style=scalarStyleFields(policy);
     if(style!==null){
       if(exactDenseArrayLength(value,1)!==1)return false;
@@ -491,6 +528,18 @@ function scalarStyleFields(policy:InlineFormatRenderAttributePolicy):ScalarStyle
   if(kind==="safeTextSizeV1")return {kind,propertyName,minimum:8,maximum:96};
   const channel=ownDataValue(policy,"channel");
   return channel==="text"||channel==="background"?{kind,propertyName,channel,minimum:0,maximum:16777215}:null;
+}
+function safeLanguageTagPropertyName(policy:InlineFormatRenderAttributePolicy):string|null{
+  if(ownDataValue(policy,"kind")!=="safeLanguageTagV1"||!hasExactOwnDataKeys(policy,["kind","propertyName"]))return null;
+  const propertyName=ownDataValue(policy,"propertyName");return isQualifiedName(propertyName)?propertyName:null;
+}
+function formatMatchesLanguageTag(format:BrowserProfileFormatDescriptor,propertyName:string):boolean{
+  const properties=ownDataValue(format,"properties");
+  if(boundedArrayLength(properties,MAX_BROWSER_PROFILE_PROPERTIES_PER_FORMAT)!==1)return false;
+  const property=findPropertyDescriptor(properties,1,propertyName);
+  if(property===null||propertyPresence(property)!=="required")return false;
+  const type=ownDataValue(property,"valueType");
+  return ownDataValue(type,"kind")==="string"&&ownDataValue(type,"minimumUtf8Bytes")===MIN_LANGUAGE_TAG_V1_BYTES&&ownDataValue(type,"maximumUtf8Bytes")===MAX_LANGUAGE_TAG_V1_BYTES;
 }
 function isCanonicalRgbStyle(value:string,prefix:string):boolean{
   if(value.length!==prefix.length+6)return false;
@@ -711,7 +760,7 @@ function readExactRenderAttribute(
   const name = ownDataValue(value, "name");
   const attributeValue = ownDataValue(value, "value");
   return (name === INLINE_FORMAT_SAFE_INTEGER_TOKEN_V1_ATTRIBUTE ||
-      name === "href" || name === "rel" || name === "style" ||
+      name === "href" || name === "lang" || name === "rel" || name === "style" ||
       name === "target") &&
       typeof attributeValue === "string"
     ? { name, value: attributeValue }

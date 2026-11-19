@@ -182,7 +182,7 @@ export function createInlineFormatRenderManifest(
           );
         }
       } else if (attributes !== undefined) {
-        const scalarClass=attributes.kind==="safeRgb24V1"?(attributes.channel==="text"?"breditor-inline-text-color":"breditor-inline-background-color"):attributes.kind==="safeTextSizeV1"?"breditor-inline-text-size":null;
+        const scalarClass=attributes.kind==="safeRgb24V1"?(attributes.channel==="text"?"breditor-inline-text-color":"breditor-inline-background-color"):attributes.kind==="safeTextSizeV1"?"breditor-inline-text-size":attributes.kind==="safeLanguageTagV1"?"breditor-text-language":null;
         if (
           (attributes.kind !== "safeIntegerTokenV1" && scalarClass===null) ||
           element !== "span" ||

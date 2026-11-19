@@ -3,6 +3,7 @@ import {resolveInlineFormatRenderAttributes} from "@breditor/browser/presentatio
 import type {FormatLiteral,RichInlineFormatState,RichInlineFormatStateRead,RichSelectionFormatStateRead,RichSelectionFormatChange} from "./core.js";
 import {requireRichInlinePresentation,richInlineFormatDescriptor,type RichInlinePresentation} from "./inline_presentation.js";
 import {createStandardRichInlinePresentationV1,standardInlineKindsV1 as k,standardInlinePropertiesV1 as p} from "./standard_inline_v1.js";
+import {richTextLanguageFormat} from "./text_language.js";
 import type {RichToolbarField,RichToolbarReading} from "./toolbar_control_view.js";
 export type StandardInlineChange={kind:"set";format:FormatLiteral}|{kind:"remove";format:string}|{kind:"patch";format:FormatLiteral;properties:readonly string[]};
 export interface StandardInlineReader {inlineFormatState(kind:string):RichInlineFormatStateRead;caretFormats?():readonly FormatLiteral[];supportsStandardInlineControls?():boolean;supportsInlinePropertyPatches?():boolean}
@@ -23,7 +24,7 @@ export function standardSelectionInlineControls(core:StandardSelectionInlineRead
 function compileControls(core:Omit<StandardInlineReader,"inlineFormatState">&{inlineFormatState(kind:string):RichInlineFormatStateRead|RichSelectionFormatStateRead},presentation:RichInlinePresentation,expected:RichInlineFormatStateRead["format"]|RichSelectionFormatStateRead["format"]):readonly StandardInlineControl[]{
  if(core.supportsStandardInlineControls?.()!==true||!core.caretFormats)throw Error("Use a matching Rust owner with standard inline-control capabilities");
  requireRichInlinePresentation(presentation,presentation.schema);
- const names=new Set<string>(Object.values(k)),all=presentation.recipesOuterToInner.map(recipe=>richInlineFormatDescriptor(presentation,recipe.formatKind)!).sort((a,b)=>a.kind<b.kind?-1:1),extra=presentation.recipesOuterToInner.filter(recipe=>!names.has(recipe.formatKind));
+ const names=new Set<string>(Object.values(k)),all=presentation.recipesOuterToInner.map(recipe=>richInlineFormatDescriptor(presentation,recipe.formatKind)!).sort((a,b)=>a.kind<b.kind?-1:1),extra=presentation.recipesOuterToInner.filter(recipe=>!names.has(recipe.formatKind)&&recipe.formatKind!==richTextLanguageFormat);
  // Reuse the versioned compiler's exact native-domain checks, not a second schema.
  createStandardRichInlinePresentationV1(JSON.stringify({format:"breditor/inline-format-catalog",formatVersion:1,schema:presentation.schema,formats:all}),extra.length?{recipes:extra}:undefined);
  const state=(kind:string):RichInlineFormatState=>{const r=core.inlineFormatState(kind),s=presentation.schema;if(r.format!==expected||r.formatVersion!==1||r.formatKind!==kind||r.schema.name!==s.name||r.schema.version!==s.version||r.schema.fingerprint!==s.fingerprint)throw Error("Toolbar and Rust schema bindings differ");return r.state;};state(k.strong);

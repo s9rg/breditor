@@ -518,6 +518,21 @@ editor.execute({kind: 'setListNumbering', data: {list: 'steps', style: 'lower-ro
 editor.execute({kind: 'setListNumbering', data: {list: 'steps', style: null, reversed: false}});
 ```
 
+V4 also tags runs of text with a language (`<span lang="…">`), so assistive
+technology, spell checking and hyphenation use the right language. The V4
+toolbar adds **Language** (a validated BCP 47 tag field) and **Clear language**.
+Language never changes block direction, and *Clear standard formatting* keeps it.
+
+```js
+// Applies to the current selection (one Undo step) or, at a caret, to the next typing.
+editor.execute({kind: 'setTextLanguage', data: {language: 'fr-ca'}}); // stored as fr-CA
+editor.execute({kind: 'setTextLanguage', data: {language: null}});    // clear
+```
+
+Tags are a bounded, well-formed subset of BCP 47 (language, optional script,
+region and variants; at most 35 characters; no private-use `x-` or extension
+subtags). The static renderer emits the same `lang` spans.
+
 See `docs/RICH_LANGUAGE_V4.md` in the repository for domains, semantics,
 interchange behavior and what is not included (legal multilevel counters).
 

@@ -15,7 +15,7 @@
  * attributes appear only as values computed from bounded integers.
  */
 import {
- compileInlineFormatRecipes,createInlineFormatRenderManifest,resolveInlineFormatRenderAttributes,
+ compileInlineFormatRecipes,createInlineFormatRenderManifest,resolveInlineFormatRenderAttributes,isCanonicalLanguageTagV1,
  type BrowserProfileFormatDescriptor,type InlineFormatRenderRecipe,type InlineFormatRenderAttribute,
 } from "@breditor/experimental-rich-content/rendering";
 
@@ -103,6 +103,12 @@ export const staticInlineCatalogV1:readonly BrowserProfileFormatDescriptor[]=Obj
  {kind:K.textSize,revision:1,properties:[{name:P.pixels,presence:"required",valueType:integerType(8,96)}]},
  {kind:K.fontFamily,revision:1,properties:[{name:P.family,presence:"required",valueType:integerType(1,4)}]},
 ] as BrowserProfileFormatDescriptor[]);
+/** Candidate rich V4 native text-language format (Rust `text_language.rs`). */
+const LANGUAGE="breditor/text-language",LANGUAGE_TAG="breditor/language-tag";
+/** @internal Standard inline V1 catalog plus the candidate rich V4 `breditor/text-language` format. */
+export const staticInlineCatalogV4:readonly BrowserProfileFormatDescriptor[]=Object.freeze([...staticInlineCatalogV1,
+ {kind:LANGUAGE,revision:1,properties:[{name:LANGUAGE_TAG,presence:"required",valueType:{kind:"string",minimumUtf8Bytes:2,maximumUtf8Bytes:35}}]},
+] as BrowserProfileFormatDescriptor[]);
 const free:readonly [string,InlineFormatRenderRecipe["element"]][]=[[K.strong,"strong"],[K.italic,"em"],[K.underline,"u"],[K.strike,"s"],[K.code,"code"],[K.subscript,"sub"],[K.superscript,"sup"]];
 /** @internal Outer-to-inner recipes, identical to the live standard inline V1 presentation. */
 export const staticInlineRecipesV1:readonly InlineFormatRenderRecipe[]=compileInlineFormatRecipes(staticInlineCatalogV1,createInlineFormatRenderManifest({recipes:[
@@ -113,7 +119,21 @@ export const staticInlineRecipesV1:readonly InlineFormatRenderRecipe[]=compileIn
  {formatKind:K.textSize,element:"span",classes:["breditor-inline-text-size"],attributes:{kind:"safeTextSizeV1",propertyName:P.pixels}},
  {formatKind:K.fontFamily,element:"span",classes:["breditor-inline-font-family"],attributes:{kind:"safeIntegerTokenV1",propertyName:P.family,tokens:[{value:1,token:"system"},{value:2,token:"sans"},{value:3,token:"serif"},{value:4,token:"mono"}]}},
 ]}));
-const catalogByKind=new Map(staticInlineCatalogV1.map(format=>[format.kind,format]));
+/**
+ * @internal Outer-to-inner recipes used for output, identical to the live standard presentation
+ * over a V4 catalog: V1 recipes plus `<span class="breditor-text-language" lang="…">`. A V1–V3
+ * document never carries the language format, so its output is unchanged.
+ */
+export const staticInlineRecipesV4:readonly InlineFormatRenderRecipe[]=compileInlineFormatRecipes(staticInlineCatalogV4,createInlineFormatRenderManifest({recipes:[
+ ...free.map(([formatKind,element])=>({formatKind,element})),
+ {formatKind:K.link,element:"a",classes:["breditor-link"],before:[...Object.values(K).filter(kind=>kind!==K.link),LANGUAGE],attributes:{kind:"safeLinkV1",hrefProperty:P.href,openInNewWindowProperty:P.newWindow}},
+ {formatKind:K.textColor,element:"span",classes:["breditor-inline-text-color"],attributes:{kind:"safeRgb24V1",propertyName:P.rgb24,channel:"text"}},
+ {formatKind:K.backgroundColor,element:"span",classes:["breditor-inline-background-color"],attributes:{kind:"safeRgb24V1",propertyName:P.rgb24,channel:"background"}},
+ {formatKind:K.textSize,element:"span",classes:["breditor-inline-text-size"],attributes:{kind:"safeTextSizeV1",propertyName:P.pixels}},
+ {formatKind:K.fontFamily,element:"span",classes:["breditor-inline-font-family"],attributes:{kind:"safeIntegerTokenV1",propertyName:P.family,tokens:[{value:1,token:"system"},{value:2,token:"sans"},{value:3,token:"serif"},{value:4,token:"mono"}]}},
+ {formatKind:LANGUAGE,element:"span",classes:["breditor-text-language"],attributes:{kind:"safeLanguageTagV1",propertyName:LANGUAGE_TAG}},
+]}));
+const catalogByKind=new Map(staticInlineCatalogV4.map(format=>[format.kind,format]));
 const linkPolicy=staticInlineRecipesV1.find(recipe=>recipe.formatKind===K.link)!.attributes!;
 
 /** Block layout codes, identical to `applyBlockLayout` and Rust `block_layout.rs`. */
@@ -306,7 +326,7 @@ class Renderer {
     const item=properties[property.name],type=property.valueType;
     const valid=type.kind==="boolean"?typeof item==="boolean":type.kind==="integer"?typeof item==="number"&&Number.isSafeInteger(item)&&(type.minimum===null||item>=type.minimum)&&(type.maximum===null||item<=type.maximum)
      :typeof item==="string"&&!loneSurrogate.test(item)&&utf8Length(item)>=type.minimumUtf8Bytes&&utf8Length(item)<=type.maximumUtf8Bytes;
-    if(!valid)this.#fail("format","Format literal property is outside its declared domain",formatPath);
+    if(!valid||declaration.kind===LANGUAGE&&!isCanonicalLanguageTagV1(item))this.#fail("format","Format literal property is outside its declared domain",formatPath);
     copy[property.name]=item;
    }
    admitted.push({type,properties:Object.freeze(copy)});
@@ -372,7 +392,7 @@ class Renderer {
   let html=escapeHtmlText(node.text);
   if(!node.formats.length)return html;
   const selected=new Map(node.formats.map(format=>[format.type,format]));
-  const recipes=staticInlineRecipesV1.filter(recipe=>selected.has(recipe.formatKind));
+  const recipes=staticInlineRecipesV4.filter(recipe=>selected.has(recipe.formatKind));
   for(const recipe of [...recipes].reverse()){
    const literal=selected.get(recipe.formatKind)!;
    const attributes:readonly InlineFormatRenderAttribute[]=recipe.attributes?resolveInlineFormatRenderAttributes(recipe.attributes,Object.entries(literal.properties).map(([name,value])=>({name,value:value as string|number|boolean}))):[];

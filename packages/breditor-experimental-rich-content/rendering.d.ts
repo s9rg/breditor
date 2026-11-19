@@ -27,5 +27,6 @@ export {prepareRichPlaceholder,validatePlaceholderOption,RichPlaceholderPresenta
 export * from "./dist/browser/input_rule_intent.js";
 export {mountRichBlockDragPort,richBlockDragStyles,type RichBlockDrag,type RichBlockDragOptions,type RichBlockDragPort} from "./dist/browser/block_drag.js";
 export * from "./dist/browser/block_move.js";
-export {compileInlineFormatRecipes,createInlineFormatRenderManifest,resolveInlineFormatRenderAttributes,type BrowserProfileFormatDescriptor,type InlineFormatRenderRecipe,type InlineFormatRenderAttribute} from "@breditor/browser/presentation";
+export {compileInlineFormatRecipes,createInlineFormatRenderManifest,resolveInlineFormatRenderAttributes,canonicalLanguageTagV1,isCanonicalLanguageTagV1,type BrowserProfileFormatDescriptor,type InlineFormatRenderRecipe,type InlineFormatRenderAttribute} from "@breditor/browser/presentation";
+export {richTextLanguageFormat,richTextLanguageTagProperty,richTextLanguageRecipeV4,textLanguageOf} from "./dist/browser/text_language.js";
 export * from "./dist/browser/ui_locale.js";
