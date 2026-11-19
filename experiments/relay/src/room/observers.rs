@@ -10,6 +10,7 @@ impl Room {
     /// Rejects missing read permission, allocation budgets, entropy and storage failures.
     pub fn register_observer(&mut self, principal: &str) -> Result<Registration> {
         self.reader(principal)?;
+        self.check_principal_writer_budget(principal)?;
         let writer = self.next_writer()?;
         let credential = credentials::issue()?;
         let resume_hash = credentials::hash(&credential)?;

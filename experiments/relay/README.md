@@ -372,8 +372,8 @@ payload tails, checksum corruption and plausible corrupt lengths. A real
 read-only file handle verifies write-error fencing.
 
 Current correctness budgets are 20 MiB per serialized log record, 256 MiB per
-room log, 4,096 total log records, 1,024 registered writers and 1,024 non-owner
-role entries. The stricter existing rich owner budgets also apply, including
+room log, 4,096 total log records, 1,024 registered writers (at most 32 created
+live by any one non-owner account, editor or observer) and 1,024 non-owner role entries. The stricter existing rich owner budgets also apply, including
 1,000 journal entries and bounded causal state. These are explicit rejection
 limits, not a rolling compaction implementation or throughput/SLA promise.
 

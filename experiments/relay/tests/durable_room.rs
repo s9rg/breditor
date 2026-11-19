@@ -1,7 +1,7 @@
 //! Functional reference-host recovery, permission and offline writer contract checks.
 use breditor_collab_feasibility::rich_replica::{
     Command, RichReplica, SharedRichProfile,
-    actions::{InsertText, ResizeColumn, SetImageAlt},
+    actions::{DeleteText, InsertText, ResizeColumn, SetImageAlt},
 };
 use breditor_collab_relay::{Admission, Error, Lease, Registration, Role, Room};
 use serde_json::{Value, json};
@@ -148,6 +148,61 @@ fn offline_rich_groups_recover_server_and_selective_client_history_with_original
     );
     assert_eq!(a.undo_count(), 1);
     assert_eq!(b.undo_count(), 1);
+    Ok(())
+}
+
+#[test]
+fn admission_refuses_a_group_whose_state_would_exceed_the_catchup_frame_budget() -> Result {
+    let files = Files::new()?;
+    let (p, mut room) = start(&files)?;
+    let (r, mut a) = join(&p, &mut room, "alice")?;
+    // Each round inserts ~576 KiB of incompressible text and deletes it in the same group, so
+    // the document stays small while CRDT history (and the full-state frame) keeps growing.
+    let mut seed = 0x9e37_79b9_u32;
+    let mut through = "0".to_owned();
+    let mut refused = None;
+    for _ in 0..4 {
+        let mut commands = Vec::new();
+        let mut length = 0u32;
+        for _ in 0..9 {
+            let chunk: String = (0..64 * 1024)
+                .map(|_| {
+                    seed ^= seed << 13;
+                    seed ^= seed >> 17;
+                    seed ^= seed << 5;
+                    char::from(b'a' + u8::try_from(seed % 26).unwrap_or(0))
+                })
+                .collect();
+            length += u32::try_from(chunk.len())?;
+            commands.push(insert("p", &chunk));
+        }
+        commands.push(Command::DeleteText(DeleteText { block: "p".into(), offset: 0, length }));
+        a.apply(commands)?;
+        for group in groups(&a, &through)? {
+            match room.admit("alice", &r.lease, &group) {
+                Ok(Admission::Pending { missing, .. }) => {
+                    return Err(format!("pending after {through}: {}", missing.len()).into());
+                }
+                Ok(outcome) => through = ack(outcome)?.receipt.through,
+                Err(error) => {
+                    refused = Some(error);
+                    break;
+                }
+            }
+        }
+        if refused.is_some() {
+            break;
+        }
+    }
+    assert!(
+        matches!(&refused, Some(Error::Core(error)) if error.to_string().contains("frame")),
+        "{refused:?}"
+    );
+    // The room stays joinable, including after recovery from its log.
+    p.join_frame("room".into(), "998".into(), &room.catchup("owner")?)?;
+    drop(room);
+    let (room, _) = Room::open(&files.path)?;
+    p.join_frame("room".into(), "999".into(), &room.catchup("owner")?)?;
     Ok(())
 }
 

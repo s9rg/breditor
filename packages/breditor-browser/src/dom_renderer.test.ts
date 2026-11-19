@@ -827,19 +827,15 @@ describe("hierarchical flat-list DOM and points", () => {
     } finally { f.dispose(); }
   });
 
-  it("cancels mismatched replacement ranges and admits exact list targets once", () => {
+  it("replaces the list text named by the target range rather than the caret", () => {
     const f = eventFixture();
     try {
-      const wrong = new StaticRange({startContainer: f.text, startOffset: 0, endContainer: f.text, endOffset: 1});
-      const blocked = f.input("insertReplacementText", [wrong], "x");
-      expect(f.controller.handleBeforeInput(blocked as unknown as InputEvent, f.rendered, f.delivery()))
-        .toEqual({kind: "blocked", defaultPrevented: true, reason: "targetRangeMismatch"});
-      expect(f.delivered).toHaveLength(0);
-      const exact = new StaticRange({startContainer: f.text, startOffset: 1, endContainer: f.text, endOffset: 1});
-      const admitted = f.input("insertReplacementText", [exact], "x");
+      const word = new StaticRange({startContainer: f.text, startOffset: 0, endContainer: f.text, endOffset: 1});
+      const admitted = f.input("insertReplacementText", [word], "x");
       expect(f.controller.handleBeforeInput(admitted as unknown as InputEvent, f.rendered, f.delivery()).kind).toBe("handled");
       expect(admitted.defaultPrevented).toBe(true); expect(f.delivered).toHaveLength(1);
-      expect(f.delivered[0]?.selection).toMatchObject({kind: "range", selection: {anchor: {textPath: [0, 0, 0, 0], utf16Offset: 1}}});
+      expect(f.delivered[0]?.selection).toMatchObject({kind: "range", selection: {
+        anchor: {textPath: [0, 0, 0, 0], utf16Offset: 0}, focus: {textPath: [0, 0, 0, 0], utf16Offset: 1}}});
     } finally { f.dispose(); }
   });
 

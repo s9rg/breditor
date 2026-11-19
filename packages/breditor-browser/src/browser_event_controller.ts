@@ -39,13 +39,13 @@ import {
   translateKeyDown,
   translateFlatListKeyDown,
   translateNestedListKeyDown,
+  keyboardShortcutIdentity,
   type KeyboardSnapshot,
   type KeyboardTranslationPolicy,
 } from "./keyboard.js";
 import {
   DEFAULT_COMPILED_KEYBOARD_SHORTCUTS,
   isOwnedBrowserCompiledKeyboardShortcuts,
-  keyboardShortcutCodeIdentity,
   type BrowserCompiledKeyboardShortcuts,
 } from "./keyboard_shortcut_profile_contract.js";
 import {
@@ -55,14 +55,16 @@ import {
   type RenderedProjection,
 } from "./dom_renderer.js";
 import {
+  BaseRangeSelection,
   baseSelectionPointsEqual,
   spatialPositionForPoint,
-  type BaseRangeSelection,
 } from "./selection.js";
 import {
   preventDomEventDefault,
   readDomEventBase,
+  readDomDataTransferData,
   readDomInputEvent,
+  readDomInputEventDataTransfer,
   readDomInputTargetRanges,
   readDomKeyboardEvent,
   type DomEventBaseSnapshot,
@@ -72,8 +74,8 @@ import { snapshotOwnDataArray } from "./protected_handle_snapshot.js";
 import { nativeCommandBuilder, type NativeCommandRequest, type NativeDeliveryToken, type NativeSelectionSync } from "./native_command_builder.js";
 import { type FlatListDocumentProjection } from "./flat_list_projection.js";
 import { type NestedListDocumentProjection } from "./nested_list_projection.js";
-import { flatListBlockAtPath, flatListSpatialPositionForPoint, isOwnedFlatListRangeSelection, type FlatListRangeSelection } from "./flat_list_selection.js";
-import { nestedListBlockAtPath, nestedListSpatialPositionForPoint, isOwnedNestedListRangeSelection, type NestedListRangeSelection } from "./nested_list_selection.js";
+import { flatListBlockAtPath, flatListSpatialPositionForPoint, isOwnedFlatListRangeSelection, FlatListRangeSelection } from "./flat_list_selection.js";
+import { nestedListBlockAtPath, nestedListSpatialPositionForPoint, isOwnedNestedListRangeSelection, NestedListRangeSelection } from "./nested_list_selection.js";
 import { astPathsEqual } from "./ast_path.js";
 
 type NativeRender = RenderedProjection | RenderedProjection<FlatListDocumentProjection> | RenderedProjection<NestedListDocumentProjection>;
@@ -241,9 +243,24 @@ class BrowserEventControllerCore<TResult, R extends NativeRender, D extends Nati
       return this.#cancelBlocked(event, base, "invalidEvent");
     }
 
+    const targets = readTargetRanges(event);
+    if (!targets.ok) {
+      this.#clearReceipts();
+      return this.#cancelBlocked(event, base, "targetRangeUnavailable");
+    }
+    if (targets.count === "multiple") {
+      this.#clearReceipts();
+      return this.#cancelBlocked(event, base, "targetRangeCount");
+    }
+
     let capturedSelection: EditorSelectionSync | FlatListEditorSelectionSync | NestedListEditorSelectionSync | undefined;
     if (translation.kind === "command") {
-      capturedSelection = this.#captureRangeSelection(admitted.rendered);
+      // Spellcheck and autocorrect replace the word named by the target range,
+      // which is normally not the caret selection, so that range is the command's
+      // selection. Other input types still require the live selection to match.
+      capturedSelection = input.inputType === "insertReplacementText"
+        ? this.#targetRangeSelection(admitted.rendered, targets)
+        : this.#captureRangeSelection(admitted.rendered);
       if (capturedSelection === undefined) {
         this.#clearReceipts();
         return this.#cancelBlocked(event, base, "selectionUnavailable");
@@ -258,16 +275,6 @@ class BrowserEventControllerCore<TResult, R extends NativeRender, D extends Nati
         this.#clearReceipts();
         return this.#cancelBlocked(event, base, "invalidEvent");
       }
-    }
-
-    const targets = readTargetRanges(event);
-    if (!targets.ok) {
-      this.#clearReceipts();
-      return this.#cancelBlocked(event, base, "targetRangeUnavailable");
-    }
-    if (targets.count === "multiple") {
-      this.#clearReceipts();
-      return this.#cancelBlocked(event, base, "targetRangeCount");
     }
 
     if (translation.kind === "blocked") {
@@ -670,6 +677,38 @@ class BrowserEventControllerCore<TResult, R extends NativeRender, D extends Nati
     }
   }
 
+  #targetRangeSelection(
+    rendered: NativeRender,
+    targets: AcceptedTargetRangeSnapshot,
+  ): EditorSelectionSync | FlatListEditorSelectionSync | NestedListEditorSelectionSync | undefined {
+    if (targets.count !== 1) {
+      return undefined;
+    }
+    try {
+      if (isOwnedNestedListRenderedProjection(rendered)) {
+        const target = mapDomNestedListTargetRange(rendered, targets.range);
+        if (!target.ok) return undefined;
+        const selection = NestedListRangeSelection.create(rendered.projection,
+          {kind: "range", anchor: target.value.start, focus: target.value.end});
+        return selection.ok ? nestedListRangeSelectionSync(selection.value) : undefined;
+      }
+      if (isOwnedFlatListRenderedProjection(rendered)) {
+        const target = mapDomFlatListTargetRange(rendered, targets.range);
+        if (!target.ok) return undefined;
+        const selection = FlatListRangeSelection.create(rendered.projection,
+          {kind: "range", anchor: target.value.start, focus: target.value.end});
+        return selection.ok ? flatListRangeSelectionSync(selection.value) : undefined;
+      }
+      const target = mapDomTargetRange(rendered as RenderedProjection, targets.range);
+      if (!target.ok) return undefined;
+      const selection = BaseRangeSelection.create((rendered as RenderedProjection).projection,
+        {kind: "range", anchor: target.value.start, focus: target.value.end});
+      return selection.ok ? rangeSelectionSync(selection.value) : undefined;
+    } catch {
+      return undefined;
+    }
+  }
+
   #cancelAndSubmit(
     event: Event,
     base: EventBase,
@@ -964,11 +1003,32 @@ function readInputEventSnapshot(event: unknown): InputEventSnapshot | null {
   ) {
     return null;
   }
+  let data = snapshot.data;
+  if (data === null && snapshot.inputType === "insertReplacementText") {
+    data = readReplacementText(event, snapshot.source);
+  }
   return Object.freeze({
     inputType: snapshot.inputType,
-    data: snapshot.data,
+    data,
     isComposing: snapshot.isComposing,
   });
+}
+
+/** Plain-text replacement from InputEvent.dataTransfer, or null if absent or oversized. */
+function readReplacementText(event: unknown, source: string): string | null {
+  try {
+    const transfer = readDomInputEventDataTransfer(event);
+    if (transfer === null || transfer.source !== source || transfer.dataTransfer === null) {
+      return null;
+    }
+    const read = readDomDataTransferData(transfer.dataTransfer, "text/plain");
+    return read.ok && typeof read.value === "string" &&
+        read.value.length <= MAX_BROWSER_COMMAND_TEXT_UTF16
+      ? read.value
+      : null;
+  } catch {
+    return null;
+  }
 }
 
 function readKeyboardSnapshot(event: unknown): KeyboardSnapshot | null {
@@ -1083,7 +1143,7 @@ function keyboardEchoInputTypes(
   primaryModifier: "control" | "meta",
 ): readonly string[] {
   const command = request.command;
-  const code = keyboardShortcutCodeIdentity(keyboard.code);
+  const code = keyboardShortcutIdentity(keyboard);
   if (command.kind === "history") {
     if (
       command.operation === "undo" &&

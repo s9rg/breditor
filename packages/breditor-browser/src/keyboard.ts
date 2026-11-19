@@ -146,7 +146,7 @@ function translateSafeKeyDown(
     }
     const binding = compiledKeyboardShortcutBindingFor(
       shortcuts,
-      snapshot.code,
+      keyboardShortcutIdentity(snapshot) ?? "",
       snapshot.shiftKey,
     );
     if (binding !== undefined) {
@@ -224,9 +224,26 @@ function safeKeyIdentity(snapshot: KeyboardSnapshot): string {
     : "Unidentified";
 }
 
+/**
+ * The `KeyA`..`KeyZ` identity a shortcut chord matches.
+ *
+ * A Latin letter in `KeyboardEvent.key` wins, so the labelled key works on
+ * QWERTZ, AZERTY and Dvorak (Ctrl+Z is undo wherever Z is printed). Only when
+ * the layout produces no Latin letter (Cyrillic, Greek, ...) does the physical
+ * US-position `code` decide, keeping shortcuts usable on those layouts.
+ * @internal
+ */
+export function keyboardShortcutIdentity(
+  snapshot: Pick<KeyboardSnapshot, "key" | "code">,
+): string | undefined {
+  if (/^[A-Za-z]$/u.test(snapshot.key)) {
+    return `Key${snapshot.key.toUpperCase()}`;
+  }
+  return keyboardShortcutCodeIdentity(snapshot.code);
+}
+
 function keyIs(snapshot: KeyboardSnapshot, lower: string): boolean {
-  return keyboardShortcutCodeIdentity(snapshot.code) ===
-    `Key${lower.toUpperCase()}`;
+  return keyboardShortcutIdentity(snapshot) === `Key${lower.toUpperCase()}`;
 }
 
 function isUnsupportedNativeEditingShortcut(
@@ -246,15 +263,10 @@ function isUnsupportedNativeEditingShortcut(
 function conservativeNativeEditingLetter(
   snapshot: KeyboardSnapshot,
 ): string | undefined {
-  const physical = keyboardShortcutCodeIdentity(snapshot.code);
-  if (physical !== undefined && /^Key[BIUYZ]$/u.test(physical)) {
-    return physical.slice(3).toLowerCase();
-  }
-  if (snapshot.key.length !== 1 || snapshot.key.charCodeAt(0) > 0x7f) {
-    return undefined;
-  }
-  const logical = snapshot.key.toLowerCase();
-  return /^[biuyz]$/u.test(logical) ? logical : undefined;
+  const identity = keyboardShortcutIdentity(snapshot);
+  return identity !== undefined && /^Key[BIUYZ]$/u.test(identity)
+    ? identity.slice(3).toLowerCase()
+    : undefined;
 }
 
 function isPotentialTextKey(key: string): boolean {

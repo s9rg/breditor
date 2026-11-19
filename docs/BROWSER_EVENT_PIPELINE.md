@@ -171,8 +171,11 @@ getters into a directionless `BaseTargetRange`; a structural look-alike cannot
 supply endpoints. No native range or endpoint is retained. The target is tied
 to the exact projection, renderer handle, and renderer generation.
 
-Replacement and ordinary range-targeting intents require the normalized target
-to equal the spatial extent of the captured selection. Child-container boundaries
+`insertReplacementText` (spellcheck and autocorrect) adopts its single
+normalized target range as the command selection, because the replaced word is
+normally not the caret selection; when `data` is null its text is read from the
+event's `dataTransfer` as `text/plain`. Other range-targeting intents require
+the normalized target to equal the spatial extent of the captured selection. Child-container boundaries
 and text-run edges at the same offset in the same block are equivalent for this
 comparison, including full list-item paths. Native targets carry no affinity;
 the command retains the exact captured endpoint forms, direction and affinities

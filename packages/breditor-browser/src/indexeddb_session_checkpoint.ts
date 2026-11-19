@@ -531,8 +531,12 @@ export class IndexedDbSessionCheckpointStore {
             this.#invalidate(openedDatabase);
             safeClose(openedDatabase);
           };
+          // An abnormal close (site data cleared, storage pressure, a dropped
+          // backgrounded connection) only loses this handle; the next operation
+          // reopens it. A versionchange stays terminal because a newer schema owns
+          // the database and reopening at this version would be refused.
           openedDatabase.onclose = () => {
-            this.#invalidate(openedDatabase);
+            if (this.#database === openedDatabase) this.#database = undefined;
           };
           const validation = validateSchema(openedDatabase, this.#binding.slot);
           Reflect.apply(PROMISE_THEN, validation, [

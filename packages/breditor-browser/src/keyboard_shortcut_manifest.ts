@@ -14,7 +14,7 @@ export const MAX_KEYBOARD_SHORTCUT_STATE_ID_ASCII = 128;
 
 /** One exact primary-modifier chord. */
 export interface PrimaryKeyChord {
-  /** One exact physical `KeyboardEvent.code` from `KeyA` through `KeyZ`. */
+  /** `KeyA` through `KeyZ`: the labelled Latin letter, or this US physical position on non-Latin layouts. */
   readonly code: string;
   /** Whether Shift must also be pressed. Other modifiers must be absent. */
   readonly shift: boolean;
