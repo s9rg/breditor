@@ -5,6 +5,9 @@ export type HtmlElement=DefaultTreeAdapterTypes.Element;
 export function isElement(n:HtmlNode):n is HtmlElement{return "tagName" in n;}
 export function attribute(n:HtmlElement,name:string):string|undefined{return n.attrs.find(a=>a.name===name&&a.namespace===undefined&&a.prefix===undefined)?.value;}
 export function plainText(n:HtmlNode):string{return n.nodeName==="#text"?(n as DefaultTreeAdapterTypes.TextNode).value:isElement(n)?n.tagName==="br"?"\n":n.childNodes.map(plainText).join(""):"";}
+function officeConditional(source:string,offset:number):boolean {
+  return offset>=2&&source.startsWith("<!",offset-2)&&/^\[(?:if [^\]<>]{1,64}|endif)\]>/i.test(source.slice(offset,offset+72));
+}
 /** Limits construction and HTML repair, including detached nodes absent from the returned tree. */
 export function htmlTree(source:string,b:Budget):HtmlNode[] {
   sourceWithinBudget(source);
@@ -24,8 +27,11 @@ export function htmlTree(source:string,b:Budget):HtmlNode[] {
     onItemPush(){if(++open>limits.depth+8)fail("resource-limit");},onItemPop(){open--;},
   };
   // A document parse retains authored html/body attributes in Office wrappers.
-  // Missing doctype is ordinary for a clipboard fragment, not a conversion loss.
-  const document=parse(source,{scriptingEnabled:false,treeAdapter:adapter,onParseError(error){if(error.code==="missing-doctype")return;if(++errors>limits.parsedNodes)fail("resource-limit");}});
+  // Missing doctype is ordinary for a clipboard fragment, not a conversion loss; neither is a
+  // legacy HTML 4 doctype (LibreOffice, Cocoa HTML Writer), which repairs no content.
+  // Office "downlevel-revealed" conditional markers (`<![if !supportLists]>`, `<![endif]>`)
+  // are bogus comments by design; their revealed content stays ordinary parsed markup.
+  const document=parse(source,{scriptingEnabled:false,treeAdapter:adapter,onParseError(error){if(error.code==="missing-doctype"||error.code==="non-conforming-doctype"||error.code==="incorrectly-opened-comment"&&officeConditional(source,error.startOffset))return;if(++errors>limits.parsedNodes)fail("resource-limit");}});
   const root=document.childNodes.find((n):n is HtmlElement=>"tagName" in n),nodes=root?[root]:[];
   if(errors)b.loss("html-repaired",errors);
   const todo:{node:HtmlNode;depth:number}[]=nodes.map(node=>({node,depth:1}));let visited=0;

@@ -6,24 +6,71 @@ import type {InterchangeOptions} from "./types.js";
 import {importTable,pixels} from "./html_table.js";
 import {Stylesheets} from "./html_stylesheet.js";
 const blocks=new Set(["p","div","h1","h2","h3","h4","h5","h6","ul","ol","li","pre","blockquote","table","figure","hr","section","article","main","header","footer"]);
-const containers=new Set(["div","section","article","main","header","footer","html","head","body","center"]);
-const removed=new Set(["script","style","iframe","object","embed","template","noscript","link","meta","base","title","canvas","audio","video","source"]);
+// `google-sheets-html-origin` is Google Sheets' transparent producer wrapper around its table.
+const containers=new Set(["div","section","article","main","header","footer","html","head","body","center","google-sheets-html-origin"]);
+const removed=new Set(["script","style","iframe","object","embed","template","noscript","canvas","audio","video","source"]);
+// Non-rendered document metadata (Office ProgId/Generator, File-List companions, charset, empty titles).
+const metadata=new Set(["meta","title","base","link"]);
 const inlineTags=new Set(["span","b","strong","i","em","u","s","strike","del","code","sub","sup","a","small","big","font","label","abbr","mark","wbr"]);
 const knownAttributes=new Set(["style","class","id","dir","align","lang","href","target","rel","src","alt","width","height","start","value","rowspan","colspan","span","type","checked","disabled","data-breditor-placeholder","data-breditor-cell-partition","data-breditor-cell-row","data-breditor-cell-column","data-breditor-cell-header"]);
-interface WordItem {node:HtmlElement;level:number;group:string;start:number|null}
+const structuralRoles=new Set(["presentation","none","list","listitem"]);
+// Word for the web flat-list metadata that structural conversion consumes.
+const flatListAttributes:ReadonlySet<string>=new Set(["data-aria-level","data-aria-posinset","data-listid","aria-setsize"]);
+const wordBullets=/^[·•●○◦▪■□◆◇►➢➤✓✔\-–—*o§Øüvqnl]$/;
+/** Flat producer list entry: Word desktop `mso-list` paragraphs or Word for the web `data-aria-level` items. */
+interface FlatItem {level:number;group:string;ordered:boolean;numbers:number[];body:(state:StyleState)=>Element[]}
+const romanPattern=/^m{0,3}(?:cm|cd|d?c{0,3})(?:xc|xl|l?x{0,3})(?:ix|iv|v?i{0,3})$/;
+function roman(value:string):number|null {
+  if(!value||!romanPattern.test(value))return null;const digits:Record<string,number>={i:1,v:5,x:10,l:50,c:100,d:500,m:1000};let total=0;
+  for(let i=0;i<value.length;i++){const n=digits[value[i]!]!,next=digits[value[i+1]??""]??0;total+=n<next?-n:n;}return total;
+}
+/** Word marker text → candidate ordinals (preferred first), [] for a bullet glyph, null if unrecognized; `exact` = native decimal keeps it. */
+function wordMarker(raw:string):{numbers:number[];exact:boolean}|null {
+  const value=raw.replace(/\s+/g,"");
+  let m=/^(\d{1,9})[.)]$/.exec(value);if(m)return{numbers:[Number(m[1])],exact:true};
+  m=/^\((\d{1,9})\)$/.exec(value)??/^(?:\d{1,9}\.){1,8}(\d{1,9})\.?$/.exec(value);if(m)return{numbers:[Number(m[1])],exact:false};
+  m=/^\(?([a-z]{1,4}|[A-Z]{1,4})[.)]$/.exec(value);
+  if(m){
+    const word=m[1]!.toLowerCase(),letters=word.split("").every(c=>c===word[0])?(word.length-1)*26+word.charCodeAt(0)-96:null,numeral=roman(word),numbers:number[]=[];
+    // A lone `i` opens a roman list in Word's defaults; other ambiguous letters read alphabetically first.
+    if(word==="i"&&numeral!==null)numbers.push(numeral);if(letters!==null)numbers.push(letters);if(numeral!==null&&!numbers.includes(numeral))numbers.push(numeral);
+    if(numbers.length)return{numbers,exact:false};
+  }
+  if(wordBullets.test(value))return{numbers:[],exact:true};
+  return null;
+}
 /** Conversion staging only. Native schema/clipboard admission is always required before publication. */
 export class HtmlConversion {
-  #css=new WeakMap<HtmlElement,Map<string,string>>();#blockDescendant=new WeakMap<HtmlElement,boolean>();#word=new WeakMap<HtmlElement,WordItem|null>();
+  #css=new WeakMap<HtmlElement,Map<string,string>>();#blockDescendant=new WeakMap<HtmlElement,boolean>();#word=new WeakMap<HtmlElement,FlatItem|null>();
   #markers=new WeakSet<HtmlElement>();#checkboxes=new WeakSet<HtmlElement>();
   #preservedEnd=new WeakSet<Text>();
   constructor(readonly b:Budget,readonly options:InterchangeOptions,readonly sheets:Stylesheets){}
   css(node:HtmlElement):Map<string,string>{let value=this.#css.get(node);if(!value){const important=new Set<string>();value=this.sheets.apply(node,declarations(node,this.b,important),important);this.#css.set(node,value);}return value;}
-  style(node:HtmlElement,parent:StyleState):StyleState {
-    for(const attr of node.attrs)if(attr.namespace!==undefined||attr.prefix!==undefined||!knownAttributes.has(attr.name))this.b.loss("unsupported-attribute");
+  /** `interpreted` names attributes that structural conversion already consumed for this node. */
+  style(node:HtmlElement,parent:StyleState,interpreted?:ReadonlySet<string>):StyleState {
+    for(const attr of node.attrs)if(attr.namespace!==undefined||attr.prefix!==undefined||!this.#knownAttribute(node,attr.name,attr.value,interpreted))this.b.loss("unsupported-attribute");
     return styleFor(node,parent,this.b,this.css(node));
+  }
+  #knownAttribute(node:HtmlElement,name:string,value:string,interpreted?:ReadonlySet<string>):boolean {
+    if(knownAttributes.has(name)||interpreted?.has(name))return true;
+    // Namespace declarations (Office `xmlns:o`, Sheets `xmlns`) and `xml:lang` (same as `lang`) are syntax, not content.
+    if(name==="xmlns"||name.startsWith("xmlns:")||name==="xml:lang")return true;
+    // Structural ARIA that only restates the list/paragraph structure being imported.
+    return name==="role"&&structuralRoles.has(value.trim().toLowerCase())||name==="aria-level"&&node.tagName==="li";
+  }
+  #metadata(node:HtmlElement):boolean {
+    if(!metadata.has(node.tagName))return false;
+    // A referenced external stylesheet is never loaded; its styling is reported, other links are companions.
+    if(node.tagName==="link"&&(attribute(node,"rel")??"").toLowerCase().split(/\s+/).includes("stylesheet"))this.b.loss("unsupported-style");
+    return true;
+  }
+  /** Producer-private paragraph-mark placeholders: Word `<o:p>` and Word for the web `EOP` runs holding only (no-break) spaces. */
+  #paragraphMark(node:HtmlElement):boolean {
+    return(node.tagName==="o:p"||node.tagName==="span"&&(attribute(node,"class")??"").split(/\s+/).includes("EOP"))&&node.childNodes.every(n=>!isElement(n))&&!/[^\t\n\f\r \u00a0]/.test(plainText(node));
   }
   #safe(node:HtmlElement):boolean {
     if(node.tagName==="style"&&this.sheets.consumed(node))return false;
+    if(this.#metadata(node))return false;
     if(node.namespaceURI!=="http://www.w3.org/1999/xhtml"||removed.has(node.tagName)||this.#hidden(node)){this.b.loss("removed-content");return false;}return true;
   }
   #hidden(node:HtmlElement):boolean {
@@ -47,9 +94,10 @@ export class HtmlConversion {
     const walk=(items:readonly HtmlNode[],parent:StyleState)=>{
       for(const node of items){
         if(!isElement(node)){if(node.nodeName==="#text")this.#inlineText(output,plainText(node),parent);continue;}
-        if(!this.#safe(node)||this.#markers.has(node)||this.#checkboxes.has(node))continue;
+        if(!this.#safe(node)||this.#markers.has(node)||this.#checkboxes.has(node)||this.#paragraphMark(node)||interchangeNewline(node))continue;
         const next=this.style(node,parent);
         if(node.tagName==="br"){if(attribute(node,"data-breditor-placeholder")!=="1")append(this.b,output,"\n",[...next.formats.values()]);continue;}
+        if(node.tagName==="o:p"){walk(node.childNodes,next);continue;}
         if(node.tagName==="img"){const image=this.image(node,next);if(image)output.push(image);else this.#inlineText(output,attribute(node,"alt")??"",next);continue;}
         if(node.tagName==="input"||node.tagName==="button"||node.tagName==="select"||node.tagName==="textarea"){this.b.loss("removed-content");continue;}
         if(!inlineTags.has(node.tagName))this.b.loss("unsupported-element");
@@ -80,13 +128,26 @@ export class HtmlConversion {
   }
   flow(nodes:readonly HtmlNode[],state=initialStyle(),insideTable=false):Element[] {
     const output:Element[]=[];let pending:HtmlNode[]=[];
-    const flush=()=>{if(pending.some(n=>isElement(n)||plainText(n).trim()!=="")||state.whiteSpace==="pre"&&pending.length)output.push(...this.prose(pending,state,undefined,false));pending=[];};
+    const flush=()=>{
+      // A lone <br> between blocks renders one empty line (Docs, Notes): an empty paragraph, not a hard break.
+      const significant=pending.filter(n=>isElement(n)||plainText(n).trim()!=="");
+      if(state.whiteSpace!=="pre"&&significant.length===1&&isElement(significant[0]!)&&significant[0]!.tagName==="br"&&!interchangeNewline(significant[0]!)&&!this.#hidden(significant[0]!)&&attribute(significant[0]!,"data-breditor-placeholder")!=="1"){this.style(significant[0]!,state);output.push(element(this.b,"paragraph",[],{...state.layout}));}
+      else if(significant.length||state.whiteSpace==="pre"&&pending.length)output.push(...this.prose(pending,state,undefined,false));
+      pending=[];
+    };
+    const blank=(n:HtmlNode)=>!isElement(n)&&!plainText(n).trim();
     for(let i=0;i<nodes.length;i++){
       const node=nodes[i]!;
       if(!isElement(node)){pending.push(node);continue;}
       if(this.#hidden(node)&&node.tagName!=="style"){this.b.loss("removed-content");continue;}
       const word=this.#wordItem(node);
-      if(word){flush();const items=[word];for(let j=i+1;j<nodes.length;j++){const n=nodes[j]!;if(!isElement(n)&&!plainText(n).trim()){i=j;continue;}const next=isElement(n)?this.#wordItem(n):null;if(!next||next.group!==word.group)break;items.push(next);i=j;}output.push(...this.#wordLists(items,state));continue;}
+      if(word){flush();const items=[word];for(let j=i+1;j<nodes.length;j++){const n=nodes[j]!;if(blank(n)){i=j;continue;}const next=isElement(n)?this.#wordItem(n):null;if(!next||next.group!==word.group)break;items.push(next);i=j;}output.push(...this.#flatLists(items,state));continue;}
+      if(this.#flatList(node)){
+        flush();const items=this.#flatListItems(node,state);
+        for(let j=i+1;j<nodes.length;j++){const n=nodes[j]!;if(blank(n)){i=j;continue;}if(!isElement(n)||!this.#flatList(n))break;items.push(...this.#flatListItems(n,state));i=j;}
+        for(let start=0;start<items.length;){let end=start+1;while(end<items.length&&items[end]!.group===items[start]!.group)end++;output.push(...this.#flatLists(items.slice(start,end),state));start=end;}
+        continue;
+      }
       if(!blocks.has(node.tagName)&&!containers.has(node.tagName)&&!this.#containsBlock(node)){pending.push(node);continue;}
       flush();if(!this.#safe(node))continue;
       const next=this.style(node,state),tag=node.tagName;
@@ -104,6 +165,9 @@ export class HtmlConversion {
   }
   image(node:HtmlElement,_state:StyleState):Element|undefined {
     const src=attribute(node,"src")??"",rawAlt=attribute(node,"alt");let binding;
+    // Office/LibreOffice temporary `file:` companions are producer-local paths, never host-owned
+    // assets: report them without offering the path to the host registry.
+    if(/^[\t\n\f\r ]*file:/i.test(src)){this.b.loss("image-reference");return undefined;}
     try{binding=this.options.resolveImage?.(Object.freeze({src,alt:rawAlt??null}));}catch{fail("asset-policy");}
     if(!binding){this.b.loss("image-reference");return undefined;}
     if(typeof binding.asset!=="string"||typeof binding.generation!=="string")fail("asset-policy");
@@ -149,7 +213,16 @@ export class HtmlConversion {
     const ordered=node.tagName==="ol";
     if(attribute(node,"type")!==undefined&&attribute(node,"type")!==(ordered?"1":"disc")||attribute(node,"reversed")!==undefined)this.b.loss("list-numbering");
     for(const child of node.childNodes){
-      if(!isElement(child)){if(plainText(child).trim())fail("unsupported-content");continue;}if(child.tagName!=="li"||this.#hidden(child))fail("unsupported-content");
+      if(!isElement(child)){if(plainText(child).trim())fail("unsupported-content");continue;}
+      // Google Docs and Cocoa HTML Writer (Notes/TextEdit/Pages) place a nested list directly in its
+      // parent list after the item it belongs to; HTML renders it there, so it nests into that item.
+      if((child.tagName==="ul"||child.tagName==="ol")&&!this.#hidden(child)){
+        const nested=this.#list(child,this.style(child,state),insideTable),owner=current?.children.at(-1) as Element|undefined;
+        if(owner)owner.children.push(...nested);
+        else{this.b.loss("block-structure");current=element(this.b,ordered?"ordered-list":"bullet-list",[],ordered?{"breditor/start":ordinal}:{});output.push(current);current.children.push(element(this.b,"list-item",[element(this.b,"paragraph"),...nested]));ordinal++;}
+        continue;
+      }
+      if(child.tagName!=="li"||this.#hidden(child))fail("unsupported-content");
       const checkbox=this.#checkbox(child),task=checkbox!==undefined;if(checkbox)this.#checkboxes.add(checkbox);
       const explicit=attribute(child,"value");if(ordered&&explicit!==undefined){const n=Number(explicit);if(!Number.isSafeInteger(n)||n<1||n>1_000_000_000)fail("unsupported-content");if(n!==ordinal){current=undefined;ordinal=n;this.b.loss("list-numbering");}}
       const kind=task?"task-list":ordered?"ordered-list":"bullet-list";
@@ -161,33 +234,68 @@ export class HtmlConversion {
     }
     if(!output.length)this.b.loss("block-structure");return output;
   }
-  #wordItem(node:HtmlElement):WordItem|null {
+  #wordItem(node:HtmlElement):FlatItem|null {
     if(this.#word.has(node))return this.#word.get(node)!;
-    let item:WordItem|null=null;
+    let item:FlatItem|null=null;
     if(node.tagName==="p"&&!this.#hidden(node)){
       const declaration=this.css(node).get("mso-list"),m=declaration?/\bl(\d+)\s+level(\d+)\s+lfo(\d+)\b/i.exec(declaration):null;
       if(m){const level=Number(m[2]);if(level<1||level>16)fail("unsupported-content");
         const todo=[...node.childNodes];let marker:HtmlElement|undefined;
         while(todo.length){const n=todo.shift()!;if(isElement(n)){if(this.css(n).get("mso-list")?.toLowerCase()==="ignore"){marker=n;break;}todo.unshift(...n.childNodes);}}
-        if(marker){this.#markers.add(marker);const value=plainText(marker).trim(),number=/^(\d+)[.)]/.exec(value);item={node,level,group:`${m[1]}:${m[3]}`,start:number?Number(number[1]):null};if(!number&&!/^[·•●○▪\-o]$/.test(value))this.b.loss("list-numbering");}
+        if(marker){
+          this.#markers.add(marker);const parsed=wordMarker(plainText(marker).replace(/\u00a0/g," ").trim());
+          // Unrecognized marker text (custom "Step %1:" formats) keeps list structure as bullets and reports it.
+          if(!parsed||!parsed.exact)this.b.loss("list-numbering");
+          item={level,group:`${m[1]}:${m[3]}`,ordered:Boolean(parsed?.numbers.length),numbers:parsed?.numbers??[],body:state=>this.prose(node.childNodes,this.style(node,state))};
+        }
         else this.b.loss("list-numbering");
       }
     }
     this.#word.set(node,item);return item;
   }
-  #wordLists(items:WordItem[],state:StyleState):Element[] {
+  /** Word for the web: a (wrapper div around a) ul/ol whose items all carry flat `data-aria-level` nesting. */
+  #flatList(node:HtmlElement):{wrapper:HtmlElement|undefined;list:HtmlElement}|null {
+    let wrapper:HtmlElement|undefined,list:HtmlElement|undefined=node;
+    if(node.tagName==="div"){const elements=node.childNodes.filter(isElement);if(elements.length!==1||node.childNodes.some(n=>!isElement(n)&&plainText(n).trim()))return null;wrapper=node;list=elements[0];}
+    if(!list||list.tagName!=="ul"&&list.tagName!=="ol"||this.#hidden(node)||this.#hidden(list))return null;
+    let items=0;
+    for(const child of list.childNodes){if(!isElement(child)){if(plainText(child).trim())return null;continue;}if(child.tagName!=="li"||!/^(?:[1-9]|1[0-6])$/.test(attribute(child,"data-aria-level")??""))return null;items++;}
+    return items?{wrapper,list}:null;
+  }
+  #flatListItems(node:HtmlElement,state:StyleState):FlatItem[] {
+    const {wrapper,list}=this.#flatList(node)!,outer=wrapper?this.style(wrapper,state):state;
+    if(!this.#safe(list))return[];
+    const listState=this.style(list,outer),ordered=list.tagName==="ol",items:FlatItem[]=[];
+    if(attribute(list,"type")!==undefined&&attribute(list,"type")!==(ordered?"1":"disc")||attribute(list,"reversed")!==undefined)this.b.loss("list-numbering");
+    for(const li of list.childNodes){
+      if(!isElement(li))continue;if(this.#hidden(li))fail("unsupported-content");
+      const position=Number(attribute(li,"data-aria-posinset")),numbers=ordered&&Number.isSafeInteger(position)&&position>=1&&position<=1_000_000_000?[position]:[];
+      items.push({level:Number(attribute(li,"data-aria-level")),group:`aria:${attribute(li,"data-listid")??""}`,ordered,numbers,body:()=>{
+        const body=this.flow(li.childNodes,this.style(li,listState,flatListAttributes));
+        if(!body.length||!['breditor/paragraph','breditor/heading'].includes(body[0]!.type))body.unshift(element(this.b,"paragraph"));return body;
+      }});
+    }
+    return items;
+  }
+  /** Rebuild nesting from flat (level, ordinal) entries. Skipped levels nest one deeper and are reported, never rejected. */
+  #flatLists(items:FlatItem[],state:StyleState):Element[] {
     const output:Element[]=[],stack:{level:number;list:Element;item:Element;next:number|null}[]=[];
     if(items[0]!.level!==1)this.b.loss("block-structure");
     for(const item of items){
       while(stack.length&&stack.at(-1)!.level>item.level)stack.pop();
-      let top=stack.at(-1),list:Element;const kind=item.start===null?"bullet-list":"ordered-list";
-      if(!top||top.level<item.level){if(top&&item.level!==top.level+1)fail("unsupported-content");list=element(this.b,kind,[],item.start===null?{}:{"breditor/start":item.start});if(top)top.item.children.push(list);else output.push(list);top={level:item.level,list,item:list,next:item.start};stack.push(top);}
-      else if(top.list.type!==`breditor/${kind}`||item.start!==null&&item.start!==top.next){list=element(this.b,kind,[],item.start===null?{}:{"breditor/start":item.start});if(stack.length>1)stack[stack.length-2]!.item.children.push(list);else output.push(list);top.list=list;}
-      const body=this.prose(item.node.childNodes,this.style(item.node,state));top.item=element(this.b,"list-item",body);top.list.children.push(top.item);top.next=item.start===null?null:item.start+1;
+      let top=stack.at(-1),list:Element;const kind=item.ordered?"ordered-list":"bullet-list",same=top?.level===item.level?top:undefined;
+      let number:number|null=null;
+      if(item.ordered){number=same&&same.list.type==="breditor/ordered-list"&&same.next!==null&&(!item.numbers.length||item.numbers.includes(same.next))?same.next:item.numbers[0]??1;if(number<1){this.b.loss("list-numbering");number=1;}}
+      const props=number===null?{}:{"breditor/start":number};
+      if(!top||top.level<item.level){if(top&&item.level!==top.level+1)this.b.loss("block-structure");list=element(this.b,kind,[],props);if(top)top.item.children.push(list);else output.push(list);top={level:item.level,list,item:list,next:number};stack.push(top);}
+      else if(top.list.type!==`breditor/${kind}`||number!==null&&number!==top.next){list=element(this.b,kind,[],props);if(stack.length>1)stack[stack.length-2]!.item.children.push(list);else output.push(list);top.list=list;}
+      top.item=element(this.b,"list-item",item.body(state));top.list.children.push(top.item);top.next=number===null?null:number+1;
     }
     return output;
   }
 }
+/** WebKit/Blink trailing-selection marker (Docs, Notes, Safari); it is not authored content. */
+function interchangeNewline(node:HtmlElement):boolean{return node.tagName==="br"&&(attribute(node,"class")??"").split(/\s+/).includes("Apple-interchange-newline");}
 export function importHtmlContent(source:string,b:Budget,options:InterchangeOptions):{root:string;kind:"text"|"flow"} {
   const sourceNodes=htmlTree(source,b),converter=new HtmlConversion(b,options,new Stylesheets(sourceNodes,b)),body=converter.flow(sourceNodes);
   const containsBlock=(n:HtmlNode):boolean=>isElement(n)&&(blocks.has(n.tagName)||n.childNodes.some(containsBlock));

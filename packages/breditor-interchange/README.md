@@ -4,7 +4,9 @@
 import/export through Breditor's Rust semantic clipboard. It supports standard
 inline formatting, headings, nested and task lists, quotes, code, rules, tables
 with merged cells, and host-resolved images/captions. Representative Word,
-Google Docs and Excel markup is covered by the native functional probe.
+Google Docs and Excel markup is covered by the native functional probe; a
+broader reconstructed producer corpus is covered by parser staging tests (see
+[Producer clipboard shapes](#producer-clipboard-shapes)).
 
 The adapter performs pure conversion, not editing. It never creates live DOM,
 fetches images/stylesheets, uploads bytes, or supplies mutation authority.
@@ -58,6 +60,47 @@ Simple tag/class/ID stylesheet selectors and inline declarations have bounded
 specificity, source-order and important handling. Recognized values become
 closed native fields; arbitrary CSS is never emitted. Word list metadata is
 converted into actual list structure, not retained as markup or pasted markers.
+
+### Producer clipboard shapes
+
+`tests/fixtures/producers/` holds a corpus for Word desktop, Word for the web,
+Google Docs, Google Sheets, Excel desktop, LibreOffice Writer and Cocoa HTML
+Writer (Apple Notes/TextEdit/Pages). Each file is **reconstructed** from that
+producer's documented clipboard HTML shape and says so in its header; none is a
+captured, certified clipboard dump. Tests assert the exact native outline, marks
+and complete loss notices for each.
+
+- Word desktop `mso-list:lN levelM lfoK` paragraphs nest by level. Decimal
+  markers keep their start; alphabetic, roman, parenthesized and compound
+  (`1.2.`) markers become ordered lists with a `list-numbering` notice; symbol
+  and Wingdings/Symbol bullet glyphs become bullets. A skipped level nests one
+  deeper with `block-structure` instead of rejecting the paste. Downlevel
+  conditional markers (`<![if !supportLists]>`, `<!--[if …]-->`) and empty `<o:p>`
+  paragraph marks leave no text and no repair notice.
+- Word for the web runs of single-level `ul`/`ol` blocks carrying
+  `data-aria-level` are rebuilt into one nested list per `data-listid`, numbered
+  from `data-aria-posinset`. Whitespace-only `EOP` paragraph-mark runs are dropped.
+- Google Docs' `<b style="font-weight:normal" id="docs-internal-guid-…">`
+  wrapper bolds nothing; span `font-weight`, `font-style`, `text-decoration` and
+  `vertical-align: super|sub` become marks. A `ul`/`ol` placed directly inside a
+  list (Docs, Cocoa) nests into the preceding item. A lone `<br>` between blocks is
+  one empty paragraph; a trailing `Apple-interchange-newline` is dropped.
+- Spreadsheet tables keep displayed cell text, merges and column widths.
+  `x:num`/`x:fmla`/`data-sheets-*` value, format and formula metadata and
+  `mso-number-format` are reported, never imported. `<google-sheets-html-origin>`
+  is a transparent wrapper.
+- `file:` image sources (Office/LibreOffice temporary clip files) are reported as
+  `image-reference` without being offered to `resolveImage`; alt text stays.
+
+Syntax that carries no content reports nothing: namespace declarations
+(`xmlns`, `xmlns:*`), `xml:lang`, structural `role` (`presentation`, `none`,
+`list`, `listitem`) and `aria-level` on items, `meta`/`title`/`base` and
+companion `link` elements (a stylesheet `link` reports `unsupported-style`), CSS
+`<!--`/`-->` tokens, legacy HTML 4 doctypes, and no-op values (`font-variant:
+normal`, `vertical-align: baseline`, `background-color: transparent`, native
+`list-style-type` values, `mso-data-placement: same-cell` on `<br>`). Other
+`list-style-type` values report `list-numbering`. Everything else unrecognized,
+including `mso-*` producer properties and the `font` shorthand, keeps its notice.
 
 Markdown uses the explicit `interchangeContractV1` dialect: CommonMark parsing
 with table/strikethrough extensions, parsed task markers and sanitized raw HTML.
