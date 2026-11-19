@@ -1,6 +1,8 @@
 // Interactive sample using the actual opt-in package and Rust owner, not a mock editor.
 import init,* as wasm from "/wasm.js";
-import {compileRichProfile,mountRichEditor,RichAssetStore,RichLocalSessionStore,insertImageFiles} from "/rich.js";
+import {compileRichProfile,mountRichEditor,RichAssetStore,RichLocalSessionStore,insertImageFiles,defaultToolbar,
+ mountRichSlashCommands,createRichSlashCommands,mountRichSelectionToolbar,mountRichContextMenu,
+ mountRichTableColumnResize,richTableColumnResizeCommit} from "/rich.js";
 await init();
 const profile=compileRichProfile(wasm,JSON.stringify({format:"breditor/profile-bootstrap",formatVersion:6,schema:{name:"example/rich-demo",version:1},extensions:[]}));
 const binding=profile.descriptor(),canonical=value=>Array.isArray(value)?value.map(canonical):value!==null&&typeof value==="object"?Object.fromEntries(Object.keys(value).sort().map(key=>[key,canonical(value[key])])):value;
@@ -27,7 +29,20 @@ const sessions=await RichLocalSessionStore.open(`breditor-rich-demo/session/${ta
 const assetStore=await RichAssetStore.open("breditor-rich-demo/assets",{onChange:()=>{void showAssets();}});
 const saved=await sessions.load();let owner=core;
 if(saved){try{owner=profile.restoreEditor(saved);core.dispose();}catch(error){core.dispose();throw error;}}
-let editor=mount(owner),saveSequence=0;
+// Opt-in parity features. Each borrows the editor and runs existing Rust commands; remounts dispose them first.
+const overlay=document.createElement("div");overlay.id="table-resize";overlay.style.position="relative";
+document.getElementById("editor").before(overlay);
+let extras=[];
+function mountExtras(editor){
+ for(const extra of extras)extra.dispose();
+ extras=[
+  mountRichSlashCommands(editor,{items:createRichSlashCommands(defaultToolbar),onError:report}),
+  mountRichSelectionToolbar(editor,{onError:report}),
+  mountRichContextMenu(editor,{onError:report}),
+  mountRichTableColumnResize(overlay,editor,{commit:richTableColumnResizeCommit(editor),onError:report}),
+ ];
+}
+let editor=mount(owner),saveSequence=0;mountExtras(editor);
 function save(){
  const sequence=++saveSequence;document.getElementById("saved").textContent="Saving locally…";
  try{void sessions.save(editor.checkpointJson()).then(()=>{if(sequence===saveSequence)document.getElementById("saved").textContent="Saved locally";}).catch(error=>report(error));}
@@ -53,14 +68,14 @@ document.getElementById("images").addEventListener("change",async event=>{
  try{await insertImageFiles(editor,assetStore,files,{parent:{kind:"document"},before:null});await showAssets();}
  catch(error){report(error);}finally{event.target.value="";}
 });
-window.demo={get editor(){return editor;},profile,assetStore,sessions};
+window.demo={get editor(){return editor;},get extras(){return extras;},profile,assetStore,sessions};
 save();await showAssets();
 document.getElementById("export").addEventListener("click",()=>{
  const blob=new Blob([editor.checkpointJson()],{type:"application/json"}),url=URL.createObjectURL(blob),link=document.createElement("a");link.href=url;link.download="breditor-rich-session.json";link.click();setTimeout(()=>URL.revokeObjectURL(url),0);
 });
 document.getElementById("import").addEventListener("change",async event=>{
  const file=event.target.files?.[0];if(!file)return;
- try {if(file.size>16*1024*1024)throw Error("Session file exceeds 16 MiB");const restored=profile.restoreEditor(await file.text());editor.dispose();editor=mount(restored);save();document.getElementById("notice").textContent="Restored the exact local content and undo/redo branch.";}
+ try {if(file.size>16*1024*1024)throw Error("Session file exceeds 16 MiB");const restored=profile.restoreEditor(await file.text());for(const extra of extras)extra.dispose();extras=[];editor.dispose();editor=mount(restored);mountExtras(editor);save();document.getElementById("notice").textContent="Restored the exact local content and undo/redo branch.";}
  catch(error){document.getElementById("notice").textContent=error instanceof Error?error.message:"Session restore failed";}
  finally{event.target.value="";}
 });
