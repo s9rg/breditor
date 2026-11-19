@@ -124,6 +124,8 @@ export class RichDomEditor<P extends RichSelectionPolicy="original"> {
   this.toolbar.addEventListener("pointerdown",()=>this.#boundary(),{capture:true,signal:this.#abort.signal});
   this.toolbar.addEventListener("focusin",()=>this.#boundary(),{capture:true,signal:this.#abort.signal});
   this.surface.addEventListener("click",event=>this.#taskCheck(event),{signal:this.#abort.signal});
+  // Candidate V4 image links are inert while editing: activation never navigates the editable surface.
+  for(const type of ["click","auxclick"])this.surface.addEventListener(type,event=>this.#inertImageLink(event),{capture:true,signal:this.#abort.signal});
   this.surface.addEventListener("copy",event=>this.#copy(event,false),{signal:this.#abort.signal});
   this.surface.addEventListener("cut",event=>this.#copy(event,true),{signal:this.#abort.signal});
   this.surface.addEventListener("paste",event=>this.#paste(event),{signal:this.#abort.signal});
@@ -302,6 +304,10 @@ export class RichDomEditor<P extends RichSelectionPolicy="original"> {
   if(button){event.preventDefault();const cell=JSON.parse(button.dataset["selectCell"]!) as Extract<RichSelection,{kind:"grid"}>["focus"],prior=this.#model.view.selection;const anchor=event.shiftKey&&prior?.kind==="grid"&&prior.anchor.table===cell.table?prior.anchor:cell;this.#attempt(()=>this.execute({kind:"setSelection",selection:{kind:"grid",anchor,focus:cell}}));}
   else if(node||(figure&&!target.closest("[data-rich-text]"))){event.preventDefault();const block=node?.dataset["selectNode"]??figure?.dataset["richBlock"];if(block)this.#attempt(()=>this.execute({kind:"setSelection",selection:{kind:"node",block}}));}
   else this.#logicalSelection=false;
+ }
+ #inertImageLink(event:Event):void {
+  const target=event.target;
+  if(this.#model.view.readOnly!==true&&target instanceof Element&&target.closest("a[data-rich-image-link]"))event.preventDefault();
  }
  #taskCheck(event:MouseEvent):void {
   const target=event.target as Element,check=target.closest<HTMLInputElement>("input[data-task-check]");if(!check||!this.surface.contains(check))return;

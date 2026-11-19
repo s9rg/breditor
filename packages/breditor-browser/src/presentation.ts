@@ -23,6 +23,12 @@ export {
   MAX_LANGUAGE_TAG_V1_BYTES,
   MIN_LANGUAGE_TAG_V1_BYTES,
 } from "./language_tag.js";
+export {
+  canonicalImageLinkHrefV1,
+  imageLinkRenderAttributesV1,
+  isImageLinkHrefV1,
+  MAX_IMAGE_LINK_HREF_V1_BYTES,
+} from "./image_link_href.js";
 export type {
   BrowserProfileFormatDescriptor,
   BrowserProfileFormatPropertyDescriptor,

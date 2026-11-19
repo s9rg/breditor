@@ -15,7 +15,7 @@
  * attributes appear only as values computed from bounded integers.
  */
 import {
- compileInlineFormatRecipes,createInlineFormatRenderManifest,resolveInlineFormatRenderAttributes,isCanonicalLanguageTagV1,
+ compileInlineFormatRecipes,createInlineFormatRenderManifest,resolveInlineFormatRenderAttributes,isCanonicalLanguageTagV1,isImageLinkHrefV1,imageLinkRenderAttributesV1,
  type BrowserProfileFormatDescriptor,type InlineFormatRenderRecipe,type InlineFormatRenderAttribute,
 } from "@breditor/experimental-rich-content/rendering";
 
@@ -143,7 +143,7 @@ const directions=["ltr","rtl","auto"] as const;
 /** Ordered-list marker types of candidate rich V4, identical to `applyListNumbering` and Rust `list_numbering.rs`. */
 const listTypes=["1","a","A","i","I"] as const;
 
-/** Rich child grammar: the union of rich languages V1–V3 plus the candidate V4 list numbering properties. */
+/** Rich child grammar: the union of rich languages V1–V3 plus the candidate V4 list numbering and image-link properties. */
 const flowKinds=["paragraph","heading","bullet-list","ordered-list","image","blockquote","code-block","horizontal-rule","task-list"].map(local=>`breditor/${local}`);
 const flowWithTables=[...flowKinds,"breditor/table"];
 interface Grammar {readonly children:readonly string[]|"text"|"none";readonly minimum:number;readonly maximum?:number;readonly required:readonly string[];readonly optional?:readonly string[];readonly firstTextBlock?:boolean}
@@ -160,7 +160,7 @@ const grammar:Readonly<Record<string,Grammar>>={
  "breditor/task-item":{children:flowWithTables,minimum:1,required:["block-id","checked"],firstTextBlock:true},
  "breditor/blockquote":{children:flowWithTables,minimum:1,required:["block-id"]},
  "breditor/horizontal-rule":{children:"none",minimum:0,maximum:0,required:["block-id"]},
- "breditor/image":{children:["breditor/paragraph"],minimum:0,maximum:1,required:["block-id","image-id","asset-id","asset-generation","alt-text","decorative"],optional:["width","height"]},
+ "breditor/image":{children:["breditor/paragraph"],minimum:0,maximum:1,required:["block-id","image-id","asset-id","asset-generation","alt-text","decorative"],optional:["width","height","image-href","image-link-new-window"]},
  "breditor/table":{children:["breditor/table-row"],minimum:0,maximum:256,required:["block-id","table-id","columns","merges","retracted-merges"]},
  "breditor/table-row":{children:["breditor/table-cell"],minimum:0,maximum:128,required:["block-id","row-id"]},
  "breditor/table-cell":{children:flowKinds,minimum:1,required:["block-id","column-id","header"]},
@@ -361,6 +361,13 @@ class Renderer {
     const width=Object.hasOwn(result,"width"),height=Object.hasOwn(result,"height");
     if(width!==height)this.#fail("property","Image display dimensions must be supplied as a pair",path);
     if(width){integer("width",1,4096);integer("height",1,4096);}
+    // Candidate V4 image link (Rust `image_link.rs`): one canonical admitted target, `true`-only
+    // new-window flag that needs a target, and never on a decorative image.
+    if(Object.hasOwn(result,"image-href")){
+     if(!isImageLinkHrefV1(result["image-href"]))this.#fail("property","Invalid image link target",at("image-href"));
+     if(result["decorative"]===true)this.#fail("property","A decorative image cannot carry a link",at("image-href"));
+    }
+    if(Object.hasOwn(result,"image-link-new-window")&&(result["image-link-new-window"]!==true||!Object.hasOwn(result,"image-href")))this.#fail("property","Image link window flag is only canonical as true with a target",at("image-link-new-window"));
     break;
    }
    case "breditor/table":id("table-id");break;
@@ -446,7 +453,14 @@ class Renderer {
   const caption=node.children.length?`<figcaption>${node.children.map(child=>this.#flow(child)).join("")}</figcaption>`:"";
   const block=this.#ids?` data-rich-block="${escapeHtmlAttribute(String(p["block-id"]))}"`:"";
   const image=`<img alt="${escapeHtmlAttribute(String(p["alt-text"]))}"${size}${src?` src="${escapeHtmlAttribute(src)}"`:""}>`;
-  return `<figure${block} data-rich-image="${escapeHtmlAttribute(binding.image)}" data-asset-state="${state}">${image}${caption}</figure>`;
+  return `<figure${block} data-rich-image="${escapeHtmlAttribute(binding.image)}" data-asset-state="${state}">${this.#imageLink(p,image)}${caption}</figure>`;
+ }
+ /** Candidate V4: the link wraps the image only, with the inline `safeLinkV1` attribute set. */
+ #imageLink(p:Readonly<Record<string,unknown>>,image:string):string {
+  const href=p["image-href"];if(typeof href!=="string")return image;
+  const attributes=imageLinkRenderAttributesV1(href,p["image-link-new-window"]===true);
+  if(attributes[0]?.name!=="href"||attributes[0].value!==href)return image;
+  return `<a data-rich-image-link="" class="breditor-image-link"${attributes.map(a=>` ${a.name}="${escapeHtmlAttribute(a.value)}"`).join("")}>${image}</a>`;
  }
  #table(node:Element):string {
   const tableId=String(node.properties["table-id"]);

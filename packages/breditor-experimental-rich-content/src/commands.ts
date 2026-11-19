@@ -96,6 +96,9 @@ export type RichCommand =
  /** Candidate rich V4 only: set (a well-formed BCP 47 tag, any letter case; Rust stores the canonical
   * case) or clear (`null`) the language of the native selection; a caret changes pending formats. */
  |{kind:"setTextLanguage";data:{language:string|null}}
+ /** Candidate rich V4 only: set, replace or clear (`href:null`) one image's link in one history group.
+  * The href must already be canonical (`canonicalImageLinkHref`); a decorative image cannot be linked. */
+ |{kind:"setImageLink";data:import("./core.js").RichImageLinkIntent}
  |{kind:"indentListItems";data:{container:string;first:string;last:string;nested:{block:string;start:number|null}|null}}
  |{kind:"outdentListItems";data:{container:string;first:string;last:string;tail:string|null}}
  |{kind:"splitTextBlock";data:{point:RichPoint;right:string;rightHeading:number|null}}

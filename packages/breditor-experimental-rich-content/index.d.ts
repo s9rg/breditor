@@ -33,10 +33,11 @@ export function compileLayoutRichProfileV3(wasm:RichWasmModule,bootstrapJson:str
 export function compileStandardLayoutRichProfileV3(wasm:RichWasmModule,bootstrapJson:string):RichCoreProfile;
 export {createStructuralRichToolbarV2} from "./dist/browser/index.js";
 export {createLayoutRichToolbarV3} from "./dist/browser/index.js";
-/** Bootstrap V9 selects the unreleased candidate rich V4 (V3 plus ordered-list numbering and text-run language). */
+/** Bootstrap V9 selects the unreleased candidate rich V4 (V3 plus ordered-list numbering, text-run language and image links). */
 export function compileRichProfileV4(wasm:RichWasmModule,bootstrapJson:string):RichCoreProfile;
 export function compileStandardRichProfileV4(wasm:RichWasmModule,bootstrapJson:string):RichCoreProfile;
 export {createRichToolbarV4,listNumberingControl,selectedOrderedList,type ListNumberingControl} from "./dist/browser/index.js";
+export {imageLinkControls,imageLinkOf,canonicalImageLinkHref,richImageHrefProperty,richImageLinkNewWindowProperty,type ImageLinkControl,type RichImageLinkRead} from "./dist/browser/index.js";
 export {textLanguageControls,canonicalTextLanguage,textLanguageOf,richTextLanguageFormat,richTextLanguageTagProperty,richTextLanguageRecipeV4,type TextLanguageControl} from "./dist/browser/index.js";
 export {createFlowNavigationControls} from "./dist/browser/index.js";
 export {createSelectionRichToolbarV1} from "./dist/browser/index.js";
