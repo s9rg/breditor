@@ -13,6 +13,8 @@ pub(crate) use bootstrap_json_v2::decode_layout_rich_schema_v3;
 #[cfg(feature = "experimental-rich-content")]
 pub(crate) use bootstrap_json_v2::decode_rich_schema;
 #[cfg(feature = "experimental-rich-content")]
+pub(crate) use bootstrap_json_v2::decode_rich_schema_v4;
+#[cfg(feature = "experimental-rich-content")]
 pub(crate) use bootstrap_json_v2::decode_standard_rich_schema_v1;
 #[cfg(feature = "experimental-rich-content")]
 pub(crate) use bootstrap_json_v2::decode_structural_rich_schema_v2;

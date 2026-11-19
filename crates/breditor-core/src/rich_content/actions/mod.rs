@@ -69,6 +69,7 @@ mod set_image_alt;
 mod set_image_caption;
 mod set_inline_format;
 mod set_list_kind;
+mod set_list_numbering;
 mod set_table_header;
 mod set_task_checked;
 mod split_list_item;
@@ -140,6 +141,7 @@ pub use set_image_alt::SetImageAlt;
 pub use set_image_caption::SetImageCaption;
 pub use set_inline_format::{RichFormatChange, SetInlineFormat};
 pub use set_list_kind::SetListKind;
+pub use set_list_numbering::SetListNumbering;
 pub use set_table_header::SetTableHeader;
 pub use set_task_checked::SetTaskChecked;
 pub use split_list_item::SplitListItem;
@@ -217,6 +219,8 @@ pub enum RichAction {
     UnwrapList(UnwrapList),
     /// Change one stable list's bullet/numbered style or start.
     SetListKind(SetListKind),
+    /// Patch one ordered list's bounded V4 marker style, reversal or start.
+    SetListNumbering(SetListNumbering),
     /// Split one rich text block with an explicit fresh right-block identity.
     SplitTextBlock(SplitTextBlock),
     /// Join two adjacent rich text blocks, retaining the left identity.
@@ -348,6 +352,7 @@ impl RichAction {
             Self::WrapList(action) => action.apply(context, document),
             Self::UnwrapList(action) => action.apply(context, document),
             Self::SetListKind(action) => action.apply(context, document),
+            Self::SetListNumbering(action) => action.apply(context, document),
             Self::SplitTextBlock(action) => action.apply(context, document),
             Self::JoinTextBlocks(action) => action.apply(context, document),
             Self::SetHeading(action) => action.apply(context, document),
@@ -432,6 +437,9 @@ pub enum RichActionError {
     /// Typed layout profile, target or value admission failed without exposing metadata.
     #[error(transparent)]
     BlockLayout(#[from] super::RichBlockLayoutError),
+    /// Typed V4 list-numbering profile, target or value admission failed.
+    #[error(transparent)]
+    ListNumbering(#[from] super::RichListNumberingError),
     /// The operation requires an existing code block rather than arbitrary prose/flow.
     #[error("rich code action requires a code block")]
     CodeTarget,

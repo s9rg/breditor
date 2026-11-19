@@ -411,12 +411,15 @@ mod rich_content_profile_v2;
 #[cfg(feature = "experimental-rich-content")]
 #[path = "rich_content_profile_v3.rs"]
 mod rich_content_profile_v3;
+#[cfg(feature = "experimental-rich-content")]
+#[path = "rich_content_profile_v4.rs"]
+mod rich_content_profile_v4;
 #[cfg(all(test, feature = "experimental-rich-content"))]
 pub(super) use rich_content_profile::supports_rich_content;
 #[cfg(feature = "experimental-rich-content")]
 pub(super) use rich_content_profile::{
     compile_rich_content_profile, compile_rich_content_profile_v2, compile_rich_content_profile_v3,
-    rich_content_revision,
+    compile_rich_content_profile_v4, rich_content_revision,
 };
 #[cfg(all(test, feature = "experimental-rich-content"))]
 #[path = "rich_content_profile_tests.rs"]

@@ -20,6 +20,19 @@ pub struct BreditorRichProfile {
 
 #[wasm_bindgen]
 impl BreditorRichProfile {
+    /// Compile explicit bootstrap V9 into the unreleased candidate rich V4 without inline
+    /// additions. V4 extends V3; its fingerprint changes until the candidate is complete.
+    #[must_use]
+    #[wasm_bindgen(js_name=fromBootstrapJsonV4)]
+    pub fn from_bootstrap_json_v4(input: &str) -> BreditorRichProfileResult {
+        Self::candidate_v4(input, false)
+    }
+    /// Compile explicit bootstrap V9 candidate V4 with the bounded standard inline V1 preset.
+    #[must_use]
+    #[wasm_bindgen(js_name=fromStandardBootstrapJsonV4)]
+    pub fn from_standard_bootstrap_json_v4(input: &str) -> BreditorRichProfileResult {
+        Self::candidate_v4(input, true)
+    }
     /// Compile explicit bootstrap V8 into bounded layout V3 without inline additions.
     #[must_use]
     #[wasm_bindgen(js_name=fromLayoutBootstrapJsonV3)]
@@ -78,12 +91,15 @@ impl BreditorRichProfile {
     pub fn descriptor_json(&self) -> BreditorStringResult {
         let mut value = serde_json::json!({"kind":"rich","abiVersion":super::BREDITOR_RICH_ABI_VERSION,
             "schema":{"name":self.schema.id().name().as_str(),"version":self.schema.id().version().get()},"schemaFingerprint":self.schema.fingerprint().to_string()});
-        if matches!(self.schema.rich_content_revision(), Some(2 | 3)) {
+        if matches!(self.schema.rich_content_revision(), Some(2..=4)) {
             value["richLanguageVersion"] = serde_json::json!(self.schema.rich_content_revision());
             value["taskStructureVersion"] = serde_json::json!(1);
         }
-        if self.schema.rich_content_revision() == Some(3) {
+        if self.schema.supports_rich_block_layout() {
             value["blockLayoutVersion"] = serde_json::json!(1);
+        }
+        if self.schema.supports_rich_list_numbering() {
+            value["listNumberingVersion"] = serde_json::json!(1);
         }
         BreditorStringResult::from_value(value.to_string())
     }
@@ -135,6 +151,12 @@ impl BreditorRichProfile {
     }
 }
 impl BreditorRichProfile {
+    fn candidate_v4(input: &str, standard: bool) -> BreditorRichProfileResult {
+        match crate::profile::decode_rich_schema_v4(input, standard) {
+            Ok(schema) => BreditorRichProfileResult::success(Self { schema: Arc::new(schema) }),
+            Err(error) => BreditorRichProfileResult::failure(error),
+        }
+    }
     fn layout(input: &str, standard: bool) -> BreditorRichProfileResult {
         match crate::profile::decode_layout_rich_schema_v3(input, standard) {
             Ok(schema) => BreditorRichProfileResult::success(Self { schema: Arc::new(schema) }),

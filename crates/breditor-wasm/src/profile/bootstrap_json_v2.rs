@@ -262,6 +262,21 @@ pub(crate) fn decode_layout_rich_schema_v3(
         .map_err(|_| profile_compilation())
 }
 
+/// Bootstrap V9 selects the unreleased candidate rich V4; V6–V8 retain exact grammar.
+#[cfg(feature = "experimental-rich-content")]
+pub(crate) fn decode_rich_schema_v4(
+    json: &str,
+    standard: bool,
+) -> Result<breditor_core::schema::CompiledSchema, BreditorError> {
+    let (schema, extensions) = decode_configuration_with_extension(
+        json,
+        9,
+        standard.then(breditor_core::rich_content::standard_inline_extension_v1),
+    )?;
+    breditor_core::schema::CompiledSchema::try_compile_rich_content_profile_v4(schema, &extensions)
+        .map_err(|_| profile_compilation())
+}
+
 #[derive(Deserialize)]
 #[serde(deny_unknown_fields, rename_all = "camelCase")]
 struct ProfilePreflight {

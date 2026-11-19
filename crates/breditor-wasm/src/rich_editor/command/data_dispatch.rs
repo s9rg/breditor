@@ -89,6 +89,7 @@ pub(super) fn execute(
         CommandTag::WrapList => super::wrap_list::execute(owner, observation, input),
         CommandTag::UnwrapList => super::unwrap_list::execute(owner, observation, input),
         CommandTag::SetListKind => super::set_list_kind::execute(owner, observation, input),
+        CommandTag::SetListNumbering => super::list_numbering::execute(owner, observation, input),
         CommandTag::OutdentListItems => {
             super::outdent_list_items::execute(owner, observation, input)
         }

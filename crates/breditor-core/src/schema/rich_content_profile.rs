@@ -94,6 +94,11 @@ pub(in crate::schema) fn rich_content_revision(
         &super::rich_content_profile_v3::specification(base_spec()),
     ) {
         Some(3)
+    } else if super::text_block_profile::supports_structural_profile(
+        definition,
+        &super::rich_content_profile_v4::specification(base_spec()),
+    ) {
+        Some(4)
     } else {
         None
     }
@@ -114,6 +119,16 @@ pub(in crate::schema) fn compile_rich_content_profile_v3(
     extensions: &ExtensionSet,
 ) -> Result<CompiledSchema, SchemaCompilationError> {
     let spec = super::rich_content_profile_v3::specification(base_text_profile_spec(
+        schema_id, extensions,
+    )?);
+    compile(spec, CompilerLimits::default()).map_err(|_| SchemaCompilationError::InternalInvariant)
+}
+
+pub(in crate::schema) fn compile_rich_content_profile_v4(
+    schema_id: SchemaId,
+    extensions: &ExtensionSet,
+) -> Result<CompiledSchema, SchemaCompilationError> {
+    let spec = super::rich_content_profile_v4::specification(base_text_profile_spec(
         schema_id, extensions,
     )?);
     compile(spec, CompilerLimits::default()).map_err(|_| SchemaCompilationError::InternalInvariant)

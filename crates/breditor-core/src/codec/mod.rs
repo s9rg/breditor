@@ -25,6 +25,10 @@ mod rich_block_layout_patch;
 #[cfg(feature = "experimental-rich-content")]
 mod rich_block_layout_state;
 #[cfg(feature = "experimental-rich-content")]
+mod rich_list_numbering;
+#[cfg(feature = "experimental-rich-content")]
+pub use rich_list_numbering::{RichListNumberingCodecError, decode_rich_list_numbering_command};
+#[cfg(feature = "experimental-rich-content")]
 mod rich_search;
 #[cfg(feature = "experimental-rich-content")]
 mod rich_writing_tools;

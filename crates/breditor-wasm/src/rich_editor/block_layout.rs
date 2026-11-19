@@ -5,12 +5,18 @@ use breditor_core::{codec::encode_rich_block_layout_state, rich_content::inspect
 use wasm_bindgen::prelude::*;
 #[wasm_bindgen]
 impl BreditorRichEditor {
-    /// String1 selects layout V3; String0 means the old owner remains unsupported.
+    /// String1 selects layout (rich V3 or candidate V4); String0 means the old owner
+    /// remains unsupported.
     #[must_use]
     #[wasm_bindgen(js_name=blockLayoutVersion)]
     pub fn block_layout_version(&self) -> String {
-        if self.inner.context().schema().rich_content_revision() == Some(3) { "1" } else { "0" }
-            .into()
+        if self.inner.context().schema().supports_rich_block_layout() { "1" } else { "0" }.into()
+    }
+    /// String1 selects candidate V4 ordered-list numbering; String0 means unsupported.
+    #[must_use]
+    #[wasm_bindgen(js_name=listNumberingVersion)]
+    pub fn list_numbering_version(&self) -> String {
+        if self.inner.context().schema().supports_rich_list_numbering() { "1" } else { "0" }.into()
     }
 }
 #[wasm_bindgen]

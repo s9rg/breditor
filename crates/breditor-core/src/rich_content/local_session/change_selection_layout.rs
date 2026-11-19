@@ -22,7 +22,7 @@ impl RichLocalSession {
     ) -> Result<RichLocalOutcome, RichLocalSessionError> {
         self.check(snapshot)?;
         self.require_writable()?;
-        if self.context.schema().rich_content_revision() != Some(3) {
+        if !self.context.schema().supports_rich_block_layout() {
             return Err(RichActionError::from(RichBlockLayoutError::Profile).into());
         }
         let selection = self.state.selection.as_ref().ok_or(RichActionError::SelectionKind)?;

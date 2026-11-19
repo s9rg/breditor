@@ -57,7 +57,7 @@ pub fn encode_rich_block_layout_state(
     context: &EditorContext,
     value: &RichBlockLayoutState,
 ) -> Result<String, RichBlockLayoutCodecError> {
-    if context.schema().rich_content_revision() != Some(3) {
+    if !context.schema().supports_rich_block_layout() {
         return Err(RichBlockLayoutCodecError::UnsupportedContext);
     }
     let s = context.schema();

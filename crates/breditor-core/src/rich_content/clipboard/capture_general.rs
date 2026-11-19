@@ -197,13 +197,11 @@ impl Copier<'_> {
             .iter()
             .position(|n| n.as_element().and_then(|n| identity(n).ok()).as_ref() == Some(&id))
             .ok_or(RichClipboardError::Invariant)?;
-        let start = ast_properties::property(source, "start")
-            .and_then(PropertyValue::as_integer)
-            .ok_or(RichClipboardError::Invariant)?
-            .get();
-        let start = start
-            .checked_add(i64::try_from(index).map_err(|_| RichClipboardError::Invariant)?)
-            .ok_or(RichClipboardError::Invariant)?;
+        // A reversed V4 copy keeps counting down; a start below 1 is unrepresentable.
+        let start = i64::from(
+            crate::rich_content::list_numbering::continuation_start(source, index)
+                .ok_or(RichClipboardError::UnsupportedRange)?,
+        );
         Ok(with_properties(
             node,
             [(
