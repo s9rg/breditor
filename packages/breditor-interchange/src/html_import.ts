@@ -20,7 +20,7 @@ const structuralRoles=new Set(["presentation","none","list","listitem"]);
 const flatListAttributes:ReadonlySet<string>=new Set(["data-aria-level","data-aria-posinset","data-listid","aria-setsize"]);
 const wordBullets=/^[·•●○◦▪■□◆◇►➢➤✓✔\-–—*o§Øüvqnl]$/;
 /** Target-owner capabilities read once by the adapter; they select conversion, never admission. */
-export interface ImportCapabilities {readonly listNumbering:boolean;readonly textLanguage?:boolean;readonly imageLinks?:boolean}
+export interface ImportCapabilities {readonly listNumbering:boolean;readonly textLanguage?:boolean;readonly imageLinks?:boolean;readonly details?:boolean}
 /** Candidate rich V4 native text-language format (Rust `text_language.rs`). */
 export const textLanguageFormat="breditor/text-language",textLanguageTag="breditor/language-tag";
 const htmlSpace=/^[\t\n\f\r ]+|[\t\n\f\r ]+$/g;
@@ -29,6 +29,10 @@ export const cssListStyles:ReadonlyMap<string,number>=new Map([["decimal",1],["l
 const htmlListTypes:ReadonlyMap<string,number>=new Map([["1",1],["a",2],["A",3],["i",4],["I",5]]);
 // `reversed` is interpreted (not reported as unknown) only for numbering-capable owners.
 const numberingAttributes:ReadonlySet<string>=new Set(["reversed"]);
+// `open` is persisted section state, interpreted only for section-capable (candidate V4) owners.
+const detailsAttributes:ReadonlySet<string>=new Set(["open"]);
+/** Candidate rich V4 section nesting bound (Rust `RICH_DETAILS_MAX_DEPTH`). */
+const maxDetailsDepth=8;
 /** Flat producer list entry: Word desktop `mso-list` paragraphs or Word for the web `data-aria-level` items. */
 interface FlatItem {level:number;group:string;ordered:boolean;numbers:number[];body:(state:StyleState)=>Element[]}
 const romanPattern=/^m{0,3}(?:cm|cd|d?c{0,3})(?:xc|xl|l?x{0,3})(?:ix|iv|v?i{0,3})$/;
@@ -55,7 +59,7 @@ function wordMarker(raw:string):{numbers:number[];exact:boolean}|null {
 export class HtmlConversion {
   #css=new WeakMap<HtmlElement,Map<string,string>>();#blockDescendant=new WeakMap<HtmlElement,boolean>();#word=new WeakMap<HtmlElement,FlatItem|null>();
   #markers=new WeakSet<HtmlElement>();#checkboxes=new WeakSet<HtmlElement>();
-  #preservedEnd=new WeakSet<Text>();
+  #preservedEnd=new WeakSet<Text>();#detailsDepth=0;
   constructor(readonly b:Budget,readonly options:InterchangeOptions,readonly sheets:Stylesheets,readonly capabilities:ImportCapabilities={listNumbering:false}){}
   css(node:HtmlElement):Map<string,string>{let value=this.#css.get(node);if(!value){const important=new Set<string>();value=this.sheets.apply(node,declarations(node,this.b,important),important);this.#css.set(node,value);}return value;}
   /** `interpreted` names attributes that structural conversion already consumed for this node. */
@@ -181,6 +185,7 @@ export class HtmlConversion {
         for(let start=0;start<items.length;){let end=start+1;while(end<items.length&&items[end]!.group===items[start]!.group)end++;output.push(...this.#flatLists(items.slice(start,end),state));start=end;}
         continue;
       }
+      if(node.tagName==="details"&&this.capabilities.details){flush();if(this.#safe(node))output.push(...this.#details(node,state,insideTable));continue;}
       if(!blocks.has(node.tagName)&&!containers.has(node.tagName)&&!this.#containsBlock(node)){pending.push(node);continue;}
       flush();if(!this.#safe(node))continue;
       const next=this.style(node,state),tag=node.tagName;
@@ -195,6 +200,31 @@ export class HtmlConversion {
       else {if(!inlineTags.has(tag))this.b.loss("unsupported-element");output.push(...this.flow(node.childNodes,next,insideTable));}
     }
     flush();return output;
+  }
+  /**
+   * Candidate V4 section: the first `<summary>` child element is the summary (as in HTML); a missing
+   * one becomes an empty summary and reports `block-structure`, like any block found inside a summary
+   * or a heading summary. `open` maps to persisted open state. Beyond the nesting bound a section is
+   * lifted (summary text as a paragraph, then its body) with `block-structure`.
+   */
+  #details(node:HtmlElement,state:StyleState,insideTable:boolean):Element[] {
+    const next=this.style(node,state,detailsAttributes),summary=node.childNodes.find((n):n is HtmlElement=>isElement(n)&&n.tagName==="summary");
+    let runs:Node[]=[];const lead:Element[]=[];
+    if(summary&&this.#safe(summary)){
+      const blocks=this.prose(summary.childNodes,this.style(summary,next),undefined,true);
+      const first=blocks[0];
+      if(first&&(first.type==="breditor/paragraph"||first.type==="breditor/heading")){runs=[...first.children];lead.push(...blocks.slice(1));}
+      else lead.push(...blocks);
+      // A summary is one inline text line: block markup, block layout or extra blocks inside it are flattened or moved.
+      if(lead.length||this.#containsBlock(summary)||first&&Object.keys(first.properties).some(k=>k!=="breditor/block-id"))this.b.loss("block-structure");
+    }else if(!summary)this.b.loss("block-structure");
+    const rest=node.childNodes.filter(n=>n!==summary);
+    if(++this.#detailsDepth>maxDetailsDepth){
+      this.b.loss("block-structure");const body=this.flow(rest,next,insideTable);this.#detailsDepth--;
+      return [element(this.b,"paragraph",runs),...lead,...body];
+    }
+    const body=[...lead,...this.flow(rest,next,insideTable)];this.#detailsDepth--;
+    return [element(this.b,"details",[element(this.b,"details-summary",runs),...(body.length?body:[element(this.b,"paragraph")])],attribute(node,"open")!==undefined?{"breditor/details-open":true}:{})];
   }
   image(node:HtmlElement,state:StyleState):Element|undefined {
     const src=attribute(node,"src")??"",rawAlt=attribute(node,"alt");let binding;

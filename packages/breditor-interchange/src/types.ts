@@ -21,6 +21,9 @@ export interface InterchangeOwner {
    * original conversion: an `<a href>` around an `<img>` is dropped (an unsafe href still reports
    * `unsafe-link`), and `<figure><a><img></a></figure>` falls back with `block-structure`. */
   supportsImageLinks?():boolean;
+  /** Candidate rich V4 owners admit collapsible sections (`breditor/details`). Absent or false keeps
+   * the original conversion: `<details>`/`<summary>` are unwrapped into ordinary flow. */
+  supportsDetails?():boolean;
 }
 export type InterchangeLossCode = "html-repaired"|"removed-content"|"unsupported-element"|"unsupported-attribute"|"unsupported-style"|"style-approximation"|"unsafe-link"|"image-reference"|"image-alt"|"image-size"|"block-structure"|"table-geometry"|"table-width"|"list-numbering"|"markdown-feature";
 /** Counts are aggregated and bounded. No source text, URL, CSS, HTML or asset identifier is echoed. */
