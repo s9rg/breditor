@@ -4,6 +4,7 @@
 // validates the complete group, and one dispatch is one native Undo step. Rejected or stale
 // targets publish nothing.
 import {id,presentationModel,type ElementNode,type RichPresentationModel} from "./model.js";
+import {defaultRichUi,type RichUiLocale,type RichUiStringKey} from "./ui_locale.js";
 import type {RichDomEditor} from "./controller.js";
 import type {RichSelectionPolicy} from "./core.js";
 import {resolveRichBlockMove,resolveRichBlockStep,richBlockDropTargets,richHandleBlock,richSelectionBlock,type RichBlockDropTarget,type RichBlockMove,type RichBlockMovePolicy,type RichBlockMoveResolution,type RichBlockMoveRejection,type RichLocatedBlockDropTarget} from "./block_move.js";
@@ -11,7 +12,7 @@ import {resolveRichBlockMove,resolveRichBlockStep,richBlockDropTargets,richHandl
 export interface RichBlockDragOptions {
  /** Default `sibling-v1`; `flow-v1` additionally offers grammar-legal cross-container drops. */
  policy?:RichBlockMovePolicy;
- /** Accessible handle label. */
+ /** Accessible handle label; overrides the editor catalog's blockDragLabel. Announcements use the port's `uiLocale()`. */
  label?:string;
  /** Reserve Alt+Shift+ArrowUp/ArrowDown inside the editor to move the caret's block (default true). On macOS
   * this replaces the native Option+Shift+Up/Down "extend selection to paragraph" shortcut; pass false to keep
@@ -49,14 +50,18 @@ export interface RichBlockDragPort {
  /** Publish exactly one guarded move; throw when the owner refuses it. */
  dispatch(move:RichBlockMove,focus:boolean,revision:string):void;
  focus():void;
+ /** Editor UI locale for labels and announcements; English when absent. */
+ uiLocale?():RichUiLocale;
 }
 
-const MESSAGES:Readonly<Record<RichBlockMoveRejection|"native",string>>={
- read_only:"The document is read-only.",unknown_block:"That block no longer exists.",not_movable:"This block cannot be moved.",
- invalid_target:"Blocks cannot be dropped there.",cyclic:"A block cannot be moved inside itself.",cross_container:"Blocks can only be reordered within their container.",
- grammar:"That container does not accept this block.",empties_source:"Moving the last block would leave its container empty.",item_lead:"A list or task item must start with a text line.",
- boundary:"The block is already at the edge of its container.",native:"The editor refused the move.",
+const MESSAGES:Readonly<Record<RichBlockMoveRejection|"native",RichUiStringKey>>={
+ read_only:"blockDragReadOnly",unknown_block:"blockDragUnknownBlock",not_movable:"blockDragNotMovable",
+ invalid_target:"blockDragInvalidTarget",cyclic:"blockDragCyclic",cross_container:"blockDragCrossContainer",
+ grammar:"blockDragGrammar",empties_source:"blockDragEmptiesSource",item_lead:"blockDragItemLead",
+ boundary:"blockDragBoundary",native:"blockDragNative",
 };
+/** Content direction of a rendered block (its block-direction or inherited), never the chrome direction. */
+function blockIsRtl(element:HTMLElement):boolean{try{return element.ownerDocument.defaultView?.getComputedStyle(element).direction==="rtl";}catch{return false;}}
 export const richBlockDragStyles=`.breditor-block-drag-handle{position:fixed;z-index:20;display:inline-flex;align-items:center;justify-content:center;width:20px;height:22px;padding:0;border:0;border-radius:4px;background:transparent;color:#6b7280;cursor:grab;touch-action:none;user-select:none;font:14px/1 system-ui}.breditor-block-drag-handle:hover,.breditor-block-drag-handle:focus-visible,.breditor-block-drag-handle[aria-pressed=true]{background:#e5e7eb;color:#111827}.breditor-block-drag-handle[hidden]{display:none}.breditor-block-drag[data-dragging] .breditor-block-drag-handle{cursor:grabbing;pointer-events:none}.breditor-block-drop-indicator{position:fixed;z-index:19;height:0;border-top:2px solid var(--breditor-drop-color,#2563eb);pointer-events:none}.breditor-block-drop-indicator[data-state=invalid]{border-top-style:dashed;border-color:var(--breditor-drop-invalid-color,#dc2626)}.breditor-block-drop-indicator[hidden]{display:none}.breditor-block-drag-live{position:absolute;width:1px;height:1px;overflow:hidden;clip:rect(0 0 0 0);white-space:nowrap}`;
 
 interface Hit {resolution:RichBlockMoveResolution;target:RichBlockDropTarget|null;element:HTMLElement|null}
@@ -65,12 +70,12 @@ interface Hit {resolution:RichBlockMoveResolution;target:RichBlockDropTarget|nul
 export function mountRichBlockDragPort(port:RichBlockDragPort,options:RichBlockDragOptions={}):RichBlockDrag{
  const policy=options.policy??"sibling-v1";if(policy!=="sibling-v1"&&policy!=="flow-v1")throw new TypeError("Expected block move policy sibling-v1 or flow-v1");
  const surface=port.surface,d=surface.ownerDocument,win=d.defaultView!,abort=new AbortController(),signal=abort.signal;
- const layer=d.createElement("div");layer.className="breditor-block-drag";
+ const ui=port.uiLocale?.()??defaultRichUi,layer=d.createElement("div");layer.className="breditor-block-drag";ui.applyChrome(layer);
  const style=d.createElement("style");style.textContent=richBlockDragStyles;
  const handle=d.createElement("button");handle.type="button";handle.className="breditor-block-drag-handle";handle.textContent="⋮⋮";handle.hidden=true;handle.draggable=false;
- handle.setAttribute("aria-label",options.label??"Move block");handle.setAttribute("aria-pressed","false");
+ handle.setAttribute("aria-label",options.label??ui.text("blockDragLabel"));handle.setAttribute("aria-pressed","false");
  const help=d.createElement("span");help.className="breditor-block-drag-live";help.id=`breditor-block-drag-help-${Math.random().toString(36).slice(2)}`;
- help.textContent="Drag to move. Or press Enter to pick up, arrow keys to choose a position, Enter to drop, Escape to cancel. Alt+Shift+Up or Down moves one step.";
+ help.textContent=ui.text("blockDragHelp");
  handle.setAttribute("aria-describedby",help.id);
  const indicator=d.createElement("div");indicator.className="breditor-block-drop-indicator";indicator.hidden=true;indicator.setAttribute("aria-hidden","true");
  const live=d.createElement("p");live.className="breditor-block-drag-live";live.setAttribute("role","status");live.setAttribute("aria-live","polite");
@@ -86,7 +91,7 @@ export function mountRichBlockDragPort(port:RichBlockDragPort,options:RichBlockD
  function place():void{
   if(disposed)return;const element=active&&!readOnly()?elementFor(active):null;
   if(!element){if(!mode&&!drag){handle.hidden=true;active=null;}return;}
-  const rect=element.getBoundingClientRect();handle.hidden=false;handle.style.top=`${rect.top}px`;handle.style.left=`${Math.max(0,rect.left-24)}px`;
+  const rect=element.getBoundingClientRect();handle.hidden=false;handle.style.top=`${rect.top}px`;handle.style.left=`${blockIsRtl(element)?rect.right+4:Math.max(0,rect.left-24)}px`;
   if(mode)showTarget(mode.targets[mode.index]);
  }
  function setActive(block:string|null):void{if(drag||mode)return;active=block;place();}
@@ -108,7 +113,7 @@ export function mountRichBlockDragPort(port:RichBlockDragPort,options:RichBlockD
   }
   return first;
  }
- function reject(block:string,reason:RichBlockMoveRejection|"native"):false{announce(MESSAGES[reason]);try{options.onReject?.({block,reason});}catch{/* host callback cannot rewind */}return false;}
+ function reject(block:string,reason:RichBlockMoveRejection|"native"):false{announce(ui.text(MESSAGES[reason]));try{options.onReject?.({block,reason});}catch{/* host callback cannot rewind */}return false;}
  /** Close an open typing group first, then plan against the fresh publication and dispatch with its
   * exact revision: a stale plan is refused by the native guard and nothing is published. */
  function plan(block:string,produce:(value:RichPresentationModel)=>RichBlockMoveResolution,source:"pointer"|"keyboard",focus:boolean):boolean{
@@ -118,11 +123,11 @@ export function mountRichBlockDragPort(port:RichBlockDragPort,options:RichBlockD
   const state=port.state();if(state.closed||state.busy||state.composing)return reject(block,"native");
   try{port.closeTypingGroup();}catch{return reject(block,"native");}
   const value=model(),resolution=produce(value);
-  if(resolution.kind==="unchanged"){announce("Block left in place.");return false;}
+  if(resolution.kind==="unchanged"){announce(ui.text("blockDragUnchanged"));return false;}
   if(resolution.kind==="rejected")return reject(block,resolution.reason);
   try{port.dispatch(resolution.move,focus,value.view.revision);}catch{return reject(block,"native");}
   if(port.revision()===value.view.revision)return reject(block,"native");
-  announce("Block moved.");
+  announce(ui.text("blockDragMoved"));
   try{options.onMove?.({block,parent:resolution.parent,before:resolution.before,source});}catch{/* host callback cannot rewind */}
   return true;
  }
@@ -131,12 +136,12 @@ export function mountRichBlockDragPort(port:RichBlockDragPort,options:RichBlockD
  surface.addEventListener("pointermove",event=>{if(drag||mode)return;const element=(event.target as Element|null)?.closest?.<HTMLElement>("[data-rich-block]");const block=element?.dataset["richBlock"];setActive(block?richHandleBlock(model(),block):null);},{signal});
  surface.addEventListener("focusin",()=>{if(!handle.matches(":hover"))setActive(richSelectionBlock(model()));},{signal});
  handle.addEventListener("focus",()=>{if(!active)setActive(richSelectionBlock(model()));},{signal});
- handle.addEventListener("blur",()=>{if(mode)cancelMode("Move cancelled.");},{signal});
+ handle.addEventListener("blur",()=>{if(mode)cancelMode(ui.text("blockDragCancelled"));},{signal});
 
  // Pointer drag.
  handle.addEventListener("pointerdown",event=>{
   if(event.button!==0||!active||readOnly()||mode)return;event.preventDefault();
-  drag={block:active,pointer:event.pointerId,hit:null};layer.dataset["dragging"]="";announce("Dragging block.");
+  drag={block:active,pointer:event.pointerId,hit:null};layer.dataset["dragging"]="";announce(ui.text("blockDragDragging"));
  },{signal});
  win.addEventListener("pointermove",event=>{
   if(!drag||event.pointerId!==drag.pointer)return;event.preventDefault();
@@ -147,7 +152,7 @@ export function mountRichBlockDragPort(port:RichBlockDragPort,options:RichBlockD
  },{signal});
  const endDrag=(drop:boolean):void=>{
   if(!drag)return;const {block,hit}=drag;drag=undefined;delete layer.dataset["dragging"];hideIndicator();
-  if(!drop){announce("Move cancelled.");return;}
+  if(!drop){announce(ui.text("blockDragCancelled"));return;}
   if(!hit){reject(block,"invalid_target");return;}
   const target=hit.target!;plan(block,value=>resolveRichBlockMove(value,block,target,policy),"pointer",true);place();
  };
@@ -159,8 +164,8 @@ export function mountRichBlockDragPort(port:RichBlockDragPort,options:RichBlockD
  const order=():{pre:Map<string,number>;end:Map<string,number>}=>{const pre=new Map<string,number>(),end=new Map<string,number>();let n=0;const walk=(node:ElementNode):void=>{for(const child of node.children){if(child.kind!=="element")continue;const key=id(child);pre.set(key,n++);walk(child);end.set(key,n-1);}};walk(model().root);return {pre,end};};
  function startMode():void{
   const block=active;if(!block||readOnly())return;const targets=richBlockDropTargets(model(),block,policy);
-  if(!targets.length){announce("No other position accepts this block.");return;}
-  mode={block,targets,index:-1};handle.setAttribute("aria-pressed","true");announce(`Picked up block. ${targets.length} positions available.`);
+  if(!targets.length){announce(ui.text("blockDragNoTargets"));return;}
+  mode={block,targets,index:-1};handle.setAttribute("aria-pressed","true");announce(ui.text("blockDragPickedUp",{count:targets.length}));
  }
  function cancelMode(message:string):void{if(!mode)return;mode=undefined;handle.setAttribute("aria-pressed","false");hideIndicator();announce(message);}
  function cycle(direction:-1|1|"first"|"last"):void{
@@ -170,17 +175,17 @@ export function mountRichBlockDragPort(port:RichBlockDragPort,options:RichBlockD
    if(direction<0){let found=-1;mode.targets.forEach((t,i)=>{if(key(t)<at)found=i;});mode.index=found<0?0:found;}
    else{const found=mode.targets.findIndex(t=>key(t)>tail);mode.index=found<0?count-1:found;}}
   else mode.index=Math.min(count-1,Math.max(0,mode.index+direction));
-  showTarget(mode.targets[mode.index]);announce(`Position ${mode.index+1} of ${count}.`);
+  showTarget(mode.targets[mode.index]);announce(ui.text("blockDragPosition",{index:mode.index+1,count}));
  }
  handle.addEventListener("keydown",event=>{
   if(event.isComposing)return;const k=event.key;
   if(mode){
-   if(k==="Escape"){event.preventDefault();cancelMode("Move cancelled.");return;}
+   if(k==="Escape"){event.preventDefault();cancelMode(ui.text("blockDragCancelled"));return;}
    if(k==="ArrowUp"||k==="ArrowLeft"){event.preventDefault();cycle(-1);return;}
    if(k==="ArrowDown"||k==="ArrowRight"){event.preventDefault();cycle(1);return;}
    if(k==="Home"||k==="End"){event.preventDefault();cycle(k==="Home"?"first":"last");return;}
    if(k==="Enter"||k===" "){event.preventDefault();const {block,targets,index}=mode;const target=targets[index];mode=undefined;handle.setAttribute("aria-pressed","false");hideIndicator();
-    if(!target){announce("Move cancelled.");return;}plan(block,value=>resolveRichBlockMove(value,block,target,policy),"keyboard",false);place();return;}
+    if(!target){announce(ui.text("blockDragCancelled"));return;}plan(block,value=>resolveRichBlockMove(value,block,target,policy),"keyboard",false);place();return;}
    return;
   }
   if(event.altKey&&event.shiftKey&&!event.ctrlKey&&!event.metaKey&&(k==="ArrowUp"||k==="ArrowDown")){event.preventDefault();if(active){plan(active,value=>resolveRichBlockStep(value,active!,k==="ArrowUp"?-1:1),"keyboard",false);place();}return;}
@@ -192,7 +197,7 @@ export function mountRichBlockDragPort(port:RichBlockDragPort,options:RichBlockD
   if(options.editorShortcut===false||event.isComposing||!(event.target instanceof Node)||!surface.contains(event.target))return;
   if(!event.altKey||!event.shiftKey||event.ctrlKey||event.metaKey||(event.key!=="ArrowUp"&&event.key!=="ArrowDown"))return;
   event.preventDefault();event.stopPropagation();
-  const block=richSelectionBlock(model());if(!block){announce(MESSAGES.not_movable);return;}
+  const block=richSelectionBlock(model());if(!block){announce(ui.text(MESSAGES.not_movable));return;}
   plan(block,value=>resolveRichBlockStep(value,block,event.key==="ArrowUp"?-1:1),"keyboard",true);setActive(block);
  },{signal,capture:true});
 
@@ -219,5 +224,6 @@ export function mountRichBlockDrag<P extends RichSelectionPolicy>(editor:RichDom
   closeTypingGroup(){if(editor.view().historyGrouping==="typing-v1")editor.closeTypingGroup();},
   dispatch(move,focus,revision){editor.execute({kind:"moveBlock",data:{block:move.block,parent:move.parent,before:move.before}},focus,revision);},
   focus:()=>editor.focus(),
+  uiLocale:()=>editor.uiLocale(),
  },options);
 }

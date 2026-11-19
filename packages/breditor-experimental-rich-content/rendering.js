@@ -25,3 +25,4 @@ export {mountRichBlockDragPort,richBlockDragStyles} from "./dist/browser/block_d
 export {resolveRichBlockMove,resolveRichBlockStep,richBlockDropTargets,richHandleBlock,richSelectionBlock,isMovableBlock} from "./dist/browser/block_move.js";
 // Profile-independent inline presentation helpers, re-exported so DOM-free renderers depend only on this package.
 export {compileInlineFormatRecipes,createInlineFormatRenderManifest,resolveInlineFormatRenderAttributes} from "@breditor/browser/presentation";
+export {resolveRichUi,defaultRichUi,richUiStringsEn,richChromeIsRtl} from "./dist/browser/ui_locale.js";

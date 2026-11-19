@@ -10,6 +10,7 @@ import {requireDocumentBrowserCore} from "./document_core.js";
 import {isDocumentIntent,publishDocumentIntent,type DocumentIntent} from "./document_intent.js";
 import {standardInlineStylesV1} from "./standard_inline_v1.js";
 import {mountToolbarControl,toolbarControlStyles,type RichControlView} from "./toolbar_control_view.js";
+import {resolveRichUi,type RichUiLocale,type RichUiOptions} from "./ui_locale.js";
 import {taskTab} from "./task_actions_v2.js";
 import {flowEdgeEligible,selectedFlowAtom} from "./flow_controls.js";
 import {standardSelectionInlineControls,selectionFormatChanges} from "./standard_inline_controls.js";
@@ -42,6 +43,8 @@ export interface RichEditorOptions<P extends RichSelectionPolicy="original"> ext
  onInputRuleRefused?:()=>void;
  toolbar?:readonly ToolbarControl<P>[];
  label?:string;
+ /** Opt-in chrome catalog and chrome `dir`/`lang`. Never changes the editing surface or content direction. */
+ ui?:RichUiOptions;
  /** Initial label for admitted native prompt mode; omission preserves existing DOM/defaults. */
  placeholder?:string;
  onChange?:(view:RichEditorView<P>,outcome:RichCommandOutcome)=>void;
@@ -71,7 +74,7 @@ export class RichDomEditor<P extends RichSelectionPolicy="original"> {
  readonly surface:HTMLDivElement;
  readonly toolbar:HTMLDivElement;
  readonly status:HTMLParagraphElement;
- #root:HTMLElement;#options:RichEditorOptions<P>;#model:RichModel<P>;#abort=new AbortController();#queue:Work[]=[];#busy=false;#disposed=false;#composition:Composition|undefined;
+ #root:HTMLElement;#options:RichEditorOptions<P>;#ui:RichUiLocale;#model:RichModel<P>;#abort=new AbortController();#queue:Work[]=[];#busy=false;#disposed=false;#composition:Composition|undefined;
  #namespace:string;#counter=0n;#logicalSelection=false;#controls:{control:ToolbarControl<P>;view:RichControlView<ActionContext<P>>}[]=[];
  readonly #borrowed=new Set<BorrowedControl<ToolbarControl<P>,ActionContext<P>>>();
  readonly #selectionPolicy:P;readonly #document:RichDocumentCoreEditor|undefined;
@@ -97,9 +100,10 @@ export class RichDomEditor<P extends RichSelectionPolicy="original"> {
   requireRenderOptions(this.#model,options);
   if(this.#model.view.historyGrouping==="typing-v1"&&(options.core.supportsTypingHistory?.()!==true||!options.core.closeTypingGroup))throw Error("Use matching native natural typing history");
   for(const control of options.toolbar??defaultToolbarFor<P>())if(control.owner!==undefined&&control.owner!==options.core)throw Error("Toolbar control belongs to a different Rust owner");
-  const document=root.ownerDocument;this.surface=document.createElement("div");this.surface.className="breditor-rich-surface";this.surface.contentEditable="true";this.surface.setAttribute("role","textbox");this.surface.setAttribute("aria-multiline","true");this.surface.setAttribute("aria-label",options.label??"Rich text editor");
-  this.toolbar=document.createElement("div");this.toolbar.className="breditor-rich-toolbar";this.toolbar.setAttribute("role","toolbar");this.toolbar.setAttribute("aria-label","Rich text formatting");
-  this.status=document.createElement("p");this.status.className="breditor-rich-status";this.status.setAttribute("role","status");
+  const ui=resolveRichUi(options.ui);ui.checkControls(options.toolbar??defaultToolbarFor<P>());this.#ui=ui;
+  const document=root.ownerDocument;this.surface=document.createElement("div");this.surface.className="breditor-rich-surface";this.surface.contentEditable="true";this.surface.setAttribute("role","textbox");this.surface.setAttribute("aria-multiline","true");this.surface.setAttribute("aria-label",options.label??ui.text("richEditorLabel"));
+  this.toolbar=document.createElement("div");this.toolbar.className="breditor-rich-toolbar";this.toolbar.setAttribute("role","toolbar");this.toolbar.setAttribute("aria-label",ui.text("richToolbarLabel"));ui.applyChrome(this.toolbar);
+  this.status=document.createElement("p");this.status.className="breditor-rich-status";this.status.setAttribute("role","status");ui.applyChrome(this.status);
   this.#placeholder=placeholder?new RichPlaceholderPresentation(this.surface,placeholder.label):undefined;
   const style=document.createElement("style");style.textContent=styles+standardInlineStylesV1+toolbarControlStyles+structuralBlockStylesV2+(this.#document?documentSelectionStyles:"")+(placeholder?richPlaceholderStyles:"");root.dataset["breditorRich"]="";root.replaceChildren(style,this.toolbar,this.#placeholder?.container??this.surface,this.status);
   const seen=new Set<string>();
@@ -110,7 +114,7 @@ export class RichDomEditor<P extends RichSelectionPolicy="original"> {
   }
   render(this.surface,this.#model,options);this.#refreshControls();
   if(this.#placeholder){this.#placeholder.update(placeholder!.empty&&this.#model.view.readOnly!==true);this.#writingEvents.subscribe(()=>this.#refreshPlaceholder());}
-  if(this.#model.view.readOnly===true)this.status.textContent=`Read-only · revision ${this.#model.view.revision}`;
+  if(this.#model.view.readOnly===true)this.status.textContent=ui.text("richStatusReadOnly",{revision:this.#model.view.revision});
   this.surface.addEventListener("beforeinput",event=>this.#input(event as InputEvent),{signal:this.#abort.signal});
   this.surface.addEventListener("input",()=>{if(!this.#composition)this.#reconcile();},{signal:this.#abort.signal});
   this.surface.addEventListener("keydown",event=>this.#key(event),{signal:this.#abort.signal});
@@ -135,13 +139,15 @@ export class RichDomEditor<P extends RichSelectionPolicy="original"> {
  #logical():boolean {return ["grid","node","document"].includes(this.#model.view.selection?.kind??"");}
  #context():ActionContext<P>{return {core:this.#options.core,model:this.#model,allocate:this.#allocate,stamp:()=>({replica:"1",counter:String(this.#counter++),lamport:this.#model.view.revision})};}
  #attempt(work:()=>void):void {try{work();}catch(error){this.#report(error);this.#reconcile();}}
- #report(error:unknown):void {this.status.textContent=error instanceof Error?error.message:"Rich editor operation failed";try{this.#options.onError?.(error);}catch{/* A host callback cannot rewind committed content. */}}
+ #report(error:unknown):void {this.status.textContent=error instanceof Error?error.message:this.#ui.text("richOperationFailed");try{this.#options.onError?.(error);}catch{/* A host callback cannot rewind committed content. */}}
  #mountControl(container:HTMLElement,control:ToolbarControl<P>,signal:AbortSignal):RichControlView<ActionContext<P>>{
-  return mountToolbarControl(container,control,{prefix:"rich",signal,sync:()=>this.#sync(),stamp:()=>JSON.stringify(this.#options.core.view()),attempt:work=>this.#attempt(work),focus:()=>this.focus(),run:(value,fields)=>{const command=control.command(this.#context(),value,fields);if(command)this.execute(command);}});
+  return mountToolbarControl(container,control,{prefix:"rich",ui:this.#ui,signal,sync:()=>this.#sync(),stamp:()=>JSON.stringify(this.#options.core.view()),attempt:work=>this.#attempt(work),focus:()=>this.focus(),run:(value,fields)=>{const command=control.command(this.#context(),value,fields);if(command)this.execute(command);}});
  }
  /** Context UI port: the same admitted control, widget, gating and command path, in another presentation. */
  contextUiState():RichContextUiHostState{const view=this.#model.view;return Object.freeze({revision:view.revision,closed:this.#disposed,busy:this.#busy,composing:!!this.#composition,readOnly:view.readOnly===true,selection:contextSelectionKind(view.selection)});}
  subscribeContextUi(listener:()=>void):()=>void{this.#live();return this.#writingEvents.subscribe(listener);}
+ /** The validated chrome catalog; opt-in tools read their strings and chrome direction from it. */
+ uiLocale():RichUiLocale{return this.#ui;}
  contextControlIds():readonly string[]{return Object.freeze(this.#controls.map(entry=>entry.control.id));}
  mountContextControl(container:HTMLElement,id:string,signal:AbortSignal):RichContextControlView{
   this.#live();const entry=this.#controls.find(item=>item.control.id===id);if(!entry)throw Error(`Toolbar control ${id} is not admitted by this editor`);
@@ -180,7 +186,7 @@ export class RichDomEditor<P extends RichSelectionPolicy="original"> {
   this.#queue.push({inputRule,revision:source.revision,focus:true});this.#drain();
  }
  #inputRuleRefused():void {
-  if(this.#disposed)return;this.status.textContent="Typed text was kept; the Markdown shortcut was refused.";
+  if(this.#disposed)return;this.status.textContent=this.#ui.text("inputRuleRefused");
   try{this.#options.onInputRuleRefused?.();}catch(error){this.#report(error);}
  }
  /** Commands prepared by asynchronous hosts should pass their observed revision. */
@@ -230,7 +236,7 @@ export class RichDomEditor<P extends RichSelectionPolicy="original"> {
     // An asynchronous focus:false edit must retain an already-owned caret after
     // replacing children, but must not steal focus from an outside host control.
     if(work.focus||ownedFocus){this.surface.focus({preventScroll:true});restoreDocumentNative(this.surface,this.#model.view.selection);}
-    this.#refreshControls();this.status.textContent=`${this.#model.view.readOnly===true?"Read-only · ":""}${outcome} · revision ${this.#model.view.revision}`;
+    this.#refreshControls();this.status.textContent=this.#ui.text(this.#model.view.readOnly===true?"richStatusReadOnlyOutcome":"richStatusOutcome",{outcome,revision:this.#model.view.revision});
     if(outcome!=="unchanged")this.#options.onChange?.(this.#options.core.view(),outcome);
    }catch(error){display=false;if(!published)work.completion?.reject(error);if(first===undefined)throw error;this.#report(error);}
    finally{if(published){work.completion?.resolve();work.accepted?.(display);if(inputRuleOutcome==="refused")this.#inputRuleRefused();}}
@@ -286,7 +292,7 @@ export class RichDomEditor<P extends RichSelectionPolicy="original"> {
  setReadOnly(value:boolean,revision=this.#options.core.view().revision):boolean {
   this.#live();if(this.#busy||(this.#searchEvents.notifying||this.#writingEvents.notifying))throw Error("Editing policy cannot publish reentrantly");
   const core=this.#options.core;if(!core.setReadOnly||core.supportsReadOnly?.()!==true)throw Error("Use a matching native owner with read-only enforcement");
-  const changed=core.setReadOnly(value,revision);if(changed){this.#composition=undefined;this.#cancelQueue(Error("Editing policy cancelled queued search work"));this.#reconcile();this.status.textContent=`${value?"Read-only":"Editable"} · revision ${this.#model.view.revision}`;this.#notifySearch();}return changed;
+  const changed=core.setReadOnly(value,revision);if(changed){this.#composition=undefined;this.#cancelQueue(Error("Editing policy cancelled queued search work"));this.#reconcile();this.status.textContent=this.#ui.text(value?"richStatusReadOnly":"richStatusEditable",{revision:this.#model.view.revision});this.#notifySearch();}return changed;
  }
  focus():void {this.#live();this.surface.focus();restoreDocumentNative(this.surface,this.#model.view.selection);}
  #pick(event:PointerEvent):void {
@@ -480,7 +486,7 @@ export class RichDomEditor<P extends RichSelectionPolicy="original"> {
  }
  #files(files:readonly File[]):void {if(this.#options.core.view().readOnly===true)return;this.#boundary();this.#attempt(()=>{this.#sync();if(this.#model.view.selection?.kind==="document"){if(!this.#options.onDocumentFiles)throw Error("Whole-document image replacement requires a document-aware asset host");void Promise.resolve(this.#options.onDocumentFiles(files,this.#model.view.revision)).catch(error=>this.#report(error));return;}if(!this.#options.onFiles)throw Error("Image file insertion requires an asset host");void Promise.resolve(this.#options.onFiles(files,positionAfter(this.#context()))).catch(error=>this.#report(error));});}
  #replaceDocumentInput(text:string,typing:boolean):RichCommandOutcome|"queued" {const paragraph=this.#allocate("p");return this.#executeIntent(typing&&this.#model.view.historyGrouping==="typing-v1"?{kind:"replaceDocumentTypingText",paragraph,text,clockMs:this.#clock()}:{kind:"replaceDocumentPlainText",paragraph,text});}
- #pasteLoss(report:RichClipboardTextProjection):void{this.status.textContent=`Pasted text into ${report.target}; formatting loss: ${report.losses.join(", ")}.`;try{this.#options.onPasteLoss?.(report);}catch(error){this.#report(error);}}
+ #pasteLoss(report:RichClipboardTextProjection):void{this.status.textContent=this.#ui.text("pasteLoss",{target:report.target,losses:report.losses.join(", ")});try{this.#options.onPasteLoss?.(report);}catch(error){this.#report(error);}}
  #startComposition():void {if(this.#composition||this.#model.view.readOnly===true)return;this.#boundary();this.#attempt(()=>{if(this.#model.view.readOnly===true)return;this.#sync();const selection=this.#model.view.selection;if(selection?.kind==="document"&&this.#document){this.#composition={document:true,revision:this.#model.view.revision,finishing:false};return;}if(selection?.kind!=="text")return;const cross=selection.anchor.block!==selection.focus.block;if(cross&&!this.#general)return;const node=this.#model.nodes.get(selection.focus.block);if(node)this.#composition={block:id(node),original:text(node),revision:this.#model.view.revision,finishing:false,...(cross?{target:structuredClone(selection)}:{})};});this.#notifySearch();}
  #endComposition(committedText:string):void {
   const composition=this.#composition;if(!composition)return;composition.finishing=true;

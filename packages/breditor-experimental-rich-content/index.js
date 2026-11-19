@@ -270,3 +270,4 @@ class RichCoreEditor {
   checkpointJson() { const raw=this.#live();return read(this.#selectionPolicy==="document-v1"?raw.documentCheckpointJson():raw.checkpointJson()); }
   dispose() { for(const results of [...this.#searches])results.dispose();this.#observation?.free(); this.#observation = undefined; this.#raw?.free(); this.#raw = undefined; }
 }
+export {resolveRichUi,defaultRichUi,richUiStringsEn,richChromeIsRtl} from "./dist/browser/ui_locale.js";

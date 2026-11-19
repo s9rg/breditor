@@ -21,6 +21,8 @@ export interface RichContextUiHost {
   */
  mountContextControl(container:HTMLElement,id:string,signal:AbortSignal):RichContextControlView;
  focus():void;
+ /** Optional chrome catalog; the floating widgets take their labels and `dir`/`lang` from it. */
+ uiLocale?():import("./ui_locale.js").RichUiLocale;
 }
 export interface RichContextUiOptions {
  /** Explicit admitted control ids, in order. Unknown ids reject. Omitted uses the defaults present in the toolbar. */

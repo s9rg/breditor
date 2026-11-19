@@ -44,3 +44,4 @@ export type {RichContextUiHost,RichContextUiHostState,RichContextSelectionKind,R
 export {mountRichSelectionToolbar,mountRichContextMenu,richSelectionToolbarDefaults,richContextMenuDefaults,richContextUiStyles} from "./context_ui.js";
 export {mountRichSourceView,type RichSourceView,type RichSourceViewOptions,type RichSourceViewState} from "./source_view.js";
 export {RICH_DOCUMENT_SOURCE_MAX_BYTES,type RichDocumentSourceHost,type RichDocumentSourceHostState,type RichDocumentSourceRead,type RichDocumentSourcePreview} from "./source_view_types.js";
+export {resolveRichUi,defaultRichUi,richUiStringsEn,richChromeIsRtl,type RichUiOptions,type RichUiLocale,type RichUiStrings,type RichUiStringKey,type RichUiControlStrings,type RichUiFieldStrings,type RichUiSlashItemStrings,type RichUiDirection,type RichStandardSlashItemId} from "./ui_locale.js";

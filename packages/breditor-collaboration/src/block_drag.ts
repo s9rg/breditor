@@ -12,7 +12,7 @@ import type {SharedBlockDropTarget,SharedBlockMovePolicy,SharedBlockMoveRejectio
 export interface SharedBlockDragOptions {
  /** Default `sibling-v1`; `flow-v1` additionally offers grammar-legal cross-container drops. */
  policy?:SharedBlockMovePolicy;
- /** Accessible handle label. */
+ /** Accessible handle label; overrides the editor catalog's blockDragLabel. Announcements use `editor.uiLocale()`. */
  label?:string;
  /** Reserve Alt+Shift+ArrowUp/ArrowDown inside the editor to move the caret's block (default true). On macOS
   * this replaces the native Option+Shift+Up/Down "extend selection to paragraph" shortcut; pass false to keep
@@ -46,5 +46,6 @@ export function mountSharedBlockDrag<P extends SharedSelectionPolicy>(editor:Sha
   closeTypingGroup(){if(editor.view().historyGrouping==="typing-v1")editor.closeTypingGroup();},
   dispatch(move,focus,revision){editor.execute({commands:[{kind:"move_block",data:{block:move.block,parent:move.parent,before:move.before}}]},focus,revision);},
   focus:()=>editor.focus(),
+  uiLocale:()=>editor.uiLocale(),
  },options);
 }

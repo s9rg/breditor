@@ -11,6 +11,7 @@ import type {RichClipboardTextProjection} from "./types.js";
 import {sharedTaskTab} from "./task_actions_v2.js";
 import {flowEdgeEligible,selectedFlowAtom} from "@breditor/experimental-rich-content/rendering";
 import {mountToolbarControl,toolbarControlStyles,isCurrentCaretTarget,type RichControlView} from "@breditor/experimental-rich-content/rendering";
+import {resolveRichUi,type RichUiLocale,type RichUiOptions} from "@breditor/experimental-rich-content/rendering";
 import {standardSelectionInlineControls,selectionFormatChanges} from "@breditor/experimental-rich-content/rendering";
 import {blockLayoutShortcut} from "@breditor/experimental-rich-content/rendering";
 import {requireClipboardInterchange,readClipboardInput,exportClipboard,writeClipboard,clipboardInterchangeReport,clipboardInterchangeStatus,type RichClipboardInterchange,type RichClipboardInterchangeReport,type RichInterchangeFormatReport} from "@breditor/experimental-rich-content/rendering";
@@ -24,6 +25,8 @@ import {RichWritingEvents,RichWritingReadRegistry,type RichWritingToolsHostState
 import {prepareRichPlaceholder,RichPlaceholderPresentation,richPlaceholderStyles} from "@breditor/experimental-rich-content/rendering";
 export interface SharedDomOptions<P extends SharedSelectionPolicy="original"> extends RenderOptions {
  core:SharedRichEditor<P>;toolbar?:readonly SharedToolbarControl<P>[];label?:string;image?:{asset:string;alt:string};
+ /** Opt-in chrome catalog and chrome `dir`/`lang`. Never changes the editing surface or content direction. */
+ ui?:RichUiOptions;
  /** Initial native-prompt label; mode is admitted at startup, never a saved setting. */
  placeholder?:string;
  /** Immutable explicit view family; omission keeps the original contract. */
@@ -59,7 +62,7 @@ function sameSelection(a:SharedDocumentSelection|null,b:SharedDocumentSelection|
 export class SharedDomEditor<P extends SharedSelectionPolicy="original"> {
  readonly surface:HTMLDivElement;readonly toolbar:HTMLDivElement;readonly status:HTMLParagraphElement;
  #root:HTMLElement;#options:SharedDomOptions<P>;#model:RichModel<P>;#abort=new AbortController();#unsubscribe:()=>void;
- #disposed=false;#busy=false;#refreshing=false;#logical=false;#queue:Work<P>[]=[];#composition:Composition|undefined;#reportedError:{error:unknown}|undefined;
+ #disposed=false;#busy=false;#refreshing=false;#logical=false;#queue:Work<P>[]=[];#composition:Composition|undefined;#reportedError:{error:unknown}|undefined;#ui:RichUiLocale;
  readonly #searchEvents=new RichSearchEvents();
  readonly #writingEvents=new RichWritingEvents();readonly #writingReads=new RichWritingReadRegistry();
  readonly #placeholder:RichPlaceholderPresentation|undefined;
@@ -80,9 +83,10 @@ export class SharedDomEditor<P extends SharedSelectionPolicy="original"> {
   requireRenderOptions(this.#model,options);
   if(this.#model.view.historyGrouping==="typing-v1"&&!options.core.supportsTypingHistory())throw Error("Use matching native shared typing history");
   for(const control of options.toolbar??[...defaultSharedToolbarFor<P>(),...moveSharedToolbarFor<P>()])if(control.owner!==undefined&&control.owner!==options.core)throw Error("Toolbar control belongs to a different Rust owner");
+  const ui=resolveRichUi(options.ui);ui.checkControls(options.toolbar??[...defaultSharedToolbarFor<P>(),...moveSharedToolbarFor<P>()]);this.#ui=ui;
   const d=root.ownerDocument,style=d.createElement("style");style.textContent=styles+standardInlineStylesV1+toolbarControlStyles+structuralBlockStylesV2.replaceAll("[data-breditor-rich]","[data-breditor-shared]")+(this.#document?sharedDocumentSelectionStyles:"")+(placeholder?richPlaceholderStyles:"");root.dataset["breditorShared"]="";
-  this.surface=d.createElement("div");this.surface.contentEditable="true";this.surface.className="breditor-shared-surface";this.surface.setAttribute("role","textbox");this.surface.setAttribute("aria-multiline","true");this.surface.setAttribute("aria-label",options.label??"Shared rich text editor");
-  this.toolbar=d.createElement("div");this.toolbar.className="breditor-shared-toolbar";this.toolbar.setAttribute("role","toolbar");this.toolbar.setAttribute("aria-label","Shared rich text controls");this.status=d.createElement("p");this.status.setAttribute("role","status");
+  this.surface=d.createElement("div");this.surface.contentEditable="true";this.surface.className="breditor-shared-surface";this.surface.setAttribute("role","textbox");this.surface.setAttribute("aria-multiline","true");this.surface.setAttribute("aria-label",options.label??ui.text("sharedEditorLabel"));
+  this.toolbar=d.createElement("div");this.toolbar.className="breditor-shared-toolbar";this.toolbar.setAttribute("role","toolbar");this.toolbar.setAttribute("aria-label",ui.text("sharedToolbarLabel"));ui.applyChrome(this.toolbar);this.status=d.createElement("p");this.status.setAttribute("role","status");ui.applyChrome(this.status);
   const seen=new Set<string>();for(const control of options.toolbar??[...defaultSharedToolbarFor<P>(),...moveSharedToolbarFor<P>()]){
    if(seen.has(control.id))throw Error("Duplicate shared toolbar control");seen.add(control.id);
    const view=this.#mountControl(this.toolbar,control,this.#abort.signal);this.#controls.push({control,view});
@@ -90,7 +94,7 @@ export class SharedDomEditor<P extends SharedSelectionPolicy="original"> {
   this.#placeholder=placeholder?new RichPlaceholderPresentation(this.surface,placeholder.label):undefined;
   root.replaceChildren(style,this.toolbar,this.#placeholder?.container??this.surface,this.status);render(this.surface,this.#model,options);this.#refreshControls();
   if(this.#placeholder){this.#placeholder.update(placeholder!.empty&&this.#model.view.readOnly!==true);this.#writingEvents.subscribe(()=>this.#refreshPlaceholder());}
-  if(this.#model.view.readOnly===true)this.status.textContent=`Read-only · shared revision ${this.#model.view.revision}`;
+  if(this.#model.view.readOnly===true)this.status.textContent=ui.text("sharedStatusReadOnly",{revision:this.#model.view.revision});
   this.#unsubscribe=options.core.subscribe(event=>{const policy=event.view.readOnlyRevision!==this.#model.view.readOnlyRevision||event.view.readOnly!==this.#model.view.readOnly;if(policy){const composition=this.#composition;this.#composition=undefined;this.#cancelQueue(Error("Editing policy cancelled queued search work"));composition?.release();this.#refresh(false);}else if(!this.#busy&&!this.#composition)this.#refresh(false);try{void Promise.resolve(options.onChange?.(event)).catch(error=>this.#report(error));}catch(error){this.#report(error);}});
   const signal=this.#abort.signal;
   this.surface.addEventListener("beforeinput",event=>this.#input(event as InputEvent),{signal});
@@ -115,13 +119,15 @@ export class SharedDomEditor<P extends SharedSelectionPolicy="original"> {
  #report(error:unknown):void{if(this.#disposed)return;this.#reportedError={error};this.status.textContent=error instanceof Error?error.message:String(error);try{this.#options.onError?.(error);}catch{/* A callback cannot rewind committed state. */}}
  #alreadyReported(error:unknown):boolean{return this.#reportedError!==undefined&&this.#reportedError.error===error;}
  #attempt(run:()=>void):void{this.#reportedError=undefined;try{run();}catch(error){if(!this.#alreadyReported(error)){this.#refresh(false);this.#report(error);}}}
- #mountControl(container:HTMLElement,control:SharedToolbarControl<P>,signal:AbortSignal):RichControlView<ActionContext<P>>{return mountToolbarControl(container,control,{prefix:"shared",signal,sync:()=>this.#sync(),stamp:()=>JSON.stringify(this.#options.core.view()),attempt:work=>this.#attempt(work),focus:()=>this.focus(),run:(value,fields)=>this.#perform(c=>control.run(c,value,fields))});}
+ #mountControl(container:HTMLElement,control:SharedToolbarControl<P>,signal:AbortSignal):RichControlView<ActionContext<P>>{return mountToolbarControl(container,control,{prefix:"shared",ui:this.#ui,signal,sync:()=>this.#sync(),stamp:()=>JSON.stringify(this.#options.core.view()),attempt:work=>this.#attempt(work),focus:()=>this.focus(),run:(value,fields)=>this.#perform(c=>control.run(c,value,fields))});}
  /** Context UI port (see RichContextUiHost): the same admitted control, widget, gating and command path in another presentation. */
  contextUiState():{readonly revision:string;readonly closed:boolean;readonly busy:boolean;readonly composing:boolean;readonly readOnly:boolean;readonly selection:"none"|"caret"|"text"|"node"|"grid"|"document"}{
   const view=this.#model.view,s=view.selection,selection=!s?"none" as const:s.kind==="text"?(s.anchor.block===s.focus.block&&s.anchor.offset===s.focus.offset?"caret" as const:"text" as const):s.kind;
   return Object.freeze({revision:view.revision,closed:this.#disposed,busy:this.#busy,composing:!!this.#composition,readOnly:view.readOnly===true,selection});
  }
  subscribeContextUi(listener:()=>void):()=>void{this.#live();return this.#writingEvents.subscribe(listener);}
+ /** The validated chrome catalog; opt-in tools read their strings and chrome direction from it. */
+ uiLocale():RichUiLocale{return this.#ui;}
  contextControlIds():readonly string[]{return Object.freeze(this.#controls.map(entry=>entry.control.id));}
  mountContextControl(container:HTMLElement,id:string,signal:AbortSignal):{readonly id:string;readonly element:HTMLElement;readonly button:HTMLButtonElement;activate():void}{
   this.#live();const found=this.#controls.find(item=>item.control.id===id);if(!found)throw Error(`Toolbar control ${id} is not admitted by this editor`);
@@ -139,7 +145,7 @@ export class SharedDomEditor<P extends SharedSelectionPolicy="original"> {
   this.#model=this.#read();this.#logical=this.#isLogical();
   if(force||previous!==this.#model.view.documentJson||policy!==this.#model.view.readOnlyRevision)render(this.surface,this.#model,this.#options);else paintSelection(this.surface,this.#model);
   if(focus||ownedFocus){this.surface.focus({preventScroll:true});restoreDocumentNative(this.surface,this.#model.view.selection);}this.#refreshControls();
-  this.status.textContent=`${this.#model.view.readOnly===true?"Read-only · ":""}Shared revision ${this.#model.view.revision} · ${this.#model.view.undoDepth} undo · ${this.#options.core.pendingRemote().frames} pending remote`;
+  this.status.textContent=this.#ui.text(this.#model.view.readOnly===true?"sharedStatusReadOnlyLive":"sharedStatus",{revision:this.#model.view.revision,undo:this.#model.view.undoDepth,pending:this.#options.core.pendingRemote().frames});
   }finally{this.#refreshing=false;this.#notifySearch();}
  }
  #sync():void{if(this.#busy||this.#composition||this.#logical)return;const active=this.surface.ownerDocument.activeElement;if(active!==this.surface&&(!active||!this.surface.contains(active)))return;if(this.#document&&nativeSelectsDocument(this.surface)){this.#perform(c=>{this.#document!.selectDocument(c.revision);},false);return;}const selection=readNative(this.surface,this.#model);if(selection&&!sameSelection(selection,this.#model.view.selection))this.#perform(c=>{c.core.select(selection,c.revision);},false);}
@@ -158,7 +164,7 @@ export class SharedDomEditor<P extends SharedSelectionPolicy="original"> {
   const view=this.#options.core.view();checkMarkdownInputSource(view,source);
   const inputRule=Object.freeze({text,namespace:this.#allocate("rule"),...(view.historyGrouping==="typing-v1"?{clockMs:this.#clock()}:{} )});
   let outcome:RichInputRuleOutcome|undefined;
-  this.#perform(c=>{outcome=publishMarkdownInput(c.core,inputRule,c.revision);},true,source.revision,false,()=>{if(outcome==="refused"&&!this.#disposed){this.status.textContent="Typed text was kept; the Markdown shortcut was refused.";try{this.#options.onInputRuleRefused?.();}catch(error){this.#report(error);}}});
+  this.#perform(c=>{outcome=publishMarkdownInput(c.core,inputRule,c.revision);},true,source.revision,false,()=>{if(outcome==="refused"&&!this.#disposed){this.status.textContent=this.#ui.text("inputRuleRefused");try{this.#options.onInputRuleRefused?.();}catch(error){this.#report(error);}}});
  }
  #perform(run:(context:ActionContext<P>)=>void,focus=true,revision=this.#model.view.revision,boundary=false,accepted?:((display:boolean)=>void),completion?:RichSearchCompletion):void{
   this.#live();if((this.#searchEvents.notifying||this.#writingEvents.notifying))throw Error("Read notifications cannot publish reentrantly");if(this.#queue.length>=128)throw Error("Shared editor command queue is full");this.#queue.push({run,focus,revision,boundary,accepted,completion});if(this.#busy||this.#composition)return;
@@ -356,7 +362,7 @@ export class SharedDomEditor<P extends SharedSelectionPolicy="original"> {
   if(this.#interchange&&(formats.length||destination)){const report=clipboardInterchangeReport(operation,revision,formats,destination),message=clipboardInterchangeStatus(report);if(display&&message)this.status.textContent=message;try{this.#options.onInterchange?.(report);}catch(error){this.#report(error);}}
   if(destination){if(display&&!this.#interchange)this.#pasteLoss(destination);else try{this.#options.onPasteLoss?.(destination);}catch(error){this.#report(error);}}
  }
- #pasteLoss(report:RichClipboardTextProjection):void{this.status.textContent=`Pasted text into ${report.target}; formatting loss: ${report.losses.join(", ")}.`;try{this.#options.onPasteLoss?.(report);}catch(error){this.#report(error);}}
+ #pasteLoss(report:RichClipboardTextProjection):void{this.status.textContent=this.#ui.text("pasteLoss",{target:report.target,losses:report.losses.join(", ")});try{this.#options.onPasteLoss?.(report);}catch(error){this.#report(error);}}
  #files(files:readonly File[]):void{if(this.#options.core.view().readOnly===true)return;this.#boundary();this.#attempt(()=>{this.#sync();if(this.#model.view.selection?.kind==="document"){if(!this.#options.onDocumentFiles)throw Error("Whole-document image replacement requires a document-aware asset host");void Promise.resolve(this.#options.onDocumentFiles(files,this.#model.view.revision)).catch(error=>this.#report(error));return;}if(!this.#options.onFiles)throw Error("Image files require an asset host");const position=positionAfter(this.#context()),revision=this.#model.view.revision;void Promise.resolve(this.#options.onFiles(files,position,revision)).catch(error=>this.#report(error));});}
  #replaceDocumentInput(c:ActionContext<P>,text:string,typing:boolean):void{const core=this.#documentOwner(),paragraph=c.allocate("p");if(typing&&c.model.view.historyGrouping==="typing-v1")core.replaceDocumentTypingText(paragraph,text,this.#clock(),c.revision);else core.replaceDocumentPlainText(paragraph,text,c.revision);}
  #startComposition():void{if(this.#composition||this.#model.view.readOnly===true)return;this.#boundary();this.#attempt(()=>{if(this.#model.view.readOnly===true)return;this.#sync();const s=this.#model.view.selection;if(s?.kind==="document"&&this.#document){this.#composition={document:true,revision:this.#model.view.revision,release:this.#options.core.holdRemotes()};return;}if(s?.kind!=="text")return;const cross=s.anchor.block!==s.focus.block;if(cross&&this.#model.view.rangeEditing!=="general-v1")return;const n=this.#model.nodes.get(s.focus.block);if(n)this.#composition={block:id(n),original:text(n),revision:this.#model.view.revision,release:this.#options.core.holdRemotes(),...(cross?{target:structuredClone(s)}:{})};});this.#notifySearch();}
