@@ -33,9 +33,11 @@ impl ValidationState<'_> {
             if self.report_is_saturated() {
                 return;
             }
-            let layout = self.schema.rich_content_revision() == Some(3)
+            let layout = self.schema.supports_rich_block_layout()
                 && crate::rich_content::block_layout::allows_property(kind, name);
-            if !ast_properties::allows_property(kind, name) && !layout {
+            let numbering = self.schema.supports_rich_list_numbering()
+                && crate::rich_content::list_numbering::allows_property(kind, name);
+            if !ast_properties::allows_property(kind, name) && !layout && !numbering {
                 self.element_property_issue(
                     ValidationCode::UnknownElementProperty,
                     path,
@@ -48,7 +50,7 @@ impl ValidationState<'_> {
         if let Err(reason) = ast_properties::validate_values(element) {
             self.rich_issue(ValidationCode::RichContentContract, path, reason);
         }
-        if self.schema.rich_content_revision() == Some(3)
+        if self.schema.supports_rich_block_layout()
             && crate::rich_content::block_layout::supports_kind(kind)
             && crate::rich_content::RichBlockLayout::from_node(element).is_err()
         {
@@ -57,6 +59,12 @@ impl ValidationState<'_> {
                 path,
                 "invalid bounded block layout value",
             );
+        }
+        if self.schema.supports_rich_list_numbering()
+            && crate::rich_content::list_numbering::supports_kind(kind)
+            && let Err(reason) = crate::rich_content::list_numbering::validate(element)
+        {
+            self.rich_issue(ValidationCode::RichContentContract, path, reason);
         }
         if kind != "breditor/document"
             && let Ok(id) = ast_properties::string(element, "block-id")

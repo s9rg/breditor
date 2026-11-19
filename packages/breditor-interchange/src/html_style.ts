@@ -33,6 +33,7 @@ export function declarations(node:HtmlElement,b:Budget,important?:Set<string>):M
   for(const [key,value]of values)if(value.important)important?.add(key);
   return new Map([...values].map(([key,v])=>[key,v.value]));
 }
+const olListStyles:ReadonlySet<string>=new Set(["lower-alpha","lower-latin","upper-alpha","upper-latin","lower-roman","upper-roman"]);
 const align:Readonly<Record<string,number>>={start:1,center:2,end:3,justify:4,left:5,right:6};
 const direction:Readonly<Record<string,number>>={ltr:1,rtl:2,auto:3};
 export function styleFor(node:HtmlElement,parent:StyleState,b:Budget,css:Map<string,string>):StyleState {
@@ -60,7 +61,8 @@ export function styleFor(node:HtmlElement,parent:StyleState,b:Budget,css:Map<str
         else if(value==="baseline"){remove("superscript");remove("subscript");}else b.loss("unsupported-style");break;
       case "list-style-type":
         if(!["ul","ol","li"].includes(node.tagName))b.loss("unsupported-style");
-        else if(!["disc","circle","square","decimal"].includes(value))b.loss("list-numbering");break;
+        // An `<ol>` marker family is decided by list conversion, which knows the target owner's capability.
+        else if(!["disc","circle","square","decimal"].includes(value)&&!(node.tagName==="ol"&&olListStyles.has(value)))b.loss("list-numbering");break;
       // Excel/Sheets: a <br> stays inside its cell, which is the only native meaning.
       case "mso-data-placement":if(node.tagName!=="br"||value!=="same-cell")b.loss("unsupported-style");break;
       case "font-style":if(value==="italic"||value==="oblique")set("italic");else if(value==="normal")remove("italic");else b.loss("unsupported-style");break;

@@ -71,6 +71,10 @@ describe("durable SDK session coordinator",()=>{
   expect(mocks.compileV2).toHaveBeenCalledWith({},expect.objectContaining({formatVersion:2,schema:{name:"test/profile",version:2}}));expect(mocks.compile).not.toHaveBeenCalled();await editor.close();
   const other=setup();await expect(openSharedEditor({...other.options,richLanguage:4 as 2})).rejects.toThrow("richLanguage 1, 2 or 3");expect(other.host.firstChild).toBe(other.original);
  });
+ it("rejects the local-only candidate V4 explicitly instead of falling back to a shared language",async()=>{
+  const t=setup();await expect(openSharedEditor({...t.options,richLanguage:4 as 3})).rejects.toThrow("richLanguage 4 is the unreleased local-only candidate");
+  expect(mocks.compile).not.toHaveBeenCalled();expect(mocks.compileV2).not.toHaveBeenCalled();expect(mocks.compileV3).not.toHaveBeenCalled();expect(mocks.open).not.toHaveBeenCalled();expect(t.host.firstChild).toBe(t.original);
+ });
  it("selects V3 construction and durable model binding only through the explicit V3 option",async()=>{
   const t=setup(),editor=await openSharedEditor({...t.options,richLanguage:3});
   expect(mocks.compileV3).toHaveBeenCalledWith({},expect.objectContaining({formatVersion:3,schema:{name:"test/profile",version:3}}));expect(mocks.compile).not.toHaveBeenCalled();expect(mocks.compileV2).not.toHaveBeenCalled();expect(mocks.open.mock.calls[0]![0].richLanguage).toBe(3);await editor.close();

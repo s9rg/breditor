@@ -5,8 +5,9 @@ use super::{
     list_helpers::{children, id, interval},
 };
 use crate::{
+    block::OrderedListStart,
     document::NodeRef,
-    rich_content::{BlockId, RichListKind},
+    rich_content::{BlockId, RichDraftError, RichListKind, list_numbering},
 };
 
 pub(super) struct ListParts {
@@ -33,17 +34,34 @@ impl ListParts {
             return Err(RichActionError::ListShape);
         }
         let tail_id = fresh_tail.unwrap_or(&original_id);
+        // Both remaining parts are the same list continued: they keep its own V4
+        // style and reversal, and a reversed tail continues counting down.
+        let retain =
+            |replacement| list_numbering::retain(node, replacement).ok_or(RichActionError::Rewrite);
+        let tail_kind = || -> Result<RichListKind, RichActionError> {
+            Ok(match kind {
+                RichListKind::Bullet => kind,
+                RichListKind::Ordered(_) => RichListKind::Ordered(
+                    list_numbering::continuation_start(
+                        node.as_element().ok_or(RichActionError::ListShape)?,
+                        last + 1,
+                    )
+                    .and_then(|start| OrderedListStart::try_new(start).ok())
+                    .ok_or(RichDraftError::ListOrdinal)?,
+                ),
+            })
+        };
         Ok(Self {
             prefix: if prefix.is_empty() {
                 None
             } else {
-                Some(kind.node(&original_id, prefix.to_vec())?)
+                Some(retain(kind.node(&original_id, prefix.to_vec())?)?)
             },
             selected: children[first..=last].to_vec(),
             tail: if tail.is_empty() {
                 None
             } else {
-                Some(kind.shifted(last + 1)?.node(tail_id, tail.to_vec())?)
+                Some(retain(tail_kind()?.node(tail_id, tail.to_vec())?)?)
             },
         })
     }

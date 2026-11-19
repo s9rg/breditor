@@ -40,6 +40,7 @@ mod insert_typing_text;
 mod join_list_items;
 mod join_task_items;
 mod join_text_blocks;
+mod list_numbering;
 mod merge_table_cells;
 mod move_block;
 mod move_table_column;
@@ -164,6 +165,7 @@ enum CommandTag {
     WrapList,
     UnwrapList,
     SetListKind,
+    SetListNumbering,
     OutdentListItems,
     JoinTextBlocks,
     JoinListItems,

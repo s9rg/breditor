@@ -35,19 +35,6 @@ impl RichListKind {
             _ => Err(RichDraftError::ListShape),
         }
     }
-    pub(crate) fn shifted(self, offset: usize) -> Result<Self, RichDraftError> {
-        match self {
-            Self::Bullet => Ok(self),
-            Self::Ordered(start) => Ok(Self::Ordered(
-                OrderedListStart::try_new(
-                    start
-                        .ordinal_at(u32::try_from(offset).map_err(|_| RichDraftError::ListOrdinal)?)
-                        .ok_or(RichDraftError::ListOrdinal)?,
-                )
-                .map_err(|_| RichDraftError::ListOrdinal)?,
-            )),
-        }
-    }
     pub(crate) fn node(self, id: &BlockId, items: Vec<NodeRef>) -> Result<NodeRef, RichDraftError> {
         if items.is_empty() {
             return Err(RichDraftError::EmptyList);

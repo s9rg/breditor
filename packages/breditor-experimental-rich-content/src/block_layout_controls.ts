@@ -1,6 +1,6 @@
 import type {RichBlockLayoutPatch,RichBlockLayoutStateRead,RichLayoutFieldState} from "./core.js";
 import type {RichToolbarField,RichToolbarReading} from "./toolbar_control_view.js";
-interface LayoutReader {richLanguageVersion?():1|2|3;supportsBlockLayout?():boolean;blockLayoutState?():RichBlockLayoutStateRead}
+interface LayoutReader {richLanguageVersion?():1|2|3|4;supportsBlockLayout?():boolean;blockLayoutState?():RichBlockLayoutStateRead}
 export interface BlockLayoutControl {
  readonly id:string;readonly label:string;readonly fields?:readonly RichToolbarField[];readonly mixedHint?:string;
  read():RichToolbarReading;patch(fields:Readonly<Record<string,string>>):RichBlockLayoutPatch|null;
@@ -15,7 +15,7 @@ function reading<T>(state:RichLayoutFieldState<T>,numbers=false):RichToolbarRead
 }
 /** Definitions read native state and produce intent only; no AST targets, changes or conflict resolution. */
 export function blockLayoutControls(core:LayoutReader):readonly BlockLayoutControl[]{
- if(core.richLanguageVersion?.()!==3||core.supportsBlockLayout?.()!==true||!core.blockLayoutState)throw Error("Use an explicitly selected matching layout V3 owner");
+ const language=core.richLanguageVersion?.();if((language!==3&&language!==4)||core.supportsBlockLayout?.()!==true||!core.blockLayoutState)throw Error("Use an explicitly selected matching layout V3 or candidate V4 owner");
  const current=()=>core.blockLayoutState!();
  const choose=(id:string,label:string,key:"alignment"|"direction",options:readonly {value:string;label:string}[]):BlockLayoutControl=>({id,label,fields:[{id:"value",label,type:"select",options:[{value:"inherit",label:"Inherit"},...options]}],mixedHint:"Mixed values: choose one explicit value or Inherit for all covered blocks.",read:()=>reading(current()[key]),patch:fields=>{
   const value=fields["value"];if(!value)return null;if(value!=="inherit"&&!options.some(option=>option.value===value))throw new TypeError("Unknown layout choice");return {[key]:value==="inherit"?null:value} as RichBlockLayoutPatch;

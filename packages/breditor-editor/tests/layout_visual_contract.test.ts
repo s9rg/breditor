@@ -42,8 +42,8 @@ describe("bounded layout presentation and expandable native-state controls",()=>
   expect(controls.find(c=>c.id==="reset-block-layout")!.patch({})).toEqual({alignment:null,direction:null,indent:null,lineHeightPercent:null});
  });
  it("requires exact V3 and does not widen structural capability to unknown future languages",()=>{
-  for(const language of [undefined,1,4,"3"]){expect(isStructuralRichLanguage(language)).toBe(false);expect(()=>blockLayoutControls({richLanguageVersion:()=>language as 3,supportsBlockLayout:()=>true,blockLayoutState:native})).toThrow("matching layout V3");}
-  expect(isStructuralRichLanguage(2)).toBe(true);expect(isStructuralRichLanguage(3)).toBe(true);
+  for(const language of [undefined,1,5,"3"]){expect(isStructuralRichLanguage(language)).toBe(false);expect(()=>blockLayoutControls({richLanguageVersion:()=>language as 3,supportsBlockLayout:()=>true,blockLayoutState:native})).toThrow("matching layout V3");}
+  expect(isStructuralRichLanguage(2)).toBe(true);expect(isStructuralRichLanguage(3)).toBe(true);expect(isStructuralRichLanguage(4)).toBe(true);
  });
  it("numeric form dependencies disable irrelevant drafts and preserve explicit reset validation",()=>{
   const control=blockLayoutControls({richLanguageVersion:()=>3,supportsBlockLayout:()=>true,blockLayoutState:native}).find(c=>c.id==="block-indent")!,toolbar=document.createElement("div"),abort=new AbortController(),run=vi.fn();

@@ -55,7 +55,14 @@ impl IndentListItems {
             let old = body.pop().ok_or(RichActionError::ListShape)?;
             let mut nested = children(&old)?.to_vec();
             nested.extend(selected);
-            body.push(nested_kind.node(&id(&old)?, nested)?);
+            // The existing nested list keeps its own V4 numbering; nothing is inherited.
+            body.push(
+                crate::rich_content::list_numbering::retain(
+                    &old,
+                    nested_kind.node(&id(&old)?, nested)?,
+                )
+                .ok_or(RichActionError::Rewrite)?,
+            );
         } else {
             let (nested_id, nested_kind) = new_nested.ok_or(RichActionError::ListShape)?;
             if !matches!(

@@ -105,6 +105,23 @@ normal`, `vertical-align: baseline`, `background-color: transparent`, native
 `list-style-type` values report `list-numbering`. Everything else unrecognized,
 including `mso-*` producer properties and the `font` shorthand, keeps its notice.
 
+### Ordered-list numbering (candidate rich V4 owners)
+
+The adapter reads the owner's optional `supportsListNumbering()` once. Only a
+local candidate rich V4 owner reports `true`; for every other owner the
+original behavior and notices are unchanged. With a V4 owner:
+
+- `<ol type>` tokens `1`, `a`, `A`, `i`, `I` and `list-style-type` values
+  `decimal`, `lower-alpha`/`lower-latin`, `upper-alpha`/`upper-latin`,
+  `lower-roman`, `upper-roman` (CSS wins over `type`) become the native list
+  style; `reversed` becomes native reversal without a notice. A reversed list
+  without `start` stores the HTML default (its item count) explicitly.
+- Bullet markers on an `<ol>`, unknown `type` tokens and other counter styles
+  report `list-numbering`. Word flat-list reconstruction is unchanged.
+- HTML export writes `<ol start type reversed>`; V4 HTML round trips exactly.
+- Markdown export keeps decimal lists as `N.` lists. Letter, roman and reversed
+  lists are exported as safe HTML with a `markdown-feature` notice.
+
 Markdown uses the explicit `interchangeContractV1` dialect: CommonMark parsing
 with table/strikethrough extensions, parsed task markers and sanitized raw HTML.
 Automatic URL linking and typography substitutions are disabled. This is not a

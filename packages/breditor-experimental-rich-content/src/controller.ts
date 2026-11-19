@@ -16,6 +16,7 @@ import {flowEdgeEligible,selectedFlowAtom} from "./flow_controls.js";
 import {standardSelectionInlineControls,selectionFormatChanges} from "./standard_inline_controls.js";
 import {blockLayoutShortcut} from "./block_layout_controls.js";
 import {encodeBlockLayoutPatch} from "./block_layout_serialization.js";
+import {encodeListNumberingPatch} from "./list_numbering_serialization.js";
 import type {RichClipboardTextProjection} from "./core.js";
 import {requireClipboardInterchange,readClipboardInput,exportClipboard,writeClipboard,clipboardInterchangeReport,clipboardInterchangeStatus,type RichClipboardInterchange,type RichClipboardInterchangeReport,type RichInterchangeFormatReport} from "./clipboard_interchange.js";
 import type {RichSearchQuery,RichSearchReplacement,RichSearchResults} from "./core.js";
@@ -214,7 +215,7 @@ export class RichDomEditor<P extends RichSelectionPolicy="original"> {
   if((this.#searchEvents.notifying||this.#writingEvents.notifying))throw Error("Read notifications cannot publish reentrantly");
   if(this.#queue.length>=128)throw Error("Rich editor command queue is full");
   // Validate layout before the queue's detached JSON snapshot can turn nonfinite values into Clear.
-  const intent=command.kind==="changeSelectionLayout"?{...command,data:JSON.parse(encodeBlockLayoutPatch(command.data))}:command;
+  const intent=command.kind==="changeSelectionLayout"?{...command,data:JSON.parse(encodeBlockLayoutPatch(command.data))}:command.kind==="setListNumbering"?{...command,data:encodeListNumberingPatch(command.data)}:command;
   this.#queue.push({command:JSON.parse(JSON.stringify(intent)) as RichCommand|DocumentIntent,revision:expectedRevision,focus,accepted});
   return this.#drain();
  }

@@ -27,9 +27,13 @@ impl SetListKind {
         kind: RichListKind,
     ) -> Result<Self, RichActionError> {
         let node = list_node(document, list)?;
-        Ok(Self {
-            patch: NodePatch::capture(document, list, kind.node(list, children(node)?.to_vec())?)?,
-        })
+        // A numbered-to-numbered start change keeps the list's own V4 style and reversal.
+        let replacement = crate::rich_content::list_numbering::retain(
+            node,
+            kind.node(list, children(node)?.to_vec())?,
+        )
+        .ok_or(RichActionError::Rewrite)?;
+        Ok(Self { patch: NodePatch::capture(document, list, replacement)? })
     }
     /// Publish one style change; unchanged style/start is an admitted no-op.
     ///

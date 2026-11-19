@@ -1,4 +1,4 @@
-import {compileStandardRichProfileV1,compileStandardStructuralRichProfileV2,compileStandardLayoutRichProfileV3,createStandardRichInlinePresentationV1,createStandardRichToolbarV1,createStructuralRichToolbarV2,createLayoutRichToolbarV3,mountRichEditor,insertImageFiles,type RichCoreEditor,type RichCoreProfile,type RichDomEditor,type RichEditorOptions,type RichCommand,type RichView,type RichCommandOutcome,type RichAssetStore,type AssetInfo,type FlowPosition,type ToolbarControl,type RenderOptions} from "@breditor/experimental-rich-content";
+import {compileStandardRichProfileV1,compileStandardStructuralRichProfileV2,compileStandardLayoutRichProfileV3,compileStandardRichProfileV4,createStandardRichInlinePresentationV1,createStandardRichToolbarV1,createStructuralRichToolbarV2,createLayoutRichToolbarV3,createRichToolbarV4,mountRichEditor,insertImageFiles,type RichCoreEditor,type RichCoreProfile,type RichDomEditor,type RichEditorOptions,type RichCommand,type RichView,type RichCommandOutcome,type RichAssetStore,type AssetInfo,type FlowPosition,type ToolbarControl,type RenderOptions} from "@breditor/experimental-rich-content";
 import {validatePlaceholderOption,resolveRichUi} from "@breditor/experimental-rich-content/rendering";
 import {refreshAssets,validateMarkdownInputPolicy} from "@breditor/experimental-rich-content/rendering";
 import type {RichSearchHost} from "@breditor/experimental-rich-content";
@@ -10,11 +10,27 @@ export const standardProfileBootstrapJson=JSON.stringify({format:"breditor/profi
 /** Explicit bootstrap V7; neither old schema selectors nor saved checkpoints migrate. */
 export const structuralProfileBootstrapJsonV2=JSON.stringify({format:"breditor/profile-bootstrap",formatVersion:7,schema:{name:"breditor-editor/standard",version:2},extensions:[]});
 export const layoutProfileBootstrapJsonV3=JSON.stringify({format:"breditor/profile-bootstrap",formatVersion:8,schema:{name:"breditor-editor/standard",version:3},extensions:[]});
+/** Explicit bootstrap V9 for the unreleased candidate rich V4 (V3 plus ordered-list numbering).
+ * Its fingerprint changes while the candidate grows; do not persist V4 documents yet. */
+export const profileBootstrapJsonV4=JSON.stringify({format:"breditor/profile-bootstrap",formatVersion:9,schema:{name:"breditor-editor/standard",version:4},extensions:[]});
+/** Select the exact standard profile for one explicit local rich language. */
+export function compileLocalLanguageProfile(runtime:Parameters<typeof compileStandardRichProfileV1>[0],language:1|2|3|4,bootstrapJson?:string):RichCoreProfile{
+ return language===4?compileStandardRichProfileV4(runtime,bootstrapJson??profileBootstrapJsonV4):language===3?compileStandardLayoutRichProfileV3(runtime,bootstrapJson??layoutProfileBootstrapJsonV3):language===2?compileStandardStructuralRichProfileV2(runtime,bootstrapJson??structuralProfileBootstrapJsonV2):compileStandardRichProfileV1(runtime,bootstrapJson??standardProfileBootstrapJson);
+}
+/** The owner-bound stock toolbar of one explicit local rich language. */
+export function localLanguageToolbar<P extends "original"|"document-v1">(core:RichCoreEditor<P>,presentation:Parameters<typeof createStandardRichToolbarV1>[1],language:1|2|3|4):readonly ToolbarControl<P>[]{
+ return language===4?createRichToolbarV4(core,presentation):language===3?createLayoutRichToolbarV3(core,presentation):language===2?createStructuralRichToolbarV2(core,presentation):createStandardRichToolbarV1(core,presentation);
+}
+/** Strict closed choice; an unknown future revision is never mapped to an older language. */
+export function checkLocalRichLanguage(value:unknown):asserts value is 1|2|3|4|undefined{
+ if(value!==undefined&&value!==1&&value!==2&&value!==3&&value!==4)throw new TypeError("Expected richLanguage 1, 2, 3 or 4");
+}
 export type LocalInitial={kind:"empty";documentId?:string;blockId?:string}|{kind:"document";documentJson:string}|{kind:"checkpoint";checkpointJson:string}|{kind:"typingCheckpoint";checkpointJson:string};
 export interface LocalEditorOptions extends Omit<RichEditorOptions,"core"|"toolbar"|"inlinePresentation"|"inlineTag"|"clipboardInterchange"> {
  host:HTMLElement;initial?:LocalInitial;profileBootstrapJson?:string;additionalInlinePresentation?:unknown;
- /** Explicit native grammar; omitted/1 preserves V1, 2 selects structure, 3 adds layout. */
- richLanguage?:1|2|3;
+ /** Explicit native grammar; omitted/1 preserves V1, 2 selects structure, 3 adds layout and 4
+  * selects the unreleased local-only candidate V4 (layout plus ordered-list numbering). */
+ richLanguage?:1|2|3|4;
  /** Initial live host policy, reapplied after checkpoint restore; not serialized permission. */
  readOnly?:boolean;
  /** Immutable native history policy; omitted/explicit preserves existing defaults. */
@@ -59,6 +75,10 @@ export async function createStructuralLocalProfileV2(bootstrapJson=structuralPro
 export async function createLayoutLocalProfileV3(bootstrapJson=layoutProfileBootstrapJsonV3,runtimeInput?:RuntimeInput):Promise<RichCoreProfile>{
  return compileStandardLayoutRichProfileV3(await initializeLocalRuntime(runtimeInput),bootstrapJson);
 }
+/** Explicit headless candidate rich V4 factory (bootstrap V9); local only, never shared. */
+export async function createLocalProfileV4(bootstrapJson=profileBootstrapJsonV4,runtimeInput?:RuntimeInput):Promise<RichCoreProfile>{
+ return compileStandardRichProfileV4(await initializeLocalRuntime(runtimeInput),bootstrapJson);
+}
 class LocalEditorOwner implements LocalEditor {
  readonly surface:HTMLDivElement;readonly toolbar:HTMLDivElement;readonly status:HTMLParagraphElement;
  #dom:RichDomEditor;#release:()=>void;#render:RenderOptions;#disposed=false;
@@ -85,7 +105,7 @@ export async function openLocalEditor(options:LocalEditorOptions):Promise<LocalE
  options={...options};
  validateMarkdownInputPolicy(options.inputRules);
  validatePlaceholderOption(options.placeholder);resolveRichUi(options.ui);
- if(options.richLanguage!==undefined&&options.richLanguage!==1&&options.richLanguage!==2&&options.richLanguage!==3)throw new TypeError("Expected richLanguage 1, 2 or 3");
+ checkLocalRichLanguage(options.richLanguage);
  if(options.readOnly!==undefined&&typeof options.readOnly!=="boolean")throw new TypeError("readOnly must be Boolean");
  if(options.history!==undefined&&options.history!=="explicit"&&options.history!=="typing-v1")throw new TypeError("Expected history explicit or typing-v1");
  if(options.rangeEditing!==undefined&&options.rangeEditing!=="original"&&options.rangeEditing!=="general-v1")throw new TypeError("Expected rangeEditing original or general-v1");
@@ -95,7 +115,7 @@ export async function openLocalEditor(options:LocalEditorOptions):Promise<LocalE
  try{
   const runtime=await awaitInitialization(initializeLocalRuntime(options.runtimeInput),options.signal);claim.assert();
   const language=options.richLanguage??1;
-  profile=language===3?compileStandardLayoutRichProfileV3(runtime,options.profileBootstrapJson??layoutProfileBootstrapJsonV3):language===2?compileStandardStructuralRichProfileV2(runtime,options.profileBootstrapJson??structuralProfileBootstrapJsonV2):compileStandardRichProfileV1(runtime,options.profileBootstrapJson??standardProfileBootstrapJson);
+  profile=compileLocalLanguageProfile(runtime,language,options.profileBootstrapJson);
   if(options.placeholder!==undefined&&profile.supportsPlaceholder?.()!==true)throw Error("Use a matching native placeholder profile before creating an editor");
   const presentation=createStandardRichInlinePresentationV1(profile.inlineCatalogJson(),options.additionalInlinePresentation);
   const blockId=initial.kind==="empty"?initial.blockId??crypto.randomUUID():undefined;
@@ -110,7 +130,7 @@ export async function openLocalEditor(options:LocalEditorOptions):Promise<LocalE
    core.enableTypingHistory();
   }
   if(options.readOnly!==undefined){if(core.supportsReadOnly?.()!==true||!core.setReadOnly)throw Error("Use a matching native owner with read-only enforcement");core.setReadOnly(options.readOnly);}
-  const standard=language===3?createLayoutRichToolbarV3(core,presentation):language===2?createStructuralRichToolbarV2(core,presentation):createStandardRichToolbarV1(core,presentation);
+  const standard=localLanguageToolbar(core,presentation,language);
   const toolbar=options.toolbar?.(core,standard)??standard;
   const render:RenderOptions={inlinePresentation:presentation,...(options.resolveAsset?{resolveAsset:options.resolveAsset}:{})};
   const {clipboardInterchange:factory,...domOptions}=options,interchange=clipboardInterchangeOptions(factory,core);

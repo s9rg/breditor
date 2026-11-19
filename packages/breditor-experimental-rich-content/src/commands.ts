@@ -91,6 +91,8 @@ export type RichCommand =
  |{kind:"wrapList";data:{first:string;last:string;container:string;items:readonly string[];start:number|null}}
  |{kind:"unwrapList";data:{list:string}}
  |{kind:"setListKind";data:{list:string;start:number|null}}
+ /** Candidate rich V4 only: one ordered list's marker style, reversal and/or start, one history group. */
+ |{kind:"setListNumbering";data:import("./core.js").RichListNumberingPatch}
  |{kind:"indentListItems";data:{container:string;first:string;last:string;nested:{block:string;start:number|null}|null}}
  |{kind:"outdentListItems";data:{container:string;first:string;last:string;tail:string|null}}
  |{kind:"splitTextBlock";data:{point:RichPoint;right:string;rightHeading:number|null}}

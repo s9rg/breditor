@@ -100,9 +100,9 @@
     {
       "id":"list-properties","area":"Lists","status":"partial",
       "summary":"List numbering and marker properties",
-      "current":"Positive ordered-list starts are supported. Reversed numbering, marker families and legal multilevel counters are not an integrated feature set.",
+      "current":"Positive ordered-list starts are supported. Candidate local rich language V4 adds bounded native numbering styles (decimal, lower/upper alpha, lower/upper roman) and HTML-compatible reversed counting with explicit start, one-group SetListNumbering history, live/static rendering, a V4 toolbar control and profile-aware HTML/Markdown interchange. V4 is local-only and unreleased; shared editing stays on V3, and legal multilevel counters, per-item overrides and custom counter styles are not part of V4.",
       "acceptance":"Define each numbering/style domain, restart/continuation behavior and deterministic nested export before claiming advanced list parity.",
-      "evidence":["crates/breditor-core/src/rich_content/drafts.rs","packages/breditor-experimental-rich-content/src/render.ts"],
+      "evidence":["crates/breditor-core/src/rich_content/drafts.rs","packages/breditor-experimental-rich-content/src/render.ts","docs/RICH_LANGUAGE_V4.md","crates/breditor-core/tests/rich_list_numbering_v4.rs"],
       "sources":["ckeditor-digest"]
     },
     {

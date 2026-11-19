@@ -215,6 +215,35 @@ impl CompiledSchema {
         super::compiler::compile_rich_content_profile_v3(schema_id, extensions)
     }
 
+    /// Compile the explicit unreleased candidate rich V4: V3 plus bounded ordered-list numbering.
+    ///
+    /// V4 is a candidate under construction: its fingerprint changes as later
+    /// candidate slices land, so callers must not persist V4 data yet. Old
+    /// profiles and fingerprints are unchanged; this does not migrate old documents.
+    /// # Errors
+    /// Rejects reserved identities, incompatible extensions and compiler limits.
+    #[cfg(feature = "experimental-rich-content")]
+    pub fn try_compile_rich_content_profile_v4(
+        schema_id: SchemaId,
+        extensions: &ExtensionSet,
+    ) -> Result<Self, SchemaCompilationError> {
+        super::compiler::compile_rich_content_profile_v4(schema_id, extensions)
+    }
+
+    /// Whether this exact language admits bounded text-block layout (rich V3 and V4).
+    #[cfg(feature = "experimental-rich-content")]
+    #[must_use]
+    pub const fn supports_rich_block_layout(&self) -> bool {
+        matches!(self.rich_content_revision(), Some(3 | 4))
+    }
+
+    /// Whether this exact language admits bounded ordered-list numbering (rich V4 only).
+    #[cfg(feature = "experimental-rich-content")]
+    #[must_use]
+    pub const fn supports_rich_list_numbering(&self) -> bool {
+        matches!(self.rich_content_revision(), Some(4))
+    }
+
     /// Exact admitted rich-language revision; unrecognized lookalikes return `None`.
     #[cfg(feature = "experimental-rich-content")]
     #[must_use]

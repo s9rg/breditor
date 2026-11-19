@@ -132,6 +132,8 @@ export function exportMarkdownRoot(nodes:Node[],b:Budget,options:InterchangeOpti
     if(n.type==="breditor/blockquote")return sequence(n.children,depth+1).split("\n").map(line=>line?`> ${line}`:">").join("\n");
     if(["breditor/bullet-list","breditor/ordered-list","breditor/task-list"].includes(n.type)){
       const ordered=n.type==="breditor/ordered-list",start=ordered?Number(property(n,"start")):1,bullet=flip?"*":"-";if(start+n.children.length>999999999)return fallback();
+      // CommonMark has only ascending decimal markers: letter, roman or reversed V4 lists keep exact HTML.
+      if(ordered&&(property(n,"list-reversed")!==undefined||property(n,"list-style")!==undefined&&property(n,"list-style")!==1))return fallback();
       return n.children.map((item,i)=>{if(item.kind!=="element")fail("native-admission");const marker=ordered?`${start+i}${flip?")":"."} `:n.type==="breditor/task-list"?`${bullet} [${property(item,"checked")===true?"x":" "}] `:`${bullet} `,indent=ordered?marker.length:2,lines=sequence(item.children,depth+1).split("\n");return `${marker}${lines[0]}${lines.slice(1).map(line=>`\n${line?" ".repeat(indent):""}${line}`).join("")}`;}).join("\n");
     }
     if(n.type==="breditor/table"){

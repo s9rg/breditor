@@ -82,7 +82,7 @@ pub fn decode_rich_block_layout_patch(
     context: &EditorContext,
     input: &str,
 ) -> Result<RichBlockLayoutPatch, RichBlockLayoutCodecError> {
-    if context.schema().rich_content_revision() != Some(3) {
+    if !context.schema().supports_rich_block_layout() {
         return Err(RichBlockLayoutCodecError::UnsupportedContext);
     }
     if input.len() > 64 * 1024 {
@@ -122,7 +122,7 @@ pub fn encode_rich_block_layout_patch(
     context: &EditorContext,
     patch: &RichBlockLayoutPatch,
 ) -> Result<String, RichBlockLayoutCodecError> {
-    if context.schema().rich_content_revision() != Some(3) {
+    if !context.schema().supports_rich_block_layout() {
         return Err(RichBlockLayoutCodecError::UnsupportedContext);
     }
     let mut values = serde_json::Map::new();

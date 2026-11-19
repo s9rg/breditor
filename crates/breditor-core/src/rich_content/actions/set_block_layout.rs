@@ -37,7 +37,7 @@ impl SetBlockLayout {
         context: &EditorContext,
         document: &RichDocument,
     ) -> Result<Option<RichEdit>, RichActionError> {
-        if context.schema().rich_content_revision() != Some(3) {
+        if !context.schema().supports_rich_block_layout() {
             return Err(RichBlockLayoutError::Profile.into());
         }
         self.patch.edit(

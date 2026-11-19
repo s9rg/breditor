@@ -7,7 +7,6 @@ use crate::{
     rich_content::{
         RichDocument, RichTextPoint,
         actions::{rewrite_properties::with_properties, text_patch},
-        ast_properties,
     },
 };
 
@@ -66,13 +65,11 @@ pub(super) fn leading_items(
         container.try_with_children(items).map_err(|_| RichClipboardError::Invariant)?,
     );
     if container.kind().as_str() == "breditor/ordered-list" {
-        let original = ast_properties::property(container, "start")
-            .and_then(PropertyValue::as_integer)
-            .ok_or(RichClipboardError::Invariant)?
-            .get();
-        let start = original
-            .checked_add(i64::try_from(a).map_err(|_| RichClipboardError::Invariant)?)
-            .ok_or(RichClipboardError::Invariant)?;
+        // A reversed V4 copy keeps counting down; a start below 1 is unrepresentable.
+        let start = i64::from(
+            crate::rich_content::list_numbering::continuation_start(container, a)
+                .ok_or(RichClipboardError::UnsupportedRange)?,
+        );
         return Ok(vec![with_properties(
             &node,
             [(

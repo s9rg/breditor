@@ -26,6 +26,7 @@ mod image_draft;
 mod inline_format_state;
 mod input_rules;
 mod list_draft;
+pub(crate) mod list_numbering;
 pub(crate) mod local_session;
 mod native_history_usage;
 mod navigate_flow;
@@ -80,6 +81,9 @@ pub use input_rules::{
     is_rich_markdown_input_rule_trigger, plan_rich_markdown_input_rule,
 };
 pub use list_draft::{RichListDraft, RichListItemDraft, RichListKind};
+pub use list_numbering::{
+    RichListNumberStyle, RichListNumbering, RichListNumberingError, RichListNumberingPatch,
+};
 pub use local_session::{
     RICH_TYPING_GROUP_MAX_STEPS, RICH_TYPING_GROUP_WINDOW_MS, RichGeneralPlainRangePlan,
     RichLocalOutcome, RichLocalSession, RichLocalSessionError, RichLocalSnapshot, RichLocalState,

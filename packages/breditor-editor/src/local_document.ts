@@ -1,13 +1,13 @@
 /** Explicit document-family SDK owner. Original local startup and checkpoint discriminators stay closed. */
 import {validatePlaceholderOption,resolveRichUi} from "@breditor/experimental-rich-content/rendering";
-import {compileStandardRichProfileV1,compileStandardStructuralRichProfileV2,compileStandardLayoutRichProfileV3,createStandardRichInlinePresentationV1,createStandardRichToolbarV1,createStructuralRichToolbarV2,createLayoutRichToolbarV3,mountDocumentRichEditor,type RichCoreProfile,type RichDocumentCoreEditor,type RichDocumentEditorOptions,type RichDomEditor,type RichDocumentView,type ToolbarControl,type RenderOptions} from "@breditor/experimental-rich-content";
+import {createStandardRichInlinePresentationV1,mountDocumentRichEditor,type RichCoreProfile,type RichDocumentCoreEditor,type RichDocumentEditorOptions,type RichDomEditor,type RichDocumentView,type ToolbarControl,type RenderOptions} from "@breditor/experimental-rich-content";
 import {refreshAssets,validateMarkdownInputPolicy} from "@breditor/experimental-rich-content/rendering";
 import type {RichSearchHost} from "@breditor/experimental-rich-content";
 import {initializeLocalRuntime} from "./runtime.js";
 import {claimHost,awaitInitialization} from "./host.js";
 import {emptyDocumentJson} from "./empty_document.js";
 import {clipboardInterchangeOptions,type ClipboardInterchangeFactory} from "./clipboard_interchange.js";
-import {standardProfileBootstrapJson,structuralProfileBootstrapJsonV2,layoutProfileBootstrapJsonV3,type LocalEditor,type LocalEditorOptions,type LocalInitial} from "./local.js";
+import {checkLocalRichLanguage,compileLocalLanguageProfile,localLanguageToolbar,type LocalEditor,type LocalEditorOptions,type LocalInitial} from "./local.js";
 
 export type LocalDocumentInitial=Extract<LocalInitial,{kind:"empty"|"document"}>
  |{kind:"documentCheckpoint";checkpointJson:string}
@@ -61,7 +61,7 @@ export async function openLocalDocumentEditor(options:LocalDocumentEditorOptions
  validatePlaceholderOption(options.placeholder);resolveRichUi(options.ui);
  if(options.selectionEditing!=="document-v1")throw new TypeError("Expected explicit selectionEditing document-v1");
  if(options.rangeEditing!==undefined&&options.rangeEditing!=="general-v1")throw new TypeError("Document editing requires general-v1 ranges");
- if(options.richLanguage!==undefined&&![1,2,3].includes(options.richLanguage))throw new TypeError("Expected richLanguage 1, 2 or 3");
+ checkLocalRichLanguage(options.richLanguage);
  if(options.readOnly!==undefined&&typeof options.readOnly!=="boolean")throw new TypeError("readOnly must be Boolean");
  if(options.history!==undefined&&options.history!=="explicit"&&options.history!=="typing-v1")throw new TypeError("Expected history explicit or typing-v1");
  const initial=structuredClone(options.initial??{kind:"empty"}) as LocalDocumentInitial;
@@ -70,7 +70,7 @@ export async function openLocalDocumentEditor(options:LocalDocumentEditorOptions
  const claim=claimHost(options.host,options.signal);let profile:RichCoreProfile|undefined,core:RichDocumentCoreEditor|undefined,dom:RichDomEditor<"document-v1">|undefined;
  try{
   const runtime=await awaitInitialization(initializeLocalRuntime(options.runtimeInput),options.signal);claim.assert();const language=options.richLanguage??1;
-  profile=language===3?compileStandardLayoutRichProfileV3(runtime,options.profileBootstrapJson??layoutProfileBootstrapJsonV3):language===2?compileStandardStructuralRichProfileV2(runtime,options.profileBootstrapJson??structuralProfileBootstrapJsonV2):compileStandardRichProfileV1(runtime,options.profileBootstrapJson??standardProfileBootstrapJson);
+  profile=compileLocalLanguageProfile(runtime,language,options.profileBootstrapJson);
   if(options.placeholder!==undefined&&profile.supportsPlaceholder?.()!==true)throw Error("Use a matching native placeholder profile before creating an editor");
   if(profile.supportsDocumentSelection?.()!==true||!profile.createDocumentEditor||!profile.restoreDocumentEditor||!profile.restoreDocumentTypingEditor)throw Error("Use matching native document-family creation and recovery");
   const presentation=createStandardRichInlinePresentationV1(profile.inlineCatalogJson(),options.additionalInlinePresentation),block=initial.kind==="empty"?initial.blockId??crypto.randomUUID():undefined;
@@ -80,7 +80,7 @@ export async function openLocalDocumentEditor(options:LocalDocumentEditorOptions
   if(history==="typing-v1"){if(core.supportsTypingHistory?.()!==true||!core.enableTypingHistory)throw Error("Use matching native document typing history");core.enableTypingHistory();}
   else if(core.view().historyGrouping!==undefined)throw Error("Explicit history cannot flatten a document typing checkpoint");
   if(options.readOnly!==undefined){if(core.supportsReadOnly?.()!==true||!core.setReadOnly)throw Error("Use matching native read-only enforcement");core.setReadOnly(options.readOnly);}
-  const standard=language===3?createLayoutRichToolbarV3(core,presentation):language===2?createStructuralRichToolbarV2(core,presentation):createStandardRichToolbarV1(core,presentation),toolbar=options.toolbar?.(core,standard)??standard;
+  const standard=localLanguageToolbar(core,presentation,language),toolbar=options.toolbar?.(core,standard)??standard;
   const render:RenderOptions={inlinePresentation:presentation,...(options.resolveAsset?{resolveAsset:options.resolveAsset}:{})};
   const {clipboardInterchange:factory,...domOptions}=options,interchange=clipboardInterchangeOptions(factory,core);
   claim.assert();dom=mountDocumentRichEditor(options.host,{...domOptions,...interchange,core,...render,toolbar});claim.assert();return new DocumentOwner(dom,claim.release,render);

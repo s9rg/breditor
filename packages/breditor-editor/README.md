@@ -495,6 +495,32 @@ owner. Numeric values must be finite primitives; arbitrary CSS and objects that
 serialize into null are rejected. See `docs/RICH_BLOCK_LAYOUT.md` in the repository
 for bounds, independent shared fields, history and qualification scope.
 
+### Candidate rich language V4 (unreleased, local only)
+
+`richLanguage: 4` selects the unreleased candidate V4 for local openings
+(`openLocalEditor`, `openLocalDocumentEditor` and the local React components'
+`initialOptions`). It is V3 plus bounded ordered-list numbering and will gain
+more features before release, so its fingerprint changes and V4 data must not be
+persisted yet. Shared openings reject `richLanguage: 4` explicitly; shared
+editing stays on languages 1–3. The standard schema is
+`breditor-editor/standard@4` (`profileBootstrapJsonV4`, bootstrap format 9);
+the headless factory is `createLocalProfileV4`.
+
+The V4 toolbar (`createRichToolbarV4`) adds a List numbering control: numbering
+style (decimal, lower/upper alpha, lower/upper roman), counting order and start
+for the ordered list that owns the selection. Each list keeps its own values;
+nested lists never inherit them.
+
+```js
+const editor = await openLocalEditor({host, richLanguage: 4});
+editor.execute({kind: 'setListNumbering', data: {list: 'steps', style: 'lower-roman', reversed: true, start: 5}});
+// Omitted fields keep; style: null clears; reversed: false removes reversal.
+editor.execute({kind: 'setListNumbering', data: {list: 'steps', style: null, reversed: false}});
+```
+
+See `docs/RICH_LANGUAGE_V4.md` in the repository for domains, semantics,
+interchange behavior and what is not included (legal multilevel counters).
+
 ### Natural local typing history
 
 Pass `history: 'typing-v1'` to `openLocalEditor` or React `initialOptions` for native

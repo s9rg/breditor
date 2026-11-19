@@ -6,7 +6,7 @@ export type {RichRetainedAssetReferencesRead,RichRetainedAssetReference} from ".
 export type {RichCommand,RichSelectionFormatChange,FormatLiteral,ImageAlt,ImageSize,TextDraft,ImageDraft,TableColumnDraft,TableCellDraft,TableRowDraft,TableDraft,FlowDraft,FlowPosition,ClipboardAllocation} from "./commands.js";
 /** Initialized generated Wasm module; pass the same instance for all owners using it. */
 export interface RichWasmModule {
-  readonly BreditorRichProfile: {fromBootstrapJson(input: string): unknown;fromStandardBootstrapJsonV1?(input:string):unknown;fromStructuralBootstrapJsonV2?(input:string):unknown;fromStandardStructuralBootstrapJsonV2?(input:string):unknown;fromLayoutBootstrapJsonV3?(input:string):unknown;fromStandardLayoutBootstrapJsonV3?(input:string):unknown};
+  readonly BreditorRichProfile: {fromBootstrapJson(input: string): unknown;fromStandardBootstrapJsonV1?(input:string):unknown;fromStructuralBootstrapJsonV2?(input:string):unknown;fromStandardStructuralBootstrapJsonV2?(input:string):unknown;fromLayoutBootstrapJsonV3?(input:string):unknown;fromStandardLayoutBootstrapJsonV3?(input:string):unknown;fromBootstrapJsonV4?(input:string):unknown;fromStandardBootstrapJsonV4?(input:string):unknown};
 }
 export type RichCommandOutcome = "content" | "selection" | "typing" | "undo" | "redo" | "unchanged";
 export interface RichPoint {block: string; offset: string; affinity: "before" | "after"}
@@ -35,9 +35,14 @@ export interface RichSearchResults {
 /** Pure schema-admitted source content. This carries no destination allocation or edit authority. */
 export interface RichClipboardTransfer {format:"breditor/rich-clipboard-transfer";formatVersion:1;kind:"text"|"flow"|"grid";structuredJson:string;plainText:string}
 export type RichDocumentSelection=RichSelection|Readonly<{kind:"document"}>;
-export interface RichProfileDescriptor {kind: "rich"; abiVersion: 1; schema: {name: string; version: number}; schemaFingerprint: string;richLanguageVersion?:2|3;taskStructureVersion?:1;blockLayoutVersion?:1}
+export interface RichProfileDescriptor {kind: "rich"; abiVersion: 1; schema: {name: string; version: number}; schemaFingerprint: string;richLanguageVersion?:2|3|4;taskStructureVersion?:1;blockLayoutVersion?:1;listNumberingVersion?:1}
 /** Closed native intent. Omission keeps, null clears; bounds are enforced in Rust. */
 export interface RichBlockLayoutPatch {alignment?:"start"|"center"|"end"|"justify"|"left"|"right"|null;direction?:"ltr"|"rtl"|"auto"|null;indent?:number|null;lineHeightPercent?:number|null}
+/** Closed candidate rich V4 ordered-list marker families (CSS `list-style-type` keywords). */
+export type RichListNumberStyle="decimal"|"lower-alpha"|"upper-alpha"|"lower-roman"|"upper-roman";
+/** One ordered list's numbering intent. Omission keeps; a null style clears it; `reversed:false`
+ * removes reversal; `start` sets the explicit first ordinal. At least one change is required. */
+export interface RichListNumberingPatch {list:string;style?:RichListNumberStyle|null;reversed?:boolean;start?:number}
 export type RichLayoutFieldState<T>={kind:"unavailable"}|{kind:"mixed"}|{kind:"uniform";value:T|null};
 export interface RichBlockLayoutStateRead {
  format:"breditor/rich-block-layout-state";formatVersion:1;schema:{name:string;version:number;fingerprint:string};blocks:string;
@@ -113,7 +118,7 @@ export interface RichCoreEditor<P extends RichSelectionPolicy="original"> {
   selectionPolicy?():P;
   supportsDocumentSelection?():boolean;
   /** Read-only grammar revision, not mutation authority. Legacy owners may omit it. */
-  richLanguageVersion?():1|2|3;
+  richLanguageVersion?():1|2|3|4;
   supportsStandardInlineControls?():boolean;
   supportsInlinePropertyPatches?():boolean;
   supportsReadOnly?():boolean;
@@ -140,6 +145,8 @@ export interface RichCoreEditor<P extends RichSelectionPolicy="original"> {
   supportsSelectionFormatting?():boolean;
   supportsBlockLayout?():boolean;
   blockLayoutState?():RichBlockLayoutStateRead;
+  /** Candidate rich V4 ordered-list numbering; an older owner may omit it. */
+  supportsListNumbering?():boolean;
   selectionCoverage?(scope?:"selection"|"document"):RichSelectionCoverageRead;
   selectionFormatState?(kind:string):RichSelectionFormatStateRead;
   enableTypingHistory?(expectedRevision?:string):boolean;

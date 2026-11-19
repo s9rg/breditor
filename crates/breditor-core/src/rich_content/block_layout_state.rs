@@ -58,7 +58,7 @@ impl RichBlockLayout {
         document: &RichDocument,
         block: &BlockId,
     ) -> Result<Self, RichBlockLayoutError> {
-        if context.schema().rich_content_revision() != Some(3)
+        if !context.schema().supports_rich_block_layout()
             || !document.document().is_proven_for(context.schema(), context.limits())
         {
             return Err(RichBlockLayoutError::Profile);
@@ -76,7 +76,7 @@ pub fn inspect_block_layout(
     document: &RichDocument,
     selection: Option<&RichSelection>,
 ) -> Result<RichBlockLayoutState, RichBlockLayoutError> {
-    if context.schema().rich_content_revision() != Some(3)
+    if !context.schema().supports_rich_block_layout()
         || !document.document().is_proven_for(context.schema(), context.limits())
     {
         return Err(RichBlockLayoutError::Profile);

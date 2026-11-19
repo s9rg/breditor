@@ -91,7 +91,7 @@ fn rich_language_two_does_not_grant_legacy_editing_or_accept_a_revision_only_loo
     assert!(!schema.supports_flat_list_operations());
     assert!(!schema.supports_nested_list_reframe());
     let mut unsupported = schema.definition().as_ref().clone();
-    unsupported.rich_content_contract = Some(4);
+    unsupported.rich_content_contract = Some(5);
     assert!(!supports_rich_content(&unsupported));
     assert_ne!(schema.fingerprint(), fingerprint(&unsupported));
     Ok(())
@@ -111,8 +111,30 @@ fn explicit_rich_v3_keeps_legacy_editing_capabilities_sealed() -> TestResult {
     assert!(!schema.supports_flat_list_operations());
     assert!(!schema.supports_nested_list_reframe());
     let mut future = schema.definition().as_ref().clone();
-    future.rich_content_contract = Some(4);
+    future.rich_content_contract = Some(5);
     assert!(!supports_rich_content(&future));
     assert_ne!(schema.fingerprint(), fingerprint(&future));
+    Ok(())
+}
+
+#[test]
+fn explicit_candidate_v4_is_only_v3_grammar_with_its_own_rule_revision() -> TestResult {
+    let id = SchemaId::new(QualifiedName::try_new("example/v4")?, SchemaVersion::try_new(1)?);
+    let extensions = ExtensionSet::try_new(vec![], ExtensionLimits::default())?;
+    let v3 = CompiledSchema::try_compile_rich_content_profile_v3(id.clone(), &extensions)?;
+    let v4 = CompiledSchema::try_compile_rich_content_profile_v4(id, &extensions)?;
+    assert_eq!(v4.rich_content_revision(), Some(4));
+    assert_eq!(compiler_contract_version(v4.definition()), 6);
+    assert_ne!(v3.fingerprint(), v4.fingerprint());
+    assert!(!v4.supports_text_splice_operations());
+    assert!(!v4.supports_base_text_operations());
+    assert!(!v4.supports_flat_list_operations());
+    // The only difference from V3 is the sealed rule revision.
+    let mut lookalike = v3.definition().as_ref().clone();
+    lookalike.rich_content_contract = Some(4);
+    assert_eq!(fingerprint(&lookalike), v4.fingerprint());
+    assert!(!v3.supports_rich_list_numbering());
+    assert!(v4.supports_rich_list_numbering());
+    assert!(v3.supports_rich_block_layout() && v4.supports_rich_block_layout());
     Ok(())
 }
