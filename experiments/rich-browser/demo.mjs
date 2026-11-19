@@ -2,7 +2,7 @@
 import init,* as wasm from "/wasm.js";
 import {compileRichProfile,mountRichEditor,RichAssetStore,RichLocalSessionStore,insertImageFiles,defaultToolbar,
  mountRichSlashCommands,createRichSlashCommands,mountRichSelectionToolbar,mountRichContextMenu,
- mountRichTableColumnResize,richTableColumnResizeCommit} from "/rich.js";
+ mountRichTableColumnResize,richTableColumnResizeCommit,mountRichBlockDrag} from "/rich.js";
 await init();
 const profile=compileRichProfile(wasm,JSON.stringify({format:"breditor/profile-bootstrap",formatVersion:6,schema:{name:"example/rich-demo",version:1},extensions:[]}));
 const binding=profile.descriptor(),canonical=value=>Array.isArray(value)?value.map(canonical):value!==null&&typeof value==="object"?Object.fromEntries(Object.keys(value).sort().map(key=>[key,canonical(value[key])])):value;
@@ -40,6 +40,7 @@ function mountExtras(editor){
   mountRichSelectionToolbar(editor,{onError:report}),
   mountRichContextMenu(editor,{onError:report}),
   mountRichTableColumnResize(overlay,editor,{commit:richTableColumnResizeCommit(editor),onError:report}),
+  mountRichBlockDrag(editor),
  ];
 }
 let editor=mount(owner),saveSequence=0;mountExtras(editor);

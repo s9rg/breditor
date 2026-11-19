@@ -41,6 +41,7 @@ mod join_list_items;
 mod join_task_items;
 mod join_text_blocks;
 mod merge_table_cells;
+mod move_block;
 mod move_table_column;
 mod move_table_row;
 mod navigate_flow;
@@ -145,6 +146,7 @@ enum CommandTag {
     InsertTableRow,
     DeleteTableRow,
     DeleteTableColumn,
+    MoveBlock,
     MoveTableRow,
     MoveTableColumn,
     ResizeTableColumn,

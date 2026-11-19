@@ -104,6 +104,9 @@ under `sibling-v1` it resolves to "before/after the blockquote".
   File drop keeps its existing `onFiles` path.
 - Moving several selected blocks at once.
 - Auto-scrolling while dragging near the viewport edge.
-- The single-user `@breditor/experimental-rich-content` owner. It has no general
-  block move action, only table row and column moves. Adding one needs a new Rust
-  action.
+
+The single-user `@breditor/experimental-rich-content` owner has the same handle through
+`mountRichBlockDrag`, backed by the local `moveBlock` action. See
+[BLOCK_DRAG.md](BLOCK_DRAG.md). Both editors share one handle and planner
+implementation behind `mountRichBlockDragPort`; this package's `Shared*` exports are
+thin adapters that keep their existing names and the `move_block` command.
