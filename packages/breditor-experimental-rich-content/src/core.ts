@@ -35,7 +35,7 @@ export interface RichSearchResults {
 /** Pure schema-admitted source content. This carries no destination allocation or edit authority. */
 export interface RichClipboardTransfer {format:"breditor/rich-clipboard-transfer";formatVersion:1;kind:"text"|"flow"|"grid";structuredJson:string;plainText:string}
 export type RichDocumentSelection=RichSelection|Readonly<{kind:"document"}>;
-export interface RichProfileDescriptor {kind: "rich"; abiVersion: 1; schema: {name: string; version: number}; schemaFingerprint: string;richLanguageVersion?:2|3|4;taskStructureVersion?:1;blockLayoutVersion?:1;listNumberingVersion?:1}
+export interface RichProfileDescriptor {kind: "rich"; abiVersion: 1; schema: {name: string; version: number}; schemaFingerprint: string;richLanguageVersion?:2|3|4;taskStructureVersion?:1;blockLayoutVersion?:1;listNumberingVersion?:1;textLanguageVersion?:1}
 /** Closed native intent. Omission keeps, null clears; bounds are enforced in Rust. */
 export interface RichBlockLayoutPatch {alignment?:"start"|"center"|"end"|"justify"|"left"|"right"|null;direction?:"ltr"|"rtl"|"auto"|null;indent?:number|null;lineHeightPercent?:number|null}
 /** Closed candidate rich V4 ordered-list marker families (CSS `list-style-type` keywords). */
@@ -147,6 +147,8 @@ export interface RichCoreEditor<P extends RichSelectionPolicy="original"> {
   blockLayoutState?():RichBlockLayoutStateRead;
   /** Candidate rich V4 ordered-list numbering; an older owner may omit it. */
   supportsListNumbering?():boolean;
+  /** Candidate rich V4 text-run language metadata; an older owner may omit it. */
+  supportsTextLanguage?():boolean;
   selectionCoverage?(scope?:"selection"|"document"):RichSelectionCoverageRead;
   selectionFormatState?(kind:string):RichSelectionFormatStateRead;
   enableTypingHistory?(expectedRevision?:string):boolean;

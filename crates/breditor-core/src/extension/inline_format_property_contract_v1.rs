@@ -56,6 +56,16 @@ impl InlineFormatPropertyContractV1 {
         Ok(Self { format_kind, properties: properties.into_boxed_slice() })
     }
 
+    /// Core-owned contract for a native `breditor/*` format; never reachable from a manifest.
+    #[cfg(feature = "experimental-rich-content")]
+    pub(crate) fn new_core(
+        format_kind: QualifiedName,
+        mut properties: Vec<InlineFormatPropertySpecV1>,
+    ) -> Self {
+        properties.sort_by(|left, right| left.name().cmp(right.name()));
+        Self { format_kind, properties: properties.into_boxed_slice() }
+    }
+
     /// Returns the target inline-format kind.
     #[must_use]
     pub const fn format_kind(&self) -> &QualifiedName {

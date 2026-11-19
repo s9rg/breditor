@@ -51,6 +51,7 @@ mod retained_asset_references;
 mod select_document;
 mod set_pending_formats;
 mod set_read_only;
+mod set_text_language;
 mod snapshot;
 mod state;
 pub(crate) mod typing_history;

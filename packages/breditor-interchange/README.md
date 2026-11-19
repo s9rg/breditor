@@ -122,6 +122,22 @@ original behavior and notices are unchanged. With a V4 owner:
 - Markdown export keeps decimal lists as `N.` lists. Letter, roman and reversed
   lists are exported as safe HTML with a `markdown-feature` notice.
 
+### Text language (candidate rich V4 owners)
+
+The adapter also reads the owner's optional `supportsTextLanguage()` once. Only a
+local candidate rich V4 owner reports `true`; every other owner keeps accepting
+and silently dropping `lang` and `xml:lang`. With a V4 owner:
+
+- `lang` (or the equivalent `xml:lang`) on any inline or block element becomes the
+  native `breditor/text-language` format of every text run below it, in canonical
+  case (`FR-ca` → `fr-CA`). `lang=""` clears an inherited language.
+- Malformed, private-use (`x-none`), extension and over-long tags clear the
+  inherited language and report `unsupported-attribute`; so does an `xml:lang`
+  that disagrees with `lang` on the same element (`lang` wins).
+- HTML export writes `<span lang="…">`; V4 HTML round trips exactly.
+- Markdown has no language syntax: tagged runs are exported as safe HTML with a
+  `markdown-feature` notice, which reimports exactly.
+
 Markdown uses the explicit `interchangeContractV1` dialect: CommonMark parsing
 with table/strikethrough extensions, parsed task markers and sanitized raw HTML.
 Automatic URL linking and typography substitutions are disabled. This is not a

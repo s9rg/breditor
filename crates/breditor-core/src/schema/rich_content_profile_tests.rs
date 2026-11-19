@@ -129,12 +129,20 @@ fn explicit_candidate_v4_is_only_v3_grammar_with_its_own_rule_revision() -> Test
     assert!(!v4.supports_text_splice_operations());
     assert!(!v4.supports_base_text_operations());
     assert!(!v4.supports_flat_list_operations());
-    // The only difference from V3 is the sealed rule revision.
+    // The only differences from V3 are the sealed rule revision and the one
+    // core-owned text-language inline format.
     let mut lookalike = v3.definition().as_ref().clone();
     lookalike.rich_content_contract = Some(4);
+    let language = QualifiedName::try_new("breditor/text-language")?;
+    let declared = v4.definition().inline_formats.get(&language).ok_or("format")?.clone();
+    assert_eq!(v4.definition().inline_formats.len(), v3.definition().inline_formats.len() + 1);
+    assert_ne!(fingerprint(&lookalike), v4.fingerprint());
+    lookalike.inline_formats.insert(language, declared);
     assert_eq!(fingerprint(&lookalike), v4.fingerprint());
     assert!(!v3.supports_rich_list_numbering());
     assert!(v4.supports_rich_list_numbering());
+    assert!(!v3.supports_rich_text_language());
+    assert!(v4.supports_rich_text_language());
     assert!(v3.supports_rich_block_layout() && v4.supports_rich_block_layout());
     Ok(())
 }

@@ -2,6 +2,7 @@ import {Budget,bytes,fail,limits} from "./budget.js";
 import {escapeAttribute as a,escapeText as t,safeUrl} from "./safe_url.js";
 import {nodeText,property,stringProperty,type Element,type Literal,type Node} from "./wire.js";
 import type {InterchangeOptions} from "./types.js";
+import {isCanonicalLanguageTagV1} from "./language_tag.js";
 /** Export only native-admitted DTOs. Every output tag, attribute and CSS property is library-owned. */
 export class HtmlExport {
   constructor(readonly b:Budget,readonly options:InterchangeOptions){}
@@ -21,6 +22,8 @@ export class HtmlExport {
       if(href!==source)this.b.loss("style-approximation");
       return `<a href="${a(href)}"${p["breditor-inline/new-window"]===true?' target="_blank" rel="noopener noreferrer"':""}>${value}</a>`;
     }
+    // Candidate V4 text language: only an admitted canonical tag becomes an inert `lang` attribute.
+    if(f.type==="breditor/text-language"){const tag=p["breditor/language-tag"];if(isCanonicalLanguageTagV1(tag))return `<span lang="${a(tag)}">${value}</span>`;this.b.loss("unsupported-attribute");return value;}
     const rgb=p["breditor-inline/rgb24"],pixels=p["breditor-inline/pixels"],family=p["breditor-inline/family"];
     if(["breditor-inline/text-color","breditor-inline/background-color"].includes(f.type)&&typeof rgb==="number"&&Number.isInteger(rgb)&&rgb>=0&&rgb<=0xffffff)return `<span style="${f.type==="breditor-inline/text-color"?"color":"background-color"}:#${rgb.toString(16).padStart(6,"0")}">${value}</span>`;
     if(f.type==="breditor-inline/text-size"&&typeof pixels==="number"&&Number.isInteger(pixels)&&pixels>=8&&pixels<=96)return `<span style="font-size:${pixels}px">${value}</span>`;

@@ -15,7 +15,14 @@ export {
   type InlineFormatRenderAttributePolicy,
   type InlineFormatRenderSafeRgb24V1Policy,
   type InlineFormatRenderSafeTextSizeV1Policy,
+  type InlineFormatRenderSafeLanguageTagV1Policy,
 } from "./inline_format_render_attributes.js";
+export {
+  canonicalLanguageTagV1,
+  isCanonicalLanguageTagV1,
+  MAX_LANGUAGE_TAG_V1_BYTES,
+  MIN_LANGUAGE_TAG_V1_BYTES,
+} from "./language_tag.js";
 export type {
   BrowserProfileFormatDescriptor,
   BrowserProfileFormatPropertyDescriptor,

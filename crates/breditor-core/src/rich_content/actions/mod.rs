@@ -440,6 +440,9 @@ pub enum RichActionError {
     /// Typed V4 list-numbering profile, target or value admission failed.
     #[error(transparent)]
     ListNumbering(#[from] super::RichListNumberingError),
+    /// Typed V4 text-language profile or tag admission failed.
+    #[error(transparent)]
+    TextLanguage(#[from] super::RichTextLanguageError),
     /// The operation requires an existing code block rather than arbitrary prose/flow.
     #[error("rich code action requires a code block")]
     CodeTarget,

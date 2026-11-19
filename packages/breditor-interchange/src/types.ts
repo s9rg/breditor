@@ -14,6 +14,9 @@ export interface InterchangeOwner {
   /** Candidate rich V4 owners admit ordered-list marker style and reversal. Absent or false keeps
    * the original conversion: those HTML features are reported as `list-numbering` losses. */
   supportsListNumbering?():boolean;
+  /** Candidate rich V4 owners admit the native `breditor/text-language` inline format. Absent or
+   * false keeps the original conversion: `lang`/`xml:lang` are accepted and silently dropped. */
+  supportsTextLanguage?():boolean;
 }
 export type InterchangeLossCode = "html-repaired"|"removed-content"|"unsupported-element"|"unsupported-attribute"|"unsupported-style"|"style-approximation"|"unsafe-link"|"image-reference"|"image-alt"|"image-size"|"block-structure"|"table-geometry"|"table-width"|"list-numbering"|"markdown-feature";
 /** Counts are aggregated and bounded. No source text, URL, CSS, HTML or asset identifier is echoed. */

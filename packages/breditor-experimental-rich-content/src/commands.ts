@@ -93,6 +93,9 @@ export type RichCommand =
  |{kind:"setListKind";data:{list:string;start:number|null}}
  /** Candidate rich V4 only: one ordered list's marker style, reversal and/or start, one history group. */
  |{kind:"setListNumbering";data:import("./core.js").RichListNumberingPatch}
+ /** Candidate rich V4 only: set (a well-formed BCP 47 tag, any letter case; Rust stores the canonical
+  * case) or clear (`null`) the language of the native selection; a caret changes pending formats. */
+ |{kind:"setTextLanguage";data:{language:string|null}}
  |{kind:"indentListItems";data:{container:string;first:string;last:string;nested:{block:string;start:number|null}|null}}
  |{kind:"outdentListItems";data:{container:string;first:string;last:string;tail:string|null}}
  |{kind:"splitTextBlock";data:{point:RichPoint;right:string;rightHeading:number|null}}

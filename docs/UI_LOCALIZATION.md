@@ -134,9 +134,11 @@ range and is replaced by typing.
 
 ## Not covered
 
-- Text-part language: there is no inline `lang` mark in the document model, so
-  per-run language metadata (`lang` on spans) is not available. It needs a Rust
-  schema/inline-format change.
+- Text-part language in rich V1–V3: those languages have no inline `lang`
+  format. The unreleased local-only candidate rich V4 adds the native
+  `breditor/text-language` format (`lang` on spans, a **Language** toolbar
+  control and HTML `lang` interchange); see
+  [RICH_LANGUAGE_V4.md](RICH_LANGUAGE_V4.md). Shared editing stays on V3.
 - Translations: only English ships. The Arabic catalog in
   `packages/breditor-editor/tests/ui_locale_ar.ts` is test-only.
 - Error messages thrown for API misuse, Rust/native refusals passed through as

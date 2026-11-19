@@ -47,6 +47,7 @@ mod structural_drafts;
 mod table_draft;
 mod table_geometry;
 mod table_paste_draft;
+pub(crate) mod text_language;
 mod writing_tools;
 
 pub use asset_references::{
@@ -124,6 +125,10 @@ pub use standard_inline_v1::{
 pub use structural_drafts::{RichTaskItemDraft, RichTaskListDraft};
 pub use table_draft::TableDraft;
 pub use table_paste_draft::{TableCellPasteDraft, TablePasteDraft, TablePasteMerge};
+pub use text_language::{
+    RICH_LANGUAGE_TAG_MAX_BYTES, RICH_LANGUAGE_TAG_MIN_BYTES, RICH_TEXT_LANGUAGE_FORMAT,
+    RICH_TEXT_LANGUAGE_TAG_PROPERTY, RichLanguageTag, RichTextLanguageError,
+};
 pub use writing_tools::{
     RICH_WRITING_MAX_TEXT_BLOCKS, RICH_WRITING_MAX_TEXT_BYTES, RICH_WRITING_MAX_VISITED_NODES,
     RICH_WRITING_OUTLINE_LABEL_BYTES, RichHeadingOutlineEntry, RichWritingCounts, RichWritingError,

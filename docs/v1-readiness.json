@@ -388,9 +388,9 @@
     {
       "id":"localization-and-bidi","area":"Integration","status":"partial",
       "summary":"Localized UI, bidirectional content and language metadata",
-      "current":"Unicode text is retained, but shared controls are English and RTL/bidirectional editing, localized commands and text-part language are not qualified as a supported product surface. An opt-in validated UI catalog (56 keys plus per-control and slash labels, closed placeholder templates) now localizes local/shared chrome, toolbars, context UI, slash, column resize and block drag, with chrome-only lang/dir that never changes content direction; default English output is byte-identical. Text-part language metadata, search/writing/review panels and native error strings remain open.",
+      "current":"Unicode text is retained, but shared controls are English and RTL/bidirectional editing, localized commands and text-part language are not qualified as a supported product surface. An opt-in validated UI catalog (56 keys plus per-control and slash labels, closed placeholder templates) now localizes local/shared chrome, toolbars, context UI, slash, column resize and block drag, with chrome-only lang/dir that never changes content direction; default English output is byte-identical. Candidate local rich V4 now adds canonical BCP 47 text-run language (breditor/text-language) rendered as lang, with a V4 toolbar field and profile-aware lang/xml:lang interchange; shared V4, search/writing/review panels and native error strings remain open.",
       "acceptance":"Separate UI language from content direction, localize control strings and qualify mixed-direction navigation/selection with language metadata.",
-      "evidence":["packages/breditor-collaboration/src/toolbar.ts","packages/breditor-collaboration/src/controller.ts","docs/UI_LOCALIZATION.md","packages/breditor-experimental-rich-content/src/ui_locale.ts"],
+      "evidence":["packages/breditor-collaboration/src/toolbar.ts","packages/breditor-collaboration/src/controller.ts","docs/UI_LOCALIZATION.md","packages/breditor-experimental-rich-content/src/ui_locale.ts","crates/breditor-core/src/rich_content/text_language.rs"],
       "sources":["ckeditor-overview","ckeditor-digest"]
     }
   ],

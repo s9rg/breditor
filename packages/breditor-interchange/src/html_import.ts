@@ -5,6 +5,7 @@ import {append,element,nodeText,rootJson,type Element,type Node,type Text} from 
 import type {InterchangeOptions} from "./types.js";
 import {importTable,pixels} from "./html_table.js";
 import {Stylesheets} from "./html_stylesheet.js";
+import {canonicalLanguageTagV1} from "./language_tag.js";
 const blocks=new Set(["p","div","h1","h2","h3","h4","h5","h6","ul","ol","li","pre","blockquote","table","figure","hr","section","article","main","header","footer"]);
 // `google-sheets-html-origin` is Google Sheets' transparent producer wrapper around its table.
 const containers=new Set(["div","section","article","main","header","footer","html","head","body","center","google-sheets-html-origin"]);
@@ -18,7 +19,10 @@ const structuralRoles=new Set(["presentation","none","list","listitem"]);
 const flatListAttributes:ReadonlySet<string>=new Set(["data-aria-level","data-aria-posinset","data-listid","aria-setsize"]);
 const wordBullets=/^[·•●○◦▪■□◆◇►➢➤✓✔\-–—*o§Øüvqnl]$/;
 /** Target-owner capabilities read once by the adapter; they select conversion, never admission. */
-export interface ImportCapabilities {readonly listNumbering:boolean}
+export interface ImportCapabilities {readonly listNumbering:boolean;readonly textLanguage?:boolean}
+/** Candidate rich V4 native text-language format (Rust `text_language.rs`). */
+export const textLanguageFormat="breditor/text-language",textLanguageTag="breditor/language-tag";
+const htmlSpace=/^[\t\n\f\r ]+|[\t\n\f\r ]+$/g;
 /** Candidate rich V4 marker codes (Rust `list_numbering.rs`). Maps avoid inherited-key lookups. */
 export const cssListStyles:ReadonlyMap<string,number>=new Map([["decimal",1],["lower-alpha",2],["lower-latin",2],["upper-alpha",3],["upper-latin",3],["lower-roman",4],["upper-roman",5]]);
 const htmlListTypes:ReadonlyMap<string,number>=new Map([["1",1],["a",2],["A",3],["i",4],["I",5]]);
@@ -57,7 +61,27 @@ export class HtmlConversion {
   style(node:HtmlElement,parent:StyleState,interpreted?:ReadonlySet<string>):StyleState {
     if(interpreted===undefined&&node.tagName==="ol"&&this.capabilities.listNumbering)interpreted=numberingAttributes;
     for(const attr of node.attrs)if(attr.namespace!==undefined||attr.prefix!==undefined||!this.#knownAttribute(node,attr.name,attr.value,interpreted))this.b.loss("unsupported-attribute");
-    return styleFor(node,parent,this.b,this.css(node));
+    const state=styleFor(node,parent,this.b,this.css(node));
+    if(this.capabilities.textLanguage)this.#language(node,state);
+    return state;
+  }
+  /**
+   * Candidate V4: `lang` (or the equivalent `xml:lang`) on any element becomes the text language
+   * of every text run below it, exactly as HTML inherits it; a block-level value therefore tags the
+   * block's runs. A well-formed tag is stored in canonical case. `lang=""` means unknown and
+   * removes an inherited language without a notice. A malformed, private-use, extension or
+   * over-long tag also removes it and reports `unsupported-attribute`. When both attributes are
+   * present `lang` is used and a disagreeing `xml:lang` is reported.
+   */
+  #language(node:HtmlElement,state:StyleState):void {
+    const plain=attribute(node,"lang"),xml=attribute(node,"xml:lang"),raw=plain??xml;
+    if(raw===undefined)return;
+    const value=raw.replace(htmlSpace,"");
+    if(plain!==undefined&&xml!==undefined&&canonicalLanguageTagV1(xml.replace(htmlSpace,""))!==canonicalLanguageTagV1(value))this.b.loss("unsupported-attribute");
+    if(!value){state.formats.delete(textLanguageFormat);return;}
+    const tag=canonicalLanguageTagV1(value);
+    if(tag===null){state.formats.delete(textLanguageFormat);this.b.loss("unsupported-attribute");return;}
+    state.formats.set(textLanguageFormat,{type:textLanguageFormat,properties:{[textLanguageTag]:tag}});
   }
   #knownAttribute(node:HtmlElement,name:string,value:string,interpreted?:ReadonlySet<string>):boolean {
     if(knownAttributes.has(name)||interpreted?.has(name))return true;

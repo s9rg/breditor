@@ -18,6 +18,12 @@ impl BreditorRichEditor {
     pub fn list_numbering_version(&self) -> String {
         if self.inner.context().schema().supports_rich_list_numbering() { "1" } else { "0" }.into()
     }
+    /// String1 selects candidate V4 text-run language metadata; String0 means unsupported.
+    #[must_use]
+    #[wasm_bindgen(js_name=textLanguageVersion)]
+    pub fn text_language_version(&self) -> String {
+        if self.inner.context().schema().supports_rich_text_language() { "1" } else { "0" }.into()
+    }
 }
 #[wasm_bindgen]
 impl BreditorRichObservation {
