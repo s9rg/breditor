@@ -254,6 +254,21 @@ describe("producer markup variants",()=>{
     const {root,losses:notices}=importHtml(item(1,"Step 1:","Prepare"));
     expect(outline(root)).toEqual(["bullet-list","  list-item",'    paragraph "Prepare"']);expect(notices).toEqual(losses({"list-numbering":1}));
   });
+  const online=(style:string,levelText:string|undefined,items:string[],listId="7")=>`<div class="ListContainerWrapper SCXW1 BCX0"><ol class="NumberListStyle2 SCXW1 BCX0" role="list" start="1" style="list-style-type: ${style};">${items.map((body,i)=>`<li${levelText===undefined?"":` data-leveltext="${levelText}"`} data-listid="${listId}" aria-setsize="-1" data-aria-posinset="${i+1}" data-aria-level="1" role="listitem"><p class="Paragraph SCXW1 BCX0">${body}</p></li>`).join("")}</ol></div>`;
+  it("reports Word for the web lettered and roman numbering instead of silently showing decimal",()=>{
+    const lettered=importHtml(online("lower-alpha","%1.",["Alpha","Beta"]));
+    expect(outline(lettered.root)).toEqual(["ordered-list start=1","  list-item",'    paragraph "Alpha"',"  list-item",'    paragraph "Beta"']);
+    // One notice for the ol's non-native list-style-type, one per item whose ordinal format is not decimal.
+    expect(lettered.losses).toEqual(losses({"list-numbering":3,"unsupported-attribute":2}));
+    const romanList=importHtml(online("upper-roman","%1.",["One","Two","Three"]));
+    expect(outline(romanList.root)).toEqual(["ordered-list start=1","  list-item",'    paragraph "One"',"  list-item",'    paragraph "Two"',"  list-item",'    paragraph "Three"']);
+    expect(romanList.losses).toEqual(losses({"list-numbering":4,"unsupported-attribute":3}));
+  });
+  it("reports Word for the web numbering whose decimal format cannot be proven",()=>{
+    expect(importHtml(online("decimal","%1.",["Proven"])).losses).toEqual(losses({"unsupported-attribute":1}));
+    expect(importHtml(online("decimal",undefined,["No level text"])).losses).toEqual(losses({"list-numbering":1}));
+    expect(importHtml(online("decimal","%1.%2.",["Compound"])).losses).toEqual(losses({"list-numbering":1,"unsupported-attribute":1}));
+  });
   it("keeps a single Docs paragraph copy as inline text without the wrapper's bold",()=>{
     const {kind,root,losses:notices}=importHtml('<meta charset="utf-8"><b style="font-weight:normal;" id="docs-internal-guid-00000000-7fff-0000-0000-000000000000"><span style="font-size:11pt;font-family:Arial,sans-serif;color:#000000;background-color:transparent;font-weight:400;font-style:normal;font-variant:normal;text-decoration:none;vertical-align:baseline;white-space:pre;white-space:pre-wrap;">Plain words</span></b>');
     expect(kind).toBe("text");expect(marks(root,"Plain words")).toEqual(["font-family=2","text-color=#000000","text-size=15"]);

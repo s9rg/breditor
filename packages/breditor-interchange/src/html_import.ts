@@ -269,6 +269,9 @@ export class HtmlConversion {
     if(attribute(list,"type")!==undefined&&attribute(list,"type")!==(ordered?"1":"disc")||attribute(list,"reversed")!==undefined)this.b.loss("list-numbering");
     for(const li of list.childNodes){
       if(!isElement(li))continue;if(this.#hidden(li))fail("unsupported-content");
+      // Native lists number in decimal only. Unless both the CSS list style and Word's level text
+      // (`%1.` / `%1)`) prove a plain decimal ordinal, the letter/roman/compound format is reported.
+      if(ordered){const type=(this.css(li).get("list-style-type")??this.css(list).get("list-style-type"))?.trim().toLowerCase();if(type!=="decimal"||!/^%[1-9][.)]?$/.test(attribute(li,"data-leveltext")??""))this.b.loss("list-numbering");}
       const position=Number(attribute(li,"data-aria-posinset")),numbers=ordered&&Number.isSafeInteger(position)&&position>=1&&position<=1_000_000_000?[position]:[];
       items.push({level:Number(attribute(li,"data-aria-level")),group:`aria:${attribute(li,"data-listid")??""}`,ordered,numbers,body:()=>{
         const body=this.flow(li.childNodes,this.style(li,listState,flatListAttributes));

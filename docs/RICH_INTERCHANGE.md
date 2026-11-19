@@ -141,8 +141,11 @@ registry; content-free syntax (namespace declarations, document metadata,
 conditional markers, legacy doctypes, structural ARIA, no-op CSS values) no
 longer produces notices. All resource bounds are unchanged.
 
+Word for the web ordered items that are not provably decimal (CSS
+`list-style-type: decimal` plus `%N.`/`%N)` level text) report `list-numbering`.
+
 Remaining gaps: real captured clipboard dumps per producer/platform/version,
-Word for the web numbering formats (only decimal ordinals are derived), CSS
+Word for the web non-decimal formats (reported, rendered as decimal), CSS
 `font` shorthand, Excel/Sheets hidden rows and columns (still rejected), cell
 vertical alignment, and Word VML-only images without an `<img>` fallback.
 

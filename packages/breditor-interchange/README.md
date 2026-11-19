@@ -79,7 +79,10 @@ and complete loss notices for each.
   paragraph marks leave no text and no repair notice.
 - Word for the web runs of single-level `ul`/`ol` blocks carrying
   `data-aria-level` are rebuilt into one nested list per `data-listid`, numbered
-  from `data-aria-posinset`. Whitespace-only `EOP` paragraph-mark runs are dropped.
+  from `data-aria-posinset`. An ordered item reports `list-numbering` unless both
+  its `list-style-type` is `decimal` and its `data-leveltext` is `%N.`/`%N)`, so
+  lettered, roman and compound formats are never silently shown as decimal.
+  Whitespace-only `EOP` paragraph-mark runs are dropped.
 - Google Docs' `<b style="font-weight:normal" id="docs-internal-guid-…">`
   wrapper bolds nothing; span `font-weight`, `font-style`, `text-decoration` and
   `vertical-align: super|sub` become marks. A `ul`/`ol` placed directly inside a
