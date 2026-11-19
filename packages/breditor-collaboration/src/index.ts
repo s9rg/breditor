@@ -132,6 +132,8 @@ export type {SharedDocumentVersionsOptions,SharedDocumentVersionsIdentity,Shared
 export type {RichClipboardInterchange,RichClipboardInterchangeReport,RichInterchangeNotice,RichInterchangeFormatReport,RichInterchangeResult} from "@breditor/experimental-rich-content/rendering";
 export {SharedDomEditor,mountSharedEditor,mountSharedDocumentEditor,type SharedDomOptions,type SharedDocumentDomOptions} from "./controller.js";
 export {defaultSharedToolbar,moveSharedToolbar} from "./toolbar.js";
+export {mountSharedBlockDrag,sharedBlockDragStyles,type SharedBlockDrag,type SharedBlockDragOptions} from "./block_drag.js";
+export {resolveSharedBlockMove,resolveSharedBlockStep,sharedBlockDropTargets,sharedHandleBlock,sharedSelectionBlock,isMovableBlock,type SharedBlockMoveCommand,type SharedBlockMovePolicy,type SharedBlockDropSide,type SharedBlockDropTarget,type SharedBlockMoveRejection,type SharedBlockMoveResolution} from "./block_move.js";
 export {createStandardSharedToolbarV1} from "./standard_toolbar.js";
 export {createSelectionSharedToolbarV1} from "./selection_toolbar.js";
 export {createStructuralSharedToolbarV2} from "./structural_controls_v2.js";
