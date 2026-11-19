@@ -116,6 +116,39 @@ application-native clipboard certification. They cover list metadata, stylesheet
 classes, Unicode, formatting, nested lists, merges, captions and asset references.
 Unsupported content has a loss, compatibility notice or closed rejection result.
 
+### Producer clipboard corpus
+
+`packages/breditor-interchange/tests/fixtures/producers/` adds full clipboard
+documents for Word desktop, Word for the web, Google Docs, Google Sheets, Excel
+desktop, LibreOffice Writer and Cocoa HTML Writer (Notes/TextEdit/Pages). They
+are **reconstructed from documented producer formats**, labeled as such in
+each header: Office `mso-list` paragraphs with downlevel conditional markers and
+`<o:p>`, VML image fallbacks with `file:` clip sources, Word for the web flat
+`data-aria-level` list runs and `EOP` marks, the Docs non-bold GUID wrapper with
+fully specified span styles and lists nested directly in lists, Sheets/Excel
+cell value/format/formula metadata and merges, LibreOffice relative widths and
+temporary images, and Cocoa class stylesheets. They are not captured,
+certified application-native clipboard dumps.
+
+`tests/producer_fixtures.test.ts` asserts each fixture's exact native outline,
+marks, host image-registry calls and complete `{code, count, effect}` notices
+through the same `importHtml` admission path. The package guide lists the
+[producer conversions and notice policy](../packages/breditor-interchange/README.md#producer-clipboard-shapes).
+In brief: Word alphabetic/roman/compound markers become ordered lists with
+`list-numbering`; skipped Word levels nest with `block-structure` rather than
+rejecting; `file:` images report `image-reference` without consulting the host
+registry; content-free syntax (namespace declarations, document metadata,
+conditional markers, legacy doctypes, structural ARIA, no-op CSS values) no
+longer produces notices. All resource bounds are unchanged.
+
+Word for the web ordered items that are not provably decimal (CSS
+`list-style-type: decimal` plus `%N.`/`%N)` level text) report `list-numbering`.
+
+Remaining gaps: real captured clipboard dumps per producer/platform/version,
+Word for the web non-decimal formats (reported, rendered as decimal), CSS
+`font` shorthand, Excel/Sheets hidden rows and columns (still rejected), cell
+vertical alignment, and Word VML-only images without an `<img>` fallback.
+
 ## Enable browser clipboard conversion
 
 Direct local/shared DOM mounts accept `clipboardInterchange: adapter`. Managed
