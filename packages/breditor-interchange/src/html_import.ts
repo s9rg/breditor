@@ -6,6 +6,7 @@ import type {InterchangeOptions} from "./types.js";
 import {importTable,pixels} from "./html_table.js";
 import {Stylesheets} from "./html_stylesheet.js";
 import {canonicalLanguageTagV1} from "./language_tag.js";
+import {imageHrefProperty,imageLinkNewWindowProperty,isImageLinkHrefV1} from "./image_link_href.js";
 const blocks=new Set(["p","div","h1","h2","h3","h4","h5","h6","ul","ol","li","pre","blockquote","table","figure","hr","section","article","main","header","footer"]);
 // `google-sheets-html-origin` is Google Sheets' transparent producer wrapper around its table.
 const containers=new Set(["div","section","article","main","header","footer","html","head","body","center","google-sheets-html-origin"]);
@@ -19,7 +20,7 @@ const structuralRoles=new Set(["presentation","none","list","listitem"]);
 const flatListAttributes:ReadonlySet<string>=new Set(["data-aria-level","data-aria-posinset","data-listid","aria-setsize"]);
 const wordBullets=/^[·•●○◦▪■□◆◇►➢➤✓✔\-–—*o§Øüvqnl]$/;
 /** Target-owner capabilities read once by the adapter; they select conversion, never admission. */
-export interface ImportCapabilities {readonly listNumbering:boolean;readonly textLanguage?:boolean}
+export interface ImportCapabilities {readonly listNumbering:boolean;readonly textLanguage?:boolean;readonly imageLinks?:boolean}
 /** Candidate rich V4 native text-language format (Rust `text_language.rs`). */
 export const textLanguageFormat="breditor/text-language",textLanguageTag="breditor/language-tag";
 const htmlSpace=/^[\t\n\f\r ]+|[\t\n\f\r ]+$/g;
@@ -195,7 +196,7 @@ export class HtmlConversion {
     }
     flush();return output;
   }
-  image(node:HtmlElement,_state:StyleState):Element|undefined {
+  image(node:HtmlElement,state:StyleState):Element|undefined {
     const src=attribute(node,"src")??"",rawAlt=attribute(node,"alt");let binding;
     // Office/LibreOffice temporary `file:` companions are producer-local paths, never host-owned
     // assets: report them without offering the path to the host registry.
@@ -207,17 +208,41 @@ export class HtmlConversion {
     const props:Record<string,unknown>={"breditor/image-id":this.b.id(),"breditor/asset-id":binding.asset,"breditor/asset-generation":binding.generation,"breditor/decorative":alt==="","breditor/alt-text":alt};
     const rawWidth=attribute(node,"width")??this.css(node).get("width"),rawHeight=attribute(node,"height")??this.css(node).get("height"),width=pixels(rawWidth),height=pixels(rawHeight);
     if(rawWidth!==undefined||rawHeight!==undefined){if(width!==null&&height!==null&&width>=1&&width<=4096&&height>=1&&height<=4096){props["breditor/width"]=Math.round(width);props["breditor/height"]=Math.round(height);if(!Number.isInteger(width)||!Number.isInteger(height))this.b.loss("image-size");}else this.b.loss("image-size");}
+    if(this.capabilities.imageLinks)this.#imageLink(props,state);
     return element(this.b,"image",[],props);
+  }
+  /**
+   * Candidate V4: an enclosing safe `<a href>` (already canonicalized by the inline-link policy,
+   * unsafe hrefs reported as `unsafe-link` there) becomes the image's own link. A canonical target
+   * outside the native subset reports `unsafe-link`; a decorative image (`alt=""`) cannot name a
+   * link, so the link is dropped with `image-alt`.
+   */
+  #imageLink(props:Record<string,unknown>,state:StyleState):void {
+    const link=state.formats.get("breditor-inline/link");if(!link)return;
+    const href=link.properties["breditor-inline/href"];
+    if(!isImageLinkHrefV1(href)){this.b.loss("unsafe-link");return;}
+    if(props["breditor/decorative"]===true){this.b.loss("image-alt");return;}
+    props[imageHrefProperty]=href;if(link.properties["breditor-inline/new-window"]===true)props[imageLinkNewWindowProperty]=true;
+  }
+  /** V4 owners only: an `<a href>` whose sole content is one `<img>` (whitespace aside). */
+  #linkedImage(node:HtmlElement):HtmlElement|undefined {
+    if(!this.capabilities.imageLinks||node.tagName!=="a"||attribute(node,"href")===undefined)return undefined;
+    const elements=node.childNodes.filter(isElement);
+    if(elements.length!==1||elements[0]!.tagName!=="img"||node.childNodes.some(n=>!isElement(n)&&plainText(n).trim()))return undefined;
+    return elements[0];
   }
   #figure(node:HtmlElement,state:StyleState,insideTable:boolean):Element[] {
     const images:HtmlElement[]=[],captions:HtmlElement[]=[];let other=false;
-    for(const n of node.childNodes){if(!isElement(n)){if(plainText(n).trim())other=true;}else if(n.tagName==="img")images.push(n);else if(n.tagName==="figcaption")captions.push(n);else other=true;}
+    // Candidate V4: `<figure><a href><img></a><figcaption>` is a linked image with a caption.
+    const anchors=new Map<HtmlElement,HtmlElement>();
+    for(const n of node.childNodes){if(!isElement(n)){if(plainText(n).trim())other=true;}else if(n.tagName==="img")images.push(n);else if(n.tagName==="figcaption")captions.push(n);else{const linked=this.#linkedImage(n);if(linked){images.push(linked);anchors.set(linked,n);}else other=true;}}
     if(images.length!==1||captions.length>1||other){this.b.loss("block-structure");return this.flow(node.childNodes,state,insideTable);}
-    const imageNode=images[0]!,caption=captions[0];
+    const imageNode=images[0]!,caption=captions[0],anchor=anchors.get(imageNode);
+    if(anchor&&this.#hidden(anchor)){this.b.loss("removed-content");return caption&&!this.#hidden(caption)?this.flow(caption.childNodes,this.style(caption,state),insideTable):[];}
     const body=caption&&!this.#hidden(caption)?this.flow(caption.childNodes,this.style(caption,state),insideTable):[];
     if(caption&&this.#hidden(caption))this.b.loss("removed-content");
     if(this.#hidden(imageNode)){this.b.loss("removed-content");return body;}
-    const image=this.image(imageNode,this.style(imageNode,state));
+    const image=this.image(imageNode,this.style(imageNode,anchor?this.style(anchor,state):state));
     if(!image){const runs:Node[]=[];append(this.b,runs,attribute(imageNode,"alt")??"",[]);return [...(runs.length?[element(this.b,"paragraph",runs)]:[]),...body];}
     if(body.length){const runs:Node[]=[];for(const [i,n]of body.entries()){if(i)append(this.b,runs,"\n",[]);if(n.type==="breditor/paragraph"||n.type==="breditor/heading"){for(const run of n.children){if(run.kind==="text")append(this.b,runs,run.text,run.formats);}}else{append(this.b,runs,nodeText(n),[]);this.b.loss("block-structure");}}if(body.length!==1||body[0]!.type!=="breditor/paragraph")this.b.loss("block-structure");image.children=[element(this.b,"paragraph",runs)];}
     return[image];
