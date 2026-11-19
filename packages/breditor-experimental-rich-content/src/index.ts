@@ -40,3 +40,5 @@ export {createRichSlashCommands,filterRichSlashItems,standardRichSlashPicks,type
 export {mountRichSlashCommands,type RichSlashCommandHost,type RichSlashCommands,type RichSlashCommandOptions,type RichSlashCommandState,type RichSlashCancelReason,type RichSlashExecution,type RichSlashProvider,type RichSlashProviderRequest} from "./slash_command_session.js";
 export type {RichContextUiHost,RichContextUiHostState,RichContextSelectionKind,RichContextControlView,RichContextUiOptions,RichSelectionToolbar,RichSelectionToolbarOptions,RichSelectionToolbarState,RichContextMenu,RichContextMenuOptions,RichContextMenuState} from "./context_ui_types.js";
 export {mountRichSelectionToolbar,mountRichContextMenu,richSelectionToolbarDefaults,richContextMenuDefaults,richContextUiStyles} from "./context_ui.js";
+export {mountRichSourceView,type RichSourceView,type RichSourceViewOptions,type RichSourceViewState} from "./source_view.js";
+export {RICH_DOCUMENT_SOURCE_MAX_BYTES,type RichDocumentSourceHost,type RichDocumentSourceHostState,type RichDocumentSourceRead,type RichDocumentSourcePreview} from "./source_view_types.js";

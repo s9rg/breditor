@@ -27,6 +27,8 @@ import {RichWritingEvents,RichWritingReadRegistry,type RichWritingToolsHostState
 import {prepareRichPlaceholder,RichPlaceholderPresentation,richPlaceholderStyles} from "./placeholder.js";
 import {borrowContextControl,contextSelectionKind,type BorrowedControl} from "./context_ui_host.js";
 import type {RichContextControlView,RichContextUiHostState} from "./context_ui_types.js";
+import {createDocumentSourceHost} from "./source_view_host.js";
+import type {RichDocumentSourceHost} from "./source_view_types.js";
 
 export interface RichEditorOptions<P extends RichSelectionPolicy="original"> extends RenderOptions {
  core:RichCoreEditor<P>;
@@ -199,6 +201,8 @@ export class RichDomEditor<P extends RichSelectionPolicy="original"> {
  collapseDocumentSelection(this:RichDomEditor<"document-v1">,side:"before"|"after",expectedRevision=this.#model.view.revision):RichCommandOutcome|"queued" {
   return this.#executeIntent({kind:"collapseDocumentSelection",side},true,expectedRevision);
  }
+ /** Opt-in HTML source port: the explicit interchange adapter plus one guarded whole-document rich paste. */
+ documentSource(this:RichDomEditor<"document-v1">):RichDocumentSourceHost{this.#live();return createDocumentSourceHost({surface:this.surface,core:this.#document!,interchange:this.#interchange,state:()=>this.contextUiState(),subscribe:listener=>this.subscribeContextUi(listener),selectDocument:revision=>this.selectDocument(revision),paste:(clipboardJson,revision)=>this.pasteDocumentClipboard(clipboardJson,revision)});}
  #executeIntent(command:RichCommand|DocumentIntent,focus=true,expectedRevision=this.#model.view.revision,accepted?:((display:boolean)=>void)):RichCommandOutcome|"queued" {
   this.#live();
   if((this.#searchEvents.notifying||this.#writingEvents.notifying))throw Error("Read notifications cannot publish reentrantly");
