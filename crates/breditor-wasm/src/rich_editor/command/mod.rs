@@ -71,6 +71,7 @@ mod set_code_language;
 mod set_heading;
 mod set_image_alt;
 mod set_image_caption;
+mod set_image_link;
 mod set_inline_format;
 mod set_list_kind;
 mod set_pending_formats;
@@ -168,6 +169,7 @@ enum CommandTag {
     SetListKind,
     SetListNumbering,
     SetTextLanguage,
+    SetImageLink,
     OutdentListItems,
     JoinTextBlocks,
     JoinListItems,

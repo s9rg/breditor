@@ -251,6 +251,13 @@ impl CompiledSchema {
         matches!(self.rich_content_revision(), Some(4))
     }
 
+    /// Whether this exact language admits bounded image links (rich V4 only).
+    #[cfg(feature = "experimental-rich-content")]
+    #[must_use]
+    pub const fn supports_rich_image_links(&self) -> bool {
+        matches!(self.rich_content_revision(), Some(4))
+    }
+
     /// Exact admitted rich-language revision; unrecognized lookalikes return `None`.
     #[cfg(feature = "experimental-rich-content")]
     #[must_use]

@@ -118,6 +118,7 @@ fn candidate_v4(
     match tag {
         CommandTag::SetListNumbering => super::list_numbering::execute(owner, observation, input),
         CommandTag::SetTextLanguage => super::set_text_language::execute(owner, observation, input),
+        CommandTag::SetImageLink => super::set_image_link::execute(owner, observation, input),
         _ => Err(super::invalid()),
     }
 }

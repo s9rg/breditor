@@ -25,6 +25,10 @@ mod rich_block_layout_patch;
 #[cfg(feature = "experimental-rich-content")]
 mod rich_block_layout_state;
 #[cfg(feature = "experimental-rich-content")]
+mod rich_image_link;
+#[cfg(feature = "experimental-rich-content")]
+pub use rich_image_link::{RichImageLinkCodecError, decode_rich_image_link_command};
+#[cfg(feature = "experimental-rich-content")]
 mod rich_list_numbering;
 #[cfg(feature = "experimental-rich-content")]
 pub use rich_list_numbering::{RichListNumberingCodecError, decode_rich_list_numbering_command};

@@ -129,8 +129,9 @@ fn explicit_candidate_v4_is_only_v3_grammar_with_its_own_rule_revision() -> Test
     assert!(!v4.supports_text_splice_operations());
     assert!(!v4.supports_base_text_operations());
     assert!(!v4.supports_flat_list_operations());
-    // The only differences from V3 are the sealed rule revision and the one
-    // core-owned text-language inline format.
+    // The only differences from V3 are the sealed rule revision, the one
+    // core-owned text-language inline format and the image element's persisted
+    // type revision (2: optional link properties and the non-decorative law).
     let mut lookalike = v3.definition().as_ref().clone();
     lookalike.rich_content_contract = Some(4);
     let language = QualifiedName::try_new("breditor/text-language")?;
@@ -138,7 +139,14 @@ fn explicit_candidate_v4_is_only_v3_grammar_with_its_own_rule_revision() -> Test
     assert_eq!(v4.definition().inline_formats.len(), v3.definition().inline_formats.len() + 1);
     assert_ne!(fingerprint(&lookalike), v4.fingerprint());
     lookalike.inline_formats.insert(language, declared);
+    assert_ne!(fingerprint(&lookalike), v4.fingerprint());
+    let image = QualifiedName::try_new("breditor/image")?;
+    assert_eq!(v3.definition().elements.get(&image).ok_or("image")?.revision.get(), 1);
+    let revised = v4.definition().elements.get(&image).ok_or("image")?.clone();
+    assert_eq!(revised.revision.get(), 2);
+    lookalike.elements.insert(image, revised);
     assert_eq!(fingerprint(&lookalike), v4.fingerprint());
+    assert!(!v3.supports_rich_image_links() && v4.supports_rich_image_links());
     assert!(!v3.supports_rich_list_numbering());
     assert!(v4.supports_rich_list_numbering());
     assert!(!v3.supports_rich_text_language());

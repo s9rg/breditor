@@ -67,6 +67,7 @@ mod set_code_language;
 mod set_heading;
 mod set_image_alt;
 mod set_image_caption;
+mod set_image_link;
 mod set_inline_format;
 mod set_list_kind;
 mod set_list_numbering;
@@ -139,6 +140,7 @@ pub use set_code_language::SetCodeLanguage;
 pub use set_heading::SetHeading;
 pub use set_image_alt::SetImageAlt;
 pub use set_image_caption::SetImageCaption;
+pub use set_image_link::SetImageLink;
 pub use set_inline_format::{RichFormatChange, SetInlineFormat};
 pub use set_list_kind::SetListKind;
 pub use set_list_numbering::SetListNumbering;
@@ -221,6 +223,8 @@ pub enum RichAction {
     SetListKind(SetListKind),
     /// Patch one ordered list's bounded V4 marker style, reversal or start.
     SetListNumbering(SetListNumbering),
+    /// Set, replace or clear one image's bounded candidate-V4 link.
+    SetImageLink(SetImageLink),
     /// Split one rich text block with an explicit fresh right-block identity.
     SplitTextBlock(SplitTextBlock),
     /// Join two adjacent rich text blocks, retaining the left identity.
@@ -353,6 +357,7 @@ impl RichAction {
             Self::UnwrapList(action) => action.apply(context, document),
             Self::SetListKind(action) => action.apply(context, document),
             Self::SetListNumbering(action) => action.apply(context, document),
+            Self::SetImageLink(action) => action.apply(context, document),
             Self::SplitTextBlock(action) => action.apply(context, document),
             Self::JoinTextBlocks(action) => action.apply(context, document),
             Self::SetHeading(action) => action.apply(context, document),
@@ -440,6 +445,9 @@ pub enum RichActionError {
     /// Typed V4 list-numbering profile, target or value admission failed.
     #[error(transparent)]
     ListNumbering(#[from] super::RichListNumberingError),
+    /// Typed V4 image-link profile, target, value or decorative-image admission failed.
+    #[error(transparent)]
+    ImageLink(#[from] super::RichImageLinkError),
     /// Typed V4 text-language profile or tag admission failed.
     #[error(transparent)]
     TextLanguage(#[from] super::RichTextLanguageError),
