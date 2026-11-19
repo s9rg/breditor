@@ -148,7 +148,7 @@
     {
       "id":"markdown","area":"Interchange","status":"partial",
       "summary":"Markdown import, export and paste",
-      "current":"The separate optional adapter implements a named version-one CommonMark-based dialect with tables, strikethrough, task markers and sanitized raw HTML. It imports/exports through native schema validation and advertises Markdown MIME explicitly; ordinary text is never guessed as Markdown. Safe HTML fallback and compatibility/loss notices cover unrepresentable layout, rich tables, captions and exact code. This is not full GFM conformance or completed release qualification.",
+      "current":"The separate optional adapter implements a named version-one CommonMark-based dialect with tables, strikethrough, task markers and sanitized raw HTML. It imports/exports through native schema validation and advertises Markdown MIME explicitly; ordinary text is never guessed as Markdown. Safe HTML fallback and compatibility/loss notices cover unrepresentable layout, rich tables, captions and exact code. This is not full GFM conformance or completed release qualification. Export now alternates list markers so adjacent lists stay separate, emits hard breaks, GFM column alignment, empty fences and safe images as Markdown, and reports dropped fence info and raw HTML comments as losses; ordered starts below 1 become 1 with a list-numbering notice.",
       "acceptance":"Choose a versioned Markdown subset, preserve representable semantics, report losses for merges/styles/media and test round trips.",
       "evidence":["packages/breditor-collaboration/src/index.ts","docs/RICH_INTERCHANGE.md","packages/breditor-interchange/README.md","scripts/check-interchange-package.mjs","docs/qualification/2026-10-16-foreign-interchange.json","docs/qualification/2026-10-18-v1-candidate-functional.json"],
       "sources":["ckeditor-markdown","tiptap-source-table"]
@@ -172,9 +172,9 @@
     {
       "id":"advanced-tables","area":"Tables","status":"partial",
       "summary":"Table presentation and advanced interaction",
-      "current":"Width/header controls exist. Drag resize, table captions and style/property panels are incomplete. Nested tables are intentionally outside the current admitted rich grammar.",
+      "current":"Width/header controls exist. Table captions and style/property panels are incomplete. Nested tables are intentionally outside the current admitted rich grammar. Opt-in accessible column resize separators preview drags and commit one existing width command clamped to 32..4096, with keyboard steps and cancellation on table changes; the nested-table rejection policy is documented. Captions, presentation panels and broader rich paste remain open.",
       "acceptance":"Resolve nested-table policy explicitly; add captions, accessible resize handles, table/cell presentation and interoperable rich paste without losing source partitions.",
-      "evidence":["packages/breditor-collaboration/src/toolbar.ts","packages/breditor-experimental-rich-content/src/render.ts","crates/breditor-core/src/rich_content/drafts.rs"],
+      "evidence":["packages/breditor-collaboration/src/toolbar.ts","packages/breditor-experimental-rich-content/src/render.ts","crates/breditor-core/src/rich_content/drafts.rs","docs/RICH_TABLES.md","packages/breditor-experimental-rich-content/src/table_column_resize.ts"],
       "sources":["tiptap-table","ckeditor-tables"]
     },
     {
@@ -252,9 +252,9 @@
     {
       "id":"toolbar-and-context-ui","area":"Integration","status":"partial",
       "summary":"Expandable toolbars, context menus and selection UI",
-      "current":"Local/shared standard controls now share field widgets and Rust-derived state, keyboard actions, editor focus return and stale-draft rejection. Owner-bound controls reject another editor before host mutation; custom owner-neutral controls remain reusable. Default compiled action-state APIs remain distinct, and contextual/floating menus are unfinished.",
+      "current":"Local/shared standard controls now share field widgets and Rust-derived state, keyboard actions, editor focus return and stale-draft rejection. Owner-bound controls reject another editor before host mutation; custom owner-neutral controls remain reusable. Default compiled action-state APIs remain distinct, and contextual/floating menus are unfinished. Opt-in floating selection toolbars and keyboard-reachable context menus now borrow admitted controls through the same widget, Rust-derived state, gating, command path and focus return for local and shared editors; they are jsdom-tested only, without real-browser geometry or screen-reader qualification.",
       "acceptance":"One command/state contract must drive buttons, keyboard, forms and context menus with active/mixed/disabled state and consistent focus return.",
-      "evidence":["packages/breditor-browser/src/toolbar.ts","packages/breditor-experimental-rich-content/src/toolbar_control_view.ts","packages/breditor-collaboration/src/controller.ts","experiments/shared-browser/standard-toolbar.spec.mjs"],
+      "evidence":["packages/breditor-browser/src/toolbar.ts","packages/breditor-experimental-rich-content/src/toolbar_control_view.ts","packages/breditor-collaboration/src/controller.ts","experiments/shared-browser/standard-toolbar.spec.mjs","docs/CONTEXT_UI.md","packages/breditor-experimental-rich-content/src/context_ui.ts"],
       "sources":["tiptap-catalog","ckeditor-overview"]
     },
     {
@@ -274,11 +274,11 @@
       "sources":["tiptap-extension","ckeditor-overview"]
     },
     {
-      "id":"mentions-slash","area":"Productivity","status":"missing",
+      "id":"mentions-slash","area":"Productivity","status":"partial",
       "summary":"Mentions and slash commands",
-      "current":"There is no supported suggestion session or durable mention entity contract.",
+      "current":"There is no durable mention entity contract. An opt-in local slash-command session now opens an accessible listbox from a typed slash, cancels on composition, blur, selection or remote trigger changes, aborts stale async providers and runs existing typed commands through execute. Undo takes two steps (trigger removal, then the command), shared editors are not wired, and durable mention entities remain missing.",
       "acceptance":"Specify entity identity, async suggestion cancellation, accessible menus and command execution through Rust rather than DOM mutation.",
-      "evidence":["crates/breditor-core/src/rich_content/drafts.rs","packages/breditor-collaboration/src/index.ts"],
+      "evidence":["crates/breditor-core/src/rich_content/drafts.rs","packages/breditor-collaboration/src/index.ts","docs/SLASH_COMMANDS.md","packages/breditor-experimental-rich-content/src/slash_command_session.ts"],
       "sources":["tiptap-catalog","ckeditor-digest"]
     },
     {
@@ -292,9 +292,9 @@
     {
       "id":"drag-and-drop","area":"Integration","status":"partial",
       "summary":"Block rearrangement and drop feedback",
-      "current":"File drop and typed block/axis moves exist; a general block drag handle, semantic drop target and drop cursor UI are incomplete.",
+      "current":"File drop and typed block/axis moves exist; a general block drag handle, semantic drop target and drop cursor UI are incomplete. Shared editors now have an opt-in block drag handle with a semantic drop resolver, drop cursor, keyboard pick-up/move and Alt+Shift+Arrow steps, each sending one retained-ID move_block at the planned revision; local single-user editors still lack a general block move.",
       "acceptance":"Move retained IDs rather than copy/delete; add keyboard equivalents and test invalid/cyclic/cross-container targets and shared Undo.",
-      "evidence":["packages/breditor-collaboration/src/controller.ts","experiments/shared-browser/placements.spec.mjs"],
+      "evidence":["packages/breditor-collaboration/src/controller.ts","experiments/shared-browser/placements.spec.mjs","docs/SHARED_BLOCK_DRAG.md","packages/breditor-collaboration/src/block_move.ts"],
       "sources":["tiptap-catalog","ckeditor-digest"]
     },
     {
