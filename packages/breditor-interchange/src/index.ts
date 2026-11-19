@@ -13,10 +13,12 @@ export function createRichInterchange(owner:InterchangeOwner,options:Interchange
   const admit=owner.admitClipboardRoot,validate=owner.validateClipboard;
   if(owner.supportsClipboardInterchange?.()!==true||typeof admit!=="function"||typeof validate!=="function")throw new TypeError("Matching native clipboard interchange version 1 is required");
   const policy=Object.freeze({...options});
+  // Read once: an owner's compiled language never changes. Native admission still decides validity.
+  const capabilities=Object.freeze({listNumbering:owner.supportsListNumbering?.()===true});
   const run=<T>(work:(b:Budget)=>T):InterchangeResult<T>=>{
     const b=new Budget();try{return Object.freeze({ok:true,value:work(b),losses:b.losses()});}catch(error){return Object.freeze({ok:false,error:error instanceof ConversionFailure?error.code:"native-admission",losses:b.losses()});}
   };
-  const importSource=(source:string,b:Budget,target:InterchangeImportOptions={}):ClipboardTransfer=>{const content=importHtmlContent(source,b,policy),kind=target.kind??"auto";if(!['auto','flow','grid'].includes(kind))fail("unsupported-content");return Object.freeze(admit.call(owner,kind==="auto"?content.kind:kind,content.root));};
+  const importSource=(source:string,b:Budget,target:InterchangeImportOptions={}):ClipboardTransfer=>{const content=importHtmlContent(source,b,policy,capabilities),kind=target.kind??"auto";if(!['auto','flow','grid'].includes(kind))fail("unsupported-content");return Object.freeze(admit.call(owner,kind==="auto"?content.kind:kind,content.root));};
   const exportSource=(source:string):{nodes:Node[];kind:ClipboardTransfer["kind"]}=>{
     sourceWithinBudget(source);const admitted=validate.call(owner,source),record=JSON.parse(admitted.structuredJson) as {document:{root:{children:Node[]}}};return{nodes:record.document.root.children,kind:admitted.kind};
   };

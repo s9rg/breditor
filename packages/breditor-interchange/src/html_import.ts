@@ -17,6 +17,13 @@ const structuralRoles=new Set(["presentation","none","list","listitem"]);
 // Word for the web flat-list metadata that structural conversion consumes.
 const flatListAttributes:ReadonlySet<string>=new Set(["data-aria-level","data-aria-posinset","data-listid","aria-setsize"]);
 const wordBullets=/^[·•●○◦▪■□◆◇►➢➤✓✔\-–—*o§Øüvqnl]$/;
+/** Target-owner capabilities read once by the adapter; they select conversion, never admission. */
+export interface ImportCapabilities {readonly listNumbering:boolean}
+/** Candidate rich V4 marker codes (Rust `list_numbering.rs`). Maps avoid inherited-key lookups. */
+export const cssListStyles:ReadonlyMap<string,number>=new Map([["decimal",1],["lower-alpha",2],["lower-latin",2],["upper-alpha",3],["upper-latin",3],["lower-roman",4],["upper-roman",5]]);
+const htmlListTypes:ReadonlyMap<string,number>=new Map([["1",1],["a",2],["A",3],["i",4],["I",5]]);
+// `reversed` is interpreted (not reported as unknown) only for numbering-capable owners.
+const numberingAttributes:ReadonlySet<string>=new Set(["reversed"]);
 /** Flat producer list entry: Word desktop `mso-list` paragraphs or Word for the web `data-aria-level` items. */
 interface FlatItem {level:number;group:string;ordered:boolean;numbers:number[];body:(state:StyleState)=>Element[]}
 const romanPattern=/^m{0,3}(?:cm|cd|d?c{0,3})(?:xc|xl|l?x{0,3})(?:ix|iv|v?i{0,3})$/;
@@ -44,10 +51,11 @@ export class HtmlConversion {
   #css=new WeakMap<HtmlElement,Map<string,string>>();#blockDescendant=new WeakMap<HtmlElement,boolean>();#word=new WeakMap<HtmlElement,FlatItem|null>();
   #markers=new WeakSet<HtmlElement>();#checkboxes=new WeakSet<HtmlElement>();
   #preservedEnd=new WeakSet<Text>();
-  constructor(readonly b:Budget,readonly options:InterchangeOptions,readonly sheets:Stylesheets){}
+  constructor(readonly b:Budget,readonly options:InterchangeOptions,readonly sheets:Stylesheets,readonly capabilities:ImportCapabilities={listNumbering:false}){}
   css(node:HtmlElement):Map<string,string>{let value=this.#css.get(node);if(!value){const important=new Set<string>();value=this.sheets.apply(node,declarations(node,this.b,important),important);this.#css.set(node,value);}return value;}
   /** `interpreted` names attributes that structural conversion already consumed for this node. */
   style(node:HtmlElement,parent:StyleState,interpreted?:ReadonlySet<string>):StyleState {
+    if(interpreted===undefined&&node.tagName==="ol"&&this.capabilities.listNumbering)interpreted=numberingAttributes;
     for(const attr of node.attrs)if(attr.namespace!==undefined||attr.prefix!==undefined||!this.#knownAttribute(node,attr.name,attr.value,interpreted))this.b.loss("unsupported-attribute");
     return styleFor(node,parent,this.b,this.css(node));
   }
@@ -205,13 +213,33 @@ export class HtmlConversion {
   #checkbox(node:HtmlElement):HtmlElement|undefined {
     for(const child of node.childNodes){if(!isElement(child)){if(plainText(child).trim())return undefined;continue;}if(child.tagName==="input"&&attribute(child,"type")?.toLowerCase()==="checkbox")return child;if(["p","span"].includes(child.tagName))return this.#checkbox(child);return undefined;}return undefined;
   }
+  /** Candidate V4 numbering of one `<ol>`: CSS `list-style-type` wins over the `type` hint, as in HTML. */
+  #numbering(node:HtmlElement):{props:Record<string,unknown>;reversed:boolean} {
+    const props:Record<string,unknown>={},css=this.css(node).get("list-style-type")?.trim().toLowerCase(),type=attribute(node,"type");
+    const style=css!==undefined?cssListStyles.get(css):type!==undefined?htmlListTypes.get(type):undefined;
+    // Styling already reported other unrecognized CSS values; bullet markers on an `<ol>` are reported here.
+    if(style===undefined&&(css!==undefined?["disc","circle","square"].includes(css):type!==undefined))this.b.loss("list-numbering");
+    if(style!==undefined)props["breditor/list-style"]=style;
+    const reversed=attribute(node,"reversed")!==undefined;if(reversed)props["breditor/list-reversed"]=true;
+    return {props,reversed};
+  }
   #list(node:HtmlElement,state:StyleState,insideTable:boolean):Element[] {
-    const output:Element[]=[];let current:Element|undefined,ordinal=Number(attribute(node,"start")??1);
+    const ordered=node.tagName==="ol",numbering=ordered&&this.capabilities.listNumbering?this.#numbering(node):undefined,step=numbering?.reversed?-1:1;
+    const rawStart=attribute(node,"start");
+    // HTML counts a reversed list without `start` down from its item count; V4 stores that start explicitly.
+    const items=node.childNodes.filter(n=>isElement(n)&&n.tagName==="li"&&!this.#hidden(n)).length;
+    const output:Element[]=[];let current:Element|undefined,ordinal=Number(rawStart??(numbering?.reversed?Math.max(items,1):1));
     if(!Number.isSafeInteger(ordinal)||ordinal>1_000_000_000)fail("unsupported-content");
     // Native ordered lists count from 1; CommonMark `0.` and HTML zero/negative starts are approximated, not rejected.
     if(ordinal<1){this.b.loss("list-numbering");ordinal=1;}
-    const ordered=node.tagName==="ol";
-    if(attribute(node,"type")!==undefined&&attribute(node,"type")!==(ordered?"1":"disc")||attribute(node,"reversed")!==undefined)this.b.loss("list-numbering");
+    if(ordered&&!numbering){
+      const css=this.css(node).get("list-style-type")?.trim().toLowerCase();
+      if(attribute(node,"type")!==undefined&&attribute(node,"type")!=="1"||attribute(node,"reversed")!==undefined)this.b.loss("list-numbering");
+      // Formerly reported while styling; the count per list is unchanged.
+      if(css!==undefined&&css!=="decimal"&&cssListStyles.has(css))this.b.loss("list-numbering");
+    }else if(!ordered&&(attribute(node,"type")!==undefined&&attribute(node,"type")!=="disc"||attribute(node,"reversed")!==undefined))this.b.loss("list-numbering");
+    // A continuation that a reversed count drove below 1 cannot be stored; it restarts at 1 and is reported.
+    const listProps=():Record<string,unknown>=>{let start=ordinal;if(start<1){this.b.loss("list-numbering");start=1;}return {"breditor/start":start,...numbering?.props};};
     for(const child of node.childNodes){
       if(!isElement(child)){if(plainText(child).trim())fail("unsupported-content");continue;}
       // Google Docs and Cocoa HTML Writer (Notes/TextEdit/Pages) place a nested list directly in its
@@ -219,18 +247,18 @@ export class HtmlConversion {
       if((child.tagName==="ul"||child.tagName==="ol")&&!this.#hidden(child)){
         const nested=this.#list(child,this.style(child,state),insideTable),owner=current?.children.at(-1) as Element|undefined;
         if(owner)owner.children.push(...nested);
-        else{this.b.loss("block-structure");current=element(this.b,ordered?"ordered-list":"bullet-list",[],ordered?{"breditor/start":ordinal}:{});output.push(current);current.children.push(element(this.b,"list-item",[element(this.b,"paragraph"),...nested]));ordinal++;}
+        else{this.b.loss("block-structure");current=element(this.b,ordered?"ordered-list":"bullet-list",[],ordered?listProps():{});output.push(current);current.children.push(element(this.b,"list-item",[element(this.b,"paragraph"),...nested]));ordinal+=step;}
         continue;
       }
       if(child.tagName!=="li"||this.#hidden(child))fail("unsupported-content");
       const checkbox=this.#checkbox(child),task=checkbox!==undefined;if(checkbox)this.#checkboxes.add(checkbox);
       const explicit=attribute(child,"value");if(ordered&&explicit!==undefined){const n=Number(explicit);if(!Number.isSafeInteger(n)||n<1||n>1_000_000_000)fail("unsupported-content");if(n!==ordinal){current=undefined;ordinal=n;this.b.loss("list-numbering");}}
       const kind=task?"task-list":ordered?"ordered-list":"bullet-list";
-      if(!current||current.type!==`breditor/${kind}`){current=element(this.b,kind,[],ordered&&!task?{"breditor/start":ordinal}:{});output.push(current);}
+      if(!current||current.type!==`breditor/${kind}`){current=element(this.b,kind,[],ordered&&!task?listProps():{});output.push(current);}
       if(task&&ordered)this.b.loss("list-numbering");
       const body=this.flow(child.childNodes,this.style(child,state),insideTable);
       if(!body.length||!['breditor/paragraph','breditor/heading'].includes(body[0]!.type))body.unshift(element(this.b,"paragraph"));
-      current.children.push(element(this.b,task?"task-item":"list-item",body,task?{"breditor/checked":attribute(checkbox!,"checked")!==undefined}:{}));ordinal++;
+      current.children.push(element(this.b,task?"task-item":"list-item",body,task?{"breditor/checked":attribute(checkbox!,"checked")!==undefined}:{}));ordinal+=step;
     }
     if(!output.length)this.b.loss("block-structure");return output;
   }
@@ -266,6 +294,7 @@ export class HtmlConversion {
     const {wrapper,list}=this.#flatList(node)!,outer=wrapper?this.style(wrapper,state):state;
     if(!this.#safe(list))return[];
     const listState=this.style(list,outer),ordered=list.tagName==="ol",items:FlatItem[]=[];
+    {const css=this.css(list).get("list-style-type")?.trim().toLowerCase();if(ordered&&css!==undefined&&css!=="decimal"&&cssListStyles.has(css))this.b.loss("list-numbering");}
     if(attribute(list,"type")!==undefined&&attribute(list,"type")!==(ordered?"1":"disc")||attribute(list,"reversed")!==undefined)this.b.loss("list-numbering");
     for(const li of list.childNodes){
       if(!isElement(li))continue;if(this.#hidden(li))fail("unsupported-content");
@@ -299,8 +328,8 @@ export class HtmlConversion {
 }
 /** WebKit/Blink trailing-selection marker (Docs, Notes, Safari); it is not authored content. */
 function interchangeNewline(node:HtmlElement):boolean{return node.tagName==="br"&&(attribute(node,"class")??"").split(/\s+/).includes("Apple-interchange-newline");}
-export function importHtmlContent(source:string,b:Budget,options:InterchangeOptions):{root:string;kind:"text"|"flow"} {
-  const sourceNodes=htmlTree(source,b),converter=new HtmlConversion(b,options,new Stylesheets(sourceNodes,b)),body=converter.flow(sourceNodes);
+export function importHtmlContent(source:string,b:Budget,options:InterchangeOptions,capabilities:ImportCapabilities={listNumbering:false}):{root:string;kind:"text"|"flow"} {
+  const sourceNodes=htmlTree(source,b),converter=new HtmlConversion(b,options,new Stylesheets(sourceNodes,b),capabilities),body=converter.flow(sourceNodes);
   const containsBlock=(n:HtmlNode):boolean=>isElement(n)&&(blocks.has(n.tagName)||n.childNodes.some(containsBlock));
   const inline=!sourceNodes.some(containsBlock)&&body.length===1&&body[0]!.type==="breditor/paragraph"&&Object.keys(body[0]!.properties).every(k=>k==="breditor/block-id")&&body[0]!.children.length>0&&body[0]!.children.every(n=>n.kind==="text");
   return{root:rootJson(b,body),kind:inline?"text":"flow"};

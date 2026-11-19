@@ -46,7 +46,13 @@ export class HtmlExport {
         case "breditor/code-block":{const language=property(node,"language");return `<pre${this.#layout(node)}><code${typeof language==="string"?` class="language-${a(language)}"`:""}>${t(nodeText(node))}</code></pre>`;}
         case "breditor/horizontal-rule":return"<hr>";
         case "breditor/bullet-list":return `<ul>${body()}</ul>`;
-        case "breditor/ordered-list":{const start=property(node,"start");if(typeof start!=="number"||!Number.isSafeInteger(start)||start<1)fail("native-admission");return `<ol start="${start}">${body()}</ol>`;}
+        case "breditor/ordered-list":{
+          const start=property(node,"start"),style=property(node,"list-style"),reversed=property(node,"list-reversed");
+          if(typeof start!=="number"||!Number.isSafeInteger(start)||start<1)fail("native-admission");
+          // Candidate V4 numbering is emitted only from admitted closed values: an HTML `type` token and `reversed`.
+          if(style!==undefined&&(typeof style!=="number"||!Number.isInteger(style)||style<1||style>5)||reversed!==undefined&&reversed!==true)fail("native-admission");
+          return `<ol start="${start}"${typeof style==="number"?` type="${["1","a","A","i","I"][style-1]!}"`:""}${reversed===true?" reversed":""}>${body()}</ol>`;
+        }
         case "breditor/task-list":return `<ul>${body()}</ul>`;
         case "breditor/list-item":return `<li>${body()}</li>`;
         case "breditor/task-item":{const first=node.children[0];if(first?.kind!=="element"||!['breditor/paragraph','breditor/heading'].includes(first.type))fail("native-admission");return `<li><input type="checkbox" disabled${property(node,"checked")===true?" checked":""}>${body()}</li>`;}
