@@ -1,0 +1,542 @@
+/**
+ * Inert static document renderer.
+ *
+ * Turns canonical Breditor rich document JSON into an escaped HTML string without a DOM,
+ * Wasm module or editor owner, so it can run in Node, edge workers and SSR passes. The
+ * output follows the live rich renderer's presentation structure (the same element names,
+ * `data-rich-*` hooks, inline recipe order, table geometry and block layout values) minus
+ * every editing affordance: no contenteditable islands, selection buttons or event hooks.
+ *
+ * Safety model: every node, property and inline format literal is validated against the
+ * closed rich-content grammar before output. Unknown node types and format kinds either
+ * throw or are skipped with a report; nothing from document data is ever passed through as
+ * markup. Links resolve through the shared `safeLinkV1` policy from
+ * `@breditor/browser/presentation`, the same canonicalizer the live editor uses. Style
+ * attributes appear only as values computed from bounded integers.
+ */
+import {
+ compileInlineFormatRecipes,createInlineFormatRenderManifest,resolveInlineFormatRenderAttributes,
+ type BrowserProfileFormatDescriptor,type InlineFormatRenderRecipe,type InlineFormatRenderAttribute,
+} from "@breditor/browser/presentation";
+
+/** Immutable image binding handed to the host resolver; mirrors the live `AssetBinding`. */
+export interface StaticAssetBinding {readonly image:string;readonly asset:string;readonly generation:string}
+
+/** Explicit resource ceilings. Each is clamped to a fixed hard maximum. */
+export interface StaticRenderLimits {
+ /** Maximum UTF-8 bytes of a JSON string input, or of all text in an object input. Default 16 MiB. */
+ maxInputBytes?:number;
+ /** Maximum element nesting depth below the document root. Default 128, hard maximum 512. */
+ maxDepth?:number;
+ /** Maximum element plus text nodes. Default 250 000, hard maximum 2 000 000. */
+ maxNodes?:number;
+}
+
+export interface StaticRenderOptions {
+ /**
+  * Synchronous host asset lookup. Returned URLs pass the static image URL policy:
+  * canonical credential-free http(s), a root-relative path, or a bounded base64
+  * `data:image/(png|jpeg|gif|webp|avif)` URL. Anything else leaves the image unresolved.
+  * Promises are not awaited; SSR output must be synchronous.
+  */
+ resolveAsset?:(binding:StaticAssetBinding)=>string|undefined|null;
+ /** `"error"` (default) throws on unknown node types or inline format kinds; `"skip"` omits and reports them. */
+ unknown?:"error"|"skip";
+ /** Emit only the block children, without the surface wrapper element. */
+ fragment?:boolean;
+ /** Emit `data-rich-block` / `data-rich-text` / `data-rich-cell` hooks (default true). */
+ blockIds?:boolean;
+ limits?:StaticRenderLimits;
+}
+
+export type StaticImageState="ready"|"unresolved"|"rejected"|"error";
+export type StaticMergeConflictReason="axes-deleted"|"axes-reordered"|"old-axis-moved-inside"|"singleton"|"overlap";
+export interface StaticRenderReport {
+ /** Unknown nodes or format kinds omitted in `"skip"` mode, by JSON path. Never includes document text. */
+ readonly skipped:readonly {readonly kind:"node"|"format";readonly type:string;readonly path:string}[];
+ readonly images:readonly {readonly image:string;readonly state:StaticImageState}[];
+ /** Axisless tables are retained document state with no visible grid; they render nothing. */
+ readonly hiddenTables:readonly string[];
+ /** Merge intents that are inactive in the derived geometry (content stays in base cells). */
+ readonly inactiveMerges:readonly {readonly table:string;readonly merge:string;readonly reason:StaticMergeConflictReason}[];
+}
+export interface StaticRenderResult {readonly html:string;readonly report:StaticRenderReport}
+
+/** Validation failure. `path` locates the offending JSON value; messages never echo document content. */
+export class StaticDocumentError extends Error {
+ readonly code:string;readonly path:string;
+ constructor(code:string,message:string,path:string){super(`${message} at ${path}`);this.name="StaticDocumentError";this.code=code;this.path=path;}
+}
+
+/** Wrapper attributes shared by the vanilla string and the React component. */
+export const staticSurfaceClass="breditor-rich-surface";
+
+/** Render inert HTML for one canonical document; throws {@link StaticDocumentError} on invalid input. */
+export function renderStaticDocument(document:unknown,options:StaticRenderOptions={}):string {
+ return renderStaticDocumentWithReport(document,options).html;
+}
+
+/** Same as {@link renderStaticDocument}, plus a report of skipped, hidden and unresolved content. */
+export function renderStaticDocumentWithReport(document:unknown,options:StaticRenderOptions={}):StaticRenderResult {
+ const renderer=new Renderer(options);
+ const root=renderer.admit(document);
+ const body=renderer.children(root);
+ const html=options.fragment?body:`<div class="${staticSurfaceClass}" data-breditor-rich="" data-breditor-static="">${body}</div>`;
+ return {html,report:Object.freeze({skipped:Object.freeze(renderer.skipped),images:Object.freeze(renderer.images),hiddenTables:Object.freeze(renderer.hiddenTables),inactiveMerges:Object.freeze(renderer.inactiveMerges)})};
+}
+
+// ---------------------------------------------------------------------------------------
+// Shared mapping tables. Inline recipes are the standard inline V1 declarations used by the
+// live editor (`createStandardRichInlinePresentationV1`), compiled by the same DOM-free
+// `compileInlineFormatRecipes` so the outer-to-inner nesting is identical. Property domains
+// mirror the Rust standard inline V1 catalog. A parity test compares both tables.
+
+const K={strong:"breditor/strong",italic:"breditor-inline/italic",underline:"breditor-inline/underline",strike:"breditor-inline/strike",code:"breditor-inline/code",subscript:"breditor-inline/subscript",superscript:"breditor-inline/superscript",link:"breditor-inline/link",textColor:"breditor-inline/text-color",backgroundColor:"breditor-inline/background-color",textSize:"breditor-inline/text-size",fontFamily:"breditor-inline/font-family"} as const;
+const P={href:"breditor-inline/href",newWindow:"breditor-inline/new-window",rgb24:"breditor-inline/rgb24",pixels:"breditor-inline/pixels",family:"breditor-inline/family"} as const;
+const integerType=(minimum:number,maximum:number)=>({kind:"integer" as const,minimum,maximum});
+/** @internal Standard inline V1 format catalog (Rust `standard_inline_v1.rs`). */
+export const staticInlineCatalogV1:readonly BrowserProfileFormatDescriptor[]=Object.freeze([
+ ...[K.strong,K.italic,K.underline,K.strike,K.code,K.subscript,K.superscript].map(kind=>({kind,revision:1,properties:[]})),
+ {kind:K.link,revision:1,properties:[{name:P.href,presence:"required",valueType:{kind:"string",minimumUtf8Bytes:1,maximumUtf8Bytes:2048}},{name:P.newWindow,presence:"required",valueType:{kind:"boolean"}}]},
+ {kind:K.textColor,revision:1,properties:[{name:P.rgb24,presence:"required",valueType:integerType(0,0xffffff)}]},
+ {kind:K.backgroundColor,revision:1,properties:[{name:P.rgb24,presence:"required",valueType:integerType(0,0xffffff)}]},
+ {kind:K.textSize,revision:1,properties:[{name:P.pixels,presence:"required",valueType:integerType(8,96)}]},
+ {kind:K.fontFamily,revision:1,properties:[{name:P.family,presence:"required",valueType:integerType(1,4)}]},
+] as BrowserProfileFormatDescriptor[]);
+const free:readonly [string,InlineFormatRenderRecipe["element"]][]=[[K.strong,"strong"],[K.italic,"em"],[K.underline,"u"],[K.strike,"s"],[K.code,"code"],[K.subscript,"sub"],[K.superscript,"sup"]];
+/** @internal Outer-to-inner recipes, identical to the live standard inline V1 presentation. */
+export const staticInlineRecipesV1:readonly InlineFormatRenderRecipe[]=compileInlineFormatRecipes(staticInlineCatalogV1,createInlineFormatRenderManifest({recipes:[
+ ...free.map(([formatKind,element])=>({formatKind,element})),
+ {formatKind:K.link,element:"a",classes:["breditor-link"],before:Object.values(K).filter(kind=>kind!==K.link),attributes:{kind:"safeLinkV1",hrefProperty:P.href,openInNewWindowProperty:P.newWindow}},
+ {formatKind:K.textColor,element:"span",classes:["breditor-inline-text-color"],attributes:{kind:"safeRgb24V1",propertyName:P.rgb24,channel:"text"}},
+ {formatKind:K.backgroundColor,element:"span",classes:["breditor-inline-background-color"],attributes:{kind:"safeRgb24V1",propertyName:P.rgb24,channel:"background"}},
+ {formatKind:K.textSize,element:"span",classes:["breditor-inline-text-size"],attributes:{kind:"safeTextSizeV1",propertyName:P.pixels}},
+ {formatKind:K.fontFamily,element:"span",classes:["breditor-inline-font-family"],attributes:{kind:"safeIntegerTokenV1",propertyName:P.family,tokens:[{value:1,token:"system"},{value:2,token:"sans"},{value:3,token:"serif"},{value:4,token:"mono"}]}},
+]}));
+const catalogByKind=new Map(staticInlineCatalogV1.map(format=>[format.kind,format]));
+const linkPolicy=staticInlineRecipesV1.find(recipe=>recipe.formatKind===K.link)!.attributes!;
+
+/** Block layout codes, identical to `applyBlockLayout` and Rust `block_layout.rs`. */
+const alignments=["start","center","end","justify","left","right"] as const;
+const directions=["ltr","rtl","auto"] as const;
+
+/** Rich V3 child grammar (the union of rich languages V1–V3). */
+const flowKinds=["paragraph","heading","bullet-list","ordered-list","image","blockquote","code-block","horizontal-rule","task-list"].map(local=>`breditor/${local}`);
+const flowWithTables=[...flowKinds,"breditor/table"];
+interface Grammar {readonly children:readonly string[]|"text"|"none";readonly minimum:number;readonly maximum?:number;readonly required:readonly string[];readonly optional?:readonly string[];readonly firstTextBlock?:boolean}
+const layout=["block-align","block-direction","block-indent","line-height-percent"];
+const grammar:Readonly<Record<string,Grammar>>={
+ "breditor/document":{children:flowWithTables,minimum:1,required:["document-id"]},
+ "breditor/paragraph":{children:"text",minimum:0,required:["block-id"],optional:layout},
+ "breditor/heading":{children:"text",minimum:0,required:["block-id","level"],optional:layout},
+ "breditor/code-block":{children:"text",minimum:0,required:["block-id"],optional:["language",...layout]},
+ "breditor/bullet-list":{children:["breditor/list-item"],minimum:1,required:["block-id"]},
+ "breditor/ordered-list":{children:["breditor/list-item"],minimum:1,required:["block-id","start"]},
+ "breditor/list-item":{children:flowWithTables,minimum:1,required:["block-id"],firstTextBlock:true},
+ "breditor/task-list":{children:["breditor/task-item"],minimum:1,required:["block-id"]},
+ "breditor/task-item":{children:flowWithTables,minimum:1,required:["block-id","checked"],firstTextBlock:true},
+ "breditor/blockquote":{children:flowWithTables,minimum:1,required:["block-id"]},
+ "breditor/horizontal-rule":{children:"none",minimum:0,maximum:0,required:["block-id"]},
+ "breditor/image":{children:["breditor/paragraph"],minimum:0,maximum:1,required:["block-id","image-id","asset-id","asset-generation","alt-text","decorative"],optional:["width","height"]},
+ "breditor/table":{children:["breditor/table-row"],minimum:0,maximum:256,required:["block-id","table-id","columns","merges","retracted-merges"]},
+ "breditor/table-row":{children:["breditor/table-cell"],minimum:0,maximum:128,required:["block-id","row-id"]},
+ "breditor/table-cell":{children:flowKinds,minimum:1,required:["block-id","column-id","header"]},
+};
+
+// ---------------------------------------------------------------------------------------
+// Admitted tree. Validation copies everything into this closed shape before any output.
+
+interface Text {readonly kind:"text";readonly text:string;readonly formats:readonly {readonly type:string;readonly properties:Readonly<Record<string,unknown>>}[]}
+interface Element {readonly kind:"element";readonly type:string;readonly properties:Readonly<Record<string,unknown>>;readonly children:readonly Node[];readonly path:string}
+type Node=Text|Element;
+interface Column {readonly id:string;readonly width:number}
+interface Cell {readonly table:string;readonly row:string;readonly column:string}
+interface Resolved {readonly base:Cell;readonly master:Cell;rowSpan:number;columnSpan:number;sources:Cell[]}
+
+const identity=/^[A-Za-z0-9][A-Za-z0-9._:-]{0,127}$/;
+const codeLanguage=/^[A-Za-z0-9][A-Za-z0-9+_.#-]{0,63}$/;
+const fingerprint=/^sha256:[0-9a-f]{64}$/;
+const canonicalU64=/^(0|[1-9][0-9]{0,19})$/;
+const loneSurrogate=/[\uD800-\uDBFF](?![\uDC00-\uDFFF])|(?<![\uD800-\uDBFF])[\uDC00-\uDFFF]/;
+const encoder=new TextEncoder();
+const U64_MAX=(1n<<64n)-1n;
+const MAX_ORDINAL=2_147_483_647;
+
+const isRecord=(value:unknown):value is Record<string,unknown>=>typeof value==="object"&&value!==null&&!Array.isArray(value);
+const own=(value:Record<string,unknown>,key:string):unknown=>Object.hasOwn(value,key)?value[key]:undefined;
+const utf8Length=(value:string):number=>encoder.encode(value).length;
+const clamp=(value:number|undefined,fallback:number,maximum:number):number=>value===undefined?fallback:Number.isSafeInteger(value)&&value>0?Math.min(value,maximum):fallback;
+
+/** Escape text content. `<`, `>` and `&` cover every text-state transition, including `</script>`. */
+export function escapeHtmlText(value:string):string {return value.replace(/[&<>]/g,c=>c==="&"?"&amp;":c==="<"?"&lt;":"&gt;");}
+/** Escape a double-quoted attribute value. */
+export function escapeHtmlAttribute(value:string):string {return value.replace(/[&<>"']/g,c=>c==="&"?"&amp;":c==="<"?"&lt;":c===">"?"&gt;":c==='"'?"&quot;":"&#39;");}
+
+const imageMimes=/^data:image\/(png|jpeg|gif|webp|avif);base64,[A-Za-z0-9+/]+={0,2}$/;
+const MAX_DATA_URL_BYTES=8*1024*1024;
+const rootRelative=/^\/(?![/\\])[A-Za-z0-9\-._~!$&'()*+,;=:@%/]*(\?[A-Za-z0-9\-._~!$&'()*+,;=:@%/?]*)?(#[A-Za-z0-9\-._~!$&'()*+,;=:@%/?]*)?$/;
+/**
+ * Static image URL policy. Absolute URLs pass the shared `safeLinkV1` canonicalizer
+ * (http/https only, no credentials, no whitespace/controls/backslashes, ≤2048 bytes).
+ * Root-relative paths use a closed RFC 3986 character set. `data:` is admitted only for
+ * bounded base64 raster images; `javascript:`, `vbscript:`, SVG and every other scheme fail.
+ */
+export function staticImageUrl(value:unknown):string|undefined {
+ if(typeof value!=="string"||value.length===0)return undefined;
+ if(value.startsWith("data:"))return value.length<=MAX_DATA_URL_BYTES&&imageMimes.test(value)?value:undefined;
+ if(value.startsWith("/"))return value.length<=2048&&rootRelative.test(value)?value:undefined;
+ return safeHref(value);
+}
+/** Canonical href through the live editor's link policy, or undefined. */
+export function staticSafeHref(value:unknown):string|undefined {return typeof value==="string"?safeHref(value):undefined;}
+function safeHref(value:string):string|undefined {
+ const attributes=resolveInlineFormatRenderAttributes(linkPolicy,[{name:P.href,value},{name:P.newWindow,value:false}]);
+ return attributes[0]?.name==="href"?attributes[0].value:undefined;
+}
+
+class Renderer {
+ readonly skipped:{kind:"node"|"format";type:string;path:string}[]=[];
+ readonly images:{image:string;state:StaticImageState}[]=[];
+ readonly hiddenTables:string[]=[];
+ readonly inactiveMerges:{table:string;merge:string;reason:StaticMergeConflictReason}[]=[];
+ readonly #skip:boolean;readonly #ids:boolean;readonly #resolve:StaticRenderOptions["resolveAsset"];
+ readonly #maxBytes:number;readonly #maxDepth:number;readonly #maxNodes:number;
+ #nodes=0;#textBytes=0;
+ constructor(options:StaticRenderOptions){
+  if(typeof options!=="object"||options===null||Array.isArray(options))throw new TypeError("Static render options must be an object");
+  if(options.unknown!==undefined&&options.unknown!=="error"&&options.unknown!=="skip")throw new TypeError("unknown must be \"error\" or \"skip\"");
+  if(options.resolveAsset!==undefined&&typeof options.resolveAsset!=="function")throw new TypeError("resolveAsset must be a function");
+  this.#skip=options.unknown==="skip";this.#ids=options.blockIds!==false;this.#resolve=options.resolveAsset;
+  const limits=options.limits??{};
+  this.#maxBytes=clamp(limits.maxInputBytes,16*1024*1024,64*1024*1024);
+  this.#maxDepth=clamp(limits.maxDepth,128,512);
+  this.#maxNodes=clamp(limits.maxNodes,250_000,2_000_000);
+ }
+ #fail(code:string,message:string,path:string):never {throw new StaticDocumentError(code,message,path);}
+
+ // ---- admission ------------------------------------------------------------------
+ admit(input:unknown):Element {
+  let value=input;
+  if(typeof input==="string"){
+   if(input.length>this.#maxBytes||utf8Length(input)>this.#maxBytes)this.#fail("limit","Document JSON exceeds its byte limit","$");
+   try{value=JSON.parse(input) as unknown;}catch{this.#fail("json","Document is not valid JSON","$");}
+  }
+  if(!isRecord(value))this.#fail("shape","Document must be a JSON object","$");
+  let root:unknown=value;
+  if(own(value,"kind")===undefined){
+   const keys=Object.keys(value);
+   if(own(value,"format")!=="breditor/document")this.#fail("format","Unsupported document format","$.format");
+   const version=own(value,"formatVersion");
+   if(version!==1&&version!==2)this.#fail("format","Unsupported document format version","$.formatVersion");
+   const allowed=version===2?["format","formatVersion","schema","schemaFingerprint","root"]:["format","formatVersion","schema","root"];
+   if(keys.some(key=>!allowed.includes(key))||allowed.some(key=>!Object.hasOwn(value as object,key)))this.#fail("shape","Document envelope has missing or unexpected fields","$");
+   const schema=own(value,"schema");
+   if(!isRecord(schema)||Object.keys(schema).length!==2||typeof own(schema,"name")!=="string"||!Number.isSafeInteger(own(schema,"version")))this.#fail("shape","Invalid schema binding","$.schema");
+   if(version===2&&(typeof own(value,"schemaFingerprint")!=="string"||!fingerprint.test(own(value,"schemaFingerprint") as string)))this.#fail("shape","Invalid schema fingerprint","$.schemaFingerprint");
+   root=own(value,"root");
+  }
+  const element=this.#node(root,"root",0);
+  if(!element||element.kind!=="element"||element.type!=="breditor/document")this.#fail("shape","Root must be a breditor/document element","root");
+  return element;
+ }
+ #node(value:unknown,path:string,depth:number,parent?:string):Node|undefined {
+  if(++this.#nodes>this.#maxNodes)this.#fail("limit","Document exceeds its node limit",path);
+  if(depth>this.#maxDepth)this.#fail("limit","Document exceeds its depth limit",path);
+  if(!isRecord(value))this.#fail("shape","Node must be an object",path);
+  const kind=own(value,"kind");
+  if(kind==="text")return this.#text(value,path,parent);
+  if(kind!=="element")this.#fail("shape","Node kind must be element or text",path);
+  const keys=Object.keys(value);
+  if(keys.length<4||keys.length>5||keys.some(key=>!["kind","type","entityId","properties","children"].includes(key)))this.#fail("shape","Element has missing or unexpected fields",path);
+  const type=own(value,"type"),properties=own(value,"properties"),children=own(value,"children");
+  if(typeof type!=="string"||type.length>256)this.#fail("shape","Element type must be a bounded string",path);
+  const rule=grammar[type];
+  if(!rule){
+   if(this.#skip){this.skipped.push({kind:"node",type,path});return undefined;}
+   this.#fail("unknown-node",`Unknown node type ${JSON.stringify(type.slice(0,64))}`,path);
+  }
+  if(Object.hasOwn(value,"entityId")&&own(value,"entityId")!==null)this.#fail("shape","Rich elements do not carry entity identities",path);
+  if(!isRecord(properties)||!Array.isArray(children))this.#fail("shape","Element properties must be an object and children an array",path);
+  const props=this.#properties(type,rule,properties,`${path}.properties`);
+  const raw=children as unknown[];
+  if(raw.length<rule.minimum||(rule.maximum!==undefined&&raw.length>rule.maximum))this.#fail("grammar","Child count is outside the rich grammar",path);
+  const admitted:Node[]=[];
+  for(let index=0;index<raw.length;index++){
+   const childPath=`${path}.children[${index}]`,child=this.#node(raw[index],childPath,depth+1,type);
+   if(!child)continue;
+   if(child.kind==="text"){if(rule.children!=="text")this.#fail("grammar","Text is not allowed here",childPath);}
+   else if(rule.children==="text"||rule.children==="none"||!rule.children.includes(child.type))this.#fail("grammar",`${child.type} is not allowed inside ${type}`,childPath);
+   admitted.push(child);
+  }
+  if(rule.firstTextBlock){
+   const first=raw[0],firstType=isRecord(first)?own(first,"type"):undefined;
+   if(firstType!=="breditor/paragraph"&&firstType!=="breditor/heading")this.#fail("grammar","List item must begin with a paragraph or heading",path);
+  }
+  if(type==="breditor/ordered-list"&&(props["start"] as number)+Math.max(raw.length-1,0)>MAX_ORDINAL)this.#fail("grammar","Ordered list final ordinal exceeds its ceiling",path);
+  return Object.freeze({kind:"element",type,properties:props,children:Object.freeze(admitted),path});
+ }
+ #text(value:Record<string,unknown>,path:string,parent:string|undefined):Text|undefined {
+  const keys=Object.keys(value);
+  if(keys.length!==3||!keys.includes("text")||!keys.includes("formats"))this.#fail("shape","Text node has missing or unexpected fields",path);
+  const text=own(value,"text"),formats=own(value,"formats");
+  if(typeof text!=="string"||loneSurrogate.test(text))this.#fail("shape","Text must be a well-formed string",path);
+  this.#textBytes+=utf8Length(text);
+  if(this.#textBytes>this.#maxBytes)this.#fail("limit","Document text exceeds its byte limit",path);
+  if(!Array.isArray(formats)||formats.length>256)this.#fail("shape","Formats must be a bounded array",path);
+  if(parent==="breditor/code-block"&&formats.length)this.#fail("grammar","Code blocks cannot contain inline formats",path);
+  const admitted:{type:string;properties:Record<string,unknown>}[]=[],seen=new Set<string>();
+  for(let index=0;index<formats.length;index++){
+   const format=formats[index] as unknown,formatPath=`${path}.formats[${index}]`;
+   if(!isRecord(format)||Object.keys(format).length!==2||typeof own(format,"type")!=="string"||!isRecord(own(format,"properties")))this.#fail("shape","Format literal must be {type, properties}",formatPath);
+   const type=own(format,"type") as string,properties=own(format,"properties") as Record<string,unknown>;
+   if(seen.has(type))this.#fail("format","Duplicate format literal",formatPath);
+   seen.add(type);
+   const declaration=catalogByKind.get(type);
+   if(!declaration){
+    if(this.#skip){this.skipped.push({kind:"format",type:type.slice(0,256),path:formatPath});continue;}
+    this.#fail("unknown-format",`Unknown format kind ${JSON.stringify(type.slice(0,64))}`,formatPath);
+   }
+   const names=Object.keys(properties);
+   if(names.length!==declaration.properties.length||declaration.properties.some(property=>!Object.hasOwn(properties,property.name)))this.#fail("format","Format literal properties do not match the catalog",formatPath);
+   const copy:Record<string,unknown>={};
+   for(const property of declaration.properties){
+    const item=properties[property.name],type=property.valueType;
+    const valid=type.kind==="boolean"?typeof item==="boolean":type.kind==="integer"?typeof item==="number"&&Number.isSafeInteger(item)&&(type.minimum===null||item>=type.minimum)&&(type.maximum===null||item<=type.maximum)
+     :typeof item==="string"&&!loneSurrogate.test(item)&&utf8Length(item)>=type.minimumUtf8Bytes&&utf8Length(item)<=type.maximumUtf8Bytes;
+    if(!valid)this.#fail("format","Format literal property is outside its declared domain",formatPath);
+    copy[property.name]=item;
+   }
+   admitted.push({type,properties:Object.freeze(copy)});
+  }
+  return Object.freeze({kind:"text",text,formats:Object.freeze(admitted)});
+ }
+ #properties(type:string,rule:Grammar,value:Record<string,unknown>,path:string):Record<string,unknown> {
+  const allowed=[...rule.required,...(rule.optional??[])],result:Record<string,unknown>={};
+  for(const key of Object.keys(value)){
+   if(!key.startsWith("breditor/")||!allowed.includes(key.slice(9)))this.#fail("property","Unexpected property",`${path}[${JSON.stringify(key.slice(0,64))}]`);
+   result[key.slice(9)]=value[key];
+  }
+  for(const name of rule.required)if(!Object.hasOwn(result,name))this.#fail("property",`Missing required property breditor/${name}`,path);
+  const at=(name:string)=>`${path}["breditor/${name}"]`;
+  const id=(name:string)=>{const item=result[name];if(typeof item!=="string"||!identity.test(item))this.#fail("property","Invalid identity",at(name));return item;};
+  const integer=(name:string,min:number,max:number)=>{const item=result[name];if(typeof item!=="number"||!Number.isSafeInteger(item)||item<min||item>max)this.#fail("property","Integer outside the rich contract",at(name));return item;};
+  const boolean=(name:string)=>{if(typeof result[name]!=="boolean")this.#fail("property","Required boolean property",at(name));};
+  if(type==="breditor/document"){id("document-id");return Object.freeze(result);}
+  id("block-id");
+  switch(type){
+   case "breditor/heading":integer("level",1,6);break;
+   case "breditor/ordered-list":integer("start",1,MAX_ORDINAL);break;
+   case "breditor/task-item":boolean("checked");break;
+   case "breditor/code-block":if(Object.hasOwn(result,"language")&&(typeof result["language"]!=="string"||!codeLanguage.test(result["language"])))this.#fail("property","Invalid code language token",at("language"));break;
+   case "breditor/table-row":id("row-id");break;
+   case "breditor/table-cell":id("column-id");boolean("header");break;
+   case "breditor/image":{
+    id("image-id");id("asset-id");id("asset-generation");boolean("decorative");
+    const alt=result["alt-text"];
+    if(typeof alt!=="string"||loneSurrogate.test(alt))this.#fail("property","Invalid image alt",at("alt-text"));
+    if(result["decorative"]===true?alt!=="":(utf8Length(alt)>4096||alt.trim()===""))this.#fail("property","Invalid image alt",at("alt-text"));
+    const width=Object.hasOwn(result,"width"),height=Object.hasOwn(result,"height");
+    if(width!==height)this.#fail("property","Image display dimensions must be supplied as a pair",path);
+    if(width){integer("width",1,4096);integer("height",1,4096);}
+    break;
+   }
+   case "breditor/table":id("table-id");break;
+  }
+  if(Object.hasOwn(result,"block-align"))integer("block-align",1,6);
+  if(Object.hasOwn(result,"block-direction"))integer("block-direction",1,3);
+  if(Object.hasOwn(result,"block-indent"))integer("block-indent",0,12);
+  if(Object.hasOwn(result,"line-height-percent"))integer("line-height-percent",100,300);
+  return Object.freeze(result);
+ }
+
+ // ---- output -----------------------------------------------------------------------
+ children(element:Element):string {return element.children.map(child=>this.#flow(child)).join("");}
+ #blockAttributes(node:Element,text:boolean):string {
+  if(!this.#ids)return "";
+  const id=escapeHtmlAttribute(String(node.properties["block-id"]));
+  return text?` data-rich-block="${id}" data-rich-text="${id}"`:` data-rich-block="${id}"`;
+ }
+ /** Allowlisted computed layout: `dir` from a closed token set, style from bounded integers only. */
+ #layout(node:Element):string {
+  const p=node.properties,align=p["block-align"] as number|undefined,direction=p["block-direction"] as number|undefined,indent=p["block-indent"] as number|undefined,height=p["line-height-percent"] as number|undefined;
+  const style:string[]=[];
+  if(align!==undefined)style.push(`text-align:${alignments[align-1]!}`);
+  if(indent!==undefined)style.push(`margin-inline-start:${indent*2}em`);
+  if(height!==undefined)style.push(`line-height:${height/100}`);
+  return (style.length?` style="${style.join(";")}"`:"")+(direction!==undefined?` dir="${directions[direction-1]!}"`:"");
+ }
+ #inline(node:Text):string {
+  let html=escapeHtmlText(node.text);
+  if(!node.formats.length)return html;
+  const selected=new Map(node.formats.map(format=>[format.type,format]));
+  const recipes=staticInlineRecipesV1.filter(recipe=>selected.has(recipe.formatKind));
+  for(const recipe of [...recipes].reverse()){
+   const literal=selected.get(recipe.formatKind)!;
+   const attributes:readonly InlineFormatRenderAttribute[]=recipe.attributes?resolveInlineFormatRenderAttributes(recipe.attributes,Object.entries(literal.properties).map(([name,value])=>({name,value:value as string|number|boolean}))):[];
+   let open=`<${recipe.element} data-rich-format="${escapeHtmlAttribute(recipe.formatKind)}"`;
+   if(recipe.classes.length)open+=` class="${escapeHtmlAttribute(recipe.classes.join(" "))}"`;
+   for(const attribute of attributes)open+=` ${attribute.name}="${escapeHtmlAttribute(attribute.value)}"`;
+   html=`${open}>${html}</${recipe.element}>`;
+  }
+  return html;
+ }
+ #flow(node:Node):string {
+  if(node.kind==="text")return this.#inline(node);
+  const p=node.properties,inner=()=>node.children.map(child=>this.#flow(child)).join("");
+  switch(node.type){
+   case "breditor/paragraph":case "breditor/heading":{
+    const tag=node.type==="breditor/paragraph"?"p":`h${String(p["level"])}`;
+    return `<${tag}${this.#blockAttributes(node,true)}${this.#layout(node)}>${node.children.length?inner():"<br>"}</${tag}>`;
+   }
+   case "breditor/code-block":{
+    const language=typeof p["language"]==="string"?` data-language="${escapeHtmlAttribute(p["language"])}"`:"";
+    return `<pre${this.#blockAttributes(node,true)}${this.#layout(node)}${language}><code>${node.children.length?inner():"<br>"}</code></pre>`;
+   }
+   case "breditor/bullet-list":return `<ul${this.#blockAttributes(node,false)}>${inner()}</ul>`;
+   case "breditor/ordered-list":return `<ol${this.#blockAttributes(node,false)} start="${String(p["start"])}">${inner()}</ol>`;
+   case "breditor/list-item":return `<li${this.#blockAttributes(node,false)}>${inner()}</li>`;
+   case "breditor/task-list":return `<ul${this.#blockAttributes(node,false)} data-task-list="" role="list">${inner()}</ul>`;
+   case "breditor/task-item":{
+    const value=this.#ids?escapeHtmlAttribute(String(p["block-id"])):"",id=this.#ids?` data-rich-task="${value}"`:"";
+    return `<li${this.#blockAttributes(node,false)}${id}><input type="checkbox" data-task-check="${value}" aria-label="Task completed" disabled=""${p["checked"]===true?' checked=""':""}><div data-task-body="">${inner()}</div></li>`;
+   }
+   case "breditor/blockquote":return `<blockquote${this.#blockAttributes(node,false)}>${inner()}</blockquote>`;
+   case "breditor/horizontal-rule":return `<hr${this.#blockAttributes(node,false)}>`;
+   case "breditor/image":return this.#image(node);
+   case "breditor/table":return this.#table(node);
+  }
+  // Unreachable: admission only produces grammar types handled above.
+  return this.#fail("unknown-node","Unhandled node type",node.path);
+ }
+ #image(node:Element):string {
+  const p=node.properties,binding=Object.freeze({image:String(p["image-id"]),asset:String(p["asset-id"]),generation:String(p["asset-generation"])});
+  let state:StaticImageState="unresolved",src:string|undefined;
+  if(this.#resolve){
+   try{
+    const value=this.#resolve(binding);
+    if(typeof value==="string"){src=staticImageUrl(value);state=src?"ready":"rejected";}
+    else if(value!==undefined&&value!==null)state="unresolved";
+   }catch{state="error";}
+  }
+  this.images.push({image:binding.image,state});
+  const size=typeof p["width"]==="number"?` width="${String(p["width"])}" height="${String(p["height"])}"`:"";
+  const caption=node.children.length?`<figcaption>${node.children.map(child=>this.#flow(child)).join("")}</figcaption>`:"";
+  const block=this.#ids?` data-rich-block="${escapeHtmlAttribute(String(p["block-id"]))}"`:"";
+  const image=`<img alt="${escapeHtmlAttribute(String(p["alt-text"]))}"${size}${src?` src="${escapeHtmlAttribute(src)}"`:""}>`;
+  return `<figure${block} data-rich-image="${escapeHtmlAttribute(binding.image)}" data-asset-state="${state}">${image}${caption}</figure>`;
+ }
+ #table(node:Element):string {
+  const tableId=String(node.properties["table-id"]);
+  const geometry=resolveTableGeometry(tableId,node,(code,message,suffix)=>this.#fail(code,message,`${node.path}${suffix}`));
+  for(const conflict of geometry.conflicts)this.inactiveMerges.push({table:tableId,...conflict});
+  if(geometry.rows.length===0||geometry.columns.length===0){this.hiddenTables.push(tableId);return "";}
+  const bodies=new Map<string,Element>();
+  for(const row of node.children)if(row.kind==="element")for(const cell of row.children)if(cell.kind==="element")bodies.set(cellKey({table:tableId,row:String(row.properties["row-id"]),column:String(cell.properties["column-id"])}),cell);
+  const block=this.#ids?` data-rich-block="${escapeHtmlAttribute(String(node.properties["block-id"]))}"`:"";
+  let html=`<table${block} data-rich-table="${escapeHtmlAttribute(tableId)}"><colgroup>`;
+  for(const column of geometry.columns)html+=`<col style="width:${column.width}px">`;
+  html+="</colgroup><tbody>";
+  for(const row of geometry.rows){
+   html+="<tr>";
+   for(const column of geometry.columns){
+    const cell=geometry.cells.get(`${row}\u0000${column.id}`)!;
+    if(cellKey(cell.base)!==cellKey(cell.master))continue;
+    const base=bodies.get(cellKey(cell.base))!,tag=base.properties["header"]===true?"th":"td";
+    html+=`<${tag} rowspan="${cell.rowSpan}" colspan="${cell.columnSpan}"${this.#ids?` data-rich-cell="${escapeHtmlAttribute(cellKey(cell.base))}"`:""}>`;
+    for(const source of cell.sources){
+     const original=bodies.get(cellKey(source));if(!original)continue;
+     html+=`<div data-source-cell="${escapeHtmlAttribute(JSON.stringify(source))}">${original.children.map(child=>this.#flow(child)).join("")}</div>`;
+    }
+    html+=`</${tag}>`;
+   }
+   html+="</tr>";
+  }
+  return `${html}</tbody></table>`;
+ }
+}
+
+const cellKey=(cell:Cell):string=>JSON.stringify([cell.table,cell.row,cell.column]);
+
+// ---------------------------------------------------------------------------------------
+// Table geometry: a direct port of Rust `TableShape::resolve` (rich_content/table_geometry.rs)
+// and the `table_view` property admission in `ast_properties.rs`. Deterministic for any
+// record order; inactive merges keep content in their base cells.
+
+interface Region {id:string;stamp:readonly [bigint,bigint,bigint];rows:readonly string[];columns:readonly string[];rowStart:number;rowEnd:number;columnStart:number;columnEnd:number}
+type Fail=(code:string,message:string,pathSuffix:string)=>never;
+const unique=(values:readonly string[])=>new Set(values).size===values.length;
+
+function interval(current:readonly string[],context:readonly string[],start:number,end:number):[number,number]|StaticMergeConflictReason {
+ const members=context.slice(start,end+1),positions=new Map(current.map((id,index)=>[id,index]));
+ const surviving=members.flatMap(id=>positions.has(id)?[positions.get(id)!]:[]);
+ if(!surviving.length)return "axes-deleted";
+ for(let index=1;index<surviving.length;index++)if(surviving[index-1]!>=surviving[index]!)return "axes-reordered";
+ const first=surviving[0]!,last=surviving[surviving.length-1]!,known=new Set(context),inside=new Set(members);
+ for(let index=first;index<=last;index++){const id=current[index]!;if(known.has(id)&&!inside.has(id))return "old-axis-moved-inside";}
+ return [first,last];
+}
+
+/** @internal Resolve one admitted table node into visible geometry. */
+export function resolveTableGeometry(table:string,node:{readonly properties:Readonly<Record<string,unknown>>;readonly children:readonly unknown[]},fail:Fail):{rows:string[];columns:Column[];cells:Map<string,Resolved>;conflicts:{merge:string;reason:StaticMergeConflictReason}[]} {
+ const p=node.properties,records=p["columns"];
+ if(!Array.isArray(records)||records.length>128)fail("table","Table columns must be an array of at most 128 records",'.properties["breditor/columns"]');
+ const columns=(records as unknown[]).map((record,index):Column=>{
+  const at=`.properties["breditor/columns"][${index}]`;
+  if(!isRecord(record)||Object.keys(record).length!==2)fail("table","Column record must be {id, width}",at);
+  const id=own(record,"id"),width=own(record,"width");
+  if(typeof id!=="string"||!identity.test(id))fail("table","Invalid table column identity",at);
+  if(typeof width!=="number"||!Number.isSafeInteger(width)||width<32||width>4096)fail("table","Column width outside 32–4096",at);
+  return {id,width};
+ });
+ const rowNodes=node.children as readonly Element[];
+ if(rowNodes.length>256||rowNodes.length*columns.length>4096)fail("table","Table exceeds its row or base-cell ceiling","");
+ const rows=rowNodes.map((row,rowIndex)=>{
+  if(row.children.length!==columns.length)fail("table","Row must contain exactly one base cell per column",`.children[${rowIndex}]`);
+  row.children.forEach((cell,index)=>{if(cell.kind!=="element"||cell.properties["column-id"]!==columns[index]!.id)fail("table","Base cell order must match stable table column order",`.children[${rowIndex}].children[${index}]`);});
+  return String(row.properties["row-id"]);
+ });
+ const columnIds=columns.map(column=>column.id);
+ if(!unique(rows)||!unique(columnIds))fail("table","Table axes must be unique","");
+ const mergeRecords=p["merges"],retractedRecords=p["retracted-merges"];
+ if(!Array.isArray(mergeRecords)||mergeRecords.length>256)fail("table","Merges must be an array of at most 256 records",'.properties["breditor/merges"]');
+ if(!Array.isArray(retractedRecords)||retractedRecords.length>256)fail("table","Retracted merges must be an array of at most 256 identities",'.properties["breditor/retracted-merges"]');
+ const fields=["id","lamport","writer","counter","rows","columns","first-row","last-row","first-column","last-column"];
+ const regions=(mergeRecords as unknown[]).map((record,index):Region=>{
+  const at=`.properties["breditor/merges"][${index}]`;
+  if(!isRecord(record)||Object.keys(record).length!==fields.length||fields.some(field=>!Object.hasOwn(record,field)))fail("table","Merge record must contain exactly its declared fields",at);
+  const string=(key:string)=>{const value=own(record,key);if(typeof value!=="string"||!identity.test(value))fail("table","Invalid merge identity field",at);return value;};
+  const word=(key:string)=>{const value=own(record,key);if(typeof value!=="string"||!canonicalU64.test(value)||BigInt(value)>U64_MAX)fail("table","Causal words must be canonical unsigned decimal strings",at);return BigInt(value);};
+  const axes=(key:string,max:number)=>{const value=own(record,key);if(!Array.isArray(value)||value.length>max||value.some(item=>typeof item!=="string"||!identity.test(item)))fail("table","Invalid merge axis context",at);return value as string[];};
+  const id=string("id"),lamport=word("lamport"),writer=word("writer"),counter=word("counter");
+  if(writer===0n)fail("table","Merge writer cannot be zero",at);
+  const contextRows=axes("rows",256),contextColumns=axes("columns",128);
+  if(contextRows.length*contextColumns.length>4096||!unique(contextRows)||!unique(contextColumns))fail("table","Invalid merge context shape",at);
+  const rowStart=contextRows.indexOf(string("first-row")),rowEnd=contextRows.indexOf(string("last-row")),columnStart=contextColumns.indexOf(string("first-column")),columnEnd=contextColumns.indexOf(string("last-column"));
+  if(rowStart<0||rowEnd<0||columnStart<0||columnEnd<0||rowStart>rowEnd||columnStart>columnEnd||(rowStart===rowEnd&&columnStart===columnEnd))fail("table","Invalid captured merge bounds",at);
+  return {id,stamp:[lamport,writer,counter],rows:contextRows,columns:contextColumns,rowStart,rowEnd,columnStart,columnEnd};
+ });
+ for(let index=1;index<regions.length;index++)if(regions[index-1]!.id>=regions[index]!.id)fail("table","Merge records must have unique ascending identity order",'.properties["breditor/merges"]');
+ const retracted=(retractedRecords as unknown[]).map((value,index)=>{if(typeof value!=="string"||!identity.test(value))fail("table","Invalid retracted merge identity",`.properties["breditor/retracted-merges"][${index}]`);return value;});
+ for(let index=1;index<retracted.length;index++)if(retracted[index-1]!>=retracted[index]!)fail("table","Merge retractions must have unique ascending identity order",'.properties["breditor/retracted-merges"]');
+ const compare=(left:Region,right:Region):number=>{
+  for(let index=0;index<3;index++){const a=left.stamp[index]!,b=right.stamp[index]!;if(a!==b)return a<b?1:-1;}
+  return left.id<right.id?1:left.id>right.id?-1:0;
+ };
+ const ordered=regions.filter(region=>!retracted.includes(region.id)).sort(compare);
+ const cells=new Map<string,Resolved>(),grid:Resolved[]=[];
+ for(const row of rows)for(const column of columnIds){const base={table,row,column};const cell={base,master:base,rowSpan:1,columnSpan:1,sources:[base]};grid.push(cell);cells.set(`${row}\u0000${column}`,cell);}
+ const occupied=new Array<boolean>(grid.length).fill(false),conflicts:{merge:string;reason:StaticMergeConflictReason}[]=[];
+ for(const region of ordered){
+  const r=interval(rows,region.rows,region.rowStart,region.rowEnd),c=typeof r==="string"?r:interval(columnIds,region.columns,region.columnStart,region.columnEnd);
+  if(typeof r==="string"||typeof c==="string"){conflicts.push({merge:region.id,reason:typeof r==="string"?r:c as StaticMergeConflictReason});continue;}
+  const [firstRow,lastRow]=r,[firstColumn,lastColumn]=c;
+  if(firstRow===lastRow&&firstColumn===lastColumn){conflicts.push({merge:region.id,reason:"singleton"});continue;}
+  const indices:number[]=[];
+  for(let row=firstRow;row<=lastRow;row++)for(let column=firstColumn;column<=lastColumn;column++)indices.push(row*columnIds.length+column);
+  if(indices.some(index=>occupied[index])){conflicts.push({merge:region.id,reason:"overlap"});continue;}
+  const masterIndex=firstRow*columnIds.length+firstColumn,master=grid[masterIndex]!.base,sources=indices.map(index=>grid[index]!.base);
+  for(const index of indices){occupied[index]=true;const cell=grid[index]!;Object.assign(cell,{master,sources:[],rowSpan:0,columnSpan:0});}
+  Object.assign(grid[masterIndex]!,{rowSpan:lastRow-firstRow+1,columnSpan:lastColumn-firstColumn+1,sources});
+ }
+ return {rows,columns,cells,conflicts};
+}
