@@ -35,3 +35,5 @@ export {mountRichWritingTools,type RichWritingToolsPanel,type RichWritingToolsPa
 export type {RichFullscreenHost,RichFullscreenHostState,RichFullscreenOptions,RichFullscreenState,RichFullscreenController} from "./fullscreen_types.js";
 export {createRichFullscreen} from "./fullscreen_controller.js";
 export {mountRichFullscreenControls,type RichFullscreenControls,type RichFullscreenControlsOptions} from "./fullscreen_controls.js";
+export {createRichSlashCommands,filterRichSlashItems,standardRichSlashPicks,type RichSlashContext,type RichSlashItem,type RichSlashPick} from "./slash_command_items.js";
+export {mountRichSlashCommands,type RichSlashCommandHost,type RichSlashCommands,type RichSlashCommandOptions,type RichSlashCommandState,type RichSlashCancelReason,type RichSlashExecution,type RichSlashProvider,type RichSlashProviderRequest} from "./slash_command_session.js";

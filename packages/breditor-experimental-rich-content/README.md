@@ -69,6 +69,29 @@ calls the browser directly from a user gesture, checks the exact idle publicatio
 and excludes composition. No document action, Wasm protocol change, remote hold,
 DOM reparenting or CSS fallback is introduced. See [the contract](../../docs/RICH_WRITING_TOOLS.md#native-fullscreen).
 
+## Slash commands
+
+`mountRichSlashCommands(dom, {items})` borrows a DOM coordinator. It opens a
+`role="listbox"` popup outside the editing surface when a typed `/` (at the
+start of a block or after whitespace) is confirmed by the next Rust publication.
+DOM focus stays in the editor. The surface gets `aria-controls`,
+`aria-activedescendant` and `aria-autocomplete` while the popup is open.
+
+- **Keyboard.** Up and Down move through the items, Enter and Tab choose one,
+  and Escape dismisses the popup.
+- **Items.** `createRichSlashCommands(controls, picks?)` adapts existing
+  toolbar controls.
+- **Running a command.** A chosen item first removes the trigger with
+  `replaceTextRange` (or `replaceGeneralRangePlainText` under `general-v1`). It
+  then publishes its existing command, so Undo takes two steps.
+- **Cancellation.** Async providers receive an `AbortSignal`, and superseded or
+  late results are discarded. The trigger is identified by block id, slash
+  offset and the exact text before it, and every publication re-checks it.
+  Composition, blur, read-only, disposal, or caret and text changes cancel the
+  session.
+
+See [the contract](../../docs/SLASH_COMMANDS.md).
+
 ## Document placeholder
 
 `placeholder: 'Start writing…'` on a DOM mount admits a literal document-level prompt
