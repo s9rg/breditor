@@ -10,6 +10,8 @@ export {mountRichWritingTools} from "./dist/browser/writing_tools_panel.js";
 export {createRichFullscreen} from "./dist/browser/fullscreen_controller.js";
 export {mountRichFullscreenControls} from "./dist/browser/fullscreen_controls.js";
 export {mountRichTableColumnResize,richTableColumnResizeCommit,clampRichTableColumnWidth,richTableColumnResizeStyles,RICH_TABLE_COLUMN_WIDTH_MIN,RICH_TABLE_COLUMN_WIDTH_MAX} from "./dist/browser/table_column_resize.js";
+export {createRichSlashCommands,filterRichSlashItems,standardRichSlashPicks} from "./dist/browser/slash_command_items.js";
+export {mountRichSlashCommands} from "./dist/browser/slash_command_session.js";
 
 const searchResults=new WeakMap();
 class OwnedRichSearchResults {
