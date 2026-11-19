@@ -121,6 +121,8 @@ describe("contextual UI borrows the standard toolbar contract",()=>{
    f.setReadOnly(true);expect(menu.state().open).toBe(false);
    const blocked=new MouseEvent("contextmenu",{bubbles:true,cancelable:true,clientX:40,clientY:50});surface.dispatchEvent(blocked);expect(blocked.defaultPrevented).toBe(false);
    f.setReadOnly(false);expect(menu.open({x:5,y:5})).toBe(true);document.body.dispatchEvent(new MouseEvent("pointerdown",{bubbles:true}));expect(menu.state().open).toBe(false);
+   const native=new MouseEvent("contextmenu",{bubbles:true,cancelable:true,clientX:40,clientY:50,shiftKey:true});surface.dispatchEvent(native);
+   expect(native.defaultPrevented).toBe(false);expect(menu.state().open).toBe(false);
    expect(f.errors).toEqual([]);menu.dispose();expect(menu.element.isConnected).toBe(false);
   });
   it(`${mode}: editor disposal tears down contextual UI and leases`,()=>{

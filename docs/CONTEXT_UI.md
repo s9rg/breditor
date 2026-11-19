@@ -75,6 +75,9 @@ so toolbar styles apply), `label`, `onError`; the menu also takes `hideDisabled`
 
 ## Context menu behavior
 
+- **Shift+right-click always shows the browser's native menu**, which carries
+  spelling suggestions and native clipboard commands the editor menu does not.
+
 - Opens on `contextmenu` in the editor surface (at the pointer, or at the
   selection for keyboard-invoked events), **Shift+F10**, the **ContextMenu** key,
   or `menu.open(point?)`. It does not open (and the native menu is left alone)

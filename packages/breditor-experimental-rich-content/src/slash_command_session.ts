@@ -127,7 +127,13 @@ class SlashCommands implements RichSlashCommands {
   if(this.#disposed)return;
   try{
    const session=this.#session;
-   if(session){const check=this.#check(session.trigger);if(!check.ok){this.cancel(check.reason);return;}if(check.query!==session.query||!session.loading)this.#request(session,check);return;}
+   if(session){
+    const check=this.#check(session.trigger);if(!check.ok){this.cancel(check.reason);return;}
+    // A changed query always re-requests. Unrelated publications (including remote edits) only re-filter a
+    // static list; a provider is not called again for the same query, so remote typing cannot flood it.
+    if(check.query!==session.query||typeof this.#options.items!=="function"&&!session.loading)this.#request(session,check);
+    return;
+   }
    const armed=this.#armed;if(!armed)return;
    const state=this.#host.searchState();if(state.closed||state.busy||state.composing||state.readOnly)return;
    const view=this.#host.view();if(view.documentJson===armed.documentJson)return;

@@ -125,6 +125,14 @@ describe("slash-command session",()=>{
   expect(t.slash.state().loading).toBe(false);expect(labels(t.slash)).toEqual(["Heading 1","Heading 2","Heading 3","Text"]);
   type(t.dom,"x");const last=pending.at(-1)!;key(t.dom,"Escape");expect(last.signal.aborted).toBe(true);last.resolve(all);await Promise.resolve();expect(t.slash.state().open).toBe(false);
  });
+ it("does not call an async provider again when an unrelated publication leaves the query unchanged",async()=>{
+  const all=createRichSlashCommands(defaultToolbar),queries:string[]=[];
+  const t=setup("",{items:query=>{queries.push(query);return Promise.resolve(filterRichSlashItems(all,query));}});
+  type(t.dom,"/h");await Promise.resolve();await Promise.resolve();expect(queries).toEqual(["","h"]);expect(t.slash.state().loading).toBe(false);
+  t.dom.execute({kind:"setHeading",block:"b",level:1});
+  expect(t.slash.state().open).toBe(true);expect(queries).toEqual(["","h"]);
+  type(t.dom,"e");expect(queries).toEqual(["","h","he"]);
+ });
  it("reports provider failures and inapplicable commands without DOM fallbacks",async()=>{
   const onError=vi.fn();let t=setup("",{onError,items:()=>Promise.reject(Error("offline"))});type(t.dom,"/");await Promise.resolve();await Promise.resolve();
   expect(onError).toHaveBeenCalledWith(Error("offline"));expect(menu().querySelector("[role=status]")!.textContent).toBe("offline");

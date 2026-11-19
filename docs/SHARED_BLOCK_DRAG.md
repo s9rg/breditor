@@ -89,6 +89,12 @@ under `sibling-v1` it resolves to "before/after the blockquote".
 - **Keyboard in the editor surface.** Alt+Shift+ArrowUp/ArrowDown moves the caret's
   block one sibling slot. This shortcut is reserved only while the handle is mounted.
   No existing shared or rich keymap binds it (Alt+PageUp/PageDown is flow navigation).
+  On macOS it does replace the native Option+Shift+Up/Down "extend selection to
+  paragraph" shortcut, so `editorShortcut: false` leaves those keys to the browser; the
+  same keys on the focused handle keep working.
+- **Busy editors.** A move requested while the editor is busy or composing is refused
+  (`onReject` with `native`), never queued: a queued plan would be stale by the time
+  the current work publishes. Success is reported only after the revision advanced.
 - **Announcements.** Results are announced through a polite `role="status"` live
   region inside the layer.
 

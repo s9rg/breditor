@@ -160,7 +160,8 @@ export function mountRichContextMenu(host:RichContextUiHost,options:RichContextM
  try{
   unsubscribe=host.subscribeContextUi(update);
   surface.addEventListener("contextmenu",event=>{
-   if(event.defaultPrevented)return;
+   // Shift+right-click keeps the browser's own menu (spelling suggestions, native clipboard, inspection).
+   if(event.defaultPrevented||event.shiftKey&&(event.clientX||event.clientY))return;
    // Keyboard-invoked context menus report no pointer position; anchor those to the selection.
    const point=event.clientX||event.clientY?{x:event.clientX,y:event.clientY}:undefined;
    try{if(openMenu(point))event.preventDefault();}catch(error){report(error);}

@@ -170,6 +170,21 @@ describe("SharedBlockDrag DOM handle",()=>{
    expect(onReject).toHaveBeenCalledWith({block:"a",reason:"native"});expect(onMove).not.toHaveBeenCalled();expect(t.errors).toHaveLength(1);
   }finally{t.dispose();}
  });
+ it("can leave the native Alt+Shift+Arrow selection shortcut to the browser",()=>{
+  const t=fixture({editorShortcut:false});try{
+   const event=key(t.dom.surface,"ArrowDown",{altKey:true,shiftKey:true});
+   expect(event.defaultPrevented).toBe(false);expect(t.raw.dispatch).not.toHaveBeenCalled();
+   expect(t.drag.step("a",1)).toBe(true);expect(t.top()[0]).toBe("b");
+  }finally{t.dispose();}
+ });
+ it("refuses rather than queues a move while the editor is composing",()=>{
+  const onReject=vi.fn(),onMove=vi.fn(),t=fixture({onReject,onMove});try{
+   t.dom.surface.dispatchEvent(new CompositionEvent("compositionstart",{bubbles:true,data:""}));
+   expect(t.dom.contextUiState().composing).toBe(true);
+   expect(t.drag.step("a",1)).toBe(false);expect(t.raw.dispatch).not.toHaveBeenCalled();
+   expect(onReject).toHaveBeenCalledWith({block:"a",reason:"native"});expect(onMove).not.toHaveBeenCalled();
+  }finally{t.dispose();}
+ });
  it("hides the handle and refuses moves while read-only",()=>{
   const t=fixture({},{readOnly:true});try{
    pointer(t.element("b"),"pointermove");expect(t.drag.handle.hidden).toBe(true);

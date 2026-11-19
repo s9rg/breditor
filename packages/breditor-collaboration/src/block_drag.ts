@@ -13,6 +13,10 @@ export interface SharedBlockDragOptions {
  policy?:SharedBlockMovePolicy;
  /** Accessible handle label. */
  label?:string;
+ /** Reserve Alt+Shift+ArrowUp/ArrowDown inside the editor to move the caret's block (default true). On macOS
+  * this replaces the native Option+Shift+Up/Down "extend selection to paragraph" shortcut; pass false to keep
+  * it. The same keys on the focused handle always work. */
+ editorShortcut?:boolean;
  /** Called after Rust accepted one move publication. */
  onMove?:(event:{block:string;parent:string|null;before:string|null;source:"pointer"|"keyboard"})=>void;
  /** Called when a pointer drop or keyboard request is refused before or by native admission. */
@@ -91,11 +95,15 @@ export function mountSharedBlockDrag<P extends SharedSelectionPolicy>(editor:Sha
   * exact revision: a stale plan is refused by the native guard and nothing is published. */
  function plan(block:string,produce:(value:RichPresentationModel)=>SharedBlockMoveResolution,source:"pointer"|"keyboard",focus:boolean):boolean{
   if(disposed)return false;
+  // While the editor is busy or composing, execute() only queues; that queued move would be refused as
+  // stale once the current work publishes. Refuse it now rather than report a move that never happens.
+  const state=editor.contextUiState();if(state.closed||state.busy||state.composing)return reject(block,"native");
   try{if(editor.view().historyGrouping==="typing-v1")editor.closeTypingGroup();}catch{return reject(block,"native");}
   const value=model(),resolution=produce(value);
   if(resolution.kind==="unchanged"){announce("Block left in place.");return false;}
   if(resolution.kind==="rejected")return reject(block,resolution.reason);
   try{editor.execute({commands:[resolution.command]},focus,value.view.revision);}catch{return reject(block,"native");}
+  if(editor.view().revision===value.view.revision)return reject(block,"native");
   announce("Block moved.");
   try{options.onMove?.({block,parent:resolution.parent,before:resolution.before,source});}catch{/* host callback cannot rewind */}
   return true;
@@ -163,7 +171,7 @@ export function mountSharedBlockDrag<P extends SharedSelectionPolicy>(editor:Sha
  },{signal});
  // Reserved editor shortcut: Alt+Shift+ArrowUp/ArrowDown moves the caret's block one sibling slot.
  layer.parentElement!.addEventListener("keydown",event=>{
-  if(event.isComposing||!(event.target instanceof Node)||!surface.contains(event.target))return;
+  if(options.editorShortcut===false||event.isComposing||!(event.target instanceof Node)||!surface.contains(event.target))return;
   if(!event.altKey||!event.shiftKey||event.ctrlKey||event.metaKey||(event.key!=="ArrowUp"&&event.key!=="ArrowDown"))return;
   event.preventDefault();event.stopPropagation();
   const block=sharedSelectionBlock(model());if(!block){announce(MESSAGES.not_movable);return;}
