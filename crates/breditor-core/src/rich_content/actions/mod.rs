@@ -44,6 +44,7 @@ mod masked_general_range_plan;
 mod masked_text;
 mod merge_table_cells;
 mod move_axis;
+mod move_block;
 mod move_table_column;
 mod move_table_row;
 mod node_patch;
@@ -116,6 +117,7 @@ pub use join_text_blocks::JoinTextBlocks;
 pub use masked_general_range_plan::RichMaskedGeneralRangePlan;
 pub use masked_text::RichMaskedTextSpan;
 pub use merge_table_cells::MergeTableCells;
+pub use move_block::MoveBlock;
 pub use move_table_column::MoveTableColumn;
 pub use move_table_row::MoveTableRow;
 pub use outdent_list_items::OutdentListItems;
@@ -241,6 +243,8 @@ pub enum RichAction {
     InsertImage(InsertImage),
     /// Remove an image flow node, without deleting shared asset bytes.
     DeleteImage(DeleteImage),
+    /// Move one retained block subtree to a stable parent/before-anchor position.
+    MoveBlock(MoveBlock),
     /// Move one stable row and every owned body together.
     MoveTableRow(MoveTableRow),
     /// Move one stable column, its width and its per-row bodies together.
@@ -357,6 +361,7 @@ impl RichAction {
             Self::DeleteTable(action) => action.apply(context, document),
             Self::InsertImage(action) => action.apply(context, document),
             Self::DeleteImage(action) => action.apply(context, document),
+            Self::MoveBlock(action) => action.apply(context, document),
             Self::MoveTableRow(action) => action.apply(context, document),
             Self::MoveTableColumn(action) => action.apply(context, document),
             Self::MergeTableCells(action) => action.apply(context, document),
@@ -472,6 +477,18 @@ pub enum RichActionError {
     /// The parent is absent or is not a rich flow container.
     #[error("rich flow parent is absent or has the wrong kind")]
     FlowParent,
+    /// A block move source is a row, cell, caption or other non-flow child.
+    #[error("rich block move source is not a movable flow or item child")]
+    MoveSource,
+    /// A block move destination is the moved block itself or inside its subtree.
+    #[error("rich block move destination is inside the moved block")]
+    MoveCycle,
+    /// A block move before-anchor is not a direct child of the destination parent.
+    #[error("rich block move before-anchor is not a child of the destination")]
+    MoveAnchor,
+    /// A block move would leave a list or task item without a leading text line.
+    #[error("rich block move would leave an item without a leading paragraph or heading")]
+    MoveItemLead,
     /// Deletion needs an explicit replacement to retain a nonempty flow container.
     #[error("rich flow deletion requires an explicit replacement for the sole child")]
     FlowWouldBeEmpty,

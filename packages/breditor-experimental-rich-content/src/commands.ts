@@ -70,6 +70,9 @@ export type RichCommand =
  |{kind:"insertTableColumn";data:{table:string;before:string|null;column:TableColumnDraft;cells:readonly {row:string;cell:TableCellDraft}[]}}
  |{kind:"deleteTableColumn";data:{table:string;column:string}}
  |{kind:"moveTableRow";data:{table:string;row:string;before:string|null}}
+ /** Move one retained block (never copied or deleted) into `parent` (null = document root) before
+  * the direct child `before` (null = append), as one native history group. */
+ |{kind:"moveBlock";data:{block:string;parent:string|null;before:string|null}}
  |{kind:"moveTableColumn";data:{table:string;column:string;before:string|null}}
  |{kind:"resizeTableColumn";data:{table:string;column:string;width:number}}
  |{kind:"mergeTableCells";data:{merge:string;replica:string;counter:string;lamport:string}}
