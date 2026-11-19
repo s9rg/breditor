@@ -93,6 +93,17 @@ cannot preserve layout, captions, rich tables or exact code text. Compatibility
 notices distinguish that requirement from actual conversion loss; this is not
 full GFM conformance. Native schema admission still validates both directions.
 
+Within that dialect, paragraph hard breaks export as backslash line breaks,
+uniform left/center/right table columns as GFM delimiter alignment, empty code
+blocks as empty fences, and captionless unsized images with a portable URL as
+Markdown images. Each emitted inline/image is re-parsed and must reproduce the
+same text, formats, URL and alt text, otherwise that block uses HTML. Adjacent
+separate lists alternate their bullet or ordered delimiter so they stay
+separate on reimport. Import reports fence info beyond the language word
+(`unsupported-attribute`), raw comments/declarations (`removed-content`) and
+ordered starts below 1, which become 1 (`list-numbering`). Single-tilde
+strikethrough and bare URL/`www.` autolink literals remain literal text.
+
 HTML inline fragments retain text scope; explicit blocks use flow. Hosts may
 request flow or grid admission explicitly, but native kind/shape checks still
 reject incompatible content. HTML merged cells use relative, complete,

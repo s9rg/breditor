@@ -32,6 +32,8 @@ export interface LocalEditor {
  /** Borrow optional native counts/outline controls without transferring this owner. */
  writing():import("@breditor/experimental-rich-content").RichWritingToolsHost;
  fullscreen():import("@breditor/experimental-rich-content").RichFullscreenHost;
+ /** Borrowed port for the opt-in selection toolbar and context menu; it never publishes. */
+ contextUi():import("@breditor/experimental-rich-content").RichContextUiHost;
  setPlaceholderLabel(label:string|null):void;
  readonly surface:HTMLDivElement;readonly toolbar:HTMLDivElement;readonly status:HTMLParagraphElement;
  execute(command:RichCommand,focus?:boolean,revision?:string):RichCommandOutcome|"queued";
@@ -70,6 +72,7 @@ class LocalEditorOwner implements LocalEditor {
  search():RichSearchHost{this.#dom.view();return this.#dom;}
  writing():import("@breditor/experimental-rich-content").RichWritingToolsHost{this.#dom.view();return this.#dom;}
  fullscreen():import("@breditor/experimental-rich-content").RichFullscreenHost{this.#dom.view();return this.#dom;}
+ contextUi():import("@breditor/experimental-rich-content").RichContextUiHost{this.#dom.view();return this.#dom;}
  setPlaceholderLabel(label:string|null):void{this.#dom.setPlaceholderLabel(label);}
  insertImageFiles(store:RichAssetStore,files:readonly File[],position:FlowPosition):Promise<readonly AssetInfo[]>{return insertImageFiles(this.#dom,store,files,position);}
  dispose():void{if(this.#disposed)return;this.#disposed=true;try{this.#dom.dispose();}finally{this.#release();}}

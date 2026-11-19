@@ -25,6 +25,8 @@ import type {RichInputRuleOutcome} from "./core.js";
 import type {RichWritingToolsRead} from "./writing_tools_types.js";
 import {RichWritingEvents,RichWritingReadRegistry,type RichWritingToolsHostState} from "./writing_tools_host.js";
 import {prepareRichPlaceholder,RichPlaceholderPresentation,richPlaceholderStyles} from "./placeholder.js";
+import {borrowContextControl,contextSelectionKind,type BorrowedControl} from "./context_ui_host.js";
+import type {RichContextControlView,RichContextUiHostState} from "./context_ui_types.js";
 
 export interface RichEditorOptions<P extends RichSelectionPolicy="original"> extends RenderOptions {
  core:RichCoreEditor<P>;
@@ -69,6 +71,7 @@ export class RichDomEditor<P extends RichSelectionPolicy="original"> {
  readonly status:HTMLParagraphElement;
  #root:HTMLElement;#options:RichEditorOptions<P>;#model:RichModel<P>;#abort=new AbortController();#queue:Work[]=[];#busy=false;#disposed=false;#composition:Composition|undefined;
  #namespace:string;#counter=0n;#logicalSelection=false;#controls:{control:ToolbarControl<P>;view:RichControlView<ActionContext<P>>}[]=[];
+ readonly #borrowed=new Set<BorrowedControl<ToolbarControl<P>,ActionContext<P>>>();
  readonly #selectionPolicy:P;readonly #document:RichDocumentCoreEditor|undefined;
  #general=false;
  readonly #interchange:RichClipboardInterchange|undefined;
@@ -100,7 +103,7 @@ export class RichDomEditor<P extends RichSelectionPolicy="original"> {
   const seen=new Set<string>();
   for(const control of options.toolbar??defaultToolbarFor<P>()){
    if(seen.has(control.id))throw Error("Duplicate rich toolbar control identity");seen.add(control.id);
-   const view=mountToolbarControl(this.toolbar,control,{prefix:"rich",signal:this.#abort.signal,sync:()=>this.#sync(),stamp:()=>JSON.stringify(options.core.view()),attempt:work=>this.#attempt(work),focus:()=>this.focus(),run:(value,fields)=>{const command=control.command(this.#context(),value,fields);if(command)this.execute(command);}});
+   const view=this.#mountControl(this.toolbar,control,this.#abort.signal);
    this.#controls.push({control,view});
   }
   render(this.surface,this.#model,options);this.#refreshControls();
@@ -131,8 +134,19 @@ export class RichDomEditor<P extends RichSelectionPolicy="original"> {
  #context():ActionContext<P>{return {core:this.#options.core,model:this.#model,allocate:this.#allocate,stamp:()=>({replica:"1",counter:String(this.#counter++),lamport:this.#model.view.revision})};}
  #attempt(work:()=>void):void {try{work();}catch(error){this.#report(error);this.#reconcile();}}
  #report(error:unknown):void {this.status.textContent=error instanceof Error?error.message:"Rich editor operation failed";try{this.#options.onError?.(error);}catch{/* A host callback cannot rewind committed content. */}}
- #refreshControls():void {
-  const context=this.#context(),stamp=JSON.stringify(this.#options.core.view());for(const {control,view} of this.#controls)view.refresh(context,control.enabled(context)&&(this.#model.view.readOnly!==true||control.readOnlySafe===true),stamp);
+ #mountControl(container:HTMLElement,control:ToolbarControl<P>,signal:AbortSignal):RichControlView<ActionContext<P>>{
+  return mountToolbarControl(container,control,{prefix:"rich",signal,sync:()=>this.#sync(),stamp:()=>JSON.stringify(this.#options.core.view()),attempt:work=>this.#attempt(work),focus:()=>this.focus(),run:(value,fields)=>{const command=control.command(this.#context(),value,fields);if(command)this.execute(command);}});
+ }
+ /** Context UI port: the same admitted control, widget, gating and command path, in another presentation. */
+ contextUiState():RichContextUiHostState{const view=this.#model.view;return Object.freeze({revision:view.revision,closed:this.#disposed,busy:this.#busy,composing:!!this.#composition,readOnly:view.readOnly===true,selection:contextSelectionKind(view.selection)});}
+ subscribeContextUi(listener:()=>void):()=>void{this.#live();return this.#writingEvents.subscribe(listener);}
+ contextControlIds():readonly string[]{return Object.freeze(this.#controls.map(entry=>entry.control.id));}
+ mountContextControl(container:HTMLElement,id:string,signal:AbortSignal):RichContextControlView{
+  this.#live();const entry=this.#controls.find(item=>item.control.id===id);if(!entry)throw Error(`Toolbar control ${id} is not admitted by this editor`);
+  return borrowContextControl({surface:this.surface,editor:this.#abort.signal,container,signal,mount:abort=>this.#mountControl(container,entry.control,abort),boundary:()=>this.#boundary(),borrowed:this.#borrowed,control:entry.control,refresh:item=>this.#refreshControls(item)});
+ }
+ #refreshControls(only?:{control:ToolbarControl<P>;view:RichControlView<ActionContext<P>>}):void {
+  const context=this.#context(),stamp=JSON.stringify(this.#options.core.view());for(const {control,view} of only?[only]:[...this.#controls,...this.#borrowed])view.refresh(context,control.enabled(context)&&(this.#model.view.readOnly!==true||control.readOnlySafe===true),stamp);
  }
  #reconcile():void {if(this.#disposed||this.#composition)return;this.#model=this.#read();this.#logicalSelection=this.#logical();render(this.surface,this.#model,this.#options);restoreDocumentNative(this.surface,this.#model.view.selection);this.#refreshControls();}
  #sync():void {

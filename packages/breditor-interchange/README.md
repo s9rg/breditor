@@ -62,9 +62,22 @@ converted into actual list structure, not retained as markup or pasted markers.
 Markdown uses the explicit `interchangeContractV1` dialect: CommonMark parsing
 with table/strikethrough extensions, parsed task markers and sanitized raw HTML.
 Automatic URL linking and typography substitutions are disabled. This is not a
-claim of full GFM support. Export uses ordinary Markdown where it preserves the
-model, and safe HTML for layouts, captions, merged/source-partitioned tables or
-format combinations that basic Markdown cannot express.
+claim of full GFM support: single-tilde strikethrough and bare URL/`www.`
+autolink literals stay literal text. Export uses ordinary Markdown where it
+preserves the model, and safe HTML for layouts, captions, merged/source-partitioned
+tables or format combinations that basic Markdown cannot express. Ordinary
+Markdown output covers paragraph hard breaks (`\` line ends), uniform
+left/center/right table column alignment, empty fences and captionless unsized
+images with a portable URL; each emitted inline or image must re-parse to the
+same content before it is used. Adjacent separate lists alternate `-`/`*` or
+`.`/`)` markers so reimport keeps them separate.
+
+Markdown import reports what it cannot keep: fence info after the language word
+(`unsupported-attribute`), raw HTML comments/declarations (`removed-content`)
+and ordered list starts below 1, which become 1 (`list-numbering`; HTML
+`start` values below 1 now get the same approximation instead of rejection).
+An image that is the only content of an unstyled paragraph is a block image and
+reports no `block-structure` loss.
 
 Notices are aggregated `{code, count, effect}` records. `effect: "loss"` means
 source content or presentation was removed/approximated.

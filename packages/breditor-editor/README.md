@@ -94,6 +94,22 @@ remounts the editor, holds remote edits, adopts/exits another fullscreen session
 or stores fullscreen in document history. See [the fullscreen contract](../../docs/RICH_WRITING_TOOLS.md#native-fullscreen)
 for source-bound focus, ownership, native permission and platform limitations.
 
+## Selection toolbar and context menu
+
+Opt-in contextual surfaces borrow the editor's admitted toolbar controls, so
+buttons, shortcuts, forms, the floating toolbar and the context menu share one
+Rust-derived active/mixed/disabled state, command path and focus return:
+
+```ts
+const toolbar = mountSelectionToolbar(editor.contextUi()); // over a text range; Alt+F10, Escape
+const menu = mountContextMenu(editor.contextUi());         // right click, Shift+F10, ContextMenu key
+toolbar.dispose(); menu.dispose();                          // or dispose the editor
+```
+
+React hosts use `BreditorSelectionToolbar` / `BreditorContextMenu` with
+`editor={editor.contextUi()}`. Both hide for read-only editors and during
+composition and never edit document DOM. See [the contextual UI contract](../../docs/CONTEXT_UI.md).
+
 ## Document placeholder
 
 Use `placeholder: 'Start writing…'` in a managed local/shared opening or React
@@ -160,6 +176,29 @@ exposes `searchHistoryPolicy()` along with the existing scope/history metadata.
 Ordinary shared owners can search/navigate without becoming search-aware writers;
 their replacement controls stay disabled. Paired review persistence remains an
 explicit lower-level session, not implicit document-only startup behavior.
+
+## Slash commands
+
+`mountSlashCommands(editor, {items})` is opt-in. It borrows a local owner and
+opens an accessible command menu when the user types `/` at the start of a
+paragraph or heading, or after whitespace.
+
+- **Items.** `createSlashCommands(toolbarControls)` maps existing toolbar
+  controls (headings, lists, table, and the structural V2 quote, code block,
+  task list and divider) to menu items. Alternatively, pass a cancellable async
+  provider `(query, {signal}) => items`.
+- **Running a command.** Choosing an item removes the typed `/query` with a
+  guarded native command. It then runs the item's existing typed command
+  through `execute`. Neither step edits the DOM.
+- **Undo.** Undo takes two steps: the first reverts the command, the second
+  restores the typed `/query`.
+- **Cancellation.** Sessions cancel on Escape, composition, blur, read-only
+  policy, editor disposal, or any publication that moves the caret out of the
+  trigger or changes the text before it. Stale provider results are discarded.
+- **React.** `BreditorSlashCommands` from `@breditor/editor/react` wraps the same
+  controller.
+
+See [the slash-command contract](../../docs/SLASH_COMMANDS.md).
 
 ## General range editing
 

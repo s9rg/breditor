@@ -46,6 +46,9 @@ export {SharedRoomParticipantInventoryError,MAX_SHARED_ROOM_PARTICIPANT_INVENTOR
 export type * from "./room_participant_inventory/types.js";
 export {mountRichWritingTools as mountSharedWritingTools,type RichWritingToolsHost,type RichWritingToolsHostState,type RichWritingToolsPanel,type RichWritingToolsPanelOptions,type RichWritingToolsPanelState} from "@breditor/experimental-rich-content";
 export {createRichFullscreen as createSharedFullscreen,mountRichFullscreenControls as mountSharedFullscreenControls,type RichFullscreenHost,type RichFullscreenHostState,type RichFullscreenOptions,type RichFullscreenState,type RichFullscreenController,type RichFullscreenControls,type RichFullscreenControlsOptions} from "@breditor/experimental-rich-content";
+export {mountRichTableColumnResize as mountSharedTableColumnResize,clampRichTableColumnWidth,RICH_TABLE_COLUMN_WIDTH_MIN,RICH_TABLE_COLUMN_WIDTH_MAX,type RichTableColumnResize,type RichTableColumnResizeHost,type RichTableColumnResizeOptions,type RichTableColumnResizeRequest,type RichTableColumnResizePreview,type RichTableColumnResizeCancel} from "@breditor/experimental-rich-content";
+export {sharedTableColumnResizeCommit,type SharedTableColumnResizeRequest} from "./table_column_resize.js";
+export {mountRichSelectionToolbar as mountSharedSelectionToolbar,mountRichContextMenu as mountSharedContextMenu,richSelectionToolbarDefaults,richContextMenuDefaults,type RichContextUiHost,type RichContextUiHostState,type RichContextSelectionKind,type RichContextControlView,type RichContextUiOptions,type RichSelectionToolbar,type RichSelectionToolbarOptions,type RichSelectionToolbarState,type RichContextMenu,type RichContextMenuOptions,type RichContextMenuState} from "@breditor/experimental-rich-content";
 export {supportsSharedGeneralRanges,restoreSharedGeneralEditor} from "./profile.js";
 export {supportsSharedDocumentSelection,restoreSharedDocumentEditor} from "./profile.js";
 export {compileSharedProfile,compileStandardSharedProfileV1,compileStructuralSharedProfileV2,compileStandardStructuralSharedProfileV2,compileLayoutSharedProfileV3,compileStandardLayoutSharedProfileV3,supportsSharedTypingHistory,restoreSharedTypingEditor,type SharedProfileConfiguration,type SharedProfileConfigurationV2,type SharedProfileConfigurationV3,type SharedProfileDescriptor,type SharedProfileLimits,type SharedFormatPropertyType,type SharedRustProfile,type SharedProfileModule} from "./profile.js";
@@ -130,6 +133,8 @@ export type {SharedDocumentVersionsOptions,SharedDocumentVersionsIdentity,Shared
 export type {RichClipboardInterchange,RichClipboardInterchangeReport,RichInterchangeNotice,RichInterchangeFormatReport,RichInterchangeResult} from "@breditor/experimental-rich-content/rendering";
 export {SharedDomEditor,mountSharedEditor,mountSharedDocumentEditor,type SharedDomOptions,type SharedDocumentDomOptions} from "./controller.js";
 export {defaultSharedToolbar,moveSharedToolbar} from "./toolbar.js";
+export {mountSharedBlockDrag,sharedBlockDragStyles,type SharedBlockDrag,type SharedBlockDragOptions} from "./block_drag.js";
+export {resolveSharedBlockMove,resolveSharedBlockStep,sharedBlockDropTargets,sharedHandleBlock,sharedSelectionBlock,isMovableBlock,type SharedBlockMoveCommand,type SharedBlockMovePolicy,type SharedBlockDropSide,type SharedBlockDropTarget,type SharedBlockMoveRejection,type SharedBlockMoveResolution} from "./block_move.js";
 export {createStandardSharedToolbarV1} from "./standard_toolbar.js";
 export {createSelectionSharedToolbarV1} from "./selection_toolbar.js";
 export {createStructuralSharedToolbarV2} from "./structural_controls_v2.js";

@@ -42,6 +42,7 @@ class DocumentOwner implements LocalDocumentEditor {
  search():RichSearchHost{this.#dom.view();return this.#dom;}
  writing():import("@breditor/experimental-rich-content").RichWritingToolsHost{this.#dom.view();return this.#dom;}
  fullscreen():import("@breditor/experimental-rich-content").RichFullscreenHost{this.#dom.view();return this.#dom;}
+ contextUi():import("@breditor/experimental-rich-content").RichContextUiHost{this.#dom.view();return this.#dom;}
  setPlaceholderLabel(label:string|null):void{this.#dom.setPlaceholderLabel(label);}
  selectDocument(...args:Parameters<LocalDocumentEditor["selectDocument"]>):ReturnType<LocalDocumentEditor["selectDocument"]>{return this.#dom.selectDocument(...args);}
  replaceDocumentPlainText(...args:Parameters<LocalDocumentEditor["replaceDocumentPlainText"]>):ReturnType<LocalDocumentEditor["replaceDocumentPlainText"]>{return this.#dom.replaceDocumentPlainText(...args);}

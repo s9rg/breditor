@@ -78,6 +78,62 @@ describe("explicit parser staging contracts",()=>{
       if(!text.includes("\\n"))expect(formats(back[0]??back.children[0]),exported.value).toEqual(formats(paragraph(...children)));
     }
   });
+  it("round trips hard line breaks with escaped line starts and falls back where breaks cannot",()=>{
+    const adapter=staging().adapter,imported=adapter.importMarkdown("a  \nb\\\nc");if(!imported.ok)throw Error(imported.error);
+    expect(root(imported).children[0].children).toEqual([{kind:"text",text:"a\nb\nc",formats:[]}]);
+    const exported=adapter.exportMarkdown(imported.value.structuredJson);expect(exported).toEqual({ok:true,value:"a\\\nb\\\nc",losses:[]});
+    const doc=(...children:any[])=>JSON.stringify({kind:"flow",document:{root:{kind:"element",type:"breditor/document",entityId:null,properties:{"breditor/document-id":"d"},children}}});
+    const paragraph=(...runs:[string,...string[]][])=>({kind:"element",type:"breditor/paragraph",entityId:null,properties:{"breditor/block-id":"p"},children:runs.map(([text,...formats])=>({kind:"text",text,formats:formats.map(type=>({type,properties:{}}))}))});
+    for(const [runs,markdown] of [
+      [[["a\n- b\n=\n1. c\n# d\n> e\n+ f\n---\n| g\n:-"]],true],[[["bold\nstill","breditor/strong"],["\nplain"]],true],
+      // A closing delimiter right after a hard break is not right-flanking, so the verifier selects HTML.
+      [[["one\n","breditor/strong"],["two","breditor-inline/italic"]],false],
+      [[["a\n b"]],false],[[["a\n"]],false],[[["a\nb","breditor-inline/code"]],false],
+    ] as [[string,...string[]][],boolean][]){
+      const result=adapter.exportMarkdown(doc(paragraph(...runs)));if(!result.ok)throw Error(result.error);
+      expect(result.losses.some(l=>l.code==="markdown-feature"),result.value).toBe(!markdown);
+      const back=root(adapter.importMarkdown(result.value));expect(back.children.map((n:any)=>n.type),result.value).toEqual(["breditor/paragraph"]);
+      expect(back.children[0].children.map((t:any)=>[t.text,...t.formats.map((f:any)=>f.type)]),result.value).toEqual(runs);
+    }
+    const heading=adapter.exportMarkdown(doc({...paragraph(["a\nb"]),type:"breditor/heading",properties:{"breditor/block-id":"h","breditor/level":2}}));expect(heading.ok&&heading.value.startsWith("<h2")).toBe(true);
+  });
+  it("keeps GFM table column alignment in Markdown and falls back for mixed cell alignment",()=>{
+    const adapter=staging().adapter,source="| a | b | c | d |\n| :--- | :---: | ---: | --- |\n| 1 | 2 | 3 | 4 |",imported=adapter.importMarkdown(source);if(!imported.ok)throw Error(imported.error);
+    const exported=adapter.exportMarkdown(imported.value.structuredJson);expect(exported).toEqual({ok:true,value:source,losses:[]});
+    const r=root(imported);r.children[0].children[1].children[0].children[0].properties["breditor/block-align"]=2;
+    const mixed=adapter.exportMarkdown(JSON.stringify({kind:"flow",document:{root:r}}));if(!mixed.ok)throw Error(mixed.error);
+    expect(mixed.value.startsWith("<table")).toBe(true);expect(mixed.losses).toEqual([{code:"markdown-feature",count:1,effect:"compatibility"}]);
+    const back=root(adapter.importMarkdown(mixed.value));expect(nodes(back).filter(n=>n.type==="breditor/paragraph").map(n=>n.properties["breditor/block-align"])).toEqual([5,2,6,undefined,2,2,6,undefined]);
+  });
+  it("reports dropped fence info, keeps empty fences in Markdown and approximates zero list starts",()=>{
+    const adapter=staging().adapter,info=adapter.importMarkdown("```rust title=x\nx\n```");expect(info.losses).toEqual([{code:"unsupported-attribute",count:1,effect:"loss"}]);expect(root(info).children[0].properties["breditor/language"]).toBe("rust");
+    const empty=adapter.importMarkdown("```\n```");if(!empty.ok)throw Error(empty.error);expect(adapter.exportMarkdown(empty.value.structuredJson)).toEqual({ok:true,value:"```\n```",losses:[]});
+    const zero=adapter.importMarkdown("0. zero\n1. one");expect(zero.ok).toBe(true);expect(zero.losses).toEqual([{code:"list-numbering",count:1,effect:"loss"}]);expect(root(zero).children[0].properties["breditor/start"]).toBe(1);
+    const html=adapter.importHtml('<ol start="-2"><li>A</li></ol>');expect(root(html).children[0].properties["breditor/start"]).toBe(1);expect(html.losses.some(l=>l.code==="list-numbering")).toBe(true);
+  });
+  it("reports raw HTML comments and declarations that Markdown import cannot keep",()=>{
+    const value=staging().adapter.importMarkdown("x <!-- SECRET --> y\n\n<!-- block -->\n\nz");expect(value.losses).toEqual([{code:"removed-content",count:2,effect:"loss"}]);expect(JSON.stringify(root(value))).not.toContain("SECRET");
+  });
+  it("keeps adjacent separate lists separate through Markdown",()=>{
+    const adapter=staging().adapter,item=(text:string)=>`<li>${text}</li>`;
+    const first=adapter.importHtml(`<ol>${item("a")}</ol><ol start="5">${item("b")}</ol><ul>${item("c")}</ul><ul>${item("d")}</ul><ul><li><input type="checkbox">e</li></ul><ul><li><input type="checkbox" checked>f</li></ul><blockquote><ul>${item("g")}</ul><ul>${item("h")}</ul></blockquote>`);if(!first.ok)throw Error(first.error);
+    const exported=adapter.exportMarkdown(first.value.structuredJson);if(!exported.ok)throw Error(exported.error);expect(exported.losses).toEqual([]);
+    const shape=(r:any)=>nodes(r).filter(n=>/list$/.test(n.type??"")).map(n=>[n.type,n.properties["breditor/start"],nodes(n).filter(t=>t.kind==="text").map(t=>t.text).join("")]);
+    expect(shape(root(adapter.importMarkdown(exported.value)))).toEqual(shape(root(first)));expect(shape(root(first))).toHaveLength(8);
+  });
+  it("exports plain block images as Markdown images and keeps richer images in HTML",()=>{
+    const {owner}=staging(),adapter=createRichInterchange(owner,{resolveImage:({src})=>({asset:src,generation:"g"}),exportImage:({asset})=>asset});
+    for(const [source,alt] of [["![alt](https://example.org/i.png)","alt"],["![](https://example.org/i.png)",""],["![a \\*b\\* \\[c\\] & d](https://example.org/i.png)","a *b* [c] & d"]] as const){
+      const imported=adapter.importMarkdown(source);if(!imported.ok)throw Error(imported.error);expect(imported.losses,source).toEqual([]);
+      const image=root(imported).children[0];expect(image.type).toBe("breditor/image");expect(image.properties["breditor/alt-text"]).toBe(alt);expect(image.properties["breditor/decorative"]).toBe(alt==="");
+      const exported=adapter.exportMarkdown(imported.value.structuredJson);if(!exported.ok)throw Error(exported.error);expect(exported.losses,exported.value).toEqual([]);expect(exported.value.startsWith("!["),exported.value).toBe(true);
+      expect(root(adapter.importMarkdown(exported.value)).children[0].properties["breditor/alt-text"]).toBe(alt);
+    }
+    const sized=root(adapter.importHtml('<figure><img src="https://example.org/i.png" alt="a" width="20" height="10"><figcaption>Cap</figcaption></figure>'));
+    const html=adapter.exportMarkdown(JSON.stringify({kind:"flow",document:{root:sized}}));expect(html.ok&&html.value.startsWith("<figure")).toBe(true);expect(html.losses).toEqual([{code:"markdown-feature",count:1,effect:"compatibility"}]);
+    const unresolved=staging().adapter.exportMarkdown(JSON.stringify({kind:"flow",document:{root:sized}}));expect(unresolved.losses.some(l=>l.code==="image-reference")).toBe(true);
+    const inline=adapter.importMarkdown("para ![alt](https://example.org/i.png)");expect(inline.losses.some(l=>l.code==="block-structure")).toBe(true);
+  });
   it("never passes active markup or dangerous URLs to native literals",()=>{
     const value=staging().adapter.importHtml('<p onclick="SECRET">Before<script>SECRET</script><svg><text>SECRET</text></svg><a href="javascript:SECRET">keep</a><span style="background-image:url(SECRET);color:#123456">after</span></p>');
     expect(JSON.stringify(root(value))).not.toContain("SECRET");expect(value.losses.map(l=>l.code)).toEqual(expect.arrayContaining(["removed-content","unsafe-link","unsupported-style","unsupported-attribute"]));expect(JSON.stringify(value.losses)).not.toContain("SECRET");
