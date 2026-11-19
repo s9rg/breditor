@@ -18,14 +18,14 @@ test("Alt+Shift+ArrowUp moves the caret's block as one retained-ID Undo step",as
 
 test("dragging the handle drops one moveBlock before the hovered block",async({page})=>{
  const initial=await top(page),depth=await undoDepth(page);
- const footer=page.locator('[data-rich-block="demo-footer"]'),heading=page.locator('[data-rich-block="demo-heading"]');
- await footer.hover();const handle=page.locator(".breditor-block-drag-handle");await expect(handle).toBeVisible();
+ const intro=page.locator('[data-rich-block="demo-intro"]'),heading=page.locator('[data-rich-block="demo-heading"]');
+ await intro.hover();const handle=page.locator(".breditor-block-drag-handle");await expect(handle).toBeVisible();
  const from=await handle.boundingBox(),to=await heading.boundingBox();
  await page.mouse.move(from.x+from.width/2,from.y+from.height/2);await page.mouse.down();
  await page.mouse.move(to.x+to.width/2,to.y+4,{steps:6});
  await expect(page.locator(".breditor-block-drop-indicator")).toHaveAttribute("data-state","valid");
  await page.mouse.up();
- await expect.poll(()=>top(page)).toEqual(["demo-footer",...initial.filter(block=>block!=="demo-footer")]);
+ await expect.poll(()=>top(page)).toEqual(["demo-intro","demo-heading",...initial.slice(2)]);
  expect(await undoDepth(page)).toBe(depth+1);
  await page.evaluate(()=>window.demo.editor.execute({kind:"undo"}));await expect.poll(()=>top(page)).toEqual(initial);
 });
