@@ -6,6 +6,16 @@ its durable formats and Wasm transport.
 
 ## Unreleased
 
+- Fix typing after a line break at the very end of a text block in rich local
+  and shared editors. In Chromium and WebKit, Shift+Enter at the end of a
+  paragraph or heading (or Enter at the end of an image or table caption)
+  followed by typing put the text before the new break, and Backspace removed
+  the character before it; no engine showed the new empty line. A lone trailing
+  LF in a `pre-wrap` block is not a native caret position, so the live renderer
+  now appends a presentation-only `<br data-rich-trailing-break>` to text blocks
+  ending in LF. It has no text: document content, model offsets, clipboard,
+  search and static rendering are unchanged. See the hard-break section of
+  docs/RICH_STRUCTURAL_V2.md.
 - Add opt-in, provider-agnostic AI rewrite and language-check tools for local
   editors (`mountRichAiTools` / `mountAiTools` / `BreditorAiTools` and
   `mountRichLanguageCheck` / `mountLanguageCheck` / `BreditorLanguageCheck`). The
