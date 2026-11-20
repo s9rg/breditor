@@ -4,8 +4,11 @@
  * surface or document content: content direction stays with each block's own layout direction (or the
  * host page), and nothing here is serialized, published or sent to the Rust owner.
  */
+// AI and language-tool chrome strings live in a separate block (ui_locale_ai.ts) merged below.
+import {richAiUiStringsEn,richAiUiParameters,type RichAiUiStrings} from "./ui_locale_ai.js";
+export type {RichAiUiStrings} from "./ui_locale_ai.js";
 /** Every built-in chrome string. Templates use `{name}` placeholders only; there are no plural or select forms. */
-export interface RichUiStrings {
+export interface RichUiStrings extends RichAiUiStrings {
  readonly richEditorLabel:string;readonly richToolbarLabel:string;
  readonly richStatusReadOnly:string;readonly richStatusEditable:string;readonly richStatusOutcome:string;readonly richStatusReadOnlyOutcome:string;
  readonly richOperationFailed:string;
@@ -55,6 +58,8 @@ export const richUiStringsEn:Readonly<RichUiStrings>=Object.freeze({
  blockDragCrossContainer:"Blocks can only be reordered within their container.",blockDragGrammar:"That container does not accept this block.",
  blockDragEmptiesSource:"Moving the last block would leave its container empty.",blockDragItemLead:"A list or task item must start with a text line.",
  blockDragBoundary:"The block is already at the edge of its container.",blockDragNative:"The editor refused the move.",
+ // AI and language tools (separate block).
+ ...richAiUiStringsEn,
 });
 /** Placeholders each template may use. Anything else in braces is rejected. */
 const parameters:Readonly<Partial<Record<RichUiStringKey,readonly string[]>>>={
@@ -63,6 +68,8 @@ const parameters:Readonly<Partial<Record<RichUiStringKey,readonly string[]>>>={
  pasteLoss:["target","losses"],controlApply:["label"],controlPanel:["label"],slashCount:["count"],mentionCount:["count"],slashUnavailable:["label"],slashInapplicable:["label"],
  columnResizeLabel:["index","count"],columnResizeValue:["width"],columnResizePreview:["width"],columnResizeBadge:["width"],
  blockDragPickedUp:["count"],blockDragPosition:["index","count"],
+ // AI and language tools (separate block).
+ ...richAiUiParameters,
 };
 /** Ids of `standardRichSlashPicks`; other provider items carry their own labels. */
 export type RichStandardSlashItemId="paragraph"|"heading-1"|"heading-2"|"heading-3"|"bullet-list"|"numbered-list"|"task-list"|"blockquote"|"code-block"|"horizontal-rule"|"table"|"details";

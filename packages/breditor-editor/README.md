@@ -216,6 +216,35 @@ paragraph or heading, or after whitespace.
 
 See [the slash-command contract](../../docs/SLASH_COMMANDS.md).
 
+## AI rewrite and language check
+
+Both tools are opt-in, local-only and provider-agnostic: you pass the provider
+function, and the package makes no network calls of its own.
+
+```js
+import {mountAiTools, mountLanguageCheck} from '@breditor/editor';
+const ai = mountAiTools(asideHost, editor, {
+  provider: async ({instruction, text, signal}) => ({text: await myRewrite(instruction, text, {signal})}),
+});
+const check = mountLanguageCheck(otherHost, editor, {
+  provider: async ({segments, signal}) => myChecker(segments, {signal}), // [{range:{block,start,end}, message, suggestions}]
+});
+```
+
+- **Explicit scope.** Only the selected text, one block or (language check) the
+  whole document is sent, as plain text with block ids and UTF-16 offsets.
+- **Review, then one guarded command.** A rewrite is shown as a before/after
+  diff; Accept applies it as one range replacement (one Undo step). If the
+  document content changed meanwhile it is refused as stale and can be run again.
+- **Untrusted output.** Answers are validated and size-bounded; `{markdown}` or
+  `{html}` answers need an explicit `interchange` adapter and are sanitized with
+  loss notices. Language issues are highlighted outside the editing DOM and
+  applied one at a time from a keyboard list.
+- **React.** `BreditorAiTools` and `BreditorLanguageCheck` from
+  `@breditor/editor/react`.
+
+See [the AI and language tool contract](../../docs/AI_AND_LANGUAGE_TOOLS.md).
+
 ## General range editing
 
 Pass `rangeEditing: 'general-v1'` to local or shared openings, or to React

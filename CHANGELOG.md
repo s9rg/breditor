@@ -6,6 +6,23 @@ its durable formats and Wasm transport.
 
 ## Unreleased
 
+- Add opt-in, provider-agnostic AI rewrite and language-check tools for local
+  editors (`mountRichAiTools` / `mountAiTools` / `BreditorAiTools` and
+  `mountRichLanguageCheck` / `mountLanguageCheck` / `BreditorLanguageCheck`). The
+  host supplies the provider function; Breditor makes no network calls. Only the
+  explicitly scoped plain text (selection, block or, for language checks, the
+  whole document) is passed to the provider with an `AbortSignal`, deadline and
+  size bounds. Provider output is untrusted: shapes and encodings are checked,
+  Markdown/HTML goes only through an explicit `@breditor/interchange` adapter
+  with loss notices, and nothing is inserted into the DOM as HTML. A rewrite is
+  reviewed as a before/after diff and applied on Accept as one ordinary guarded
+  range command (one Undo step), refused as stale when the document content
+  changed. Language issues are painted outside the editing DOM, reviewed from a
+  keyboard list and applied one guarded replacement at a time; issues in changed
+  blocks are dropped. New `ai*`/`lang*` UI catalog keys live in a separate block;
+  existing keys are unchanged. Shared editors are not wired yet. See
+  docs/AI_AND_LANGUAGE_TOOLS.md.
+
 - Add durable mention entities to the unreleased local-only candidate rich V4: a
   native `breditor/mention` inline format over the exact text `@` + label with a
   closed kind (`user`, `page`, `tag`), a bounded opaque id and a label snapshot.
