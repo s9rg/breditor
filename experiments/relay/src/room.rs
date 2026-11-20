@@ -15,6 +15,7 @@ mod atomic_transport_v2;
 mod backup;
 mod deployment_binding;
 mod document_presence;
+mod language_v4;
 mod layout_v3;
 mod log_generations;
 pub use log_generations::{
@@ -141,6 +142,7 @@ enum ProfileSeed {
     Original,
     StructuralV2(bool),
     LayoutV3(bool),
+    LanguageV4(bool),
 }
 
 const MAX_WRITERS: usize = 1024;
@@ -318,6 +320,13 @@ impl Room {
                     owner: owner.into(),
                     journal,
                 },
+                ProfileSeed::LanguageV4(standard_inline_v1) => Event::SeedLanguageV4 {
+                    configuration: configuration.into(),
+                    standard_inline_v1,
+                    room: replica.document_id().into(),
+                    owner: owner.into(),
+                    journal,
+                },
             }
         };
         let log = make_log(seed)?;
@@ -419,6 +428,14 @@ impl Room {
                 ProfileSeed::LayoutV3(standard_inline_v1),
                 false,
             ),
+            Event::SeedLanguageV4 { configuration, standard_inline_v1, room, owner, journal } => (
+                configuration,
+                room,
+                owner,
+                journal,
+                ProfileSeed::LanguageV4(standard_inline_v1),
+                false,
+            ),
             Event::SeedAtomicTransportV2 { configuration, profile, room, owner, journal } => {
                 (configuration, room, owner, journal, profile.seed(), true)
             }
@@ -439,6 +456,12 @@ impl Room {
             }
             ProfileSeed::LayoutV3(true) => {
                 SharedRichProfile::from_standard_configuration_json_v3(&configuration)?
+            }
+            ProfileSeed::LanguageV4(false) => {
+                SharedRichProfile::from_configuration_json_v4(&configuration)?
+            }
+            ProfileSeed::LanguageV4(true) => {
+                SharedRichProfile::from_standard_configuration_json_v4(&configuration)?
             }
         };
         let replica = profile.restore(&room, &journal)?;
@@ -477,6 +500,7 @@ impl Room {
             Event::Seed { .. }
             | Event::SeedStructuralV2 { .. }
             | Event::SeedLayoutV3 { .. }
+            | Event::SeedLanguageV4 { .. }
             | Event::SeedAtomicTransportV2 { .. } => {
                 return Err(Error::Contract("duplicate relay seed"));
             }

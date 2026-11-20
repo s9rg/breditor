@@ -60,6 +60,7 @@ impl Creation {
                     Event::Seed { .. }
                         | Event::SeedStructuralV2 { .. }
                         | Event::SeedLayoutV3 { .. }
+                        | Event::SeedLanguageV4 { .. }
                         | Event::SeedAtomicTransportV2 { .. }
                 )
             })
