@@ -122,9 +122,14 @@ const editor = await openLocalEditor({host, ui: {lang: "ar", direction: "rtl", s
 mountSlashCommands(editor, {items});   // menu strings and standard item labels follow editor.uiLocale()
 ```
 
-An invalid catalog rejects before the runtime loads or the host changes.
-`resolveUiLocale`, `uiStringsEn` and the `Ui*` types are exported from both
-entry points. See [the localization contract](../../docs/UI_LOCALIZATION.md).
+The search, writing-tools and fullscreen panels read the editor's catalog
+through `editor.search()`, `editor.writing()` and `editor.fullscreen()`; review
+and suggestion panels take it as `initialOptions.ui` (pass `editor.uiLocale()`).
+`ui.notices` relabels interchange loss codes and `ui.refusals` maps stable refusal
+codes to end-user status text; thrown `Error.message` stays English for
+developers. An invalid catalog rejects before the runtime loads or the host
+changes. `resolveUiLocale`, `uiStringsEn`, `uiNoticeCodes` and the `Ui*` types are
+exported from both entry points. See [the localization contract](../../docs/UI_LOCALIZATION.md).
 
 ## Document placeholder
 

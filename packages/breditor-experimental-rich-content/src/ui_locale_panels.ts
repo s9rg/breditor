@@ -20,7 +20,7 @@ export interface RichUiPanelStrings {
  readonly writingHeading:string;readonly writingHeadingTruncated:string;readonly writingHeadingOverBudget:string;readonly writingHeadingEmpty:string;
  readonly writingPages:string;readonly writingNoHeadings:string;readonly writingPrevious:string;readonly writingNext:string;readonly writingRefresh:string;
  readonly writingCountsUnavailable:string;readonly writingComposing:string;readonly writingPending:string;readonly writingUpdating:string;readonly writingAccepted:string;
- readonly writingErrorStale:string;readonly writingStartFailed:string;
+ readonly writingErrorStale:string;readonly writingErrorChanged:string;readonly writingStartFailed:string;
  // Fullscreen controls and the controller's user-facing refusals.
  readonly fullscreenEnter:string;readonly fullscreenExit:string;readonly fullscreenActive:string;readonly fullscreenForeign:string;readonly fullscreenUnsupported:string;readonly fullscreenComposing:string;
  readonly fullscreenErrorIdle:string;readonly fullscreenErrorBusy:string;readonly fullscreenErrorUnavailable:string;readonly fullscreenErrorDetached:string;readonly fullscreenErrorLost:string;
@@ -95,7 +95,7 @@ export const richUiPanelStringsEn:Readonly<RichUiPanelStrings>=Object.freeze({
  writingPages:"Headings {start}–{end} of {total}",writingNoHeadings:"No headings",writingPrevious:"Previous headings",writingNext:"Next headings",writingRefresh:"Refresh",
  writingCountsUnavailable:"Counts unavailable: {error}",writingComposing:"Finish composing to update writing tools",writingPending:"Navigating to the displayed heading",
  writingUpdating:"Updating; previous counts and headings are not current",writingAccepted:"Accepted document · revision {revision}",
- writingErrorStale:"The displayed writing source is no longer current",writingStartFailed:"Writing controls could not start: {error}",
+ writingErrorStale:"The displayed writing source is no longer current",writingErrorChanged:"Writing source changed before display",writingStartFailed:"Writing controls could not start: {error}",
  fullscreenEnter:"Enter fullscreen",fullscreenExit:"Exit fullscreen",fullscreenActive:"Fullscreen",fullscreenForeign:"Another fullscreen session is active",
  fullscreenUnsupported:"Native fullscreen unavailable",fullscreenComposing:"Finish composing before fullscreen",
  fullscreenErrorIdle:"Fullscreen entry requires the exact idle editor publication outside composition",fullscreenErrorBusy:"Another fullscreen session or transition is active",

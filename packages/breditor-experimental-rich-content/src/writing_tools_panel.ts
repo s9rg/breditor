@@ -62,7 +62,7 @@ class WritingPanel implements RichWritingToolsPanel {
   const state=this.#host.writingState();if(state.closed){this.#read=this.#display=undefined;this.#error=this.#shown=null;this.#render(true);return;}
   if(state.busy||state.composing||this.#pending){this.#read=undefined;this.#render(false);return;}
   this.#read=undefined;this.#error=this.#shown=null;
-  try{const read=this.#host.readWritingTools(state.revision),now=this.#host.writingState();if(now.closed||now.busy||now.composing||now.revision!==read.revision)throw Error("Writing source changed before display");this.#read=this.#display=read;this.#page=Math.min(this.#page,Math.max(0,Math.ceil(read.outline.length/this.#pageSize)-1));}
+  try{const read=this.#host.readWritingTools(state.revision),now=this.#host.writingState();if(now.closed||now.busy||now.composing||now.revision!==read.revision)throw richUiError("writingErrorChanged");this.#read=this.#display=read;this.#page=Math.min(this.#page,Math.max(0,Math.ceil(read.outline.length/this.#pageSize)-1));}
   catch(error){this.#report(error);}
   this.#render(true);
  }

@@ -377,9 +377,12 @@ retryable retirement handle and never exits a foreign session. See [the contract
 `mountSharedEditor` / `mountSharedDocumentEditor` accept the same opt-in `ui`
 catalog as the local rich editor (`RichUiOptions`): shared toolbar and status
 strings, control labels, and `dir`/`lang` for the chrome only. The block drag
-handle, context UI and column separators read `editor.uiLocale()`; the editing
-surface and peers' content direction are untouched, and nothing is published or
-synchronized. See [the localization contract](../../docs/UI_LOCALIZATION.md).
+handle, context UI and column separators read `editor.uiLocale()`;
+`mountSharedReviewPanel` (comments, quotes, named versions) and
+`mountSharedSuggestionPanel` take it as their `ui` option, including the
+standard proposal actions. The editing surface and peers' content direction are
+untouched, and nothing is published or synchronized. Relay and native refusal
+codes in status lines map through `ui.refusals`; thrown errors stay English. See [the localization contract](../../docs/UI_LOCALIZATION.md).
 
 ## Document placeholder
 

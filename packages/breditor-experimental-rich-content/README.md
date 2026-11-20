@@ -124,9 +124,14 @@ const editor = mountRichEditor(root, {core, ui: {
 mountRichContextMenu(editor);  // label, dir and lang come from editor.uiLocale()
 ```
 
-Catalogs are validated by `resolveRichUi` (typed keys, unknown keys rejected,
-bounded non-empty strings, `{name}` placeholders only, no plural syntax). With
-no catalog the output is unchanged English. See
+`mountRichSearchPanel`, `mountRichWritingTools` and
+`mountRichFullscreenControls` read the same catalog from their host's
+`uiLocale()`. Status lines show end-user text through `ui.describe(error)`:
+panel refusals and stable codes listed in `ui.refusals` are localized, while
+thrown `Error.message` stays English; interchange loss codes are relabelled
+through `ui.notices`. Catalogs are validated by `resolveRichUi` (typed keys,
+unknown keys rejected, bounded non-empty strings, `{name}` placeholders only, no
+plural syntax). With no catalog the output is unchanged English. See
 [the localization contract](../../docs/UI_LOCALIZATION.md).
 
 ## Document placeholder

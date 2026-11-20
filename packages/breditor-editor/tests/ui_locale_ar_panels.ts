@@ -19,7 +19,7 @@ export const arabicPanelStrings:RichUiPanelStrings={
  writingPages:"العناوين {start}–{end} من {total}",writingNoHeadings:"لا توجد عناوين",writingPrevious:"العناوين السابقة",writingNext:"العناوين التالية",writingRefresh:"تحديث",
  writingCountsUnavailable:"الإحصاءات غير متاحة: {error}",writingComposing:"أنهِ الكتابة لتحديث أدوات الكتابة",writingPending:"جارٍ الانتقال إلى العنوان المعروض",
  writingUpdating:"جارٍ التحديث؛ الإحصاءات والعناوين السابقة ليست حالية",writingAccepted:"المستند المعتمد · المراجعة {revision}",
- writingErrorStale:"مصدر الكتابة المعروض لم يعد حاليًا",writingStartFailed:"تعذّر تشغيل أدوات الكتابة: {error}",
+ writingErrorStale:"مصدر الكتابة المعروض لم يعد حاليًا",writingErrorChanged:"تغيّر مصدر الكتابة قبل العرض",writingStartFailed:"تعذّر تشغيل أدوات الكتابة: {error}",
  fullscreenEnter:"ملء الشاشة",fullscreenExit:"الخروج من ملء الشاشة",fullscreenActive:"ملء الشاشة مفعّل",fullscreenForeign:"جلسة ملء شاشة أخرى نشطة",
  fullscreenUnsupported:"ملء الشاشة غير متاح",fullscreenComposing:"أنهِ الكتابة قبل ملء الشاشة",
  fullscreenErrorIdle:"ملء الشاشة يتطلب محررًا خاملًا خارج الكتابة",fullscreenErrorBusy:"جلسة أو عملية ملء شاشة أخرى نشطة",

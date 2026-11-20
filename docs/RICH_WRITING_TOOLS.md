@@ -104,7 +104,10 @@ Low-level local and shared DOM controllers implement the same port. Their packag
 exports are `mountRichWritingTools` and `mountSharedWritingTools`, respectively.
 The panel displays all six metrics and a paginated outline. Pagination limits
 rendered rows, not the native result. Labels use literal text, including an
-explicit indication when the native label is truncated.
+explicit indication when the native label is truncated. Panel chrome (metric
+names, page and status text, the outline's accessible name) follows the host's
+`uiLocale()` catalog; ArrowUp/ArrowDown/Home/End move between outline entries in
+document order. See [UI localization](UI_LOCALIZATION.md#panels).
 
 `readWritingTools(revision?)` retains an immutable read belonging to that DOM
 host. `selectWritingHeading(read, index, revision?)` accepts only that retained
