@@ -8,9 +8,9 @@ const fingerprint=`sha256:${"ab".repeat(32)}`;
 /** Mocked Wasm owner: only the capability probe and the command boundary matter here. */
 function local(composite:unknown){
  const observation={revision:"1",blockLayoutStateJson:vi.fn(),free:vi.fn()};
- const editor:Record<string,unknown>={observe:()=>observation,blockLayoutVersion:()=>"1",listNumberingVersion:()=>"1",textLanguageVersion:()=>"1",imageLinkVersion:()=>"1",detailsVersion:()=>"1",mentionVersion:()=>"1",tableCaptionVersion:()=>"1",execute:vi.fn(()=>({status:"content",takeObservation:()=>observation,free:vi.fn()})),free:vi.fn()};
+ const editor:Record<string,unknown>={observe:()=>observation,blockLayoutVersion:()=>"1",listNumberingVersion:()=>"1",textLanguageVersion:()=>"1",imageLinkVersion:()=>"1",detailsVersion:()=>"1",mentionVersion:()=>"1",tableCaptionVersion:()=>"1",pageBreakVersion:()=>"1",execute:vi.fn(()=>({status:"content",takeObservation:()=>observation,free:vi.fn()})),free:vi.fn()};
  if(composite!==undefined)editor["triggerCompositeVersion"]=()=>composite;
- const descriptor={kind:"rich",abiVersion:1,schema:{name:"t",version:1},schemaFingerprint:fingerprint,richLanguageVersion:4,taskStructureVersion:1,blockLayoutVersion:1,listNumberingVersion:1,textLanguageVersion:1,imageLinkVersion:1,detailsVersion:1,mentionVersion:1,tableCaptionVersion:1};
+ const descriptor={kind:"rich",abiVersion:1,schema:{name:"t",version:1},schemaFingerprint:fingerprint,richLanguageVersion:4,taskStructureVersion:1,blockLayoutVersion:1,listNumberingVersion:1,textLanguageVersion:1,imageLinkVersion:1,detailsVersion:1,mentionVersion:1,tableCaptionVersion:1,pageBreakVersion:1};
  const raw={descriptorJson:()=>({status:"value",takeValue:()=>JSON.stringify(descriptor),free:vi.fn()}),createEditor:()=>({status:"editor",takeEditor:()=>editor,free:vi.fn()}),free:vi.fn()};
  const factory=vi.fn(()=>({status:"profile",takeProfile:()=>raw,free:vi.fn()}));
  return {wasm:{BreditorRichProfile:{fromBootstrapJsonV4:factory,fromStandardBootstrapJsonV4:factory}} as unknown as RichWasmModule,editor};
@@ -32,7 +32,7 @@ describe("native slash composite boundary (replaceTriggerThen)",()=>{
   expect(JSON.parse(execute.mock.calls[0]![1] as string)).toEqual(command);
  });
  it("mirrors the Rust allowlist exactly",()=>{
-  expect([...richTriggerCompositeKinds]).toEqual(["setHeading","setCodeBlock","wrapList","setListKind","wrapTaskList","wrapBlockquote","wrapDetails","insertHorizontalRule","insertTable","insertBlocks"]);
+  expect([...richTriggerCompositeKinds]).toEqual(["setHeading","setCodeBlock","wrapList","setListKind","wrapTaskList","wrapBlockquote","wrapDetails","insertHorizontalRule","insertTable","insertBlocks","insertPageBreak"]);
   expect(Object.isFrozen(richTriggerCompositeKinds)).toBe(true);
  });
 });
