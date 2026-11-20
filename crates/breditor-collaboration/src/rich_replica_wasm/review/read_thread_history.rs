@@ -16,6 +16,7 @@ struct HistoryRequest {
 impl RichReplicaProbe {
     /// Original per-thread archive history projection.
     #[must_use]
+    #[allow(clippy::unused_self)] // Instance capability must be discoverable on the live JS owner.
     pub fn review_thread_history_version(&self) -> String {
         "1".into()
     }

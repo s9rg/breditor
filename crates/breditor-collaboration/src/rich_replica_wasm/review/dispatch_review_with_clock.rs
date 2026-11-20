@@ -16,6 +16,7 @@ struct CommitRequest {
 impl RichReplicaProbe {
     /// Optional exact local review intent capability.
     #[must_use]
+    #[allow(clippy::unused_self)] // Instance capability must be discoverable on the live JS owner.
     pub fn review_action_clock_version(&self) -> String {
         "1".into()
     }

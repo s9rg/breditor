@@ -408,9 +408,9 @@ impl RichReplicaProbe {
     /// Join the original versioned room/schema/model envelope before engine admission.
     #[cfg(feature = "research")]
     pub fn join_frame(document: String, writer: String, input: &str) -> Result<Self, JsValue> {
-        Ok(Self {
-            inner: RichReplica::join_frame(codec()?, document, writer, input).map_err(error)?,
-        })
+        Ok(Self::from_replica(
+            RichReplica::join_frame(codec()?, document, writer, input).map_err(error)?,
+        ))
     }
     /// Export a versioned bound update; the host still authenticates transport/writers.
     pub fn update_frame(&self) -> Result<String, JsValue> {
