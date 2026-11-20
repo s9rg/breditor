@@ -533,7 +533,7 @@ for bounds, independent shared fields, history and qualification scope.
 
 `richLanguage: 4` selects the unreleased candidate V4 for local openings
 (`openLocalEditor`, `openLocalDocumentEditor` and the local React components'
-`initialOptions`). It is V3 plus bounded ordered-list numbering, text-run language, image links, collapsible sections, mention entities and table captions, and may still
+`initialOptions`). It is V3 plus bounded ordered-list numbering, text-run language, image links, collapsible sections, mention entities, table captions and page breaks, and may still
 change before release, so its fingerprint changes and V4 data must not be
 persisted yet. Shared openings reject `richLanguage: 4` explicitly; shared
 editing stays on languages 1–3. The standard schema is
@@ -615,6 +615,19 @@ a caption inserts a line break and table actions keep it.
 ```js
 editor.execute({kind: 'addTableCaption', data: {table: 'table-1', caption: 'caption-1'}});
 editor.execute({kind: 'removeTableCaption', data: {table: 'table-1'}});
+```
+
+V4 adds explicit page breaks, admitted only between top-level blocks. The **Page
+break** toolbar control (and slash item) inserts one after the root block holding
+the selection; a page break is selected, navigated and deleted like a horizontal
+rule. Printing is opt-in CSS from `@breditor/experimental-rich-content`
+(`richPrintStyles`, `mountRichPrintPreview`); the static renderer embeds it with
+`renderStaticDocument(doc, {print: {size: 'A4', orientation: 'portrait', margin: 'normal'}})`,
+which also emits leading header rows in `<thead>` so they repeat on every page.
+Breditor does not paginate the editor itself; see `docs/PAGINATION_AND_PRINT.md`.
+
+```js
+editor.execute({kind: 'insertPageBreak', data: {position: {parent: {kind: 'document'}, before: null}, block: 'page-break-1'}});
 ```
 
 See `docs/RICH_LANGUAGE_V4.md` in the repository for domains, semantics,

@@ -54,7 +54,13 @@ emitted as one `<span class="breditor-mention" data-mention-kind="…" data-ment
 mention around its styled pieces (no link; partial mention text is a `grammar` error), and candidate V4
 table captions (one trailing `breditor/paragraph` after a table's rows), emitted as the table's first child
 `<caption data-rich-table-caption="…" style="caption-side:bottom">` so it is laid out after the rows
-(a hidden table still renders nothing). It checks the following:
+(a hidden table still renders nothing), and candidate V4 page breaks (`breditor/page-break`, document root
+only, no children), emitted as `<div data-rich-page-break class="breditor-page-break" role="separator"
+aria-label="Page break" style="break-after:page;page-break-after:always">` (label option `pageBreakLabel`).
+The opt-in `print` option (`true` or bounded `{size, orientation, margin}`) starts the wrapper with
+`<style data-breditor-print>` holding `richPrintStyles` and emits a table's leading header group in
+`<thead>` so paged media repeats it; without it the output is unchanged (see
+[PAGINATION_AND_PRINT.md](PAGINATION_AND_PRINT.md)). It checks the following:
 
 - Exact node and envelope fields. `entityId` must be `null`.
 - Required and allowed `breditor/*` properties for each element type. An unexpected property,

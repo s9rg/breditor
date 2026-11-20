@@ -175,6 +175,27 @@ conversion (`<caption>` content becomes flow before the table with
 - GFM tables have no caption: a captioned table falls back to a safe HTML block with
   `markdown-feature`, which reimports as the caption.
 
+### Page breaks (candidate rich V4 owners)
+
+The adapter also reads the owner's optional `supportsPageBreaks()` once. Only a local
+candidate rich V4 owner reports `true`; every other owner keeps the original
+conversion (forced-break CSS reports `unsupported-style`, Word's `<br clear=all>`
+stays a line break, Google Docs' hidden page-break `<hr>` is removed). With a V4 owner:
+
+- HTML import maps Word's `<br clear=all style='page-break-before:always'>` (alone or
+  inside a paragraph, which is split), Google Docs'
+  `<hr style="page-break-before:always;display:none">` and an empty `<div>` with a
+  forced break to one page break each without a notice. `page-break-before/after:
+  always` or `break-before/after: page` on a content block becomes a page break
+  before/after it, dropped at the content edges and next to another break as CSS
+  would; side-specific values report `style-approximation`. Page breaks are
+  root-only: one found inside a quote, list, section or cell is removed with
+  `block-structure`.
+- HTML export writes `<div style="break-after:page;page-break-after:always"></div>`,
+  which round trips exactly.
+- Markdown has no page break: it falls back to that HTML block with
+  `markdown-feature`, which reimports as a page break.
+
 ### Mentions (candidate rich V4 owners)
 
 The adapter also reads the owner's optional `supportsMentions()` once. Only a

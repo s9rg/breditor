@@ -119,6 +119,26 @@ so it is laid out below the rows and edited like any paragraph.
 `removeTableCaption {table}`; `tableCaptionOf`, `isTableCaption` and
 `selectedTableCaption` are read-only helpers. See `docs/RICH_LANGUAGE_V4.md` (Slice 6).
 
+## Page breaks and print (candidate rich V4)
+
+Breditor stays a flow editor. A candidate rich V4 document may hold explicit
+`breditor/page-break` blocks, admitted only as direct children of the document root
+(`supportsPageBreaks()`, descriptor `pageBreakVersion: 1`). They render as a
+non-editable, node-selectable `<div class="breditor-page-break" role="separator"
+aria-label="Page break" style="break-after:page;…">` (label from the catalog key
+`pageBreakLabel`). `pageBreakToolbarControls(core)` (included in
+`createRichToolbarV4`) provides **Page break**, which sends
+`insertPageBreak {position, block}` after the root block holding the selection;
+`deletePageBreak {block, paragraph}` and ordinary node deletion remove one. The
+standard slash menu gains **Page break** with a V4 toolbar.
+
+The opt-in print layer is CSS only: `richPrintStyles({size, orientation, margin})`
+(A4/Letter, portrait/landscape, narrow/normal/wide) returns deterministic `@page`
+and `@media print` rules (forced page breaks, rows/figures/captions kept whole,
+headings kept with the next block, `<thead>` repeated, chrome hidden), and
+`mountRichPrintPreview(editor.surface, options)` shows approximate page boundaries
+on screen (catalog key `printPreviewLabel`). See `docs/PAGINATION_AND_PRINT.md`.
+
 ## Chrome localization
 
 Pass an opt-in `ui` catalog to `mountRichEditor` / `mountDocumentRichEditor` to
