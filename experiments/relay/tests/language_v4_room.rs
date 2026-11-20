@@ -39,10 +39,14 @@ fn configuration(version: u32) -> String {
     json!({"format":"breditor/shared-rich-profile","formatVersion":version,"schema":{"name":"example/relay-v4","version":4},"extensions":[]}).to_string()
 }
 fn el(kind: &str, id: &str, children: Value) -> Value {
-    json!({"kind":"element","type":format!("breditor/{kind}"),"entityId":null,"properties":{"breditor/block-id":id},"children":children})
+    let mut node = json!({"kind":"element","type":format!("breditor/{kind}"),"entityId":null,"properties":{"breditor/block-id":id},"children":null});
+    node["children"] = children;
+    node
 }
 fn text(value: &str, formats: Value) -> Value {
-    json!({"kind":"text","text":value,"formats":formats})
+    let mut run = json!({"kind":"text","text":value,"formats":null});
+    run["formats"] = formats;
+    run
 }
 /// Mention, bookmark, internal link, text language, list numbering, image link, section,
 /// page break and table caption in one room.
