@@ -27,7 +27,7 @@ describe("declared general session records",()=>{
  });
  it("rejects malformed record metadata without rewriting an opaque native save",async()=>{
   const db=await openSessionDatabase("unknown-general"),valid={format:"breditor/shared-general-checkpoint-record",formatVersion:1,history:"explicit",richLanguage:1,checkpointJson:owner(true).checkpoint()};
-  for(const mutation of [{extra:true},{history:"automatic"},{richLanguage:4},{checkpointJson:4},{formatVersion:2}]){await put(db,{...valid,...mutation});await expect(readSessionCheckpoint(db,key)).rejects.toThrow("Unknown stored shared general");}db.close();
+  for(const mutation of [{extra:true},{history:"automatic"},{richLanguage:5},{checkpointJson:4},{formatVersion:2}]){await put(db,{...valid,...mutation});await expect(readSessionCheckpoint(db,key)).rejects.toThrow("Unknown stored shared general");}db.close();
  });
  it("requires explicit matching range and language metadata before invoking a factory",async()=>{
   const db=await openSessionDatabase("guard-general"),a=owner(true,false,2);await writeSessionCheckpoint(db,key,a.checkpoint(),"explicit","general-v1",2);const create=vi.fn(),restore=vi.fn();

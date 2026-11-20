@@ -1,11 +1,11 @@
 /** Explicit top-level document session; ordinary/general startup and durable discriminators remain closed. */
 import {validatePlaceholderOption,resolveRichUi} from "@breditor/experimental-rich-content/rendering";
-import {compileStandardSharedProfileV1,compileStandardStructuralSharedProfileV2,compileStandardLayoutSharedProfileV3,supportsSharedDocumentSelection,restoreSharedDocumentEditor,restoreSharedGeneralEditor,restoreSharedTypingEditor,SharedPersistentSession,SharedEditorError,mountSharedDocumentEditor,createStandardSharedToolbarV1,createStructuralSharedToolbarV2,createLayoutSharedToolbarV3,type SharedRustProfile,type SharedProfileConfiguration,type SharedProfileConfigurationV2,type SharedProfileConfigurationV3,type SharedProfileDescriptor,type SharedRustOwner,type SharedRichEditor,type SharedDomEditor,type SharedDocumentDomOptions,type SharedToolbarControl,type SharedEditorOptions,type SharedSaveState,type SharedDocumentView,type SharedDispatch} from "@breditor/collaboration";
+import {compileStandardSharedProfileV1,compileStandardStructuralSharedProfileV2,compileStandardLayoutSharedProfileV3,compileStandardRichSharedProfileV4,supportsSharedDocumentSelection,restoreSharedDocumentEditor,restoreSharedGeneralEditor,restoreSharedTypingEditor,SharedPersistentSession,SharedEditorError,mountSharedDocumentEditor,createStandardSharedToolbarV1,createStructuralSharedToolbarV2,createLayoutSharedToolbarV3,createRichSharedToolbarV4,type SharedRustProfile,type SharedProfileConfiguration,type SharedProfileConfigurationV2,type SharedProfileConfigurationV3,type SharedProfileConfigurationV4,type SharedProfileDescriptor,type SharedRustOwner,type SharedRichEditor,type SharedDomEditor,type SharedDocumentDomOptions,type SharedToolbarControl,type SharedEditorOptions,type SharedSaveState,type SharedDocumentView,type SharedDispatch} from "@breditor/collaboration";
 import {createStandardRichInlinePresentationV1} from "@breditor/experimental-rich-content";
 import type {RichSearchHost} from "@breditor/experimental-rich-content";
 import type {SharedSearchResults} from "@breditor/collaboration";
 import {supportsSharedSearchHistory,restoreSharedSearchEditor,sharedAiToolsHost} from "@breditor/collaboration";
-import {initializeSharedRuntime,standardSharedProfileConfiguration,structuralSharedProfileConfigurationV2,layoutSharedProfileConfigurationV3} from "./shared_profile.js";
+import {initializeSharedRuntime,standardSharedProfileConfiguration,structuralSharedProfileConfigurationV2,layoutSharedProfileConfigurationV3,richSharedProfileConfigurationV4} from "./shared_profile.js";
 import {checkSharedRichLanguage} from "./shared_language.js";
 import {claimHost,awaitInitialization} from "./host.js";
 import {emptyDocumentJson} from "./empty_document.js";
@@ -26,7 +26,7 @@ export interface SharedDocumentEditorSessionOptions extends Omit<SharedDocumentD
  clipboardInterchange?:ClipboardInterchangeFactory<SharedRichEditor<"document-v1">>;
 }
 export interface SharedDocumentSearchEditorSessionOptions extends Omit<SharedDocumentEditorSessionOptions,"initial"|"history"|"richLanguage"> {
- initial?:SharedSearchInitial;history:"explicit"|"typing-v1";richLanguage:1|2|3;
+ initial?:SharedSearchInitial;history:"explicit"|"typing-v1";richLanguage:1|2|3|4;
 }
 /** Borrow the actual document owner; relay/presence adapters require their own explicit compatible policy. */
 export interface SharedDocumentEditorSession extends SharedDocumentEditorRecovery {
@@ -112,11 +112,11 @@ async function openDocumentEditorFamily(options:SharedDocumentEditorSessionOptio
  const initial=structuredClone(options.initial??{kind:"empty"}) as SharedDocumentInitial|SharedSearchInitial;
  if(!(search?["resume","empty","document","frame","searchCheckpoint"]:["resume","empty","document","frame","documentCheckpoint","documentTypingCheckpoint"]).includes(initial.kind))throw new TypeError("Use an explicit matching document checkpoint discriminator");
  if(initial.kind==="documentTypingCheckpoint"&&options.history==="explicit")throw new TypeError("A document typing checkpoint requires natural history");
- const language=options.richLanguage??1,history=options.history??(initial.kind==="documentTypingCheckpoint"?"typing-v1":"explicit"),configuration=structuredClone(options.configuration??(language===3?layoutSharedProfileConfigurationV3:language===2?structuralSharedProfileConfigurationV2:standardSharedProfileConfiguration));
+ const language=options.richLanguage??1,history=options.history??(initial.kind==="documentTypingCheckpoint"?"typing-v1":"explicit"),configuration=structuredClone(options.configuration??(language===4?richSharedProfileConfigurationV4:language===3?layoutSharedProfileConfigurationV3:language===2?structuralSharedProfileConfigurationV2:standardSharedProfileConfiguration));
  const claim=claimHost(options.host,options.signal);let profile:SharedRustProfile|undefined,session:SharedPersistentSession<"document-v1">|undefined,dom:SharedDomEditor<"document-v1">|undefined;
  try{
   const runtime=await awaitInitialization(initializeSharedRuntime(options.runtimeInput),options.signal);claim.assert();
-  profile=language===3?compileStandardLayoutSharedProfileV3(runtime,configuration as SharedProfileConfigurationV3):language===2?compileStandardStructuralSharedProfileV2(runtime,configuration as SharedProfileConfigurationV2):compileStandardSharedProfileV1(runtime,configuration as SharedProfileConfiguration);
+  profile=language===4?compileStandardRichSharedProfileV4(runtime,configuration as SharedProfileConfigurationV4):language===3?compileStandardLayoutSharedProfileV3(runtime,configuration as SharedProfileConfigurationV3):language===2?compileStandardStructuralSharedProfileV2(runtime,configuration as SharedProfileConfigurationV2):compileStandardSharedProfileV1(runtime,configuration as SharedProfileConfiguration);
   const factory=profile,binding=JSON.parse(factory.descriptor_json()) as SharedProfileDescriptor;
   if(options.placeholder!==undefined&&factory.placeholder_version?.()!=="1")throw new SharedEditorError("placeholder_unavailable","Use a matching native placeholder profile before opening durable storage");
   if(!supportsSharedDocumentSelection(factory))throw new SharedEditorError("document_selection_unavailable","Use matching native document-family recovery before opening a durable document editor");
@@ -136,7 +136,7 @@ async function openDocumentEditorFamily(options:SharedDocumentEditorSessionOptio
   };
   session=search?await SharedPersistentSession.openSearch({...persistence,rangeEditing:"general-v1",selectionEditing:"document-v1",restoreSearch:checkpoint=>{claim.assert();return restoreSharedSearchEditor(factory,options.room,checkpoint);}}):await SharedPersistentSession.openDocument({...persistence,restore:(checkpoint,storedHistory,storedRanges="original")=>{claim.assert();return storedRanges==="general-v1"?restoreSharedGeneralEditor(factory,options.room,checkpoint,storedHistory):storedHistory==="typing-v1"?restoreSharedTypingEditor(factory,options.room,checkpoint):factory.restore(options.room,checkpoint);},restoreDocument:(checkpoint,storedHistory)=>{claim.assert();return restoreSharedDocumentEditor(factory,options.room,checkpoint,storedHistory);}});
   claim.assert();if(options.readOnly!==undefined)session.core.setReadOnly(options.readOnly);
-  const core=session.core,standard=language===3?createLayoutSharedToolbarV3(core,presentation):language===2?createStructuralSharedToolbarV2(core,presentation):createStandardSharedToolbarV1(core,presentation),toolbar=options.toolbar?.(core,standard)??standard;
+  const core=session.core,standard=language===4?createRichSharedToolbarV4(core,presentation):language===3?createLayoutSharedToolbarV3(core,presentation):language===2?createStructuralSharedToolbarV2(core,presentation):createStandardSharedToolbarV1(core,presentation),toolbar=options.toolbar?.(core,standard)??standard;
   const {clipboardInterchange:interchangeFactory,...domOptions}=options,interchange=clipboardInterchangeOptions(interchangeFactory,core);
   claim.assert();dom=mountSharedDocumentEditor(options.host,{...domOptions,...interchange,core,coreOwnership:"borrow",inlinePresentation:presentation,toolbar});claim.assert();return new DocumentSessionOwner(session,dom,claim.release,options,toolbar);
  }catch(error){try{dom?.dispose();if(session)await session.close();}catch(closeError){throw new SharedDocumentEditorOpenError(new AggregateError([error,closeError],"Document opening and durable cleanup failed"),session!);}finally{claim.rollback();}throw error;}

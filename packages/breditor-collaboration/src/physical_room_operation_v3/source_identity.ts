@@ -9,7 +9,7 @@ type History='original'|'segmented-v1';
 type DocumentHistory=History|'continued-v2';
 type ReviewRelay=Readonly<{binding:string;principal:string;documentWriter:string;room:string;writerTransport?:'atomic-v2';reviewEditing?:'read_only'}>;
 export interface PhysicalOperationV3SourceIdentity{
- readonly participant:string;readonly principal:string;readonly room:string;readonly writer:string;readonly richLanguage:1|2|3;
+ readonly participant:string;readonly principal:string;readonly room:string;readonly writer:string;readonly richLanguage:1|2|3|4;
  readonly actor:string|undefined;readonly reviewPrincipal:string|undefined;
  readonly documentHistory:DocumentHistory;readonly reviewHistory:History|null;readonly reviewRelay:ReviewRelay|null;
 }

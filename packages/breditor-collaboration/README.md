@@ -405,8 +405,8 @@ control would publish. Choosing an item publishes **one** guarded dispatch,
 `{commands:[delete_text(trigger), command]}`, at the checked revision; shared
 history makes that one Undo group, and a refused batch publishes nothing. Only
 block-identity commands (`sharedSlashCommandKinds`) are admitted after the
-trigger removal. Shared editors are rich V1–V3, so there is no `@` mention menu
-and no Collapsible section or Page break item. `@breditor/editor/collaboration`
+trigger removal. Shared V4 has no per-slice commands yet, so there is no `@`
+mention menu and no Collapsible section or Page break item. `@breditor/editor/collaboration`
 exposes `mountSlashCommands(session)` (default items from the session's
 `toolbarControls()`) and `@breditor/editor/collaboration/react` exposes
 `BreditorSharedSlashCommands`. See [the slash-command contract](../../docs/SLASH_COMMANDS.md#shared-editors).
@@ -847,6 +847,23 @@ existing serialized meanings are unchanged. A local rich checkpoint is not a
 shared journal. The default editor/Wasm graph remains independent of replication.
 The native core's explicit rich-language V2 structural schema is not admitted by
 model 11; profile creation rejects it before seed parsing or engine import.
+
+## Explicit rich language V4 (foundation)
+
+`compileRichSharedProfileV4` and `compileStandardRichSharedProfileV4` select
+configuration 4/model 14/journal 15, the frozen V4 grammar and fingerprint.
+`SharedPersistentSession.open` and the other durable sessions must explicitly
+select `richLanguage: 4`. A V4 owner reports `richLanguageVersion() === 4`,
+`supportsBlockLayout()` and `supportsRichLanguageV4()` (every slice version
+`"1"`); `createRichSharedToolbarV4` composes the structural and layout controls.
+Seeded, restored and pasted V4 content (sections, page breaks, table captions,
+list numbering, image links, bookmarks, internal links, text language and
+mentions) replicates exactly and is edited with the generic shared commands;
+the per-slice shared commands are not part of this foundation. Concurrent
+merges that would break a V4 invariant are repaired deterministically on every
+peer, and local commands needing such a repair are refused. The reference relay
+has `create_language_v4` / `create_standard_language_v4` with a new
+`seedLanguageV4` record. See [`docs/SHARED_RICH_V4.md`](../../docs/SHARED_RICH_V4.md).
 
 ## Explicit layout V3 candidate
 

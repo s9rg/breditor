@@ -182,6 +182,15 @@ export interface SharedRustOwner extends SharedReviewRustCapability,SharedReview
  selection_format_state_json?(observation:unknown,kind:string):string;
  change_selection_formats?(observation:unknown,input:string):boolean;
  block_layout_version?():string;
+ rich_language_version?():string;
+ list_numbering_version?():string;
+ text_language_version?():string;
+ image_link_version?():string;
+ details_version?():string;
+ mention_version?():string;
+ table_caption_version?():string;
+ page_break_version?():string;
+ bookmark_version?():string;
  block_layout_state_json?(observation:unknown):string;
  change_selection_layout?(observation:unknown,input:string):boolean;
  typing_history_version?():string;

@@ -35,7 +35,7 @@ import {createOriginalRecordRead,type OriginalRecordRead,type OriginalNativeReco
 export interface SharedSessionOptions {
  database:string;room:string;writer:string;
  /** Explicit journal language. Omitted/1 preserves the original model 11/journal 12 storage guard. */
- richLanguage?:1|2|3;
+ richLanguage?:1|2|3|4;
  /** Requested immutable history mode; an explicit opt-in may upgrade a legacy stored journal. */
  history?:SharedHistoryPolicy;
  /** Explicit replay family, independent from history grouping and native language. */
@@ -57,7 +57,7 @@ export interface SharedDocumentSessionOptions extends Omit<SharedSessionOptions,
 }
 /** New closed durable family; existing records are never implicitly migrated or overwritten. */
 export interface SharedSearchSessionOptions<P extends SharedSelectionPolicy=SharedSelectionPolicy> extends Omit<SharedSessionOptions,"restore"|"editor"|"history"|"rangeEditing"|"richLanguage"> {
- history:SharedHistoryPolicy;rangeEditing:SharedRangePolicy;selectionEditing:P;richLanguage:1|2|3;
+ history:SharedHistoryPolicy;rangeEditing:SharedRangePolicy;selectionEditing:P;richLanguage:1|2|3|4;
  restoreSearch:(checkpoint:string)=>SharedRustOwner|Promise<SharedRustOwner>;
  editor?:Omit<SharedEditorOptions<"document-v1">,"selectionEditing"|"searchHistory">;
 }
@@ -138,7 +138,7 @@ export class SharedPersistentSession<P extends SharedSelectionPolicy="original">
  }
  /** Lease before reading/restoring. The host supplies the separately named native search factory. */
  static openSearch<Q extends SharedSelectionPolicy>(options:SharedSearchSessionOptions<Q>):Promise<SharedPersistentSession<Q>>{
-  if(typeof options.restoreSearch!=="function"||![1,2,3].includes(options.richLanguage)||(options.history!=="explicit"&&options.history!=="typing-v1")||(options.rangeEditing!=="original"&&options.rangeEditing!=="general-v1")||(options.selectionEditing!=="original"&&options.selectionEditing!=="document-v1")||(options.selectionEditing==="document-v1"&&options.rangeEditing!=="general-v1"))return Promise.reject(new SharedEditorError("search_session_policy","Explicit compatible search session policies and recovery are required"));
+  if(typeof options.restoreSearch!=="function"||![1,2,3,4].includes(options.richLanguage)||(options.history!=="explicit"&&options.history!=="typing-v1")||(options.rangeEditing!=="original"&&options.rangeEditing!=="general-v1")||(options.selectionEditing!=="original"&&options.selectionEditing!=="document-v1")||(options.selectionEditing==="document-v1"&&options.rangeEditing!=="general-v1"))return Promise.reject(new SharedEditorError("search_session_policy","Explicit compatible search session policies and recovery are required"));
   return SharedPersistentSession.#open(inheritActorLeaseInput(options,inheritRecoveryOrigin(options,{...options,restore:options.restoreSearch,restoreDocument:options.restoreSearch,editor:{...options.editor,searchHistory:"search-v1"}})),options.selectionEditing,true,undefined,isCompletedSourceOpen(options));
  }
  static async #open<Q extends SharedSelectionPolicy>(options:SharedSessionOptions|SharedDocumentSessionOptions,selectionPolicy:Q,search=false,backup?:SharedSessionBackup,completeOnly=isCompletedSourceOpen(options)):Promise<SharedPersistentSession<Q>>{
@@ -146,7 +146,7 @@ export class SharedPersistentSession<P extends SharedSelectionPolicy="original">
   if(options.editor?.segmentedHistory!==undefined)throw new SharedEditorError("segmented_session_factory","Use the explicitly generation-aware durable family");
   if(!search&&options.editor?.searchHistory!==undefined)throw new SharedEditorError("search_session_factory","Use the explicit search-aware durable factory");
   if(options.editor?.reviewedHistory!==undefined)throw new SharedEditorError("reviewed_session_factory","Document-only storage cannot retain reviewed ownership; use the explicit reviewed paired session");
-  if(options.richLanguage!==undefined&&options.richLanguage!==1&&options.richLanguage!==2&&options.richLanguage!==3)throw new SharedEditorError("session_identity","Expected richLanguage 1, 2 or 3");
+  if(options.richLanguage!==undefined&&options.richLanguage!==1&&options.richLanguage!==2&&options.richLanguage!==3&&options.richLanguage!==4)throw new SharedEditorError("session_identity","Expected richLanguage 1, 2, 3 or 4");
   if(options.history!==undefined&&options.history!=="explicit"&&options.history!=="typing-v1")throw new SharedEditorError("session_history","Expected history explicit or typing-v1");
   if(options.rangeEditing!==undefined&&options.rangeEditing!=="original"&&options.rangeEditing!=="general-v1")throw new SharedEditorError("session_range","Expected rangeEditing original or general-v1");
   if(selectionPolicy==="document-v1"&&(options.rangeEditing==="original"||!("restoreDocument" in options)||typeof options.restoreDocument!=="function"))throw new SharedEditorError("session_selection","Document sessions require general ranges and an explicit document recovery factory");

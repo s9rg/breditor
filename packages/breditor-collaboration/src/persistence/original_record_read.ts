@@ -10,7 +10,7 @@ type Immutable<T>=T extends readonly(infer V)[]?readonly Immutable<V>[]:T extend
 export interface OriginalNativeRecords{
  readonly format:'breditor/persistent-original-native-record-read';readonly formatVersion:1;
  readonly scope:'original-native-committed-pending-live';
- readonly identity:Readonly<{room:string;writer:string;richLanguage:1|2|3;history:SharedHistoryPolicy;rangeEditing:SharedRangePolicy;selectionEditing:SharedSelectionPolicy;searchHistory:'search-v1'|null}>;
+ readonly identity:Readonly<{room:string;writer:string;richLanguage:1|2|3|4;history:SharedHistoryPolicy;rangeEditing:SharedRangePolicy;selectionEditing:SharedSelectionPolicy;searchHistory:'search-v1'|null}>;
  readonly committed:Readonly<{checkpoint:string;storageFamily:'original'|'typing-v1'|'general-v1'|'document-v1'|'search-v1'}>;
  readonly pending:Readonly<{checkpoint:string;revision:string}>|null;
  readonly live:Readonly<{checkpoint:string;revision:string}>;
