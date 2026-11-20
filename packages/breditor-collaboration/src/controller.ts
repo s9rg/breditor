@@ -203,6 +203,15 @@ export class SharedDomEditor<P extends SharedSelectionPolicy="original"> {
  replaceSearchOne(results:SharedSearchResults,index:string,replacement:RichSearchReplacement,revision=this.#model.view.revision):Promise<void>{const frozen=JSON.parse(JSON.stringify(replacement)) as RichSearchReplacement;return this.#searchAction(c=>{c.core.replaceSearchOne(results,index,frozen,c.revision);},revision);}
  replaceSearchAll(results:SharedSearchResults,replacement:RichSearchReplacement,revision=this.#model.view.revision):Promise<void>{const frozen=JSON.parse(JSON.stringify(replacement)) as RichSearchReplacement;return this.#searchAction(c=>{c.core.replaceSearchAll(results,frozen,c.revision);},revision);}
  execute(request:SharedDispatch,focus=true,revision=this.#model.view.revision):void{const frozen=JSON.parse(JSON.stringify(request)) as SharedDispatch;this.#perform(c=>{c.core.dispatch(frozen,c.revision);},focus,revision);}
+ /**
+  * One guarded native plain-text replacement of an explicit text range (the AI/language tools' Accept path): native
+  * `replace_plain_text` (logical-start style, one explicit history group, never joined with typing) or, for a
+  * general-v1 owner, native general range plain input. Remote frames are held while it runs.
+  */
+ replacePlainTextRange(selection:Extract<RichSelection,{kind:"text"}>,text:string,focus=true,revision=this.#model.view.revision):void{
+  if(selection?.kind!=="text"||typeof text!=="string")throw new TypeError("Expected a text range and plain text");
+  const frozen=structuredClone(selection);this.#perform(c=>{if(c.model.view.rangeEditing==="general-v1")c.core.replaceGeneralRangePlainText(frozen,text,c.allocate("range"),c.revision);else c.core.replace(frozen,text,c.revision);},focus,revision);
+ }
  /** Asynchronous hosts can retain the publication that supplied their selection intent. */
  select(selection:RichSelection|null,focus=true,revision=this.#model.view.revision):void{const frozen=structuredClone(selection);this.#perform(c=>{c.core.select(frozen,c.revision);},focus,revision);}
  #documentOwner():SharedRichEditor<"document-v1">{this.#live();if(!this.#document)throw new SharedEditorError("selection_policy","Use an explicitly selected shared document DOM owner");return this.#document;}

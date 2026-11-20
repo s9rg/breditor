@@ -43,6 +43,13 @@ export interface RichAiToolsHost {
  selectAiRange(selection:RichTextSelection,revision:string):RichCommandOutcome|"queued";
  focus():void;
  uiLocale?():RichUiLocale;
+ /**
+  * What a displayed rewrite review is bound to. `"document"` (the default, local editors): the complete admitted
+  * document JSON must be byte-identical to the snapshot. `"target"` (shared editors, where peers publish
+  * continuously): only the target region must be byte-identical — see `aiTargetKey`. Either way Accept submits the
+  * exact current revision, so the native guard still rejects a publication that raced the check.
+  */
+ readonly aiStaleScope?:"document"|"target";
 }
 /** Structural editor shape satisfied by `RichDomEditor` and by the SDK's local editor search/slash host. */
 export interface RichAiEditorPort {
@@ -91,6 +98,34 @@ export function readAiDocument(documentJson:string):RichAiDocument {
   for(let i=node.children.length-1;i>=0;i--){const child=node.children[i]!;if(child.kind==="element")stack.push(child);}
  }
  return Object.freeze({order:Object.freeze(order),texts});
+}
+/**
+ * Canonical binding of a rewrite target region, or null when a target block is absent. It covers, byte for byte,
+ * every node from the first target block through the last one in document tree order (their own properties, text
+ * runs and formats, and every block, table or image between them) plus the type/properties of both blocks' ancestor
+ * chains (not the ancestors' other children). An edit anywhere else in the document leaves it unchanged; an edit
+ * inside the region, a move out of it, a re-wrap or a new block between the endpoints changes it.
+ */
+export function aiTargetKey(documentJson:string,segments:readonly Pick<RichAiSegment,"block">[]):string|null {
+ const first=segments[0]?.block,last=segments[segments.length-1]?.block;if(first===undefined||last===undefined)return null;
+ const parsed=JSON.parse(documentJson) as {root?:JsonElement};if(!parsed||typeof parsed!=="object"||!parsed.root||parsed.root.kind!=="element")return null;
+ const header=(node:JsonElement):string=>{const {children:_,...rest}=node as JsonElement&Record<string,unknown>;return JSON.stringify(rest);};
+ const blockId=(node:JsonElement):string|undefined=>{const id=node.properties?.["breditor/block-id"];return typeof id==="string"?id:undefined;};
+ type Frame={readonly node:JsonElement|{kind:"text"}}|{readonly exit:string|undefined};
+ const tokens:string[]=[],path:string[]=[],stack:Frame[]=[{node:parsed.root}];let start=-1,end=-1,firstChain:string[]|null=null,lastChain:string[]|null=null;
+ while(stack.length&&end<0){
+  const frame=stack.pop()!;
+  if("exit" in frame){path.pop();if(start>=0){tokens.push(">");if(frame.exit===last)end=tokens.length;}continue;}
+  const node=frame.node;
+  if(node.kind!=="element"){if(start>=0)tokens.push(`t${JSON.stringify(node)}`);continue;}
+  const element=node as JsonElement,id=blockId(element),h=header(element);
+  if(start<0&&id===first){start=tokens.length;firstChain=[...path];}
+  if(start>=0&&id===last&&lastChain===null)lastChain=[...path];
+  if(start>=0)tokens.push(`<${h}`);path.push(h);stack.push({exit:id});
+  for(let i=element.children.length-1;i>=0;i--)stack.push({node:element.children[i]!});
+ }
+ if(start<0||end<0||!firstChain||!lastChain)return null;
+ return JSON.stringify([firstChain,lastChain,tokens.slice(start,end)]);
 }
 /** UTF-8 length without allocating an encoded copy. */
 export function utf8Bytes(text:string):number {

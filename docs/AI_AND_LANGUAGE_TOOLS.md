@@ -1,7 +1,8 @@
 # AI and language tool provider contract
 
-Status: opt-in browser tools for **local** editors. They add no document format,
-command, history family, saved setting or Rust capability. Nothing is enabled by
+Status: opt-in browser tools for local and shared editors. They add no document
+format, command, history family, saved setting or Rust capability (shared
+editors reuse the existing native plain-text range replacement). Nothing is enabled by
 mounting an editor; a host must mount a tool and supply its own provider.
 
 Breditor bundles no AI client, vendor SDK, model, dictionary or network code.
@@ -162,12 +163,96 @@ React entry adds `BreditorAiTools` and `BreditorLanguageCheck`. The structural
 `RichAiToolsHost` port is also implemented by `richAiToolsHost(domEditor)` for a
 directly mounted `RichDomEditor`.
 
-**Shared editors are not wired in this version.** The shared session's public
-command path is the `SharedDispatch` union; its `replace_text_range` operation
-requires explicit per-run formats, and shared staleness also involves remote
-operations, selective history and writer leases. A shared adapter needs its own
-browser qualification against peers before it is offered. Read-only owners can
-run a language check and review issues, but neither tool applies changes.
+Shared editors are wired separately (next section). Read-only owners (local or
+shared) can run a language check and review issues, but neither tool applies
+changes, and a rewrite is refused before anything is sent.
+
+## Shared editors
+
+Same provider contract, scopes, bounds, cancellation, untrusted-output rules and
+UI as local editors. Entry points (`@breditor/collaboration`, re-exported by
+`@breditor/editor/collaboration`):
+
+- `sharedAiToolsHost(domEditor)` adapts a `SharedDomEditor` (either selection
+  policy) to the `RichAiToolsHost` port;
+- `mountSharedAiTools(root, source, options)` and
+  `mountSharedLanguageCheck(root, source, options)` take that DOM editor or any
+  owner with an `aiTools()` port — the SDK's `SharedEditorSession` and
+  `SharedDocumentEditorSession` now expose `aiTools()`;
+- React (`@breditor/editor/collaboration/react`): `BreditorSharedAiTools` and
+  `BreditorSharedLanguageCheck` take a ready shared session as `editor`, with the
+  same props, handles and retirement behaviour as the local components.
+
+**Reads.** Scoped text comes from the shared owner's admitted document JSON (the
+same projection as local: text blocks in tree order, UTF-16 offsets), never the
+DOM.
+
+**Apply.** Accept (and a language suggestion) calls the new
+`SharedDomEditor.replacePlainTextRange(selection, text, focus, revision)`:
+exactly one guarded native call queued through the DOM editor's command path
+(remote frames are held while it runs). For an original-range owner it is the
+native `replace_plain_text`, which stages one `ReplaceTextRange` command — the
+logical start's formats, the caret after the inserted text, pending formats
+cleared — through `apply_with_state` as **one explicit writer-local history
+group, never joined with an open typing group**. For a general-v1 owner it is
+native general range plain input (`replace_general_range_plain_text`), also one
+group. The browser never computes formats and never builds a multi-command
+batch. The call carries the exact current revision; the shared observation guard
+rejects it if any publication (local or remote) landed after the browser's
+check, without a partial publication. Undo removes only this writer's
+replacement; peers' concurrent edits stay (selective history).
+`crates/breditor-collaboration/tests/shared_ai_rewrite_contracts.rs` proves both
+native calls, after natural typing and a peer edit elsewhere, are one group that
+undoes/redoes exactly and converges on the peer, and that a raced observation is
+rejected without publishing. The native `replace_plain_text` input limit is
+64 KiB of UTF-8 (the default `maxOutputBytes`); a larger host limit lets the
+review show but Accept then fails with the native limit error.
+
+**Formatted output is not offered for shared editors.** `mountSharedAiTools`
+refuses an `interchange` option, and a `markdown`/`html` answer fails like it
+does locally without an adapter. Only `{text}` answers are applied.
+
+**Stale scope: the target region, not the whole document.** Peers publish
+continuously, so binding a review to the complete document would make almost
+every shared rewrite stale. The shared port declares `aiStaleScope: "target"`:
+the review stays valid while the **target region** is byte-identical to the
+snapshot (`aiTargetKey`). The region is every node from the first target block
+through the last in tree order — the blocks' own properties, text runs and
+formats, plus any block, table or image between multi-block endpoints — and the
+type/properties of both endpoints' ancestor chains (not the ancestors' other
+children). Consequently:
+
+- a peer edit, insertion, formatting change or deletion anywhere else (other
+  blocks, other list items in the same list, captions elsewhere) does **not**
+  stale the review, while the provider runs or during review;
+- a peer edit inside the target (text or formats), a deleted or moved-away target
+  block, a re-wrap that changes an ancestor, or a block inserted between
+  multi-block endpoints stales it immediately; Accept is withdrawn exactly as for
+  local editors and **Run again** re-requests against the current text;
+- caret/selection-only publications never stale it;
+- Accept re-checks the region against the current view and then dispatches with
+  that view's revision, so the native guard closes the remaining race. Nothing is
+  re-targeted or re-mapped.
+
+Local editors keep the default `aiStaleScope: "document"` (the whole document
+must be unchanged).
+
+**Language check under collaboration** needs no new rule: issues are bound to the
+exact text of their block, so after any publication issues in blocks a peer
+changed are dropped (`outdated issues removed: N`) and issues in untouched blocks
+stay valid. Applying a suggestion re-verifies the block text and submits the same
+one-group `replacePlainTextRange` with the current revision.
+
+**Privacy in shared rooms.** The contract is unchanged — only the explicit scope
+leaves the page, and only through the host provider — but in a shared room the
+scoped text can include content **written by other participants** (a block or a
+document-scope language check covers everyone's text, and the request carries
+the room's block ids). Breditor cannot know whether those participants agreed to
+have their text sent to a third-party service. Hosts are responsible for
+obtaining consent from every participant whose content may be sent (for example
+a room-level setting all members accept), for disclosing which provider is used,
+and for preferring the narrowest scope (`selection`) in shared rooms. No writer,
+peer, presence or account identity is included in any request.
 
 ## Localization
 
@@ -191,7 +276,24 @@ chrome `dir`/`lang`; provider text and document text are never translated.
   one-step Undo after natural typing, stale refusal after typing vs. valid
   review after caret moves, cancellation, sanitized formatted output, overlay
   geometry without editing-DOM mutation, and keyboard apply with exact remapping.
+- `packages/breditor-editor/tests/shared_ai_tools.test.tsx` (fake native shared
+  owner under the real `SharedRichEditor` and `SharedDomEditor`, peers' edits
+  admitted through `receiveFrame`): one guarded native replacement per Accept
+  with the current revision and one Undo step; peer edits elsewhere (while
+  pending, during review, block insertion, formatting) keep the review valid;
+  peer edits in the target, formatting of the target and a block inserted
+  between multi-block endpoints stale it; general-v1 routing; formatted output
+  refused; read-only; cancel/supersede/dispose; language issues dropped only in
+  peer-changed blocks; target-key unit cases; SDK `aiTools()` source and React
+  lifecycle.
+- `crates/breditor-collaboration/tests/shared_ai_rewrite_contracts.rs`: the exact
+  native calls are one history group after typing and a peer edit elsewhere,
+  undo/redo exactly, keep the start style, converge on the peer, and a raced
+  observation publishes nothing.
 
 Not covered: real AI or spelling services, IME composition during review, screen
-reader announcements beyond ARIA roles/labels, shared editors and formatted input
-export.
+reader announcements beyond ARIA roles/labels, formatted input export, formatted
+shared rewrite output, and a shared-editor browser run (the shared Playwright
+harness needs `target/collaboration-feasibility-web`, which was not built for
+this change; the shared adapter is qualified with the fake owner and the Rust
+contract test only).
