@@ -474,6 +474,9 @@ pub enum RichActionError {
     /// Typed V4 table-caption profile, target or existing-caption admission failed.
     #[error(transparent)]
     TableCaption(#[from] super::RichTableCaptionError),
+    /// Typed V4 page-break profile, target or placement admission failed.
+    #[error(transparent)]
+    PageBreak(#[from] super::RichPageBreakError),
     /// Typed V4 text-language profile or tag admission failed.
     #[error(transparent)]
     TextLanguage(#[from] super::RichTextLanguageError),

@@ -126,6 +126,8 @@ fn candidate_v4(
         CommandTag::InsertMention => super::insert_mention::execute(owner, observation, input),
         CommandTag::AddTableCaption => super::table_caption::add(owner, observation, input),
         CommandTag::RemoveTableCaption => super::table_caption::remove(owner, observation, input),
+        CommandTag::InsertPageBreak => super::page_break::insert(owner, observation, input),
+        CommandTag::DeletePageBreak => super::page_break::delete(owner, observation, input),
         _ => Err(super::invalid()),
     }
 }

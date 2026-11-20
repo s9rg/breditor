@@ -154,6 +154,7 @@ fn explicit_candidate_v4_is_v3_grammar_plus_sections_with_its_own_rule_revision(
     assert_ne!(fingerprint(&lookalike), v4.fingerprint());
     // Collapsible sections: two new elements, and every V2 flow container admits a section.
     // Table captions: a table admits one trailing caption paragraph after its rows.
+    // Page breaks: one new atomic element admitted only by the document root.
     let mut changed = vec![];
     for (name, element) in &v4.definition().elements {
         if v3.definition().elements.get(name) != Some(element) && name.as_str() != "breditor/image"
@@ -171,6 +172,7 @@ fn explicit_candidate_v4_is_v3_grammar_plus_sections_with_its_own_rule_revision(
             "breditor/details-summary",
             "breditor/document",
             "breditor/list-item",
+            "breditor/page-break",
             "breditor/table",
             "breditor/table-cell",
             "breditor/task-item",
@@ -185,6 +187,7 @@ fn explicit_candidate_v4_is_v3_grammar_plus_sections_with_its_own_rule_revision(
     assert!(!v3.supports_rich_text_language());
     assert!(v4.supports_rich_text_language());
     assert!(!v3.supports_rich_mentions() && v4.supports_rich_mentions());
+    assert!(!v3.supports_rich_page_breaks() && v4.supports_rich_page_breaks());
     assert!(v3.supports_rich_block_layout() && v4.supports_rich_block_layout());
     Ok(())
 }

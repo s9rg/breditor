@@ -148,6 +148,7 @@ impl RichBlockDraft {
                     | "breditor/blockquote"
                     | "breditor/code-block"
                     | "breditor/horizontal-rule"
+                    | "breditor/page-break"
                     | "breditor/task-list"
                     | "breditor/details"
             )

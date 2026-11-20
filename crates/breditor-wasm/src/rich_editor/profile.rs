@@ -116,6 +116,9 @@ impl BreditorRichProfile {
         if self.schema.supports_rich_table_captions() {
             value["tableCaptionVersion"] = serde_json::json!(1);
         }
+        if self.schema.supports_rich_page_breaks() {
+            value["pageBreakVersion"] = serde_json::json!(1);
+        }
         BreditorStringResult::from_value(value.to_string())
     }
     /// Read complete typed inline declarations without exposing the schema proof.

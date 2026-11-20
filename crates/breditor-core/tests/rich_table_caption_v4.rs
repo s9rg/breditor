@@ -35,9 +35,9 @@ use serde_json::{Value, json};
 type Result<T = ()> = std::result::Result<T, Box<dyn std::error::Error>>;
 
 /// Candidate V4 fingerprint for schema `example/layout@1` with the standard inline preset,
-/// pinned after the table-caption slice (a trailing caption paragraph below tables).
+/// pinned after the page-break slice (captions are unchanged by root page breaks).
 const V4_FINGERPRINT: &str =
-    "sha256:6daf61c3c5a216bb4d831c8bd6b9b776044b0a4598a346270ecf6579373959c0";
+    "sha256:eb74301f1eedccc6838cf67090b2ce47e91e51112f9550d5ba25a22a20d0e9cb";
 
 fn schema(revision: u32) -> Result<CompiledSchema> {
     let id = SchemaId::new(QualifiedName::try_new("example/layout")?, SchemaVersion::try_new(1)?);

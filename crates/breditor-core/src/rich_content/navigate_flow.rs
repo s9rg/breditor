@@ -176,9 +176,10 @@ pub(super) fn edge_stop(
                 let point = RichTextPoint::new(identity(node)?, offset, affinity);
                 Some(RichSelectionKind::TextRange { anchor: point.clone(), focus: point })
             }
-            "breditor/image" | "breditor/table" | "breditor/horizontal-rule" => {
-                Some(RichSelectionKind::Node(identity(node)?))
-            }
+            "breditor/image"
+            | "breditor/table"
+            | "breditor/horizontal-rule"
+            | "breditor/page-break" => Some(RichSelectionKind::Node(identity(node)?)),
             "breditor/bullet-list"
             | "breditor/ordered-list"
             | "breditor/list-item"

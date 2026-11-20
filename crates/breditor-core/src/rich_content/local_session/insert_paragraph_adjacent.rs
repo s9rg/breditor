@@ -36,7 +36,10 @@ impl RichLocalSession {
         };
         if !matches!(
             super::super::rich_selection::block(&self.state.document, block)?.kind().as_str(),
-            "breditor/image" | "breditor/table" | "breditor/horizontal-rule"
+            "breditor/image"
+                | "breditor/table"
+                | "breditor/horizontal-rule"
+                | "breditor/page-break"
         ) {
             return Err(RichSelectionError::TargetKind.into());
         }

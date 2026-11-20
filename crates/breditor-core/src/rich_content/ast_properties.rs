@@ -51,6 +51,7 @@ pub(crate) fn required_properties(kind: &str) -> &'static [&'static str] {
         | "breditor/blockquote"
         | "breditor/code-block"
         | "breditor/horizontal-rule"
+        | "breditor/page-break"
         | "breditor/task-list"
         | "breditor/details"
         | "breditor/details-summary" => &["block-id"],
