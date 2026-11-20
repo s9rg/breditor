@@ -16,7 +16,8 @@ function owner(general=false,natural=false,readOnly=false){
   return JSON.stringify(natural?{format:general?"breditor/shared-general-typing-session":"breditor/shared-typing-session",formatVersion:1,modelVersion:11,journalVersion:12,journal:header}:header);
  };
  const clock=()=>JSON.stringify({writer:"101",through:"1",prefixDigest:digest});
- const groups=(version:1|2)=>JSON.stringify({format:"breditor/shared-writer-groups",formatVersion:version,groups:[group(version)]});
+ // Matches the native batch (crates/breditor-collaboration writer_transport/export.rs): it names its author.
+ const groups=(version:1|2)=>JSON.stringify({format:"breditor/shared-writer-groups",formatVersion:version,writer:"101",from:"0",through:"1",hasMore:false,groups:[group(version)]});
  const raw={descriptor_json:()=>JSON.stringify({format:"breditor/shared-rich-owner",abiVersion:1,modelVersion:11,journalVersion:12}),observe:()=>({view_json:()=>JSON.stringify(view),free:vi.fn()}),free:vi.fn(),checkpoint,typing_checkpoint:checkpoint,general_checkpoint:checkpoint,general_typing_checkpoint:checkpoint,
   general_range_version:()=>"1",enable_general_ranges:vi.fn(),replace_general_range_text:vi.fn(),replace_general_range_plain_text:vi.fn(),replace_general_range_typing_text:vi.fn(),
   typing_history_version:()=>"1",enable_typing_history:vi.fn(),close_typing_group:vi.fn(),insert_typing_text:vi.fn(),delete_typing_range:vi.fn(),
