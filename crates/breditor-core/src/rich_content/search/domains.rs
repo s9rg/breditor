@@ -53,6 +53,18 @@ pub(in crate::rich_content) fn domains(
             if view.geometry().is_hidden() {
                 continue;
             }
+            // A candidate V4 caption (the table's last child) follows every cell; the
+            // stack is last-in-first-out, so it is pushed before the cells.
+            if crate::rich_content::table_caption::caption(node).is_some() {
+                queued(visited, stack.len(), 1)?;
+                stack.push(
+                    path.try_child(
+                        u32::try_from(node.children().len() - 1)
+                            .map_err(|_| RichSearchError::Invariant)?,
+                    )
+                    .map_err(|_| RichSearchError::Invariant)?,
+                );
+            }
             for cell in view.geometry().cells().iter().rev().filter(|cell| cell.is_master()) {
                 for source in cell.source_cells().iter().rev() {
                     queued(visited, stack.len(), 1)?;

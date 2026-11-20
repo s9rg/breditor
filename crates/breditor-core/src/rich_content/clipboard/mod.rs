@@ -100,6 +100,11 @@ impl RichClipboardFragment {
                 let node = root.children().get(0).ok_or(RichClipboardError::Kind)?;
                 if root.children().len() != 1
                     || node.as_element().is_none_or(|node| node.kind().as_str() != "breditor/table")
+                    // A grid record is a cell rectangle; it never carries a table caption.
+                    || node
+                        .as_element()
+                        .and_then(crate::rich_content::table_caption::caption)
+                        .is_some()
                     || document
                         .table_ids()
                         .next()

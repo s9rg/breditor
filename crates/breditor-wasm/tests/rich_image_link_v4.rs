@@ -56,7 +56,7 @@ fn v4_descriptor_and_owner_report_image_links_only_for_v4() -> Result {
     assert_eq!(d["textLanguageVersion"], 1);
     assert_eq!(
         d["schemaFingerprint"],
-        "sha256:39fcdb478f73d51a6a3187785ab43bd2d0cca167940d8892614e16c4ad52202e"
+        "sha256:6daf61c3c5a216bb4d831c8bd6b9b776044b0a4598a346270ecf6579373959c0"
     );
     assert_eq!(owner(&p, &root())?.image_link_version(), "1");
     let plain =

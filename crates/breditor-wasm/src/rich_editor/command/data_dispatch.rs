@@ -124,6 +124,8 @@ fn candidate_v4(
         CommandTag::SetDetailsOpen => super::details::set_open(owner, observation, input),
         CommandTag::EnterDetailsBody => super::details::enter_body(owner, observation, input),
         CommandTag::InsertMention => super::insert_mention::execute(owner, observation, input),
+        CommandTag::AddTableCaption => super::table_caption::add(owner, observation, input),
+        CommandTag::RemoveTableCaption => super::table_caption::remove(owner, observation, input),
         _ => Err(super::invalid()),
     }
 }

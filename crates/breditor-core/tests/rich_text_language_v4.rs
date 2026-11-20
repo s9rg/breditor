@@ -23,9 +23,9 @@ use breditor_core::{
 use serde_json::{Value, json};
 type Result<T = ()> = std::result::Result<T, Box<dyn std::error::Error>>;
 
-/// Current candidate V4 (after the section and mention slices).
+/// Current candidate V4 (after the section, mention and table-caption slices).
 const V4_FINGERPRINT: &str =
-    "sha256:39fcdb478f73d51a6a3187785ab43bd2d0cca167940d8892614e16c4ad52202e";
+    "sha256:6daf61c3c5a216bb4d831c8bd6b9b776044b0a4598a346270ecf6579373959c0";
 
 fn schema(revision: u32) -> Result<CompiledSchema> {
     let id = SchemaId::new(QualifiedName::try_new("example/layout")?, SchemaVersion::try_new(1)?);

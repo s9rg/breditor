@@ -35,7 +35,8 @@ impl RichClipboardTextProjection {
     }
 }
 impl RichClipboardFragment {
-    /// Select explicit text conversion only for rich flow/grid paste starting in code or a caption.
+    /// Select explicit text conversion only for rich flow/grid paste starting in code or a caption
+    /// (an image caption, or a candidate V4 table caption).
     /// Prose returns `None`, keeping its ordinary structured-paste route. Inline fragments retain
     /// their original rich-paste contract. No source IDs, geometry or asset credentials are inserted.
     /// # Errors
@@ -61,7 +62,7 @@ impl RichClipboardFragment {
             .parent()
             .and_then(|p| document.document().node_at(&p).ok())
             .and_then(crate::document::NodeRef::as_element)
-            .is_some_and(|p| p.kind().as_str() == "breditor/image");
+            .is_some_and(|p| matches!(p.kind().as_str(), "breditor/image" | "breditor/table"));
         let target = if node.kind().as_str() == "breditor/code-block" {
             "code"
         } else if caption {

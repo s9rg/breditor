@@ -72,6 +72,7 @@ mod set_image_link;
 mod set_inline_format;
 mod set_list_kind;
 mod set_list_numbering;
+mod set_table_caption;
 mod set_table_header;
 mod set_task_checked;
 mod split_list_item;
@@ -148,6 +149,7 @@ pub use set_image_link::SetImageLink;
 pub use set_inline_format::{RichFormatChange, SetInlineFormat};
 pub use set_list_kind::SetListKind;
 pub use set_list_numbering::SetListNumbering;
+pub use set_table_caption::SetTableCaption;
 pub use set_table_header::SetTableHeader;
 pub use set_task_checked::SetTaskChecked;
 pub use split_list_item::SplitListItem;
@@ -255,6 +257,8 @@ pub enum RichAction {
     ReplaceImage(ReplaceImage),
     /// Add, remove or replace the whole optional paragraph caption.
     SetImageCaption(SetImageCaption),
+    /// Candidate V4: add or remove a table's trailing paragraph caption.
+    SetTableCaption(SetTableCaption),
     /// Insert a whole explicitly drafted table in stable flow space.
     InsertTable(InsertTable),
     /// Remove a whole table with exact retained restoration data.
@@ -382,6 +386,7 @@ impl RichAction {
             Self::SetInlineFormat(action) => action.apply(context, document),
             Self::ReplaceImage(action) => action.apply(context, document),
             Self::SetImageCaption(action) => action.apply(context, document),
+            Self::SetTableCaption(action) => action.apply(context, document),
             Self::InsertTable(action) => action.apply(context, document),
             Self::DeleteTable(action) => action.apply(context, document),
             Self::InsertImage(action) => action.apply(context, document),
@@ -466,6 +471,9 @@ pub enum RichActionError {
     /// Typed V4 collapsible-section profile, target or shape admission failed.
     #[error(transparent)]
     Details(#[from] super::RichDetailsError),
+    /// Typed V4 table-caption profile, target or existing-caption admission failed.
+    #[error(transparent)]
+    TableCaption(#[from] super::RichTableCaptionError),
     /// Typed V4 text-language profile or tag admission failed.
     #[error(transparent)]
     TextLanguage(#[from] super::RichTextLanguageError),

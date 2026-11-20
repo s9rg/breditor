@@ -533,7 +533,7 @@ for bounds, independent shared fields, history and qualification scope.
 
 `richLanguage: 4` selects the unreleased candidate V4 for local openings
 (`openLocalEditor`, `openLocalDocumentEditor` and the local React components'
-`initialOptions`). It is V3 plus bounded ordered-list numbering, text-run language, image links, collapsible sections and mention entities, and may still
+`initialOptions`). It is V3 plus bounded ordered-list numbering, text-run language, image links, collapsible sections, mention entities and table captions, and may still
 change before release, so its fingerprint changes and V4 data must not be
 persisted yet. Shared openings reject `richLanguage: 4` explicitly; shared
 editing stays on languages 1–3. The standard schema is
@@ -605,6 +605,16 @@ emits `<span class="breditor-mention" data-mention-kind data-mention-id>@label</
 import {mountMentions} from '@breditor/editor';
 const mentions = mountMentions(editor, {items: async (query, {signal}) => (await fetch(`/people?q=${encodeURIComponent(query)}`, {signal})).json()});
 editor.execute({kind: 'insertMention', data: {selection, mention: {kind: 'user', id: 'u-1', label: 'Ann Lee'}}});
+```
+
+V4 adds table captions: one optional caption paragraph per table, shown below
+the rows (`<caption>` with `caption-side: bottom`). The **Table caption** toolbar
+control adds an empty caption and moves the caret into it, or removes it; Enter in
+a caption inserts a line break and table actions keep it.
+
+```js
+editor.execute({kind: 'addTableCaption', data: {table: 'table-1', caption: 'caption-1'}});
+editor.execute({kind: 'removeTableCaption', data: {table: 'table-1'}});
 ```
 
 See `docs/RICH_LANGUAGE_V4.md` in the repository for domains, semantics,

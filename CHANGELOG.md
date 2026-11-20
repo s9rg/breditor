@@ -22,6 +22,23 @@ its durable formats and Wasm transport.
   blocks are dropped. New `ai*`/`lang*` UI catalog keys live in a separate block;
   existing keys are unchanged. Shared editors are not wired yet. See
   docs/AI_AND_LANGUAGE_TOOLS.md.
+- Add table captions to the unreleased local-only candidate rich V4: a V4
+  `breditor/table` admits, after its rows, at most one `breditor/paragraph`
+  caption (rows keep their child indices; row/column/merge grammar is unchanged).
+  The caption is an ordinary paragraph (formats, language, mentions, layout) that
+  is never split, joined, converted or moved alone; Enter inserts a line break and
+  Backspace in an empty caption removes it. Guarded `addTableCaption` (caret moves
+  into the new empty caption) and `removeTableCaption` commands are one history
+  group each; every row, column and cell action keeps the caption last, grid
+  selections and grid copies never include it, flow navigation leaves it through
+  its table, search covers it after the cells and node/document copies keep it.
+  Live and static renderers emit `<table><caption data-rich-table-caption
+  style="caption-side:bottom">…` (first in the DOM, laid out after the rows) and
+  the V4 toolbar gains **Table caption**. V4-only HTML interchange maps
+  `<caption>` (`supportsTableCaptions()`), Markdown falls back to HTML with
+  `markdown-feature`. Wasm descriptor `tableCaptionVersion: 1`. The V4 fingerprint
+  changes; V1–V3, their fingerprints and their `<caption>` conversion are
+  unchanged.
 
 - Add durable mention entities to the unreleased local-only candidate rich V4: a
   native `breditor/mention` inline format over the exact text `@` + label with a

@@ -57,6 +57,12 @@ export type RichCommand =
  |{kind:"setDetailsOpen";data:{block:string;open:boolean}}
  /** Enter from a summary caret: a fresh first body paragraph (expanding a collapsed section). */
  |{kind:"enterDetailsBody";data:{paragraph:string}}
+ /** Candidate rich V4: add one empty trailing caption (fresh block `caption`) to a table and place
+  * the caret in it, as one history group. A table that already has a caption is refused. */
+ |{kind:"addTableCaption";data:{table:string;caption:string}}
+ /** Candidate rich V4: remove a table's caption in one history group; an absent caption is a no-op.
+  * A caret in the caption becomes a node selection of the table. */
+ |{kind:"removeTableCaption";data:{table:string}}
  |{kind:"wrapTaskList";data:{first:string;last:string;container:string;items:readonly {block:string;checked:boolean}[]}}
  |{kind:"unwrapTaskList";data:{list:string}}
  |{kind:"insertHorizontalRule";data:{position:FlowPosition;block:string}}

@@ -194,12 +194,8 @@ impl Copier<'_> {
                 ],
             )?);
         }
-        semantic_table::rectangle(
-            &view,
-            node,
-            (0, view.rows().len() - 1),
-            (0, view.columns().len() - 1),
-        )
+        // A copied caption (covered by the range, possibly sliced) stays last.
+        semantic_table::whole(&view, node)
     }
     fn ordinal(source: &ElementNode, node: &NodeRef) -> Result<NodeRef, RichClipboardError> {
         let first = node
