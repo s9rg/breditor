@@ -79,6 +79,11 @@ pub(super) fn validate_context(owner: &Context<'_>, commands: &[Command]) -> Res
         {
             return Err(Error::Contract("shared layout requires model 13 or 14"));
         }
+        if super::v4_block_fields::handles(command) {
+            super::v4_block_fields::validate(owner.protocol, owner.document, &declared, command)?;
+            declared.record(command)?;
+            continue;
+        }
         if command.requires_structural_v2() && !owner.protocol.structural() {
             return Err(Error::Contract("shared structural V2 command requires model 12"));
         }

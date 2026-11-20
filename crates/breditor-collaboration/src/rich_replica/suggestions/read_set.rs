@@ -460,6 +460,16 @@ impl<'a> ReadSet<'a> {
             Command::PasteTableCells(value) => {
                 self.grid(&value.anchor, &value.focus)?;
             }
+            Command::SetListNumbering(value) => {
+                self.property(&value.list, "breditor/list-style")?;
+                self.property(&value.list, "breditor/list-reversed")?;
+            }
+            Command::SetBookmark(value) => self.property(&value.block, "breditor/bookmark")?,
+            // A rename reads every bookmark and every internal link of the document.
+            Command::RenameBookmark(_) => self.add(SuggestionConflictTarget::Document)?,
+            Command::SetDetailsOpen(value) => {
+                self.property(&value.block, "breditor/details-open")?;
+            }
         }
         Ok(())
     }

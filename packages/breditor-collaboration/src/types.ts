@@ -53,6 +53,11 @@ export type SharedCommand=
  |Op<"set_code_block",{block:string;language:string|null;format_policy:"reject_formatted"|"remove_formats"}>
  |Op<"set_code_language",{block:string;language:string|null}>
  |Op<"set_task_checked",{block:string;checked:boolean}>
+ /** Shared V4 block fields (model 14): owned list numbering, bookmark and section open fields. */
+ |Op<"set_list_numbering",{list:string;style:"keep"|"clear"|{set:"decimal"|"lower-alpha"|"upper-alpha"|"lower-roman"|"upper-roman"};reversed:boolean|null}>
+ |Op<"set_bookmark",{block:string;name:string|null}>
+ |Op<"rename_bookmark",{from:string;to:string}>
+ |Op<"set_details_open",{block:string;open:boolean}>
  |Op<"wrap_blockquote",{first:string;last:string;wrapper:string}>
  |Op<"unwrap_blockquote",{wrapper:string}>
  |Op<"wrap_task_list",{first:string;last:string;container:string;items:readonly {block:string;checked:boolean}[]}>
@@ -191,6 +196,7 @@ export interface SharedRustOwner extends SharedReviewRustCapability,SharedReview
  table_caption_version?():string;
  page_break_version?():string;
  bookmark_version?():string;
+ v4_block_fields_version?():string;set_details_open?(observation:unknown,block:string,open:boolean):boolean;bookmark_index_json?(observation:unknown):string;
  block_layout_state_json?(observation:unknown):string;
  change_selection_layout?(observation:unknown,input:string):boolean;
  typing_history_version?():string;

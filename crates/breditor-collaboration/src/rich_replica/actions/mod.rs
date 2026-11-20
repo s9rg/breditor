@@ -53,6 +53,7 @@ mod split_text_block;
 mod unwrap_blockquote;
 mod unwrap_list;
 mod unwrap_task_list;
+mod v4_block_fields;
 mod wrap_blockquote;
 mod wrap_list;
 mod wrap_task_list;
@@ -114,6 +115,9 @@ pub use split_text_block::SplitTextBlock;
 pub use unwrap_blockquote::UnwrapBlockquote;
 pub use unwrap_list::UnwrapList;
 pub use unwrap_task_list::UnwrapTaskList;
+pub use v4_block_fields::{
+    ListStyleChange, RenameBookmark, SetBookmark, SetDetailsOpen, SetListNumbering,
+};
 pub use wrap_blockquote::WrapBlockquote;
 pub use wrap_list::WrapList;
 pub use wrap_task_list::{NewTaskItem, WrapTaskList};
@@ -232,6 +236,14 @@ pub enum Command {
     MoveColumn(MoveColumn),
     /// Hide one column without deleting its underlying cell content.
     DeleteColumn(DeleteColumn),
+    /// V4: set marker style and/or counting order of one ordered list (owned fields).
+    SetListNumbering(SetListNumbering),
+    /// V4: set, replace or clear one text block's bookmark (owned field; links untouched).
+    SetBookmark(SetBookmark),
+    /// V4: rename a bookmark and retarget every internal link to it in one group.
+    RenameBookmark(RenameBookmark),
+    /// V4: expand or collapse one section (owned persisted open state).
+    SetDetailsOpen(SetDetailsOpen),
 }
 impl Command {
     pub(super) fn requires_structural_v2(&self) -> bool {
@@ -253,6 +265,7 @@ impl Command {
                 | Self::SetTaskChecked(_)
         )
     }
+    #[allow(clippy::too_many_lines)] // One exhaustive arm per command keeps preparation auditable.
     pub(super) fn prepare(
         &self,
         doc: &LoroDoc,
@@ -354,6 +367,10 @@ impl Command {
                     .ensure_mergeable_map(&value.column)?
                     .ensure_mergeable_map("width")?;
             }
+            Self::SetListNumbering(value) => value.prepare(doc)?,
+            Self::SetBookmark(value) => value.prepare(doc)?,
+            Self::RenameBookmark(value) => value.prepare(doc, codec, document)?,
+            Self::SetDetailsOpen(value) => value.prepare(doc)?,
         }
         Ok(())
     }
@@ -423,6 +440,10 @@ impl Command {
             Self::DeleteBlock(value) => value.apply(doc, stamp),
             Self::MoveColumn(value) => value.apply(doc, stamp, ordinal),
             Self::DeleteColumn(value) => value.apply(doc, stamp),
+            Self::SetListNumbering(value) => value.apply(doc, codec, document, stamp),
+            Self::SetBookmark(value) => value.apply(doc, codec, document, stamp),
+            Self::RenameBookmark(value) => value.apply(doc, codec, document, stamp, ordinal),
+            Self::SetDetailsOpen(value) => value.apply(doc, codec, document, stamp),
         }
     }
 }
