@@ -11,6 +11,7 @@ mod flow_navigation;
 mod general_history;
 mod general_range;
 mod initial_read_only;
+mod inline_v4;
 mod input_rules;
 mod insert_general_paragraph;
 mod language_v4;

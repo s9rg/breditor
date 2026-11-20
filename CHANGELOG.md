@@ -6,6 +6,22 @@ its durable formats and Wasm transport.
 
 ## Unreleased
 
+- Add the **shared rich V4 inline commands**: text language, mentions and image
+  links, each one native shared command and one Undo step with the local V4
+  semantics. Rust `RichReplica::set_text_language_json_guarded`,
+  `insert_mention_json_guarded` and `set_image_link_json_guarded` (new shared
+  commands `insert_mention` and `set_image_link`; the image link is one paired
+  replicated field so peers never see half a change); Wasm owner
+  `inline_commands_v4_version`, `set_text_language`, `insert_mention`,
+  `set_image_link`; TypeScript `SharedRichEditor.setTextLanguage`,
+  `insertMention`, `setImageLink` and `supportsInlineCommandsV4`/
+  `supportsTextLanguage`/`supportsMentions`/`supportsImageLinks`; the shared `@`
+  menu `mountSharedMentions` (and `mountMentions` in
+  `@breditor/editor/collaboration`), whose choice replaces the typed trigger in
+  one guarded dispatch; and **Language**, **Clear language**, **Image link** and
+  **Remove image link** in `createRichSharedToolbarV4` (`sharedInlineControlsV4`).
+  Linking a decorative image is refused with a clear error. See
+  [docs/SHARED_RICH_V4.md](docs/SHARED_RICH_V4.md#shared-inline-commands-text-language-mentions-image-links).
 - Add explicit **shared rich language V4** (foundation). A shared room can now
   hold, replicate, persist and replay documents using any of the eight frozen V4
   slices with exact convergence. Selection follows the V2/V3 precedent: shared

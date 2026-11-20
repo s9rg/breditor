@@ -76,7 +76,9 @@ export type SharedCommand=
  |Op<"replace_image",{block:string;asset:string;generation:string}>
  |Op<"set_image_alt",{block:string;text:string;decorative:boolean}>
  |Op<"set_image_caption",{block:string;caption:SharedParagraph|null}>
- |Op<"resize_image",{block:string;size:readonly[number,number]|null}>;
+ |Op<"resize_image",{block:string;size:readonly[number,number]|null}>
+ |Op<"insert_mention",{anchor:RichPoint;focus:RichPoint;mention:{kind:"user"|"page"|"tag";id:string;label:string}}>
+ |Op<"set_image_link",{block:string;href:string|null;new_window?:boolean}>;
 export interface SharedDispatch {commands:readonly SharedCommand[];selectionUpdate?:{kind:"map"}|{kind:"set";value:RichSelection|null};pendingFormatsUpdate?:{kind:"map"}|{kind:"set";value:readonly FormatLiteral[]|null}}
 export type PasteTarget={kind:"text"}|{kind:"grid"}|({kind:"flow"}&Position);
 export type Navigation="next"|"previous"|"left"|"right"|"up"|"down"|"rowStart"|"rowEnd"|"tableStart"|"tableEnd";
@@ -191,6 +193,11 @@ export interface SharedRustOwner extends SharedReviewRustCapability,SharedReview
  table_caption_version?():string;
  page_break_version?():string;
  bookmark_version?():string;
+ /** Shared V4 inline commands (text language, mentions, image links); local slice JSON inputs. */
+ inline_commands_v4_version?():string;
+ set_text_language?(observation:unknown,input:string):boolean;
+ insert_mention?(observation:unknown,input:string):boolean;
+ set_image_link?(observation:unknown,input:string):boolean;
  block_layout_state_json?(observation:unknown):string;
  change_selection_layout?(observation:unknown,input:string):boolean;
  typing_history_version?():string;

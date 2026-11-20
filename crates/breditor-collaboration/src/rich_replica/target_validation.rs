@@ -119,11 +119,19 @@ pub(super) fn validate_context(owner: &Context<'_>, commands: &[Command]) -> Res
                 Command::SetImageAlt(_)
                 | Command::SetImageCaption(_)
                 | Command::ReplaceImage(_)
-                | Command::ResizeImage(_) => kind == "breditor/image",
+                | Command::ResizeImage(_)
+                | Command::SetImageLink(_) => kind == "breditor/image",
                 Command::ResizeColumn(_) | Command::MoveColumn(_) | Command::DeleteColumn(_) => {
                     kind == "breditor/table"
                 }
                 Command::MoveBlock(_) | Command::DeleteBlock(_) => true,
+                Command::InsertMention(value) => {
+                    value.anchor.block == value.focus.block
+                        && matches!(
+                            kind.as_str(),
+                            "breditor/paragraph" | "breditor/heading" | "breditor/details-summary"
+                        )
+                }
                 _ => return Err(Error::Contract("unhandled shared target kind")),
             };
             if !expected {
@@ -157,6 +165,8 @@ fn primary(command: &Command) -> Result<&str, Error> {
         Command::DeleteBlock(value) => &value.block,
         Command::MoveColumn(value) => &value.block,
         Command::DeleteColumn(value) => &value.block,
+        Command::InsertMention(value) => &value.anchor.block,
+        Command::SetImageLink(value) => &value.block,
         _ => return Err(Error::Contract("unhandled shared primary target")),
     })
 }

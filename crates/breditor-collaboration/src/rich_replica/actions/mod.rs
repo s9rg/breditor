@@ -13,6 +13,7 @@ mod insert_blocks;
 mod insert_column;
 mod insert_general_paragraph_v1;
 mod insert_horizontal_rule;
+mod insert_mention;
 mod insert_row;
 mod insert_text;
 mod join_list_items;
@@ -44,6 +45,7 @@ mod set_header;
 mod set_heading;
 mod set_image_alt;
 mod set_image_caption;
+mod set_image_link;
 mod set_list_kind;
 mod set_task_checked;
 mod split_cell;
@@ -72,6 +74,7 @@ pub use insert_blocks::InsertBlocks;
 pub use insert_column::InsertColumn;
 pub use insert_general_paragraph_v1::InsertGeneralParagraphV1;
 pub use insert_horizontal_rule::InsertHorizontalRule;
+pub use insert_mention::{InsertMention, MentionEntity};
 pub use insert_row::InsertRow;
 pub use insert_text::InsertText;
 pub use join_list_items::JoinListItems;
@@ -105,6 +108,7 @@ pub use set_header::SetHeader;
 pub use set_heading::SetHeading;
 pub use set_image_alt::SetImageAlt;
 pub use set_image_caption::SetImageCaption;
+pub use set_image_link::SetImageLink;
 pub use set_list_kind::SetListKind;
 pub use set_task_checked::SetTaskChecked;
 pub use split_cell::SplitCell;
@@ -232,6 +236,10 @@ pub enum Command {
     MoveColumn(MoveColumn),
     /// Hide one column without deleting its underlying cell content.
     DeleteColumn(DeleteColumn),
+    /// V4: replace a typed `@query` by one mention unit and a plain space (local semantics).
+    InsertMention(InsertMention),
+    /// V4: set/clear the paired image link field (href and new window change together).
+    SetImageLink(SetImageLink),
 }
 impl Command {
     pub(super) fn requires_structural_v2(&self) -> bool {
@@ -354,6 +362,8 @@ impl Command {
                     .ensure_mergeable_map(&value.column)?
                     .ensure_mergeable_map("width")?;
             }
+            Self::InsertMention(value) => value.prepare(doc)?,
+            Self::SetImageLink(value) => value.prepare(doc, codec, document)?,
         }
         Ok(())
     }
@@ -423,6 +433,8 @@ impl Command {
             Self::DeleteBlock(value) => value.apply(doc, stamp),
             Self::MoveColumn(value) => value.apply(doc, stamp, ordinal),
             Self::DeleteColumn(value) => value.apply(doc, stamp),
+            Self::InsertMention(value) => value.apply(doc, codec, document, stamp),
+            Self::SetImageLink(value) => value.apply(doc, stamp),
         }
     }
 }
