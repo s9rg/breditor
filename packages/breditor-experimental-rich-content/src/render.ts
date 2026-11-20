@@ -6,12 +6,23 @@ import {applyBlockLayout} from "./block_layout_presentation.js";
 import {applyListNumbering} from "./list_numbering_presentation.js";
 import {wrapImageLink} from "./image_link.js";
 import {createMentionChip,groupMentionRuns} from "./mention.js";
+import {createPageBreakElement,richPageBreakKind} from "./page_break.js";
+import {resolveRichUi,type RichUiLocale,type RichUiOptions} from "./ui_locale.js";
 export const structuralBlockStylesV2=`[data-breditor-rich] [data-rich-text]{white-space:pre-wrap;min-height:1em}[data-breditor-rich] blockquote{border-left:3px solid #9dbbb0;margin:12px 0;padding:1px 16px}[data-breditor-rich] pre{font-family:ui-monospace,monospace;background:#f1f5f2;padding:12px;overflow:auto}[data-breditor-rich] [data-task-list]{list-style:none;padding-left:12px}[data-breditor-rich] [data-rich-task]{display:grid;grid-template-columns:24px minmax(0,1fr);gap:8px;margin:8px 0}[data-breditor-rich] input[data-task-check]{width:18px;height:18px;margin:4px 0}[data-breditor-rich] [data-task-body]>:first-child{margin-top:0}[data-breditor-rich] hr{border:0;border-top:2px solid #9dbbb0;margin:16px 0}[data-breditor-rich] details[data-rich-details]{border:1px solid #c9d8d2;border-radius:6px;margin:12px 0;padding:4px 12px}[data-breditor-rich] summary[data-rich-text]{font-weight:600;cursor:text;padding:4px 0}[data-breditor-rich] details[data-rich-details][open]>summary[data-rich-text]{border-bottom:1px solid #e3ece8;margin-bottom:4px}`;
 export interface AssetBinding {image:string;asset:string;generation:string}
 export interface RenderOptions {
  resolveAsset?:(binding:AssetBinding)=>string|undefined|Promise<string|undefined>;
  inlineTag?:(format:FormatLiteral)=>"span"|"strong"|"em"|"code";
  inlinePresentation?:RichInlinePresentation;
+ /** Chrome catalog; only the candidate V4 page-break marker label (`pageBreakLabel`) reads it. */
+ ui?:RichUiOptions;
+}
+const resolvedUi=new WeakMap<object,RichUiLocale>();
+/** Resolve (and cache per options object) the catalog that labels page-break markers. */
+function pageBreakLabel(options:RenderOptions):string{
+ const ui=options.ui;if(ui===undefined)return resolveRichUi().text("pageBreakLabel");
+ let locale=resolvedUi.get(ui);if(!locale){locale=resolveRichUi(ui);resolvedUi.set(ui,locale);}
+ return locale.text("pageBreakLabel");
 }
 /** Validate opt-in presentation before publishing host DOM. Legacy callbacks stay separate. */
 export function requireRenderOptions(value:RichPresentationModel,options:RenderOptions):void {
@@ -63,6 +74,8 @@ export function render(surface:HTMLElement,value:RichPresentationModel,options:R
   }
   if(node.type==="breditor/table")return table(node);
   if(node.type==="breditor/image")return image(node);
+  // Candidate V4 page break: a non-editable, node-selectable marker that forces a page break when printed.
+  if(node.type===richPageBreakKind)return createPageBreakElement(document,node,pageBreakLabel(options));
   if(node.type==="breditor/horizontal-rule"){
    const rule=document.createElement("hr");rule.contentEditable="false";rule.dataset["richBlock"]=id(node);rule.dataset["selectNode"]=id(node);return rule;
   }

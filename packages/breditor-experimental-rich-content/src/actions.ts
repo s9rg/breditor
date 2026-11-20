@@ -129,6 +129,7 @@ export function deleteSelection(context:IntentContext,movement:"before"|"after"=
  if(node.type==="breditor/image")return {kind:"deleteImage",data:{image:String(property(node,"image-id")),replacement}};
  if(node.type==="breditor/table")return {kind:"deleteTable",data:{table:String(property(node,"table-id")),replacement}};
  if(node.type==="breditor/horizontal-rule")return {kind:"deleteHorizontalRule",data:{block:id(node),replacement}};
+ if(node.type==="breditor/page-break")return {kind:"deletePageBreak",data:{block:id(node),paragraph:context.allocate("p")}};
  return {kind:"replaceBlocks",data:{first:id(node),last:id(node),blocks:replacement?[replacement]:[]}};
 }
 function listCommand(context:IntentContext,start:number|null):RichCommand|null {

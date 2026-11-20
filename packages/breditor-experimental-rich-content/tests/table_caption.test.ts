@@ -31,7 +31,7 @@ function view(documentJson:string,selection:RichView["selection"],readOnly=false
  return {format:"breditor/rich-view",formatVersion:1,revision:"1",documentJson,readOnly,selection,pendingFormatsJson:null,undoDepth:0,redoDepth:0,historyCapacity:100,grid:null,tables:[{id:"t",hidden:false,rows:["r1","r2"],columns,cells}]} as unknown as RichView;
 }
 const model=(selection:RichView["selection"],caption=true)=>presentationModel(view(json(caption),selection),"original");
-const owner=(language:1|2|3|4,capable=language===4)=>({supportsStandardInlineControls:()=>true,caretFormats:()=>[],inlineFormatState:(kind:string)=>({format:"breditor/rich-inline-format-state",formatVersion:1,formatKind:kind,schema:{name:"breditor/rich-test",version:1,fingerprint},state:{kind:"unset"}}),richLanguageVersion:()=>language,supportsListNumbering:()=>language===4,supportsTextLanguage:()=>language===4,supportsImageLinks:()=>language===4,supportsDetails:()=>language===4,supportsTableCaptions:()=>capable,supportsBlockLayout:()=>language>=3,blockLayoutState:()=>({format:"breditor/rich-block-layout-state",formatVersion:1,schema:{name:"t",version:1,fingerprint},blocks:"0",alignment:{kind:"unavailable"},direction:{kind:"unavailable"},indent:{kind:"unavailable"},lineHeightPercent:{kind:"unavailable"}})}) as unknown as RichCoreEditor;
+const owner=(language:1|2|3|4,capable=language===4)=>({supportsStandardInlineControls:()=>true,caretFormats:()=>[],inlineFormatState:(kind:string)=>({format:"breditor/rich-inline-format-state",formatVersion:1,formatKind:kind,schema:{name:"breditor/rich-test",version:1,fingerprint},state:{kind:"unset"}}),richLanguageVersion:()=>language,supportsListNumbering:()=>language===4,supportsTextLanguage:()=>language===4,supportsImageLinks:()=>language===4,supportsDetails:()=>language===4,supportsTableCaptions:()=>capable,supportsPageBreaks:()=>capable,supportsBlockLayout:()=>language>=3,blockLayoutState:()=>({format:"breditor/rich-block-layout-state",formatVersion:1,schema:{name:"t",version:1,fingerprint},blocks:"0",alignment:{kind:"unavailable"},direction:{kind:"unavailable"},indent:{kind:"unavailable"},lineHeightPercent:{kind:"unavailable"}})}) as unknown as RichCoreEditor;
 let next=0;
 const context=(core:RichCoreEditor|undefined,selection:RichView["selection"],caption=true):ActionContext=>({core,model:model(selection,caption),allocate:kind=>`${kind}-${++next}`,stamp:()=>({replica:"1",counter:"1",lamport:"1"})});
 
@@ -141,12 +141,12 @@ describe("candidate rich V4 caption arrow boundaries",()=>{
 describe("explicit V4 Wasm factory boundary for table captions",()=>{
  function local(descriptor:Record<string,unknown>,capability:unknown="1"){
   const observation={revision:"1",blockLayoutStateJson:vi.fn(),free:vi.fn()};
-  const editor={observe:()=>observation,blockLayoutVersion:()=>"1",listNumberingVersion:()=>"1",textLanguageVersion:()=>"1",imageLinkVersion:()=>"1",detailsVersion:()=>"1",mentionVersion:()=>"1",tableCaptionVersion:()=>capability,execute:vi.fn(()=>({status:"content",takeObservation:()=>observation,free:vi.fn()})),free:vi.fn()};
+  const editor={observe:()=>observation,blockLayoutVersion:()=>"1",listNumberingVersion:()=>"1",textLanguageVersion:()=>"1",imageLinkVersion:()=>"1",detailsVersion:()=>"1",mentionVersion:()=>"1",tableCaptionVersion:()=>capability,pageBreakVersion:()=>"1",execute:vi.fn(()=>({status:"content",takeObservation:()=>observation,free:vi.fn()})),free:vi.fn()};
   const raw={descriptorJson:()=>({status:"value",takeValue:()=>JSON.stringify({kind:"rich",abiVersion:1,schema:{name:"t",version:1},schemaFingerprint:fingerprint,...descriptor}),free:vi.fn()}),createEditor:()=>({status:"editor",takeEditor:()=>editor,free:vi.fn()}),free:vi.fn()};
   const factory=vi.fn(()=>({status:"profile",takeProfile:()=>raw,free:vi.fn()}));
   return {wasm:{BreditorRichProfile:{fromBootstrapJsonV4:factory,fromStandardBootstrapJsonV4:factory}} as unknown as RichWasmModule,raw,editor};
  }
- const v4={richLanguageVersion:4,taskStructureVersion:1,blockLayoutVersion:1,listNumberingVersion:1,textLanguageVersion:1,imageLinkVersion:1,detailsVersion:1,mentionVersion:1,tableCaptionVersion:1};
+ const v4={richLanguageVersion:4,taskStructureVersion:1,blockLayoutVersion:1,listNumberingVersion:1,textLanguageVersion:1,imageLinkVersion:1,detailsVersion:1,mentionVersion:1,tableCaptionVersion:1,pageBreakVersion:1};
  it("requires tableCaptionVersion 1 in the descriptor and on the owner",()=>{
   const a=local(v4),profile=compileStandardRichProfileV4(a.wasm,"bootstrap"),core=profile.createEditor("document");
   expect(core.supportsTableCaptions?.()).toBe(true);

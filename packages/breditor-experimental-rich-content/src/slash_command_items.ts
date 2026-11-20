@@ -42,6 +42,7 @@ export const standardRichSlashPicks:readonly RichSlashPick[]=Object.freeze([
  {id:"table",control:"table",label:"Table",keywords:["grid","cells"]},
  // Candidate rich V4 only: picks whose control is absent (V1–V3 toolbars) are omitted.
  {id:"details",control:"details",label:"Collapsible section",keywords:["details","summary","toggle","collapse","disclosure"]},
+ {id:"page-break",control:"page-break",label:"Page break",keywords:["page","break","print","new page"]},
 ].map(pick=>Object.freeze(pick)));
 
 const identity=/^[A-Za-z0-9][A-Za-z0-9._:-]{0,63}$/;

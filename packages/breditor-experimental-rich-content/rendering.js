@@ -33,4 +33,6 @@ export {resolveRichUi,defaultRichUi,richUiStringsEn,richChromeIsRtl} from "./dis
 export {richUiError,richUiPanelStringsEn,richUiNoticeCodes} from "./dist/browser/ui_locale.js";
 export {setRichChromeText} from "./dist/browser/ui_chrome_text.js";
 export {clipboardProjectionText} from "./dist/browser/clipboard_interchange.js";
+export {richPageBreakKind,richPageBreakClass,richPageBreakStyle,pageBreakAttributes,isPageBreak} from "./dist/browser/page_break.js";
+export {richPrintStyles,resolveRichPrintLayout,richPrintPageSizes,richPrintOrientations,richPrintMargins} from "./dist/browser/print.js";
 export {richMentionFormat,richMentionKindProperty,richMentionIdProperty,richMentionLabelProperty,richMentionKinds,richMentionClass,richMentionStyles,isRichMentionId,isRichMentionKind,isRichMentionLabel,mentionOf,mentionText,mentionFormat,groupMentionRuns,mentionChipAttributes,createMentionChip} from "./dist/browser/mention.js";

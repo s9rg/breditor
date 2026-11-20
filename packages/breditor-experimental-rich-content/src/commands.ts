@@ -13,6 +13,8 @@ export type FlowDraft = ({kind:"paragraph"}&TextDraft)|({kind:"heading";level:nu
  |{kind:"blockquote";block:string;body:readonly FlowDraft[]}
  |{kind:"codeBlock";block:string;text:string;language:string|null}
  |{kind:"horizontalRule";block:string}
+ /** Candidate rich V4 atomic page break; admitted only as a direct child of the document root. */
+ |{kind:"pageBreak";block:string}
  /** Candidate rich V4 collapsible section: summary identity and runs, persisted open state, nonempty body. */
  |{kind:"details";block:string;summary:string;text:string;formatsJson:string;open:boolean;body:readonly FlowDraft[]}
  |{kind:"taskList";block:string;items:readonly {block:string;checked:boolean;body:readonly FlowDraft[]}[]}
@@ -67,6 +69,12 @@ export type RichCommand =
  |{kind:"unwrapTaskList";data:{list:string}}
  |{kind:"insertHorizontalRule";data:{position:FlowPosition;block:string}}
  |{kind:"deleteHorizontalRule";data:{block:string;replacement:FlowDraft|null}}
+ /** Candidate rich V4: insert one page break (fresh block `block`) at a document-root position as one
+  * history group; the selection is kept. A non-root position is refused. */
+ |{kind:"insertPageBreak";data:{position:FlowPosition;block:string}}
+ /** Candidate rich V4: delete one page break as one history group. `paragraph` is a fresh floor used only
+  * when nothing else would remain; a node-selected page break recovers like `deleteAtom`. */
+ |{kind:"deletePageBreak";data:{block:string;paragraph:string}}
  |{kind:"splitTaskItem";data:{point:RichPoint;newItem:string;right:string;rightHeading:number|null}}
  |{kind:"joinTaskItems";data:{container:string;left:string;right:string}}
  |{kind:"setSelection";selection:RichSelection|null}

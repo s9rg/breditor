@@ -36,6 +36,8 @@ mentionLabel:"الإشارات",mentionLoading:"جارٍ تحميل الاقتر
  // Image resize handles.
  imageResizeLabel:"تغيير حجم الصورة {index} من {count}",imageResizeValue:"{width} × {height} بكسل",imageResizeOriginal:"{width} × {height} بكسل (الحجم الأصلي)",
  imageResizePreview:"{width} × {height} بكسل (معاينة)",imageResizeBadge:"{width} × {height}",
+ // Candidate rich V4 page breaks and the print preview (separate block).
+ pageBreakLabel:"فاصل صفحة",printPreviewLabel:"معاينة الطباعة: حدود الصفحات تقريبية",
  // AI and language tools (separate block).
  aiPanelLabel:"مساعد الكتابة",aiInstructionLabel:"التعليمات",aiScopeLabel:"التطبيق على",
  aiScopeSelection:"النص المحدد",aiScopeBlock:"الكتلة الحالية",aiScopeDocument:"المستند كاملًا",
@@ -58,5 +60,5 @@ mentionLabel:"الإشارات",mentionLoading:"جارٍ تحميل الاقتر
 export const arabicUi:RichUiOptions={
  lang:"ar",direction:"rtl",strings:arabicStrings,notices:arabicNotices,refusals:arabicRefusals,
  controls:{bold:{label:"عريض"},italic:{label:"مائل"},undo:{label:"تراجع"},link:{label:"رابط",fields:{href:{label:"عنوان الرابط"}}},table:{label:"إدراج جدول"}},
- slashItems:{paragraph:{label:"نص",keywords:["فقرة"]},"heading-1":{label:"عنوان 1"},"heading-2":{label:"عنوان 2"},"heading-3":{label:"عنوان 3"},"bullet-list":{label:"قائمة نقطية"},"numbered-list":{label:"قائمة مرقمة"},table:{label:"جدول"}},
+ slashItems:{paragraph:{label:"نص",keywords:["فقرة"]},"heading-1":{label:"عنوان 1"},"heading-2":{label:"عنوان 2"},"heading-3":{label:"عنوان 3"},"bullet-list":{label:"قائمة نقطية"},"numbered-list":{label:"قائمة مرقمة"},table:{label:"جدول"},"page-break":{label:"فاصل صفحة"}},
 };

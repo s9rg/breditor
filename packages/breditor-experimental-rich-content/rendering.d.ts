@@ -32,4 +32,6 @@ export {imageLinkOf,wrapImageLink,richImageHrefProperty,richImageLinkNewWindowPr
 export {richTextLanguageFormat,richTextLanguageTagProperty,richTextLanguageRecipeV4,textLanguageOf} from "./dist/browser/text_language.js";
 export * from "./dist/browser/ui_locale.js";
 export * from "./dist/browser/ui_chrome_text.js";
+export {richPageBreakKind,richPageBreakClass,richPageBreakStyle,pageBreakAttributes,isPageBreak} from "./dist/browser/page_break.js";
+export {richPrintStyles,resolveRichPrintLayout,richPrintPageSizes,richPrintOrientations,richPrintMargins,type RichPrintOptions,type RichPrintLayout,type RichPrintPageSize,type RichPrintOrientation,type RichPrintMargin} from "./dist/browser/print.js";
 export {richMentionFormat,richMentionKindProperty,richMentionIdProperty,richMentionLabelProperty,richMentionKinds,richMentionClass,richMentionStyles,isRichMentionId,isRichMentionKind,isRichMentionLabel,mentionOf,mentionText,mentionFormat,groupMentionRuns,mentionChipAttributes,createMentionChip,type RichMention,type RichMentionKind,type MentionRun,type MentionInlineItem} from "./dist/browser/mention.js";

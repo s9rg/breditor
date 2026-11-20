@@ -4,6 +4,7 @@ import type {FlowPosition,RichCommand,RichCommandOutcome,RichCoreEditor,RichSele
 import {bold,boundaryDelete,defaultToolbarFor,deleteSelection,enter,positionAfter,type ActionContext,type ToolbarControl} from "./actions.js";
 import {id,presentationModel,sourceCell,text,type RichModel} from "./model.js";
 import {paintSelection,render,requireRenderOptions,structuralBlockStylesV2,type RenderOptions} from "./render.js";
+import {richPageBreakStyles} from "./page_break.js";
 import {readNative,readTarget,restoreDocumentNative,nativeSelectsDocument,isCurrentCaretTarget} from "./selection.js";
 import {documentSelectionStyles} from "./document_selection_presentation.js";
 import {requireDocumentBrowserCore} from "./document_core.js";
@@ -107,7 +108,7 @@ export class RichDomEditor<P extends RichSelectionPolicy="original"> {
   this.toolbar=document.createElement("div");this.toolbar.className="breditor-rich-toolbar";this.toolbar.setAttribute("role","toolbar");this.toolbar.setAttribute("aria-label",ui.text("richToolbarLabel"));ui.applyChrome(this.toolbar);
   this.status=document.createElement("p");this.status.className="breditor-rich-status";this.status.setAttribute("role","status");ui.applyChrome(this.status);
   this.#placeholder=placeholder?new RichPlaceholderPresentation(this.surface,placeholder.label):undefined;
-  const style=document.createElement("style");style.textContent=styles+standardInlineStylesV1+toolbarControlStyles+structuralBlockStylesV2+(this.#document?documentSelectionStyles:"")+(placeholder?richPlaceholderStyles:"");root.dataset["breditorRich"]="";root.replaceChildren(style,this.toolbar,this.#placeholder?.container??this.surface,this.status);
+  const style=document.createElement("style");style.textContent=styles+standardInlineStylesV1+toolbarControlStyles+structuralBlockStylesV2+richPageBreakStyles+(this.#document?documentSelectionStyles:"")+(placeholder?richPlaceholderStyles:"");root.dataset["breditorRich"]="";root.replaceChildren(style,this.toolbar,this.#placeholder?.container??this.surface,this.status);
   const seen=new Set<string>();
   for(const control of options.toolbar??defaultToolbarFor<P>()){
    if(seen.has(control.id))throw Error("Duplicate rich toolbar control identity");seen.add(control.id);
