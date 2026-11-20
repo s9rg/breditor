@@ -50,7 +50,13 @@ export interface InterchangeOptions {
   readonly exportImage?:(asset:ImportedAsset)=>string|undefined;
 }
 /** Explicit host target policy; native kind/shape admission still decides whether it is valid. */
-export interface InterchangeImportOptions {readonly kind?:"auto"|"flow"|"grid"}
+export interface InterchangeImportOptions {
+  readonly kind?:"auto"|"flow"|"grid";
+  /** `importMarkdown` only (`importHtml` ignores it): `true` links GFM autolink literals (`https://…`,
+   * `http://…`, `www.…`) whose target the native typed `autolink-v1` policy admits. Omitted or `false`
+   * keeps the version-one dialect, where those literals stay text. Anything but a boolean rejects. */
+  readonly autolinks?:boolean;
+}
 export interface RichInterchange {
   importHtml(source:string,options?:InterchangeImportOptions):InterchangeResult<ClipboardTransfer>;
   importMarkdown(source:string,options?:InterchangeImportOptions):InterchangeResult<ClipboardTransfer>;

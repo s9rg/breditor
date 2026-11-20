@@ -1,7 +1,7 @@
 export type * from "./types.js";
 export {limits as interchangeLimits} from "./budget.js";
 /** Conversion grammar revision, independent of native document/history/synchronization protocols. */
-export const interchangeContractV1=Object.freeze({version:1,html:"bounded-semantic-html-v1",markdown:"commonmark-tables-strike-tasks-and-sanitized-html-v1",cellPartitionVersion:1} as const);
+export const interchangeContractV1=Object.freeze({version:1,html:"bounded-semantic-html-v1",markdown:"commonmark-tables-strike-tasks-and-sanitized-html-v1",markdownAutolinks:"opt-in-gfm-autolink-literals-autolink-v1",cellPartitionVersion:1} as const);
 import {Budget,ConversionFailure,fail,sourceWithinBudget} from "./budget.js";
 import {importHtmlContent} from "./html_import.js";
 import {exportHtmlRoot} from "./html_export.js";
@@ -24,7 +24,10 @@ export function createRichInterchange(owner:InterchangeOwner,options:Interchange
   };
   return Object.freeze({
     importHtml:(source:string,target?:InterchangeImportOptions)=>run(b=>importSource(source,b,target)),
-    importMarkdown:(source:string,target?:InterchangeImportOptions)=>run(b=>importSource(markdownHtml(source,b),b,target)),
+    importMarkdown:(source:string,target?:InterchangeImportOptions)=>run(b=>{
+      const autolinks=target?.autolinks;if(autolinks!==undefined&&typeof autolinks!=="boolean")fail("unsupported-content");
+      return importSource(markdownHtml(source,b,autolinks===true),b,target);
+    }),
     exportHtml:(source:string)=>run(b=>{const sourceContent=exportSource(source);return exportHtmlRoot(sourceContent.nodes,b,policy,sourceContent.kind);}),
     exportMarkdown:(source:string)=>run(b=>{const content=exportSource(source);if(content.kind==="text")b.loss("block-structure");return exportMarkdownRoot(content.nodes,b,policy);}),
   });

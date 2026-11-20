@@ -1,5 +1,12 @@
 import {test,expect} from "@playwright/test";
+import {fileURLToPath} from "node:url";
+import {rolldown} from "rolldown";
 // Optional autolink-v1 over the actual Rust/Wasm owner: real keyboard typing, space/Enter boundaries and exact Undo.
+let interchange="";
+test.beforeAll(async()=>{
+ const bundle=await rolldown({input:fileURLToPath(new URL("../../packages/breditor-interchange/src/index.ts",import.meta.url)),platform:"browser",logLevel:"silent"});
+ interchange=(await bundle.generate({format:"esm"})).output[0].code;await bundle.close();
+});
 test.beforeEach(async({page})=>{await page.goto("/");await expect(page.locator("#status")).toHaveText("Ready");await page.evaluate(async()=>{
  const api=await import("/rich.js"),configuration={format:"breditor/profile-bootstrap",formatVersion:6,schema:{name:"example/autolink",version:1},extensions:[]};
  const profile=api.compileStandardRichProfileV1(window.rich.wasm,JSON.stringify(configuration)),binding=profile.descriptor(),presentation=api.createStandardRichInlinePresentationV1(profile.inlineCatalogJson());
@@ -73,4 +80,21 @@ test("unsafe, non-canonical, default-off, pasted, inline-code and read-only inpu
  expect(await page.evaluate(()=>window.al.blocks())).toEqual([[["https://example.com",""]]]);
  // An unknown policy rejects before mounting.
  expect(await page.evaluate(()=>{try{window.al.mount({inputRules:"autolink-v2"});return "mounted";}catch(error){return String(error);}})).toContain("autolink-v1");
+});
+test("interchange Markdown autolinks: true links literals exactly as typed autolink-v1 does, through native admission",async({page})=>{
+ await page.route("**/interchange.js",route=>route.fulfill({status:200,contentType:"text/javascript; charset=utf-8",body:interchange}));
+ const prose="see https://example.com/a?b=1. and www.example.org, (https://en.example.org/wiki/A_(b)). javascript:alert(1) HTTPS://example.com/";
+ await page.evaluate(()=>window.al.mount({inputRules:"autolink-v1"},false,""));
+ await page.keyboard.type(`${prose} `);
+ const result=await page.evaluate(async prose=>{
+  const {createRichInterchange}=await import("/interchange.js"),adapter=createRichInterchange(window.al.core);
+  const links=root=>root.children.flatMap(block=>block.children).flatMap(run=>run.formats.filter(f=>f.type==="breditor-inline/link").map(f=>[run.text,f.properties["breditor-inline/href"],f.properties["breditor-inline/new-window"]]));
+  const imported=options=>{const r=adapter.importMarkdown(prose,options);return r.ok?{links:links(JSON.parse(r.value.structuredJson).document.root),losses:r.losses}:r.error;};
+  const linked=adapter.importMarkdown(prose,{autolinks:true}),md=adapter.exportMarkdown(linked.value.structuredJson),back=adapter.importMarkdown(md.value,{autolinks:true});
+  return {typed:links(JSON.parse(window.al.core.documentJson()).root),on:imported({autolinks:true}),off:imported({}),roundTrip:back.ok&&back.value.structuredJson===linked.value.structuredJson};
+ },prose);
+ expect(result.typed).toEqual([["https://example.com/a?b=1","https://example.com/a?b=1",false],["www.example.org","https://www.example.org/",false],["https://en.example.org/wiki/A_(b)","https://en.example.org/wiki/A_(b)",false]]);
+ expect(result.on).toEqual({links:result.typed,losses:[]});
+ expect(result.off).toEqual({links:[],losses:[]});
+ expect(result.roundTrip).toBe(true);
 });
