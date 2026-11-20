@@ -1,7 +1,7 @@
 import {validatePlaceholderOption,resolveRichUi} from "@breditor/experimental-rich-content/rendering";
 import {
- compileStandardSharedProfileV1,compileStandardStructuralSharedProfileV2,compileStandardLayoutSharedProfileV3,restoreSharedTypingEditor,restoreSharedGeneralEditor,supportsSharedGeneralRanges,SharedPersistentSession,SharedEditorError,mountSharedEditor,createStandardSharedToolbarV1,createStructuralSharedToolbarV2,createLayoutSharedToolbarV3,
- type SharedRustProfile,type SharedProfileConfiguration,type SharedProfileConfigurationV2,type SharedProfileConfigurationV3,type SharedProfileDescriptor,
+ compileStandardSharedProfileV1,compileStandardStructuralSharedProfileV2,compileStandardLayoutSharedProfileV3,compileStandardRichSharedProfileV4,restoreSharedTypingEditor,restoreSharedGeneralEditor,supportsSharedGeneralRanges,SharedPersistentSession,SharedEditorError,mountSharedEditor,createStandardSharedToolbarV1,createStructuralSharedToolbarV2,createLayoutSharedToolbarV3,createRichSharedToolbarV4,
+ type SharedRustProfile,type SharedProfileConfiguration,type SharedProfileConfigurationV2,type SharedProfileConfigurationV3,type SharedProfileConfigurationV4,type SharedProfileDescriptor,
  type SharedDomEditor,type SharedDomOptions,type SharedRichEditor,type SharedToolbarControl,
  type SharedDispatch,type SharedSaveState,type SharedRustOwner,type SharedRangePolicy,type SharedEditorOptions as SharedCoreOptions
 } from "@breditor/collaboration";
@@ -9,7 +9,7 @@ import {createStandardRichInlinePresentationV1} from "@breditor/experimental-ric
 import type {RichSearchHost} from "@breditor/experimental-rich-content";
 import type {SharedSearchResults} from "@breditor/collaboration";
 import {supportsSharedSearchHistory,restoreSharedSearchEditor,sharedAiToolsHost} from "@breditor/collaboration";
-import {initializeSharedRuntime,standardSharedProfileConfiguration,structuralSharedProfileConfigurationV2,layoutSharedProfileConfigurationV3} from "./shared_profile.js";
+import {initializeSharedRuntime,standardSharedProfileConfiguration,structuralSharedProfileConfigurationV2,layoutSharedProfileConfigurationV3,richSharedProfileConfigurationV4} from "./shared_profile.js";
 import {checkSharedRichLanguage} from "./shared_language.js";
 import {claimHost,awaitInitialization} from "./host.js";
 import {emptyDocumentJson} from "./empty_document.js";
@@ -36,7 +36,7 @@ export interface SharedEditorSessionOptions extends Omit<SharedDomOptions,"core"
  host:HTMLElement;database:string;room:string;writer:string;initial?:SharedInitial;
  configuration?:SharedProfileConfiguration|SharedProfileConfigurationV2|SharedProfileConfigurationV3;additionalInlinePresentation?:unknown;
  /** Explicit native language. Omitted/1 retains original model11; 3 selects layout model13. */
- richLanguage?:1|2|3;
+ richLanguage?:1|2|3|4;
  readOnly?:boolean;
  /** Immutable native history policy; omitted/explicit preserves existing defaults. */
  history?:"explicit"|"typing-v1";
@@ -52,7 +52,7 @@ export interface SharedEditorSessionOptions extends Omit<SharedDomOptions,"core"
  clipboardInterchange?:ClipboardInterchangeFactory<SharedRichEditor>;
 }
 export interface SharedSearchEditorSessionOptions extends Omit<SharedEditorSessionOptions,"initial"|"history"|"rangeEditing"|"richLanguage"> {
- initial?:SharedSearchInitial;history:"explicit"|"typing-v1";rangeEditing:SharedRangePolicy;richLanguage:1|2|3;
+ initial?:SharedSearchInitial;history:"explicit"|"typing-v1";rangeEditing:SharedRangePolicy;richLanguage:1|2|3|4;
 }
 
 /** Owns UI, exact local durability and the exclusive causal writer; transport remains optional. */
@@ -162,12 +162,12 @@ async function openSharedEditorFamily(options:SharedEditorSessionOptions|SharedS
  if(!(search?["resume","empty","document","frame","searchCheckpoint"]:["resume","empty","document","frame","checkpoint","typingCheckpoint","generalCheckpoint","generalTypingCheckpoint"]).includes(initial.kind))throw new TypeError("Use the matching explicitly selected shared checkpoint discriminator");
  const history=options.history??(initial.kind==="typingCheckpoint"||initial.kind==="generalTypingCheckpoint"?"typing-v1":"explicit");
  const ranges=options.rangeEditing??(initial.kind==="generalCheckpoint"||initial.kind==="generalTypingCheckpoint"?"general-v1":"original");
- const configuration=structuredClone(options.configuration??(language===3?layoutSharedProfileConfigurationV3:language===2?structuralSharedProfileConfigurationV2:standardSharedProfileConfiguration));
+ const configuration=structuredClone(options.configuration??(language===4?richSharedProfileConfigurationV4:language===3?layoutSharedProfileConfigurationV3:language===2?structuralSharedProfileConfigurationV2:standardSharedProfileConfiguration));
  const claim=claimHost(options.host,options.signal);
  let profile:SharedRustProfile|undefined,session:SharedPersistentSession|undefined,dom:SharedDomEditor|undefined;
  try{
   const runtime=await awaitInitialization(initializeSharedRuntime(options.runtimeInput),options.signal);claim.assert();
-  profile=language===3?compileStandardLayoutSharedProfileV3(runtime,configuration as SharedProfileConfigurationV3):language===2?compileStandardStructuralSharedProfileV2(runtime,configuration as SharedProfileConfigurationV2):compileStandardSharedProfileV1(runtime,configuration as SharedProfileConfiguration);
+  profile=language===4?compileStandardRichSharedProfileV4(runtime,configuration as SharedProfileConfigurationV4):language===3?compileStandardLayoutSharedProfileV3(runtime,configuration as SharedProfileConfigurationV3):language===2?compileStandardStructuralSharedProfileV2(runtime,configuration as SharedProfileConfigurationV2):compileStandardSharedProfileV1(runtime,configuration as SharedProfileConfiguration);
   const factory=profile,binding=JSON.parse(factory.descriptor_json()) as SharedProfileDescriptor;
   if(options.placeholder!==undefined&&factory.placeholder_version?.()!=="1")throw new SharedEditorError("placeholder_unavailable","Use a matching native placeholder profile before opening durable storage");
   if(ranges==="general-v1"&&!supportsSharedGeneralRanges(factory))throw new SharedEditorError("general_range_unavailable","Use matching native general-range recovery before opening a durable general session");
@@ -193,7 +193,7 @@ async function openSharedEditorFamily(options:SharedEditorSessionOptions|SharedS
   session=search?await SharedPersistentSession.openSearch({...persistence,rangeEditing:ranges,selectionEditing:"original",restoreSearch:checkpoint=>{claim.assert();return restoreSharedSearchEditor(factory,options.room,checkpoint);}}):await SharedPersistentSession.open({...persistence,...(ranges==="general-v1"?{rangeEditing:ranges}:{}),restore:(checkpoint,storedHistory,storedRanges="original")=>{claim.assert();return storedRanges==="general-v1"?restoreSharedGeneralEditor(factory,options.room,checkpoint,storedHistory):storedHistory==="typing-v1"?restoreSharedTypingEditor(factory,options.room,checkpoint):factory.restore(options.room,checkpoint);}});
   claim.assert();
   if(options.readOnly!==undefined)session.core.setReadOnly(options.readOnly);
-  const core=session.core,standard=language===3?createLayoutSharedToolbarV3(core,presentation):language===2?createStructuralSharedToolbarV2(core,presentation):createStandardSharedToolbarV1(core,presentation),toolbar=options.toolbar?.(core,standard)??standard;
+  const core=session.core,standard=language===4?createRichSharedToolbarV4(core,presentation):language===3?createLayoutSharedToolbarV3(core,presentation):language===2?createStructuralSharedToolbarV2(core,presentation):createStandardSharedToolbarV1(core,presentation),toolbar=options.toolbar?.(core,standard)??standard;
   const {clipboardInterchange:interchangeFactory,...domOptions}=options,interchange=clipboardInterchangeOptions(interchangeFactory,core);
   claim.assert();dom=mountSharedEditor(options.host,{...domOptions,...interchange,core,coreOwnership:"borrow",inlinePresentation:presentation,toolbar});claim.assert();
   return new SharedEditorSessionOwner(session,dom,claim.release,options,toolbar);

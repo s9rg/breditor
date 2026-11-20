@@ -20,7 +20,7 @@ export function createStructuralSharedToolbarV2<P extends SharedSelectionPolicy=
  return structuralSharedControlsForOwner(core,presentation,2);
 }
 /** Internal composition, not permission for the public V2 constructor to select V3. */
-export function structuralSharedControlsForOwner<P extends SharedSelectionPolicy="original">(core:SharedRichEditor<P>,presentation:RichInlinePresentation,language:2|3):readonly SharedToolbarControl<P>[]{
+export function structuralSharedControlsForOwner<P extends SharedSelectionPolicy="original">(core:SharedRichEditor<P>,presentation:RichInlinePresentation,language:2|3|4):readonly SharedToolbarControl<P>[]{
  if(core.richLanguageVersion()!==language)throw Error(`Structural controls require an explicitly selected V${language} owner`);
  const controls:SharedToolbarControl<P>[]=[
   {id:"blockquote",label:"Blockquote",enabled:c=>structuralIntervalV2(c.model)!==undefined,run:c=>{const r=structuralIntervalV2(c.model);if(r)publish(c,[{kind:"wrap_blockquote",data:{first:r.first,last:r.last,wrapper:c.allocate("quote")}}]);}},

@@ -92,6 +92,7 @@ impl Room {
                 ProfileSeed::Original => 1,
                 ProfileSeed::StructuralV2(_) => 2,
                 ProfileSeed::LayoutV3(_) => 3,
+                ProfileSeed::LanguageV4(_) => 4,
             },
             accounts,
             writers,

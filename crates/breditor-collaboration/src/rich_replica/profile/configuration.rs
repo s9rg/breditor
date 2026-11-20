@@ -179,6 +179,7 @@ pub(super) fn compile_revision(
         1 => CompiledSchema::try_compile_rich_content_profile(id, &extensions),
         2 => CompiledSchema::try_compile_rich_content_profile_v2(id, &extensions),
         3 => CompiledSchema::try_compile_rich_content_profile_v3(id, &extensions),
+        4 => CompiledSchema::try_compile_rich_content_profile_v4(id, &extensions),
         _ => return Err(rejected(())),
     }
     .map_err(rejected)?;

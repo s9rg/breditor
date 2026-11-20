@@ -5,7 +5,7 @@ export const MAX_SEGMENTED_ARCHIVE_BYTES=64*1024*1024;
 export const MAX_CONTINUED_ARCHIVE_BYTES=256*1024*1024;
 export const MAX_SEGMENTED_HEAD_BYTES=128*1024*1024;
 export interface SegmentedSessionIdentity {
- room:string;writer:string;richLanguage:1|2|3;history:SharedHistoryPolicy;
+ room:string;writer:string;richLanguage:1|2|3|4;history:SharedHistoryPolicy;
  rangeEditing:SharedRangePolicy;selectionEditing:SharedSelectionPolicy;
  searchHistory:"search-v1"|null;reviewedHistory:SharedReviewedHistoryIdentity|null;
 }

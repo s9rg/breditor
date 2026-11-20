@@ -20,9 +20,9 @@ released.**
   whether it ships in V1 is the compatibility gate's decision
   ([V1 release plan](V1_RELEASE_PLAN.md)). Freezing guarantees that data saved
   now keeps restoring exactly; it does not promote the V4 API surface.
-- **Shared V4 is in progress.** Collaboration still supports only languages 1–3
-  (see below). A shared V4 is being built separately and must reuse this frozen
-  local grammar unchanged.
+- **Shared V4 foundation.** Collaboration supports V4 explicitly with its own
+  causal model 14 and journal 15, reusing this frozen grammar unchanged (see
+  [Shared V4](#shared-v4)); per-slice shared commands come next.
 
 ## Selection and compatibility
 
@@ -47,22 +47,23 @@ rejects V1–V3 owners and `createLayoutRichToolbarV3` rejects a V4 owner. An
 omitted `richLanguage` still selects language 1; unknown values (5 and above)
 are rejected, never mapped to an older language.
 
-### Shared collaboration stays on V3
+### Shared V4
 
-V4 is local only for now; a shared V4 is in progress and will reuse the frozen V4
-grammar and fingerprint without changing them. Today the shared collaboration path (`crates/breditor-collaboration`,
-`@breditor/collaboration`, the relay and shared SDK/React openings) has no V4
-model, journal or configuration. `openSharedEditor`, `openSharedSearchEditor`,
-`openSharedDocumentEditor`, `openSharedDocumentSearchEditor` and the shared
-React components reject `richLanguage: 4` with the explicit error *"richLanguage
-4 is the unreleased local-only candidate; shared editing supports richLanguage
-1, 2 or 3"* before claiming the host or initializing Wasm. They never fall back
-to V3. Shared interchange owners do not report list numbering, text language, image
-links, sections, mentions or table captions, so imports into a shared owner keep the original `list-numbering` notices,
-keep dropping `lang` silently, keep the original image-link and `<details>` conversion,
-import mention spans as plain `@label` text, keep converting `<caption>` to flow before the table, keep
-reporting forced page-break CSS as `unsupported-style` and keep dropping element ids and
-`#fragment` links (no bookmarks).
+Shared editing now supports V4 explicitly (foundation): shared configuration
+format 4, causal model 14 and journal 15 reuse this frozen grammar and its
+fingerprints unchanged. `openSharedEditor`, `openSharedSearchEditor`,
+`openSharedDocumentEditor`, `openSharedDocumentSearchEditor` and the shared React
+components accept `richLanguage: 4`; the relay has explicit V4 rooms. Every slice
+replicates and persists exactly and is edited with the generic shared commands;
+the per-slice shared commands and toolbar controls are not yet shared. Shared
+interchange owners still do not report list numbering, text language, image
+links, sections, mentions or table captions, so imports into a shared owner keep
+the original `list-numbering` notices, keep dropping `lang` silently, keep the
+original image-link and `<details>` conversion, import mention spans as plain
+`@label` text, keep converting `<caption>` to flow before the table, keep reporting
+forced page-break CSS as `unsupported-style` and keep dropping element ids and
+`#fragment` links (no bookmarks). The selector, replica encoding, conflict
+policies and merge repairs are specified in [SHARED_RICH_V4.md](SHARED_RICH_V4.md).
 
 ## Freeze and durable persistence
 
@@ -105,7 +106,7 @@ update the constants or the fixture: add a V5.
 | `RichLocalSessionStore` (original string family at `current`) | Language-neutral exact bytes, unchanged. A V4 checkpoint stored there is proved only by the matching native V4 profile at restore. |
 | SDK `openLocalEditor` / `openLocalDocumentEditor` and the local React components | `richLanguage: 4` with `initial` `checkpoint`, `typingCheckpoint`, `documentCheckpoint` or `documentTypingCheckpoint` restores through the V4 profile only. Persistence stays an explicit host service; the SDK has no implicit autosave. |
 | Exported session JSON (`checkpointJson()` text) | The same native checkpoint text and binding. |
-| Shared journals, relay and local logs | Unchanged. No shared V4 model or journal exists: the shared protocol accepts only rich revisions 1–3 and shared openings reject `richLanguage: 4` before touching storage. The local SDK does not use the engine local-log journal (the Wasm rich owner exposes no local log), and those codecs bind the fingerprint of the profile they are built for. |
+| Shared journals, relay and local logs | Shared V4 journals are model 14 / journal 15 and bind the exact V4 fingerprint; shared durable records bind language 4 to that pair, and older runtimes refuse them ([SHARED_RICH_V4.md](SHARED_RICH_V4.md)). The local SDK does not use the engine local-log journal (the Wasm rich owner exposes no local log), and those codecs bind the fingerprint of the profile they are built for. |
 
 Assets stay outside checkpoints, as for V1–V3.
 
@@ -743,8 +744,8 @@ V1–V3 locks are unchanged.
 ### Not included
 
 Section anchors for fragment links, `name`-grouped exclusive accordions, custom
-disclosure markers, an in-surface toggle button and shared-collaboration rules
-(V4 is local only).
+disclosure markers, an in-surface toggle button and the slice's shared command (shared V4 replicates the slice's
+content; see [SHARED_RICH_V4.md](SHARED_RICH_V4.md)).
 
 ### Tests
 
@@ -926,8 +927,8 @@ V1–V3 locks are unchanged.
 ### Not included
 
 Host-declared kinds, kind-specific prefixes (`#tag`), live label re-resolution
-inside the chip, mention links, mention search by id, shared-collaboration rules
-(V4 is local only).
+inside the chip, mention links, mention search by id, the slice's shared command (shared V4 replicates the slice's
+content; see [SHARED_RICH_V4.md](SHARED_RICH_V4.md)).
 
 ### Tests
 
@@ -1119,7 +1120,8 @@ are unchanged.
 Caption position choice (top), `<caption>`-level summaries or long descriptions,
 table titles in the accessibility tree beyond native `<caption>` semantics, caption
 drafts in `insertTable`, table/cell presentation, accessible resize handles and
-shared-collaboration rules (V4 is local only).
+the slice's shared command (shared V4 replicates
+the slice's content; see [SHARED_RICH_V4.md](SHARED_RICH_V4.md)).
 
 ### Tests
 
@@ -1229,7 +1231,8 @@ bookmark slice moved it again (see [Slice 8](#fingerprint-current)).
 
 Page numbers, running headers/footers, breaks inside containers, column breaks,
 keep-with-next or avoid-break document properties, section-specific page setup and
-shared-collaboration rules (V4 is local only).
+the slice's shared command (shared V4 replicates
+the slice's content; see [SHARED_RICH_V4.md](SHARED_RICH_V4.md)).
 
 ### Tests
 
@@ -1316,8 +1319,10 @@ renaming is reference-preserving.
   record (so a V1–V3 owner refuses a V4 record carrying one), cutting and pasting moves
   the content but not the anchor (use block moves to keep it), and pasted internal links
   are kept (they resolve to the original anchor if it still exists).
-- **Shared history and permissions.** V4 is local only; there is no shared journal for
-  bookmarks. Bookmark edits follow the owner's read-only policy like every other command.
+- **Shared history and permissions.** Shared V4 replicates bookmarks as an owned block
+  field with document-order uniqueness on concurrent merges
+  ([SHARED_RICH_V4.md](SHARED_RICH_V4.md)); the bookmark commands are not shared yet.
+  Bookmark edits follow the owner's read-only policy like every other command.
 
 ### Native actions and commands
 
@@ -1405,7 +1410,8 @@ is added, so the trigger-composite allowlist is unchanged.
 Footnotes and endnotes, template/merge fields, cross-reference fields that display the
 target's text or page number, bookmarks on a span of text or on non-text blocks, links
 to other documents' bookmarks, automatic heading anchors, a link-preserving cut, and
-shared-collaboration rules (V4 is local only).
+the slice's shared command (shared V4 replicates
+the slice's content; see [SHARED_RICH_V4.md](SHARED_RICH_V4.md)).
 
 ### Fingerprint (current)
 

@@ -28,7 +28,12 @@ pub(super) fn prepare_targets(doc: &LoroDoc, anchor: &str) -> Result<(), Error> 
     let source = super::materialize::envelope(doc)?;
     let table =
         table_containing(&source["root"], anchor).ok_or(Error::Contract("shared paste table"))?;
-    for row in table["children"].as_array().ok_or(Error::Contract("shared paste rows"))? {
+    for row in table["children"]
+        .as_array()
+        .ok_or(Error::Contract("shared paste rows"))?
+        .iter()
+        .filter(|child| child["type"] == "breditor/table-row")
+    {
         for cell in row["children"].as_array().ok_or(Error::Contract("shared paste cells"))? {
             let block = creation::block(cell)?;
             creation::activate_cell(doc, block)?;
@@ -121,7 +126,12 @@ pub(super) fn apply(
     let replacement = creation::find(&new["root"], table_id)
         .ok_or(Error::Contract("shared paste table after"))?;
     let mut ordinal = 0;
-    for row in table["children"].as_array().ok_or(Error::Contract("paste rows"))? {
+    for row in table["children"]
+        .as_array()
+        .ok_or(Error::Contract("paste rows"))?
+        .iter()
+        .filter(|child| child["type"] == "breditor/table-row")
+    {
         for cell in row["children"].as_array().ok_or(Error::Contract("paste cells"))? {
             let id = creation::block(cell)?;
             let next = creation::find(replacement, id)

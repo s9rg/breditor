@@ -13,31 +13,31 @@ export function openSessionDatabase(name:string):Promise<IDBDatabase>{
   request.onsuccess=()=>{if(blocked)request.result.close();else resolve(request.result);};
  });
 }
-export function checkCheckpoint(value:string,room:string,writer:string,language:1|2|3=1,history:SharedHistoryPolicy="explicit",rangeEditing:SharedRangePolicy="original"):void{
+export function checkCheckpoint(value:string,room:string,writer:string,language:1|2|3|4=1,history:SharedHistoryPolicy="explicit",rangeEditing:SharedRangePolicy="original"):void{
  if(typeof value!=="string"||new TextEncoder().encode(value).length>MAX_CHECKPOINT_BYTES)throw new SharedEditorError("session_budget","Shared journal exceeds its 16 MiB storage budget");
  const decoded:unknown=JSON.parse(value);
  if(!decoded||typeof decoded!=="object"||Array.isArray(decoded))throw new SharedEditorError("session_identity","Expected a shared journal object");
  const valueHeader=decoded as {format?:unknown;formatVersion?:unknown;modelVersion?:unknown;journalVersion?:unknown;version?:unknown;document?:unknown;writer?:unknown;journal?:{format?:unknown;version?:unknown;document?:unknown;writer?:unknown}};
  const grouped=history==="typing-v1",general=rangeEditing==="general-v1",header=grouped?valueHeader.journal:valueHeader;
- const model=language===3?13:language===2?12:11,journal=language===3?14:language===2?13:12;
- if((language!==1&&language!==2&&language!==3)||(history!=="explicit"&&!grouped)||(rangeEditing!=="original"&&!general)||!header||
+ const model=language===4?14:language===3?13:language===2?12:11,journal=language===4?15:language===3?14:language===2?13:12;
+ if((language!==1&&language!==2&&language!==3&&language!==4)||(history!=="explicit"&&!grouped)||(rangeEditing!=="original"&&!general)||!header||
   grouped&&(valueHeader.format!==(general?"breditor/shared-general-typing-session":"breditor/shared-typing-session")||valueHeader.formatVersion!==1||valueHeader.modelVersion!==model||valueHeader.journalVersion!==journal)||
   header.format!==(general?(grouped?"breditor/rich-replica-general-typing-journal":"breditor/rich-replica-general-journal"):(grouped?"breditor/rich-replica-typing-journal":"breditor/rich-replica-journal"))||header.version!==((general||grouped)?1:journal)||header.document!==room||header.writer!==writer)throw new SharedEditorError("session_identity","Shared journal does not belong to the leased room/writer/model/history/range policy");
  // This checks storage identity, not causal admission. The matching Rust restore owns that proof.
 }
 export type StoredSessionCheckpoint=
  |{history:SharedHistoryPolicy;json:string;rangeEditing?:never;richLanguage?:never}
- |{history:SharedHistoryPolicy;json:string;rangeEditing:"general-v1";richLanguage:1|2|3};
+ |{history:SharedHistoryPolicy;json:string;rangeEditing:"general-v1";richLanguage:1|2|3|4};
 /** Separate declared record; original readers never infer document scope from opaque JSON. */
-export type StoredDocumentSessionCheckpoint=StoredSessionCheckpoint|{history:SharedHistoryPolicy;json:string;rangeEditing:"general-v1";selectionEditing:"document-v1";richLanguage:1|2|3};
+export type StoredDocumentSessionCheckpoint=StoredSessionCheckpoint|{history:SharedHistoryPolicy;json:string;rangeEditing:"general-v1";selectionEditing:"document-v1";richLanguage:1|2|3|4};
 /** Storage identity only; the separate native document factory still proves exact replay. */
-export function checkDocumentCheckpoint(value:string,room:string,writer:string,language:1|2|3=1,history:SharedHistoryPolicy="explicit"):void{
+export function checkDocumentCheckpoint(value:string,room:string,writer:string,language:1|2|3|4=1,history:SharedHistoryPolicy="explicit"):void{
  if(typeof value!=="string"||new TextEncoder().encode(value).length>MAX_CHECKPOINT_BYTES)throw new SharedEditorError("session_budget","Shared journal exceeds its 16 MiB storage budget");
  const decoded:unknown=JSON.parse(value);
  if(!decoded||typeof decoded!=="object"||Array.isArray(decoded))throw new SharedEditorError("session_identity","Expected a shared document journal object");
  const envelope=decoded as {format?:unknown;formatVersion?:unknown;modelVersion?:unknown;journalVersion?:unknown;version?:unknown;document?:unknown;writer?:unknown;journal?:{format?:unknown;version?:unknown;document?:unknown;writer?:unknown}};
- const grouped=history==="typing-v1",header=grouped?envelope.journal:envelope,model=language===3?13:language===2?12:11,journal=language===3?14:language===2?13:12;
- if((language!==1&&language!==2&&language!==3)||(history!=="explicit"&&!grouped)||!header||
+ const grouped=history==="typing-v1",header=grouped?envelope.journal:envelope,model=language===4?14:language===3?13:language===2?12:11,journal=language===4?15:language===3?14:language===2?13:12;
+ if((language!==1&&language!==2&&language!==3&&language!==4)||(history!=="explicit"&&!grouped)||!header||
   grouped&&(envelope.format!=="breditor/shared-document-typing-session"||envelope.formatVersion!==1||envelope.modelVersion!==model||envelope.journalVersion!==journal)||
   header.format!==(grouped?"breditor/rich-replica-document-typing-journal":"breditor/rich-replica-document-journal")||header.version!==1||header.document!==room||header.writer!==writer)throw new SharedEditorError("session_identity","Shared document journal does not belong to the leased room/writer/model/history/selection policy");
 }
@@ -60,11 +60,11 @@ function readStoredSessionCheckpoint(db:IDBDatabase,key:readonly[string,string],
    if(!value||typeof value!=="object"||Array.isArray(value))throw new SharedEditorError("session_read","Unknown stored shared history record");
    const record=value as Record<string,unknown>;
    if(document&&record["format"]==="breditor/shared-document-checkpoint-record"){
-    if(Object.keys(record).sort().join(",")!=="checkpointJson,format,formatVersion,history,richLanguage"||record["formatVersion"]!==1||typeof record["checkpointJson"]!=="string"||(record["history"]!=="explicit"&&record["history"]!=="typing-v1")||(record["richLanguage"]!==1&&record["richLanguage"]!==2&&record["richLanguage"]!==3))throw new SharedEditorError("session_read","Unknown stored shared document history record");
+    if(Object.keys(record).sort().join(",")!=="checkpointJson,format,formatVersion,history,richLanguage"||record["formatVersion"]!==1||typeof record["checkpointJson"]!=="string"||(record["history"]!=="explicit"&&record["history"]!=="typing-v1")||(record["richLanguage"]!==1&&record["richLanguage"]!==2&&record["richLanguage"]!==3&&record["richLanguage"]!==4))throw new SharedEditorError("session_read","Unknown stored shared document history record");
     result={history:record["history"],json:record["checkpointJson"],rangeEditing:"general-v1",selectionEditing:"document-v1",richLanguage:record["richLanguage"]};return;
    }
    if(record["format"]==="breditor/shared-general-checkpoint-record"){
-    if(Object.keys(record).sort().join(",")!=="checkpointJson,format,formatVersion,history,richLanguage"||record["formatVersion"]!==1||typeof record["checkpointJson"]!=="string"||(record["history"]!=="explicit"&&record["history"]!=="typing-v1")||(record["richLanguage"]!==1&&record["richLanguage"]!==2&&record["richLanguage"]!==3))throw new SharedEditorError("session_read","Unknown stored shared general history record");
+    if(Object.keys(record).sort().join(",")!=="checkpointJson,format,formatVersion,history,richLanguage"||record["formatVersion"]!==1||typeof record["checkpointJson"]!=="string"||(record["history"]!=="explicit"&&record["history"]!=="typing-v1")||(record["richLanguage"]!==1&&record["richLanguage"]!==2&&record["richLanguage"]!==3&&record["richLanguage"]!==4))throw new SharedEditorError("session_read","Unknown stored shared general history record");
     result={history:record["history"],json:record["checkpointJson"],rangeEditing:"general-v1",richLanguage:record["richLanguage"]};return;
    }
    if(Object.keys(record).sort().join(",")!=="checkpointJson,format,formatVersion"||record["format"]!=="breditor/shared-typing-checkpoint-record"||record["formatVersion"]!==1||typeof record["checkpointJson"]!=="string")throw new SharedEditorError("session_read","Unknown stored shared history record");
@@ -74,7 +74,7 @@ function readStoredSessionCheckpoint(db:IDBDatabase,key:readonly[string,string],
  });
 }
 /** Commit only a closed document-family record after validating its declared storage identity. */
-export function writeDocumentSessionCheckpoint(db:IDBDatabase,key:readonly[string,string],value:string,history:SharedHistoryPolicy,language:1|2|3=1):Promise<void>{
+export function writeDocumentSessionCheckpoint(db:IDBDatabase,key:readonly[string,string],value:string,history:SharedHistoryPolicy,language:1|2|3|4=1):Promise<void>{
  try{checkDocumentCheckpoint(value,key[0],key[1],language,history);}catch(error){return Promise.reject(error);}
  return new Promise((resolve,reject)=>{
   const tx=db.transaction("journals","readwrite");tx.oncomplete=()=>resolve();tx.onabort=()=>reject(tx.error??new SharedEditorError("session_write","Shared document journal transaction did not complete"));
@@ -82,7 +82,7 @@ export function writeDocumentSessionCheckpoint(db:IDBDatabase,key:readonly[strin
  });
 }
 /** Explicit sessions keep byte-identical legacy values; grouping uses a declared storage discriminator. */
-export function writeSessionCheckpoint(db:IDBDatabase,key:readonly[string,string],value:string,history:SharedHistoryPolicy,rangeEditing:SharedRangePolicy="original",language:1|2|3=1):Promise<void>{
+export function writeSessionCheckpoint(db:IDBDatabase,key:readonly[string,string],value:string,history:SharedHistoryPolicy,rangeEditing:SharedRangePolicy="original",language:1|2|3|4=1):Promise<void>{
  if(rangeEditing!=="original"&&rangeEditing!=="general-v1")return Promise.reject(new SharedEditorError("session_range","Unknown range policy"));
  if(rangeEditing==="original"&&history==="explicit")return writeCheckpoint(db,key,value);
  if(history!=="typing-v1"&&!(rangeEditing==="general-v1"&&history==="explicit"))return Promise.reject(new SharedEditorError("session_history","Unknown history policy"));

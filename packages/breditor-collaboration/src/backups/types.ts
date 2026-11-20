@@ -1,7 +1,7 @@
 import type {SharedHistoryPolicy,SharedRangePolicy,SharedSelectionPolicy} from "../types.js";
 /** Explicit expected source. A file never selects a native/profile/recovery family for its caller. */
 export interface SharedBackupIdentity {
- room:string;writer:string;richLanguage:1|2|3;history:SharedHistoryPolicy;
+ room:string;writer:string;richLanguage:1|2|3|4;history:SharedHistoryPolicy;
  rangeEditing:SharedRangePolicy;selectionEditing:SharedSelectionPolicy;searchHistory:"search-v1"|null;
 }
 export interface SharedSessionBackup {

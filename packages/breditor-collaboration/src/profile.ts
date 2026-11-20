@@ -22,6 +22,8 @@ export interface SharedProfileConfiguration {
 export type SharedProfileConfigurationV2=Omit<SharedProfileConfiguration,"formatVersion">&{formatVersion:2};
 /** Explicit native layout configuration; old selectors never infer it from content. */
 export type SharedProfileConfigurationV3=Omit<SharedProfileConfiguration,"formatVersion">&{formatVersion:3};
+/** Explicit frozen rich-language V4 configuration (format 4); never inferred from content. */
+export type SharedProfileConfigurationV4=Omit<SharedProfileConfiguration,"formatVersion">&{formatVersion:4};
 export type SharedProfileDescriptor=SharedProtocolBinding&Pick<SharedOwnerDescriptor,"schema"|"schemaFingerprint">&{
  format:"breditor/shared-rich-profile-descriptor";formatVersion:1;limits:Required<SharedProfileLimits>;
 };
@@ -67,7 +69,7 @@ export function restoreSharedTypingEditor(profile:SharedRustProfile,room:string,
  if(!supportsSharedTypingHistory(profile))throw new SharedEditorError("typing_history_unavailable","Use matching native shared typing-history recovery");
  return profile.restore_typing!(room,journal);
 }
-export interface SharedProfileModule {SharedRichProfile:{from_configuration_json(input:string):SharedRustProfile;from_standard_configuration_json_v1?(input:string):SharedRustProfile;from_configuration_json_v2?(input:string):SharedRustProfile;from_standard_configuration_json_v2?(input:string):SharedRustProfile;from_configuration_json_v3?(input:string):SharedRustProfile;from_standard_configuration_json_v3?(input:string):SharedRustProfile}}
+export interface SharedProfileModule {SharedRichProfile:{from_configuration_json(input:string):SharedRustProfile;from_standard_configuration_json_v1?(input:string):SharedRustProfile;from_configuration_json_v2?(input:string):SharedRustProfile;from_standard_configuration_json_v2?(input:string):SharedRustProfile;from_configuration_json_v3?(input:string):SharedRustProfile;from_standard_configuration_json_v3?(input:string):SharedRustProfile;from_configuration_json_v4?(input:string):SharedRustProfile;from_standard_configuration_json_v4?(input:string):SharedRustProfile}}
 /** Compile application-selected formats/budgets with matching Rust; no fixed probe schema. */
 export function compileSharedProfile(wasm:SharedProfileModule,configuration:SharedProfileConfiguration):SharedRustProfile {
  const profile=wasm.SharedRichProfile.from_configuration_json(JSON.stringify(configuration));
@@ -101,7 +103,18 @@ export function compileStandardLayoutSharedProfileV3(wasm:SharedProfileModule,co
  if(typeof factory!=="function")throw new SharedEditorError("layout_profile_unavailable","Use a matching Rust module with standard shared layout V3 support");
  return admitProfile(factory.call(wasm.SharedRichProfile,JSON.stringify(configuration)),3);
 }
-function admitProfile(profile:SharedRustProfile,language:1|2|3=1):SharedRustProfile {
+/** Compile frozen rich V4 only through its matching factory and exact model14/journal15 descriptor. */
+export function compileRichSharedProfileV4(wasm:SharedProfileModule,configuration:SharedProfileConfigurationV4):SharedRustProfile {
+ const factory=wasm.SharedRichProfile.from_configuration_json_v4;
+ if(typeof factory!=="function")throw new SharedEditorError("language_profile_unavailable","Use a matching Rust module with shared rich-language V4 support");
+ return admitProfile(factory.call(wasm.SharedRichProfile,JSON.stringify(configuration)),4);
+}
+export function compileStandardRichSharedProfileV4(wasm:SharedProfileModule,configuration:SharedProfileConfigurationV4):SharedRustProfile {
+ const factory=wasm.SharedRichProfile.from_standard_configuration_json_v4;
+ if(typeof factory!=="function")throw new SharedEditorError("language_profile_unavailable","Use a matching Rust module with standard shared rich-language V4 support");
+ return admitProfile(factory.call(wasm.SharedRichProfile,JSON.stringify(configuration)),4);
+}
+function admitProfile(profile:SharedRustProfile,language:1|2|3|4=1):SharedRustProfile {
  try{const d=JSON.parse(profile.descriptor_json()) as SharedProfileDescriptor;
   if(d.format!=="breditor/shared-rich-profile-descriptor"||d.formatVersion!==1||sharedProtocolLanguage(d)!==language)throw new SharedEditorError("profile_abi","Unsupported shared profile ABI/model/history revision");
   return profile;

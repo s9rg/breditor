@@ -27,6 +27,9 @@ pub(super) fn envelope(doc: &LoroDoc) -> Result<Value, Error> {
     if children.is_empty() || explicit {
         children.insert(0, fallback);
     }
+    if super::protocol::Protocol::read(doc)?.v4() {
+        super::v4_projection::dedupe_bookmarks(&mut children);
+    }
     value
         .get_mut("root")
         .and_then(Value::as_object_mut)
@@ -96,6 +99,10 @@ fn element(
     }
     let mut children = vec![];
     let protocol = super::protocol::Protocol::read(doc)?;
+    if protocol.root_only(&kind) && depth > 0 {
+        super::v4_projection::repaired();
+        return Ok(None);
+    }
     if protocol.text(&kind) {
         if flows.joined(block)? {
             return Ok(None);
@@ -103,6 +110,9 @@ fn element(
         children = flows.runs(doc, block)?;
         if protocol.structural() {
             project_text_properties(&kind, &mut properties, &mut children)?;
+        }
+        if protocol.v4() {
+            super::v4_projection::repair_mentions(&mut children);
         }
     } else {
         for child in placements.children(doc, Some(block))? {
@@ -114,13 +124,22 @@ fn element(
     if kind == "breditor/image" {
         super::captions::project(&mut children, caption_choice)?;
     }
+    if protocol.v4() {
+        super::v4_projection::project_properties(&kind, &mut properties);
+    }
     if kind == "breditor/table" {
+        let caption = if protocol.v4() {
+            super::v4_projection::take_table_caption(&mut children)
+        } else {
+            None
+        };
         super::merges::project(doc, &raw, &mut properties)?;
         let columns = columns(doc, block)?;
         for row in &mut children {
             complete_row(doc, flows, placements, &properties, row, &columns)?;
         }
         properties.insert("breditor/columns".into(), Value::Array(columns));
+        children.extend(caption);
     }
     if !normalize_body(doc, flows, placements, block, &kind, protocol, &mut children)? {
         return Ok(None);
@@ -163,6 +182,14 @@ fn normalize_body(
             || explicit
         {
             children.insert(0, fallback);
+        }
+    }
+    if protocol.v4() && kind == "breditor/details" {
+        super::v4_projection::order_details(block, children);
+        let default = virtual_id("flow", &[block]);
+        let (fallback, explicit) = fallback(doc, flows, placements, &default)?;
+        if children.len() < 2 || explicit {
+            children.insert(1, fallback);
         }
     }
     Ok(true)
@@ -353,6 +380,9 @@ fn fallback(
                 .ok_or(Error::Contract("shared normalized properties"))?,
             &mut runs,
         )?;
+        if super::protocol::Protocol::read(doc)?.v4() {
+            super::v4_projection::repair_mentions(&mut runs);
+        }
         node["children"] = Value::Array(runs);
     }
     Ok((node, explicit))

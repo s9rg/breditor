@@ -5,7 +5,7 @@ import type {SharedHistoryPolicy,SharedRangePolicy,SharedSelectionPolicy} from "
 import {checkCheckpoint,checkDocumentCheckpoint} from "./session_database.js";
 export interface ReviewCheckpointRecord {
  format:"breditor/shared-review-checkpoint-record";formatVersion:1;
- history:SharedHistoryPolicy;rangeEditing:SharedRangePolicy;selectionEditing:SharedSelectionPolicy;richLanguage:1|2|3;
+ history:SharedHistoryPolicy;rangeEditing:SharedRangePolicy;selectionEditing:SharedSelectionPolicy;richLanguage:1|2|3|4;
  reviewActor:string;principal:string;documentCheckpointJson:string;reviewCheckpointJson:string;versions:readonly string[];
 }
 const keys="documentCheckpointJson,format,formatVersion,history,principal,rangeEditing,reviewActor,reviewCheckpointJson,richLanguage,selectionEditing,versions";
@@ -19,7 +19,7 @@ export function checkReviewRecord(input:unknown,key:readonly[string,string]):ass
 }
 /** Shared closed-body laws; each separately named family supplies its own document identity guard. */
 export function checkReviewRecordFields(r:Omit<ReviewCheckpointRecord,"format">,key:readonly[string,string],checkDocument:()=>void):void {
- if(r.formatVersion!==1||![1,2,3].includes(r.richLanguage)||(r.history!=="explicit"&&r.history!=="typing-v1")||(r.rangeEditing!=="original"&&r.rangeEditing!=="general-v1")||(r.selectionEditing!=="original"&&r.selectionEditing!=="document-v1")||(r.selectionEditing==="document-v1"&&r.rangeEditing!=="general-v1"))throw new SharedEditorError("review_record","Unknown paired review policy");
+ if(r.formatVersion!==1||![1,2,3,4].includes(r.richLanguage)||(r.history!=="explicit"&&r.history!=="typing-v1")||(r.rangeEditing!=="original"&&r.rangeEditing!=="general-v1")||(r.selectionEditing!=="original"&&r.selectionEditing!=="document-v1")||(r.selectionEditing==="document-v1"&&r.rangeEditing!=="general-v1"))throw new SharedEditorError("review_record","Unknown paired review policy");
  if(typeof r.reviewActor!=="string"||!/^[A-Za-z0-9][A-Za-z0-9._:-]{0,127}$/.test(r.reviewActor)||typeof r.principal!=="string"||!r.principal.trim()||bytes(r.principal)>256||/[\u0000-\u001f\u007f-\u009f]/u.test(r.principal))throw new SharedEditorError("review_record","Invalid review identity");
  checkDocument();
  if(typeof r.reviewCheckpointJson!=="string"||bytes(r.reviewCheckpointJson)>16*1024*1024)throw new SharedEditorError("review_record_budget","Review journal exceeds its native checkpoint ceiling");

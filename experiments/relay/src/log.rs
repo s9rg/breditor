@@ -62,6 +62,15 @@ pub(crate) enum Event {
         owner: String,
         journal: String,
     },
+    /// Explicit frozen rich-language V4 room (configuration 4, model 14, journal 15).
+    /// A separate tag: older relays cannot parse it and therefore refuse the room.
+    SeedLanguageV4 {
+        configuration: String,
+        standard_inline_v1: bool,
+        room: String,
+        owner: String,
+        journal: String,
+    },
     Grant {
         actor: String,
         principal: String,

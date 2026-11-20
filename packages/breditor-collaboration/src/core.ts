@@ -56,6 +56,7 @@ export function createSharedDocumentEditor(raw:SharedRustOwner,options:Omit<Shar
  return new SharedRichEditor<"document-v1">(raw,{...options,selectionEditing:"document-v1"});
 }
 /** Owns the exact Rust observation and bounded remote queue; no replicated JS document exists. */
+const sharedV4SliceMethods=Object.freeze(["list_numbering_version","text_language_version","image_link_version","details_version","mention_version","table_caption_version","page_break_version","bookmark_version"] as const);
 export class SharedRichEditor<P extends SharedSelectionPolicy="original"> {
  readonly #assetReferences=new RichRetainedAssetReferenceRegistry();
  readonly #packetAssetReferences=new SharedPacketAssetReferenceRegistry();
@@ -132,7 +133,8 @@ export class SharedRichEditor<P extends SharedSelectionPolicy="original"> {
    this.#descriptor=raw.descriptor_json();const descriptor=JSON.parse(this.#descriptor) as SharedOwnerDescriptor;
    if(raw.review_enabled?.()===true)throw new SharedEditorError("review_adoption","Transfer a document owner without an attached review lane, then explicitly enable/restore review through this facade");
    if(descriptor.format!=="breditor/shared-rich-owner"||sharedProtocolLanguage(descriptor)===undefined)throw new SharedEditorError("owner_abi","Unsupported shared Rust ABI/model/history revision");
-   if(this.richLanguageVersion()===3&&!this.supportsBlockLayout())throw new SharedEditorError("layout_unavailable","Use matching native layout V3 commands and reads");
+   if((this.richLanguageVersion()===3||this.richLanguageVersion()===4)&&!this.supportsBlockLayout())throw new SharedEditorError("layout_unavailable","Use matching native layout V3 commands and reads");
+   if(this.richLanguageVersion()===4&&!this.supportsRichLanguageV4())throw new SharedEditorError("language_unavailable","Use a matching native shared V4 owner that reports every frozen V4 slice");
    if(this.#selectionPolicy==="document-v1"){
     if(!this.supportsDocumentSelection())throw new SharedEditorError("document_selection_unavailable","Use complete matching native document-selection capabilities");
     if(!raw.document_selection_enabled!()){const initial=raw.observe();try{raw.enable_document_selection!(initial);}finally{initial.free();}}
@@ -587,7 +589,7 @@ export class SharedRichEditor<P extends SharedSelectionPolicy="original"> {
  /** Prefix must be permanently reserved on success, refusal and Undo. No plain-text fallback. */
  pasteDocumentClipboard(this:SharedRichEditor<"document-v1">,clipboardJson:string,prefix:string,revision?:string):boolean{return this.#run("local",(_raw,o)=>{const raw=this.#documentOwner();if(!this.supportsDocumentClipboard())throw new SharedEditorError("document_clipboard_unavailable","Use matching native whole-document rich paste");return raw.paste_document_clipboard!(o,JSON.stringify({clipboardJson,prefix}));},revision);}
  descriptor():SharedOwnerDescriptor{this.#live();return JSON.parse(this.#descriptor) as SharedOwnerDescriptor;}
- richLanguageVersion():1|2|3{const language=sharedProtocolLanguage(this.descriptor());if(language===undefined)throw new SharedEditorError("owner_abi","Unsupported shared native language");return language;}
+ richLanguageVersion():1|2|3|4{const language=sharedProtocolLanguage(this.descriptor());if(language===undefined)throw new SharedEditorError("owner_abi","Unsupported shared native language");return language;}
  documentJson():string{return this.view().documentJson;}
  /** Read the same core property-state contract under the current opaque observation. */
  supportsInlineFormatState():boolean{return typeof this.#live().inline_format_state_json==="function";}
@@ -614,7 +616,9 @@ export class SharedRichEditor<P extends SharedSelectionPolicy="original"> {
  replaceGeneralRangePlainText(selection:Extract<RichSelection,{kind:"text"}>,text:string,prefix:string,revision?:string):boolean{return this.#run("local",(_raw,o)=>this.#generalOwner().replace_general_range_plain_text!(o,JSON.stringify({selection,text,prefix})),revision);}
  replaceGeneralRangeTypingText(selection:Extract<RichSelection,{kind:"text"}>,text:string,prefix:string,clockMs:string,revision?:string):boolean{return this.#run("local",(_raw,o)=>this.#generalOwner().replace_general_range_typing_text!(o,JSON.stringify({selection,text,prefix,clockMs})),revision);}
  supportsSelectionFormatting():boolean{const raw=this.#live();return typeof raw.selection_formatting_version==="function"&&raw.selection_formatting_version()==="1"&&typeof raw.selection_coverage_json==="function"&&typeof raw.selection_format_state_json==="function"&&typeof raw.change_selection_formats==="function";}
- supportsBlockLayout():boolean{const raw=this.#live();return this.richLanguageVersion()===3&&typeof raw.block_layout_version==="function"&&raw.block_layout_version()==="1"&&typeof raw.block_layout_state_json==="function"&&typeof raw.change_selection_layout==="function";}
+ /** Exact frozen V4 capability: model 14 plus every slice version "1" on the Rust owner. */
+ supportsRichLanguageV4():boolean{const raw=this.#live();return this.richLanguageVersion()===4&&typeof raw.rich_language_version==="function"&&raw.rich_language_version()==="4"&&sharedV4SliceMethods.every(name=>typeof raw[name]==="function"&&raw[name]!()==="1");}
+ supportsBlockLayout():boolean{const raw=this.#live();const language=this.richLanguageVersion();return (language===3||language===4)&&typeof raw.block_layout_version==="function"&&raw.block_layout_version()==="1"&&typeof raw.block_layout_state_json==="function"&&typeof raw.change_selection_layout==="function";}
  blockLayoutState():import("@breditor/experimental-rich-content").RichBlockLayoutStateRead{if(!this.supportsBlockLayout())throw new SharedEditorError("layout_unavailable","Use an explicitly selected matching native layout V3 owner");const raw=this.#live();return JSON.parse(this.#selectionPolicy==="document-v1"&&this.supportsDocumentTools()?raw.document_block_layout_state_json!(this.#observation):raw.block_layout_state_json!(this.#observation)) as import("@breditor/experimental-rich-content").RichBlockLayoutStateRead;}
  changeSelectionLayout(patch:import("@breditor/experimental-rich-content").RichBlockLayoutPatch,revision?:string):boolean{return this.#run("local",(raw,o)=>{if(!this.supportsBlockLayout())throw new SharedEditorError("layout_unavailable","Use matching native layout V3 commands and reads");const input=encodeBlockLayoutPatch(patch);return this.#selectionPolicy==="document-v1"&&this.supportsDocumentTools()?raw.change_document_selection_layout!(o,input):raw.change_selection_layout!(o,input);},revision);}
  selectionCoverage(scope:"selection"|"document"="selection"):import("@breditor/experimental-rich-content").RichSelectionCoverageRead{if(!this.supportsSelectionFormatting())throw new SharedEditorError("selection_formatting_unavailable","Use a matching native selection-formatting owner");const raw=this.#live();return JSON.parse(this.#selectionPolicy==="document-v1"&&this.supportsDocumentTools()?raw.document_selection_coverage_json!(this.#observation,scope):raw.selection_coverage_json!(this.#observation,scope)) as import("@breditor/experimental-rich-content").RichSelectionCoverageRead;}
