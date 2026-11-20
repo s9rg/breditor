@@ -126,6 +126,12 @@ export type RichCommand =
  /** Candidate rich V4 only: set, replace or clear (`href:null`) one image's link in one history group.
   * The href must already be canonical (`canonicalImageLinkHref`); a decorative image cannot be linked. */
  |{kind:"setImageLink";data:import("./core.js").RichImageLinkIntent}
+ /** Candidate rich V4 only: set, replace or clear (`name:null`) one paragraph/heading/code-block
+  * bookmark in one history group. Links are not rewritten (a replaced or cleared name dangles). */
+ |{kind:"setBookmark";data:import("./bookmark.js").RichSetBookmarkIntent}
+ /** Candidate rich V4 only: rename one bookmark and retarget every internal `#from` link to `#to`,
+  * in one history group. */
+ |{kind:"renameBookmark";data:import("./bookmark.js").RichRenameBookmarkIntent}
  /** Candidate rich V4 only: replace one text range inside a paragraph or heading (normally the typed
   * `@query` trigger) by one mention plus a plain space, in one history group (one Undo step). */
  |{kind:"insertMention";data:{selection:Extract<RichSelection,{kind:"text"}>;mention:import("./mention.js").RichMention}}

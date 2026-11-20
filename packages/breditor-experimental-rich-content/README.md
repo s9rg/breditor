@@ -143,6 +143,21 @@ headings kept with the next block, `<thead>` repeated, chrome hidden), and
 `mountRichPrintPreview(editor.surface, options)` shows approximate page boundaries
 on screen (catalog key `printPreviewLabel`). See `docs/PAGINATION_AND_PRINT.md`.
 
+## Bookmarks and internal links (candidate rich V4)
+
+A candidate rich V4 paragraph, heading or code block may carry one document-unique
+bookmark name (`breditor/bookmark`, `[A-Za-z][A-Za-z0-9_-]{0,63}`), and a standard
+link whose href is `#name` is an internal link to it (`supportsBookmarks()`, descriptor
+`bookmarkVersion: 1`). `setBookmark {block, name|null}` sets or clears one;
+`renameBookmark {from, to}` renames it and retargets every link in one Undo step.
+Dangling links are allowed: `core.bookmarkIndex()` reports `brokenLinks` and the
+renderer marks them with `data-rich-link-broken` (`richBookmarkStyles`). Bookmarked
+blocks render `id="bm-<name>" data-rich-bookmark`, internal links
+`href="#bm-<name>"`; they are inert while editing and scroll within the surface when
+read-only. `bookmarkToolbarControls(core)` (included in `createRichToolbarV4`)
+provides **Bookmark**, **Remove bookmark** and **Link to bookmark**. See
+`docs/RICH_LANGUAGE_V4.md` (Slice 8).
+
 ## Chrome localization
 
 Pass an opt-in `ui` catalog to `mountRichEditor` / `mountDocumentRichEditor` to

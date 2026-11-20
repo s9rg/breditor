@@ -11,6 +11,9 @@ export interface RichToolbarReading {
  readonly kind:"unavailable"|"unset"|"uniform"|"mixed";
  readonly values?:Readonly<Record<string,string>>;
  readonly pressed?:boolean|"mixed";
+ /** Optional current choices for `select` fields whose options depend on the document (for example
+  * the candidate V4 bookmark list). Applied while no draft is open; the blank choice stays first. */
+ readonly options?:Readonly<Record<string,readonly {readonly value:string;readonly label:string}[]>>;
 }
 export interface RichControlPresentation<C> {
  readonly id:string;readonly label:string;readonly type?:"text"|"number";
@@ -52,7 +55,17 @@ export function mountToolbarControl<C>(toolbar:HTMLElement,source:RichControlPre
  const help=d.createElement("small");help.hidden=true;help.textContent=control.mixedHint??ui.text("controlMixedHint");if(panel)container.append(help);
  toolbar.append(container);
  let lastStamp="",draft:string|undefined,enabled=false,lastContext:C,lastReading:RichToolbarReading|undefined;
+ const syncOptions=()=>{
+  for(const [id,input]of fields){
+   const options=lastReading?.options?.[id];if(!(input instanceof HTMLSelectElement)||!options)continue;
+   const current=[...input.options].slice(1).map(option=>`${option.value}\u0000${option.textContent??""}`).join("\u0001"),next=options.map(option=>`${option.value}\u0000${option.label}`).join("\u0001");
+   if(current===next)continue;
+   while(input.options.length>1)input.remove(1);
+   for(const option of options){const node=d.createElement("option");node.value=option.value;node.textContent=option.label;input.append(node);}
+  }
+ };
  const write=()=>{
+  if(draft===undefined)syncOptions();
   container.dataset["state"]=lastReading?.kind??"unset";help.hidden=lastReading?.kind!=="mixed";
   if(lastReading?.pressed!==undefined)button.setAttribute("aria-pressed",String(lastReading.pressed));else button.removeAttribute("aria-pressed");
   for(const [id,input]of fields){if(draft===undefined){input.value=enabled?(lastReading?.values?.[id]??(id==="value"?control.value?.(lastContext)??"":"")):"";if(input instanceof HTMLInputElement)input.placeholder=lastReading?.kind==="mixed"?ui.text("fieldMixed"):definitions.find(field=>field.id===id)?.placeholder??"";else if(input.options[0])input.options[0].textContent=lastReading?.kind==="mixed"?ui.text("fieldMixedChoose"):ui.text("fieldChoose");}}
