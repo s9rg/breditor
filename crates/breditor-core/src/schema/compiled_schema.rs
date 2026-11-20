@@ -265,6 +265,13 @@ impl CompiledSchema {
         matches!(self.rich_content_revision(), Some(4))
     }
 
+    /// Whether this exact language admits one trailing table caption paragraph (rich V4 only).
+    #[cfg(feature = "experimental-rich-content")]
+    #[must_use]
+    pub const fn supports_rich_table_captions(&self) -> bool {
+        matches!(self.rich_content_revision(), Some(4))
+    }
+
     /// Whether this exact language admits native mention entities (rich V4 only).
     #[cfg(feature = "experimental-rich-content")]
     #[must_use]

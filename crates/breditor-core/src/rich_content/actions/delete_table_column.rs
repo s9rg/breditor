@@ -34,20 +34,20 @@ impl DeleteTableColumn {
             .position(|entry| entry.id() == column)
             .ok_or(RichActionError::MissingTarget)?;
         let source = table_node(document, table)?;
-        let rows = source
-            .as_element()
-            .ok_or(RichActionError::Rewrite)?
-            .children()
-            .iter()
-            .map(|node| {
-                let element = node.as_element().ok_or(RichActionError::Rewrite)?;
-                let mut children = element.children().to_vec();
-                children.remove(index);
-                Ok(NodeRef::element(
-                    element.try_with_children(children).map_err(|_| RichActionError::Rewrite)?,
-                ))
-            })
-            .collect::<Result<_, RichActionError>>()?;
+        // Rows only: a candidate V4 caption is kept by `rebuild`.
+        let rows = crate::rich_content::table_caption::rows(
+            source.as_element().ok_or(RichActionError::Rewrite)?,
+        )
+        .iter()
+        .map(|node| {
+            let element = node.as_element().ok_or(RichActionError::Rewrite)?;
+            let mut children = element.children().to_vec();
+            children.remove(index);
+            Ok(NodeRef::element(
+                element.try_with_children(children).map_err(|_| RichActionError::Rewrite)?,
+            ))
+        })
+        .collect::<Result<_, RichActionError>>()?;
         let mut columns = column_properties(source)?;
         columns.remove(index);
         Ok(Self {

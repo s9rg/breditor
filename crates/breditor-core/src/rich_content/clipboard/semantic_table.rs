@@ -39,7 +39,23 @@ pub(super) fn normalize(
             ],
         )?);
     }
-    rectangle(&view, &node, (0, view.rows().len() - 1), (0, view.columns().len() - 1))
+    whole(&view, &node)
+}
+
+/// The whole visible grid of `node` (active merges recaptured) plus its candidate V4
+/// caption, if `node` still carries one. Grid rectangles never include a caption.
+pub(super) fn whole(view: &RichTableView, node: &NodeRef) -> Result<NodeRef, RichClipboardError> {
+    let grid = rectangle(view, node, (0, view.rows().len() - 1), (0, view.columns().len() - 1))?;
+    let Some(caption) = node.as_element().and_then(crate::rich_content::table_caption::caption)
+    else {
+        return Ok(grid);
+    };
+    let grid = grid.as_element().ok_or(RichClipboardError::Invariant)?;
+    let mut children = grid.children().to_vec();
+    children.push(NodeRef::element(caption.clone()));
+    Ok(NodeRef::element(
+        grid.try_with_children(children).map_err(|_| RichClipboardError::Invariant)?,
+    ))
 }
 
 pub(super) fn rectangle(

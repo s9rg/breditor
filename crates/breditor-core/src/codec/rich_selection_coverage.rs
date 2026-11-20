@@ -19,6 +19,7 @@ enum Domain<'a> {
     Document,
     Cell { table: &'a str, row: &'a str, column: &'a str },
     Caption { image: &'a str },
+    TableCaption { table: &'a str },
 }
 fn domain(value: &RichCoverageDomain) -> Domain<'_> {
     match value {
@@ -29,6 +30,7 @@ fn domain(value: &RichCoverageDomain) -> Domain<'_> {
             column: c.column().as_str(),
         },
         RichCoverageDomain::Caption(i) => Domain::Caption { image: i.as_str() },
+        RichCoverageDomain::TableCaption(t) => Domain::TableCaption { table: t.as_str() },
     }
 }
 #[derive(Serialize)]

@@ -47,6 +47,7 @@ mod selection_format_change;
 mod selection_format_state;
 mod standard_inline_v1;
 mod structural_drafts;
+pub(crate) mod table_caption;
 mod table_draft;
 mod table_geometry;
 mod table_paste_draft;
@@ -138,6 +139,7 @@ pub use standard_inline_v1::{
     StandardInlineFormatV1, standard_inline_extension_v1,
 };
 pub use structural_drafts::{RichTaskItemDraft, RichTaskListDraft};
+pub use table_caption::RichTableCaptionError;
 pub use table_draft::TableDraft;
 pub use table_paste_draft::{TableCellPasteDraft, TablePasteDraft, TablePasteMerge};
 pub use text_language::{

@@ -87,6 +87,7 @@ mod split_table_cell;
 mod split_task_item;
 mod split_text_block;
 mod support;
+mod table_caption;
 mod undo;
 mod unwrap_blockquote;
 mod unwrap_list;
@@ -177,6 +178,8 @@ enum CommandTag {
     SetDetailsOpen,
     EnterDetailsBody,
     InsertMention,
+    AddTableCaption,
+    RemoveTableCaption,
     OutdentListItems,
     JoinTextBlocks,
     JoinListItems,

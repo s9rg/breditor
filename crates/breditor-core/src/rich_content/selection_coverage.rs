@@ -24,6 +24,8 @@ pub enum RichCoverageDomain {
     Cell(CellId),
     /// Caption of this image block, never the image's outer flow.
     Caption(BlockId),
+    /// Candidate V4: caption of this table, never a cell or the table's outer flow.
+    TableCaption(TableId),
 }
 /// Whether the selection encloses a structural node, rather than only touching descendants.
 #[derive(Clone, Copy, Debug, Eq, PartialEq)]
@@ -328,6 +330,16 @@ fn domain(
         let node = element(document, &parent)?;
         if node.kind().as_str() == "breditor/image" {
             return Ok(RichCoverageDomain::Caption(identity(node)?));
+        }
+        if node.kind().as_str() == "breditor/table" {
+            // Only a caption paragraph is a direct text child of a table (rows hold cells).
+            return Ok(RichCoverageDomain::TableCaption(
+                TableId::try_new(
+                    ast_properties::string(node, "table-id")
+                        .map_err(|_| RichSelectionError::Invariant)?,
+                )
+                .map_err(|_| RichSelectionError::Invariant)?,
+            ));
         }
         if node.kind().as_str() == "breditor/table-cell" {
             let row_path = parent.parent().ok_or(RichSelectionError::Invariant)?;
