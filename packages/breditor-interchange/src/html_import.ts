@@ -49,26 +49,37 @@ const carrierProperties:ReadonlySet<string>=new Set([...breakProperties,"mso-spe
 /** `clear` is Word's `<br clear=all>` page-break carrier attribute. */
 const carrierAttributes:ReadonlySet<string>=new Set(["clear"]);
 interface PageBreaks {readonly before:boolean;readonly after:boolean}
-/** Flat producer list entry: Word desktop `mso-list` paragraphs or Word for the web `data-aria-level` items. */
-interface FlatItem {level:number;group:string;ordered:boolean;numbers:number[];body:(state:StyleState)=>Element[]}
+/**
+ * Flat producer list entry: Word desktop `mso-list` paragraphs or Word for the web `data-aria-level` items.
+ * `styles` (numbering-capable owners only) parallels `numbers` (or has one entry when `numbers` is empty) with each
+ * reading's candidate V4 marker code; undefined is decimal. Absent keeps the original decimal-only reconstruction.
+ */
+interface FlatItem {level:number;group:string;ordered:boolean;numbers:number[];styles?:(number|undefined)[];body:(state:StyleState)=>Element[]}
 const romanPattern=/^m{0,3}(?:cm|cd|d?c{0,3})(?:xc|xl|l?x{0,3})(?:ix|iv|v?i{0,3})$/;
 function roman(value:string):number|null {
   if(!value||!romanPattern.test(value))return null;const digits:Record<string,number>={i:1,v:5,x:10,l:50,c:100,d:500,m:1000};let total=0;
   for(let i=0;i<value.length;i++){const n=digits[value[i]!]!,next=digits[value[i+1]??""]??0;total+=n<next?-n:n;}return total;
 }
-/** Word marker text → candidate ordinals (preferred first), [] for a bullet glyph, null if unrecognized; `exact` = native decimal keeps it. */
-function wordMarker(raw:string):{numbers:number[];exact:boolean}|null {
+/**
+ * Word marker text → candidate ordinals (preferred first), [] for a bullet glyph, null if unrecognized.
+ * `styles[i]` is the candidate V4 marker code reading `numbers[i]` (undefined = decimal, the native default).
+ * `exact` = native decimal keeps it; `styled` = a numbering-capable (V4) owner keeps it exactly: a plain
+ * `N.`/`N)`, or a letter/roman `a.`/`a)` read as lower/upper alpha or roman with that start.
+ */
+function wordMarker(raw:string):{numbers:number[];styles:(number|undefined)[];exact:boolean;styled:boolean}|null {
   const value=raw.replace(/\s+/g,"");
-  let m=/^(\d{1,9})[.)]$/.exec(value);if(m)return{numbers:[Number(m[1])],exact:true};
-  m=/^\((\d{1,9})\)$/.exec(value)??/^(?:\d{1,9}\.){1,8}(\d{1,9})\.?$/.exec(value);if(m)return{numbers:[Number(m[1])],exact:false};
-  m=/^\(?([a-z]{1,4}|[A-Z]{1,4})[.)]$/.exec(value);
+  let m=/^(\d{1,9})[.)]$/.exec(value);if(m)return{numbers:[Number(m[1])],styles:[undefined],exact:true,styled:true};
+  m=/^\((\d{1,9})\)$/.exec(value)??/^(?:\d{1,9}\.){1,8}(\d{1,9})\.?$/.exec(value);if(m)return{numbers:[Number(m[1])],styles:[undefined],exact:false,styled:false};
+  m=/^(\(?)([a-z]{1,4}|[A-Z]{1,4})[.)]$/.exec(value);
   if(m){
-    const word=m[1]!.toLowerCase(),letters=word.split("").every(c=>c===word[0])?(word.length-1)*26+word.charCodeAt(0)-96:null,numeral=roman(word),numbers:number[]=[];
+    const upper=m[2]!!==m[2]!.toLowerCase(),word=m[2]!.toLowerCase(),letters=word.split("").every(c=>c===word[0])?(word.length-1)*26+word.charCodeAt(0)-96:null,numeral=roman(word),numbers:number[]=[],styles:(number|undefined)[]=[];
+    const alpha=upper?3:2,romanStyle=upper?5:4,add=(n:number,style:number)=>{if(!numbers.includes(n)){numbers.push(n);styles.push(style);}};
     // A lone `i` opens a roman list in Word's defaults; other ambiguous letters read alphabetically first.
-    if(word==="i"&&numeral!==null)numbers.push(numeral);if(letters!==null)numbers.push(letters);if(numeral!==null&&!numbers.includes(numeral))numbers.push(numeral);
-    if(numbers.length)return{numbers,exact:false};
+    if(word==="i"&&numeral!==null)add(numeral,romanStyle);if(letters!==null)add(letters,alpha);if(numeral!==null)add(numeral,romanStyle);
+    // `(a)` keeps both parentheses, which a native `a.` marker cannot show.
+    if(numbers.length)return{numbers,styles,exact:false,styled:!m[1]};
   }
-  if(wordBullets.test(value))return{numbers:[],exact:true};
+  if(wordBullets.test(value))return{numbers:[],styles:[],exact:true,styled:true};
   return null;
 }
 /** Conversion staging only. Native schema/clipboard admission is always required before publication. */
@@ -78,6 +89,8 @@ export class HtmlConversion {
   #preservedEnd=new WeakSet<Text>();#detailsDepth=0;
   /** Candidate V4: nodes whose forced-break declarations were consumed, and page breaks derived from block properties. */
   #breakConsumed=new WeakSet<HtmlElement>();#carrier=new WeakSet<HtmlElement>();#soft=new WeakSet<Element>();
+  /** Candidate V4: Word for the web items whose own `list-style-type` became their list's native style. */
+  #listStyleConsumed=new WeakSet<HtmlElement>();
   constructor(readonly b:Budget,readonly options:InterchangeOptions,readonly sheets:Stylesheets,readonly capabilities:ImportCapabilities={listNumbering:false}){}
   css(node:HtmlElement):Map<string,string>{let value=this.#css.get(node);if(!value){const important=new Set<string>();value=this.sheets.apply(node,declarations(node,this.b,important),important);this.#css.set(node,value);}return value;}
   /** `interpreted` names attributes that structural conversion already consumed for this node. */
@@ -85,7 +98,7 @@ export class HtmlConversion {
     if(interpreted===undefined&&node.tagName==="ol"&&this.capabilities.listNumbering)interpreted=numberingAttributes;
     for(const attr of node.attrs)if(attr.namespace!==undefined||attr.prefix!==undefined||!this.#knownAttribute(node,attr.name,attr.value,interpreted))this.b.loss("unsupported-attribute");
     const css=this.css(node),consumed=this.#breakConsumed.has(node)?this.#carrier.has(node)?carrierProperties:new Set<string>(breakProperties):undefined;
-    const state=styleFor(node,parent,this.b,consumed?new Map([...css].filter(([name])=>!consumed.has(name))):css);
+    const listStyle=this.#listStyleConsumed.has(node),state=styleFor(node,parent,this.b,consumed||listStyle?new Map([...css].filter(([name])=>!consumed?.has(name)&&!(listStyle&&name==="list-style-type"))):css);
     if(this.capabilities.textLanguage)this.#language(node,state);
     return state;
   }
@@ -435,8 +448,9 @@ export class HtmlConversion {
         if(marker){
           this.#markers.add(marker);const parsed=wordMarker(plainText(marker).replace(/\u00a0/g," ").trim());
           // Unrecognized marker text (custom "Step %1:" formats) keeps list structure as bullets and reports it.
-          if(!parsed||!parsed.exact)this.b.loss("list-numbering");
-          item={level,group:`${m[1]}:${m[3]}`,ordered:Boolean(parsed?.numbers.length),numbers:parsed?.numbers??[],body:state=>this.prose(node.childNodes,this.style(node,state))};
+          // Numbering-capable owners keep letter and roman markers as native list styles (`styled`).
+          const v4=this.capabilities.listNumbering;if(!parsed||!(v4?parsed.styled:parsed.exact))this.b.loss("list-numbering");
+          item={level,group:`${m[1]}:${m[3]}`,ordered:Boolean(parsed?.numbers.length),numbers:parsed?.numbers??[],...(v4&&parsed?{styles:parsed.styles}:{}),body:state=>this.prose(node.childNodes,this.style(node,state))};
         }
         else this.b.loss("list-numbering");
       }
@@ -456,15 +470,24 @@ export class HtmlConversion {
     const {wrapper,list}=this.#flatList(node)!,outer=wrapper?this.style(wrapper,state):state;
     if(!this.#safe(list))return[];
     const listState=this.style(list,outer),ordered=list.tagName==="ol",items:FlatItem[]=[];
-    {const css=this.css(list).get("list-style-type")?.trim().toLowerCase();if(ordered&&css!==undefined&&css!=="decimal"&&cssListStyles.has(css))this.b.loss("list-numbering");}
+    const v4=this.capabilities.listNumbering;
+    // Numbering-capable owners judge each item's own style below; others report the list's non-decimal style once more.
+    if(!v4){const css=this.css(list).get("list-style-type")?.trim().toLowerCase();if(ordered&&css!==undefined&&css!=="decimal"&&cssListStyles.has(css))this.b.loss("list-numbering");}
     if(attribute(list,"type")!==undefined&&attribute(list,"type")!==(ordered?"1":"disc")||attribute(list,"reversed")!==undefined)this.b.loss("list-numbering");
     for(const li of list.childNodes){
       if(!isElement(li))continue;if(this.#hidden(li))fail("unsupported-content");
-      // Native lists number in decimal only. Unless both the CSS list style and Word's level text
+      // V1–V3 lists number in decimal only. Unless both the CSS list style and Word's level text
       // (`%1.` / `%1)`) prove a plain decimal ordinal, the letter/roman/compound format is reported.
-      if(ordered){const type=(this.css(li).get("list-style-type")??this.css(list).get("list-style-type"))?.trim().toLowerCase();if(type!=="decimal"||!/^%[1-9][.)]?$/.test(attribute(li,"data-leveltext")??""))this.b.loss("list-numbering");}
+      // Numbering-capable owners keep decimal, lower/upper alpha and roman CSS styles under the same level-text proof
+      // (an unproven level text keeps the style but is reported); an item's own list-style-type is then consumed.
+      let style:number|undefined;
+      if(ordered){
+        const type=(this.css(li).get("list-style-type")??this.css(list).get("list-style-type"))?.trim().toLowerCase(),code=v4&&type!==undefined?cssListStyles.get(type):undefined;
+        style=code===1?undefined:code;if(code!==undefined&&this.css(li).has("list-style-type"))this.#listStyleConsumed.add(li);
+        if((v4?code===undefined:type!=="decimal")||!/^%[1-9][.)]?$/.test(attribute(li,"data-leveltext")??""))this.b.loss("list-numbering");
+      }
       const position=Number(attribute(li,"data-aria-posinset")),numbers=ordered&&Number.isSafeInteger(position)&&position>=1&&position<=1_000_000_000?[position]:[];
-      items.push({level:Number(attribute(li,"data-aria-level")),group:`aria:${attribute(li,"data-listid")??""}`,ordered,numbers,body:()=>{
+      items.push({level:Number(attribute(li,"data-aria-level")),group:`aria:${attribute(li,"data-listid")??""}`,ordered,numbers,...(v4&&ordered?{styles:[style]}:{}),body:()=>{
         const body=this.flow(li.childNodes,this.style(li,listState,flatListAttributes));
         if(!body.length||!['breditor/paragraph','breditor/heading'].includes(body[0]!.type))body.unshift(element(this.b,"paragraph"));return body;
       }});
@@ -473,16 +496,22 @@ export class HtmlConversion {
   }
   /** Rebuild nesting from flat (level, ordinal) entries. Skipped levels nest one deeper and are reported, never rejected. */
   #flatLists(items:FlatItem[],state:StyleState):Element[] {
-    const output:Element[]=[],stack:{level:number;list:Element;item:Element;next:number|null}[]=[];
+    const output:Element[]=[],stack:{level:number;list:Element;item:Element;next:number|null;style:number|undefined}[]=[];
     if(items[0]!.level!==1)this.b.loss("block-structure");
     for(const item of items){
       while(stack.length&&stack.at(-1)!.level>item.level)stack.pop();
       let top=stack.at(-1),list:Element;const kind=item.ordered?"ordered-list":"bullet-list",same=top?.level===item.level?top:undefined;
-      let number:number|null=null;
-      if(item.ordered){number=same&&same.list.type==="breditor/ordered-list"&&same.next!==null&&(!item.numbers.length||item.numbers.includes(same.next))?same.next:item.numbers[0]??1;if(number<1){this.b.loss("list-numbering");number=1;}}
-      const props=number===null?{}:{"breditor/start":number};
-      if(!top||top.level<item.level){if(top&&item.level!==top.level+1)this.b.loss("block-structure");list=element(this.b,kind,[],props);if(top)top.item.children.push(list);else output.push(list);top={level:item.level,list,item:list,next:number};stack.push(top);}
-      else if(top.list.type!==`breditor/${kind}`||number!==null&&number!==top.next){list=element(this.b,kind,[],props);if(stack.length>1)stack[stack.length-2]!.item.children.push(list);else output.push(list);top.list=list;}
+      let number:number|null=null,style:number|undefined;
+      if(item.ordered){
+        // Continue the open list with the reading (ordinal and, for V4 owners, marker style) it expects next.
+        const open=same&&same.list.type==="breditor/ordered-list"&&same.next!==null?same:undefined,styles=item.styles;
+        const reading=open?item.numbers.length?item.numbers.findIndex((n,i)=>n===open.next&&styles?.[i]===open.style):styles?.[0]===open.style?-2:-1:-1;
+        if(open&&reading!==-1){number=open.next;style=styles?.[Math.max(reading,0)];}else{number=item.numbers[0]??1;style=styles?.[0];}
+        if(number!==null&&number<1){this.b.loss("list-numbering");number=1;}
+      }
+      const props=number===null?{}:{"breditor/start":number,...(style===undefined?{}:{"breditor/list-style":style})};
+      if(!top||top.level<item.level){if(top&&item.level!==top.level+1)this.b.loss("block-structure");list=element(this.b,kind,[],props);if(top)top.item.children.push(list);else output.push(list);top={level:item.level,list,item:list,next:number,style};stack.push(top);}
+      else if(top.list.type!==`breditor/${kind}`||number!==null&&number!==top.next||style!==top.style){list=element(this.b,kind,[],props);if(stack.length>1)stack[stack.length-2]!.item.children.push(list);else output.push(list);top.list=list;top.style=style;}
       top.item=element(this.b,"list-item",item.body(state));top.list.children.push(top.item);top.next=number===null?null:number+1;
     }
     return output;
