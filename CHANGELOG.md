@@ -6,6 +6,31 @@ its durable formats and Wasm transport.
 
 ## Unreleased
 
+- Add explicit **shared rich language V4** (foundation). A shared room can now
+  hold, replicate, persist and replay documents using any of the eight frozen V4
+  slices with exact convergence. Selection follows the V2/V3 precedent: shared
+  configuration **format 4**, causal **model 14** and **journal 15**
+  (`SharedRichProfile::from_configuration_json_v4` /
+  `from_standard_configuration_json_v4` / `from_schema_v4`; Wasm
+  `from_configuration_json_v4`; TypeScript `compileRichSharedProfileV4`,
+  `compileStandardRichSharedProfileV4`, `createRichSharedProfileV4`,
+  `richSharedProfileConfigurationV4`, `createRichSharedToolbarV4`,
+  `SharedRichEditor.supportsRichLanguageV4()`). The shared grammar is the frozen
+  local V4 grammar (same compiler entry, rule revision and fingerprints, proved by
+  tests). `openSharedEditor`, `openSharedSearchEditor`, `openSharedDocumentEditor`
+  and `openSharedDocumentSearchEditor` now accept `richLanguage: 4` (they no longer
+  reject it); values outside 1–4 are still refused. Shared durable records bind
+  language 4 to model 14/journal 15. The reference relay adds
+  `create_language_v4` / `create_standard_language_v4` (`init-v4`,
+  `init-standard-v4`), a new `seedLanguageV4` record and
+  `AtomicTransportProfile::LanguageV4`. Older runtimes and relays refuse V4 rooms,
+  frames, journals and records, and V4 owners refuse V3 ones. Concurrent merges
+  that would break a V4 invariant (duplicate bookmark names, a partially edited
+  mention, a section without its summary or body, a non-root page break, a second
+  table caption, a link on a decorative image) are repaired deterministically on
+  every peer; local commands that would need such a repair are refused. Generic
+  shared editing works on V4 content; per-slice shared commands and toolbar
+  controls are the next step. See `docs/SHARED_RICH_V4.md`.
 - `@breditor/interchange` Markdown export: a paragraph, heading or GFM table cell
   with a formatted run, code span or link next to a single space (`see **b** c`,
   `see [a](<url>) b`, `see <https://example.com/> now`) now exports as Markdown
