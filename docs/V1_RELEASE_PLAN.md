@@ -88,9 +88,11 @@ native-contract designs, not UI additions. The largest partial gaps are:
 1. **Restore shared browser qualification.** Fix the `experiments/collaboration`
    wasm32 build, then run the shared-browser harness over the shared slash, AI
    and input-rule paths. This feeds the browser-reliability and release-ci gates.
-2. **Decide the V4 release scope.** Freeze its grammar and fingerprint, allow the
-   durable store to persist it, and either add shared V4 or state that V4 stays
-   local-only for V1. This is the compatibility gate's decision.
+2. **Decide the V4 release scope.** Done: V4's grammar and fingerprint are frozen
+   and the durable local store persists it (see
+   [Rich language V4](RICH_LANGUAGE_V4.md#freeze-and-durable-persistence)). Open:
+   shared V4 is in progress; whether V4 ships in V1 remains the compatibility
+   gate's decision.
 3. **Automate release CI.** The repository workflows are manual-only. Run the Rust
    suites, the package vitest suites and the grouped rich-browser suite on every
    change before attempting the release-ci gate.
@@ -6418,7 +6420,7 @@ No competitor implementation was copied into Breditor.
 3. **Interchange.** The optional bounded HTML/Markdown adapter, a reconstructed
    seven-producer Office/Docs/Sheets/LibreOffice/Cocoa corpus and a deterministic
    DOCX exporter now exist. Finish captured producer fidelity, native clipboard
-   qualification, DOCX import and the Markdown formatted-paragraph export defect. Deterministic JSON
+   qualification and DOCX import. Deterministic JSON
    remains canonical; imports retain declared losses, fresh IDs and one guarded
    transaction.
 4. **Product UI and host contracts.** Live native read-only mode, a selection

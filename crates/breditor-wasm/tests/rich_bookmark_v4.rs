@@ -4,6 +4,8 @@
 #[path = "../../breditor-core/tests/support/coverage_fixture.rs"]
 #[allow(dead_code)]
 mod fixture;
+#[path = "../../breditor-core/tests/support/rich_v4_frozen.rs"]
+mod frozen;
 use breditor_wasm::{BreditorRichEditor, BreditorRichProfile, BreditorStringResult};
 use serde_json::{Value, json};
 type Result<T = ()> = std::result::Result<T, Box<dyn std::error::Error>>;
@@ -69,10 +71,7 @@ fn v4_descriptor_and_owner_report_bookmarks_only_for_v4() -> Result {
     let p = profile()?;
     let d = descriptor(&p)?;
     assert_eq!(d["bookmarkVersion"], 1);
-    assert_eq!(
-        d["schemaFingerprint"],
-        "sha256:40ed4c0716f9baab1ec30da8b5641623b8fbbdafc7e6f838f5b0496e01add372"
-    );
+    assert_eq!(d["schemaFingerprint"], frozen::V4_LAYOUT_FINGERPRINT, "{}", frozen::FROZEN);
     let a = owner(&p, &root())?;
     assert_eq!(a.bookmark_version(), "1");
     assert_eq!(

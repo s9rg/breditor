@@ -4,6 +4,8 @@
 #[path = "support/coverage_fixture.rs"]
 #[allow(dead_code)]
 mod fixture;
+#[path = "support/rich_v4_frozen.rs"]
+mod frozen;
 use breditor_core::{
     codec::{DocumentJsonCodecV2, RichClipboardJsonCodec, RichSessionJsonCodec},
     extension::{ExtensionLimits, ExtensionSet},
@@ -23,13 +25,9 @@ use breditor_core::{
     session::HistoryCapacity,
     state::EditorContext,
 };
+use frozen::{FROZEN, V4_LAYOUT_FINGERPRINT as V4_FINGERPRINT};
 use serde_json::{Value, json};
 type Result<T = ()> = std::result::Result<T, Box<dyn std::error::Error>>;
-
-/// Candidate V4 fingerprint for schema `example/layout@1` with the standard inline preset,
-/// pinned after the page-break slice (one new root-only atomic element).
-const V4_FINGERPRINT: &str =
-    "sha256:40ed4c0716f9baab1ec30da8b5641623b8fbbdafc7e6f838f5b0496e01add372";
 
 fn schema(revision: u32) -> Result<CompiledSchema> {
     let id = SchemaId::new(QualifiedName::try_new("example/layout")?, SchemaVersion::try_new(1)?);
@@ -127,7 +125,7 @@ fn v4_fingerprint_is_locked_and_v1_to_v3_stay_exact_without_page_breaks() -> Res
         assert_eq!(old.fingerprint().to_string(), expected);
         assert!(!old.supports_rich_page_breaks());
     }
-    assert_eq!(d.fingerprint().to_string(), V4_FINGERPRINT);
+    assert_eq!(d.fingerprint().to_string(), V4_FINGERPRINT, "{FROZEN}");
     assert!(d.supports_rich_page_breaks() && d.supports_rich_table_captions());
     assert_eq!(RICH_PAGE_BREAK_KIND, "breditor/page-break");
     Ok(())
@@ -303,43 +301,47 @@ fn insert_and_delete_refuse_placement_target_profile_and_owner_state() -> Result
 
 #[test]
 fn a_page_break_is_a_node_selectable_atom_with_recovery_on_delete() -> Result {
-    let c = context(4)?;
-    let d = admit(&c, &root())?;
-    let selected = RichSelection::try_new(&d, node("pb")?)?;
-    assert_eq!(selected_flow_atom(&d, &selected)?, id("pb")?);
+    let ctx = context(4)?;
+    let doc = admit(&ctx, &root())?;
+    let selected = RichSelection::try_new(&doc, node("pb")?)?;
+    assert_eq!(selected_flow_atom(&doc, &selected)?, id("pb")?);
     // Deleting the node-selected page break recovers to the next stop in one group.
-    let mut a = owner(&c, &root(), node("pb")?)?;
-    a.delete_page_break(&a.snapshot(), &id("pb")?, &id("floor")?)?;
-    assert_eq!(types(&encode(&c, a.state().document())?), ["breditor/paragraph"; 2]);
+    let mut selected_owner = owner(&ctx, &root(), node("pb")?)?;
+    selected_owner.delete_page_break(&selected_owner.snapshot(), &id("pb")?, &id("floor")?)?;
+    assert_eq!(types(&encode(&ctx, selected_owner.state().document())?), ["breditor/paragraph"; 2]);
     assert!(
-        matches!(selection_of(&a), Some(RichSelectionKind::TextRange { ref focus, .. }) if focus.block() == &id("q")?)
+        matches!(selection_of(&selected_owner), Some(RichSelectionKind::TextRange { ref focus, .. }) if focus.block() == &id("q")?)
     );
-    assert_eq!(a.undo_depth(), 1);
-    a.undo(&a.snapshot())?;
-    assert_eq!(encode(&c, a.state().document())?, root());
+    assert_eq!(selected_owner.undo_depth(), 1);
+    selected_owner.undo(&selected_owner.snapshot())?;
+    assert_eq!(encode(&ctx, selected_owner.state().document())?, root());
     // Generic whole-atom deletion works the same way.
-    let mut g = owner(&c, &root(), node("pb")?)?;
-    g.delete_atom(&g.snapshot(), &id("floor")?, FlowMove::Before)?;
+    let mut atom_owner = owner(&ctx, &root(), node("pb")?)?;
+    atom_owner.delete_atom(&atom_owner.snapshot(), &id("floor")?, FlowMove::Before)?;
     assert!(
-        matches!(selection_of(&g), Some(RichSelectionKind::TextRange { ref focus, .. }) if focus.block() == &id("p")?)
+        matches!(selection_of(&atom_owner), Some(RichSelectionKind::TextRange { ref focus, .. }) if focus.block() == &id("p")?)
     );
-    // A sole page break leaves a fresh floor paragraph with the caret in it.
+    // A sole page break leaves selected_owner fresh floor paragraph with the caret in it.
     let sole = document(vec![page_break("pb")]);
-    let mut s = owner(&c, &sole, node("pb")?)?;
-    s.delete_page_break(&s.snapshot(), &id("pb")?, &id("floor")?)?;
+    let mut sole_owner = owner(&ctx, &sole, node("pb")?)?;
+    sole_owner.delete_page_break(&sole_owner.snapshot(), &id("pb")?, &id("floor")?)?;
     assert_eq!(
-        encode(&c, s.state().document())?["children"],
+        encode(&ctx, sole_owner.state().document())?["children"],
         json!([fixture::paragraph("floor", "")])
     );
-    assert_eq!(selection_of(&s), Some(caret("floor", 0)?));
-    let mut t = owner(&c, &document(vec![page_break("pb"), page_break("pc")]), node("pc")?)?;
-    t.delete_page_break(&t.snapshot(), &id("pb")?, &id("floor")?)?;
-    assert_eq!(selection_of(&t), Some(node("pc")?));
-    // Enter-equivalent: a paragraph can be inserted after a selected page break.
-    let mut e = owner(&c, &root(), node("pb")?)?;
-    e.insert_paragraph_adjacent(&e.snapshot(), &id("n")?, FlowMove::After)?;
-    assert_eq!(encode(&c, e.state().document())?["children"][2], fixture::paragraph("n", ""));
-    assert_eq!(selection_of(&e), Some(caret("n", 0)?));
+    assert_eq!(selection_of(&sole_owner), Some(caret("floor", 0)?));
+    let mut two_breaks =
+        owner(&ctx, &document(vec![page_break("pb"), page_break("pc")]), node("pc")?)?;
+    two_breaks.delete_page_break(&two_breaks.snapshot(), &id("pb")?, &id("floor")?)?;
+    assert_eq!(selection_of(&two_breaks), Some(node("pc")?));
+    // Enter-equivalent: selected_owner paragraph can be inserted after selected_owner selected page break.
+    let mut enter_owner = owner(&ctx, &root(), node("pb")?)?;
+    enter_owner.insert_paragraph_adjacent(&enter_owner.snapshot(), &id("n")?, FlowMove::After)?;
+    assert_eq!(
+        encode(&ctx, enter_owner.state().document())?["children"][2],
+        fixture::paragraph("n", "")
+    );
+    assert_eq!(selection_of(&enter_owner), Some(caret("n", 0)?));
     Ok(())
 }
 

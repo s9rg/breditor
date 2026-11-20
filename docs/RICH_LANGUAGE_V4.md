@@ -1,15 +1,28 @@
-# Rich language V4 (unreleased candidate)
+# Rich language V4 (frozen candidate)
 
-Rich V4 is an explicit, opt-in rich language under construction. It is **not
-released**. It is built in eight slices, all recorded here: ordered-list
-numbering, text-run language, image links, collapsible sections, mention
-entities, table captions, page breaks and bookmarks with internal links.
+Rich V4 is an explicit, opt-in rich language made of eight slices, all recorded
+here: ordered-list numbering, text-run language, image links, collapsible
+sections, mention entities, table captions, page breaks and bookmarks with
+internal links.
 
-Because each slice changes V4's grammar or rule revision, **the V4 schema
-fingerprint changes as later slices land**. No persisted V4 data exists, and
-hosts must not store V4 documents, checkpoints or histories until V4 is declared
-released. The durable local document store (`RichDocumentSessionStore`) keeps
-accepting only rich languages 1–3 for that reason.
+**Status (November 20, 2026): frozen candidate, persistable locally, not
+released.**
+
+- **Frozen.** V4's grammar, sealed rich rule revision (4 under compiler contract
+  6) and schema fingerprints are frozen at these eight slices. They will not
+  change again: any later grammar or rule change is a new language (V5) with its
+  own compiler entry, bootstrap format, selector and fingerprint. See
+  [Freeze and durable persistence](#freeze-and-durable-persistence).
+- **Persistable locally.** Hosts may store V4 documents, checkpoints and
+  histories from local editors. Every saved V4 record binds the exact V4
+  fingerprint and is refused under any other profile.
+- **Not released.** V4 is still a candidate: it is not part of a released V1, and
+  whether it ships in V1 is the compatibility gate's decision
+  ([V1 release plan](V1_RELEASE_PLAN.md)). Freezing guarantees that data saved
+  now keeps restoring exactly; it does not promote the V4 API surface.
+- **Shared V4 is in progress.** Collaboration still supports only languages 1–3
+  (see below). A shared V4 is being built separately and must reuse this frozen
+  local grammar unchanged.
 
 ## Selection and compatibility
 
@@ -36,7 +49,8 @@ are rejected, never mapped to an older language.
 
 ### Shared collaboration stays on V3
 
-V4 is local only. The shared collaboration path (`crates/breditor-collaboration`,
+V4 is local only for now; a shared V4 is in progress and will reuse the frozen V4
+grammar and fingerprint without changing them. Today the shared collaboration path (`crates/breditor-collaboration`,
 `@breditor/collaboration`, the relay and shared SDK/React openings) has no V4
 model, journal or configuration. `openSharedEditor`, `openSharedSearchEditor`,
 `openSharedDocumentEditor`, `openSharedDocumentSearchEditor` and the shared
@@ -49,6 +63,51 @@ keep dropping `lang` silently, keep the original image-link and `<details>` conv
 import mention spans as plain `@label` text, keep converting `<caption>` to flow before the table, keep
 reporting forced page-break CSS as `unsupported-style` and keep dropping element ids and
 `#fragment` links (no bookmarks).
+
+## Freeze and durable persistence
+
+### Frozen identities
+
+| Profile | Frozen schema fingerprint |
+| --- | --- |
+| Stock SDK V4: `breditor-editor/standard@4`, standard inline preset V1 (`profileBootstrapJsonV4`, exported as `standardSchemaFingerprintV4`) | `sha256:7ac98189f850119abd83956f49b82fdbdcc91a77033781fbde090ba931fccc77` |
+| Test schema `example/layout@1`, standard inline preset V1 (the per-slice tests) | `sha256:40ed4c0716f9baab1ec30da8b5641623b8fbbdafc7e6f838f5b0496e01add372` |
+| Test schema `example/layout@1`, no extensions (the bare grammar and rules) | `sha256:4dd71942c6c3d31609321c8b0c0580c573c21d683c2457cfb5e906c1eb0869a0` |
+
+A host bootstrap with another selector or other extensions compiles to its own V4
+fingerprint; that value is equally frozen for the same inputs.
+
+The freeze is enforced by one canonical lock, `crates/breditor-core/tests/support/rich_v4_frozen.rs`,
+shared by the core and Wasm tests (the per-slice tests use it instead of their own
+copies):
+
+- `crates/breditor-core/tests/rich_language_v4_frozen.rs` asserts the three
+  fingerprints, rule revision 4 and exactly the eight slice capabilities. It also
+  restores a **golden saved V4 checkpoint**
+  (`tests/fixtures/rich-v4-frozen-checkpoint.json`: a document using all eight slices
+  with nine retained history steps) byte-exactly, replays its Undo/Redo, and checks
+  that V1–V3 profiles, another selector, another extension set and a forged
+  fingerprint all refuse it. A change in V4's grammar, rules or checkpoint encoding
+  breaks these tests.
+- `crates/breditor-wasm/tests/rich_v4_persistence.rs` re-creates the golden checkpoint
+  through the Wasm commands of all eight slices and compares it byte-for-byte.
+
+Every assertion fails with *"rich language V4 is FROZEN … add a V5 instead"*. Do not
+update the constants or the fixture: add a V5.
+
+### Saved V4 records
+
+| Path | V4 binding and refusal |
+| --- | --- |
+| Native checkpoints: `restoreEditor`, `restoreTypingEditor`, `restoreDocumentEditor`, `restoreDocumentTypingEditor` (`checkpointJson()` / `documentCheckpointJson()`) | Unchanged formats. The embedded base document (Document V2) carries the schema selector and exact V4 fingerprint; restore replays every retained entry under the restoring profile. Any profile with another fingerprint (V1–V3, another selector or extension set) refuses, and each family restores only through its own factory. |
+| `RichDocumentSessionStore.open(name, {richLanguage: 4, schemaFingerprint, history})` | Requires the exact `sha256:` fingerprint of the matching profile (`profile.descriptor().schemaFingerprint`, or `standardSchemaFingerprintV4` for the stock profile). Writes **record V2**: `{format: "breditor/local-document-checkpoint-record", formatVersion: 2, history, richLanguage: 4, schemaFingerprint, checkpointJson}` at `current:document-v1`. `save` refuses a checkpoint whose base document names another fingerprint; `load` refuses any record whose version, keys, language, history or fingerprint differ. Languages 1–3 keep record V1 unchanged and reject a `schemaFingerprint` option. |
+| Older runtimes | They accept only record V1 with languages 1–3 and exact keys, so they refuse a V4 record instead of reading it. Their profiles refuse a V4 checkpoint by fingerprint. A runtime from before the freeze compiled other V4 fingerprints and refuses frozen V4 data too. |
+| `RichLocalSessionStore` (original string family at `current`) | Language-neutral exact bytes, unchanged. A V4 checkpoint stored there is proved only by the matching native V4 profile at restore. |
+| SDK `openLocalEditor` / `openLocalDocumentEditor` and the local React components | `richLanguage: 4` with `initial` `checkpoint`, `typingCheckpoint`, `documentCheckpoint` or `documentTypingCheckpoint` restores through the V4 profile only. Persistence stays an explicit host service; the SDK has no implicit autosave. |
+| Exported session JSON (`checkpointJson()` text) | The same native checkpoint text and binding. |
+| Shared journals, relay and local logs | Unchanged. No shared V4 model or journal exists: the shared protocol accepts only rich revisions 1–3 and shared openings reject `richLanguage: 4` before touching storage. The local SDK does not use the engine local-log journal (the Wasm rich owner exposes no local log), and those codecs bind the fingerprint of the profile they are built for. |
+
+Assets stay outside checkpoints, as for V1–V3.
 
 ## Slice 1: ordered-list numbering (audit gap `list-properties`)
 
@@ -1350,10 +1409,13 @@ shared-collaboration rules (V4 is local only).
 
 ### Fingerprint (current)
 
-Current candidate V4 lock for schema `example/layout@1` with the standard inline
+Frozen V4 lock for schema `example/layout@1` with the standard inline
 preset: `sha256:40ed4c0716f9baab1ec30da8b5641623b8fbbdafc7e6f838f5b0496e01add372`
-(asserted in the core and Wasm text-language, image-link, section, mention,
-table-caption, page-break and bookmark tests). V1–V3 locks are unchanged. The schema
+(the canonical constant in `tests/support/rich_v4_frozen.rs`, asserted in the core
+and Wasm text-language, image-link, section, mention, table-caption, page-break and
+bookmark tests and in `tests/rich_language_v4_frozen.rs`; see
+[Freeze and durable persistence](#freeze-and-durable-persistence)). The bookmark slice
+is the last V4 slice: this value no longer moves. V1–V3 locks are unchanged. The schema
 unit test proves V4 differs from V3 only by its rule revision, the text-language and
 mention formats, the image revision, the section grammar, the table's caption grammar,
 the root-only page-break element and the text-block revisions.

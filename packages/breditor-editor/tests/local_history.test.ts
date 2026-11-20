@@ -66,3 +66,18 @@ it("candidate V4 opening selects only bootstrap9 and its owner-bound V4 toolbar 
   expect(mocks.toolbarV4).toHaveBeenCalledWith(t.core,{});expect(mocks.layoutToolbar).not.toHaveBeenCalled();editor.dispose();
  }
 });
+it("frozen V4 restores every saved local checkpoint family through the V4 profile only",async()=>{
+ const cases=[["checkpoint","restoreEditor",false],["typingCheckpoint","restoreTypingEditor",false],["documentCheckpoint","restoreDocumentEditor",true],["documentTypingCheckpoint","restoreDocumentTypingEditor",true]] as const;
+ for(const [kind,factory,documentScope] of cases){
+  vi.clearAllMocks();mocks.runtime.mockResolvedValue({});
+  const t=setup(),profile=t.profile as Record<string,unknown>;profile["supportsDocumentSelection"]=()=>true;profile["createDocumentEditor"]=t.profile.createEditor;profile["restoreDocumentEditor"]=vi.fn(()=>t.core);profile["restoreDocumentTypingEditor"]=vi.fn(()=>t.core);
+  const initial={kind,checkpointJson:"saved V4"} as never;
+  const editor=documentScope?await openLocalDocumentEditor({host:t.host,selectionEditing:"document-v1",richLanguage:4,initial}):await openLocalEditor({host:t.host,richLanguage:4,initial});
+  expect(mocks.compile).not.toHaveBeenCalled();expect(mocks.compileV3).not.toHaveBeenCalled();expect(mocks.compileV4).toHaveBeenCalledOnce();
+  expect(profile[factory]).toHaveBeenCalledWith("saved V4");expect(t.profile.createEditor).not.toHaveBeenCalled();editor.dispose();
+ }
+ // A V3 opening never selects the V4 profile; the native refusal rolls the host back.
+ vi.clearAllMocks();mocks.runtime.mockResolvedValue({});const refused=setup();refused.profile.restoreEditor.mockImplementation(()=>{throw Error("breditor_rich.checkpoint_rejected");});
+ await expect(openLocalEditor({host:refused.host,richLanguage:3,initial:{kind:"checkpoint",checkpointJson:"saved V4"}})).rejects.toThrow("checkpoint_rejected");
+ expect(mocks.compileV4).not.toHaveBeenCalled();expect(mocks.compileV3).toHaveBeenCalledOnce();expect(refused.host.firstChild).toBe(refused.original);
+});

@@ -16,6 +16,19 @@ its durable formats and Wasm transport.
   still uses HTML. Every emitted block is still re-parsed and must reproduce the
   same text and formats, so content is unchanged on reimport; only more output is
   Markdown.
+- Freeze candidate rich language V4 at its eight slices and allow saving it
+  locally. V4's grammar, rule revision 4 and fingerprints no longer change; a
+  later grammar change is a new language (V5). The stock profile
+  `breditor-editor/standard@4` has the frozen fingerprint
+  `sha256:7ac98189f850119abd83956f49b82fdbdcc91a77033781fbde090ba931fccc77`,
+  exported as `standardSchemaFingerprintV4` from `@breditor/editor`. One
+  canonical Rust lock and a golden saved V4 checkpoint enforce the freeze.
+  `RichDocumentSessionStore` now accepts `{richLanguage: 4, schemaFingerprint}`
+  and writes record V2 with the exact fingerprint, refusing checkpoints and
+  records bound to another fingerprint, language or history; languages 1–3 keep
+  record V1 unchanged, and older runtimes refuse V4 records. Native V4
+  checkpoints already bind the fingerprint in their base document. V4 remains a
+  local-only candidate and is not released; shared V4 is in progress.
 - Test infrastructure: the rich-browser Playwright suite now runs WebKit as
   `webkit-1`…`webkit-N` projects (one per five spec files, round-robin). Playwright's
   macOS WebKit stops opening pages after about 63 test contexts in one browser

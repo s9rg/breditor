@@ -215,10 +215,11 @@ impl CompiledSchema {
         super::compiler::compile_rich_content_profile_v3(schema_id, extensions)
     }
 
-    /// Compile the explicit unreleased candidate rich V4: V3 plus bounded ordered-list numbering.
+    /// Compile the explicit frozen candidate rich V4: V3 plus its eight local slices.
     ///
-    /// V4 is a candidate under construction: its fingerprint changes as later
-    /// candidate slices land, so callers must not persist V4 data yet. Old
+    /// V4's grammar, sealed rule revision and fingerprint are frozen (locked by
+    /// `tests/rich_language_v4_frozen.rs`), so hosts may persist V4 data bound to the
+    /// exact fingerprint. Any later grammar or rule change is a new language (V5). Old
     /// profiles and fingerprints are unchanged; this does not migrate old documents.
     /// # Errors
     /// Rejects reserved identities, incompatible extensions and compiler limits.

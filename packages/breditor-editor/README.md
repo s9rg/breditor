@@ -540,16 +540,35 @@ owner. Numeric values must be finite primitives; arbitrary CSS and objects that
 serialize into null are rejected. See `docs/RICH_BLOCK_LAYOUT.md` in the repository
 for bounds, independent shared fields, history and qualification scope.
 
-### Candidate rich language V4 (unreleased, local only)
+### Candidate rich language V4 (frozen, local only, not released)
 
-`richLanguage: 4` selects the unreleased candidate V4 for local openings
+`richLanguage: 4` selects the candidate V4 for local openings
 (`openLocalEditor`, `openLocalDocumentEditor` and the local React components'
-`initialOptions`). It is V3 plus bounded ordered-list numbering, text-run language, image links, collapsible sections, mention entities, table captions, page breaks and bookmarks with internal links, and may still
-change before release, so its fingerprint changes and V4 data must not be
-persisted yet. Shared openings reject `richLanguage: 4` explicitly; shared
-editing stays on languages 1–3. The standard schema is
+`initialOptions`). It is V3 plus bounded ordered-list numbering, text-run language, image links, collapsible sections, mention entities, table captions, page breaks and bookmarks with internal links.
+Its grammar and schema fingerprint are **frozen**: a later grammar change becomes
+a new language, never a change to V4. V4 is still a candidate (not part of a
+released V1). Shared openings reject `richLanguage: 4` explicitly; shared
+editing stays on languages 1–3 while a shared V4 is built. The standard schema is
 `breditor-editor/standard@4` (`profileBootstrapJsonV4`, bootstrap format 9);
 the headless factory is `createLocalProfileV4`.
+
+Local V4 documents, checkpoints and histories may be persisted. Bind the store to
+the exact fingerprint; saved records are refused under any other profile:
+
+```ts
+import {openLocalDocumentEditor,RichDocumentSessionStore,standardSchemaFingerprintV4} from "@breditor/editor";
+const store=await RichDocumentSessionStore.open("notes",{richLanguage:4,schemaFingerprint:standardSchemaFingerprintV4,history:"typing-v1"});
+const saved=await store.load();
+const editor=await openLocalDocumentEditor({host,selectionEditing:"document-v1",richLanguage:4,history:"typing-v1",
+ initial:saved?{kind:"documentTypingCheckpoint",checkpointJson:saved}:{kind:"empty"},
+ onChange:()=>void store.save(editor.checkpointJson())});
+```
+
+`standardSchemaFingerprintV4` is the stock profile's frozen fingerprint; a custom
+`profileBootstrapJson` binds its own `profile.descriptor().schemaFingerprint`. The
+V4 store writes record V2 (`schemaFingerprint` added); languages 1–3 keep record V1
+and older runtimes refuse V4 records. See `docs/RICH_LANGUAGE_V4.md` (Freeze and
+durable persistence) in the repository.
 
 The V4 toolbar (`createRichToolbarV4`) adds a List numbering control: numbering
 style (decimal, lower/upper alpha, lower/upper roman), counting order and start
