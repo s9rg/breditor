@@ -42,6 +42,7 @@ pub(super) fn validate(owner: &RichReplica, commands: &[Command]) -> Result<(), 
         commands,
     )
 }
+#[allow(clippy::too_many_lines)] // One arm per command kind keeps target validation auditable.
 pub(super) fn validate_context(owner: &Context<'_>, commands: &[Command]) -> Result<(), Error> {
     let formats = RichFormatsJsonCodec::new(EditorContext::new(
         owner.codec.schema().clone(),
