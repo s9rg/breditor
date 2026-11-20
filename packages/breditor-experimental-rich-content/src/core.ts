@@ -16,6 +16,8 @@ export type RichSelectionPolicy="original"|"document-v1";
 export type RichHistoryPolicy="explicit"|"typing-v1";
 /** Refused means literal input committed; report separately and never retry it. */
 export type RichInputRuleOutcome="unchanged"|"inserted"|"applied"|"refused";
+/** Explicitly selected native input-rule policies; never a saved document setting. */
+export type RichInputRuleId="markdown-v1"|"autolink-v1";
 /** Explicit native matching intent; never a persisted editor command. */
 export interface RichSearchQuery {pattern:string;mode:"literal"|"regex";caseSensitive:boolean;wholeWords:boolean}
 export interface RichSearchReplacement {text:string;mode:"literal"|"captures"}
@@ -107,6 +109,12 @@ export interface RichCoreEditor<P extends RichSelectionPolicy="original"> {
   supportsMarkdownInputRouting?():boolean;
   insertPlainTextWithMarkdownRules?(text:string,namespace:string,expectedRevision?:string):RichInputRuleOutcome;
   insertTypingTextWithMarkdownRules?(text:string,clockMs:string,namespace:string,expectedRevision?:string):RichInputRuleOutcome;
+  /** Version1 rule-set calls (`markdown-v1`, `autolink-v1`) and the Enter autolink split; no JS matching. */
+  supportsInputRuleSets?():boolean;
+  insertPlainTextWithInputRules?(text:string,rules:readonly RichInputRuleId[],namespace:string,expectedRevision?:string):RichInputRuleOutcome;
+  insertTypingTextWithInputRules?(text:string,clockMs:string,rules:readonly RichInputRuleId[],namespace:string,expectedRevision?:string):RichInputRuleOutcome;
+  /** The `insertParagraph` record at a collapsed caret, then `autolink-v1` on the retained left block. */
+  insertParagraphWithAutolink?(data:{readonly right:string;readonly newItem:string|null},expectedRevision?:string):RichInputRuleOutcome;
   /** Complete optional Rust capability; absent/older runtimes never fall back to DOM matching. */
   supportsSearch?():boolean;
   findText?(query:RichSearchQuery,expectedRevision?:string):RichSearchResults;

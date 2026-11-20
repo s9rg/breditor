@@ -21,6 +21,8 @@ pub enum RichInputRuleKind {
     HorizontalRule,
     /// One standard inline format over the retained body characters.
     Inline(StandardInlineFormatV1),
+    /// Optional typed autolink: a safe canonical link over the retained URL characters.
+    Link,
 }
 
 /// Already planned scalar-safe edits, in dependent execution order.
@@ -73,5 +75,14 @@ pub enum RichInputRuleStep {
         end: TextOffset,
         /// One property-free standard semantic identity.
         format: StandardInlineFormatV1,
+    },
+    /// Set one standard link (same window) over retained URL characters; no text changes.
+    Link {
+        /// Inclusive start of the linked candidate.
+        start: TextOffset,
+        /// Exclusive end; excluded trailing punctuation and the boundary follow it.
+        end: TextOffset,
+        /// Canonical safe HTTP(S) target admitted by the native link subset.
+        href: String,
     },
 }

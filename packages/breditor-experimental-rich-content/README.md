@@ -154,6 +154,16 @@ optional `onInputRuleRefused` callback means text was retained but conversion
 was refused, so callers must not retry the input. Paste, composition and
 replacement/range input never invoke automatic rules.
 
+`inputRules: "autolink-v1"` (or `["markdown-v1", "autolink-v1"]`) additionally
+links a typed `https://…`, `http://…` or `www.…` URL when a space or Enter
+follows it, excluding trailing punctuation. The target must already be a
+canonical safe link (the same native `safeLinkV1` subset as image links), so
+`javascript:` and other unsafe or non-canonical spellings stay literal. One Undo
+removes only the link and keeps the typed space or split. Selecting it requires
+`supportsInputRuleSets()`; code, existing links, paste, composition, remote and
+read-only input are never converted. See
+[the input-rule contract](../../docs/RICH_INPUT_RULES.md#optional-autolink-autolink-v1).
+
 Initialize the bundled opt-in Wasm module once, then pass that exact module to
 the profile factory. Do not mix generated classes from different module heaps.
 Profile-bootstrap V6 contains the same closed typed extension declarations as

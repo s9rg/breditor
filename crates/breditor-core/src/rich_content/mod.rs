@@ -86,9 +86,11 @@ pub use inline_format_state::{
     RichInlineFormatState, RichInlineFormatStateError, inspect_inline_format,
 };
 pub use input_rules::{
-    RICH_INPUT_RULE_MAX_RUNS, RICH_INPUT_RULE_WINDOW_UTF16, RichInputRuleError, RichInputRuleKind,
-    RichInputRuleOutcome, RichInputRulePlan, RichInputRuleStep,
-    is_rich_markdown_input_rule_trigger, plan_rich_markdown_input_rule,
+    RICH_INPUT_RULE_MAX_RUNS, RICH_INPUT_RULE_WINDOW_UTF16, RichAutolinkCandidate,
+    RichInputRuleError, RichInputRuleKind, RichInputRuleOutcome, RichInputRulePlan,
+    RichInputRuleSet, RichInputRuleStep, is_rich_markdown_input_rule_trigger, plan_rich_input_rule,
+    plan_rich_markdown_input_rule, plan_rich_paragraph_autolink_input_rule,
+    rich_autolink_candidate,
 };
 pub use list_draft::{RichListDraft, RichListItemDraft, RichListKind};
 pub use list_numbering::{

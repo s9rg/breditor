@@ -116,6 +116,7 @@ mod session;
 mod set_pending_formats;
 mod set_read_only;
 mod set_selection;
+mod split_with_autolink;
 mod structural_text;
 mod suggestions;
 mod target_kinds;

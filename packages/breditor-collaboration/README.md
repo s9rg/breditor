@@ -414,7 +414,11 @@ optional exact revision rejects asynchronous work prepared from an older view.
 Remote publications can be held across input/composition and remain bounded.
 Callback failures cannot rewind content already committed by Rust.
 
-DOM and root/React startup may explicitly select `inputRules: "markdown-v1"`.
+DOM and root/React startup may explicitly select `inputRules: "markdown-v1"`,
+`"autolink-v1"` or both as a list. `autolink-v1` links a typed safe canonical
+HTTP(S) or `www.` URL after a space or Enter through one original guarded
+`set_format` group (`supportsInputRuleSets()`, `splitWithAutolink`); remote
+peers receive an ordinary format annotation and never run recognition.
 It requires the current native browser-routing capability, is immutable per
 owner and is not persisted in checkpoints. The exclusive native call retains
 literal typing before its separate conversion group, so one Undo restores the

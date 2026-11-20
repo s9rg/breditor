@@ -6,6 +6,24 @@ its durable formats and Wasm transport.
 
 ## Unreleased
 
+- Add optional typed autolink (`inputRules: "autolink-v1"`, alone or as
+  `["markdown-v1", "autolink-v1"]`) for local and shared owners, vanilla and
+  React. A typed space, or Enter at a caret, after a lowercase `https://`,
+  `http://` or `www.` run converts it to the standard link format
+  (`www.` targets `https://www.…`); trailing `.`, `,`, `:`, `;`, `!`, `?`,
+  quotes and unbalanced `)`/`]`/`}` stay plain. The target must already be a
+  canonical value of the native `safeLinkV1` subset that image links use, so
+  unsafe schemes (`javascript:`, `data:`…), credentials, Unicode/IDN and other
+  non-canonical spellings stay literal. Code, existing links, paste,
+  composition, remote and read-only input never convert. One Undo removes only
+  the link and keeps the typed space or paragraph split. New additive native
+  calls (`inputRuleSetsVersion`/`input_rule_sets_version` `1`, rule-set typing
+  calls, `insertParagraphWithAutolink`/`split_with_autolink`) and SDK methods
+  (`supportsInputRuleSets`, `insertPlainTextWithInputRules`,
+  `insertTypingTextWithInputRules`, `insertParagraphWithAutolink`,
+  `splitWithAutolink`); omitted `inputRules` and `markdown-v1` behave as before.
+  No schema, fingerprint, saved format or recovery family changes.
+
 - Add durable mention entities to the unreleased local-only candidate rich V4: a
   native `breditor/mention` inline format over the exact text `@` + label with a
   closed kind (`user`, `page`, `tag`), a bounded opaque id and a label snapshot.

@@ -1,6 +1,7 @@
 //! Optional exclusive typing-plus-rule calls; old execute JSON remains closed.
 mod insert_plain_text;
 mod insert_typing_text;
+mod rule_sets;
 use super::{BreditorRichEditor, BreditorRichObservation, error};
 use crate::BreditorError;
 use serde::Deserialize;

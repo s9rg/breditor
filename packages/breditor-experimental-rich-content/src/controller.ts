@@ -22,8 +22,8 @@ import {requireClipboardInterchange,readClipboardInput,exportClipboard,writeClip
 import type {RichSearchQuery,RichSearchReplacement,RichSearchResults} from "./core.js";
 import {RichSearchEvents,type RichSearchHostState,type RichSearchCompletion} from "./search_host.js";
 import {publishRichSearchIntent,type RichSearchIntent} from "./search_intent.js";
-import {requireMarkdownInputRules,isPlainInputScalar,captureMarkdownInputSource,checkMarkdownInputSource,publishMarkdownInput,type MarkdownInputIntent,type MarkdownInputSource} from "./input_rule_intent.js";
-import type {RichInputRuleOutcome} from "./core.js";
+import {requireInputRules,needsInputRuleSets,isPlainInputScalar,captureMarkdownInputSource,checkMarkdownInputSource,publishMarkdownInput,type MarkdownInputIntent,type MarkdownInputSource,type RichInputRulesOption} from "./input_rule_intent.js";
+import type {RichInputRuleId,RichInputRuleOutcome} from "./core.js";
 import type {RichWritingToolsRead} from "./writing_tools_types.js";
 import {RichWritingEvents,RichWritingReadRegistry,type RichWritingToolsHostState} from "./writing_tools_host.js";
 import {prepareRichPlaceholder,RichPlaceholderPresentation,richPlaceholderStyles} from "./placeholder.js";
@@ -38,8 +38,8 @@ export interface RichEditorOptions<P extends RichSelectionPolicy="original"> ext
  selectionEditing?:P;
  /** Immutable explicit native general-range routing; default keeps original input contracts. */
  rangeEditing?:"original"|"general-v1";
- /** Immutable explicit browser policy; omitted keeps literal ordinary input. */
- inputRules?:"markdown-v1";
+ /** Immutable explicit browser policy (`markdown-v1`, `autolink-v1` or both); omitted keeps literal ordinary input. */
+ inputRules?:RichInputRulesOption;
  /** Literal input committed, but native shortcut conversion was refused; never retry input. */
  onInputRuleRefused?:()=>void;
  toolbar?:readonly ToolbarControl<P>[];
@@ -69,7 +69,7 @@ function sameSelection(a:RichDocumentSelection|null,b:RichDocumentSelection|null
  if(a.kind==="text"&&b.kind==="text")return a.anchor.block===b.anchor.block&&a.anchor.offset===b.anchor.offset&&a.anchor.affinity===b.anchor.affinity&&a.focus.block===b.focus.block&&a.focus.offset===b.focus.offset&&a.focus.affinity===b.focus.affinity;
  return false;
 }
-type Work={revision:string;focus:boolean;accepted?:((display:boolean)=>void)|undefined;completion?:RichSearchCompletion}&({command:RichCommand|DocumentIntent;search?:never;inputRule?:never}|{command?:never;search:RichSearchIntent;inputRule?:never}|{command?:never;search?:never;inputRule:MarkdownInputIntent});
+type Work={revision:string;focus:boolean;accepted?:((display:boolean)=>void)|undefined;completion?:RichSearchCompletion}&({command:RichCommand|DocumentIntent;search?:never;inputRule?:never;paragraph?:never}|{command?:never;search:RichSearchIntent;inputRule?:never;paragraph?:never}|{command?:never;search?:never;inputRule:MarkdownInputIntent;paragraph?:never}|{command?:never;search?:never;inputRule?:never;paragraph:{right:string;newItem:string|null}});
 type Composition={block:string;original:string;revision:string;finishing:boolean;target?:Extract<RichSelection,{kind:"text"}>}|{document:true;revision:string;finishing:boolean};
 export class RichDomEditor<P extends RichSelectionPolicy="original"> {
  readonly surface:HTMLDivElement;
@@ -81,7 +81,7 @@ export class RichDomEditor<P extends RichSelectionPolicy="original"> {
  readonly #selectionPolicy:P;readonly #document:RichDocumentCoreEditor|undefined;
  #general=false;
  readonly #interchange:RichClipboardInterchange|undefined;
- readonly #inputRules:boolean;
+ readonly #inputRules:boolean;readonly #inputRuleIds:readonly RichInputRuleId[]|null;
  readonly #searchEvents=new RichSearchEvents();
  readonly #writingEvents=new RichWritingEvents();readonly #writingReads=new RichWritingReadRegistry();
  readonly #placeholder:RichPlaceholderPresentation|undefined;
@@ -91,7 +91,7 @@ export class RichDomEditor<P extends RichSelectionPolicy="original"> {
   if((options.core.selectionPolicy?.()??"original")!==policy)throw Error("DOM selection policy must match its explicitly selected native owner");
   this.#selectionPolicy=policy as P;this.#document=policy==="document-v1"?requireDocumentBrowserCore(options.core):undefined;
   this.#interchange=requireClipboardInterchange(options.clipboardInterchange,options.core);
-  this.#inputRules=requireMarkdownInputRules(options.inputRules,options.core);
+  this.#inputRuleIds=requireInputRules(options.inputRules,options.core);this.#inputRules=this.#inputRuleIds!==null;
   const placeholder=prepareRichPlaceholder(options.placeholder,options.core);
   if(options.rangeEditing!==undefined&&options.rangeEditing!=="original"&&options.rangeEditing!=="general-v1")throw new TypeError("Expected rangeEditing original or general-v1");
   if(this.#document&&options.rangeEditing==="original")throw Error("Document selection requires native general-range browser routing");
@@ -189,8 +189,18 @@ export class RichDomEditor<P extends RichSelectionPolicy="original"> {
   this.#live();if((this.#searchEvents.notifying||this.#writingEvents.notifying))throw Error("Read notifications cannot publish reentrantly");
   const view=this.#options.core.view();checkMarkdownInputSource(view,source);
   if(this.#queue.length>=128)throw Error("Rich editor command queue is full");
-  const inputRule=Object.freeze({text,namespace:this.#allocate("rule"),...(view.historyGrouping==="typing-v1"?{clockMs:this.#clock()}:{} )});
+  const inputRule=Object.freeze({text,namespace:this.#allocate("rule"),...(view.historyGrouping==="typing-v1"?{clockMs:this.#clock()}:{} ),...(needsInputRuleSets(this.#inputRuleIds)?{rules:this.#inputRuleIds!}:{})});
   this.#queue.push({inputRule,revision:source.revision,focus:true});this.#drain();
+ }
+ /** `autolink-v1` Enter: only a plain caret split takes the exclusive native split-and-link call. */
+ #autolinkParagraph(command:RichCommand,target:Extract<RichSelection,{kind:"text"}>|null):boolean {
+  if(!this.#inputRuleIds?.includes("autolink-v1")||command.kind!=="insertParagraph"||this.#logicalSelection)return false;
+  const selection=this.#model.view.selection;
+  if(selection?.kind!=="text"||selection.anchor.block!==selection.focus.block||selection.anchor.offset!==selection.focus.offset||target&&!isCurrentCaretTarget(selection,target))return false;
+  this.#live();if((this.#searchEvents.notifying||this.#writingEvents.notifying))throw Error("Read notifications cannot publish reentrantly");
+  if(this.#queue.length>=128)throw Error("Rich editor command queue is full");
+  this.#queue.push({paragraph:{right:command.data.right,newItem:command.data.newItem},revision:this.#model.view.revision,focus:true});this.#drain();
+  return true;
  }
  #inputRuleRefused():void {
   if(this.#disposed)return;this.status.textContent=this.#ui.text("inputRuleRefused");
@@ -236,6 +246,7 @@ export class RichDomEditor<P extends RichSelectionPolicy="original"> {
     const active=this.surface.ownerDocument.activeElement,ownedFocus=active===this.surface||!!active&&this.surface.contains(active);
     let outcome:RichCommandOutcome;
     if(work.inputRule){inputRuleOutcome=publishMarkdownInput(this.#options.core,work.inputRule,work.revision);outcome=inputRuleOutcome==="unchanged"?"unchanged":"content";}
+    else if(work.paragraph){inputRuleOutcome=this.#options.core.insertParagraphWithAutolink!(work.paragraph,work.revision);outcome=inputRuleOutcome==="unchanged"?"unchanged":"content";}
     else if(work.search)outcome=publishRichSearchIntent(this.#options.core,work.search,work.revision);
     else if(isDocumentIntent(work.command)){if(!this.#document)throw Error("Use the explicit document-selection DOM owner");outcome=publishDocumentIntent(this.#document,work.command,work.revision);}else outcome=this.#options.core.execute(work.command,work.revision);
     published=true;first??=outcome;this.#model=this.#read();this.#logicalSelection=this.#logical();
@@ -436,7 +447,7 @@ export class RichDomEditor<P extends RichSelectionPolicy="original"> {
     return;
    }
    if((type==="insertParagraph"||type==="insertLineBreak")&&isStructuralRichLanguage(this.#options.core.richLanguageVersion?.())&&this.#options.core.supportsFlowNavigation?.()===true&&selectedFlowAtom(this.#model)){this.execute({kind:"insertParagraphAdjacent",data:{paragraph:this.#context().allocate("p"),side:type==="insertLineBreak"?"before":"after"}});return;}
-   if(type==="insertParagraph"){const range=event.getTargetRanges?.()[0],target=this.#general&&range?readTarget(this.surface,range):null;const command=enter(this.#context(),this.#general,target&&target.anchor.block!==target.focus.block?target:undefined);if(command)this.execute(command);return;}
+   if(type==="insertParagraph"){const range=event.getTargetRanges?.()[0],target=this.#general&&range?readTarget(this.surface,range):null;const command=enter(this.#context(),this.#general,target&&target.anchor.block!==target.focus.block?target:undefined);if(command&&!this.#autolinkParagraph(command,target))this.execute(command);return;}
    const selection=this.#model.view.selection;
    if(isStructuralRichLanguage(this.#options.core.richLanguageVersion?.())&&this.#options.core.supportsAtomEditing?.()===true&&selectedFlowAtom(this.#model)){
     if(type.startsWith("delete")){this.execute({kind:"deleteAtom",data:{paragraph:this.#allocate("p"),movement:type.includes("Backward")?"before":"after"}});return;}

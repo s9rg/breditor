@@ -411,6 +411,12 @@ in `@breditor/interchange` (a test compares the copies byte for byte). The same
 accept/reject table runs in Rust, the browser package and interchange, and the
 browser test checks that every admitted value is its own `new URL(value).href`.
 
+The optional typed autolink rule (`autolink-v1`, any profile with the standard
+link format; see [`RICH_INPUT_RULES.md`](RICH_INPUT_RULES.md#optional-autolink-autolink-v1))
+reuses this exact native subset for inline links: a typed candidate becomes a
+link only if its target is already a fixed point of the subset, so it renders,
+copies and exports exactly like a value entered through the explicit link editor.
+
 ### Native action and commands
 
 `actions::SetImageLink::capture(document, image, Option<&RichImageLink>)`
