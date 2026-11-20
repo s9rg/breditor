@@ -41,6 +41,7 @@ export function compileStandardRichProfileV4(wasm:RichWasmModule,bootstrapJson:s
 export {createRichToolbarV4,listNumberingControl,selectedOrderedList,type ListNumberingControl} from "./dist/browser/index.js";
 export {imageLinkControls,imageLinkOf,canonicalImageLinkHref,richImageHrefProperty,richImageLinkNewWindowProperty,type ImageLinkControl,type RichImageLinkRead} from "./dist/browser/index.js";
 export {detailsToolbarControls,detailsOpen,selectedDetails,detailsInterval,richDetailsKind,richDetailsSummaryKind,richDetailsOpenProperty} from "./dist/browser/index.js";
+export {tableCaptionToolbarControls,tableCaptionOf,isTableCaption,selectedTableCaption,richTableCaptionKind} from "./dist/browser/index.js";
 export {textLanguageControls,canonicalTextLanguage,textLanguageOf,richTextLanguageFormat,richTextLanguageTagProperty,richTextLanguageRecipeV4,type TextLanguageControl} from "./dist/browser/index.js";
 export {createFlowNavigationControls} from "./dist/browser/index.js";
 export {createSelectionRichToolbarV1} from "./dist/browser/index.js";

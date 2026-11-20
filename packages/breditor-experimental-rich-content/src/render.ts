@@ -117,6 +117,10 @@ export function render(surface:HTMLElement,value:RichPresentationModel,options:R
   if(!geometry||geometry.hidden){const placeholder=document.createElement("div");placeholder.contentEditable="false";placeholder.dataset["selectNode"]=id(node);placeholder.textContent="Hidden table — select to restore axes or remove";return placeholder;}
   const bodies=new Map<string,ElementNode>();
   for(const row of node.children)if(row.kind==="element")for(const cell of row.children)if(cell.kind==="element")bodies.set(cellKey({table:tableId,row:String(property(row,"row-id")),column:String(property(cell,"column-id"))}),cell);
+  // Candidate V4 caption: the table's trailing paragraph. HTML requires <caption> as the table's
+  // first child; `caption-side:bottom` shows it after the rows, matching document/reading order.
+  const captionNode=node.children[node.children.length-1];
+  if(captionNode?.kind==="element"&&captionNode.type==="breditor/paragraph"){const caption=document.createElement("caption");caption.dataset["richTableCaption"]=tableId;caption.style.captionSide="bottom";caption.append(flow(captionNode));element.append(caption);}
   const cols=document.createElement("colgroup");for(const column of geometry.columns){const col=document.createElement("col");col.style.width=`${column.width}px`;cols.append(col);}element.append(cols);
   const body=document.createElement("tbody");
   for(const row of geometry.rows){const tr=document.createElement("tr");

@@ -7,10 +7,11 @@ import {listNumberingToolbarControl} from "./list_numbering_controls.js";
 import {textLanguageToolbarControls} from "./text_language.js";
 import {imageLinkToolbarControls} from "./image_link.js";
 import {detailsToolbarControls} from "./details.js";
+import {tableCaptionToolbarControls} from "./table_caption.js";
 /** Owner-bound toolbar for the explicit unreleased candidate rich V4: the V3 structural and layout
  * controls plus ordered-list numbering, text-run Language / Clear language, Image link / Remove image link
- * and Collapsible section / Remove collapsible section / Expand/Collapse section.
+ * Collapsible section / Remove collapsible section / Expand/Collapse section and Table caption.
  * V1–V3 owners are rejected rather than widened. */
 export function createRichToolbarV4<P extends RichSelectionPolicy="original">(core:RichCoreEditor<P>,presentation:RichInlinePresentation):readonly ToolbarControl<P>[]{
- return Object.freeze([...structuralRichControlsForOwner(core,presentation,4),...layoutToolbarControls(core),listNumberingToolbarControl<P>(core) satisfies ToolbarControl<P>,...textLanguageToolbarControls<P>(core).map(control=>({...control,owner:core}) satisfies ToolbarControl<P>),...imageLinkToolbarControls<P>(core).map(control=>({...control,owner:core}) satisfies ToolbarControl<P>),...detailsToolbarControls<P>(core)]);
+ return Object.freeze([...structuralRichControlsForOwner(core,presentation,4),...layoutToolbarControls(core),listNumberingToolbarControl<P>(core) satisfies ToolbarControl<P>,...textLanguageToolbarControls<P>(core).map(control=>({...control,owner:core}) satisfies ToolbarControl<P>),...imageLinkToolbarControls<P>(core).map(control=>({...control,owner:core}) satisfies ToolbarControl<P>),...detailsToolbarControls<P>(core),...tableCaptionToolbarControls<P>(core)]);
 }
