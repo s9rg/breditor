@@ -27,7 +27,7 @@ type Result<T = ()> = std::result::Result<T, Box<dyn std::error::Error>>;
 
 /// Current candidate V4 (the mention slice adds the native `breditor/mention` format).
 const V4_FINGERPRINT: &str =
-    "sha256:e63bb6521acb5c4e0104e35c3a2a896be442b6f2ee183c3c749c5a669b278a99";
+    "sha256:39fcdb478f73d51a6a3187785ab43bd2d0cca167940d8892614e16c4ad52202e";
 
 fn schema(revision: u32) -> Result<CompiledSchema> {
     let id = SchemaId::new(QualifiedName::try_new("example/layout")?, SchemaVersion::try_new(1)?);
@@ -442,6 +442,58 @@ fn native_clipboard_copy_and_paste_keep_the_exact_mention() -> Result {
         json!([run("Otheri ", &[]), run("@Ann", &[ann()]), run("!", &[])])
     );
     // A V3 owner refuses the V4 fragment outright.
+    assert!(RichClipboardJsonCodec::new(context(3)?).decode(&json).is_err());
+    Ok(())
+}
+
+/// A collapsed section whose summary is "Ask @an" and whose body holds a mention.
+fn sectioned() -> Value {
+    let summary = fixture::element("details-summary", "s", vec![run("Ask @an", &[])]);
+    let body = fixture::element("paragraph", "b", vec![run("@Ann", &[ann()]), run(" Ann", &[])]);
+    let details = fixture::element("details", "d", vec![summary, body]);
+    let mut root = fixture::element("document", "unused", vec![details]);
+    root["properties"] = json!({"breditor/document-id":"room"});
+    root
+}
+
+#[test]
+fn section_summaries_take_mentions_and_search_and_clipboard_cross_sections() -> Result {
+    let c = context(4)?;
+    // A summary is phrasing content like a paragraph: it admits and inserts mentions.
+    let mut a = owner(&c, &sectioned(), range("s", 7, 7)?)?;
+    a.insert_mention(
+        &a.snapshot(),
+        &range("s", 4, 7)?,
+        &mention(RichMentionKind::User, "u-1", "Ann")?,
+    )?;
+    let after = encode(&c, a.state().document())?;
+    assert_eq!(
+        after["children"][0]["children"][0]["children"],
+        json!([run("Ask ", &[]), run("@Ann", &[ann()]), run(" ", &[])])
+    );
+    a.undo(&a.snapshot())?;
+    assert_eq!(encode(&c, a.state().document())?, encode(&c, &admit(&c, &sectioned())?)?);
+    // Summary text keeps the immutability law.
+    let mut broken = sectioned();
+    broken["children"][0]["children"][0]["children"] = json!([run("@An", &[ann()])]);
+    assert!(admit(&c, &broken).is_err());
+    // Search traverses summary and (collapsed) body, never inside a mention.
+    let document = admit(&c, &after)?;
+    let query = RichSearchQuery::try_new("Ann", RichSearchMode::Literal, true, false)?;
+    let found = find_rich_text(&document, &query)?;
+    let spans: Vec<(String, u64)> =
+        found.matches().iter().map(|m| (m.block().as_str().to_owned(), m.start().get())).collect();
+    assert_eq!(spans, [("b".to_owned(), 5)]);
+    // A copy of the summary keeps the exact mention; a V3 owner refuses the record.
+    let b = owner(&c, &after, range("s", 2, 9)?)?;
+    let fragment = RichClipboardFragment::copy_selection(
+        &c,
+        b.state().document(),
+        b.state().selection().ok_or("selection")?,
+    )?
+    .ok_or("fragment")?;
+    let json = RichClipboardJsonCodec::new(c.clone()).encode(&fragment)?;
+    assert!(json.contains(r#""breditor/mention-label":"Ann""#), "{json}");
     assert!(RichClipboardJsonCodec::new(context(3)?).decode(&json).is_err());
     Ok(())
 }

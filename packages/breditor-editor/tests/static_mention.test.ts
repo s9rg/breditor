@@ -20,6 +20,9 @@ describe("static renderer: candidate rich V4 mentions",()=>{
    '<p data-rich-block="a" data-rich-text="a"><span class="breditor-mention" data-mention-kind="user" data-mention-id="u-1">@Ann</span><span class="breditor-mention" data-mention-kind="user" data-mention-id="u-1">@Ann</span></p>');
   expect(html([p("a",[run("@A",[ann]),run("nn",[ann,strong])])])).toContain('<span class="breditor-mention" data-mention-kind="user" data-mention-id="u-1">@A<strong data-rich-format="breditor/strong">nn</strong></span>');
   expect(html([p("a",[run("@Ann",[ann])])])).not.toContain("<a");
+  // A section summary is phrasing content like a paragraph: it renders the same chip.
+  const section={kind:"element",type:"breditor/details",entityId:null,properties:{"breditor/block-id":"d"},children:[{kind:"element",type:"breditor/details-summary",entityId:null,properties:{"breditor/block-id":"s"},children:[run("Ask "),run("@Ann",[ann])]},p("b",[run("body")])]} as Json;
+  expect(html([section])).toContain('Ask <span class="breditor-mention" data-mention-kind="user" data-mention-id="u-1">@Ann</span></summary>');
  });
  it("rejects out-of-domain values and partial mention text",()=>{
   for(const format of [mention("team","u","A"),mention("user","u 1","A"),mention("user","u","A\n"),mention("user","u"," A"),{type:"breditor/mention",properties:{"breditor/mention-id":"u","breditor/mention-kind":"user"}}])

@@ -89,12 +89,12 @@ describe("live mention chips",()=>{
 describe("explicit V4 Wasm factory boundary for mentions",()=>{
  function local(descriptor:Record<string,unknown>,capability:unknown="1"){
   const observation={revision:"1",blockLayoutStateJson:vi.fn(),free:vi.fn()};
-  const editor={observe:()=>observation,blockLayoutVersion:()=>"1",listNumberingVersion:()=>"1",textLanguageVersion:()=>"1",imageLinkVersion:()=>"1",mentionVersion:()=>capability,execute:vi.fn(()=>({status:"content",takeObservation:()=>observation,free:vi.fn()})),free:vi.fn()};
+  const editor={observe:()=>observation,blockLayoutVersion:()=>"1",listNumberingVersion:()=>"1",textLanguageVersion:()=>"1",imageLinkVersion:()=>"1",detailsVersion:()=>"1",mentionVersion:()=>capability,execute:vi.fn(()=>({status:"content",takeObservation:()=>observation,free:vi.fn()})),free:vi.fn()};
   const raw={descriptorJson:()=>({status:"value",takeValue:()=>JSON.stringify({kind:"rich",abiVersion:1,schema:{name:"t",version:1},schemaFingerprint:fingerprint,...descriptor}),free:vi.fn()}),createEditor:()=>({status:"editor",takeEditor:()=>editor,free:vi.fn()}),free:vi.fn()};
   const factory=vi.fn(()=>({status:"profile",takeProfile:()=>raw,free:vi.fn()}));
   return {wasm:{BreditorRichProfile:{fromBootstrapJsonV4:factory,fromStandardBootstrapJsonV4:factory}} as unknown as RichWasmModule,raw,editor};
  }
- const v4={richLanguageVersion:4,taskStructureVersion:1,blockLayoutVersion:1,listNumberingVersion:1,textLanguageVersion:1,imageLinkVersion:1,mentionVersion:1};
+ const v4={richLanguageVersion:4,taskStructureVersion:1,blockLayoutVersion:1,listNumberingVersion:1,textLanguageVersion:1,imageLinkVersion:1,detailsVersion:1,mentionVersion:1};
  it("requires mentionVersion 1 in the descriptor and on the owner, and snapshots insertMention",()=>{
   const a=local(v4),profile=compileStandardRichProfileV4(a.wasm,"bootstrap"),core=profile.createEditor("document");
   expect(core.supportsMentions?.()).toBe(true);

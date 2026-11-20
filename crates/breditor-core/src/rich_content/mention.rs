@@ -329,8 +329,10 @@ fn whole_units(segment: &Segment<'_>) -> Option<usize> {
     let mention = RichMention::from_format(segment.format).ok()?;
     let unit = mention.text();
     let count = segment.text.len() / unit.len();
-    (count >= 1 && segment.text.len().is_multiple_of(unit.len()) && segment.text == unit.repeat(count))
-        .then_some(count)
+    (count >= 1
+        && segment.text.len().is_multiple_of(unit.len())
+        && segment.text == unit.repeat(count))
+    .then_some(count)
 }
 
 /// Complete-tree immutability law for one text block's children.

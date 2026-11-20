@@ -67,7 +67,7 @@ fn v4_descriptor_catalog_and_owner_report_text_language_only_for_v4() -> Result 
     assert_eq!(d["listNumberingVersion"], 1);
     assert_eq!(
         d["schemaFingerprint"],
-        "sha256:e63bb6521acb5c4e0104e35c3a2a896be442b6f2ee183c3c749c5a669b278a99"
+        "sha256:39fcdb478f73d51a6a3187785ab43bd2d0cca167940d8892614e16c4ad52202e"
     );
     let catalog: Value = serde_json::from_str(&read(p.inline_catalog_json())?)?;
     let format = catalog["formats"]
