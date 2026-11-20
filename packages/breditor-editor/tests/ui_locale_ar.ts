@@ -33,6 +33,9 @@ mentionLabel:"الإشارات",mentionLoading:"جارٍ تحميل الاقتر
  blockDragEmptiesSource:"نقل الكتلة الأخيرة سيترك حاويتها فارغة.",blockDragItemLead:"يجب أن يبدأ عنصر القائمة بسطر نصي.",
  blockDragBoundary:"الكتلة عند حافة حاويتها بالفعل.",blockDragNative:"رفض المحرر النقل.",
  ...arabicPanelStrings,
+ // Image resize handles.
+ imageResizeLabel:"تغيير حجم الصورة {index} من {count}",imageResizeValue:"{width} × {height} بكسل",imageResizeOriginal:"{width} × {height} بكسل (الحجم الأصلي)",
+ imageResizePreview:"{width} × {height} بكسل (معاينة)",imageResizeBadge:"{width} × {height}",
 };
 export const arabicUi:RichUiOptions={
  lang:"ar",direction:"rtl",strings:arabicStrings,notices:arabicNotices,refusals:arabicRefusals,

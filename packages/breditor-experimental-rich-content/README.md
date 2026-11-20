@@ -691,3 +691,20 @@ Escape, blur, pointer cancel or a publication that changes the dragged table
 cancel the drag. Arrow keys, PageUp/PageDown and Home/End publish one command
 per key. See [the table contract](../../docs/RICH_TABLES.md), which also states
 the nested-table policy.
+
+## Image resize handles
+
+`mountRichImageResize(overlayHost, dom, {commit: richImageResizeCommit(dom)})`
+adds corner and edge resize handles to every rendered image in an overlay
+outside editable content (`mountSharedImageResize` with
+`sharedImageResizeCommit` from `@breditor/collaboration` for the shared editor).
+You opt in to it. Handles show on hover, on the node-selected image and while
+the corner has focus. A pointer drag previews an outline and a size badge in the
+overlay only and publishes exactly one existing `resizeImage` command on release
+(one Undo step). The corner keeps the aspect ratio unless Shift is held; the
+inline-end and bottom edges change one axis. Each dimension is clamped to the
+admitted 1–4096 domain. Escape, blur, pointer cancel, read-only, composition or
+a publication that changes the dragged image cancel the drag. The corner is a
+focusable `role="slider"`: arrow keys, Shift+arrows, PageUp/PageDown and
+Home/End publish one aspect-preserving command per key. See
+[the image resize contract](../../docs/IMAGE_RESIZE.md).
