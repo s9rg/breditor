@@ -55,7 +55,10 @@ fingerprints unchanged. `openSharedEditor`, `openSharedSearchEditor`,
 `openSharedDocumentEditor`, `openSharedDocumentSearchEditor` and the shared React
 components accept `richLanguage: 4`; the relay has explicit V4 rooms. Every slice
 replicates and persists exactly and is edited with the generic shared commands;
-the per-slice shared commands and toolbar controls are not yet shared. Shared
+shared per-slice commands and toolbar controls exist for list numbering,
+bookmarks/internal links, section open state, text language, mentions (with the
+shared `@` menu) and image links; section wrap/unwrap, page breaks and table
+captions still use only the generic shared commands. Shared
 interchange owners still do not report list numbering, text language, image
 links, sections, mentions or table captions, so imports into a shared owner keep
 the original `list-numbering` notices, keep dropping `lang` silently, keep the
@@ -927,8 +930,8 @@ V1–V3 locks are unchanged.
 ### Not included
 
 Host-declared kinds, kind-specific prefixes (`#tag`), live label re-resolution
-inside the chip, mention links, mention search by id, the slice's shared command (shared V4 replicates the slice's
-content; see [SHARED_RICH_V4.md](SHARED_RICH_V4.md)).
+inside the chip, mention links, and mention search by id. (The shared command and `@` menu are in
+[SHARED_RICH_V4.md](SHARED_RICH_V4.md).)
 
 ### Tests
 
