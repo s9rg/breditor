@@ -22,7 +22,7 @@ import {reviewedHistoryIdentity,sameReviewedHistory} from "./reviewed_history_va
 import type {SharedReviewedHistoryIdentity,SharedOwnedSuggestionAcceptance,SharedDocumentSuggestionEffect,SharedSuggestionEffectSummary,SharedSuggestionEffectVerification} from "./reviewed_history_types.js";
 import {sharedProtocolLanguage} from "./protocol.js";
 import {encodeBlockLayoutPatch} from "@breditor/experimental-rich-content/rendering";
-import type {RichSearchQuery,RichSearchReplacement,RichInputRuleOutcome} from "@breditor/experimental-rich-content";
+import type {RichSearchQuery,RichSearchReplacement,RichInputRuleOutcome,RichInputRuleId} from "@breditor/experimental-rich-content";
 import {SharedSearchResults,nativeSearchResults} from "./search_results.js";
 import {parseSegmentedHistoryInfo,type SharedSegmentedHistoryInfo} from "./segmented_history.js";
 import {registerManagedCore} from "./managed_custody.js";
@@ -297,7 +297,7 @@ export class SharedRichEditor<P extends SharedSelectionPolicy="original"> {
  supportsMarkdownInputRules():boolean{const r=this.#live();return r.markdown_input_rules_version?.()==="1"&&[r.insert_plain_text_with_markdown_rules,r.insert_typing_text_with_markdown_rules].every(f=>typeof f==="function");}
  /** Separate browser minimum; older programmatic shortcuts are not silently upgraded. */
  supportsMarkdownInputRouting():boolean{return this.supportsMarkdownInputRules()&&this.#live().markdown_input_routing_version?.()==="1";}
- #markdownInput(method:"insert_plain_text_with_markdown_rules"|"insert_typing_text_with_markdown_rules",data:{text:string;namespace:string;clockMs?:string},revision?:string):RichInputRuleOutcome{
+ #markdownInput(method:"insert_plain_text_with_markdown_rules"|"insert_typing_text_with_markdown_rules"|"insert_plain_text_with_input_rules"|"insert_typing_text_with_input_rules"|"split_with_autolink",data:object,revision?:string):RichInputRuleOutcome{
   const input=JSON.stringify(data);this.#check(revision);
   if(!this.supportsMarkdownInputRules())throw new SharedEditorError("input_rules_unavailable","Use complete matching native Markdown input rules");
   return this.#run("local",(raw,o)=>{const value=raw[method]!(o,input);if(value!=="unchanged"&&value!=="inserted"&&value!=="applied"&&value!=="refused")throw new SharedEditorError("owner_abi","Invalid native input-rule outcome");return value;},revision);
@@ -306,6 +306,17 @@ export class SharedRichEditor<P extends SharedSelectionPolicy="original"> {
  insertPlainTextWithMarkdownRules(text:string,namespace:string,revision?:string):RichInputRuleOutcome{return this.#markdownInput("insert_plain_text_with_markdown_rules",{text,namespace},revision);}
  /** One SDK publication follows both native commits; callbacks cannot retarget the rule. */
  insertTypingTextWithMarkdownRules(text:string,clockMs:string,namespace:string,revision?:string):RichInputRuleOutcome{return this.#markdownInput("insert_typing_text_with_markdown_rules",{text,clockMs,namespace},revision);}
+ /** Version1 rule-set calls and the Enter autolink split; older runtimes never match. */
+ supportsInputRuleSets():boolean{const r=this.#live();return this.supportsMarkdownInputRules()&&r.input_rule_sets_version?.()==="1"&&[r.insert_plain_text_with_input_rules,r.insert_typing_text_with_input_rules,r.split_with_autolink].every(f=>typeof f==="function");}
+ #ruleSetInput(method:"insert_plain_text_with_input_rules"|"insert_typing_text_with_input_rules"|"split_with_autolink",data:object,revision?:string):RichInputRuleOutcome{
+  this.#check(revision);if(!this.supportsInputRuleSets())throw new SharedEditorError("input_rules_unavailable","Use complete matching native input rule sets");
+  return this.#markdownInput(method,data,revision);
+ }
+ /** `rules` is a nonempty duplicate-free list of `markdown-v1`/`autolink-v1`; refused retains the typed text. */
+ insertPlainTextWithInputRules(text:string,rules:readonly RichInputRuleId[],namespace:string,revision?:string):RichInputRuleOutcome{return this.#ruleSetInput("insert_plain_text_with_input_rules",{text,namespace,rules:[...rules]},revision);}
+ insertTypingTextWithInputRules(text:string,clockMs:string,rules:readonly RichInputRuleId[],namespace:string,revision?:string):RichInputRuleOutcome{return this.#ruleSetInput("insert_typing_text_with_input_rules",{text,clockMs,namespace,rules:[...rules]},revision);}
+ /** One caret split, then `autolink-v1` on its retained left block; one SDK publication after both. */
+ splitWithAutolink(request:SharedDispatch,revision?:string):RichInputRuleOutcome{return this.#ruleSetInput("split_with_autolink",request,revision);}
  /** Pure matching/navigation remains available without upgrading history or leaving read-only. */
  supportsSearch():boolean{const r=this.#live();return r.search_version?.()==="1"&&[r.find_text,r.check_search_results,r.select_search_match,r.replace_search_one,r.replace_search_all,r.search_history_enabled,r.enable_search_history,r.search_checkpoint].every(f=>typeof f==="function");}
  searchHistoryPolicy():"search-v1"|null{this.#live();return this.#searchHistory?"search-v1":null;}

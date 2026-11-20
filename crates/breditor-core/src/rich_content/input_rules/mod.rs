@@ -4,18 +4,25 @@
 //! One separately guarded transformation then has its own exact Undo group.
 //! Remote updates, paste, replacement and composition never invoke this policy implicitly.
 
+mod autolink;
 mod block_rule;
 mod error;
 mod inline_rule;
 mod outcome;
 mod plan;
+mod rule_set;
 mod source;
 mod step;
 mod trigger;
 
+pub use autolink::{RichAutolinkCandidate, rich_autolink_candidate};
 pub use error::RichInputRuleError;
 pub use outcome::RichInputRuleOutcome;
-pub use plan::{RichInputRulePlan, plan_rich_markdown_input_rule};
+pub use plan::{
+    RichInputRulePlan, plan_rich_input_rule, plan_rich_markdown_input_rule,
+    plan_rich_paragraph_autolink_input_rule,
+};
+pub use rule_set::RichInputRuleSet;
 pub use step::{RichInputRuleKind, RichInputRuleStep};
 pub use trigger::is_rich_markdown_input_rule_trigger;
 

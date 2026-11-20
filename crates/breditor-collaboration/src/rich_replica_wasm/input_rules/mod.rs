@@ -1,6 +1,7 @@
 //! Complete optional native input-rule capability; no dispatch or recovery widening.
 mod insert_plain_text;
 mod insert_typing_text;
+mod rule_sets;
 use super::{RichReplicaProbe, RichSharedObservation};
 use crate::Error;
 use serde::Deserialize;

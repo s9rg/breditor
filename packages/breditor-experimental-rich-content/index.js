@@ -210,6 +210,18 @@ class RichCoreEditor {
   insertPlainTextWithMarkdownRules(text,namespace,revision){return this.#markdownInput("insertPlainTextWithMarkdownRules",{text,namespace},revision);}
   /** Natural input and conversion complete before this call returns to any subscriber. */
   insertTypingTextWithMarkdownRules(text,clockMs,namespace,revision){return this.#markdownInput("insertTypingTextWithMarkdownRules",{text,clockMs,namespace},revision);}
+  /** Version1 rule sets: plain/natural calls with explicit `rules` plus the Enter autolink split. */
+  supportsInputRuleSets(){const r=this.#live();return this.supportsMarkdownInputRules()&&r.inputRuleSetsVersion?.()==="1"&&[r.insertPlainTextWithInputRules,r.insertTypingTextWithInputRules,r.insertParagraphWithAutolink].every(method=>typeof method==="function");}
+  #ruleSetInput(method,data,revision){
+    if(revision!==undefined&&revision!==this.#observation.revision)throw new RichCommandError("breditor_rich.stale_observation","The input was prepared from an older rich view");
+    if(!this.supportsInputRuleSets())throw new RichCommandError("breditor_rich.input_rules_unavailable","Use complete matching native input rule sets");
+    return this.#markdownInput(method,data,revision);
+  }
+  /** `rules` is a nonempty duplicate-free list of `markdown-v1`/`autolink-v1`; refused retains the typed text. */
+  insertPlainTextWithInputRules(text,rules,namespace,revision){return this.#ruleSetInput("insertPlainTextWithInputRules",{text,namespace,rules:[...rules]},revision);}
+  insertTypingTextWithInputRules(text,clockMs,rules,namespace,revision){return this.#ruleSetInput("insertTypingTextWithInputRules",{text,clockMs,namespace,rules:[...rules]},revision);}
+  /** Enter at a collapsed caret, then `autolink-v1`; one Undo removes only the link. */
+  insertParagraphWithAutolink(data,revision){return this.#ruleSetInput("insertParagraphWithAutolink",{right:data.right,newItem:data.newItem},revision);}
   supportsSearch(){const raw=this.#live();return raw.searchVersion?.()==="1"&&[raw.findText,raw.checkSearchResults,raw.selectSearchMatch,raw.replaceSearchOne,raw.replaceSearchAll].every(method=>typeof method==="function");}
   #searchOwner(revision){const raw=this.#live();if(revision!==undefined&&revision!==this.#observation.revision)throw new RichCommandError("breditor_rich.stale_observation","The search request was prepared from an older rich view");if(!this.supportsSearch())throw new RichCommandError("breditor_rich.search_unavailable","Use complete matching native search capabilities");return raw;}
   findText(query,revision){const input=JSON.stringify(query),raw=this.#searchOwner(revision);const native=transfer(raw.findText(this.#observation,input),"results","takeResults");let results;results=new OwnedRichSearchResults(this,native,()=>this.#searches.delete(results));this.#searches.add(results);return results;}

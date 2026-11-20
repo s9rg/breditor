@@ -32,7 +32,7 @@ mod insert_hard_break;
 mod insert_horizontal_rule;
 mod insert_image;
 mod insert_mention;
-mod insert_paragraph;
+pub(super) mod insert_paragraph;
 mod insert_paragraph_adjacent;
 mod insert_plain_text;
 mod insert_table;

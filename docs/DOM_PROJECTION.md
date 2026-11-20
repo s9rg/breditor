@@ -97,6 +97,10 @@ scheme, style, callback, or HTML string. Rust validates only the two declared
 scalar property contracts; URL parsing and admission belong to this browser
 presentation boundary. A Rust action-state uniform value therefore returns the
 exact semantic string, not the canonical `href` derived by this policy.
+The optional typed autolink rule stores only targets that are already their own
+canonical `safeLinkV1` serialization (the native image-link subset), so this
+policy renders them unchanged; it never interprets arbitrary HTML or pasted text.
+See [`RICH_INPUT_RULES.md`](RICH_INPUT_RULES.md#optional-autolink-autolink-v1).
 
 Raw URL spelling is also part of admission: the authority must start
 immediately after exactly `http://` or `https://`; excess authority slashes,

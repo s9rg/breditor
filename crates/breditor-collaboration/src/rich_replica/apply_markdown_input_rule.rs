@@ -4,9 +4,13 @@ use super::{
     selection::{Selection, TextPoint},
 };
 use crate::{Error, anchor::Affinity};
-use breditor_core::rich_content::{
-    RichDocument, RichFlowParent, RichInputRuleKind, RichInputRulePlan, RichInputRuleStep,
-    RichListKind, plan_rich_markdown_input_rule,
+use breditor_core::{
+    position::TextOffset,
+    rich_content::{
+        BlockId, RichDocument, RichFlowParent, RichInputRuleKind, RichInputRulePlan,
+        RichInputRuleSet, RichInputRuleStep, RichListKind, RichTextPoint, plan_rich_input_rule,
+        plan_rich_paragraph_autolink_input_rule,
+    },
 };
 use serde_json::json;
 
@@ -25,6 +29,23 @@ impl RichReplica {
         trigger: &str,
         namespace: &str,
     ) -> Result<bool, Error> {
+        self.apply_input_rule_guarded(observed, trigger, namespace, RichInputRuleSet::MARKDOWN_V1)
+    }
+
+    /// Apply one explicitly selected rule set after retaining ordinary plain input.
+    ///
+    /// The same isolated selective Undo contract as the Markdown call; `autolink-v1`
+    /// lowers to one ordinary guarded link format annotation and changes no text.
+    /// # Errors
+    /// Stale/read-only sources, historically reused IDs, bounds or a causal/core
+    /// preview disagreement leave every source/history/publication field unchanged.
+    pub fn apply_input_rule_guarded(
+        &mut self,
+        observed: &SharedObservation,
+        trigger: &str,
+        namespace: &str,
+        rules: RichInputRuleSet,
+    ) -> Result<bool, Error> {
         self.check(observed)?;
         self.require_writable()?;
         if self.journal.ui.document_selected() {
@@ -35,22 +56,57 @@ impl RichReplica {
         };
         let proof = selection.admit(&self.document)?;
         let context = super::paragraphs::context(&self.codec);
-        let Some(plan) = plan_rich_markdown_input_rule(
-            &context,
-            &self.document,
-            Some(&proof),
-            trigger,
-            namespace,
-        )
-        .map_err(|_| Error::Contract("input rule native admission"))?
-        else {
+        let plan =
+            plan_rich_input_rule(&context, &self.document, Some(&proof), trigger, namespace, rules)
+                .map_err(|_| Error::Contract("input rule native admission"))?;
+        self.apply_input_rule_plan(&selection, plan)
+    }
+
+    /// Apply the optional `autolink-v1` rule after a retained Enter split.
+    ///
+    /// `end` is the pre-split caret, now the end of the retained left block. The
+    /// current caret is kept; one isolated selective Undo group removes only the link.
+    /// # Errors
+    /// Stale/read-only sources, invalid points or a preview disagreement change nothing.
+    pub fn apply_paragraph_autolink_guarded(
+        &mut self,
+        observed: &SharedObservation,
+        end: &TextPoint,
+    ) -> Result<bool, Error> {
+        self.check(observed)?;
+        self.require_writable()?;
+        if self.journal.ui.document_selected() {
+            return Ok(false);
+        }
+        let Some(selection) = self.selection()? else {
+            return Ok(false);
+        };
+        let proof = selection.admit(&self.document)?;
+        let context = super::paragraphs::context(&self.codec);
+        let end = RichTextPoint::new(
+            BlockId::try_new(end.block.as_str()).map_err(|_| Error::Contract("autolink point"))?,
+            TextOffset::try_new(u64::from(end.offset)).map_err(|_| Error::Offset)?,
+            breditor_core::position::Affinity::After,
+        );
+        let plan =
+            plan_rich_paragraph_autolink_input_rule(&context, &self.document, Some(&proof), &end)
+                .map_err(|_| Error::Contract("input rule native admission"))?;
+        self.apply_input_rule_plan(&selection, plan)
+    }
+
+    fn apply_input_rule_plan(
+        &mut self,
+        selection: &Selection,
+        plan: Option<RichInputRulePlan>,
+    ) -> Result<bool, Error> {
+        let Some(plan) = plan else {
             return Ok(false);
         };
         let commands = commands(&self.document, &plan)?;
         let pending = if matches!(plan.kind(), RichInputRuleKind::Code(_)) {
             vec![]
         } else {
-            self.effective_formats(&selection)?
+            self.effective_formats(selection)?
         };
         let caret = TextPoint {
             block: plan.caret().block().as_str().into(),
@@ -138,6 +194,19 @@ fn commands(document: &RichDocument, plan: &RichInputRulePlan) -> Result<Vec<Com
                         length: u32::try_from(end.get() - start.get())
                             .map_err(|_| Error::Offset)?,
                         format: json!({"type":format.kind().as_str(),"properties":{}}),
+                        enabled: true,
+                    })
+                }
+                RichInputRuleStep::Link { start, end, href } => {
+                    Command::SetFormat(actions::SetFormat {
+                        block: block.into(),
+                        offset: u32::try_from(start.get()).map_err(|_| Error::Offset)?,
+                        length: u32::try_from(end.get() - start.get())
+                            .map_err(|_| Error::Offset)?,
+                        format: json!({"type":"breditor-inline/link","properties":{
+                            "breditor-inline/href":href,
+                            "breditor-inline/new-window":false,
+                        }}),
                         enabled: true,
                     })
                 }
