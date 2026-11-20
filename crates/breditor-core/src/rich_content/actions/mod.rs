@@ -62,6 +62,7 @@ mod resize_image;
 mod resize_table_column;
 pub(crate) mod rewrite_properties;
 mod set_block_layout;
+mod set_bookmark;
 mod set_code_block;
 mod set_code_language;
 mod set_details_open;
@@ -139,6 +140,7 @@ pub use replace_text_range::ReplaceTextRange;
 pub use resize_image::ResizeImage;
 pub use resize_table_column::ResizeColumn;
 pub use set_block_layout::SetBlockLayout;
+pub use set_bookmark::SetBookmark;
 pub use set_code_block::{CodeFormatPolicy, SetCodeBlock};
 pub use set_code_language::SetCodeLanguage;
 pub use set_details_open::SetDetailsOpen;
@@ -233,6 +235,8 @@ pub enum RichAction {
     SetListNumbering(SetListNumbering),
     /// Set, replace or clear one image's bounded candidate-V4 link.
     SetImageLink(SetImageLink),
+    /// Set, clear or rename (retargeting internal links) candidate-V4 bookmarks.
+    SetBookmark(SetBookmark),
     /// Wrap a rich sibling range as the body of one candidate-V4 collapsible section.
     WrapDetails(WrapDetails),
     /// Remove one section, keeping its summary as a paragraph and its whole body.
@@ -374,6 +378,7 @@ impl RichAction {
             Self::SetListKind(action) => action.apply(context, document),
             Self::SetListNumbering(action) => action.apply(context, document),
             Self::SetImageLink(action) => action.apply(context, document),
+            Self::SetBookmark(action) => action.apply(context, document),
             Self::WrapDetails(action) => action.apply(context, document),
             Self::UnwrapDetails(action) => action.apply(context, document),
             Self::SetDetailsOpen(action) => action.apply(context, document),
@@ -468,6 +473,9 @@ pub enum RichActionError {
     /// Typed V4 image-link profile, target, value or decorative-image admission failed.
     #[error(transparent)]
     ImageLink(#[from] super::RichImageLinkError),
+    /// Typed V4 bookmark profile, target, name or uniqueness admission failed.
+    #[error(transparent)]
+    Bookmark(#[from] super::RichBookmarkError),
     /// Typed V4 collapsible-section profile, target or shape admission failed.
     #[error(transparent)]
     Details(#[from] super::RichDetailsError),

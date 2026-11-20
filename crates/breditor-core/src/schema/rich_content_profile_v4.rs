@@ -1,6 +1,7 @@
 //! Explicit unreleased candidate rich V4: V3 grammar plus bounded ordered-list numbering,
 //! one native text-language inline format, bounded image links, collapsible sections,
-//! mention entities, table captions and explicit page breaks.
+//! mention entities, table captions, explicit page breaks and named bookmarks with
+//! internal links.
 //!
 //! V1–V3 specifications and fingerprints stay exact. Later V4 candidate slices
 //! change this revision's rules before release, so no V4 data is persisted yet.
@@ -23,6 +24,10 @@ use crate::{
 
 /// Persisted type revision of `breditor/image` in V4 (V1–V3 keep revision 1).
 const IMAGE_REVISION: u32 = 2;
+
+/// Persisted type revision of `breditor/paragraph`, `breditor/heading` and
+/// `breditor/code-block` in V4: they gain the optional `breditor/bookmark` name.
+const TEXT_BLOCK_REVISION: u32 = 2;
 
 /// Native formats V4 adds to the extension-declared set (counted against the 256 ceiling).
 pub(super) const NATIVE_INLINE_FORMATS: u32 = 2;
@@ -138,6 +143,15 @@ pub(super) fn specification(spec: SchemaSpec) -> SchemaSpec {
         if element.kind.as_str() == "breditor/image" {
             element.revision = PersistedTypeRevision::try_new(IMAGE_REVISION)
                 .unwrap_or_else(|_| unreachable!("trusted nonzero image revision"));
+        }
+        // Slice 8: text blocks gain the optional, document-unique bookmark name; the
+        // internal `#name` link-target law is a sealed V4 rich rule.
+        if matches!(
+            element.kind.as_str(),
+            "breditor/paragraph" | "breditor/heading" | "breditor/code-block"
+        ) {
+            element.revision = PersistedTypeRevision::try_new(TEXT_BLOCK_REVISION)
+                .unwrap_or_else(|_| unreachable!("trusted nonzero text-block revision"));
         }
     }
     let kind = QualifiedName::from_known_static(RICH_TEXT_LANGUAGE_FORMAT);

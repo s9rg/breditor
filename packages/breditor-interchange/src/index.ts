@@ -14,7 +14,7 @@ export function createRichInterchange(owner:InterchangeOwner,options:Interchange
   if(owner.supportsClipboardInterchange?.()!==true||typeof admit!=="function"||typeof validate!=="function")throw new TypeError("Matching native clipboard interchange version 1 is required");
   const policy=Object.freeze({...options});
   // Read once: an owner's compiled language never changes. Native admission still decides validity.
-  const capabilities=Object.freeze({listNumbering:owner.supportsListNumbering?.()===true,textLanguage:owner.supportsTextLanguage?.()===true,imageLinks:owner.supportsImageLinks?.()===true,details:owner.supportsDetails?.()===true,mentions:owner.supportsMentions?.()===true,tableCaptions:owner.supportsTableCaptions?.()===true,pageBreaks:owner.supportsPageBreaks?.()===true});
+  const capabilities=Object.freeze({listNumbering:owner.supportsListNumbering?.()===true,textLanguage:owner.supportsTextLanguage?.()===true,imageLinks:owner.supportsImageLinks?.()===true,details:owner.supportsDetails?.()===true,mentions:owner.supportsMentions?.()===true,tableCaptions:owner.supportsTableCaptions?.()===true,pageBreaks:owner.supportsPageBreaks?.()===true,bookmarks:owner.supportsBookmarks?.()===true});
   const run=<T>(work:(b:Budget)=>T):InterchangeResult<T>=>{
     const b=new Budget();try{return Object.freeze({ok:true,value:work(b),losses:b.losses()});}catch(error){return Object.freeze({ok:false,error:error instanceof ConversionFailure?error.code:"native-admission",losses:b.losses()});}
   };
@@ -28,7 +28,7 @@ export function createRichInterchange(owner:InterchangeOwner,options:Interchange
       const autolinks=target?.autolinks;if(autolinks!==undefined&&typeof autolinks!=="boolean")fail("unsupported-content");
       return importSource(markdownHtml(source,b,autolinks===true),b,target);
     }),
-    exportHtml:(source:string)=>run(b=>{const sourceContent=exportSource(source);return exportHtmlRoot(sourceContent.nodes,b,policy,sourceContent.kind);}),
-    exportMarkdown:(source:string)=>run(b=>{const content=exportSource(source);if(content.kind==="text")b.loss("block-structure");return exportMarkdownRoot(content.nodes,b,policy);}),
+    exportHtml:(source:string)=>run(b=>{const sourceContent=exportSource(source);return exportHtmlRoot(sourceContent.nodes,b,policy,sourceContent.kind,capabilities.bookmarks);}),
+    exportMarkdown:(source:string)=>run(b=>{const content=exportSource(source);if(content.kind==="text")b.loss("block-structure");return exportMarkdownRoot(content.nodes,b,policy,capabilities.bookmarks);}),
   });
 }

@@ -1,6 +1,7 @@
 import MarkdownIt,{type Token} from "markdown-it";
 import {Budget,bytes,fail,limits,sourceWithinBudget} from "./budget.js";
 import {HtmlExport,imageLink} from "./html_export.js";
+import {hasInternalLink} from "./bookmark.js";
 import {property,type Element,type Node,type Text} from "./wire.js";
 import {safeUrl} from "./safe_url.js";
 import {autolinkRun} from "./autolink.js";
@@ -169,8 +170,8 @@ function inlineMarkdown(nodes:readonly Node[],b:Budget):string {
     return value;
   }).join("");
 }
-export function exportMarkdownRoot(nodes:Node[],b:Budget,options:InterchangeOptions):string {
-  const html=new HtmlExport(b,options);
+export function exportMarkdownRoot(nodes:Node[],b:Budget,options:InterchangeOptions,bookmarks=false):string {
+  const html=new HtmlExport(b,options,bookmarks);
   // Adjacent lists sharing a marker merge into one Markdown list, so each next one alternates `-`/`*` or `.`/`)`.
   const sequence=(items:readonly Node[],depth:number):string=>{
     let last="",flip=false;
@@ -180,6 +181,8 @@ export function exportMarkdownRoot(nodes:Node[],b:Budget,options:InterchangeOpti
     if(depth>limits.depth)fail("resource-limit");if(n.kind!=="element")fail("native-admission");
     const fallback=()=>{b.loss("markdown-feature");return htmlBlock(html.blocks([n],depth));};
     if(n.type==="breditor/paragraph"||n.type==="breditor/heading"){
+      // Candidate V4: bookmarks (a block property) and internal links have no CommonMark syntax: exact HTML.
+      if(bookmarks&&hasInternalLink(n.children))return fallback();
       if(!n.children.length||!simpleInline(n,n.type==="breditor/paragraph")||!inlineRoundTrips(n.children,inlineMarkdown(n.children,new Budget())))return fallback();
       const inline=inlineMarkdown(n.children,b);return n.type==="breditor/heading"?`${"#".repeat(Number(property(n,"level")))} ${inline}`:inline;
     }

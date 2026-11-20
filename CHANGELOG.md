@@ -64,6 +64,26 @@ its durable formats and Wasm transport.
   (default items from the new `toolbarControls()` on shared sessions) and
   `BreditorSharedSlashCommands` to `@breditor/editor/collaboration/react`. See
   docs/SLASH_COMMANDS.md#shared-editors.
+- Add named bookmarks and internal links to the unreleased local-only candidate
+  rich V4 (audit gap `document-utilities`). `breditor/bookmark` is an optional,
+  document-unique name (`[A-Za-z][A-Za-z0-9_-]{0,63}`) on a paragraph, heading or
+  code block (their persisted type revisions move to 2 in V4); an internal link is
+  the standard link with href `#name` (same window only), a separate bounded grammar
+  next to the unchanged external link policy. Dangling links are allowed, reported
+  by `RichBookmarkIndex` / `bookmarkIndex()` and rendered with
+  `data-rich-link-broken`; `renameBookmark` renames and retargets every link in one
+  history group, `setBookmark` sets or clears. Pasted blocks never carry a bookmark.
+  Live and static renderers emit `id="bm-<name>"` / `data-rich-bookmark` and
+  `href="#bm-<name>"`; links are inert while editing and scroll within their own
+  surface when read-only. The V4 toolbar gains **Bookmark**, **Remove bookmark** and
+  **Link to bookmark** (`RichToolbarReading.options` supplies document-dependent
+  select choices). V4-only HTML interchange maps ids, `<a name>` anchors and
+  `#fragment` links (`supportsBookmarks()`), Markdown falls back to HTML, and DOCX
+  export writes `w:bookmarkStart`/`w:bookmarkEnd` and `w:hyperlink w:anchor`. Wasm
+  descriptor `bookmarkVersion: 1`. The V4 fingerprint changes; V1–V3, their
+  fingerprints and their conversion are unchanged. Footnotes and template fields are
+  later work. See docs/RICH_LANGUAGE_V4.md.
+
 - Fix typing after a line break at the very end of a text block in rich local
   and shared editors. In Chromium and WebKit, Shift+Enter at the end of a
   paragraph or heading (or Enter at the end of an image or table caption)

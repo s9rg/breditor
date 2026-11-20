@@ -9,6 +9,7 @@ import {safeUrl} from "../safe_url.js";
 import {isCanonicalLanguageTagV1} from "../language_tag.js";
 import {isImageLinkHrefV1} from "../image_link_href.js";
 import {mentionUnits,mentionFormat} from "../mention.js";
+import {bookmarkProperty,internalLinkOf,isBookmarkName} from "../bookmark.js";
 import {sniffImage,type SniffedImage} from "./image.js";
 import {relType,type AbstractKind,type NumInstance} from "./parts.js";
 
@@ -114,6 +115,8 @@ export class DocxWriter {
   readonly nums:NumInstance[]=[];
   #links=new Map<string,string>();#images=new Map<string,Media|null>();#imageBytes=0;
   #visited=0;#drawings=0;#chars=0;
+  /** Candidate V4 bookmark names present in the document, and the next `w:bookmarkStart` id. */
+  #bookmarks=new Set<string>();#bookmarkId=0;
   constructor(readonly options:ConvertOptions){}
 
   #visit():void{if(++this.#visited>docxLimits.nodes)fail("resource-limit");}
@@ -185,13 +188,21 @@ export class DocxWriter {
       if(n.type==="breditor/page-break"){pieces.push({text:"",formats:[],pageBreak:true});continue;}
       this.losses.add("block-structure");pieces.push({text:textOf(n),formats:[]});
     }
-    let out="",group:{key:string;href:string|null;newWindow:boolean;runs:string}|null=null;
-    const flush=()=>{if(!group)return;out+=group.href!==null?`<w:hyperlink r:id="${this.#linkRel(group.href)}"${group.newWindow?' w:tgtFrame="_blank"':""} w:history="1">${group.runs}</w:hyperlink>`:group.runs;group=null;};
+    let out="",group:{key:string;href:string|null;anchor?:string;newWindow:boolean;runs:string}|null=null;
+    const flush=()=>{if(!group)return;out+=group.anchor!==undefined?`<w:hyperlink w:anchor="${escAttr(group.anchor)}" w:history="1">${group.runs}</w:hyperlink>`:group.href!==null?`<w:hyperlink r:id="${this.#linkRel(group.href)}"${group.newWindow?' w:tgtFrame="_blank"':""} w:history="1">${group.runs}</w:hyperlink>`:group.runs;group=null;};
     for(const piece of pieces){
       if(piece.pageBreak){flush();out+='<w:r><w:br w:type="page"/></w:r>';continue;}
       if(!piece.text)continue;
       const link=piece.formats.find(f=>f.type==="breditor-inline/link"),key=link?JSON.stringify(link):"";
       let href:string|null=null,newWindow=false;
+      // Candidate V4 internal link `#name`: a document-internal `w:hyperlink w:anchor` to the bookmark.
+      // A dangling target (no block carries the name) keeps its text without a link (`unsafe-link`).
+      const internal=link?internalLinkOf(link):undefined;
+      if(internal!==undefined){
+        const anchor=this.#bookmarks.has(internal)?internal:undefined;if(anchor===undefined)this.losses.add("unsafe-link");
+        if(!group||group.key!==key){flush();group={key,href:null,...(anchor!==undefined?{anchor}:{}),newWindow:false,runs:""};}
+        group.runs+=`<w:r>${this.#rPr(piece.formats,anchor!==undefined)}${this.#runContent(piece.text)}</w:r>`;continue;
+      }
       if(link){
         const source=link.properties["breditor-inline/href"];href=typeof source==="string"?safeUrl(source):null;
         if(href===null)this.losses.add("unsafe-link");newWindow=link.properties["breditor-inline/new-window"]===true;
@@ -223,6 +234,13 @@ export class DocxWriter {
     p+=spacing;
     if(explicitInd&&left>0)p+=`<w:ind w:left="${left}"${num?' w:hanging="360"':""}/>`;
     if(jc)p+=`<w:jc w:val="${jc}"/>`;
+    // Candidate V4 bookmark: `w:bookmarkStart`/`w:bookmarkEnd` around the whole paragraph content. Word's
+    // own UI limits names to 40 letters, digits and underscores; other admitted names are kept verbatim.
+    const name=node?prop(node,"bookmark"):undefined;
+    if(name!==undefined){
+      if(!isBookmarkName(name))this.losses.add("unsupported-attribute");
+      else{if(name.length>40||name.includes("-"))this.losses.add("style-approximation");const id=this.#bookmarkId++;content=`<w:bookmarkStart w:id="${id}" w:name="${escAttr(name)}"/>${content}<w:bookmarkEnd w:id="${id}"/>`;}
+    }
     return this.#emit(`<w:p>${p?`<w:pPr>${p}</w:pPr>`:""}${content}</w:p>`);
   }
   /** A list item whose first block is not paragraph-like still shows its marker. */
@@ -405,6 +423,8 @@ export class DocxWriter {
   }
   /** Body XML; a trailing table gets the empty paragraph Word itself would add. */
   body(root:JsonElement):string {
+    const collect=(node:JsonNode,depth:number):void=>{if(depth>docxLimits.depth||node.kind!=="element")return;const name=node.properties[bookmarkProperty];if(isBookmarkName(name))this.#bookmarks.add(name);for(const child of node.children)collect(child,depth+1);};
+    collect(root,0);
     const xml=this.blocks(root.children,rootCtx,1);
     return xml.endsWith("</w:p>")?xml:`${xml}<w:p/>`;
   }

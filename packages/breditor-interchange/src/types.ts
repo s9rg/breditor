@@ -34,6 +34,10 @@ export interface InterchangeOwner {
    * original conversion: CSS forced-break declarations report `unsupported-style`, Word's `<br clear=all>`
    * stays a line break and Google Docs' hidden page-break `<hr>` is removed (`removed-content`). */
   supportsPageBreaks?():boolean;
+  /** Candidate rich V4 owners admit bookmarks (`breditor/bookmark` on paragraphs, headings and code blocks)
+   * and internal `#name` links. Absent or false keeps the original conversion: element ids are dropped
+   * silently, `<a name>` reports `unsupported-attribute` and `href="#…"` reports `unsafe-link`. */
+  supportsBookmarks?():boolean;
 }
 export type InterchangeLossCode = "html-repaired"|"removed-content"|"unsupported-element"|"unsupported-attribute"|"unsupported-style"|"style-approximation"|"unsafe-link"|"image-reference"|"image-alt"|"image-size"|"block-structure"|"table-geometry"|"table-width"|"list-numbering"|"markdown-feature";
 /** Counts are aggregated and bounded. No source text, URL, CSS, HTML or asset identifier is echoed. */

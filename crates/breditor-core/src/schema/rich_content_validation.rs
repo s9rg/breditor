@@ -33,20 +33,7 @@ impl ValidationState<'_> {
             if self.report_is_saturated() {
                 return;
             }
-            let layout = self.schema.supports_rich_block_layout()
-                && crate::rich_content::block_layout::allows_property(kind, name);
-            let numbering = self.schema.supports_rich_list_numbering()
-                && crate::rich_content::list_numbering::allows_property(kind, name);
-            let image_link = self.schema.supports_rich_image_links()
-                && crate::rich_content::image_link::allows_property(kind, name);
-            let details = self.schema.supports_rich_details()
-                && crate::rich_content::details::allows_property(kind, name);
-            if !ast_properties::allows_property(kind, name)
-                && !layout
-                && !numbering
-                && !image_link
-                && !details
-            {
+            if !self.rich_property_allowed(kind, name) {
                 self.element_property_issue(
                     ValidationCode::UnknownElementProperty,
                     path,
@@ -82,6 +69,7 @@ impl ValidationState<'_> {
             self.rich_issue(ValidationCode::RichContentContract, path, reason);
         }
         self.validate_rich_details(element, path);
+        self.validate_rich_bookmark(element, path);
         if kind != "breditor/document"
             && let Ok(id) = ast_properties::string(element, "block-id")
             && BlockId::try_new(id).is_ok()
@@ -112,6 +100,19 @@ impl ValidationState<'_> {
         }
     }
 
+    /// Whether the exact language declares property `name` on element `kind`.
+    fn rich_property_allowed(&self, kind: &str, name: &QualifiedName) -> bool {
+        use crate::rich_content::{block_layout, bookmark, details, image_link, list_numbering};
+        let schema = self.schema;
+        ast_properties::allows_property(kind, name)
+            || (schema.supports_rich_block_layout() && block_layout::allows_property(kind, name))
+            || (schema.supports_rich_list_numbering()
+                && list_numbering::allows_property(kind, name))
+            || (schema.supports_rich_image_links() && image_link::allows_property(kind, name))
+            || (schema.supports_rich_details() && details::allows_property(kind, name))
+            || (schema.supports_rich_bookmarks() && bookmark::allows_property(kind, name))
+    }
+
     /// Candidate V4 sections: the open-flag value law and the nesting bound.
     fn validate_rich_details(&mut self, element: &ElementNode, path: &NodePathCursor) {
         if !self.schema.supports_rich_details()
@@ -127,6 +128,44 @@ impl ValidationState<'_> {
                 ValidationCode::RichContentContract,
                 path,
                 "collapsible sections exceed the nesting bound",
+            );
+        }
+    }
+
+    /// Candidate V4 bookmarks: a bounded name, unique per document.
+    fn validate_rich_bookmark(&mut self, element: &ElementNode, path: &NodePathCursor) {
+        use crate::rich_content::bookmark;
+        if !self.schema.supports_rich_bookmarks()
+            || !bookmark::supports_kind(element.kind().as_str())
+        {
+            return;
+        }
+        if let Err(reason) = bookmark::validate(element) {
+            self.rich_issue(ValidationCode::RichContentContract, path, reason);
+        } else if let Some(name) = bookmark::name_of(element) {
+            self.retain_rich_identity("bookmark", name, path);
+        }
+    }
+
+    /// Candidate V4: an internal link target is `#` + a bookmark name, same window.
+    pub(super) fn validate_rich_internal_link(
+        &mut self,
+        format: &Format,
+        path: &NodePathCursor,
+        index: usize,
+    ) {
+        if !self.schema.supports_rich_bookmarks() {
+            return;
+        }
+        if let Err(reason) = crate::rich_content::bookmark::validate_link(format) {
+            let name = format.kind().clone();
+            self.format_property_issue(
+                ValidationCode::RichContentContract,
+                path,
+                index,
+                &name,
+                ValidationDetail::None,
+                reason.to_owned(),
             );
         }
     }

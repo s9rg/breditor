@@ -1,9 +1,9 @@
 # Rich language V4 (unreleased candidate)
 
 Rich V4 is an explicit, opt-in rich language under construction. It is **not
-released**. It is built in seven slices, all recorded here: ordered-list
+released**. It is built in eight slices, all recorded here: ordered-list
 numbering, text-run language, image links, collapsible sections, mention
-entities, table captions and page breaks.
+entities, table captions, page breaks and bookmarks with internal links.
 
 Because each slice changes V4's grammar or rule revision, **the V4 schema
 fingerprint changes as later slices land**. No persisted V4 data exists, and
@@ -22,11 +22,11 @@ reinterprets an older document, and older profiles reject every V4 property.
 | Layer | V4 selector |
 | --- | --- |
 | Rust | `CompiledSchema::try_compile_rich_content_profile_v4`, `rich_content_revision() == Some(4)`, sealed rich rule revision 4 under compiler contract 6 |
-| Capability queries | `supports_rich_block_layout()` (V3 and V4), `supports_rich_list_numbering()`, `supports_rich_text_language()`, `supports_rich_image_links()`, `supports_rich_details()`, `supports_rich_mentions()`, `supports_rich_table_captions()` and `supports_rich_page_breaks()` (V4 only) |
-| Wasm | explicit profile bootstrap **format 9**: `BreditorRichProfile.fromBootstrapJsonV4` / `fromStandardBootstrapJsonV4`; descriptor `richLanguageVersion: 4`, `taskStructureVersion: 1`, `blockLayoutVersion: 1`, `listNumberingVersion: 1`, `textLanguageVersion: 1`, `imageLinkVersion: 1`, `detailsVersion: 1`, `mentionVersion: 1`, `tableCaptionVersion: 1`, `pageBreakVersion: 1`; owner `listNumberingVersion()`, `textLanguageVersion()`, `imageLinkVersion()`, `detailsVersion()`, `mentionVersion()`, `tableCaptionVersion()` and `pageBreakVersion()` all `"1"` |
+| Capability queries | `supports_rich_block_layout()` (V3 and V4), `supports_rich_list_numbering()`, `supports_rich_text_language()`, `supports_rich_image_links()`, `supports_rich_details()`, `supports_rich_mentions()`, `supports_rich_table_captions()`, `supports_rich_page_breaks()` and `supports_rich_bookmarks()` (V4 only) |
+| Wasm | explicit profile bootstrap **format 9**: `BreditorRichProfile.fromBootstrapJsonV4` / `fromStandardBootstrapJsonV4`; descriptor `richLanguageVersion: 4`, `taskStructureVersion: 1`, `blockLayoutVersion: 1`, `listNumberingVersion: 1`, `textLanguageVersion: 1`, `imageLinkVersion: 1`, `detailsVersion: 1`, `mentionVersion: 1`, `tableCaptionVersion: 1`, `pageBreakVersion: 1`, `bookmarkVersion: 1`; owner `listNumberingVersion()`, `textLanguageVersion()`, `imageLinkVersion()`, `detailsVersion()`, `mentionVersion()`, `tableCaptionVersion()`, `pageBreakVersion()` and `bookmarkVersion()` all `"1"` |
 | JavaScript factories | `compileRichProfileV4`, `compileStandardRichProfileV4` (`@breditor/experimental-rich-content`); `createLocalProfileV4`, `profileBootstrapJsonV4` (`@breditor/editor`, schema `breditor-editor/standard@4`) |
 | SDK openings | `openLocalEditor({richLanguage: 4})`, `openLocalDocumentEditor({richLanguage: 4, ...})` and both local React components' `initialOptions` |
-| Toolbar | `createRichToolbarV4(core, presentation)`: the V3 structural/layout controls plus **List numbering**, **Language**, **Clear language**, **Image link**, **Remove image link**, **Collapsible section**, **Remove collapsible section**, **Expand/Collapse section**, **Table caption** and **Page break** |
+| Toolbar | `createRichToolbarV4(core, presentation)`: the V3 structural/layout controls plus **List numbering**, **Language**, **Clear language**, **Image link**, **Remove image link**, **Collapsible section**, **Remove collapsible section**, **Expand/Collapse section**, **Table caption**, **Page break**, **Bookmark**, **Remove bookmark** and **Link to bookmark** |
 
 Each factory checks its exact descriptor tuple. A V3 factory refuses a V9
 bootstrap and a V4 factory refuses a V8 bootstrap. `createRichToolbarV4`
@@ -46,8 +46,9 @@ React components reject `richLanguage: 4` with the explicit error *"richLanguage
 to V3. Shared interchange owners do not report list numbering, text language, image
 links, sections, mentions or table captions, so imports into a shared owner keep the original `list-numbering` notices,
 keep dropping `lang` silently, keep the original image-link and `<details>` conversion,
-import mention spans as plain `@label` text, keep converting `<caption>` to flow before the table and keep
-reporting forced page-break CSS as `unsupported-style`.
+import mention spans as plain `@label` text, keep converting `<caption>` to flow before the table, keep
+reporting forced page-break CSS as `unsupported-style` and keep dropping element ids and
+`#fragment` links (no bookmarks).
 
 ## Slice 1: ordered-list numbering (audit gap `list-properties`)
 
@@ -1159,15 +1160,11 @@ removed with `block-structure`. V1–V3 conversion is unchanged. Export writes
 `<div style="break-after:page;page-break-after:always"></div>`; Markdown falls
 back to that HTML with `markdown-feature`, which reimports exactly.
 
-### Fingerprint (current)
+### Fingerprint
 
-Current candidate V4 lock for schema `example/layout@1` with the standard inline
-preset: `sha256:eb74301f1eedccc6838cf67090b2ce47e91e51112f9550d5ba25a22a20d0e9cb`
-(asserted in the core and Wasm text-language, image-link, section, mention,
-table-caption and page-break tests). V1–V3 locks are unchanged. The schema unit
-test proves V4 differs from V3 only by its rule revision, the text-language and
-mention formats, the image revision, the section grammar, the table's caption
-grammar and the root-only page-break element.
+The page-break slice moved the V4 lock to
+`sha256:eb74301f1eedccc6838cf67090b2ce47e91e51112f9550d5ba25a22a20d0e9cb`; the
+bookmark slice moved it again (see [Slice 8](#fingerprint-current)).
 
 ### Not included
 
@@ -1192,3 +1189,191 @@ shared-collaboration rules (V4 is local only).
   `tests/static_page_break.test.ts`, interchange `tests/page_break.test.ts`.
 - Playwright `experiments/rich-browser/page-break-v4.spec.mjs` in Chromium,
   Firefox and WebKit on a real Wasm V4 owner, including print-media emulation.
+
+## Slice 8: bookmarks and internal links (audit gap `document-utilities`)
+
+Before this slice stable block identities existed (`block-id`) but no user-visible
+reference target: a block ID is an opaque, replica-allocated identity that changes on
+paste and is never typed by a person. V4 adds **named bookmarks** and **internal links**
+to them. Footnotes, template fields and cross-reference fields ("see page 3",
+auto-updating heading text) are later work and are not part of this slice.
+
+### Representation decision
+
+A bookmark is an optional **block property**, not an inline atom or format:
+
+| AST key | Elements | Domain |
+| --- | --- | --- |
+| `breditor/bookmark` | `breditor/paragraph`, `breditor/heading`, `breditor/code-block` (anywhere they appear, including list items, quotes, cells, sections and captions) | `[A-Za-z][A-Za-z0-9_-]{0,63}`: 1–64 ASCII bytes, starts with a letter, case-sensitive, never trimmed, folded or repaired |
+
+- **One bookmark per block**, so no new grammar, child kind, text coordinate or
+  selection rule is needed: everything that already moves a block (block moves, wraps,
+  list/quote/section/table rewrites, Undo) carries its bookmark.
+- **Unique per document.** A repeated name is a `DuplicateContentId` admission failure,
+  the same law and validation domain mechanism as stable content identities.
+- **The name is the reference target.** It travels with its block and is independent of
+  `block-id`, position, heading text and numbering. The ASCII grammar is safe verbatim
+  as a URL fragment, inside an HTML id (`bm-` + name) and as a DOCX bookmark name.
+- V4 records the changed property contract as **persisted type revision 2** of
+  `breditor/paragraph`, `breditor/heading` and `breditor/code-block` (V1–V3 keep 1).
+  V1–V3 reject the property everywhere. Section summaries, lists, tables, images and
+  page breaks never carry one.
+
+### Internal links
+
+An internal link is the ordinary standard inline link (`breditor-inline/link`) whose
+`breditor-inline/href` is exactly `#` + a bookmark name. It is a **separate bounded
+grammar**; the external link policy (`safeLinkV1`, absolute canonical HTTP(S)) is
+unchanged and never sees internal targets. V4 admission (a sealed rule) rejects any
+other href starting with `#` (`#`, `#1a`, `#a b`, `##a`) and an internal link with
+`new-window: true` (an in-document jump never opens a window). The standard inline
+link declaration is unchanged, so V1–V3 keep their exact admission (core only checks
+the declared string shape there).
+
+### Reference integrity
+
+Decision: **dangling links are allowed, reported exactly and rendered as broken**; only
+renaming is reference-preserving.
+
+- Deleting, clearing or cutting a bookmarked block is never refused because links point
+  at it. Blocks disappear through dozens of generic paths (range deletion, joins, cut,
+  replace-document, Undo of an insertion, paste over a selection); refusing all of them
+  would make ordinary editing fail unpredictably and would let one link pin arbitrary
+  content. A link whose target no block carries is a *broken* link.
+- `RichBookmarkIndex::read` (Wasm `bookmarkIndexJson()` on an observation, facade
+  `bookmarkIndex()`) returns `{bookmarks:[{name,block}], links:[{block,target}],
+  brokenLinks:[{block,target}]}` in document order from one frozen snapshot. Adjacent
+  runs with one equal link are one occurrence.
+- **Renaming** (`renameBookmark`) rewrites the anchor and every internal link to it in
+  every text block (paragraphs, headings, section summaries, captions, cells) as **one**
+  guarded history group, so a rename never breaks a link and one Undo restores both.
+- **Joins and splits.** A range join keeps the left block, so the left block's bookmark
+  survives and the removed right block's bookmark is gone (its links dangle). Splitting
+  (Enter) keeps the bookmark on the identity that stays (the left part); the new right
+  block has none. Kind changes (paragraph ↔ heading ↔ code block, including Markdown
+  shortcuts) keep it.
+- **Paste.** Pasted blocks never carry a bookmark: names are document-unique anchors and
+  pasted content gets fresh identities. Copying keeps the bookmark in the clipboard
+  record (so a V1–V3 owner refuses a V4 record carrying one), cutting and pasting moves
+  the content but not the anchor (use block moves to keep it), and pasted internal links
+  are kept (they resolve to the original anchor if it still exists).
+- **Shared history and permissions.** V4 is local only; there is no shared journal for
+  bookmarks. Bookmark edits follow the owner's read-only policy like every other command.
+
+### Native actions and commands
+
+| Rust | Wasm/TS command | Semantics |
+| --- | --- | --- |
+| `actions::SetBookmark::capture(document, block, Some(&name))` | `{kind:"setBookmark",data:{block,name}}` | Set or replace one text block's bookmark. Links are not rewritten (a replaced name's links dangle). A name another block holds is refused (`RichBookmarkError::Duplicate`); a non-text or absent block (`Target`). |
+| `actions::SetBookmark::capture(document, block, None)` | `{kind:"setBookmark",data:{block,name:null}}` | Clear it; links to it dangle and are reported. |
+| `actions::SetBookmark::rename(document, &from, &to)` | `{kind:"renameBookmark",data:{from,to}}` | Rename and retarget every `#from` link to `#to` in the same group. An absent `from` (`Missing`) or taken `to` (`Duplicate`) is refused; `from == to` is an admitted no-op. |
+
+`SetBookmark` is one ordered list of guarded node patches applied as one admitted edit
+with one exact inverse: one history group per command, exact Undo/Redo and checkpoint
+restore, admitted exact no-ops, read-only and stale-observation refusal and
+`RichBookmarkError::Profile` outside V4. The strict decoders
+(`codec::decode_rich_set_bookmark_command`, `decode_rich_rename_bookmark_command`)
+reject unknown, duplicate or missing fields, wrong types, out-of-grammar names, a 2 KiB
+overflow and a non-V4 context with `breditor_rich.bookmark_intent`. JavaScript snapshots
+intent to primitives (`encodeSetBookmarkIntent`, `encodeRenameBookmarkIntent`). Links to
+a bookmark are created with the existing format commands (`changeInlineFormats` /
+`changeSelectionFormats` with the literal `{href:"#name", new-window:false}`). The
+descriptor reports `bookmarkVersion: 1`, the owner `bookmarkVersion()` `"1"`, the facade
+`supportsBookmarks()`; a V4 profile or owner without them is refused.
+
+### Rendering
+
+- **Live.** For a bookmark-capable (V4) owner the controller renders a bookmarked block
+  with `id="bm-<name>"` and `data-rich-bookmark="<name>"`; the `bm-` prefix keeps
+  bookmark ids out of the host's id space. An internal link's `<a>` gets
+  `href="#bm-<name>"` and `data-rich-internal-link="<name>"`; a dangling one has no
+  `href` and carries `data-rich-link-broken` (`richBookmarkStyles` draws a wavy
+  underline). Older owners render exactly as before (the renderer option `bookmarks`
+  is set by the controller only for V4 owners).
+- **Inert while editing; navigation in read-only.** While editing, clicks on internal
+  links are cancelled (like image links). In a read-only surface a click scrolls the
+  bookmarked block **of the same surface** into view and never changes `location` or
+  the page hash, so two editors on one page never jump into each other.
+- **Static.** `renderStaticDocument` emits the same `id`, `data-rich-bookmark`, `href`,
+  `data-rich-internal-link` and `data-rich-link-broken` attributes (a parity test
+  compares them with the live renderer). Static output is a plain page, so a resolved
+  link navigates natively to `#bm-<name>`. The static grammar validates the name and
+  per-document uniqueness (`property` errors). It is a union renderer: a same-window
+  `#name` link in any document renders as an internal link.
+
+### Toolbar
+
+`createRichToolbarV4` adds **Bookmark** (`bookmark`: a "Bookmark name" field; on a block
+without a bookmark it sends `setBookmark`, on a bookmarked block `renameBookmark`, so
+links follow; the grammar and uniqueness are checked before any command), **Remove
+bookmark** (`remove-bookmark`) and **Link to bookmark** (`link-bookmark`: the link
+control's internal-target choice — a select listing the document's current bookmarks,
+applied to the selected text). Select options that depend on the document come from the
+new optional `RichToolbarReading.options` (filled while no draft is open). No slash item
+is added, so the trigger-composite allowlist is unchanged.
+
+### Interchange
+
+`@breditor/interchange` reads `supportsBookmarks()` once (local V4 owners only).
+
+- **HTML export (V4 owner):** `id="bm-<name>"` on the bookmarked `<p>`, `<hN>` or `<pre>`
+  and `<a href="#bm-<name>">` for internal links.
+- **HTML import (V4 owner):** an `id` on `<p>`/`<h1>`–`<h6>`/`<pre>`, or an `<a name>` /
+  `<a id>` inside one, becomes that block's bookmark; `href="#<name>"` becomes an
+  internal link. A `bm-` prefix is removed on both sides, so our own export round trips
+  exactly and foreign ids and fragments map to the same name. The first valid, unused
+  anchor of a block wins; invalid names (Google Docs `h.abc`, Word `_Toc…`), duplicates
+  and extra anchors report `unsupported-attribute`; an out-of-grammar fragment keeps the
+  original `unsafe-link`; `target="_blank"` on an internal link reports
+  `unsupported-attribute`. Ids on other elements stay silently ignored (unchanged), so a
+  link to such an id imports as a dangling internal link.
+- **HTML, V1–V3 owners:** unchanged: ids are dropped, `<a name>` reports
+  `unsupported-attribute`, `href="#…"` reports `unsafe-link`, and export of a `#…` link
+  keeps the original `unsafe-link` text.
+- **Markdown:** CommonMark has no block-anchor syntax, and a `[text](#name)` link alone
+  cannot carry the anchor, so a block with a bookmark or an internal link falls back to
+  the exact HTML above with `markdown-feature`; that HTML reimports exactly into a V4
+  owner. Typed Markdown `[up](#top)` imports as an internal link for a V4 owner.
+- **DOCX** (`@breditor/interchange/docx`): a bookmark becomes
+  `<w:bookmarkStart w:id w:name/>…<w:bookmarkEnd/>` around the paragraph content and an
+  internal link `<w:hyperlink w:anchor="name">` (no relationship). A dangling internal
+  link keeps its text without a hyperlink (`unsafe-link`). Word's own UI limits names to
+  40 letters, digits and underscores; longer or hyphenated names are written verbatim
+  and reported as `style-approximation`.
+
+### Not included
+
+Footnotes and endnotes, template/merge fields, cross-reference fields that display the
+target's text or page number, bookmarks on a span of text or on non-text blocks, links
+to other documents' bookmarks, automatic heading anchors, a link-preserving cut, and
+shared-collaboration rules (V4 is local only).
+
+### Fingerprint (current)
+
+Current candidate V4 lock for schema `example/layout@1` with the standard inline
+preset: `sha256:40ed4c0716f9baab1ec30da8b5641623b8fbbdafc7e6f838f5b0496e01add372`
+(asserted in the core and Wasm text-language, image-link, section, mention,
+table-caption, page-break and bookmark tests). V1–V3 locks are unchanged. The schema
+unit test proves V4 differs from V3 only by its rule revision, the text-language and
+mention formats, the image revision, the section grammar, the table's caption grammar,
+the root-only page-break element and the text-block revisions.
+
+### Tests
+
+- Rust core unit test (`rich_content/bookmark.rs`): name and fragment grammar table.
+  Schema unit test: V4 vs V3 differences including the text-block revisions.
+- Rust core `tests/rich_bookmark_v4.rs`: fingerprint locks, admission (kinds, grammar,
+  uniqueness, V1–V3 refusal), internal-link grammar and new-window rule (V1–V3 exact),
+  the index with dangling links, set/replace/clear with Undo/Redo/checkpoint restore,
+  rename retargeting links in one group, clearing and deleting targets, kind changes and
+  splits, paste dropping anchors with V3 refusing the record, read-only/stale/old-profile
+  refusal and strict decoding.
+- Wasm `tests/rich_bookmark_v4.rs`: descriptor and owner capability, V1–V3 refusal,
+  set/rename/clear/Undo/Redo/restore, the index, malformed/read-only/stale intent.
+- TypeScript: rich-content `tests/bookmark.test.ts` (grammar mirror, intent, live render
+  for V4 versus older owners, controls, dynamic select options, toolbar and factory
+  boundary), editor `tests/static_bookmark.test.ts` (static output, rejection, live
+  parity), interchange `tests/bookmark.test.ts` (grammar copy parity, HTML export/import
+  per profile and round trip, foreign anchors and losses, Markdown fallback, DOCX parts).
+- Playwright `experiments/rich-browser/bookmark-v4.spec.mjs` in Chromium, Firefox and
+  WebKit on a real Wasm V4 owner.

@@ -1086,6 +1086,8 @@ impl<'a> ValidationState<'a> {
         self.validate_rich_text_language(format, path, index);
         #[cfg(feature = "experimental-rich-content")]
         self.validate_rich_mention(format, path, index);
+        #[cfg(feature = "experimental-rich-content")]
+        self.validate_rich_internal_link(format, path, index);
         let property_contract = self.schema.format_property_contract(format.kind());
         if let Some(contract) = property_contract {
             self.validate_format_property_contract(contract, format.properties(), path, index);

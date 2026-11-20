@@ -19,6 +19,7 @@ import {
  type BrowserProfileFormatDescriptor,type InlineFormatRenderRecipe,type InlineFormatRenderAttribute,
 } from "@breditor/experimental-rich-content/rendering";
 import {groupMentionRuns,mentionChipAttributes,mentionOf,richMentionFormat,richMentionIdProperty,richMentionKindProperty,richMentionLabelProperty} from "@breditor/experimental-rich-content/rendering";
+import {bookmarkAttributes,internalLinkAttributes,internalLinkOf,isBookmarkName} from "@breditor/experimental-rich-content/rendering";
 import {pageBreakAttributes,richPrintStyles,resolveRichPrintLayout,richUiStringsEn,type RichPrintOptions,type RichPrintLayout} from "@breditor/experimental-rich-content/rendering";
 
 /** Immutable image binding handed to the host resolver; mirrors the live `AssetBinding`. */
@@ -178,9 +179,9 @@ interface Grammar {readonly children:readonly string[]|"text"|"none";readonly mi
 const layout=["block-align","block-direction","block-indent","line-height-percent"];
 const grammar:Readonly<Record<string,Grammar>>={
  "breditor/document":{children:[...flowWithTables,"breditor/page-break"],minimum:1,required:["document-id"]},
- "breditor/paragraph":{children:"text",minimum:0,required:["block-id"],optional:layout},
- "breditor/heading":{children:"text",minimum:0,required:["block-id","level"],optional:layout},
- "breditor/code-block":{children:"text",minimum:0,required:["block-id"],optional:["language",...layout]},
+ "breditor/paragraph":{children:"text",minimum:0,required:["block-id"],optional:[...layout,"bookmark"]},
+ "breditor/heading":{children:"text",minimum:0,required:["block-id","level"],optional:[...layout,"bookmark"]},
+ "breditor/code-block":{children:"text",minimum:0,required:["block-id"],optional:["language",...layout,"bookmark"]},
  "breditor/bullet-list":{children:["breditor/list-item"],minimum:1,required:["block-id"]},
  "breditor/ordered-list":{children:["breditor/list-item"],minimum:1,required:["block-id","start"],optional:["list-style","list-reversed"]},
  "breditor/list-item":{children:flowWithTables,minimum:1,required:["block-id"],firstTextBlock:true},
@@ -258,6 +259,8 @@ class Renderer {
  /** Validated print layout, or undefined when print mode is off. */
  readonly print:RichPrintLayout|undefined;
  #nodes=0;#textBytes=0;#detailsDepth=0;
+ /** Candidate V4 bookmark names seen during admission (unique per document). */
+ readonly #bookmarks=new Set<string>();
  constructor(options:StaticRenderOptions){
   if(typeof options!=="object"||options===null||Array.isArray(options))throw new TypeError("Static render options must be an object");
   if(options.unknown!==undefined&&options.unknown!=="error"&&options.unknown!=="skip")throw new TypeError("unknown must be \"error\" or \"skip\"");
@@ -418,6 +421,13 @@ class Renderer {
    }
    case "breditor/table":id("table-id");break;
   }
+  // Candidate V4 bookmark (Rust `bookmark.rs`): a bounded name, unique per document.
+  if(Object.hasOwn(result,"bookmark")){
+   const name=result["bookmark"];
+   if(!isBookmarkName(name))this.#fail("property","Invalid bookmark name",at("bookmark"));
+   if(this.#bookmarks.has(name))this.#fail("property","Duplicate bookmark name",at("bookmark"));
+   this.#bookmarks.add(name);
+  }
   if(Object.hasOwn(result,"block-align"))integer("block-align",1,6);
   if(Object.hasOwn(result,"block-direction"))integer("block-direction",1,3);
   if(Object.hasOwn(result,"block-indent"))integer("block-indent",0,12);
@@ -441,6 +451,11 @@ class Renderer {
   if(height!==undefined)style.push(`line-height:${height/100}`);
   return (style.length?` style="${style.join(";")}"`:"")+(direction!==undefined?` dir="${directions[direction-1]!}"`:"");
  }
+ /** Candidate V4 bookmark anchor: `id="bm-<name>" data-rich-bookmark="<name>"`, as in the live renderer. */
+ #bookmark(node:Element):string {
+  const name=node.properties["bookmark"];
+  return typeof name==="string"?bookmarkAttributes(name).map(a=>` ${a.name}="${escapeHtmlAttribute(a.value)}"`).join(""):"";
+ }
  #inline(node:Text):string {
   let html=escapeHtmlText(node.text);
   if(!node.formats.length)return html;
@@ -452,6 +467,9 @@ class Renderer {
    let open=`<${recipe.element} data-rich-format="${escapeHtmlAttribute(recipe.formatKind)}"`;
    if(recipe.classes.length)open+=` class="${escapeHtmlAttribute(recipe.classes.join(" "))}"`;
    for(const attribute of attributes)open+=` ${attribute.name}="${escapeHtmlAttribute(attribute.value)}"`;
+   // Candidate V4 internal link `#name`: `href="#bm-name"`, or a broken marker for a dangling target.
+   const internal=recipe.formatKind===K.link?internalLinkOf(literal):undefined;
+   if(internal!==undefined)for(const attribute of internalLinkAttributes(internal,this.#bookmarks.has(internal)))open+=` ${attribute.name}="${escapeHtmlAttribute(attribute.value)}"`;
    html=`${open}>${html}</${recipe.element}>`;
   }
   return html;
@@ -474,11 +492,11 @@ class Renderer {
   switch(node.type){
    case "breditor/paragraph":case "breditor/heading":{
     const tag=node.type==="breditor/paragraph"?"p":`h${String(p["level"])}`;
-    return `<${tag}${this.#blockAttributes(node,true)}${this.#layout(node)}>${node.children.length?inner():"<br>"}</${tag}>`;
+    return `<${tag}${this.#blockAttributes(node,true)}${this.#layout(node)}${this.#bookmark(node)}>${node.children.length?inner():"<br>"}</${tag}>`;
    }
    case "breditor/code-block":{
     const language=typeof p["language"]==="string"?` data-language="${escapeHtmlAttribute(p["language"])}"`:"";
-    return `<pre${this.#blockAttributes(node,true)}${this.#layout(node)}${language}><code>${node.children.length?inner():"<br>"}</code></pre>`;
+    return `<pre${this.#blockAttributes(node,true)}${this.#layout(node)}${this.#bookmark(node)}${language}><code>${node.children.length?inner():"<br>"}</code></pre>`;
    }
    case "breditor/bullet-list":return `<ul${this.#blockAttributes(node,false)}>${inner()}</ul>`;
    case "breditor/ordered-list":return `<ol${this.#blockAttributes(node,false)} start="${String(p["start"])}"${p["list-style"]!==undefined?` type="${listTypes[(p["list-style"] as number)-1]!}"`:""}${p["list-reversed"]===true?" reversed":""}>${inner()}</ol>`;

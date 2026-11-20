@@ -98,3 +98,19 @@ pub(super) fn inherit_layout(
     }
     with_properties(&replacement, changes)
 }
+
+/// Kind changes (paragraph, heading, code block) keep the block's V4 bookmark name.
+/// Split heads never call this: a bookmark stays with the identity that kept it.
+pub(super) fn inherit_bookmark(
+    source: &NodeRef,
+    replacement: NodeRef,
+) -> Result<NodeRef, RichActionError> {
+    let source = source.as_element().ok_or(RichActionError::Rewrite)?;
+    let Some(name) = crate::rich_content::ast_properties::property(
+        source,
+        crate::rich_content::bookmark::BOOKMARK,
+    ) else {
+        return Ok(replacement);
+    };
+    with_properties(&replacement, [(crate::rich_content::bookmark::BOOKMARK, Some(name.clone()))])
+}

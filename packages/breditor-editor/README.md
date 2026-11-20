@@ -544,7 +544,7 @@ for bounds, independent shared fields, history and qualification scope.
 
 `richLanguage: 4` selects the unreleased candidate V4 for local openings
 (`openLocalEditor`, `openLocalDocumentEditor` and the local React components'
-`initialOptions`). It is V3 plus bounded ordered-list numbering, text-run language, image links, collapsible sections, mention entities, table captions and page breaks, and may still
+`initialOptions`). It is V3 plus bounded ordered-list numbering, text-run language, image links, collapsible sections, mention entities, table captions, page breaks and bookmarks with internal links, and may still
 change before release, so its fingerprint changes and V4 data must not be
 persisted yet. Shared openings reject `richLanguage: 4` explicitly; shared
 editing stays on languages 1–3. The standard schema is
@@ -639,6 +639,15 @@ Breditor does not paginate the editor itself; see `docs/PAGINATION_AND_PRINT.md`
 
 ```js
 editor.execute({kind: 'insertPageBreak', data: {position: {parent: {kind: 'document'}, before: null}, block: 'page-break-1'}});
+```
+
+V4 adds named bookmarks on paragraphs, headings and code blocks and internal links
+(`#name`) to them. Renaming retargets every link in one Undo step; deleting or
+clearing a target leaves a reported, visibly broken link (`core.bookmarkIndex()`).
+
+```js
+editor.execute({kind: 'setBookmark', data: {block: 'heading-1', name: 'intro'}});
+editor.execute({kind: 'renameBookmark', data: {from: 'intro', to: 'overview'}});
 ```
 
 See `docs/RICH_LANGUAGE_V4.md` in the repository for domains, semantics,

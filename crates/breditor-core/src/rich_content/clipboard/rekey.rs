@@ -193,7 +193,12 @@ impl Rekeyer<'_> {
         if element.kind().as_str() == "breditor/table" {
             return self.table(node, block);
         }
-        let mut changes = vec![("block-id", Some(PropertyValue::from_string(block)))];
+        // A pasted block never carries a bookmark: names are document-unique anchors,
+        // like identities, so copied content gets none (cut content loses its anchor).
+        let mut changes = vec![
+            ("block-id", Some(PropertyValue::from_string(block))),
+            (crate::rich_content::bookmark::BOOKMARK, None),
+        ];
         match element.kind().as_str() {
             "breditor/table-row" => {
                 let old = RowId::try_new(string(element, "row-id")?)

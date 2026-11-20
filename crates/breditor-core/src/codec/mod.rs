@@ -25,6 +25,12 @@ mod rich_block_layout_patch;
 #[cfg(feature = "experimental-rich-content")]
 mod rich_block_layout_state;
 #[cfg(feature = "experimental-rich-content")]
+mod rich_bookmark;
+#[cfg(feature = "experimental-rich-content")]
+pub use rich_bookmark::{
+    RichBookmarkCodecError, decode_rich_rename_bookmark_command, decode_rich_set_bookmark_command,
+};
+#[cfg(feature = "experimental-rich-content")]
 mod rich_image_link;
 #[cfg(feature = "experimental-rich-content")]
 pub use rich_image_link::{RichImageLinkCodecError, decode_rich_image_link_command};
