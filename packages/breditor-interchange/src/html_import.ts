@@ -23,7 +23,7 @@ const structuralRoles=new Set(["presentation","none","list","listitem"]);
 const flatListAttributes:ReadonlySet<string>=new Set(["data-aria-level","data-aria-posinset","data-listid","aria-setsize"]);
 const wordBullets=/^[·•●○◦▪■□◆◇►➢➤✓✔\-–—*o§Øüvqnl]$/;
 /** Target-owner capabilities read once by the adapter; they select conversion, never admission. */
-export interface ImportCapabilities {readonly listNumbering:boolean;readonly textLanguage?:boolean;readonly imageLinks?:boolean;readonly details?:boolean;readonly mentions?:boolean;readonly tableCaptions?:boolean}
+export interface ImportCapabilities {readonly listNumbering:boolean;readonly textLanguage?:boolean;readonly imageLinks?:boolean;readonly details?:boolean;readonly mentions?:boolean;readonly tableCaptions?:boolean;readonly pageBreaks?:boolean}
 /** Candidate rich V4 native text-language format (Rust `text_language.rs`). */
 export const textLanguageFormat="breditor/text-language",textLanguageTag="breditor/language-tag";
 const htmlSpace=/^[\t\n\f\r ]+|[\t\n\f\r ]+$/g;
@@ -36,6 +36,19 @@ const numberingAttributes:ReadonlySet<string>=new Set(["reversed"]);
 const detailsAttributes:ReadonlySet<string>=new Set(["open"]);
 /** Candidate rich V4 section nesting bound (Rust `RICH_DETAILS_MAX_DEPTH`). */
 const maxDetailsDepth=8;
+/**
+ * Candidate rich V4 page breaks. CSS forced-break properties (`page-break-before/after`, `break-before/after`)
+ * and Word's break markers are consumed only for page-break-capable owners; V1–V3 keep reporting them as
+ * `unsupported-style`. `left`/`right`/`recto`/`verso` force a page too but name a page side the native block
+ * cannot keep (`style-approximation`).
+ */
+const breakProperties=["page-break-before","page-break-after","break-before","break-after"] as const;
+const pageBreakValues:ReadonlyMap<string,boolean>=new Map([["always",true],["page",true],["left",false],["right",false],["recto",false],["verso",false]]);
+/** Declarations a recognized Word/Docs page-break carrier holds besides the break itself. */
+const carrierProperties:ReadonlySet<string>=new Set([...breakProperties,"mso-special-character","mso-break-type","display"]);
+/** `clear` is Word's `<br clear=all>` page-break carrier attribute. */
+const carrierAttributes:ReadonlySet<string>=new Set(["clear"]);
+interface PageBreaks {readonly before:boolean;readonly after:boolean}
 /** Flat producer list entry: Word desktop `mso-list` paragraphs or Word for the web `data-aria-level` items. */
 interface FlatItem {level:number;group:string;ordered:boolean;numbers:number[];body:(state:StyleState)=>Element[]}
 const romanPattern=/^m{0,3}(?:cm|cd|d?c{0,3})(?:xc|xl|l?x{0,3})(?:ix|iv|v?i{0,3})$/;
@@ -63,13 +76,16 @@ export class HtmlConversion {
   #css=new WeakMap<HtmlElement,Map<string,string>>();#blockDescendant=new WeakMap<HtmlElement,boolean>();#word=new WeakMap<HtmlElement,FlatItem|null>();
   #markers=new WeakSet<HtmlElement>();#checkboxes=new WeakSet<HtmlElement>();
   #preservedEnd=new WeakSet<Text>();#detailsDepth=0;
+  /** Candidate V4: nodes whose forced-break declarations were consumed, and page breaks derived from block properties. */
+  #breakConsumed=new WeakSet<HtmlElement>();#carrier=new WeakSet<HtmlElement>();#soft=new WeakSet<Element>();
   constructor(readonly b:Budget,readonly options:InterchangeOptions,readonly sheets:Stylesheets,readonly capabilities:ImportCapabilities={listNumbering:false}){}
   css(node:HtmlElement):Map<string,string>{let value=this.#css.get(node);if(!value){const important=new Set<string>();value=this.sheets.apply(node,declarations(node,this.b,important),important);this.#css.set(node,value);}return value;}
   /** `interpreted` names attributes that structural conversion already consumed for this node. */
   style(node:HtmlElement,parent:StyleState,interpreted?:ReadonlySet<string>):StyleState {
     if(interpreted===undefined&&node.tagName==="ol"&&this.capabilities.listNumbering)interpreted=numberingAttributes;
     for(const attr of node.attrs)if(attr.namespace!==undefined||attr.prefix!==undefined||!this.#knownAttribute(node,attr.name,attr.value,interpreted))this.b.loss("unsupported-attribute");
-    const state=styleFor(node,parent,this.b,this.css(node));
+    const css=this.css(node),consumed=this.#breakConsumed.has(node)?this.#carrier.has(node)?carrierProperties:new Set<string>(breakProperties):undefined;
+    const state=styleFor(node,parent,this.b,consumed?new Map([...css].filter(([name])=>!consumed.has(name))):css);
     if(this.capabilities.textLanguage)this.#language(node,state);
     return state;
   }
@@ -93,6 +109,7 @@ export class HtmlConversion {
   }
   #knownAttribute(node:HtmlElement,name:string,value:string,interpreted?:ReadonlySet<string>):boolean {
     if(knownAttributes.has(name)||interpreted?.has(name))return true;
+    if(this.#carrier.has(node)&&carrierAttributes.has(name))return true;
     // Namespace declarations (Office `xmlns:o`, Sheets `xmlns`) and `xml:lang` (same as `lang`) are syntax, not content.
     if(name==="xmlns"||name.startsWith("xmlns:")||name==="xml:lang")return true;
     // Structural ARIA that only restates the list/paragraph structure being imported.
@@ -135,6 +152,8 @@ export class HtmlConversion {
       for(const node of items){
         if(!isElement(node)){if(node.nodeName==="#text")this.#inlineText(output,plainText(node),parent);continue;}
         if(!this.#safe(node)||this.#markers.has(node)||this.#checkboxes.has(node)||this.#paragraphMark(node)||interchangeNewline(node))continue;
+        // Candidate V4: Word's `<br clear=all style='page-break-before:always'>` splits the paragraph at a page break.
+        if(node.tagName==="br"&&this.#breakCarrier(node)){this.style(node,parent);output.push(this.#pageBreak(false));continue;}
         // Candidate V4: the exact exported mention span becomes a mention over its `@label` text.
         const mention=this.capabilities.mentions?mentionFromSpan(node.tagName,name=>attribute(node,name),plainText(node)):undefined;
         const next=this.style(node,parent,mention?mentionAttributes:undefined);
@@ -165,7 +184,9 @@ export class HtmlConversion {
     const flush=()=>{if(runs.length){output.push(element(this.b,heading===undefined?"paragraph":"heading",runs,layout));runs=[];}};
     for(const piece of pieces){if(piece.kind==="element"){flush();output.push(piece);}else runs.push(piece);}flush();
     // Lifting images out of an unstyled paragraph that holds nothing else (a Markdown block image) loses nothing.
-    if(pieces.some(p=>p.kind==="element")&&!(heading===undefined&&!Object.keys(state.layout).length&&pieces.every(p=>p.kind==="element")))this.b.loss("block-structure");
+    // A candidate V4 page break splitting the paragraph loses nothing: the text either side stays in order.
+    const lifted=pieces.filter(p=>p.kind==="element"&&p.type!=="breditor/page-break");
+    if(lifted.length&&!(heading===undefined&&!Object.keys(state.layout).length&&pieces.every(p=>p.kind==="element")))this.b.loss("block-structure");
     if(!output.length)output.push(element(this.b,heading===undefined?"paragraph":"heading",[],layout));
     return output;
   }
@@ -174,7 +195,7 @@ export class HtmlConversion {
     const flush=()=>{
       // A lone <br> between blocks renders one empty line (Docs, Notes): an empty paragraph, not a hard break.
       const significant=pending.filter(n=>isElement(n)||plainText(n).trim()!=="");
-      if(state.whiteSpace!=="pre"&&significant.length===1&&isElement(significant[0]!)&&significant[0]!.tagName==="br"&&!interchangeNewline(significant[0]!)&&!this.#hidden(significant[0]!)&&attribute(significant[0]!,"data-breditor-placeholder")!=="1"){this.style(significant[0]!,state);output.push(element(this.b,"paragraph",[],{...state.layout}));}
+      if(state.whiteSpace!=="pre"&&significant.length===1&&isElement(significant[0]!)&&significant[0]!.tagName==="br"&&!interchangeNewline(significant[0]!)&&!this.#hidden(significant[0]!)&&attribute(significant[0]!,"data-breditor-placeholder")!=="1"&&!this.#breakCarrier(significant[0]!)){this.style(significant[0]!,state);output.push(element(this.b,"paragraph",[],{...state.layout}));}
       else if(significant.length||state.whiteSpace==="pre"&&pending.length)output.push(...this.prose(pending,state,undefined,false));
       pending=[];
     };
@@ -182,6 +203,9 @@ export class HtmlConversion {
     for(let i=0;i<nodes.length;i++){
       const node=nodes[i]!;
       if(!isElement(node)){pending.push(node);continue;}
+      // Candidate V4: Google Docs' hidden `<hr style="page-break-before:always;display:none">` and our own
+      // `<div style="break-after:page"></div>` are page-break carriers: each is exactly one page break.
+      if((node.tagName==="hr"||node.tagName==="div"&&!this.#hidden(node))&&this.#breakCarrier(node)){flush();this.style(node,state);output.push(this.#pageBreak(false));continue;}
       if(this.#hidden(node)&&node.tagName!=="style"){this.b.loss("removed-content");continue;}
       const word=this.#wordItem(node);
       if(word){flush();const items=[word];for(let j=i+1;j<nodes.length;j++){const n=nodes[j]!;if(blank(n)){i=j;continue;}const next=isElement(n)?this.#wordItem(n):null;if(!next||next.group!==word.group)break;items.push(next);i=j;}output.push(...this.#flatLists(items,state));continue;}
@@ -194,6 +218,8 @@ export class HtmlConversion {
       if(node.tagName==="details"&&this.capabilities.details){flush();if(this.#safe(node))output.push(...this.#details(node,state,insideTable));continue;}
       if(!blocks.has(node.tagName)&&!containers.has(node.tagName)&&!this.#containsBlock(node)){pending.push(node);continue;}
       flush();if(!this.#safe(node))continue;
+      // Candidate V4: forced breaks declared on a content block become page breaks around its output.
+      const breaks=this.#blockBreaks(node),mark=output.length;
       const next=this.style(node,state),tag=node.tagName;
       if(containers.has(tag)){if(tag==="center")next.layout["breditor/block-align"]=2;output.push(...this.flow(node.childNodes,next,insideTable));}
       else if(tag==="p"||/^h[1-6]$/.test(tag))output.push(...this.prose(node.childNodes,next,tag==="p"?undefined:Number(tag[1])));
@@ -204,8 +230,59 @@ export class HtmlConversion {
       else if(tag==="table"){if(insideTable)fail("unsupported-content");output.push(...importTable(this,node,next));}
       else if(tag==="figure")output.push(...this.#figure(node,next,insideTable));
       else {if(!inlineTags.has(tag))this.b.loss("unsupported-element");output.push(...this.flow(node.childNodes,next,insideTable));}
+      if(breaks?.before)output.splice(mark,0,this.#pageBreak(true));
+      if(breaks?.after)output.push(this.#pageBreak(true));
     }
     flush();return output;
+  }
+  /** Candidate V4 forced page breaks named by one element's CSS; undefined when none (or not page-break capable). */
+  #breaks(node:HtmlElement):(PageBreaks&{readonly exact:boolean})|undefined {
+    if(!this.capabilities.pageBreaks)return undefined;
+    const css=this.css(node),value=(name:string)=>{const raw=css.get(name)?.trim().toLowerCase();return raw===undefined?undefined:pageBreakValues.get(raw);};
+    const before=value("break-before")??value("page-break-before"),after=value("break-after")??value("page-break-after");
+    if(before===undefined&&after===undefined)return undefined;
+    return {before:before!==undefined,after:after!==undefined,exact:before!==false&&after!==false};
+  }
+  /** A content-free `<br>`, `<hr>` or `<div>` whose only role is a forced page break (Word, Google Docs, our export). */
+  #breakCarrier(node:HtmlElement):boolean {
+    if(this.#carrier.has(node))return true;
+    const breaks=this.#breaks(node);if(!breaks)return false;
+    if(node.tagName!=="br"&&(node.childNodes.some(n=>isElement(n)||plainText(n).trim())))return false;
+    if(!breaks.exact)this.b.loss("style-approximation");
+    this.#carrier.add(node);this.#breakConsumed.add(node);return true;
+  }
+  #blockBreaks(node:HtmlElement):PageBreaks|undefined {
+    const breaks=this.#breaks(node);if(!breaks)return undefined;
+    if(!breaks.exact)this.b.loss("style-approximation");
+    this.#breakConsumed.add(node);return breaks;
+  }
+  /** One page-break element; `soft` ones come from block properties and collapse like CSS forced breaks. */
+  #pageBreak(soft:boolean):Element {const value=element(this.b,"page-break");if(soft)this.#soft.add(value);return value;}
+  /**
+   * Candidate V4 root normalization. A page break is admitted only as a direct child of the document root, so
+   * one found inside a quote, list, section, table cell or caption is removed (`block-structure`), leaving an
+   * empty paragraph where its container would otherwise be empty. At the root, a page break derived from a
+   * block's CSS is dropped at the start or end of the content and next to another page break, as CSS
+   * fragmentation would; explicit carriers are kept exactly.
+   */
+  pageBreakRoot(children:Element[]):Element[] {
+    if(!this.capabilities.pageBreaks)return children;
+    const strip=(node:Element):void=>{
+      const before=node.children.length;
+      node.children=node.children.filter(child=>{if(child.kind==="element"&&child.type==="breditor/page-break"){this.b.loss("block-structure");return false;}return true;});
+      for(const child of node.children)if(child.kind==="element")strip(child);
+      const emptied=node.children.length!==before&&(node.children.length===0||node.type==="breditor/details"&&node.children.length===1);
+      if(emptied)node.children.push(element(this.b,"paragraph"));
+      if(node.children.length!==before&&(node.type==="breditor/list-item"||node.type==="breditor/task-item")){const first=node.children[0];if(first?.kind!=="element"||!["breditor/paragraph","breditor/heading"].includes(first.type))node.children.unshift(element(this.b,"paragraph"));}
+    };
+    for(const child of children)if(child.type!=="breditor/page-break")strip(child);
+    const isBreak=(node:Element|undefined)=>node?.type==="breditor/page-break";
+    const output:Element[]=[];
+    for(const [index,child] of children.entries()){
+      if(isBreak(child)&&this.#soft.has(child)&&(output.length===0||index===children.length-1||isBreak(output.at(-1))||isBreak(children[index+1])))continue;
+      output.push(child);
+    }
+    return output;
   }
   /**
    * Candidate V4 section: the first `<summary>` child element is the summary (as in HTML); a missing
@@ -414,7 +491,7 @@ export class HtmlConversion {
 /** WebKit/Blink trailing-selection marker (Docs, Notes, Safari); it is not authored content. */
 function interchangeNewline(node:HtmlElement):boolean{return node.tagName==="br"&&(attribute(node,"class")??"").split(/\s+/).includes("Apple-interchange-newline");}
 export function importHtmlContent(source:string,b:Budget,options:InterchangeOptions,capabilities:ImportCapabilities={listNumbering:false}):{root:string;kind:"text"|"flow"} {
-  const sourceNodes=htmlTree(source,b),converter=new HtmlConversion(b,options,new Stylesheets(sourceNodes,b),capabilities),body=converter.flow(sourceNodes);
+  const sourceNodes=htmlTree(source,b),converter=new HtmlConversion(b,options,new Stylesheets(sourceNodes,b),capabilities),body=converter.pageBreakRoot(converter.flow(sourceNodes));
   const containsBlock=(n:HtmlNode):boolean=>isElement(n)&&(blocks.has(n.tagName)||n.childNodes.some(containsBlock));
   const inline=!sourceNodes.some(containsBlock)&&body.length===1&&body[0]!.type==="breditor/paragraph"&&Object.keys(body[0]!.properties).every(k=>k==="breditor/block-id")&&body[0]!.children.length>0&&body[0]!.children.every(n=>n.kind==="text");
   return{root:rootJson(b,body),kind:inline?"text":"flow"};
