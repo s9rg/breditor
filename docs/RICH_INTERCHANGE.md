@@ -167,6 +167,18 @@ in `<a>`, and Markdown export writes `[![alt](src)](href)` for same-window links
 that round trip, else HTML with `markdown-feature`. Other owners keep dropping
 the link around an image silently. See [RICH_LANGUAGE_V4.md](RICH_LANGUAGE_V4.md).
 
+V4 owners also report `supportsDetails()`. For them, `<details>` becomes a
+collapsible section: the first `<summary>` child is its summary (one inline line;
+block markup inside it is flattened or moved into the body with
+`block-structure`), `open` becomes persisted open state, a missing summary becomes
+an empty one (`block-structure`) and an empty body gets one empty paragraph.
+Sections nested deeper than 8 are lifted (`block-structure`). HTML export writes
+`<details [open]><summary>…</summary>…</details>`; Markdown has no syntax, so a
+section falls back to a safe HTML block with `markdown-feature`, which reimports
+exactly. Other owners keep the original conversion: `<details>`/`<summary>` are
+unwrapped into ordinary flow (the summary becomes a paragraph) with
+`unsupported-element`, and `open` reports `unsupported-attribute`.
+
 Remaining gaps: real captured clipboard dumps per producer/platform/version,
 Word for the web non-decimal formats (reported, rendered as decimal), CSS
 `font` shorthand, Excel/Sheets hidden rows and columns (still rejected), cell

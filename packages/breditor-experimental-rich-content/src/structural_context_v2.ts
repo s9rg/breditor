@@ -5,9 +5,9 @@ export function nearestStructuralV2(model:RichPresentationModel,kind:string):Ele
  while(node){if(node.type===`breditor/${kind}`)return node;node=model.parents.get(id(node));}return undefined;
 }
 export function replaceableFlowV2(model:RichPresentationModel,node:ElementNode):boolean {
- const parent=model.parents.get(id(node));if(!parent||parent.type==="breditor/image")return false;
+ const parent=model.parents.get(id(node));if(!parent||parent.type==="breditor/image"||node.type==="breditor/details-summary")return false;
  if((parent.type==="breditor/list-item"||parent.type==="breditor/task-item")&&parent.children[0]===node)return false;
- return ["breditor/document","breditor/blockquote","breditor/table-cell","breditor/list-item","breditor/task-item"].includes(parent.type);
+ return ["breditor/document","breditor/blockquote","breditor/table-cell","breditor/list-item","breditor/task-item","breditor/details"].includes(parent.type);
 }
 export function structuralIntervalV2(m:RichPresentationModel):{first:string;last:string;nodes:ElementNode[]}|undefined {
  const s=m.view.selection;if(s?.kind==="node"){const node=m.nodes.get(s.block);return node&&replaceableFlowV2(m,node)?{first:id(node),last:id(node),nodes:[node]}:undefined;}

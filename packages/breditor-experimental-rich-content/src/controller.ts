@@ -126,6 +126,10 @@ export class RichDomEditor<P extends RichSelectionPolicy="original"> {
   this.surface.addEventListener("click",event=>this.#taskCheck(event),{signal:this.#abort.signal});
   // Candidate V4 image links are inert while editing: activation never navigates the editable surface.
   for(const type of ["click","auxclick"])this.surface.addEventListener(type,event=>this.#inertImageLink(event),{capture:true,signal:this.#abort.signal});
+  // Candidate V4 sections never toggle natively while editing: a summary click only places the caret,
+  // and any browser-initiated toggle (find-in-page, fragment reveal) is reverted to document state.
+  this.surface.addEventListener("click",event=>this.#inertSummary(event),{capture:true,signal:this.#abort.signal});
+  this.surface.addEventListener("toggle",event=>this.#restoreDetails(event),{capture:true,signal:this.#abort.signal});
   this.surface.addEventListener("copy",event=>this.#copy(event,false),{signal:this.#abort.signal});
   this.surface.addEventListener("cut",event=>this.#copy(event,true),{signal:this.#abort.signal});
   this.surface.addEventListener("paste",event=>this.#paste(event),{signal:this.#abort.signal});
@@ -304,6 +308,16 @@ export class RichDomEditor<P extends RichSelectionPolicy="original"> {
   if(button){event.preventDefault();const cell=JSON.parse(button.dataset["selectCell"]!) as Extract<RichSelection,{kind:"grid"}>["focus"],prior=this.#model.view.selection;const anchor=event.shiftKey&&prior?.kind==="grid"&&prior.anchor.table===cell.table?prior.anchor:cell;this.#attempt(()=>this.execute({kind:"setSelection",selection:{kind:"grid",anchor,focus:cell}}));}
   else if(node||(figure&&!target.closest("[data-rich-text]"))){event.preventDefault();const block=node?.dataset["selectNode"]??figure?.dataset["richBlock"];if(block)this.#attempt(()=>this.execute({kind:"setSelection",selection:{kind:"node",block}}));}
   else this.#logicalSelection=false;
+ }
+ #inertSummary(event:Event):void {
+  const target=event.target;
+  if(this.#model.view.readOnly!==true&&target instanceof Element&&target.closest("details[data-rich-details]>summary[data-rich-text]"))event.preventDefault();
+ }
+ #restoreDetails(event:Event):void {
+  const details=event.target;
+  if(this.#model.view.readOnly===true||!(details instanceof HTMLDetailsElement)||details.dataset["richDetails"]===undefined)return;
+  const open=this.#model.nodes.get(details.dataset["richDetails"])?.properties["breditor/details-open"]===true;
+  if(details.open!==open)details.open=open;
  }
  #inertImageLink(event:Event):void {
   const target=event.target;

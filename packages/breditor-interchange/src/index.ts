@@ -14,7 +14,7 @@ export function createRichInterchange(owner:InterchangeOwner,options:Interchange
   if(owner.supportsClipboardInterchange?.()!==true||typeof admit!=="function"||typeof validate!=="function")throw new TypeError("Matching native clipboard interchange version 1 is required");
   const policy=Object.freeze({...options});
   // Read once: an owner's compiled language never changes. Native admission still decides validity.
-  const capabilities=Object.freeze({listNumbering:owner.supportsListNumbering?.()===true,textLanguage:owner.supportsTextLanguage?.()===true,imageLinks:owner.supportsImageLinks?.()===true});
+  const capabilities=Object.freeze({listNumbering:owner.supportsListNumbering?.()===true,textLanguage:owner.supportsTextLanguage?.()===true,imageLinks:owner.supportsImageLinks?.()===true,details:owner.supportsDetails?.()===true});
   const run=<T>(work:(b:Budget)=>T):InterchangeResult<T>=>{
     const b=new Budget();try{return Object.freeze({ok:true,value:work(b),losses:b.losses()});}catch(error){return Object.freeze({ok:false,error:error instanceof ConversionFailure?error.code:"native-admission",losses:b.losses()});}
   };

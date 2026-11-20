@@ -1,6 +1,7 @@
 //! Logical flow boundaries, independent of visual lines, bidi keys and mutation.
 //!
-//! Lists, tasks and quotes are transparent reading-order containers. Images,
+//! Lists, tasks, quotes and sections are transparent reading-order containers
+//! (a collapsed section exposes only its summary). Images,
 //! visible tables and rules are single outer stops. A table cell and an image
 //! caption each retain their own editing domain; grid/host commands own escape.
 use super::{
@@ -70,7 +71,7 @@ pub fn navigate_flow(
     let domain = domain(document, &path)?;
     while path != domain {
         let parent = path.parent().ok_or(RichSelectionError::Invariant)?;
-        let count = element(document, &parent)?.children().len();
+        let count = visible_children(element(document, &parent)?);
         let mut index = usize::try_from(path.last_index().ok_or(RichSelectionError::Invariant)?)
             .map_err(|_| RichSelectionError::Invariant)?;
         while let Some(next) = adjacent(index, count, movement) {
@@ -115,6 +116,14 @@ fn child(parent: &NodePath, index: usize) -> Result<NodePath, RichSelectionError
         .try_child(u32::try_from(index).map_err(|_| RichSelectionError::Invariant)?)
         .map_err(|_| RichSelectionError::Invariant)
 }
+/// A collapsed V4 section exposes only its summary; its hidden body is never a stop.
+fn visible_children(node: &ElementNode) -> usize {
+    if super::details::is_collapsed(node) {
+        node.children().len().min(1)
+    } else {
+        node.children().len()
+    }
+}
 fn adjacent(index: usize, count: usize, movement: FlowMove) -> Option<usize> {
     match movement {
         FlowMove::Before => index.checked_sub(1),
@@ -140,7 +149,10 @@ pub(super) fn edge_stop(
     loop {
         let node = element(document, &path)?;
         let kind = match node.kind().as_str() {
-            "breditor/paragraph" | "breditor/heading" | "breditor/code-block" => {
+            "breditor/paragraph"
+            | "breditor/heading"
+            | "breditor/code-block"
+            | "breditor/details-summary" => {
                 let offset = match movement {
                     FlowMove::Before => text_length(node)?,
                     FlowMove::After => TextOffset::ZERO,
@@ -160,7 +172,8 @@ pub(super) fn edge_stop(
             | "breditor/list-item"
             | "breditor/blockquote"
             | "breditor/task-list"
-            | "breditor/task-item" => None,
+            | "breditor/task-item"
+            | "breditor/details" => None,
             _ => return Err(RichSelectionError::Invariant),
         };
         if let Some(kind) = kind {
@@ -171,7 +184,7 @@ pub(super) fn edge_stop(
             }
         } else if !node.children().is_empty() {
             let index = match movement {
-                FlowMove::Before => node.children().len() - 1,
+                FlowMove::Before => visible_children(node) - 1,
                 FlowMove::After => 0,
             };
             path = child(&path, index)?;
@@ -185,7 +198,7 @@ pub(super) fn edge_stop(
             let index = usize::try_from(path.last_index().ok_or(RichSelectionError::Invariant)?)
                 .map_err(|_| RichSelectionError::Invariant)?;
             if let Some(next) =
-                adjacent(index, element(document, &parent)?.children().len(), movement)
+                adjacent(index, visible_children(element(document, &parent)?), movement)
             {
                 path = child(&parent, next)?;
                 break;

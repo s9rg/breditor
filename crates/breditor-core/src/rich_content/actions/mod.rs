@@ -64,6 +64,7 @@ pub(crate) mod rewrite_properties;
 mod set_block_layout;
 mod set_code_block;
 mod set_code_language;
+mod set_details_open;
 mod set_heading;
 mod set_image_alt;
 mod set_image_caption;
@@ -85,9 +86,11 @@ mod task_parts;
 pub(crate) mod text_patch;
 mod text_range_list;
 mod unwrap_blockquote;
+mod unwrap_details;
 mod unwrap_list;
 mod unwrap_task_list;
 mod wrap_blockquote;
+mod wrap_details;
 mod wrap_list;
 mod wrap_task_list;
 
@@ -137,6 +140,7 @@ pub use resize_table_column::ResizeColumn;
 pub use set_block_layout::SetBlockLayout;
 pub use set_code_block::{CodeFormatPolicy, SetCodeBlock};
 pub use set_code_language::SetCodeLanguage;
+pub use set_details_open::SetDetailsOpen;
 pub use set_heading::SetHeading;
 pub use set_image_alt::SetImageAlt;
 pub use set_image_caption::SetImageCaption;
@@ -151,9 +155,11 @@ pub use split_table_cell::SplitTableCell;
 pub use split_task_item::SplitTaskItem;
 pub use split_text_block::SplitTextBlock;
 pub use unwrap_blockquote::UnwrapBlockquote;
+pub use unwrap_details::UnwrapDetails;
 pub use unwrap_list::UnwrapList;
 pub use unwrap_task_list::UnwrapTaskList;
 pub use wrap_blockquote::WrapBlockquote;
+pub use wrap_details::WrapDetails;
 pub use wrap_list::WrapList;
 pub use wrap_task_list::WrapTaskList;
 
@@ -225,6 +231,12 @@ pub enum RichAction {
     SetListNumbering(SetListNumbering),
     /// Set, replace or clear one image's bounded candidate-V4 link.
     SetImageLink(SetImageLink),
+    /// Wrap a rich sibling range as the body of one candidate-V4 collapsible section.
+    WrapDetails(WrapDetails),
+    /// Remove one section, keeping its summary as a paragraph and its whole body.
+    UnwrapDetails(UnwrapDetails),
+    /// Expand or collapse one section (persisted document state).
+    SetDetailsOpen(SetDetailsOpen),
     /// Split one rich text block with an explicit fresh right-block identity.
     SplitTextBlock(SplitTextBlock),
     /// Join two adjacent rich text blocks, retaining the left identity.
@@ -358,6 +370,9 @@ impl RichAction {
             Self::SetListKind(action) => action.apply(context, document),
             Self::SetListNumbering(action) => action.apply(context, document),
             Self::SetImageLink(action) => action.apply(context, document),
+            Self::WrapDetails(action) => action.apply(context, document),
+            Self::UnwrapDetails(action) => action.apply(context, document),
+            Self::SetDetailsOpen(action) => action.apply(context, document),
             Self::SplitTextBlock(action) => action.apply(context, document),
             Self::JoinTextBlocks(action) => action.apply(context, document),
             Self::SetHeading(action) => action.apply(context, document),
@@ -448,6 +463,9 @@ pub enum RichActionError {
     /// Typed V4 image-link profile, target, value or decorative-image admission failed.
     #[error(transparent)]
     ImageLink(#[from] super::RichImageLinkError),
+    /// Typed V4 collapsible-section profile, target or shape admission failed.
+    #[error(transparent)]
+    Details(#[from] super::RichDetailsError),
     /// Typed V4 text-language profile or tag admission failed.
     #[error(transparent)]
     TextLanguage(#[from] super::RichTextLanguageError),

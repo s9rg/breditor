@@ -205,7 +205,10 @@ fn text_point(document: &RichDocument, point: &RichTextPoint) -> Result<Point, R
     let node = block(document, point.block())?;
     if !matches!(
         node.kind().as_str(),
-        "breditor/paragraph" | "breditor/heading" | "breditor/code-block"
+        "breditor/paragraph"
+            | "breditor/heading"
+            | "breditor/code-block"
+            | "breditor/details-summary"
     ) {
         return Err(RichSelectionError::TargetKind);
     }
@@ -273,6 +276,7 @@ fn resolve_kind(
                     | "breditor/code-block"
                     | "breditor/horizontal-rule"
                     | "breditor/task-list"
+                    | "breditor/details"
             ) {
                 return Err(RichSelectionError::TargetKind);
             }

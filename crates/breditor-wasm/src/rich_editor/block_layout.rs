@@ -30,6 +30,13 @@ impl BreditorRichEditor {
     pub fn image_link_version(&self) -> String {
         if self.inner.context().schema().supports_rich_image_links() { "1" } else { "0" }.into()
     }
+    /// String1 selects candidate V4 collapsible sections (`wrapDetails`, `unwrapDetails`,
+    /// `setDetailsOpen`, `enterDetailsBody`); String0 means unsupported.
+    #[must_use]
+    #[wasm_bindgen(js_name=detailsVersion)]
+    pub fn details_version(&self) -> String {
+        if self.inner.context().schema().supports_rich_details() { "1" } else { "0" }.into()
+    }
 }
 #[wasm_bindgen]
 impl BreditorRichObservation {

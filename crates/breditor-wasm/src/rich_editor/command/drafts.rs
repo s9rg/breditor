@@ -32,6 +32,7 @@ pub(super) enum FlowRecord {
     CodeBlock(CodeRecord),
     HorizontalRule(RuleRecord),
     TaskList(TaskListRecord),
+    Details(DetailsRecord),
 }
 impl FlowRecord {
     pub(super) fn draft(self, context: &EditorContext) -> Result<RichBlockDraft, BreditorError> {
@@ -62,6 +63,13 @@ impl FlowRecord {
                     &text,
                 ))
             }
+            Self::Details(record) => checked(RichBlockDraft::details(
+                &checked(BlockId::try_new(record.block))?,
+                &checked(BlockId::try_new(record.summary))?,
+                &fragment(context, &record.text, &record.formats_json)?,
+                record.open,
+                record.body.into_iter().map(|v| v.draft(context)).collect::<Result<_, _>>()?,
+            )),
             Self::HorizontalRule(record) => {
                 checked(RichBlockDraft::horizontal_rule(&checked(BlockId::try_new(record.block))?))
             }
@@ -109,6 +117,17 @@ impl FlowRecord {
             }
         }
     }
+}
+/// Candidate-V4 section draft: summary identity and canonical runs, open state, body.
+#[derive(Deserialize)]
+#[serde(deny_unknown_fields, rename_all = "camelCase")]
+pub(super) struct DetailsRecord {
+    block: String,
+    summary: String,
+    text: String,
+    formats_json: String,
+    open: bool,
+    body: Vec<FlowRecord>,
 }
 #[derive(Deserialize)]
 #[serde(deny_unknown_fields)]
@@ -321,6 +340,7 @@ enum ParentRecord {
     ListItem { block: String },
     Blockquote { block: String },
     TaskItem { block: String },
+    Details { block: String },
 }
 #[derive(Deserialize)]
 #[serde(deny_unknown_fields)]
@@ -343,6 +363,9 @@ impl PositionRecord {
                 }
                 ParentRecord::TaskItem { block } => {
                     RichFlowParent::TaskItem(checked(BlockId::try_new(block))?)
+                }
+                ParentRecord::Details { block } => {
+                    RichFlowParent::Details(checked(BlockId::try_new(block))?)
                 }
             },
             self.before.map(BlockId::try_new).map(checked).transpose()?,

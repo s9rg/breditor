@@ -22,7 +22,10 @@ pub(in crate::rich_content) fn domains(
             .ok_or(RichSearchError::Invariant)?;
         if matches!(
             node.kind().as_str(),
-            "breditor/paragraph" | "breditor/heading" | "breditor/code-block"
+            "breditor/paragraph"
+                | "breditor/heading"
+                | "breditor/code-block"
+                | "breditor/details-summary"
         ) {
             charge(&mut visited, node.children().len(), stack.len())?;
             if result.len() >= MAX_DOMAINS {

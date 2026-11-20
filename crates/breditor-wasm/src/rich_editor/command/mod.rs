@@ -17,6 +17,7 @@ mod delete_table;
 mod delete_table_column;
 mod delete_table_row;
 mod delete_typing_range;
+mod details;
 mod drafts;
 mod exit_code_block;
 mod exit_task_item;
@@ -170,6 +171,10 @@ enum CommandTag {
     SetListNumbering,
     SetTextLanguage,
     SetImageLink,
+    WrapDetails,
+    UnwrapDetails,
+    SetDetailsOpen,
+    EnterDetailsBody,
     OutdentListItems,
     JoinTextBlocks,
     JoinListItems,

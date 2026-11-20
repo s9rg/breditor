@@ -22,7 +22,10 @@ fn text(node: &NodeRef) -> Result<String, RichClipboardError> {
     let node = node.as_element().ok_or(RichClipboardError::Invariant)?;
     let values = node.children().iter().map(text).collect::<Result<Vec<_>, _>>()?;
     match node.kind().as_str() {
-        "breditor/paragraph" | "breditor/heading" | "breditor/code-block" => Ok(values.concat()),
+        "breditor/paragraph"
+        | "breditor/heading"
+        | "breditor/code-block"
+        | "breditor/details-summary" => Ok(values.concat()),
         "breditor/table-row" => {
             Ok(values.iter().map(|value| tsv_field(value)).collect::<Vec<_>>().join("\t"))
         }

@@ -140,6 +140,24 @@ href reports `unsafe-link`, and `<figure><a><img></a></figure>` falls back with
   re-parses exactly; captions, sizes and new-window links fall back to HTML with
   `markdown-feature`. That Markdown shape imports back as the image link.
 
+### Collapsible sections (candidate rich V4 owners)
+
+The adapter also reads the owner's optional `supportsDetails()` once. Only a
+local candidate rich V4 owner reports `true`; every other owner keeps the
+original conversion (`<details>`/`<summary>` unwrap into ordinary flow with
+`unsupported-element`, and `open` reports `unsupported-attribute`). With a V4
+owner:
+
+- `<details [open]>` becomes a section; its first `<summary>` child is the
+  summary line (block markup inside it is flattened or moved into the body with
+  `block-structure`). A missing summary becomes an empty summary
+  (`block-structure`); an empty body gets one empty paragraph; sections nested
+  deeper than 8 are lifted (`block-structure`).
+- HTML export writes `<details [open]><summary>…</summary>…</details>`; V4 HTML
+  round trips exactly.
+- Markdown has no section syntax: a section is exported as a safe HTML block with
+  `markdown-feature` (blank lines inside it are escaped), which reimports exactly.
+
 ### Text language (candidate rich V4 owners)
 
 The adapter also reads the owner's optional `supportsTextLanguage()` once. Only a

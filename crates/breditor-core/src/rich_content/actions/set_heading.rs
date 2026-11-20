@@ -28,6 +28,9 @@ impl SetHeading {
         level: Option<u8>,
     ) -> Result<Self, RichActionError> {
         let source = block_node(document, block)?;
+        if super::super::details::is_summary_node(source) {
+            return Err(RichActionError::TextTarget);
+        }
         let text = fragment(source)?;
         let draft = if let Some(level) = level {
             RichBlockDraft::heading(block, level, &text)?

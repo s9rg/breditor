@@ -130,6 +130,11 @@ fn text(
     )?;
     let last = nodes.last_mut().ok_or(RichClipboardError::Invariant)?;
     *last = text_patch::text_node(last, &sliced(last, TextOffset::ZERO, end.offset())?)?;
+    // A summary sliced out of its section is ordinary flow text in the record.
+    let nodes = nodes
+        .iter()
+        .map(super::super::details::summary_as_paragraph)
+        .collect::<Result<Vec<_>, _>>()?;
     let nodes = nodes
         .iter()
         .map(|node| semantic_table::normalize(document, node))

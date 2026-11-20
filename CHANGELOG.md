@@ -6,6 +6,23 @@ its durable formats and Wasm transport.
 
 ## Unreleased
 
+- Add collapsible sections to the unreleased local-only candidate rich V4: a
+  `breditor/details` container (exactly one leading `breditor/details-summary`
+  inline text block, then one or more flow blocks) admitted in every V4 flow
+  container, nesting at most 8 sections deep, with persisted open state
+  `breditor/details-open` (only `true`; absence is collapsed). New guarded
+  `wrapDetails`, `unwrapDetails`, `setDetailsOpen` and `enterDetailsBody`
+  commands are one history group each; summaries are never split, joined,
+  converted or moved, collapsing moves a hidden selection to the summary end and
+  flow navigation skips collapsed bodies. The live renderer uses native
+  `<details>`/`<summary>` but never toggles natively while editing; the static
+  renderer emits native `<details open>`. The V4 toolbar adds **Collapsible
+  section**, **Remove collapsible section** and **Expand/Collapse section** (plus
+  a slash item); V4-only HTML interchange maps `<details>`/`<summary>`/`open`,
+  Markdown falls back to HTML with `markdown-feature`, and native clipboard keeps
+  whole sections. The V4 grammar and fingerprint change; V1–V3, their
+  fingerprints and their interchange are unchanged.
+
 - Add image links to the unreleased local-only candidate rich V4: optional
   `breditor/image-href` (a canonical credential-free HTTP(S) URL under the inline
   `safeLinkV1` policy with canonical storage, at most 2,048 bytes) and

@@ -37,6 +37,9 @@ impl SetCodeBlock {
         policy: CodeFormatPolicy,
     ) -> Result<Self, RichActionError> {
         let source_node = block_node(document, block)?;
+        if super::super::details::is_summary_node(source_node) {
+            return Err(RichActionError::TextTarget);
+        }
         let source = fragment(source_node)?;
         let formatted = source.iter().any(|run| !run.formats().is_empty());
         if formatted && policy == CodeFormatPolicy::RejectFormatted {

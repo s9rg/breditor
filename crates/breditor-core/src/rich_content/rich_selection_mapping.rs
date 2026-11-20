@@ -110,7 +110,10 @@ fn caret_block(node: &NodeRef, affinity: Affinity) -> Option<&ElementNode> {
     let element = node.as_element()?;
     if matches!(
         element.kind().as_str(),
-        "breditor/paragraph" | "breditor/heading" | "breditor/code-block"
+        "breditor/paragraph"
+            | "breditor/heading"
+            | "breditor/code-block"
+            | "breditor/details-summary"
     ) {
         return Some(element);
     }
@@ -131,7 +134,10 @@ fn same_selection_kind(left: &ElementNode, right: &ElementNode) -> bool {
     let text_kind = |node: &ElementNode| {
         matches!(
             node.kind().as_str(),
-            "breditor/paragraph" | "breditor/heading" | "breditor/code-block"
+            "breditor/paragraph"
+                | "breditor/heading"
+                | "breditor/code-block"
+                | "breditor/details-summary"
         )
     };
     let list_kind = |node: &ElementNode| {

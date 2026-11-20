@@ -533,7 +533,9 @@ struct ValidationState<'a> {
     #[cfg(feature = "experimental-rich-content")]
     content_ids: BTreeMap<(&'static str, Arc<str>), NodePath>,
     #[cfg(feature = "experimental-rich-content")]
-    rich_table_depth: usize,
+    pub(super) rich_table_depth: usize,
+    #[cfg(feature = "experimental-rich-content")]
+    pub(super) rich_details_depth: usize,
 }
 
 impl<'a> ValidationState<'a> {
@@ -554,6 +556,8 @@ impl<'a> ValidationState<'a> {
             content_ids: BTreeMap::new(),
             #[cfg(feature = "experimental-rich-content")]
             rich_table_depth: 0,
+            #[cfg(feature = "experimental-rich-content")]
+            rich_details_depth: 0,
         }
     }
 
@@ -768,12 +772,7 @@ impl<'a> ValidationState<'a> {
 
         let child_limit = children.len().min(self.limits.max_children_per_element);
         #[cfg(feature = "experimental-rich-content")]
-        let rich_table =
-            self.schema.is_rich_content_profile() && element.kind().as_str() == "breditor/table";
-        #[cfg(feature = "experimental-rich-content")]
-        if rich_table {
-            self.rich_table_depth += 1;
-        }
+        let rich_scope = self.enter_rich_scope(element);
         for (index, child) in children.iter().take(child_limit).enumerate() {
             if self.report_is_saturated() {
                 break;
@@ -793,9 +792,7 @@ impl<'a> ValidationState<'a> {
             path.pop();
         }
         #[cfg(feature = "experimental-rich-content")]
-        if rich_table {
-            self.rich_table_depth -= 1;
-        }
+        self.leave_rich_scope(rich_scope);
     }
 
     fn visit_entity_id(

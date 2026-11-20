@@ -154,7 +154,9 @@ pub fn plan_rich_markdown_input_rule(
     if source.node.kind().as_str() == "breditor/code-block" || !source.prefix.ends_with(trigger) {
         return Ok(None);
     }
-    let block_kind = if trigger == " " { block_rule::recognize(&source) } else { None };
+    // A section summary stays a summary: block-level shortcuts never convert it.
+    let summary = crate::rich_content::details::is_summary_kind(source.node.kind().as_str());
+    let block_kind = if trigger == " " && !summary { block_rule::recognize(&source) } else { None };
     let (kind, steps, caret) = if let Some(kind) = block_kind {
         let Some(position) = document.flow_position_before(focus.block()) else {
             return Ok(None);

@@ -87,7 +87,10 @@ impl Copier<'_> {
                     }
                     if matches!(
                         element.kind().as_str(),
-                        "breditor/paragraph" | "breditor/heading" | "breditor/code-block"
+                        "breditor/paragraph"
+                            | "breditor/heading"
+                            | "breditor/code-block"
+                            | "breditor/details-summary"
                     ) {
                         let span = self.spans.get(&id).ok_or(RichClipboardError::Invariant)?;
                         results.push(vec![text_patch::text_node(
@@ -126,6 +129,19 @@ impl Copier<'_> {
         let kind = source.kind().as_str();
         if kind == "breditor/image" && extent == RichCoverageExtent::Partial {
             return Ok(children);
+        }
+        // A partially copied section stays a section only while it keeps its summary
+        // and a body; otherwise its copied parts become ordinary flow.
+        if kind == "breditor/details"
+            && extent == RichCoverageExtent::Partial
+            && !(children.len() > 1
+                && children.first().is_some_and(super::super::details::is_summary_node))
+        {
+            return children
+                .iter()
+                .map(super::super::details::summary_as_paragraph)
+                .collect::<Result<Vec<_>, _>>()
+                .map_err(RichClipboardError::from);
         }
         if kind == "breditor/table-cell" && children.is_empty() {
             children.push(self.empty()?);

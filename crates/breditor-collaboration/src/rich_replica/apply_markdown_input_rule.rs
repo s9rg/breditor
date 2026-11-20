@@ -150,7 +150,8 @@ fn parent(document: &RichDocument, parent: &RichFlowParent) -> Result<Option<Str
         RichFlowParent::Document => None,
         RichFlowParent::ListItem(id)
         | RichFlowParent::TaskItem(id)
-        | RichFlowParent::Blockquote(id) => Some(id.as_str().into()),
+        | RichFlowParent::Blockquote(id)
+        | RichFlowParent::Details(id) => Some(id.as_str().into()),
         RichFlowParent::Cell(id) => {
             let node = document
                 .cell_path(id)

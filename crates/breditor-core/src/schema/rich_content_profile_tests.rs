@@ -118,7 +118,7 @@ fn explicit_rich_v3_keeps_legacy_editing_capabilities_sealed() -> TestResult {
 }
 
 #[test]
-fn explicit_candidate_v4_is_only_v3_grammar_with_its_own_rule_revision() -> TestResult {
+fn explicit_candidate_v4_is_v3_grammar_plus_sections_with_its_own_rule_revision() -> TestResult {
     let id = SchemaId::new(QualifiedName::try_new("example/v4")?, SchemaVersion::try_new(1)?);
     let extensions = ExtensionSet::try_new(vec![], ExtensionLimits::default())?;
     let v3 = CompiledSchema::try_compile_rich_content_profile_v3(id.clone(), &extensions)?;
@@ -130,8 +130,9 @@ fn explicit_candidate_v4_is_only_v3_grammar_with_its_own_rule_revision() -> Test
     assert!(!v4.supports_base_text_operations());
     assert!(!v4.supports_flat_list_operations());
     // The only differences from V3 are the sealed rule revision, the one
-    // core-owned text-language inline format and the image element's persisted
-    // type revision (2: optional link properties and the non-decorative law).
+    // core-owned text-language inline format, the image element's persisted
+    // type revision (2: optional link properties and the non-decorative law)
+    // and the collapsible-section grammar.
     let mut lookalike = v3.definition().as_ref().clone();
     lookalike.rich_content_contract = Some(4);
     let language = QualifiedName::try_new("breditor/text-language")?;
@@ -145,7 +146,31 @@ fn explicit_candidate_v4_is_only_v3_grammar_with_its_own_rule_revision() -> Test
     let revised = v4.definition().elements.get(&image).ok_or("image")?.clone();
     assert_eq!(revised.revision.get(), 2);
     lookalike.elements.insert(image, revised);
+    assert_ne!(fingerprint(&lookalike), v4.fingerprint());
+    // Collapsible sections: two new elements, and every V2 flow container admits a section.
+    let mut changed = vec![];
+    for (name, element) in &v4.definition().elements {
+        if v3.definition().elements.get(name) != Some(element) && name.as_str() != "breditor/image"
+        {
+            changed.push(name.as_str().to_owned());
+            lookalike.elements.insert(name.clone(), element.clone());
+        }
+    }
+    changed.sort();
+    assert_eq!(
+        changed,
+        [
+            "breditor/blockquote",
+            "breditor/details",
+            "breditor/details-summary",
+            "breditor/document",
+            "breditor/list-item",
+            "breditor/table-cell",
+            "breditor/task-item",
+        ]
+    );
     assert_eq!(fingerprint(&lookalike), v4.fingerprint());
+    assert!(!v3.supports_rich_details() && v4.supports_rich_details());
     assert!(!v3.supports_rich_image_links() && v4.supports_rich_image_links());
     assert!(!v3.supports_rich_list_numbering());
     assert!(v4.supports_rich_list_numbering());

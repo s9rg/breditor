@@ -18,6 +18,37 @@ impl RichBlockDraft {
             body.into_iter().map(Self::into_node).collect(),
         )?))
     }
+    /// Candidate-V4 collapsible section: one summary with canonical (possibly formatted)
+    /// text, an explicit persisted open state and a nonempty retained flow body.
+    ///
+    /// # Errors
+    /// Rejects an empty body or AST construction failure. The selected profile must admit
+    /// V4; the nesting bound and summary formats are checked at publication.
+    pub fn details(
+        id: &BlockId,
+        summary: &BlockId,
+        text: &TextFragment,
+        open: bool,
+        body: Vec<Self>,
+    ) -> Result<Self, RichDraftError> {
+        if body.is_empty() {
+            return Err(RichDraftError::EmptyDetails);
+        }
+        let summary = element(
+            "details-summary",
+            vec![("block-id", PropertyValue::from_string(summary.as_str()))],
+            text.iter().cloned().map(TextRun::into_text_node).map(NodeRef::text).collect(),
+        )?;
+        let mut properties = vec![("block-id", PropertyValue::from_string(id.as_str()))];
+        if open {
+            properties.push((super::details::OPEN, PropertyValue::boolean(true)));
+        }
+        Ok(Self::from_node(element(
+            "details",
+            properties,
+            std::iter::once(summary).chain(body.into_iter().map(Self::into_node)).collect(),
+        )?))
+    }
     /// Plain-text code preserving Unicode and every LF/CR/tab exactly, with an optional inert language token.
     ///
     /// # Errors

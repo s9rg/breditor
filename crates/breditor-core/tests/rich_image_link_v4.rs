@@ -30,9 +30,9 @@ use serde_json::{Value, json};
 type Result<T = ()> = std::result::Result<T, Box<dyn std::error::Error>>;
 
 /// Candidate V4 fingerprint for schema `example/layout@1` with the standard inline preset,
-/// pinned for the image-link slice (the `breditor/image` element is persisted type revision 2).
+/// pinned since the collapsible-section slice (`breditor/image` stays persisted type revision 2).
 const V4_FINGERPRINT: &str =
-    "sha256:f17cf0d20d317b80d5081e8093981cdb3e3f2674fe53c285dbd5a6b5110422c0";
+    "sha256:f19134f8bf95a5170a36eb2f5a9f5e3819dbfd2b0dcd9507ab846c60cffb5428";
 
 fn schema(revision: u32) -> Result<CompiledSchema> {
     let id = SchemaId::new(QualifiedName::try_new("example/layout")?, SchemaVersion::try_new(1)?);

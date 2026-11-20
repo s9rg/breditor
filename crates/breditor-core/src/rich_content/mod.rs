@@ -16,6 +16,7 @@ mod block_layout_state;
 pub(crate) mod clipboard;
 mod code_language;
 mod collapse_document_selection;
+pub(crate) mod details;
 mod drafts;
 mod flow_position;
 mod general_range_ids;
@@ -70,6 +71,9 @@ pub use clipboard::{
 };
 pub use code_language::{CodeLanguage, CodeLanguageError};
 pub use collapse_document_selection::collapse_document_selection;
+pub use details::{
+    RICH_DETAILS_KIND, RICH_DETAILS_MAX_DEPTH, RICH_DETAILS_SUMMARY_KIND, RichDetailsError,
+};
 pub use drafts::{RichBlockDraft, RichDraftError, TableCellDraft, TableColumnDraft, TableRowDraft};
 pub use flow_position::{RichFlowParent, RichFlowPosition};
 pub use general_range_ids::allocate_general_range_paragraphs;

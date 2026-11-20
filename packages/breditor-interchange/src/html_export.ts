@@ -47,6 +47,9 @@ export class HtmlExport {
         case "breditor/paragraph":return `<p${this.#layout(node)}>${this.inline(node.children)}</p>`;
         case "breditor/heading":{const rank=property(node,"level");if(typeof rank!=="number"||!Number.isInteger(rank)||rank<1||rank>6)fail("native-admission");return `<h${rank}${this.#layout(node)}>${this.inline(node.children)}</h${rank}>`;}
         case "breditor/blockquote":return `<blockquote>${body()}</blockquote>`;
+        // Candidate V4 section: native disclosure; `open` only from the admitted `true` flag.
+        case "breditor/details":{const open=property(node,"details-open");if(open!==undefined&&open!==true||node.children[0]?.kind!=="element"||node.children[0].type!=="breditor/details-summary")fail("native-admission");return `<details${open===true?" open":""}>${body()}</details>`;}
+        case "breditor/details-summary":return `<summary>${this.inline(node.children)}</summary>`;
         case "breditor/code-block":{const language=property(node,"language");return `<pre${this.#layout(node)}><code${typeof language==="string"?` class="language-${a(language)}"`:""}>${t(nodeText(node))}</code></pre>`;}
         case "breditor/horizontal-rule":return"<hr>";
         case "breditor/bullet-list":return `<ul>${body()}</ul>`;

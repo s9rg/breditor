@@ -39,7 +39,13 @@ impl ValidationState<'_> {
                 && crate::rich_content::list_numbering::allows_property(kind, name);
             let image_link = self.schema.supports_rich_image_links()
                 && crate::rich_content::image_link::allows_property(kind, name);
-            if !ast_properties::allows_property(kind, name) && !layout && !numbering && !image_link
+            let details = self.schema.supports_rich_details()
+                && crate::rich_content::details::allows_property(kind, name);
+            if !ast_properties::allows_property(kind, name)
+                && !layout
+                && !numbering
+                && !image_link
+                && !details
             {
                 self.element_property_issue(
                     ValidationCode::UnknownElementProperty,
@@ -75,6 +81,7 @@ impl ValidationState<'_> {
         {
             self.rich_issue(ValidationCode::RichContentContract, path, reason);
         }
+        self.validate_rich_details(element, path);
         if kind != "breditor/document"
             && let Ok(id) = ast_properties::string(element, "block-id")
             && BlockId::try_new(id).is_ok()
@@ -103,6 +110,41 @@ impl ValidationState<'_> {
                 self.rich_issue(ValidationCode::RichContentContract, path, reason);
             }
         }
+    }
+
+    /// Candidate V4 sections: the open-flag value law and the nesting bound.
+    fn validate_rich_details(&mut self, element: &ElementNode, path: &NodePathCursor) {
+        if !self.schema.supports_rich_details()
+            || !crate::rich_content::details::supports_kind(element.kind().as_str())
+        {
+            return;
+        }
+        if let Err(reason) = crate::rich_content::details::validate(element) {
+            self.rich_issue(ValidationCode::RichContentContract, path, reason);
+        }
+        if self.rich_details_depth >= crate::rich_content::RICH_DETAILS_MAX_DEPTH {
+            self.rich_issue(
+                ValidationCode::RichContentContract,
+                path,
+                "collapsible sections exceed the nesting bound",
+            );
+        }
+    }
+
+    /// Enter one element's children: count table and section ancestors for their laws.
+    pub(super) fn enter_rich_scope(&mut self, element: &ElementNode) -> (bool, bool) {
+        let rich = self.schema.is_rich_content_profile();
+        let table = rich && element.kind().as_str() == "breditor/table";
+        let details = rich && element.kind().as_str() == "breditor/details";
+        self.rich_table_depth += usize::from(table);
+        self.rich_details_depth += usize::from(details);
+        (table, details)
+    }
+
+    /// Leave the scope entered by [`Self::enter_rich_scope`].
+    pub(super) fn leave_rich_scope(&mut self, (table, details): (bool, bool)) {
+        self.rich_table_depth -= usize::from(table);
+        self.rich_details_depth -= usize::from(details);
     }
 
     /// Candidate V4: a text-language value must be the canonical bounded BCP 47 form.

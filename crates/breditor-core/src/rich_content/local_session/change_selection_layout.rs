@@ -27,17 +27,22 @@ impl RichLocalSession {
         }
         let selection = self.state.selection.as_ref().ok_or(RichActionError::SelectionKind)?;
         let coverage = RichSelectionCoverage::capture(&self.state.document, selection)?;
-        if coverage.text().is_empty() {
+        // A candidate V4 section summary carries no block layout and is skipped.
+        let spans: Vec<_> = coverage
+            .text()
+            .iter()
+            .filter(|span| crate::rich_content::block_layout::supports_kind(span.kind().as_str()))
+            .collect();
+        if spans.is_empty() {
             return Err(RichActionError::SelectionKind.into());
         }
-        if coverage.text().len()
+        if spans.len()
             > usize::try_from(self.context.max_operations_per_transaction()).unwrap_or(usize::MAX)
         {
             return Err(RichActionError::TooManyActions.into());
         }
-        let actions = coverage
-            .text()
-            .iter()
+        let actions = spans
+            .into_iter()
             .map(|span| {
                 SetBlockLayout::capture(&self.state.document, span.block(), patch)
                     .map(RichAction::SetBlockLayout)

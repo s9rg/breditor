@@ -23,9 +23,9 @@ use breditor_core::{
 use serde_json::{Value, json};
 type Result<T = ()> = std::result::Result<T, Box<dyn std::error::Error>>;
 
-/// Current candidate V4 (the image-link slice bumped the `breditor/image` type revision).
+/// Current candidate V4 (image links bumped the image type revision; sections changed the grammar).
 const V4_FINGERPRINT: &str =
-    "sha256:f17cf0d20d317b80d5081e8093981cdb3e3f2674fe53c285dbd5a6b5110422c0";
+    "sha256:f19134f8bf95a5170a36eb2f5a9f5e3819dbfd2b0dcd9507ab846c60cffb5428";
 
 fn schema(revision: u32) -> Result<CompiledSchema> {
     let id = SchemaId::new(QualifiedName::try_new("example/layout")?, SchemaVersion::try_new(1)?);

@@ -49,7 +49,13 @@ impl RichMaskedTextSpan {
     }
 }
 pub(super) fn is_text(kind: &str) -> bool {
-    matches!(kind, "breditor/paragraph" | "breditor/heading" | "breditor/code-block")
+    matches!(
+        kind,
+        "breditor/paragraph"
+            | "breditor/heading"
+            | "breditor/code-block"
+            | "breditor/details-summary"
+    )
 }
 pub(super) fn slice(
     text: &TextFragment,

@@ -20,7 +20,10 @@ pub(crate) fn fragment(node: &NodeRef) -> Result<TextFragment, RichActionError> 
         .filter(|node| {
             matches!(
                 node.kind().as_str(),
-                "breditor/paragraph" | "breditor/heading" | "breditor/code-block"
+                "breditor/paragraph"
+                    | "breditor/heading"
+                    | "breditor/code-block"
+                    | "breditor/details-summary"
             )
         })
         .ok_or(RichActionError::TextTarget)?;

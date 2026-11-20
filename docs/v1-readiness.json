@@ -298,11 +298,11 @@
       "sources":["tiptap-catalog","ckeditor-digest"]
     },
     {
-      "id":"widgets-and-embeds","area":"Extended parity","status":"missing",
+      "id":"widgets-and-embeds","area":"Extended parity","status":"partial",
       "summary":"Media, details, emoji, math and diagrams",
-      "current":"Unicode text is supported, but that is not a typed emoji picker, equation, collapsible section, audio/video or diagram widget.",
+      "current":"Candidate local rich V4 adds an original collapsible section (breditor/details with one text-only breditor/details-summary and a flow body, nesting bounded at 8, persisted open state) with wrap/unwrap/toggle/enter-body actions, deterministic editing (summary clicks never toggle while editing; collapsed bodies are skipped by navigation), live/static rendering and HTML/Markdown interchange. Emoji picker, equations, audio/video and diagrams remain missing; V4 is local-only and unreleased.",
       "acceptance":"Use separate original node contracts, inert/sandboxed renderers and explicit providers. Define import/export and collaboration for each admitted widget.",
-      "evidence":["crates/breditor-core/src/rich_content/drafts.rs","packages/breditor-experimental-rich-content/src/render.ts"],
+      "evidence":["crates/breditor-core/src/rich_content/drafts.rs","packages/breditor-experimental-rich-content/src/render.ts","crates/breditor-core/tests/rich_details_v4.rs","experiments/rich-browser/details-v4.spec.mjs"],
       "sources":["tiptap-catalog","ckeditor-digest"]
     },
     {
