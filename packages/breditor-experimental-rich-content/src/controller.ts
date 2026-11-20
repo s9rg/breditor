@@ -12,18 +12,19 @@ import {standardInlineStylesV1} from "./standard_inline_v1.js";
 import {mountToolbarControl,toolbarControlStyles,type RichControlView} from "./toolbar_control_view.js";
 import {resolveRichUi,type RichUiLocale,type RichUiOptions} from "./ui_locale.js";
 import {taskTab} from "./task_actions_v2.js";
+import {captionArrowCommands} from "./table_caption_navigation.js";
 import {flowEdgeEligible,selectedFlowAtom} from "./flow_controls.js";
 import {standardSelectionInlineControls,selectionFormatChanges} from "./standard_inline_controls.js";
 import {blockLayoutShortcut} from "./block_layout_controls.js";
 import {encodeBlockLayoutPatch} from "./block_layout_serialization.js";
 import {encodeListNumberingPatch} from "./list_numbering_serialization.js";
 import type {RichClipboardTextProjection} from "./core.js";
-import {requireClipboardInterchange,readClipboardInput,exportClipboard,writeClipboard,clipboardInterchangeReport,clipboardInterchangeStatus,type RichClipboardInterchange,type RichClipboardInterchangeReport,type RichInterchangeFormatReport} from "./clipboard_interchange.js";
+import {requireClipboardInterchange,readClipboardInput,exportClipboard,writeClipboard,clipboardInterchangeReport,clipboardInterchangeStatus,clipboardProjectionText,type RichClipboardInterchange,type RichClipboardInterchangeReport,type RichInterchangeFormatReport} from "./clipboard_interchange.js";
 import type {RichSearchQuery,RichSearchReplacement,RichSearchResults} from "./core.js";
 import {RichSearchEvents,type RichSearchHostState,type RichSearchCompletion} from "./search_host.js";
 import {publishRichSearchIntent,type RichSearchIntent} from "./search_intent.js";
-import {requireMarkdownInputRules,isPlainInputScalar,captureMarkdownInputSource,checkMarkdownInputSource,publishMarkdownInput,type MarkdownInputIntent,type MarkdownInputSource} from "./input_rule_intent.js";
-import type {RichInputRuleOutcome} from "./core.js";
+import {requireInputRules,needsInputRuleSets,isPlainInputScalar,captureMarkdownInputSource,checkMarkdownInputSource,publishMarkdownInput,type MarkdownInputIntent,type MarkdownInputSource,type RichInputRulesOption} from "./input_rule_intent.js";
+import type {RichInputRuleId,RichInputRuleOutcome} from "./core.js";
 import type {RichWritingToolsRead} from "./writing_tools_types.js";
 import {RichWritingEvents,RichWritingReadRegistry,type RichWritingToolsHostState} from "./writing_tools_host.js";
 import {prepareRichPlaceholder,RichPlaceholderPresentation,richPlaceholderStyles} from "./placeholder.js";
@@ -38,8 +39,8 @@ export interface RichEditorOptions<P extends RichSelectionPolicy="original"> ext
  selectionEditing?:P;
  /** Immutable explicit native general-range routing; default keeps original input contracts. */
  rangeEditing?:"original"|"general-v1";
- /** Immutable explicit browser policy; omitted keeps literal ordinary input. */
- inputRules?:"markdown-v1";
+ /** Immutable explicit browser policy (`markdown-v1`, `autolink-v1` or both); omitted keeps literal ordinary input. */
+ inputRules?:RichInputRulesOption;
  /** Literal input committed, but native shortcut conversion was refused; never retry input. */
  onInputRuleRefused?:()=>void;
  toolbar?:readonly ToolbarControl<P>[];
@@ -69,7 +70,7 @@ function sameSelection(a:RichDocumentSelection|null,b:RichDocumentSelection|null
  if(a.kind==="text"&&b.kind==="text")return a.anchor.block===b.anchor.block&&a.anchor.offset===b.anchor.offset&&a.anchor.affinity===b.anchor.affinity&&a.focus.block===b.focus.block&&a.focus.offset===b.focus.offset&&a.focus.affinity===b.focus.affinity;
  return false;
 }
-type Work={revision:string;focus:boolean;accepted?:((display:boolean)=>void)|undefined;completion?:RichSearchCompletion}&({command:RichCommand|DocumentIntent;search?:never;inputRule?:never}|{command?:never;search:RichSearchIntent;inputRule?:never}|{command?:never;search?:never;inputRule:MarkdownInputIntent});
+type Work={revision:string;focus:boolean;accepted?:((display:boolean)=>void)|undefined;completion?:RichSearchCompletion}&({command:RichCommand|DocumentIntent;search?:never;inputRule?:never;paragraph?:never}|{command?:never;search:RichSearchIntent;inputRule?:never;paragraph?:never}|{command?:never;search?:never;inputRule:MarkdownInputIntent;paragraph?:never}|{command?:never;search?:never;inputRule?:never;paragraph:{right:string;newItem:string|null}});
 type Composition={block:string;original:string;revision:string;finishing:boolean;target?:Extract<RichSelection,{kind:"text"}>}|{document:true;revision:string;finishing:boolean};
 export class RichDomEditor<P extends RichSelectionPolicy="original"> {
  readonly surface:HTMLDivElement;
@@ -81,7 +82,7 @@ export class RichDomEditor<P extends RichSelectionPolicy="original"> {
  readonly #selectionPolicy:P;readonly #document:RichDocumentCoreEditor|undefined;
  #general=false;
  readonly #interchange:RichClipboardInterchange|undefined;
- readonly #inputRules:boolean;
+ readonly #inputRules:boolean;readonly #inputRuleIds:readonly RichInputRuleId[]|null;
  readonly #searchEvents=new RichSearchEvents();
  readonly #writingEvents=new RichWritingEvents();readonly #writingReads=new RichWritingReadRegistry();
  readonly #placeholder:RichPlaceholderPresentation|undefined;
@@ -91,7 +92,7 @@ export class RichDomEditor<P extends RichSelectionPolicy="original"> {
   if((options.core.selectionPolicy?.()??"original")!==policy)throw Error("DOM selection policy must match its explicitly selected native owner");
   this.#selectionPolicy=policy as P;this.#document=policy==="document-v1"?requireDocumentBrowserCore(options.core):undefined;
   this.#interchange=requireClipboardInterchange(options.clipboardInterchange,options.core);
-  this.#inputRules=requireMarkdownInputRules(options.inputRules,options.core);
+  this.#inputRuleIds=requireInputRules(options.inputRules,options.core);this.#inputRules=this.#inputRuleIds!==null;
   const placeholder=prepareRichPlaceholder(options.placeholder,options.core);
   if(options.rangeEditing!==undefined&&options.rangeEditing!=="original"&&options.rangeEditing!=="general-v1")throw new TypeError("Expected rangeEditing original or general-v1");
   if(this.#document&&options.rangeEditing==="original")throw Error("Document selection requires native general-range browser routing");
@@ -146,7 +147,7 @@ export class RichDomEditor<P extends RichSelectionPolicy="original"> {
  #logical():boolean {return ["grid","node","document"].includes(this.#model.view.selection?.kind??"");}
  #context():ActionContext<P>{return {core:this.#options.core,model:this.#model,allocate:this.#allocate,stamp:()=>({replica:"1",counter:String(this.#counter++),lamport:this.#model.view.revision})};}
  #attempt(work:()=>void):void {try{work();}catch(error){this.#report(error);this.#reconcile();}}
- #report(error:unknown):void {this.status.textContent=error instanceof Error?error.message:this.#ui.text("richOperationFailed");try{this.#options.onError?.(error);}catch{/* A host callback cannot rewind committed content. */}}
+ #report(error:unknown):void {this.status.textContent=this.#ui.describe(error,this.#ui.text("richOperationFailed"));try{this.#options.onError?.(error);}catch{/* A host callback cannot rewind committed content. */}}
  #mountControl(container:HTMLElement,control:ToolbarControl<P>,signal:AbortSignal):RichControlView<ActionContext<P>>{
   return mountToolbarControl(container,control,{prefix:"rich",ui:this.#ui,signal,sync:()=>this.#sync(),stamp:()=>JSON.stringify(this.#options.core.view()),attempt:work=>this.#attempt(work),focus:()=>this.focus(),run:(value,fields)=>{const command=control.command(this.#context(),value,fields);if(command)this.execute(command);}});
  }
@@ -189,8 +190,18 @@ export class RichDomEditor<P extends RichSelectionPolicy="original"> {
   this.#live();if((this.#searchEvents.notifying||this.#writingEvents.notifying))throw Error("Read notifications cannot publish reentrantly");
   const view=this.#options.core.view();checkMarkdownInputSource(view,source);
   if(this.#queue.length>=128)throw Error("Rich editor command queue is full");
-  const inputRule=Object.freeze({text,namespace:this.#allocate("rule"),...(view.historyGrouping==="typing-v1"?{clockMs:this.#clock()}:{} )});
+  const inputRule=Object.freeze({text,namespace:this.#allocate("rule"),...(view.historyGrouping==="typing-v1"?{clockMs:this.#clock()}:{} ),...(needsInputRuleSets(this.#inputRuleIds)?{rules:this.#inputRuleIds!}:{})});
   this.#queue.push({inputRule,revision:source.revision,focus:true});this.#drain();
+ }
+ /** `autolink-v1` Enter: only a plain caret split takes the exclusive native split-and-link call. */
+ #autolinkParagraph(command:RichCommand,target:Extract<RichSelection,{kind:"text"}>|null):boolean {
+  if(!this.#inputRuleIds?.includes("autolink-v1")||command.kind!=="insertParagraph"||this.#logicalSelection)return false;
+  const selection=this.#model.view.selection;
+  if(selection?.kind!=="text"||selection.anchor.block!==selection.focus.block||selection.anchor.offset!==selection.focus.offset||target&&!isCurrentCaretTarget(selection,target))return false;
+  this.#live();if((this.#searchEvents.notifying||this.#writingEvents.notifying))throw Error("Read notifications cannot publish reentrantly");
+  if(this.#queue.length>=128)throw Error("Rich editor command queue is full");
+  this.#queue.push({paragraph:{right:command.data.right,newItem:command.data.newItem},revision:this.#model.view.revision,focus:true});this.#drain();
+  return true;
  }
  #inputRuleRefused():void {
   if(this.#disposed)return;this.status.textContent=this.#ui.text("inputRuleRefused");
@@ -236,6 +247,7 @@ export class RichDomEditor<P extends RichSelectionPolicy="original"> {
     const active=this.surface.ownerDocument.activeElement,ownedFocus=active===this.surface||!!active&&this.surface.contains(active);
     let outcome:RichCommandOutcome;
     if(work.inputRule){inputRuleOutcome=publishMarkdownInput(this.#options.core,work.inputRule,work.revision);outcome=inputRuleOutcome==="unchanged"?"unchanged":"content";}
+    else if(work.paragraph){inputRuleOutcome=this.#options.core.insertParagraphWithAutolink!(work.paragraph,work.revision);outcome=inputRuleOutcome==="unchanged"?"unchanged":"content";}
     else if(work.search)outcome=publishRichSearchIntent(this.#options.core,work.search,work.revision);
     else if(isDocumentIntent(work.command)){if(!this.#document)throw Error("Use the explicit document-selection DOM owner");outcome=publishDocumentIntent(this.#document,work.command,work.revision);}else outcome=this.#options.core.execute(work.command,work.revision);
     published=true;first??=outcome;this.#model=this.#read();this.#logicalSelection=this.#logical();
@@ -362,6 +374,12 @@ export class RichDomEditor<P extends RichSelectionPolicy="original"> {
    if(!mod&&!event.altKey&&[...event.key].length===1){event.preventDefault();this.#attempt(()=>this.#replaceDocumentInput(event.key,true));return;}
    if(side&&event.shiftKey)this.#logicalSelection=false;
   }
+  // Candidate V4 table captions: <caption> is first in the DOM but laid out after the rows, so the
+  // editor owns the arrow keys at the four caption boundaries (see table_caption_navigation.ts).
+  if(!mod&&!event.altKey&&!event.shiftKey&&["ArrowUp","ArrowDown","ArrowLeft","ArrowRight"].includes(event.key)&&this.#options.core.supportsTableCaptions?.()===true){
+   this.#attempt(()=>{this.#sync();const commands=captionArrowCommands(this.surface,this.#model,event.key as "ArrowUp");if(commands){event.preventDefault();for(const command of commands)this.execute(command);}});
+   if(event.defaultPrevented)return;
+  }
   const alignment=blockLayoutShortcut(event);
   if(alignment&&this.#options.core.supportsBlockLayout?.()===true){
    event.preventDefault();if(this.#model.view.readOnly===true)return;
@@ -436,7 +454,7 @@ export class RichDomEditor<P extends RichSelectionPolicy="original"> {
     return;
    }
    if((type==="insertParagraph"||type==="insertLineBreak")&&isStructuralRichLanguage(this.#options.core.richLanguageVersion?.())&&this.#options.core.supportsFlowNavigation?.()===true&&selectedFlowAtom(this.#model)){this.execute({kind:"insertParagraphAdjacent",data:{paragraph:this.#context().allocate("p"),side:type==="insertLineBreak"?"before":"after"}});return;}
-   if(type==="insertParagraph"){const range=event.getTargetRanges?.()[0],target=this.#general&&range?readTarget(this.surface,range):null;const command=enter(this.#context(),this.#general,target&&target.anchor.block!==target.focus.block?target:undefined);if(command)this.execute(command);return;}
+   if(type==="insertParagraph"){const range=event.getTargetRanges?.()[0],target=this.#general&&range?readTarget(this.surface,range):null;const command=enter(this.#context(),this.#general,target&&target.anchor.block!==target.focus.block?target:undefined);if(command&&!this.#autolinkParagraph(command,target))this.execute(command);return;}
    const selection=this.#model.view.selection;
    if(isStructuralRichLanguage(this.#options.core.richLanguageVersion?.())&&this.#options.core.supportsAtomEditing?.()===true&&selectedFlowAtom(this.#model)){
     if(type.startsWith("delete")){this.execute({kind:"deleteAtom",data:{paragraph:this.#allocate("p"),movement:type.includes("Backward")?"before":"after"}});return;}
@@ -502,12 +520,12 @@ export class RichDomEditor<P extends RichSelectionPolicy="original"> {
  }
  #clipboardComplete(operation:RichClipboardInterchangeReport["operation"],revision:string,formats:readonly RichInterchangeFormatReport[],destination?:RichClipboardTextProjection,display=true):void {
   if(this.#disposed)return;
-  if(this.#interchange&&(formats.length||destination)){const report=clipboardInterchangeReport(operation,revision,formats,destination),message=clipboardInterchangeStatus(report);if(display&&message)this.status.textContent=message;try{this.#options.onInterchange?.(report);}catch(error){this.#report(error);}}
+  if(this.#interchange&&(formats.length||destination)){const report=clipboardInterchangeReport(operation,revision,formats,destination),message=clipboardInterchangeStatus(report,this.#ui);if(display&&message)this.status.textContent=message;try{this.#options.onInterchange?.(report);}catch(error){this.#report(error);}}
   if(destination){if(display&&!this.#interchange)this.#pasteLoss(destination);else try{this.#options.onPasteLoss?.(destination);}catch(error){this.#report(error);}}
  }
  #files(files:readonly File[]):void {if(this.#options.core.view().readOnly===true)return;this.#boundary();this.#attempt(()=>{this.#sync();if(this.#model.view.selection?.kind==="document"){if(!this.#options.onDocumentFiles)throw Error("Whole-document image replacement requires a document-aware asset host");void Promise.resolve(this.#options.onDocumentFiles(files,this.#model.view.revision)).catch(error=>this.#report(error));return;}if(!this.#options.onFiles)throw Error("Image file insertion requires an asset host");void Promise.resolve(this.#options.onFiles(files,positionAfter(this.#context()))).catch(error=>this.#report(error));});}
  #replaceDocumentInput(text:string,typing:boolean):RichCommandOutcome|"queued" {const paragraph=this.#allocate("p");return this.#executeIntent(typing&&this.#model.view.historyGrouping==="typing-v1"?{kind:"replaceDocumentTypingText",paragraph,text,clockMs:this.#clock()}:{kind:"replaceDocumentPlainText",paragraph,text});}
- #pasteLoss(report:RichClipboardTextProjection):void{this.status.textContent=this.#ui.text("pasteLoss",{target:report.target,losses:report.losses.join(", ")});try{this.#options.onPasteLoss?.(report);}catch(error){this.#report(error);}}
+ #pasteLoss(report:RichClipboardTextProjection):void{this.status.textContent=this.#ui.text("pasteLoss",clipboardProjectionText(report,this.#ui));try{this.#options.onPasteLoss?.(report);}catch(error){this.#report(error);}}
  #startComposition():void {if(this.#composition||this.#model.view.readOnly===true)return;this.#boundary();this.#attempt(()=>{if(this.#model.view.readOnly===true)return;this.#sync();const selection=this.#model.view.selection;if(selection?.kind==="document"&&this.#document){this.#composition={document:true,revision:this.#model.view.revision,finishing:false};return;}if(selection?.kind!=="text")return;const cross=selection.anchor.block!==selection.focus.block;if(cross&&!this.#general)return;const node=this.#model.nodes.get(selection.focus.block);if(node)this.#composition={block:id(node),original:text(node),revision:this.#model.view.revision,finishing:false,...(cross?{target:structuredClone(selection)}:{})};});this.#notifySearch();}
  #endComposition(committedText:string):void {
   const composition=this.#composition;if(!composition)return;composition.finishing=true;
@@ -548,4 +566,4 @@ export class RichDomEditor<P extends RichSelectionPolicy="original"> {
 export function mountRichEditor(root:HTMLElement,options:RichEditorOptions):RichDomEditor{return new RichDomEditor(root,options);}
 /** Opt-in extended coordinator; ordinary mounts and original execute/selection DTOs stay closed. */
 export function mountDocumentRichEditor(root:HTMLElement,options:RichDocumentEditorOptions):RichDomEditor<"document-v1"> {return new RichDomEditor<"document-v1">(root,options);}
-const styles=`[data-breditor-rich]{color:#173d37;font:16px system-ui,sans-serif;max-width:1100px;margin:auto}[data-breditor-rich] .breditor-rich-toolbar{display:flex;flex-wrap:wrap;align-items:end;gap:6px;padding:12px;background:#eef3ef;border:1px solid #bdcdc5;border-radius:10px 10px 0 0}[data-breditor-rich] button{padding:6px 9px;border:1px solid #aabbb3;border-radius:5px;background:white;color:inherit;cursor:pointer}[data-breditor-rich] button:disabled{opacity:.45;cursor:default}[data-breditor-rich] label{display:grid;font-size:12px;gap:3px}[data-breditor-rich] input{width:110px;padding:6px}[data-breditor-rich] .breditor-rich-surface{padding:20px;border:1px solid #bdcdc5;min-height:280px;outline:none;background:white}[data-breditor-rich] .breditor-rich-surface:focus{box-shadow:inset 0 0 0 2px #398a79}[data-breditor-rich] p,[data-breditor-rich] h1,[data-breditor-rich] h2,[data-breditor-rich] h3{white-space:pre-wrap}[data-breditor-rich] table{border-collapse:collapse;table-layout:fixed;margin:16px 0;max-width:100%}[data-breditor-rich] td,[data-breditor-rich] th{border:1px solid #91aaa0;padding:8px;vertical-align:top;min-width:80px}[data-breditor-rich] th{background:#eaf1ee}[data-breditor-rich] [data-select-cell]{font-size:10px;color:#527269;padding:2px 5px}[data-breditor-rich] [data-source-cell]+[data-source-cell]{border-top:1px dashed #b6c8c0}[data-breditor-rich] [data-selected]{box-shadow:inset 0 0 0 3px #398a79;background:#edf8f3}[data-breditor-rich] [data-node-selected]{outline:3px solid #398a79}[data-breditor-rich] figure{padding:12px;background:#f5f8f6;border:1px solid #d8e3dc;margin:16px 0}[data-breditor-rich] img{max-width:100%;object-fit:contain;display:block;min-width:40px;min-height:30px}[data-breditor-rich] figcaption{margin-top:8px;color:#527269}[data-breditor-rich] .breditor-rich-status{font-size:12px;color:#527269}`;
+const styles=`[data-breditor-rich]{color:#173d37;font:16px system-ui,sans-serif;max-width:1100px;margin:auto}[data-breditor-rich] .breditor-rich-toolbar{display:flex;flex-wrap:wrap;align-items:end;gap:6px;padding:12px;background:#eef3ef;border:1px solid #bdcdc5;border-radius:10px 10px 0 0}[data-breditor-rich] button{padding:6px 9px;border:1px solid #aabbb3;border-radius:5px;background:white;color:inherit;cursor:pointer}[data-breditor-rich] button:disabled{opacity:.45;cursor:default}[data-breditor-rich] label{display:grid;font-size:12px;gap:3px}[data-breditor-rich] input{width:110px;padding:6px}[data-breditor-rich] .breditor-rich-surface{padding:20px;border:1px solid #bdcdc5;min-height:280px;outline:none;background:white}[data-breditor-rich] .breditor-rich-surface:focus{box-shadow:inset 0 0 0 2px #398a79}[data-breditor-rich] p,[data-breditor-rich] h1,[data-breditor-rich] h2,[data-breditor-rich] h3{white-space:pre-wrap}[data-breditor-rich] table{border-collapse:collapse;table-layout:fixed;margin:16px 0;max-width:100%}[data-breditor-rich] td,[data-breditor-rich] th{border:1px solid #91aaa0;padding:8px;vertical-align:top;min-width:80px}[data-breditor-rich] th{background:#eaf1ee}[data-breditor-rich] [data-select-cell]{font-size:10px;color:#527269;padding:2px 5px}[data-breditor-rich] [data-source-cell]+[data-source-cell]{border-top:1px dashed #b6c8c0}[data-breditor-rich] [data-selected]{box-shadow:inset 0 0 0 3px #398a79;background:#edf8f3}[data-breditor-rich] [data-node-selected]{outline:3px solid #398a79}[data-breditor-rich] figure{padding:12px;background:#f5f8f6;border:1px solid #d8e3dc;margin:16px 0}[data-breditor-rich] img{max-width:100%;object-fit:contain;display:block;min-width:40px;min-height:30px}[data-breditor-rich] figcaption{margin-top:8px;color:#527269}[data-breditor-rich] caption[data-rich-table-caption]{padding-top:8px;color:#527269;text-align:start}[data-breditor-rich] .breditor-rich-status{font-size:12px;color:#527269}`;

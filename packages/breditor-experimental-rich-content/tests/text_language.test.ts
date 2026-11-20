@@ -22,7 +22,7 @@ function view(runs:unknown[],selection:RichView["selection"]=null):RichView{
 const range={kind:"text" as const,anchor:{block:"p",offset:"0",affinity:"after" as const},focus:{block:"p",offset:"3",affinity:"after" as const}};
 function owner(language:1|2|3|4,state:RichInlineFormatState={kind:"unset"},capable=language===4){
  const read=(kind:string)=>({format:"breditor/rich-inline-format-state",formatVersion:1,formatKind:kind,schema:{name:"breditor/rich-test",version:1,fingerprint},state:kind==="breditor/text-language"?state:{kind:"unset"}});
- return {supportsStandardInlineControls:()=>true,caretFormats:()=>[],inlineFormatState:read,richLanguageVersion:()=>language,supportsListNumbering:()=>capable,supportsTextLanguage:()=>capable,supportsImageLinks:()=>capable,supportsDetails:()=>capable,supportsBlockLayout:()=>language>=3,
+ return {supportsStandardInlineControls:()=>true,caretFormats:()=>[],inlineFormatState:read,richLanguageVersion:()=>language,supportsListNumbering:()=>capable,supportsTextLanguage:()=>capable,supportsImageLinks:()=>capable,supportsDetails:()=>capable,supportsTableCaptions:()=>capable,supportsBlockLayout:()=>language>=3,
   blockLayoutState:()=>({format:"breditor/rich-block-layout-state",formatVersion:1,schema:{name:"t",version:1,fingerprint},blocks:"0",alignment:{kind:"unavailable"},direction:{kind:"unavailable"},indent:{kind:"unavailable"},lineHeightPercent:{kind:"unavailable"}})} as unknown as RichCoreEditor;
 }
 
@@ -92,12 +92,12 @@ describe("candidate rich V4 language Wasm facade boundary",()=>{
  function stringResult(value:string){return {status:"value",takeValue:()=>value,free:vi.fn()};}
  function local(binding:object,capability:unknown="1"){
   const observation={revision:"1",blockLayoutStateJson:vi.fn(),free:vi.fn()};
-  const editor={observe:()=>observation,blockLayoutVersion:()=>"1",listNumberingVersion:()=>"1",textLanguageVersion:()=>capability,imageLinkVersion:()=>"1",detailsVersion:()=>"1",mentionVersion:()=>"1",execute:vi.fn(()=>({status:"content",takeObservation:()=>observation,free:vi.fn()})),free:vi.fn()};
+  const editor={observe:()=>observation,blockLayoutVersion:()=>"1",listNumberingVersion:()=>"1",textLanguageVersion:()=>capability,imageLinkVersion:()=>"1",detailsVersion:()=>"1",mentionVersion:()=>"1",tableCaptionVersion:()=>"1",execute:vi.fn(()=>({status:"content",takeObservation:()=>observation,free:vi.fn()})),free:vi.fn()};
   const raw={descriptorJson:()=>stringResult(JSON.stringify({kind:"rich",abiVersion:1,...binding})),createEditor:()=>({status:"editor",takeEditor:()=>editor,free:vi.fn()}),free:vi.fn()};
   const factory=vi.fn(()=>({status:"profile",takeProfile:()=>raw,free:vi.fn()}));
   return {wasm:{BreditorRichProfile:{fromBootstrapJson:factory,fromStandardBootstrapJsonV4:factory}} as unknown as RichWasmModule,raw,editor};
  }
- const v4={richLanguageVersion:4,taskStructureVersion:1,blockLayoutVersion:1,listNumberingVersion:1,textLanguageVersion:1,imageLinkVersion:1,detailsVersion:1,mentionVersion:1};
+ const v4={richLanguageVersion:4,taskStructureVersion:1,blockLayoutVersion:1,listNumberingVersion:1,textLanguageVersion:1,imageLinkVersion:1,detailsVersion:1,mentionVersion:1,tableCaptionVersion:1};
  it("snapshots primitive intent and requires every matching capability",()=>{
   expect(encodeTextLanguageIntent({language:"fr-CA"})).toEqual({language:"fr-CA"});expect(encodeTextLanguageIntent({language:null})).toEqual({language:null});
   for(const bad of [{},{language:7},{language:{toJSON:()=>"en"}},{language:"en",extra:1},null,[],new Date()])expect(()=>encodeTextLanguageIntent(bad)).toThrow(TypeError);

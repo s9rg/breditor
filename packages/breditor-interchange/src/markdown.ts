@@ -143,6 +143,8 @@ export function exportMarkdownRoot(nodes:Node[],b:Budget,options:InterchangeOpti
       return n.children.map((item,i)=>{if(item.kind!=="element")fail("native-admission");const marker=ordered?`${start+i}${flip?")":"."} `:n.type==="breditor/task-list"?`${bullet} [${property(item,"checked")===true?"x":" "}] `:`${bullet} `,indent=ordered?marker.length:2,lines=sequence(item.children,depth+1).split("\n");return `${marker}${lines[0]}${lines.slice(1).map(line=>`\n${line?" ".repeat(indent):""}${line}`).join("")}`;}).join("\n");
     }
     if(n.type==="breditor/table"){
+      // GFM tables have no caption: a candidate V4 captioned table keeps exact HTML (`markdown-feature`).
+      const tail=n.children.at(-1);if(tail?.kind==="element"&&tail.type==="breditor/paragraph")return fallback();
       const rows=n.children as Element[],columns=property(n,"columns") as {id:string;width:number}[],merges=property(n,"merges") as unknown[];
       const cell=(r:Element,c:string)=>r.children.find((n):n is Element=>n.kind==="element"&&property(n,"column-id")===c)??fail("native-admission");
       const simple=rows.length>0&&columns.every(c=>c.width===120)&&merges.length===0&&rows.every((r,i)=>columns.every(c=>{const v=cell(r,c.id);return property(v,"header")===(i===0)&&v.children.length===1&&v.children[0]?.kind==="element"&&v.children[0].type==="breditor/paragraph"&&simpleInline(v.children[0],false,true)&&!v.children[0].children.some(t=>t.kind==="text"&&t.text.includes("|"));}));

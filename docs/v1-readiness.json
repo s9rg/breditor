@@ -60,9 +60,9 @@
     {
       "id":"links","area":"Editing","status":"partial",
       "summary":"Links and automatic link detection",
-      "current":"Default and explicit standard rich/shared Link forms reuse the same safe URL policy. Standard forms support mixed values, stale guards and exact history/reload. Explicit native property patches preserve each observed URL or target when the other form field is left blank; every selected character must already carry a Link. Complete set commands retain replacement semantics. Shared patches use original complete-format annotations and whole-format concurrent conflict policy, with atomic existing group limits. Foreign interchange, optional autolink and release qualification remain open.",
+      "current":"Default and explicit standard rich/shared Link forms reuse the same safe URL policy. Standard forms support mixed values, stale guards and exact history/reload. Explicit native property patches preserve each observed URL or target when the other form field is left blank; every selected character must already carry a Link. Complete set commands retain replacement semantics. Shared patches use original complete-format annotations and whole-format concurrent conflict policy, with atomic existing group limits. Foreign interchange, optional autolink and release qualification remain open. Opt-in autolink-v1 converts a typed http(s)/www URL on space or Enter into the standard link only when the target is already canonical under the native safeLinkV1 subset; trailing punctuation stays plain and one Undo removes only the link.",
       "acceptance":"Use one safe URL policy for shared rendering, explicit link editing, clipboard/export and optional autolink, without interpreting arbitrary HTML.",
-      "evidence":["packages/breditor-reference-highlight/src/formatting_profile.ts","packages/breditor-browser/src/toolbar_inline_format_form.ts","packages/breditor-experimental-rich-content/src/standard_inline_controls.ts","experiments/rich-browser/standard-toolbar-checks.mjs","docs/RICH_INLINE_PROPERTY_PATCHES.md","crates/breditor-core/tests/rich_format_property_patch.rs","crates/breditor-collaboration/tests/inline_property_patch_contracts.rs","experiments/editor-browser/inline-property-patch.spec.mjs","scripts/probe-inline-property-patch.mjs","docs/qualification/2026-10-15-inline-property-patches.json"],
+      "evidence":["packages/breditor-reference-highlight/src/formatting_profile.ts","packages/breditor-browser/src/toolbar_inline_format_form.ts","packages/breditor-experimental-rich-content/src/standard_inline_controls.ts","experiments/rich-browser/standard-toolbar-checks.mjs","docs/RICH_INLINE_PROPERTY_PATCHES.md","crates/breditor-core/tests/rich_format_property_patch.rs","crates/breditor-collaboration/tests/inline_property_patch_contracts.rs","experiments/editor-browser/inline-property-patch.spec.mjs","scripts/probe-inline-property-patch.mjs","docs/qualification/2026-10-15-inline-property-patches.json","crates/breditor-core/src/rich_content/input_rules/autolink.rs","experiments/rich-browser/autolink.spec.mjs"],
       "sources":["tiptap-starter","ckeditor-overview"]
     },
     {
@@ -172,9 +172,9 @@
     {
       "id":"advanced-tables","area":"Tables","status":"partial",
       "summary":"Table presentation and advanced interaction",
-      "current":"Width/header controls exist. Table captions and style/property panels are incomplete. Nested tables are intentionally outside the current admitted rich grammar. Opt-in accessible column resize separators preview drags and commit one existing width command clamped to 32..4096, with keyboard steps and cancellation on table changes; the nested-table rejection policy is documented. Captions, presentation panels and broader rich paste remain open.",
+      "current":"Width/header controls exist. Table captions and style/property panels are incomplete. Nested tables are intentionally outside the current admitted rich grammar. Opt-in accessible column resize separators preview drags and commit one existing width command clamped to 32..4096, with keyboard steps and cancellation on table changes; the nested-table rejection policy is documented. Captions, presentation panels and broader rich paste remain open. Candidate local rich V4 adds an optional trailing table caption (an ordinary paragraph after the rows) with add/remove commands, table-action, navigation, clipboard and search integration and HTML caption interchange.",
       "acceptance":"Resolve nested-table policy explicitly; add captions, accessible resize handles, table/cell presentation and interoperable rich paste without losing source partitions.",
-      "evidence":["packages/breditor-collaboration/src/toolbar.ts","packages/breditor-experimental-rich-content/src/render.ts","crates/breditor-core/src/rich_content/drafts.rs","docs/RICH_TABLES.md","packages/breditor-experimental-rich-content/src/table_column_resize.ts"],
+      "evidence":["packages/breditor-collaboration/src/toolbar.ts","packages/breditor-experimental-rich-content/src/render.ts","crates/breditor-core/src/rich_content/drafts.rs","docs/RICH_TABLES.md","packages/breditor-experimental-rich-content/src/table_column_resize.ts","crates/breditor-core/tests/rich_table_caption_v4.rs"],
       "sources":["tiptap-table","ckeditor-tables"]
     },
     {
@@ -188,9 +188,9 @@
     {
       "id":"advanced-images","area":"Images","status":"partial",
       "summary":"Image layouts, handles, links and external sources",
-      "current":"Numeric dimensions and block captions work. Inline/wrapped images, drag handles, responsive variants and safe remote-URL ingestion are not a complete product workflow. Candidate local rich V4 adds image links: canonical http(s) targets under the inline link policy, an optional new-window flag, mandatory alt text, inert navigation while editing, one-group SetImageLink history, live/static rendering and HTML/Markdown interchange.",
+      "current":"Numeric dimensions and block captions work. Inline/wrapped images, drag handles, responsive variants and safe remote-URL ingestion are not a complete product workflow. Candidate local rich V4 adds image links: canonical http(s) targets under the inline link policy, an optional new-window flag, mandatory alt text, inert navigation while editing, one-group SetImageLink history, live/static rendering and HTML/Markdown interchange. Opt-in accessible image resize handles (aspect-keeping corner, edge drags, keyboard slider, one existing resize command per release or key, RTL-aware) now exist for local and shared editors.",
       "acceptance":"Define supported layouts and ingestion policy, then test resize gestures, responsive output, link/alt behavior and asset lifecycle. Do not turn remote URLs into implicit server fetches.",
-      "evidence":["packages/breditor-experimental-rich-content/src/render.ts","packages/breditor-collaboration/src/toolbar.ts","crates/breditor-core/src/rich_content/image_link.rs"],
+      "evidence":["packages/breditor-experimental-rich-content/src/render.ts","packages/breditor-collaboration/src/toolbar.ts","crates/breditor-core/src/rich_content/image_link.rs","docs/IMAGE_RESIZE.md","packages/breditor-experimental-rich-content/src/image_resize.ts"],
       "sources":["tiptap-image","ckeditor-overview"]
     },
     {
@@ -362,11 +362,11 @@
       "sources":["ckeditor-digest"]
     },
     {
-      "id":"ai-and-language-tools","area":"Extended parity","status":"missing",
+      "id":"ai-and-language-tools","area":"Extended parity","status":"partial",
       "summary":"AI assistance and integrated spelling or grammar review",
-      "current":"Browser-native spelling behavior is not a provider, review UI or semantic AI command integration.",
+      "current":"An opt-in provider-agnostic contract now exists for local editors: hosts supply rewrite and language-check providers, only explicitly scoped plain text is sent with cancellation, deadlines and size bounds, provider output is validated as untrusted (formatted answers only through the interchange importer), rewrites are reviewed and applied as one guarded command with stale refusal, and language issues are painted outside the editing DOM. Shared editors, formatted-scope requests and bundled providers are not included.",
       "acceptance":"Define explicit host providers and privacy boundaries; generated edits must use ordinary guarded commands with stale-result rejection and reviewable history.",
-      "evidence":["packages/breditor-collaboration/src/index.ts","packages/breditor-collaboration/src/core.ts"],
+      "evidence":["packages/breditor-collaboration/src/index.ts","packages/breditor-collaboration/src/core.ts","docs/AI_AND_LANGUAGE_TOOLS.md","packages/breditor-experimental-rich-content/src/ai_rewrite.ts"],
       "sources":["tiptap-catalog","ckeditor-overview"]
     },
     {
@@ -388,9 +388,9 @@
     {
       "id":"localization-and-bidi","area":"Integration","status":"partial",
       "summary":"Localized UI, bidirectional content and language metadata",
-      "current":"Unicode text is retained, but shared controls are English and RTL/bidirectional editing, localized commands and text-part language are not qualified as a supported product surface. An opt-in validated UI catalog (56 keys plus per-control and slash labels, closed placeholder templates) now localizes local/shared chrome, toolbars, context UI, slash, column resize and block drag, with chrome-only lang/dir that never changes content direction; default English output is byte-identical. Candidate local rich V4 now adds canonical BCP 47 text-run language (breditor/text-language) rendered as lang, with a V4 toolbar field and profile-aware lang/xml:lang interchange; shared V4, search/writing/review panels and native error strings remain open.",
+      "current":"Unicode text is retained, but shared controls are English and RTL/bidirectional editing, localized commands and text-part language are not qualified as a supported product surface. An opt-in validated UI catalog (56 keys plus per-control and slash labels, closed placeholder templates) now localizes local/shared chrome, toolbars, context UI, slash, column resize and block drag, with chrome-only lang/dir that never changes content direction; default English output is byte-identical. Candidate local rich V4 now adds canonical BCP 47 text-run language (breditor/text-language) rendered as lang, with a V4 toolbar field and profile-aware lang/xml:lang interchange; shared V4, search/writing/review panels and native error strings remain open. The search, writing tools, fullscreen, review and suggestion panels, clipboard status lines and code-keyed user refusals now use the catalog too (English byte-identical by recorded baseline), with notices/refusals maps for end-user messages while thrown developer errors stay English.",
       "acceptance":"Separate UI language from content direction, localize control strings and qualify mixed-direction navigation/selection with language metadata.",
-      "evidence":["packages/breditor-collaboration/src/toolbar.ts","packages/breditor-collaboration/src/controller.ts","docs/UI_LOCALIZATION.md","packages/breditor-experimental-rich-content/src/ui_locale.ts","crates/breditor-core/src/rich_content/text_language.rs"],
+      "evidence":["packages/breditor-collaboration/src/toolbar.ts","packages/breditor-collaboration/src/controller.ts","docs/UI_LOCALIZATION.md","packages/breditor-experimental-rich-content/src/ui_locale.ts","crates/breditor-core/src/rich_content/text_language.rs","packages/breditor-experimental-rich-content/src/ui_locale_panels.ts"],
       "sources":["ckeditor-overview","ckeditor-digest"]
     }
   ],

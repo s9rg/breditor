@@ -56,6 +56,7 @@ mod set_read_only;
 mod set_text_language;
 mod snapshot;
 mod state;
+mod table_caption;
 pub(crate) mod typing_history;
 pub(crate) mod typing_state;
 mod undo;

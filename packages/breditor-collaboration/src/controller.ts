@@ -14,12 +14,12 @@ import {mountToolbarControl,toolbarControlStyles,isCurrentCaretTarget,type RichC
 import {resolveRichUi,type RichUiLocale,type RichUiOptions} from "@breditor/experimental-rich-content/rendering";
 import {standardSelectionInlineControls,selectionFormatChanges} from "@breditor/experimental-rich-content/rendering";
 import {blockLayoutShortcut} from "@breditor/experimental-rich-content/rendering";
-import {requireClipboardInterchange,readClipboardInput,exportClipboard,writeClipboard,clipboardInterchangeReport,clipboardInterchangeStatus,type RichClipboardInterchange,type RichClipboardInterchangeReport,type RichInterchangeFormatReport} from "@breditor/experimental-rich-content/rendering";
+import {requireClipboardInterchange,readClipboardInput,exportClipboard,writeClipboard,clipboardInterchangeReport,clipboardInterchangeStatus,clipboardProjectionText,type RichClipboardInterchange,type RichClipboardInterchangeReport,type RichInterchangeFormatReport} from "@breditor/experimental-rich-content/rendering";
 import {RichSearchEvents,type RichSearchHostState,type RichSearchCompletion} from "@breditor/experimental-rich-content/rendering";
 import type {RichSearchQuery,RichSearchReplacement} from "@breditor/experimental-rich-content";
 import type {SharedSearchResults} from "./search_results.js";
-import {requireMarkdownInputRules,isPlainInputScalar,captureMarkdownInputSource,checkMarkdownInputSource,publishMarkdownInput,type MarkdownInputSource} from "@breditor/experimental-rich-content/rendering";
-import type {RichInputRuleOutcome} from "@breditor/experimental-rich-content";
+import {requireInputRules,needsInputRuleSets,isPlainInputScalar,captureMarkdownInputSource,checkMarkdownInputSource,publishMarkdownInput,type MarkdownInputSource,type RichInputRulesOption} from "@breditor/experimental-rich-content/rendering";
+import type {RichInputRuleId,RichInputRuleOutcome} from "@breditor/experimental-rich-content";
 import type {RichWritingToolsRead} from "@breditor/experimental-rich-content";
 import {RichWritingEvents,RichWritingReadRegistry,type RichWritingToolsHostState} from "@breditor/experimental-rich-content/rendering";
 import {prepareRichPlaceholder,RichPlaceholderPresentation,richPlaceholderStyles} from "@breditor/experimental-rich-content/rendering";
@@ -33,8 +33,8 @@ export interface SharedDomOptions<P extends SharedSelectionPolicy="original"> ex
  selectionEditing?:P;
  /** Existing default transfers the owner. Borrow only when a persistent session owns its closure. */
  coreOwnership?:"transfer"|"borrow";
- /** Immutable explicit native shortcut policy; omitted preserves ordinary input. */
- inputRules?:"markdown-v1";
+ /** Immutable explicit native shortcut policy (`markdown-v1`, `autolink-v1` or both); omitted preserves ordinary input. */
+ inputRules?:RichInputRulesOption;
  /** Input committed but conversion refused; this is not a failed or repeatable keystroke. */
  onInputRuleRefused?:()=>void;
  onChange?:(event:SharedPublication<P>)=>void|Promise<void>;onError?:(error:unknown)=>void;
@@ -70,14 +70,14 @@ export class SharedDomEditor<P extends SharedSelectionPolicy="original"> {
  readonly #borrowed=new Set<{control:SharedToolbarControl<P>;view:RichControlView<ActionContext<P>>}>();
  readonly #selectionPolicy:P;readonly #document:SharedRichEditor<"document-v1">|undefined;
  readonly #interchange:RichClipboardInterchange|undefined;
- readonly #inputRules:boolean;
+ readonly #inputRules:boolean;readonly #inputRuleIds:readonly RichInputRuleId[]|null;
  constructor(root:HTMLElement,options:SharedDomOptions<P>&(P extends "document-v1"?SharedDocumentDomOptions:unknown)){
   const policy=options.selectionEditing??"original";
   if(policy!=="original"&&policy!=="document-v1")throw new TypeError("Expected selectionEditing original or document-v1");
   if((options.core.selectionPolicy?.()??"original")!==policy)throw Error("The original shared DOM owner does not admit document-selection facades without an explicit matching policy");
   this.#selectionPolicy=policy as P;this.#document=policy==="document-v1"?requireSharedDocumentBrowserCore(options.core):undefined;
   this.#interchange=requireClipboardInterchange(options.clipboardInterchange,options.core);
-  this.#inputRules=requireMarkdownInputRules(options.inputRules,options.core);
+  this.#inputRuleIds=requireInputRules(options.inputRules,options.core);this.#inputRules=this.#inputRuleIds!==null;
   const placeholder=prepareRichPlaceholder(options.placeholder,options.core);
   this.#root=root;this.#options=options;this.#model=this.#read();this.#logical=this.#isLogical();
   requireRenderOptions(this.#model,options);
@@ -116,7 +116,7 @@ export class SharedDomEditor<P extends SharedSelectionPolicy="original"> {
  #live():void{if(this.#disposed)throw new SharedEditorError("disposed","The shared DOM editor is disposed");}
  #allocate=(kind:string):string=>`${this.#prefix}:${kind}:${this.#counter++}`;
  #context():ActionContext<P>{const value:ActionContext<P>={core:this.#options.core,model:this.#model,revision:this.#model.view.revision,allocate:this.#allocate};if(this.#options.image)value.image=this.#options.image;return value;}
- #report(error:unknown):void{if(this.#disposed)return;this.#reportedError={error};this.status.textContent=error instanceof Error?error.message:String(error);try{this.#options.onError?.(error);}catch{/* A callback cannot rewind committed state. */}}
+ #report(error:unknown):void{if(this.#disposed)return;this.#reportedError={error};this.status.textContent=this.#ui.describe(error,String(error));try{this.#options.onError?.(error);}catch{/* A callback cannot rewind committed state. */}}
  #alreadyReported(error:unknown):boolean{return this.#reportedError!==undefined&&this.#reportedError.error===error;}
  #attempt(run:()=>void):void{this.#reportedError=undefined;try{run();}catch(error){if(!this.#alreadyReported(error)){this.#refresh(false);this.#report(error);}}}
  #mountControl(container:HTMLElement,control:SharedToolbarControl<P>,signal:AbortSignal):RichControlView<ActionContext<P>>{return mountToolbarControl(container,control,{prefix:"shared",ui:this.#ui,signal,sync:()=>this.#sync(),stamp:()=>JSON.stringify(this.#options.core.view()),attempt:work=>this.#attempt(work),focus:()=>this.focus(),run:(value,fields)=>this.#perform(c=>control.run(c,value,fields))});}
@@ -162,10 +162,11 @@ export class SharedDomEditor<P extends SharedSelectionPolicy="original"> {
  }
  #typeMarkdown(source:MarkdownInputSource,text:string):void {
   const view=this.#options.core.view();checkMarkdownInputSource(view,source);
-  const inputRule=Object.freeze({text,namespace:this.#allocate("rule"),...(view.historyGrouping==="typing-v1"?{clockMs:this.#clock()}:{} )});
+  const inputRule=Object.freeze({text,namespace:this.#allocate("rule"),...(view.historyGrouping==="typing-v1"?{clockMs:this.#clock()}:{} ),...(needsInputRuleSets(this.#inputRuleIds)?{rules:this.#inputRuleIds!}:{})});
   let outcome:RichInputRuleOutcome|undefined;
-  this.#perform(c=>{outcome=publishMarkdownInput(c.core,inputRule,c.revision);},true,source.revision,false,()=>{if(outcome==="refused"&&!this.#disposed){this.status.textContent=this.#ui.text("inputRuleRefused");try{this.#options.onInputRuleRefused?.();}catch(error){this.#report(error);}}});
+  this.#perform(c=>{outcome=publishMarkdownInput(c.core,inputRule,c.revision);},true,source.revision,false,()=>{if(outcome==="refused")this.#inputRuleRefused();});
  }
+ #inputRuleRefused():void{if(this.#disposed)return;this.status.textContent=this.#ui.text("inputRuleRefused");try{this.#options.onInputRuleRefused?.();}catch(error){this.#report(error);}}
  #perform(run:(context:ActionContext<P>)=>void,focus=true,revision=this.#model.view.revision,boundary=false,accepted?:((display:boolean)=>void),completion?:RichSearchCompletion):void{
   this.#live();if((this.#searchEvents.notifying||this.#writingEvents.notifying))throw Error("Read notifications cannot publish reentrantly");if(this.#queue.length>=128)throw Error("Shared editor command queue is full");this.#queue.push({run,focus,revision,boundary,accepted,completion});if(this.#busy||this.#composition)return;
   const release=this.#options.core.holdRemotes();this.#busy=true;let error:unknown,drained=0;
@@ -306,6 +307,7 @@ export class SharedDomEditor<P extends SharedSelectionPolicy="original"> {
   if(kind!=="insertText"&&!kind.startsWith("delete"))this.#boundary();
   const action=({formatBold:"bold",formatItalic:"italic",formatUnderline:"underline",formatStrikeThrough:"strike",formatSubscript:"subscript",formatSuperscript:"superscript"} as Record<string,string>)[kind],control=this.#controls.find(item=>item.control.id===action);if(control){control.view.activate();return;}
   if(this.#selectionFormat(action))return;
+  let paragraph:RichInputRuleOutcome|undefined;
   this.#perform(c=>{if(kind==="historyUndo"){c.core.undo(c.revision);return;}if(kind==="historyRedo"){c.core.redo(c.revision);return;}if(kind==="formatBold"){bold(c);return;}
    if(c.model.view.selection?.kind==="document"&&this.#document){
     if(kind.startsWith("delete")){this.#replaceDocumentInput(c,"",false);return;}
@@ -313,7 +315,7 @@ export class SharedDomEditor<P extends SharedSelectionPolicy="original"> {
     if((kind==="insertText"||kind==="insertReplacementText")&&event.data)this.#replaceDocumentInput(c,event.data,kind==="insertText");return;
    }
    if((kind==="insertParagraph"||kind==="insertLineBreak")&&isStructuralRichLanguage(c.core.richLanguageVersion())&&c.core.supportsFlowNavigation()&&selectedFlowAtom(c.model)){c.core.insertParagraphAdjacent(c.allocate("p"),kind==="insertLineBreak"?"before":"after",c.revision);return;}
-   if(kind==="insertParagraph"){const range=event.getTargetRanges?.()[0],target=c.model.view.rangeEditing==="general-v1"&&range?readTarget(this.surface,range):null;enter(c,target&&target.anchor.block!==target.focus.block?target:undefined);return;}
+   if(kind==="insertParagraph"){const range=event.getTargetRanges?.()[0],target=c.model.view.rangeEditing==="general-v1"&&range?readTarget(this.surface,range):null;paragraph=enter(c,target&&target.anchor.block!==target.focus.block?target:undefined,!!this.#inputRuleIds?.includes("autolink-v1")&&!this.#logical);return;}
    if(isStructuralRichLanguage(c.core.richLanguageVersion())&&c.core.supportsAtomEditing()&&selectedFlowAtom(c.model)){
     if(kind.startsWith("delete")){c.core.deleteAtom(c.allocate("p"),kind.includes("Backward")?"before":"after",c.revision);return;}
     if(kind==="insertText"||kind==="insertReplacementText"){const value=event.data??"";if(value){const paragraph=c.allocate("p");if(kind==="insertText"&&c.model.view.historyGrouping==="typing-v1")c.core.replaceAtomTypingText(paragraph,value,this.#clock(),c.revision);else c.core.replaceAtomPlainText(paragraph,value,c.revision);}return;}
@@ -325,7 +327,7 @@ export class SharedDomEditor<P extends SharedSelectionPolicy="original"> {
     const n=c.model.nodes.get(s.focus.block);if(!n)return;const content=text(n),offset=Number(s.focus.offset),segments=[...new Intl.Segmenter(undefined,{granularity:kind.includes("Word")?"word":"grapheme"}).segment(content)],start=backward?segments.filter(v=>v.index<offset).at(-1)?.index??0:offset,end=backward?offset:segments.find(v=>v.index>offset)?.index??content.length;
     this.#deleteInput(c,{kind:"text",anchor:{...s.focus,offset:String(start)},focus:{...s.focus,offset:String(end)}},backward,kind);
    }
-  });
+  },true,this.#model.view.revision,false,()=>{if(paragraph==="refused")this.#inputRuleRefused();});
  });}
  #copy(event:ClipboardEvent,cut:boolean):void{
   if(!event.clipboardData)return;if(this.#composition||this.#busy){event.preventDefault();return;}if(this.#model.view.rangeEditing==="general-v1")event.preventDefault();this.#boundary();
@@ -359,10 +361,10 @@ export class SharedDomEditor<P extends SharedSelectionPolicy="original"> {
  }
  #clipboardComplete(operation:RichClipboardInterchangeReport["operation"],revision:string,formats:readonly RichInterchangeFormatReport[],destination?:RichClipboardTextProjection,display=true):void {
   if(this.#disposed)return;
-  if(this.#interchange&&(formats.length||destination)){const report=clipboardInterchangeReport(operation,revision,formats,destination),message=clipboardInterchangeStatus(report);if(display&&message)this.status.textContent=message;try{this.#options.onInterchange?.(report);}catch(error){this.#report(error);}}
+  if(this.#interchange&&(formats.length||destination)){const report=clipboardInterchangeReport(operation,revision,formats,destination),message=clipboardInterchangeStatus(report,this.#ui);if(display&&message)this.status.textContent=message;try{this.#options.onInterchange?.(report);}catch(error){this.#report(error);}}
   if(destination){if(display&&!this.#interchange)this.#pasteLoss(destination);else try{this.#options.onPasteLoss?.(destination);}catch(error){this.#report(error);}}
  }
- #pasteLoss(report:RichClipboardTextProjection):void{this.status.textContent=this.#ui.text("pasteLoss",{target:report.target,losses:report.losses.join(", ")});try{this.#options.onPasteLoss?.(report);}catch(error){this.#report(error);}}
+ #pasteLoss(report:RichClipboardTextProjection):void{this.status.textContent=this.#ui.text("pasteLoss",clipboardProjectionText(report,this.#ui));try{this.#options.onPasteLoss?.(report);}catch(error){this.#report(error);}}
  #files(files:readonly File[]):void{if(this.#options.core.view().readOnly===true)return;this.#boundary();this.#attempt(()=>{this.#sync();if(this.#model.view.selection?.kind==="document"){if(!this.#options.onDocumentFiles)throw Error("Whole-document image replacement requires a document-aware asset host");void Promise.resolve(this.#options.onDocumentFiles(files,this.#model.view.revision)).catch(error=>this.#report(error));return;}if(!this.#options.onFiles)throw Error("Image files require an asset host");const position=positionAfter(this.#context()),revision=this.#model.view.revision;void Promise.resolve(this.#options.onFiles(files,position,revision)).catch(error=>this.#report(error));});}
  #replaceDocumentInput(c:ActionContext<P>,text:string,typing:boolean):void{const core=this.#documentOwner(),paragraph=c.allocate("p");if(typing&&c.model.view.historyGrouping==="typing-v1")core.replaceDocumentTypingText(paragraph,text,this.#clock(),c.revision);else core.replaceDocumentPlainText(paragraph,text,c.revision);}
  #startComposition():void{if(this.#composition||this.#model.view.readOnly===true)return;this.#boundary();this.#attempt(()=>{if(this.#model.view.readOnly===true)return;this.#sync();const s=this.#model.view.selection;if(s?.kind==="document"&&this.#document){this.#composition={document:true,revision:this.#model.view.revision,release:this.#options.core.holdRemotes()};return;}if(s?.kind!=="text")return;const cross=s.anchor.block!==s.focus.block;if(cross&&this.#model.view.rangeEditing!=="general-v1")return;const n=this.#model.nodes.get(s.focus.block);if(n)this.#composition={block:id(n),original:text(n),revision:this.#model.view.revision,release:this.#options.core.holdRemotes(),...(cross?{target:structuredClone(s)}:{})};});this.#notifySearch();}

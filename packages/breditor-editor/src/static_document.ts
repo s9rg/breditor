@@ -155,7 +155,8 @@ const directions=["ltr","rtl","auto"] as const;
 const listTypes=["1","a","A","i","I"] as const;
 
 /** Rich child grammar: the union of rich languages V1–V3 plus the candidate V4 list numbering,
- * image-link properties and collapsible sections (`breditor/details`, Rust `details.rs`). */
+ * image-link properties, collapsible sections (`breditor/details`, Rust `details.rs`) and table
+ * captions (one trailing `breditor/paragraph` after a table's rows, Rust `table_caption.rs`). */
 const flowKinds=["paragraph","heading","bullet-list","ordered-list","image","blockquote","code-block","horizontal-rule","task-list","details"].map(local=>`breditor/${local}`);
 /** Candidate V4: at most this many sections on any root-to-leaf path (Rust `RICH_DETAILS_MAX_DEPTH`). */
 const MAX_DETAILS_DEPTH=8;
@@ -177,7 +178,7 @@ const grammar:Readonly<Record<string,Grammar>>={
  "breditor/details":{children:["breditor/details-summary",...flowWithTables],minimum:2,required:["block-id"],optional:["details-open"]},
  "breditor/details-summary":{children:"text",minimum:0,required:["block-id"]},
  "breditor/image":{children:["breditor/paragraph"],minimum:0,maximum:1,required:["block-id","image-id","asset-id","asset-generation","alt-text","decorative"],optional:["width","height","image-href","image-link-new-window"]},
- "breditor/table":{children:["breditor/table-row"],minimum:0,maximum:256,required:["block-id","table-id","columns","merges","retracted-merges"]},
+ "breditor/table":{children:["breditor/table-row","breditor/paragraph"],minimum:0,maximum:257,required:["block-id","table-id","columns","merges","retracted-merges"]},
  "breditor/table-row":{children:["breditor/table-cell"],minimum:0,maximum:128,required:["block-id","row-id"]},
  "breditor/table-cell":{children:flowKinds,minimum:1,required:["block-id","column-id","header"]},
 };
@@ -299,6 +300,8 @@ class Renderer {
   const props=this.#properties(type,rule,properties,`${path}.properties`);
   const raw=children as unknown[];
   if(raw.length<rule.minimum||(rule.maximum!==undefined&&raw.length>rule.maximum))this.#fail("grammar","Child count is outside the rich grammar",path);
+  // The 257th table child can only be a candidate V4 caption: the row ceiling stays 256.
+  if(type==="breditor/table"&&raw.length>256&&!(isRecord(raw[256])&&own(raw[256],"type")==="breditor/paragraph"))this.#fail("grammar","Child count is outside the rich grammar",path);
   const admitted:Node[]=[],section=type==="breditor/details";
   if(section&&++this.#detailsDepth>MAX_DETAILS_DEPTH)this.#fail("grammar","Collapsible sections exceed the nesting bound",path);
   for(let index=0;index<raw.length;index++){
@@ -307,6 +310,7 @@ class Renderer {
    if(child.kind==="text"){if(rule.children!=="text")this.#fail("grammar","Text is not allowed here",childPath);}
    else if(rule.children==="text"||rule.children==="none"||!rule.children.includes(child.type))this.#fail("grammar",`${child.type} is not allowed inside ${type}`,childPath);
    if(child.kind==="element"&&(child.type==="breditor/details-summary")!==(section&&index===0))this.#fail("grammar","A collapsible section has exactly one leading summary",childPath);
+   if(type==="breditor/table"&&child.kind==="element"&&(child.type==="breditor/paragraph")!==(index===raw.length-1&&child.type==="breditor/paragraph"))this.#fail("grammar","A table caption is one paragraph after every row",childPath);
    admitted.push(child);
   }
   if(section)this.#detailsDepth--;
@@ -503,10 +507,14 @@ class Renderer {
   const geometry=resolveTableGeometry(tableId,node,(code,message,suffix)=>this.#fail(code,message,`${node.path}${suffix}`));
   for(const conflict of geometry.conflicts)this.inactiveMerges.push({table:tableId,...conflict});
   if(geometry.rows.length===0||geometry.columns.length===0){this.hiddenTables.push(tableId);return "";}
+  // Candidate V4: a trailing caption paragraph. <caption> must be the table's first child; it is
+  // shown after the rows (`caption-side:bottom`), exactly like the live renderer.
+  const last=node.children[node.children.length-1],captionNode=last?.kind==="element"&&last.type==="breditor/paragraph"?last:undefined;
+  const caption=captionNode?`<caption data-rich-table-caption="${escapeHtmlAttribute(tableId)}" style="caption-side:bottom">${this.#flow(captionNode)}</caption>`:"";
   const bodies=new Map<string,Element>();
   for(const row of node.children)if(row.kind==="element")for(const cell of row.children)if(cell.kind==="element")bodies.set(cellKey({table:tableId,row:String(row.properties["row-id"]),column:String(cell.properties["column-id"])}),cell);
   const block=this.#ids?` data-rich-block="${escapeHtmlAttribute(String(node.properties["block-id"]))}"`:"";
-  let html=`<table${block} data-rich-table="${escapeHtmlAttribute(tableId)}"><colgroup>`;
+  let html=`<table${block} data-rich-table="${escapeHtmlAttribute(tableId)}">${caption}<colgroup>`;
   for(const column of geometry.columns)html+=`<col style="width:${column.width}px">`;
   html+="</colgroup><tbody>";
   for(const row of geometry.rows){
@@ -561,7 +569,8 @@ export function resolveTableGeometry(table:string,node:{readonly properties:Read
   if(typeof width!=="number"||!Number.isSafeInteger(width)||width<32||width>4096)fail("table","Column width outside 32–4096",at);
   return {id,width};
  });
- const rowNodes=node.children as readonly Element[];
+ // A candidate V4 caption paragraph (always last) is not a row.
+ const all=node.children as readonly Element[],tail=all[all.length-1],rowNodes=tail?.type==="breditor/paragraph"?all.slice(0,-1):all;
  if(rowNodes.length>256||rowNodes.length*columns.length>4096)fail("table","Table exceeds its row or base-cell ceiling","");
  const rows=rowNodes.map((row,rowIndex)=>{
   if(row.children.length!==columns.length)fail("table","Row must contain exactly one base cell per column",`.children[${rowIndex}]`);

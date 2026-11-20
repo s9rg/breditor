@@ -87,8 +87,12 @@ export class HtmlExport {
     return `<figure>${link?`${link.open}${image}</a>`:image}${caption?`<figcaption>${caption}</figcaption>`:""}</figure>`;
   }
   #table(node:Element,depth:number):string {
-    const rows=node.children.filter((n):n is Element=>n.kind==="element"),columns=property(node,"columns") as {id:string;width:number}[],merges=property(node,"merges") as Record<string,unknown>[];
-    if(!Array.isArray(columns)||!Array.isArray(merges))fail("native-admission");if(!rows.length){this.b.loss("table-geometry");return"";}
+    const elements=node.children.filter((n):n is Element=>n.kind==="element"),last=elements.at(-1);
+    // Candidate V4 caption: the table's trailing paragraph, exported as the leading <caption>.
+    const captionNode=last?.type==="breditor/paragraph"?last:undefined,rows=captionNode?elements.slice(0,-1):elements;
+    const columns=property(node,"columns") as {id:string;width:number}[],merges=property(node,"merges") as Record<string,unknown>[];
+    if(!Array.isArray(columns)||!Array.isArray(merges))fail("native-admission");if(!rows.length){this.b.loss("table-geometry");return captionNode?this.blocks([captionNode],depth+1):"";}
+    const caption=captionNode?`<caption>${this.blocks([captionNode],depth+1)}</caption>`:"";
     const occupied=new Map<string,{r:number;c:number;rs:number;cs:number}>(),rowIds=rows.map(r=>stringProperty(r,"row-id")),columnIds=columns.map(c=>c.id);
     for(const merge of merges){const r=rowIds.indexOf(String(merge["first-row"])),endR=rowIds.indexOf(String(merge["last-row"])),c=columnIds.indexOf(String(merge["first-column"])),endC=columnIds.indexOf(String(merge["last-column"]));if(r<0||c<0||endR<r||endC<c)fail("native-admission");const bounds={r,c,rs:endR-r+1,cs:endC-c+1};for(let y=r;y<=endR;y++)for(let x=c;x<=endC;x++)occupied.set(`${y}:${x}`,bounds);}
     const cells=rows.map(row=>columnIds.map(column=>row.children.find((n):n is Element=>n.kind==="element"&&property(n,"column-id")===column)??fail("native-admission")));
@@ -100,7 +104,7 @@ export class HtmlExport {
       else content=this.blocks(cell.children,depth+1);
       return `<${tag}${merge?` rowspan="${merge.rs}" colspan="${merge.cs}"`:""}>${content}</${tag}>`;
     }).join("")}</tr>`).join("");
-    return `<table><colgroup>${columns.map(c=>{if(!Number.isInteger(c.width)||c.width<32||c.width>4096)fail("native-admission");return `<col width="${c.width}">`;}).join("")}</colgroup><tbody>${body}</tbody></table>`;
+    return `<table>${caption}<colgroup>${columns.map(c=>{if(!Number.isInteger(c.width)||c.width<32||c.width>4096)fail("native-admission");return `<col width="${c.width}">`;}).join("")}</colgroup><tbody>${body}</tbody></table>`;
   }
 }
 /** Candidate V4 image link: the opening `<a>` from admitted canonical values only (link wraps the image, not the caption). */

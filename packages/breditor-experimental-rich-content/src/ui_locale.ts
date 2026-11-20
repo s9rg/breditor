@@ -4,8 +4,13 @@
  * surface or document content: content direction stays with each block's own layout direction (or the
  * host page), and nothing here is serialized, published or sent to the Rust owner.
  */
+import {richUiPanelStringsEn,richUiPanelParameters,richUiNoticeCodes,type RichUiPanelStrings,type RichUiNoticeCode} from "./ui_locale_panels.js";
+export {richUiPanelStringsEn,richUiNoticeCodes,type RichUiPanelStrings,type RichUiNoticeCode} from "./ui_locale_panels.js";
+// AI and language-tool chrome strings live in a separate block (ui_locale_ai.ts) merged below.
+import {richAiUiStringsEn,richAiUiParameters,type RichAiUiStrings} from "./ui_locale_ai.js";
+export type {RichAiUiStrings} from "./ui_locale_ai.js";
 /** Every built-in chrome string. Templates use `{name}` placeholders only; there are no plural or select forms. */
-export interface RichUiStrings {
+export interface RichUiStrings extends RichUiPanelStrings, RichAiUiStrings {
  readonly richEditorLabel:string;readonly richToolbarLabel:string;
  readonly richStatusReadOnly:string;readonly richStatusEditable:string;readonly richStatusOutcome:string;readonly richStatusReadOnlyOutcome:string;
  readonly richOperationFailed:string;
@@ -25,6 +30,8 @@ export interface RichUiStrings {
  readonly blockDragReadOnly:string;readonly blockDragUnknownBlock:string;readonly blockDragNotMovable:string;readonly blockDragInvalidTarget:string;
  readonly blockDragCyclic:string;readonly blockDragCrossContainer:string;readonly blockDragGrammar:string;readonly blockDragEmptiesSource:string;
  readonly blockDragItemLead:string;readonly blockDragBoundary:string;readonly blockDragNative:string;
+ // Image resize handles (image_resize.ts).
+ readonly imageResizeLabel:string;readonly imageResizeValue:string;readonly imageResizeOriginal:string;readonly imageResizePreview:string;readonly imageResizeBadge:string;
 }
 export type RichUiStringKey=keyof RichUiStrings;
 /** English defaults. Formatting these with no catalog reproduces the original output byte for byte. */
@@ -55,6 +62,13 @@ export const richUiStringsEn:Readonly<RichUiStrings>=Object.freeze({
  blockDragCrossContainer:"Blocks can only be reordered within their container.",blockDragGrammar:"That container does not accept this block.",
  blockDragEmptiesSource:"Moving the last block would leave its container empty.",blockDragItemLead:"A list or task item must start with a text line.",
  blockDragBoundary:"The block is already at the edge of its container.",blockDragNative:"The editor refused the move.",
+ // Panels, notices and interchange status lines: see ui_locale_panels.ts.
+ ...richUiPanelStringsEn,
+ // Image resize handles (image_resize.ts).
+ imageResizeLabel:"Resize image {index} of {count}",imageResizeValue:"{width} by {height} pixels",imageResizeOriginal:"{width} by {height} pixels (original size)",
+ imageResizePreview:"{width} by {height} pixels (preview)",imageResizeBadge:"{width} × {height}",
+ // AI and language tools (separate block).
+ ...richAiUiStringsEn,
 });
 /** Placeholders each template may use. Anything else in braces is rejected. */
 const parameters:Readonly<Partial<Record<RichUiStringKey,readonly string[]>>>={
@@ -63,6 +77,11 @@ const parameters:Readonly<Partial<Record<RichUiStringKey,readonly string[]>>>={
  pasteLoss:["target","losses"],controlApply:["label"],controlPanel:["label"],slashCount:["count"],mentionCount:["count"],slashUnavailable:["label"],slashInapplicable:["label"],
  columnResizeLabel:["index","count"],columnResizeValue:["width"],columnResizePreview:["width"],columnResizeBadge:["width"],
  blockDragPickedUp:["count"],blockDragPosition:["index","count"],
+ ...richUiPanelParameters,
+ // Image resize handles (image_resize.ts).
+ imageResizeLabel:["index","count"],imageResizeValue:["width","height"],imageResizeOriginal:["width","height"],imageResizePreview:["width","height"],imageResizeBadge:["width","height"],
+ // AI and language tools (separate block).
+ ...richAiUiParameters,
 };
 /** Ids of `standardRichSlashPicks`; other provider items carry their own labels. */
 export type RichStandardSlashItemId="paragraph"|"heading-1"|"heading-2"|"heading-3"|"bullet-list"|"numbered-list"|"task-list"|"blockquote"|"code-block"|"horizontal-rule"|"table"|"details";
@@ -94,6 +113,13 @@ export interface RichUiOptions {
  readonly controls?:Readonly<Record<string,RichUiControlStrings>>;
  /** Standard slash-command item presentation by item id. */
  readonly slashItems?:Readonly<Partial<Record<RichStandardSlashItemId,RichUiSlashItemStrings>>>;
+ /** End-user labels for interchange notice codes shown in status lines. Unlabelled codes display as the code. */
+ readonly notices?:Readonly<Partial<Record<RichUiNoticeCode,string>>>;
+ /**
+  * End-user messages for stable refusal codes (`breditor_rich.read_only`, relay codes such as `permission_denied`)
+  * when a status line would otherwise show the developer `Error.message`. Keys are lowercase dotted codes.
+  */
+ readonly refusals?:Readonly<Record<string,string>>;
 }
 type Values=Readonly<Record<string,string|number>>;
 interface Presentation {readonly id:string;readonly label:string;readonly type?:"text"|"number";readonly mixedHint?:string;readonly fields?:readonly {readonly id:string;readonly label:string;readonly placeholder?:string;readonly options?:readonly {readonly value:string;readonly label:string}[]}[]}
@@ -109,12 +135,20 @@ export interface RichUiLocale {
  applyChrome(element:HTMLElement):void;
  /** Reject entries for an admitted control whose field or option it does not have. Entries for absent controls are inert. */
  checkControls(controls:readonly Presentation[]):void;
+ /**
+  * End-user text for a failure shown in a status line: a catalog-keyed panel refusal, else a `refusals` entry for
+  * the error's stable `code` (or a message that is itself a code), else the error's English developer message,
+  * else `otherwise` for non-Error values. Never changes the thrown error.
+  */
+ describe(error:unknown,otherwise:string):string;
+ /** End-user label for an interchange notice code; the code itself when the catalog has none. */
+ notice(code:string):string;
 }
 const MAX_TEXT=512,MAX_ENTRIES=256;
 const lang=/^[A-Za-z]{2,8}(?:-[A-Za-z0-9]{1,8}){0,7}$/;
-const record=(value:unknown,what:string):Readonly<Record<string,unknown>>=>{
+const record=(value:unknown,what:string,limit=MAX_ENTRIES):Readonly<Record<string,unknown>>=>{
  if(value===null||typeof value!=="object"||Array.isArray(value)||Object.getPrototypeOf(value)!==Object.prototype&&Object.getPrototypeOf(value)!==null)throw new TypeError(`Expected ${what} to be a plain object`);
- const keys=Object.keys(value);if(keys.length>MAX_ENTRIES)throw new RangeError(`Too many ${what} entries`);return value as Record<string,unknown>;
+ const keys=Object.keys(value);if(keys.length>limit)throw new RangeError(`Too many ${what} entries`);return value as Record<string,unknown>;
 };
 const only=(value:Readonly<Record<string,unknown>>,allowed:readonly string[],what:string):void=>{for(const key of Object.keys(value))if(!allowed.includes(key))throw new TypeError(`Unknown ${what} key ${JSON.stringify(key)}`);};
 const plain=(value:unknown,what:string):string=>{
@@ -150,14 +184,18 @@ const freezeSlash=(id:string,value:unknown):RichUiSlashItemStrings=>{
  return Object.freeze({...(item["label"]!==undefined?{label:plain(item["label"],`${where}.label`)}:{}),...(item["description"]!==undefined?{description:plain(item["description"],`${where}.description`)}:{}),
   ...(keywords!==undefined?{keywords:Object.freeze((keywords as unknown[]).map((word,index)=>plain(word,`${where}.keywords[${index}]`)))}:{})});
 };
+/** Registered brands, so a locale or panel refusal from another copy of this module is still recognized. */
+const localeBrand=Symbol.for("breditor.richUiLocale"),errorBrand=Symbol.for("breditor.richUiError");
 class Locale implements RichUiLocale {
+ readonly [localeBrand]=true;
  readonly lang:string|null;readonly direction:RichUiDirection|null;readonly strings:Readonly<RichUiStrings>;
  readonly #controls:Readonly<Record<string,RichUiControlStrings>>;readonly #slash:Readonly<Record<string,RichUiSlashItemStrings>>;
+ readonly #notices:Readonly<Record<string,string>>;readonly #refusals:Readonly<Record<string,string>>;
  constructor(options:RichUiOptions|undefined){
-  const value=options===undefined?{}:record(options,"UI options");only(value,["lang","direction","strings","controls","slashItems"],"UI option");
+  const value=options===undefined?{}:record(options,"UI options");only(value,["lang","direction","strings","controls","slashItems","notices","refusals"],"UI option");
   if(value["lang"]!==undefined&&(typeof value["lang"]!=="string"||!lang.test(value["lang"])))throw new TypeError("Expected a BCP 47 UI language tag");
   if(value["direction"]!==undefined&&value["direction"]!=="ltr"&&value["direction"]!=="rtl")throw new TypeError("Expected UI direction ltr or rtl");
-  const strings=value["strings"]===undefined?{}:record(value["strings"],"UI strings"),known=Object.keys(richUiStringsEn);
+  const known=Object.keys(richUiStringsEn),strings=value["strings"]===undefined?{}:record(value["strings"],"UI strings",Math.max(MAX_ENTRIES,known.length));
   only(strings,known,"UI string");
   const resolved={...richUiStringsEn} as Record<RichUiStringKey,string>;
   for(const [key,text] of Object.entries(strings))resolved[key as RichUiStringKey]=template(key as RichUiStringKey,text);
@@ -165,6 +203,7 @@ class Locale implements RichUiLocale {
   this.lang=(value["lang"] as string|undefined)??null;this.direction=(value["direction"] as RichUiDirection|undefined)??null;this.strings=Object.freeze(resolved);
   this.#controls=Object.freeze(Object.fromEntries(Object.entries(controls).map(([id,entry])=>[id,freezeControl(id,entry)])));
   this.#slash=Object.freeze(Object.fromEntries(Object.entries(slash).map(([id,entry])=>[id,freezeSlash(id,entry)])));
+  [this.#notices,this.#refusals]=codeMaps(value);
   Object.freeze(this);
  }
  text(key:RichUiStringKey,values?:Values):string{const text=this.strings[key];if(typeof text!=="string")throw new TypeError(`Unknown UI string ${String(key)}`);return format(text,values);}
@@ -178,6 +217,16 @@ class Locale implements RichUiLocale {
   const entry=Object.prototype.hasOwnProperty.call(this.#slash,item.id)?this.#slash[item.id]:undefined;if(!entry)return item;
   return Object.freeze({...item,...(entry.label?{label:entry.label}:{}),...(entry.description?{description:entry.description}:{}),...(entry.keywords?{keywords:entry.keywords}:{})}) as T;
  }
+ describe(error:unknown,otherwise:string):string{
+  const tag=error!==null&&typeof error==="object"?panelTag(error):undefined;if(tag&&Object.prototype.hasOwnProperty.call(this.strings,tag.key))return this.text(tag.key,tag.values);
+  if(error!==null&&typeof error==="object"){
+   let code:unknown;try{code=(error as {code?:unknown}).code;}catch{/* A released native error has no readable code. */}
+   if(typeof code==="string"&&Object.prototype.hasOwnProperty.call(this.#refusals,code))return this.#refusals[code]!;
+   if(error instanceof Error&&Object.prototype.hasOwnProperty.call(this.#refusals,error.message))return this.#refusals[error.message]!;
+  }
+  return error instanceof Error?error.message:otherwise;
+ }
+ notice(code:string):string{return Object.prototype.hasOwnProperty.call(this.#notices,code)?this.#notices[code]!:code;}
  applyChrome(element:HTMLElement):void{if(this.direction)element.dir=this.direction;if(this.lang)element.lang=this.lang;}
  checkControls(controls:readonly Presentation[]):void{
   const byId=new Map(controls.map(control=>[control.id,control]));
@@ -192,12 +241,36 @@ class Locale implements RichUiLocale {
   }
  }
 }
+// ---- Panel refusals and notice/refusal code maps (see ui_locale_panels.ts) ----
+const codePattern=/^[a-z][a-z0-9_-]{0,63}(?:\.[a-z0-9_-]{1,63}){0,3}$/;
+function codeMaps(value:Readonly<Record<string,unknown>>):[Readonly<Record<string,string>>,Readonly<Record<string,string>>]{
+ const notices=value["notices"]===undefined?{}:record(value["notices"],"UI notices"),refusals=value["refusals"]===undefined?{}:record(value["refusals"],"UI refusals");
+ only(notices,richUiNoticeCodes,"UI notice");
+ for(const code of Object.keys(refusals))if(!codePattern.test(code))throw new TypeError(`Expected a stable refusal code, not ${JSON.stringify(code)}`);
+ const freeze=(map:Readonly<Record<string,unknown>>,what:string)=>Object.freeze(Object.fromEntries(Object.entries(map).map(([code,text])=>[code,plain(text,`${what} ${code}`)])));
+ return [freeze(notices,"UI notice"),freeze(refusals,"UI refusal")];
+}
+interface PanelTag {readonly key:RichUiStringKey;readonly values:Values|undefined}
+function panelTag(error:object):PanelTag|undefined{
+ let tag:unknown;try{tag=(error as Record<symbol,unknown>)[errorBrand];}catch{return undefined;}
+ return tag!==null&&typeof tag==="object"&&typeof (tag as PanelTag).key==="string"?tag as PanelTag:undefined;
+}
+/**
+ * A panel refusal the end user sees in a status line. The thrown `Error.message` stays the English developer text
+ * (the default template); `RichUiLocale.describe` shows the catalog's text for the same key.
+ */
+export function richUiError(key:RichUiStringKey,values?:Values,Kind:ErrorConstructor=Error):Error{
+ const error=new Kind(format(richUiStringsEn[key],values));
+ Object.defineProperty(error,errorBrand,{value:Object.freeze({key,values:values?Object.freeze({...values}):undefined})});return error;
+}
 /** The English, direction-neutral locale used when no catalog is supplied. */
 export const defaultRichUi:RichUiLocale=new Locale(undefined);
 /** Validate a catalog once. Throws TypeError/RangeError before any DOM is created. */
 export function resolveRichUi(options?:RichUiOptions|RichUiLocale):RichUiLocale{
  if(options===undefined)return defaultRichUi;
  if(options instanceof Locale)return options;
+ // A locale validated by another copy of this module (a second bundle, or source next to built output).
+ if(options!==null&&typeof options==="object"&&(options as unknown as Record<symbol,unknown>)[localeBrand]===true&&Object.isFrozen(options))return options as RichUiLocale;
  return new Locale(options as RichUiOptions);
 }
 /** Nearest explicit chrome direction: an element's own `dir`, else the closest ancestor's. `auto` reads as ltr. */

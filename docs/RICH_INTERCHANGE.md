@@ -187,6 +187,15 @@ mention syntax, so a block with a mention falls back to safe HTML with
 `markdown-feature`, which reimports exactly. Other owners import the span as
 plain `@label` text.
 
+V4 owners also report `supportsTableCaptions()`. For them, a table's first
+`<caption>` becomes the table's trailing caption paragraph (one paragraph imports
+without a notice; a leading heading is converted and further or unsupported blocks
+stay as flow before the table, each with `block-structure`). HTML export writes
+`<table><caption>…</caption><colgroup>…`, which round trips exactly; GFM tables have
+no caption, so a captioned table falls back to safe HTML with `markdown-feature`.
+Other owners keep the original conversion: `<caption>` content becomes flow before
+the table with `block-structure`.
+
 Remaining gaps: real captured clipboard dumps per producer/platform/version,
 Word for the web non-decimal formats (reported, rendered as decimal), CSS
 `font` shorthand, Excel/Sheets hidden rows and columns (still rejected), cell

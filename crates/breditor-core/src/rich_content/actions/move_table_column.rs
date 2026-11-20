@@ -43,20 +43,20 @@ impl MoveTableColumn {
         let node = table_node(document, table)?;
         let mut columns = column_properties(node)?;
         move_before(&mut columns, source, destination);
-        let rows = node
-            .as_element()
-            .ok_or(RichActionError::Rewrite)?
-            .children()
-            .iter()
-            .map(|row| {
-                let element = row.as_element().ok_or(RichActionError::Rewrite)?;
-                let mut cells = element.children().to_vec();
-                move_before(&mut cells, source, destination);
-                Ok(NodeRef::element(
-                    element.try_with_children(cells).map_err(|_| RichActionError::Rewrite)?,
-                ))
-            })
-            .collect::<Result<_, RichActionError>>()?;
+        // Rows only: a candidate V4 caption is kept by `rebuild`.
+        let rows = crate::rich_content::table_caption::rows(
+            node.as_element().ok_or(RichActionError::Rewrite)?,
+        )
+        .iter()
+        .map(|row| {
+            let element = row.as_element().ok_or(RichActionError::Rewrite)?;
+            let mut cells = element.children().to_vec();
+            move_before(&mut cells, source, destination);
+            Ok(NodeRef::element(
+                element.try_with_children(cells).map_err(|_| RichActionError::Rewrite)?,
+            ))
+        })
+        .collect::<Result<_, RichActionError>>()?;
         Ok(Self {
             patch: TablePatch::capture(document, table, rebuild(node, Some(columns), rows)?)?,
         })

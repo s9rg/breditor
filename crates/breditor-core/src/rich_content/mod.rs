@@ -47,6 +47,7 @@ mod selection_format_change;
 mod selection_format_state;
 mod standard_inline_v1;
 mod structural_drafts;
+pub(crate) mod table_caption;
 mod table_draft;
 mod table_geometry;
 mod table_paste_draft;
@@ -86,9 +87,11 @@ pub use inline_format_state::{
     RichInlineFormatState, RichInlineFormatStateError, inspect_inline_format,
 };
 pub use input_rules::{
-    RICH_INPUT_RULE_MAX_RUNS, RICH_INPUT_RULE_WINDOW_UTF16, RichInputRuleError, RichInputRuleKind,
-    RichInputRuleOutcome, RichInputRulePlan, RichInputRuleStep,
-    is_rich_markdown_input_rule_trigger, plan_rich_markdown_input_rule,
+    RICH_INPUT_RULE_MAX_RUNS, RICH_INPUT_RULE_WINDOW_UTF16, RichAutolinkCandidate,
+    RichInputRuleError, RichInputRuleKind, RichInputRuleOutcome, RichInputRulePlan,
+    RichInputRuleSet, RichInputRuleStep, is_rich_markdown_input_rule_trigger, plan_rich_input_rule,
+    plan_rich_markdown_input_rule, plan_rich_paragraph_autolink_input_rule,
+    rich_autolink_candidate,
 };
 pub use list_draft::{RichListDraft, RichListItemDraft, RichListKind};
 pub use list_numbering::{
@@ -138,6 +141,7 @@ pub use standard_inline_v1::{
     StandardInlineFormatV1, standard_inline_extension_v1,
 };
 pub use structural_drafts::{RichTaskItemDraft, RichTaskListDraft};
+pub use table_caption::RichTableCaptionError;
 pub use table_draft::TableDraft;
 pub use table_paste_draft::{TableCellPasteDraft, TablePasteDraft, TablePasteMerge};
 pub use text_language::{

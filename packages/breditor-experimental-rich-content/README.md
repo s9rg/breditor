@@ -108,6 +108,17 @@ Mentions render as inert `span.breditor-mention` chips
 `mentionLabel`, `mentionLoading`, `mentionCountOne`, `mentionCount`,
 `mentionEmpty`. See `docs/RICH_LANGUAGE_V4.md` (Slice 5).
 
+## Table captions (candidate rich V4)
+
+A candidate rich V4 table may end with one caption paragraph after its rows
+(`supportsTableCaptions()`, descriptor `tableCaptionVersion: 1`). It renders as the
+table's first DOM child, `<caption data-rich-table-caption style="caption-side: bottom">`,
+so it is laid out below the rows and edited like any paragraph.
+`tableCaptionToolbarControls(core)` (included in `createRichToolbarV4`) provides the
+**Table caption** toggle, which sends `addTableCaption {table, caption}` or
+`removeTableCaption {table}`; `tableCaptionOf`, `isTableCaption` and
+`selectedTableCaption` are read-only helpers. See `docs/RICH_LANGUAGE_V4.md` (Slice 6).
+
 ## Chrome localization
 
 Pass an opt-in `ui` catalog to `mountRichEditor` / `mountDocumentRichEditor` to
@@ -124,9 +135,14 @@ const editor = mountRichEditor(root, {core, ui: {
 mountRichContextMenu(editor);  // label, dir and lang come from editor.uiLocale()
 ```
 
-Catalogs are validated by `resolveRichUi` (typed keys, unknown keys rejected,
-bounded non-empty strings, `{name}` placeholders only, no plural syntax). With
-no catalog the output is unchanged English. See
+`mountRichSearchPanel`, `mountRichWritingTools` and
+`mountRichFullscreenControls` read the same catalog from their host's
+`uiLocale()`. Status lines show end-user text through `ui.describe(error)`:
+panel refusals and stable codes listed in `ui.refusals` are localized, while
+thrown `Error.message` stays English; interchange loss codes are relabelled
+through `ui.notices`. Catalogs are validated by `resolveRichUi` (typed keys,
+unknown keys rejected, bounded non-empty strings, `{name}` placeholders only, no
+plural syntax). With no catalog the output is unchanged English. See
 [the localization contract](../../docs/UI_LOCALIZATION.md).
 
 ## Document placeholder
@@ -153,6 +169,16 @@ Shortcuts have a separate Undo group restoring their literal trigger. The
 optional `onInputRuleRefused` callback means text was retained but conversion
 was refused, so callers must not retry the input. Paste, composition and
 replacement/range input never invoke automatic rules.
+
+`inputRules: "autolink-v1"` (or `["markdown-v1", "autolink-v1"]`) additionally
+links a typed `https://…`, `http://…` or `www.…` URL when a space or Enter
+follows it, excluding trailing punctuation. The target must already be a
+canonical safe link (the same native `safeLinkV1` subset as image links), so
+`javascript:` and other unsafe or non-canonical spellings stay literal. One Undo
+removes only the link and keeps the typed space or split. Selecting it requires
+`supportsInputRuleSets()`; code, existing links, paste, composition, remote and
+read-only input are never converted. See
+[the input-rule contract](../../docs/RICH_INPUT_RULES.md#optional-autolink-autolink-v1).
 
 Initialize the bundled opt-in Wasm module once, then pass that exact module to
 the profile factory. Do not mix generated classes from different module heaps.
@@ -686,3 +712,20 @@ Escape, blur, pointer cancel or a publication that changes the dragged table
 cancel the drag. Arrow keys, PageUp/PageDown and Home/End publish one command
 per key. See [the table contract](../../docs/RICH_TABLES.md), which also states
 the nested-table policy.
+
+## Image resize handles
+
+`mountRichImageResize(overlayHost, dom, {commit: richImageResizeCommit(dom)})`
+adds corner and edge resize handles to every rendered image in an overlay
+outside editable content (`mountSharedImageResize` with
+`sharedImageResizeCommit` from `@breditor/collaboration` for the shared editor).
+You opt in to it. Handles show on hover, on the node-selected image and while
+the corner has focus. A pointer drag previews an outline and a size badge in the
+overlay only and publishes exactly one existing `resizeImage` command on release
+(one Undo step). The corner keeps the aspect ratio unless Shift is held; the
+inline-end and bottom edges change one axis. Each dimension is clamped to the
+admitted 1–4096 domain. Escape, blur, pointer cancel, read-only, composition or
+a publication that changes the dragged image cancel the drag. The corner is a
+focusable `role="slider"`: arrow keys, Shift+arrows, PageUp/PageDown and
+Home/End publish one aspect-preserving command per key. See
+[the image resize contract](../../docs/IMAGE_RESIZE.md).

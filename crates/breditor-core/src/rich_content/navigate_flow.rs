@@ -4,6 +4,7 @@
 //! (a collapsed section exposes only its summary). Images,
 //! visible tables and rules are single outer stops. A table cell and an image
 //! caption each retain their own editing domain; grid/host commands own escape.
+//! A candidate V4 table caption is left through its table's outer stop.
 use super::{
     BlockId, RichDocument, RichSelection, RichSelectionError, RichSelectionKind, RichTextPoint,
     rich_selection::{block, text_length},
@@ -68,6 +69,17 @@ pub fn navigate_flow(
         }
     };
     let mut path = document.block_path(id).ok_or(RichSelectionError::MissingTarget)?.clone();
+    // A candidate V4 table caption belongs to its table's outer stop: leaving it
+    // backward selects the table, leaving it forward continues after the table.
+    if super::table_caption::owner_of_caption(document, id).is_some() {
+        let table = path.parent().ok_or(RichSelectionError::Invariant)?;
+        if movement == FlowMove::Before
+            && let Some(selection) = edge_stop(document, &table, movement)?
+        {
+            return Ok(FlowNavigationOutcome::Moved(selection));
+        }
+        path = table;
+    }
     let domain = domain(document, &path)?;
     while path != domain {
         let parent = path.parent().ok_or(RichSelectionError::Invariant)?;

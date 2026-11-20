@@ -21,7 +21,7 @@ struct Record {
     #[serde(deserialize_with = "nullable")]
     new_item: Option<String>,
 }
-pub(super) fn execute(
+pub(in crate::rich_editor) fn execute(
     owner: &mut RichLocalSession,
     observation: &RichLocalSnapshot,
     input: &str,

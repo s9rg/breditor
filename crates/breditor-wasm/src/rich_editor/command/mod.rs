@@ -32,7 +32,7 @@ mod insert_hard_break;
 mod insert_horizontal_rule;
 mod insert_image;
 mod insert_mention;
-mod insert_paragraph;
+pub(super) mod insert_paragraph;
 mod insert_paragraph_adjacent;
 mod insert_plain_text;
 mod insert_table;
@@ -87,6 +87,7 @@ mod split_table_cell;
 mod split_task_item;
 mod split_text_block;
 mod support;
+mod table_caption;
 mod undo;
 mod unwrap_blockquote;
 mod unwrap_list;
@@ -177,6 +178,8 @@ enum CommandTag {
     SetDetailsOpen,
     EnterDetailsBody,
     InsertMention,
+    AddTableCaption,
+    RemoveTableCaption,
     OutdentListItems,
     JoinTextBlocks,
     JoinListItems,

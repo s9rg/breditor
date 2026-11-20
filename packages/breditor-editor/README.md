@@ -122,9 +122,14 @@ const editor = await openLocalEditor({host, ui: {lang: "ar", direction: "rtl", s
 mountSlashCommands(editor, {items});   // menu strings and standard item labels follow editor.uiLocale()
 ```
 
-An invalid catalog rejects before the runtime loads or the host changes.
-`resolveUiLocale`, `uiStringsEn` and the `Ui*` types are exported from both
-entry points. See [the localization contract](../../docs/UI_LOCALIZATION.md).
+The search, writing-tools and fullscreen panels read the editor's catalog
+through `editor.search()`, `editor.writing()` and `editor.fullscreen()`; review
+and suggestion panels take it as `initialOptions.ui` (pass `editor.uiLocale()`).
+`ui.notices` relabels interchange loss codes and `ui.refusals` maps stable refusal
+codes to end-user status text; thrown `Error.message` stays English for
+developers. An invalid catalog rejects before the runtime loads or the host
+changes. `resolveUiLocale`, `uiStringsEn`, `uiNoticeCodes` and the `Ui*` types are
+exported from both entry points. See [the localization contract](../../docs/UI_LOCALIZATION.md).
 
 ## Document placeholder
 
@@ -215,6 +220,35 @@ paragraph or heading, or after whitespace.
   controller.
 
 See [the slash-command contract](../../docs/SLASH_COMMANDS.md).
+
+## AI rewrite and language check
+
+Both tools are opt-in, local-only and provider-agnostic: you pass the provider
+function, and the package makes no network calls of its own.
+
+```js
+import {mountAiTools, mountLanguageCheck} from '@breditor/editor';
+const ai = mountAiTools(asideHost, editor, {
+  provider: async ({instruction, text, signal}) => ({text: await myRewrite(instruction, text, {signal})}),
+});
+const check = mountLanguageCheck(otherHost, editor, {
+  provider: async ({segments, signal}) => myChecker(segments, {signal}), // [{range:{block,start,end}, message, suggestions}]
+});
+```
+
+- **Explicit scope.** Only the selected text, one block or (language check) the
+  whole document is sent, as plain text with block ids and UTF-16 offsets.
+- **Review, then one guarded command.** A rewrite is shown as a before/after
+  diff; Accept applies it as one range replacement (one Undo step). If the
+  document content changed meanwhile it is refused as stale and can be run again.
+- **Untrusted output.** Answers are validated and size-bounded; `{markdown}` or
+  `{html}` answers need an explicit `interchange` adapter and are sanitized with
+  loss notices. Language issues are highlighted outside the editing DOM and
+  applied one at a time from a keyboard list.
+- **React.** `BreditorAiTools` and `BreditorLanguageCheck` from
+  `@breditor/editor/react`.
+
+See [the AI and language tool contract](../../docs/AI_AND_LANGUAGE_TOOLS.md).
 
 ## General range editing
 
@@ -499,7 +533,7 @@ for bounds, independent shared fields, history and qualification scope.
 
 `richLanguage: 4` selects the unreleased candidate V4 for local openings
 (`openLocalEditor`, `openLocalDocumentEditor` and the local React components'
-`initialOptions`). It is V3 plus bounded ordered-list numbering, text-run language, image links, collapsible sections and mention entities, and may still
+`initialOptions`). It is V3 plus bounded ordered-list numbering, text-run language, image links, collapsible sections, mention entities and table captions, and may still
 change before release, so its fingerprint changes and V4 data must not be
 persisted yet. Shared openings reject `richLanguage: 4` explicitly; shared
 editing stays on languages 1–3. The standard schema is
@@ -571,6 +605,16 @@ emits `<span class="breditor-mention" data-mention-kind data-mention-id>@label</
 import {mountMentions} from '@breditor/editor';
 const mentions = mountMentions(editor, {items: async (query, {signal}) => (await fetch(`/people?q=${encodeURIComponent(query)}`, {signal})).json()});
 editor.execute({kind: 'insertMention', data: {selection, mention: {kind: 'user', id: 'u-1', label: 'Ann Lee'}}});
+```
+
+V4 adds table captions: one optional caption paragraph per table, shown below
+the rows (`<caption>` with `caption-side: bottom`). The **Table caption** toolbar
+control adds an empty caption and moves the caret into it, or removes it; Enter in
+a caption inserts a line break and table actions keep it.
+
+```js
+editor.execute({kind: 'addTableCaption', data: {table: 'table-1', caption: 'caption-1'}});
+editor.execute({kind: 'removeTableCaption', data: {table: 'table-1'}});
 ```
 
 See `docs/RICH_LANGUAGE_V4.md` in the repository for domains, semantics,

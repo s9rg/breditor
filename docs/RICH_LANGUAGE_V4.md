@@ -1,9 +1,9 @@
 # Rich language V4 (unreleased candidate)
 
 Rich V4 is an explicit, opt-in rich language under construction. It is **not
-released**. It is built in five slices, all recorded here: ordered-list
-numbering, text-run language, image links, collapsible sections and mention
-entities.
+released**. It is built in six slices, all recorded here: ordered-list
+numbering, text-run language, image links, collapsible sections, mention
+entities and table captions.
 
 Because each slice changes V4's grammar or rule revision, **the V4 schema
 fingerprint changes as later slices land**. No persisted V4 data exists, and
@@ -22,11 +22,11 @@ reinterprets an older document, and older profiles reject every V4 property.
 | Layer | V4 selector |
 | --- | --- |
 | Rust | `CompiledSchema::try_compile_rich_content_profile_v4`, `rich_content_revision() == Some(4)`, sealed rich rule revision 4 under compiler contract 6 |
-| Capability queries | `supports_rich_block_layout()` (V3 and V4), `supports_rich_list_numbering()`, `supports_rich_text_language()`, `supports_rich_image_links()`, `supports_rich_details()` and `supports_rich_mentions()` (V4 only) |
-| Wasm | explicit profile bootstrap **format 9**: `BreditorRichProfile.fromBootstrapJsonV4` / `fromStandardBootstrapJsonV4`; descriptor `richLanguageVersion: 4`, `taskStructureVersion: 1`, `blockLayoutVersion: 1`, `listNumberingVersion: 1`, `textLanguageVersion: 1`, `imageLinkVersion: 1`, `detailsVersion: 1`, `mentionVersion: 1`; owner `listNumberingVersion()`, `textLanguageVersion()`, `imageLinkVersion()`, `detailsVersion()` and `mentionVersion()` all `"1"` |
+| Capability queries | `supports_rich_block_layout()` (V3 and V4), `supports_rich_list_numbering()`, `supports_rich_text_language()`, `supports_rich_image_links()`, `supports_rich_details()`, `supports_rich_mentions()` and `supports_rich_table_captions()` (V4 only) |
+| Wasm | explicit profile bootstrap **format 9**: `BreditorRichProfile.fromBootstrapJsonV4` / `fromStandardBootstrapJsonV4`; descriptor `richLanguageVersion: 4`, `taskStructureVersion: 1`, `blockLayoutVersion: 1`, `listNumberingVersion: 1`, `textLanguageVersion: 1`, `imageLinkVersion: 1`, `detailsVersion: 1`, `mentionVersion: 1`, `tableCaptionVersion: 1`; owner `listNumberingVersion()`, `textLanguageVersion()`, `imageLinkVersion()`, `detailsVersion()`, `mentionVersion()` and `tableCaptionVersion()` all `"1"` |
 | JavaScript factories | `compileRichProfileV4`, `compileStandardRichProfileV4` (`@breditor/experimental-rich-content`); `createLocalProfileV4`, `profileBootstrapJsonV4` (`@breditor/editor`, schema `breditor-editor/standard@4`) |
 | SDK openings | `openLocalEditor({richLanguage: 4})`, `openLocalDocumentEditor({richLanguage: 4, ...})` and both local React components' `initialOptions` |
-| Toolbar | `createRichToolbarV4(core, presentation)`: the V3 structural/layout controls plus **List numbering**, **Language**, **Clear language**, **Image link**, **Remove image link**, **Collapsible section**, **Remove collapsible section** and **Expand/Collapse section** |
+| Toolbar | `createRichToolbarV4(core, presentation)`: the V3 structural/layout controls plus **List numbering**, **Language**, **Clear language**, **Image link**, **Remove image link**, **Collapsible section**, **Remove collapsible section**, **Expand/Collapse section** and **Table caption** |
 
 Each factory checks its exact descriptor tuple. A V3 factory refuses a V9
 bootstrap and a V4 factory refuses a V8 bootstrap. `createRichToolbarV4`
@@ -44,9 +44,9 @@ React components reject `richLanguage: 4` with the explicit error *"richLanguage
 4 is the unreleased local-only candidate; shared editing supports richLanguage
 1, 2 or 3"* before claiming the host or initializing Wasm. They never fall back
 to V3. Shared interchange owners do not report list numbering, text language, image
-links, sections or mentions, so imports into a shared owner keep the original `list-numbering` notices,
-keep dropping `lang` silently, keep the original image-link and `<details>` conversion and
-import mention spans as plain `@label` text.
+links, sections, mentions or table captions, so imports into a shared owner keep the original `list-numbering` notices,
+keep dropping `lang` silently, keep the original image-link and `<details>` conversion,
+import mention spans as plain `@label` text and keep converting `<caption>` to flow before the table.
 
 ## Slice 1: ordered-list numbering (audit gap `list-properties`)
 
@@ -411,6 +411,12 @@ in `@breditor/interchange` (a test compares the copies byte for byte). The same
 accept/reject table runs in Rust, the browser package and interchange, and the
 browser test checks that every admitted value is its own `new URL(value).href`.
 
+The optional typed autolink rule (`autolink-v1`, any profile with the standard
+link format; see [`RICH_INPUT_RULES.md`](RICH_INPUT_RULES.md#optional-autolink-autolink-v1))
+reuses this exact native subset for inline links: a typed candidate becomes a
+link only if its target is already a fixed point of the subset, so it renders,
+copies and exports exactly like a value entered through the explicit link editor.
+
 ### Native action and commands
 
 `actions::SetImageLink::capture(document, image, Option<&RichImageLink>)`
@@ -667,7 +673,7 @@ owners only).
 
 The section slice moved the lock to
 `sha256:f19134f8bf95a5170a36eb2f5a9f5e3819dbfd2b0dcd9507ab846c60cffb5428`; the
-mention slice moved it again (see [Slice 5](#fingerprint-current)).
+mention and table-caption slices moved it again (see the [current lock](#fingerprint-current)).
 V1–V3 locks are unchanged.
 
 ### Not included
@@ -845,15 +851,12 @@ error. `richMentionStyles` is an optional host CSS hook.
   copy range snaps outward); the plain-text flavour is `@label`; a V1–V3 owner
   refuses a V4 record carrying a mention.
 
-### Fingerprint (current)
+### Fingerprint
 
-Current candidate V4 lock for schema `example/layout@1` with the standard inline
-preset:
-`sha256:39fcdb478f73d51a6a3187785ab43bd2d0cca167940d8892614e16c4ad52202e`
-(asserted in the core and Wasm text-language, image-link, section and mention
-tests). V1–V3 locks are unchanged. The schema unit test proves V4 differs from V3
-only by its rule revision, the text-language and mention formats, the image
-revision and the section grammar.
+The mention slice moved the lock to
+`sha256:39fcdb478f73d51a6a3187785ab43bd2d0cca167940d8892614e16c4ad52202e`; the
+table-caption slice moved it again (see [Slice 6](#fingerprint-current)).
+V1–V3 locks are unchanged.
 
 ### Not included
 
@@ -886,4 +889,202 @@ inside the chip, mention links, mention search by id, shared-collaboration rules
   query, the async menu, choosing, the chip, the caret moving past it, plain
   typing after it, Backspace deleting it whole, one Undo restoring `@query`,
   snapping, copy/paste with plain text `@label` and V3 refusing the record, and
+  interchange for V4 versus V3.
+
+## Slice 6: table captions (audit gap `advanced-tables`, captions)
+
+Before this slice no rich language could caption a table: HTML import turned
+`<caption>` into an ordinary paragraph before the table (with `block-structure`).
+V4 adds an optional caption that mirrors the image caption: one ordinary
+paragraph owned by the table. Nested-table policy, accessible resize handles and
+table/cell presentation remain open parts of `advanced-tables`.
+
+### Grammar decision
+
+| Node | Children (V4) |
+| --- | --- |
+| `breditor/table` | `breditor/table-row` × 0–256, **then** at most one `breditor/paragraph` (the caption) |
+
+- **Trailing, not leading.** The caption is the table's **last** child, after
+  every row. Rows therefore keep child indices `0..rows`, so every existing row
+  index, cell path, merge context and row/column action is unchanged; a row
+  appended "at the end" is inserted before the caption. The row ceiling (256),
+  cell ceiling and merge grammar are untouched. A caption before or between rows,
+  a second caption and any non-paragraph caption (heading, list, …) are rejected.
+- **A paragraph, like the image caption.** The caption is a `breditor/paragraph`
+  with its own stable `block-id`. It admits every inline format, inline links,
+  text language, mentions and block layout (alignment, direction, indent, line
+  height), exactly like an image caption. It is not a new node kind, so its
+  persisted paragraph contract is unchanged; only the table's child grammar
+  changes (recorded in the fingerprint).
+- **Presentation order = document order.** HTML requires `<caption>` to be a
+  table's first child; renderers emit it first and lay it out **after the rows**
+  with `caption-side: bottom`, so the visual, reading, search, clipboard and
+  navigation orders all agree with the AST (rows, then caption), like
+  `<figcaption>` after an image.
+- **Hidden tables.** A table with no rows or no columns (retained hidden state)
+  may keep its caption. It renders nothing (the live placeholder and the static
+  renderer's `hiddenTables` entry are unchanged), search skips it, and deleting
+  every row keeps the caption for Undo/restore.
+- V1–V3 reject a paragraph below a table; their documents, fingerprints and
+  conversions are unchanged.
+
+### Native actions and commands
+
+| Rust | Wasm/TS command | Semantics |
+| --- | --- | --- |
+| `RichLocalSession::add_table_caption(snapshot, table, paragraph)` | `{kind:"addTableCaption",data:{table,caption}}` | Adds one empty caption with the fresh identity `caption` and places a collapsed caret in it (pending formats cleared). A table that already has a caption is refused (`RichTableCaptionError::Exists`), never replaced. |
+| `RichLocalSession::remove_table_caption(snapshot, table)` | `{kind:"removeTableCaption",data:{table}}` | Removes the caption (text, formats, identity). Removing an absent caption is an admitted no-op (`Unchanged`). A text selection with an endpoint in the caption becomes a node selection of the table; other selections map unchanged. |
+| `actions::SetTableCaption::capture(doc, table, Option<RichBlockDraft>)` | — | The guarded table patch both use: rows, cells, merges, columns and identities untouched; a non-paragraph draft is refused (`RichDraftError::Caption`). |
+
+Each command is one history group with an exact inverse (Undo/Redo and
+checkpoint restore), refuses read-only owners, stale observations, a missing
+table (`RichTableCaptionError::Target`) and non-V4 contexts
+(`RichTableCaptionError::Profile`); a reused identity fails admission
+atomically. The raw `SetTableCaption` action dispatched to an older owner is
+refused by its grammar. The strict Wasm records reject unknown, missing and
+mistyped fields. `RichDocument::table_caption(table)` and
+`RichDocument::caption_table(block)` read the relation; the Wasm descriptor
+reports `tableCaptionVersion: 1`, the owner `tableCaptionVersion()` `"1"` and the
+facade `supportsTableCaptions()`. A V4 profile or owner without them is refused
+(`breditor_rich.table_caption_runtime`).
+
+### Editing behavior
+
+- **Typing and formats.** The caption is an ordinary text block for typing,
+  grouped typing, inline and pending formats, text language, mentions, selection
+  coverage and layout commands.
+- **Enter** follows the image-caption precedent: the caption stays one paragraph,
+  so Enter (and Shift+Enter) insert a line break; a general Enter
+  (`insertGeneralParagraph`) starting in a caption is refused.
+- **Never split, joined, converted, wrapped or moved alone.** `SplitTextBlock`,
+  `JoinTextBlocks` and flow pastes refuse it (it is not a flow child); a heading
+  conversion is refused by the paragraph-only caption grammar; list, quote,
+  section and task wrapping controls are disabled in it; block Markdown shortcuts
+  stay literal text; `MoveBlock` refuses it (`MoveSource`) and the table's drag
+  handle moves table and caption together.
+- **Backspace / Delete.** Backspace at the start of an **empty** caption removes it
+  (`removeTableCaption`, one Undo step). Otherwise Backspace at the caption start
+  and Delete at its end do nothing: caption text never merges with a cell or the
+  next block. Original-routing ranges across the caption boundary are refused
+  (`FlowRange`); the general range planner keeps the caption a caption (its
+  covered part is removed, the rest stays), never joins it to another block, and
+  a range covering the whole table removes table and caption together.
+- **Table actions keep the caption last**: insert/delete/move row (including
+  moving a row to the end), insert/delete/move column, resize, merge, split,
+  header and clear. Their Undo/Redo is exact and a caret in the caption is
+  untouched.
+- **Grid selections never include the caption.** Grid coverage, grid copy, merge
+  and clear cover cells only. The caption's coverage domain is
+  `RichCoverageDomain::TableCaption(table)` (`{kind:"tableCaption",table}` in the
+  coverage read), distinct from cells and from image captions.
+- **Navigation.** `<caption>` is first in the DOM but laid out after the rows, and
+  native caret movement around it differs per engine (Chromium and WebKit move
+  from the last row to the next cell, Firefox skips the caption). The live
+  controller therefore owns the unmodified arrow keys at the four caption
+  boundaries (`table_caption_navigation.ts`): Down from the last line of a
+  last-row cell and Right at the end of the last cell enter the caption; Up from
+  its first line and Left at its start return to the last row; Down from its last
+  line and Right at its end continue after the table (native flow navigation);
+  Up/Left at the start of the block right after the table reach the caption end.
+  Every other arrow key, and Shift-extended selections, stay native. Logical
+  flow navigation (`navigateFlow`, Alt+PageUp/PageDown) keeps the table one
+  outer stop: from the caption start it selects the table, from the caption end it
+  continues after the table, and it never stops in a caption from outside.
+- **Search/replace and writing tools** traverse the caption after the table's
+  cells (presentation order); a hidden table's caption is skipped.
+- **Clipboard.** A node, whole-document or covering general-range copy keeps the
+  caption (a partially covered caption is sliced); paste rekeys its identity. A
+  general range ending before the caption copies none, a text copy inside it is
+  ordinary text, and a grid record can never carry a caption. Plain text puts the
+  caption on its own line after the tab-separated rows. A rich flow paste
+  starting in a caption uses the explicit caption text projection. A V1–V3 owner
+  refuses a record containing a captioned table.
+
+### Rendering
+
+Live: `<table data-rich-block data-rich-table><caption data-rich-table-caption="{table-id}" style="caption-side: bottom"><p data-rich-block data-rich-text>…</p></caption><colgroup>…</colgroup><tbody>…</tbody></table>`.
+The caption paragraph is ordinary editable text in the surface (no non-editable
+island), so native carets, selection mapping and composition work as in any
+paragraph. The live stylesheet adds only spacing and colour
+(`caption[data-rich-table-caption]`). The static renderer emits the same
+structure (`style="caption-side:bottom"`, `data-rich-table-caption`), validates
+the same grammar (one trailing paragraph) and has structure/attribute parity with
+the live renderer.
+
+The V4 toolbar adds **Table caption** (`table-caption`): enabled for a selected
+table (node or grid selection, or a caret/range in a cell or in the caption),
+pressed when the table has a caption; activating it adds an empty caption and
+moves the caret into it, or removes the caption. Localization uses the existing
+per-control map; no new string keys.
+
+### Interchange
+
+`@breditor/interchange` reads `supportsTableCaptions()` once (local V4 owners
+only).
+
+- **HTML import, V4 owner:** the first `<caption>` becomes the table's caption
+  paragraph (inline formats, links, language and mentions as usual). A caption
+  whose content is one paragraph imports without a notice; an empty caption is an
+  empty caption. A leading heading becomes the caption paragraph, further blocks
+  stay as flow before the table, and a caption that starts with other blocks
+  (lists, quotes, …) stays flow before the table; each repair reports
+  `block-structure`. A second `<caption>` keeps the original conversion. A rowless
+  table still imports no table (`table-geometry`) and keeps the caption text as
+  flow.
+- **HTML import, V1–V3 owners:** unchanged: `<caption>` content becomes flow
+  before the table with one `block-structure` notice.
+- **HTML export:** `<table><caption><p style="white-space:pre-wrap">…</p></caption><colgroup>…`;
+  V4 HTML round trips exactly. A hidden captioned table exports its caption as a
+  paragraph (`table-geometry`).
+- **Markdown:** GFM tables have no caption, so a captioned table falls back to its
+  safe HTML block with `markdown-feature`; importing that Markdown gives a V4 owner
+  the caption back and V1–V3 the original flow conversion. Uncaptioned tables keep
+  their GFM export.
+
+### Fingerprint (current)
+
+Current candidate V4 lock for schema `example/layout@1` with the standard inline
+preset: `sha256:6daf61c3c5a216bb4d831c8bd6b9b776044b0a4598a346270ecf6579373959c0`
+(asserted in the core and Wasm text-language, image-link, section, mention and
+table-caption tests). V1–V3 locks are unchanged. The schema unit test proves V4
+differs from V3 only by its rule revision, the text-language and mention formats,
+the image revision, the section grammar and the table's caption grammar.
+
+### Not included
+
+Caption position choice (top), `<caption>`-level summaries or long descriptions,
+table titles in the accessibility tree beyond native `<caption>` semantics, caption
+drafts in `insertTable`, table/cell presentation, accessible resize handles and
+shared-collaboration rules (V4 is local only).
+
+### Tests
+
+- Rust core `tests/rich_table_caption_v4.rs`: fingerprint locks, the grammar
+  accept/reject table (formatted/empty/hidden captions; leading, middle, repeated,
+  heading and list captions; duplicate identity; V1–V3), add/type/format/break/
+  remove history groups with Undo/Redo and checkpoint restore, the existing-caption,
+  read-only, stale, missing, reused-identity and V1–V3 refusals, split/join/heading/
+  move/general-Enter/Markdown-rule refusals, block move of the table, every row,
+  column and cell action keeping the caption (with exact Undo/Redo), split and
+  deleting every row, grid coverage/copy exclusion and the `TableCaption` domain,
+  flow navigation, search/replace order, whole/covered/partial/grid/forged
+  clipboard records with V1–V3 refusal and general ranges into and across the
+  caption. Schema unit test: V4 vs V3 differences.
+- Wasm `tests/rich_table_caption_v4.rs`: descriptor and owner capability, V1–V3
+  refusal of commands and captioned documents, add/type/remove/Undo/Redo/restore,
+  strict malformed records, read-only and stale intent.
+- TypeScript: rich-content `tests/table_caption.test.ts` (live `<caption>` render,
+  native caret mapping, toolbar control and owner binding, Enter/Backspace/Delete,
+  the offset-based Left/Right caption boundaries,
+  insertion position, disabled flow controls, block moves, factory boundary),
+  editor `tests/static_table_caption.test.ts` (static output, hidden tables,
+  rejection, live parity), interchange `tests/table_caption.test.ts` (per-profile
+  import, repairs, export, Markdown fallback and round trip).
+- Playwright `experiments/rich-browser/table-caption-v4.spec.mjs` in Chromium,
+  Firefox and WebKit on a real Wasm V4 owner: capability and V3 refusal, the toolbar
+  adding a caption with the caret in it, typing and Enter, layout below the rows,
+  removal with Undo/Redo/restore, all eight arrow-key boundary moves, flow
+  navigation out of it, table actions keeping it, grid
+  copy excluding it, Backspace in an empty caption, copy/paste with V3 refusal and
   interchange for V4 versus V3.

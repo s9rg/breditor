@@ -132,7 +132,7 @@ fn explicit_candidate_v4_is_v3_grammar_plus_sections_with_its_own_rule_revision(
     // The only differences from V3 are the sealed rule revision, the one
     // core-owned text-language inline format, the image element's persisted
     // type revision (2: optional link properties and the non-decorative law)
-    // and the collapsible-section grammar.
+    // and the collapsible-section and table-caption grammar.
     let mut lookalike = v3.definition().as_ref().clone();
     lookalike.rich_content_contract = Some(4);
     let language = QualifiedName::try_new("breditor/text-language")?;
@@ -153,6 +153,7 @@ fn explicit_candidate_v4_is_v3_grammar_plus_sections_with_its_own_rule_revision(
     lookalike.elements.insert(image, revised);
     assert_ne!(fingerprint(&lookalike), v4.fingerprint());
     // Collapsible sections: two new elements, and every V2 flow container admits a section.
+    // Table captions: a table admits one trailing caption paragraph after its rows.
     let mut changed = vec![];
     for (name, element) in &v4.definition().elements {
         if v3.definition().elements.get(name) != Some(element) && name.as_str() != "breditor/image"
@@ -170,12 +171,14 @@ fn explicit_candidate_v4_is_v3_grammar_plus_sections_with_its_own_rule_revision(
             "breditor/details-summary",
             "breditor/document",
             "breditor/list-item",
+            "breditor/table",
             "breditor/table-cell",
             "breditor/task-item",
         ]
     );
     assert_eq!(fingerprint(&lookalike), v4.fingerprint());
     assert!(!v3.supports_rich_details() && v4.supports_rich_details());
+    assert!(!v3.supports_rich_table_captions() && v4.supports_rich_table_captions());
     assert!(!v3.supports_rich_image_links() && v4.supports_rich_image_links());
     assert!(!v3.supports_rich_list_numbering());
     assert!(v4.supports_rich_list_numbering());

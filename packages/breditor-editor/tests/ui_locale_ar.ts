@@ -3,6 +3,7 @@
  * or reviewed translation and is deliberately kept out of the packages.
  */
 import type {RichUiOptions,RichUiStrings} from "../../breditor-experimental-rich-content/src/ui_locale.js";
+import {arabicPanelStrings,arabicNotices,arabicRefusals} from "./ui_locale_ar_panels.js";
 
 export const arabicStrings:RichUiStrings={
  richEditorLabel:"محرر النص المنسق",richToolbarLabel:"تنسيق النص",
@@ -31,9 +32,31 @@ mentionLabel:"الإشارات",mentionLoading:"جارٍ تحميل الاقتر
  blockDragCrossContainer:"يمكن إعادة ترتيب الكتل داخل حاويتها فقط.",blockDragGrammar:"هذه الحاوية لا تقبل هذه الكتلة.",
  blockDragEmptiesSource:"نقل الكتلة الأخيرة سيترك حاويتها فارغة.",blockDragItemLead:"يجب أن يبدأ عنصر القائمة بسطر نصي.",
  blockDragBoundary:"الكتلة عند حافة حاويتها بالفعل.",blockDragNative:"رفض المحرر النقل.",
+ ...arabicPanelStrings,
+ // Image resize handles.
+ imageResizeLabel:"تغيير حجم الصورة {index} من {count}",imageResizeValue:"{width} × {height} بكسل",imageResizeOriginal:"{width} × {height} بكسل (الحجم الأصلي)",
+ imageResizePreview:"{width} × {height} بكسل (معاينة)",imageResizeBadge:"{width} × {height}",
+ // AI and language tools (separate block).
+ aiPanelLabel:"مساعد الكتابة",aiInstructionLabel:"التعليمات",aiScopeLabel:"التطبيق على",
+ aiScopeSelection:"النص المحدد",aiScopeBlock:"الكتلة الحالية",aiScopeDocument:"المستند كاملًا",
+ aiGenerate:"اقتراح إعادة صياغة",aiStop:"إيقاف",aiPending:"بانتظار المزوّد. لن يتغير شيء حتى تقبل.",
+ aiReviewLabel:"التغيير المقترح",aiBefore:"قبل",aiAfter:"بعد",aiAccept:"قبول",aiReject:"رفض",aiRerun:"إعادة التشغيل",
+ aiReady:"راجع التغيير المقترح. القبول يطبقه كتعديل واحد قابل للتراجع.",aiApplied:"طُبّق كتغيير واحد · المراجعة {revision}",
+ aiRejected:"تم تجاهل الاقتراح. لم يتغير المستند.",aiCancelled:"أُلغي الطلب. لم يتغير المستند.",
+ aiStale:"تغيّر المستند بعد إنشاء هذا الاقتراح. لم يُطبّق شيء؛ أعد تشغيله على النص الحالي.",
+ aiReadOnly:"المستند للقراءة فقط؛ لا يمكن تطبيق الاقتراحات.",aiFailed:"فشل طلب المزوّد: {reason}",aiTimeout:"لم يستجب المزوّد في الوقت المحدد.",
+ aiInvalidOutput:"أعاد المزوّد نتيجة غير صالحة؛ لم يُطبّق شيء.",aiInputTooLarge:"النص المحدد يتجاوز حد {limit} بايت؛ لم يُرسل شيء.",
+ aiOutputTooLarge:"نتيجة المزوّد تتجاوز حد {limit} بايت؛ لم يُطبّق شيء.",aiNoSelection:"حدد نصًا داخل المستند أولًا.",
+ aiBusy:"انتظر انتهاء التعديل أو التركيب الحالي.",aiLosses:"حُوّل مع تغييرات: {losses}",aiNoChange:"الاقتراح مطابق للنص الحالي.",
+ aiFormattedUnavailable:"الاقتراحات المنسقة تتطلب محوّل تبادل صريحًا؛ لم يُطبّق شيء.",aiImportRefused:"رُفض الاقتراح المنسق ({reason})؛ لم يُطبّق شيء.",
+ langPanelLabel:"الإملاء والقواعد",langCheck:"تدقيق",langChecking:"جارٍ التدقيق…",langIssuesLabel:"المشكلات",
+ langCountNone:"لا توجد مشكلات",langCountOne:"مشكلة واحدة",langCount:"عدد المشكلات: {count}",
+ langIssue:"«{text}»: {message}",langReplace:"استبدال بـ «{suggestion}»",langIgnore:"تجاهل",langNoSuggestions:"لا توجد اقتراحات",
+ langApplied:"استُبدل · المراجعة {revision}",langStale:"تغيّر النص؛ أُزيلت المشكلات القديمة: {count}.",
+ langIgnoredMalformed:"تم تجاهل مشكلات تالفة من المزوّد: {count}.",langReadOnly:"للقراءة فقط: يمكن مراجعة المشكلات دون تطبيقها.",
 };
 export const arabicUi:RichUiOptions={
- lang:"ar",direction:"rtl",strings:arabicStrings,
+ lang:"ar",direction:"rtl",strings:arabicStrings,notices:arabicNotices,refusals:arabicRefusals,
  controls:{bold:{label:"عريض"},italic:{label:"مائل"},undo:{label:"تراجع"},link:{label:"رابط",fields:{href:{label:"عنوان الرابط"}}},table:{label:"إدراج جدول"}},
  slashItems:{paragraph:{label:"نص",keywords:["فقرة"]},"heading-1":{label:"عنوان 1"},"heading-2":{label:"عنوان 2"},"heading-3":{label:"عنوان 3"},"bullet-list":{label:"قائمة نقطية"},"numbered-list":{label:"قائمة مرقمة"},table:{label:"جدول"}},
 };

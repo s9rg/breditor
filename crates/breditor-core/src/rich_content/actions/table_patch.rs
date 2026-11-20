@@ -33,6 +33,16 @@ pub(super) fn rebuild(
     rows: Vec<NodeRef>,
 ) -> Result<NodeRef, RichActionError> {
     let element = node.as_element().ok_or(RichActionError::Rewrite)?;
+    // Every row/column/cell rewrite keeps a candidate V4 caption as the table's last
+    // child, whether the caller passed all children (index-based row edits, which act
+    // before the caption) or only the rows (column edits zip rows with the axis).
+    let mut rows: Vec<NodeRef> = rows
+        .into_iter()
+        .filter(|child| !crate::rich_content::table_caption::is_caption_child(child))
+        .collect();
+    if let Some(caption) = crate::rich_content::table_caption::caption(element) {
+        rows.push(NodeRef::element(caption.clone()));
+    }
     let properties = if let Some(columns) = columns {
         let mut values: std::collections::BTreeMap<_, _> = element
             .properties()

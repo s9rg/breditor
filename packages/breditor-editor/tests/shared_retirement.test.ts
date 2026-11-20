@@ -1,11 +1,13 @@
 import {beforeEach,describe,expect,it,vi} from "vitest";
 import {SharedRichEditor} from "../../breditor-collaboration/src/core.js";
 import type {SharedRustOwner} from "../../breditor-collaboration/src/types.js";
-const storage=vi.hoisted(()=>({open:vi.fn(),read:vi.fn(),write:vi.fn(),acquire:vi.fn()}));
+const storage=vi.hoisted(()=>({open:vi.fn(),read:vi.fn(),write:vi.fn()}));
 vi.mock("../../breditor-collaboration/src/persistence/session_database.js",async importOriginal=>({
  ...await importOriginal<object>(),openSessionDatabase:storage.open,readSessionCheckpoint:storage.read,writeSessionCheckpoint:storage.write
 }));
-vi.mock("../../breditor-collaboration/src/persistence/writer_lease.js",()=>({SharedWriterLease:{acquire:storage.acquire}}));
+// The writer lease is not mocked: SharedWriterLease rejects look-alike objects (private-field brand checks,
+// prototype methods captured at module load), so sessions acquire a real lease over a stubbed Web Locks API.
+// `lease.close` records the moment the held origin-wide lock is actually released.
 import {SharedPersistentSession} from "../../breditor-collaboration/src/persistence/shared_session.js";
 
 function owner(){
@@ -19,8 +21,11 @@ function owner(){
  return {raw,typed:raw as unknown as SharedRustOwner};
 }
 function setup(){
- const native=owner(),db={close:vi.fn(),onversionchange:null},lease={assertLive:vi.fn(),close:vi.fn(async()=>{})};
- storage.open.mockResolvedValue(db);storage.read.mockResolvedValue(null);storage.write.mockResolvedValue(undefined);storage.acquire.mockResolvedValue(lease);
+ const native=owner(),db={close:vi.fn(),onversionchange:null},lease={close:vi.fn()};
+ // Like the browser, grant the lock asynchronously: acquire's callback reads the request's own promise.
+ const locks={request:(_name:string,_options:unknown,callback:(lock:object)=>Promise<void>)=>Promise.resolve().then(()=>callback({})).then(()=>{lease.close();})};
+ Object.defineProperty(globalThis.navigator,"locks",{value:locks,configurable:true});
+ storage.open.mockResolvedValue(db);storage.read.mockResolvedValue(null);storage.write.mockResolvedValue(undefined);
  return {...native,db,lease,options:{database:"store",room:"room",writer:"101",create:()=>native.typed,restore:()=>native.typed}};
 }
 beforeEach(()=>{for(const fn of Object.values(storage))fn.mockReset();});

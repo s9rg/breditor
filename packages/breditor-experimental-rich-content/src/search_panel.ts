@@ -2,9 +2,12 @@
 import type {RichSearchQuery,RichSearchReplacement,RichSearchResults} from "./core.js";
 import type {RichSearchHost} from "./search_host.js";
 import {RichSearchOverlay} from "./search_overlay.js";
+import {defaultRichUi,richUiError,type RichUiLocale} from "./ui_locale.js";
 export interface RichSearchPanelOptions {
  initialQuery?:RichSearchQuery;initialReplacement?:RichSearchReplacement;wrap?:boolean;
- decorations?:boolean;debounceMs?:number;label?:string;onError?:(error:unknown)=>void;onClose?:()=>void;
+ decorations?:boolean;debounceMs?:number;
+ /** Accessible name; overrides the editor catalog's `searchLabel`. Other text comes from the host's `uiLocale()`. */
+ label?:string;onError?:(error:unknown)=>void;onClose?:()=>void;
 }
 export interface RichSearchPanelState {readonly open:boolean;readonly disposed:boolean;readonly busy:boolean;readonly count:string;readonly active:string|null;readonly query:Readonly<RichSearchQuery>;readonly replacement:Readonly<RichSearchReplacement>;readonly error:string|null}
 export interface RichSearchPanel {refresh():void;focus():void;close():void;next(direction?:"next"|"previous"):Promise<void>;replaceOne():Promise<void>;replaceAll():Promise<void>;state():RichSearchPanelState;dispose():void}
@@ -13,26 +16,26 @@ class SearchPanel<R extends RichSearchResults> implements RichSearchPanel {
  readonly #root:HTMLElement;readonly #host:RichSearchHost<R>;readonly #options:RichSearchPanelOptions;readonly #element:HTMLDivElement;readonly #abort:AbortController;
  readonly #pattern:HTMLInputElement;readonly #regex:HTMLInputElement;readonly #case:HTMLInputElement;readonly #words:HTMLInputElement;readonly #wrap:HTMLInputElement;readonly #replacement:HTMLInputElement;readonly #captures:HTMLInputElement;readonly #status:HTMLParagraphElement;
  readonly #next:HTMLButtonElement;readonly #previous:HTMLButtonElement;readonly #one:HTMLButtonElement;readonly #all:HTMLButtonElement;
- readonly #unsubscribe:()=>void;readonly #overlay:RichSearchOverlay<R>|undefined;readonly #delay:number;
- #results:R|undefined;#key="";#active:string|null=null;#error:string|null=null;#pending=false;#open=true;#disposed=false;#scheduled=false;#queryComposing=false;#clipped=false;#timer:ReturnType<typeof setTimeout>|undefined;
+ readonly #unsubscribe:()=>void;readonly #overlay:RichSearchOverlay<R>|undefined;readonly #delay:number;readonly #ui:RichUiLocale;
+ #results:R|undefined;#key="";#active:string|null=null;#error:string|null=null;#shown:string|null=null;#pending=false;#open=true;#disposed=false;#scheduled=false;#queryComposing=false;#clipped=false;#timer:ReturnType<typeof setTimeout>|undefined;
  constructor(root:HTMLElement,host:RichSearchHost<R>,options:RichSearchPanelOptions){
   if(hosts.has(root)||root===host.surface||root.contains(host.surface)||host.surface.contains(root)||root.ownerDocument!==host.surface.ownerDocument)throw Error("Search controls require an unused separate host outside the editing surface");
   const initial=host.searchState();if(initial.closed||!initial.available)throw Error("Use an open editor with complete native search capabilities");
   const query=JSON.parse(JSON.stringify(options.initialQuery??{pattern:"",mode:"literal",caseSensitive:false,wholeWords:false})) as RichSearchQuery,replacement=JSON.parse(JSON.stringify(options.initialReplacement??{text:"",mode:"literal"})) as RichSearchReplacement;
   if(typeof query.pattern!=="string"||(query.mode!=="literal"&&query.mode!=="regex")||typeof query.caseSensitive!=="boolean"||typeof query.wholeWords!=="boolean"||typeof replacement.text!=="string"||(replacement.mode!=="literal"&&replacement.mode!=="captures"))throw new TypeError("Expected explicit search and replacement options");
   const delay=options.debounceMs??120;if(!Number.isSafeInteger(delay)||delay<0||delay>1000||options.wrap!==undefined&&typeof options.wrap!=="boolean"||options.decorations!==undefined&&typeof options.decorations!=="boolean")throw new TypeError("Expected a bounded search delay and Boolean presentation options");
-  this.#root=root;this.#host=host;this.#options={...options};this.#delay=delay;
-  const d=root.ownerDocument,realm=d.defaultView as unknown as {AbortController:typeof AbortController};this.#abort=new realm.AbortController();this.#element=d.createElement("div");this.#element.dataset["breditorSearch"]="";this.#element.setAttribute("role","search");this.#element.setAttribute("aria-label",options.label??"Find and replace");
+  this.#root=root;this.#host=host;this.#options={...options};this.#delay=delay;const ui=this.#ui=host.uiLocale?.()??defaultRichUi;
+  const d=root.ownerDocument,realm=d.defaultView as unknown as {AbortController:typeof AbortController};this.#abort=new realm.AbortController();this.#element=d.createElement("div");this.#element.dataset["breditorSearch"]="";this.#element.setAttribute("role","search");this.#element.setAttribute("aria-label",options.label??ui.text("searchLabel"));ui.applyChrome(this.#element);
   const style=d.createElement("style");style.textContent=styles;this.#element.append(style);
   const field=(name:string,label:string,value:string)=>{const wrapper=d.createElement("label"),input=d.createElement("input");wrapper.textContent=label;input.dataset["searchField"]=name;input.type="text";input.value=value;wrapper.append(input);this.#element.append(wrapper);return input;};
   const check=(name:string,label:string,value:boolean)=>{const wrapper=d.createElement("label"),input=d.createElement("input");input.dataset["searchField"]=name;input.type="checkbox";input.checked=value;wrapper.append(input,d.createTextNode(label));this.#element.append(wrapper);return input;};
-  this.#pattern=field("pattern","Find",query.pattern);this.#regex=check("regex","Regular expression",query.mode==="regex");this.#case=check("case","Match case",query.caseSensitive);this.#words=check("words","Whole words",query.wholeWords);this.#wrap=check("wrap","Wrap",options.wrap??true);
-  this.#replacement=field("replacement","Replace with",replacement.text);this.#captures=check("captures","Expand captures",replacement.mode==="captures");
+  this.#pattern=field("pattern",ui.text("searchFind"),query.pattern);this.#regex=check("regex",ui.text("searchRegex"),query.mode==="regex");this.#case=check("case",ui.text("searchMatchCase"),query.caseSensitive);this.#words=check("words",ui.text("searchWholeWords"),query.wholeWords);this.#wrap=check("wrap",ui.text("searchWrap"),options.wrap??true);
+  this.#replacement=field("replacement",ui.text("searchReplaceWith"),replacement.text);this.#captures=check("captures",ui.text("searchExpandCaptures"),replacement.mode==="captures");
   const button=(name:string,label:string,run:()=>void)=>{const node=d.createElement("button");node.type="button";node.dataset["searchAction"]=name;node.textContent=label;node.addEventListener("click",run,{signal:this.#abort.signal});this.#element.append(node);return node;};
   const action=(run:()=>Promise<void>)=>{void run().catch(()=>{/* Operation already reports its guarded failure. */});};
-  this.#previous=button("previous","Previous",()=>action(()=>this.next("previous")));this.#next=button("next","Next",()=>action(()=>this.next()));this.#one=button("replaceOne","Replace",()=>action(()=>this.replaceOne()));this.#all=button("replaceAll","Replace all",()=>action(()=>this.replaceAll()));button("close","Close",()=>this.close());
+  this.#previous=button("previous",ui.text("searchPrevious"),()=>action(()=>this.next("previous")));this.#next=button("next",ui.text("searchNext"),()=>action(()=>this.next()));this.#one=button("replaceOne",ui.text("searchReplace"),()=>action(()=>this.replaceOne()));this.#all=button("replaceAll",ui.text("searchReplaceAll"),()=>action(()=>this.replaceAll()));button("close",ui.text("searchClose"),()=>this.close());
   this.#status=d.createElement("p");this.#status.dataset["searchStatus"]="";this.#status.setAttribute("role","status");this.#element.append(this.#status);
-  this.#element.addEventListener("input",()=>{this.#error=null;if(this.#timer!==undefined)clearTimeout(this.#timer);this.#overlay?.set(undefined,null);if(!this.#queryComposing)this.#timer=setTimeout(()=>{this.#timer=undefined;this.refresh();},this.#delay);},{signal:this.#abort.signal});
+  this.#element.addEventListener("input",()=>{this.#error=this.#shown=null;if(this.#timer!==undefined)clearTimeout(this.#timer);this.#overlay?.set(undefined,null);if(!this.#queryComposing)this.#timer=setTimeout(()=>{this.#timer=undefined;this.refresh();},this.#delay);},{signal:this.#abort.signal});
   this.#element.addEventListener("change",()=>this.refresh(),{signal:this.#abort.signal});
   this.#element.addEventListener("compositionstart",()=>{this.#queryComposing=true;if(this.#timer!==undefined)clearTimeout(this.#timer);this.#overlay?.set(undefined,null);this.#controls();},{signal:this.#abort.signal});
   this.#element.addEventListener("compositionend",()=>{this.#queryComposing=false;this.refresh();},{signal:this.#abort.signal});
@@ -45,12 +48,15 @@ class SearchPanel<R extends RichSearchResults> implements RichSearchPanel {
  #replacementValue():RichSearchReplacement{return{text:this.#replacement.value,mode:this.#captures.checked?"captures":"literal"};}
  #schedule():void{if(this.#disposed||this.#scheduled)return;this.#scheduled=true;queueMicrotask(()=>{this.#scheduled=false;this.refresh();});}
  #clearResults():void{const result=this.#results;this.#results=undefined;this.#active=null;this.#key="";this.#overlay?.set(undefined,null);result?.dispose();}
- #report(error:unknown):void{this.#error=error instanceof Error?error.message:String(error);this.#controls();try{this.#options.onError?.(error);}catch{/* Reporting cannot rewind publication. */}}
+ #report(error:unknown):void{this.#error=error instanceof Error?error.message:String(error);this.#shown=this.#ui.describe(error,this.#error);this.#controls();try{this.#options.onError?.(error);}catch{/* Reporting cannot rewind publication. */}}
  #controls():void{
   if(this.#disposed)return;const state=this.#host.searchState(),count=this.#results?.metadata().count??"0",blocked=state.closed||state.busy||state.composing||this.#queryComposing||this.#pending||!this.#open,read=blocked||count==="0"||!state.available;
   this.#next.disabled=this.#previous.disabled=read;this.#one.disabled=this.#all.disabled=read||!state.canReplace;
   for(const field of [this.#pattern,this.#regex,this.#case,this.#words,this.#wrap,this.#replacement,this.#captures])field.disabled=state.closed||this.#pending;
-  this.#status.textContent=state.closed?"Editor closed":state.composing?"Finish composing in the editor to search":this.#queryComposing?"Finish entering the search text":this.#pending?"Applying guarded search action":this.#error??`${this.#active===null?`${count} matches`:`${Number(this.#active)+1} of ${count}`}${state.readOnly?" · Read-only":!state.canReplace?" · Replacement requires search-enabled recovery":""}${this.#clipped?" · Decoration paint limit reached; every result remains navigable":""}`;
+  const ui=this.#ui,part=(status:string,key:"panelReadOnly"|"searchReplaceUnavailable"|"searchPaintLimit")=>ui.text("panelStatusPart",{status,part:ui.text(key)});
+  let summary=this.#active===null?ui.text("searchCount",{count}):ui.text("searchPosition",{index:Number(this.#active)+1,count});
+  if(state.readOnly)summary=part(summary,"panelReadOnly");else if(!state.canReplace)summary=part(summary,"searchReplaceUnavailable");if(this.#clipped)summary=part(summary,"searchPaintLimit");
+  this.#status.textContent=state.closed?ui.text("panelEditorClosed"):state.composing?ui.text("searchComposingEditor"):this.#queryComposing?ui.text("searchComposingQuery"):this.#pending?ui.text("searchPending"):this.#shown??summary;
  }
  refresh():void{
   if(this.#disposed)return;const state=this.#host.searchState();
@@ -58,22 +64,22 @@ class SearchPanel<R extends RichSearchResults> implements RichSearchPanel {
   if(state.busy||state.composing||this.#queryComposing||this.#pending){this.#overlay?.set(undefined,null);this.#controls();return;}
   const query=this.#query(),key=JSON.stringify(query);let valid=this.#key===key&&this.#results!==undefined;
   if(valid)try{this.#host.checkSearchResults(this.#results!,state.revision);}catch{valid=false;}
-  if(!valid){this.#clearResults();this.#error=null;if(query.pattern)try{this.#results=this.#host.findText(query,state.revision);this.#key=key;}catch(error){this.#report(error);}}
+  if(!valid){this.#clearResults();this.#error=this.#shown=null;if(query.pattern)try{this.#results=this.#host.findText(query,state.revision);this.#key=key;}catch(error){this.#report(error);}}
   this.#controls();this.#overlay?.set(this.#results,this.#active);
  }
  async #action(kind:"next"|"previous"|"one"|"all"):Promise<void>{
   let acquired=false;
   try{
-   if(this.#disposed||!this.#open)throw Error("Search controls are closed");this.refresh();const state=this.#host.searchState(),results=this.#results;
-   if(this.#pending||state.closed||state.busy||state.composing||this.#queryComposing)throw Error("Search actions wait for the current editor operation or composition");
-   if(!results||results.metadata().count==="0")return;if((kind==="one"||kind==="all")&&!state.canReplace)throw Error("Replacement requires an editable search-enabled owner");
+   if(this.#disposed||!this.#open)throw richUiError("searchErrorClosed");this.refresh();const state=this.#host.searchState(),results=this.#results;
+   if(this.#pending||state.closed||state.busy||state.composing||this.#queryComposing)throw richUiError("searchErrorBusy");
+   if(!results||results.metadata().count==="0")return;if((kind==="one"||kind==="all")&&!state.canReplace)throw richUiError("searchErrorReplace");
    const index=kind==="next"||kind==="previous"?results.navigate(this.#active,kind,this.#wrap.checked):this.#active??"0";if(index===null)return;
-   this.#pending=true;acquired=true;this.#error=null;this.#controls();
+   this.#pending=true;acquired=true;this.#error=this.#shown=null;this.#controls();
    if(kind==="next"||kind==="previous"){await this.#host.selectSearchMatch(results,index,state.revision);if(this.#results===results&&this.#open)this.#active=index;}
    else if(kind==="one")await this.#host.replaceSearchOne(results,index,this.#replacementValue(),state.revision);
    else await this.#host.replaceSearchAll(results,this.#replacementValue(),state.revision);
   }catch(error){if(!this.#disposed)this.#report(error);throw error;}
-  finally{if(acquired){this.#pending=false;if(!this.#disposed){const error=this.#error;this.refresh();if(error!==null){this.#error=error;this.#controls();}}}}
+  finally{if(acquired){this.#pending=false;if(!this.#disposed){const error=this.#error,shown=this.#shown;this.refresh();if(error!==null){this.#error=error;this.#shown=shown;this.#controls();}}}}
  }
  next(direction:"next"|"previous"="next"):Promise<void>{return this.#action(direction);}
  replaceOne():Promise<void>{return this.#action("one");}

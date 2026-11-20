@@ -4,6 +4,7 @@ import type {SharedReviewPolicy,SharedReviewSnapshot,SharedReviewTarget} from ".
 import type {SharedDocumentVersionInfo} from "../version_types.js";
 import type {SharedDocumentVersionsState,SharedDocumentVersionStatus} from "../versions/types.js";
 import type {SharedSuggestionPanelOptions} from "../suggestion_panel/types.js";
+import type {RichUiLocale,RichUiOptions} from "@breditor/experimental-rich-content/rendering";
 /** A borrowed native facade, not another editor owner. */
 export type SharedReviewPanelCore=Pick<SharedRichEditor<SharedSelectionPolicy>,"view"|"reviewSnapshot"|"subscribeReview"|"captureReviewAnchor"|"dispatchReview"|"undoReview"|"redoReview"|"compareVersion"|"prepareVersionRestore"|"applyVersionRestore">&Partial<Pick<SharedRichEditor<SharedSelectionPolicy>,"supportsReviewQuotes"|"readReviewQuote">>;
 /** Borrowed local or shared catalog. Optional remote methods do not change local synchronous use. */
@@ -28,6 +29,11 @@ export interface SharedReviewPanelOptions {
  /** Permanently consume a fresh namespace on every restore preview, including refusal/discard. */
  allocatePrefix?:()=>string;
  nowMs?:()=>string;onError?:(error:unknown)=>void;
+ /**
+  * Chrome catalog, normally the borrowed editor's `uiLocale()`. Validated before any DOM is created; nested
+  * suggestion controls inherit it unless they name their own. Omitted keeps the English defaults.
+  */
+ ui?:RichUiLocale|RichUiOptions;
 }
 export interface SharedReviewPanel {
  readonly element:HTMLElement;refresh():void;
@@ -35,7 +41,7 @@ export interface SharedReviewPanel {
  dispose():void;
 }
 export interface PanelContext {
- core:SharedReviewPanelCore;options:SharedReviewPanelOptions;snapshot:SharedReviewSnapshot;
+ core:SharedReviewPanelCore;options:SharedReviewPanelOptions;snapshot:SharedReviewSnapshot;ui:RichUiLocale;
  document:Document;run(work:()=>void):void;report(error:unknown):void;refresh():void;
  target():SharedReviewTarget|null;commentAllowed():boolean;moderates(author:string):boolean;
 }

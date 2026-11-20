@@ -14,6 +14,7 @@ export {mountRichWritingTools} from "./dist/browser/writing_tools_panel.js";
 export {createRichFullscreen} from "./dist/browser/fullscreen_controller.js";
 export {mountRichFullscreenControls} from "./dist/browser/fullscreen_controls.js";
 export {mountRichTableColumnResize,richTableColumnResizeCommit,clampRichTableColumnWidth,richTableColumnResizeStyles,RICH_TABLE_COLUMN_WIDTH_MIN,RICH_TABLE_COLUMN_WIDTH_MAX} from "./dist/browser/table_column_resize.js";
+export {mountRichImageResize,richImageResizeCommit,clampRichImageDimension,scaleRichImageSize,richImageResizeStyles,RICH_IMAGE_SIZE_MIN,RICH_IMAGE_SIZE_MAX} from "./dist/browser/image_resize.js";
 export {createRichSlashCommands,filterRichSlashItems,standardRichSlashPicks} from "./dist/browser/slash_command_items.js";
 export {mountRichBlockDrag,mountRichBlockDragPort,richBlockDragStyles} from "./dist/browser/block_drag.js";
 export {resolveRichBlockMove,resolveRichBlockStep,richBlockDropTargets,richHandleBlock,richSelectionBlock,isMovableBlock} from "./dist/browser/block_move.js";
@@ -22,6 +23,10 @@ export {mountRichMentions,requireRichMentionSuggestions,filterRichMentionSuggest
 export {richMentionFormat,richMentionKindProperty,richMentionIdProperty,richMentionLabelProperty,richMentionKinds,richMentionClass,richMentionStyles,isRichMentionId,isRichMentionKind,isRichMentionLabel,mentionOf,mentionText,mentionFormat,requireRichMention} from "./dist/browser/mention.js";
 export {mountRichSelectionToolbar,mountRichContextMenu,richSelectionToolbarDefaults,richContextMenuDefaults,richContextUiStyles} from "./dist/browser/context_ui.js";
 export {mountRichSourceView} from "./dist/browser/source_view.js";
+export {mountRichAiTools} from "./dist/browser/ai_rewrite.js";
+export {mountRichLanguageCheck} from "./dist/browser/language_check.js";
+export {richAiToolsHost,RICH_AI_MAX_BYTES,RICH_AI_MAX_INSTRUCTION,RICH_AI_MAX_TIMEOUT_MS} from "./dist/browser/ai_tools_host.js";
+export {richAiUiStringsEn} from "./dist/browser/ui_locale_ai.js";
 export {RICH_DOCUMENT_SOURCE_MAX_BYTES} from "./dist/browser/source_view_types.js";
 
 const searchResults=new WeakMap();
@@ -48,6 +53,7 @@ export {createLayoutRichToolbarV3} from "./dist/browser/index.js";
 export {createRichToolbarV4,listNumberingControl,selectedOrderedList} from "./dist/browser/index.js";
 export {imageLinkControls,imageLinkOf,canonicalImageLinkHref,richImageHrefProperty,richImageLinkNewWindowProperty} from "./dist/browser/index.js";
 export {detailsToolbarControls,detailsOpen,selectedDetails,detailsInterval,richDetailsKind,richDetailsSummaryKind,richDetailsOpenProperty} from "./dist/browser/index.js";
+export {tableCaptionToolbarControls,tableCaptionOf,isTableCaption,selectedTableCaption,richTableCaptionKind} from "./dist/browser/index.js";
 export {textLanguageControls,canonicalTextLanguage,textLanguageOf,richTextLanguageFormat,richTextLanguageTagProperty,richTextLanguageRecipeV4} from "./dist/browser/index.js";
 export {createFlowNavigationControls} from "./dist/browser/index.js";
 export {createSelectionRichToolbarV1} from "./dist/browser/index.js";
@@ -106,6 +112,7 @@ function compiledProfile(result,language=1) {
     if(language===4?descriptor.imageLinkVersion!==1:descriptor.imageLinkVersion!==undefined)throw new RichCommandError("breditor_rich.image_link_runtime","Use the matching explicitly selected rich V4 profile");
     if(language===4?descriptor.detailsVersion!==1:descriptor.detailsVersion!==undefined)throw new RichCommandError("breditor_rich.details_runtime","Use the matching explicitly selected rich V4 profile");
     if(language===4?descriptor.mentionVersion!==1:descriptor.mentionVersion!==undefined)throw new RichCommandError("breditor_rich.mention_runtime","Use the matching explicitly selected rich V4 profile");
+    if(language===4?descriptor.tableCaptionVersion!==1:descriptor.tableCaptionVersion!==undefined)throw new RichCommandError("breditor_rich.table_caption_runtime","Use the matching explicitly selected rich V4 profile");
     return new RichCoreProfile(raw, descriptor);
   } catch (error) { raw.free(); throw error; }
 }
@@ -179,7 +186,7 @@ class RichCoreEditor {
   #raw; #observation; #language; #selectionPolicy;
   #assetReferences=new RichRetainedAssetReferenceRegistry();
   #searches=new Set();
-  constructor(raw,descriptor,selectionPolicy="original") { this.#raw = raw;this.#selectionPolicy=selectionPolicy;try{this.#language=JSON.parse(descriptor).richLanguageVersion??1;this.#observation = raw.observe();if((this.#language===3||this.#language===4)&&!this.supportsBlockLayout())throw new RichCommandError("breditor_rich.layout_runtime","Use matching native layout V3 commands and reads");if(this.#language===4&&!this.supportsListNumbering())throw new RichCommandError("breditor_rich.list_numbering_runtime","Use matching native rich V4 list numbering commands");if(this.#language===4&&!this.supportsTextLanguage())throw new RichCommandError("breditor_rich.text_language_runtime","Use matching native rich V4 text language commands");if(this.#language===4&&!this.supportsImageLinks())throw new RichCommandError("breditor_rich.image_link_runtime","Use matching native rich V4 image link commands");if(this.#language===4&&!this.supportsDetails())throw new RichCommandError("breditor_rich.details_runtime","Use matching native rich V4 collapsible section commands");if(this.#language===4&&!this.supportsMentions())throw new RichCommandError("breditor_rich.mention_runtime","Use matching native rich V4 mention commands");if(selectionPolicy==="document-v1"&&!this.supportsDocumentSelection())throw new RichCommandError("breditor_rich.document_selection_unavailable","Use complete matching native document-selection capabilities");}catch(error){this.#observation?.free();raw.free();this.#raw=undefined;throw error;} }
+  constructor(raw,descriptor,selectionPolicy="original") { this.#raw = raw;this.#selectionPolicy=selectionPolicy;try{this.#language=JSON.parse(descriptor).richLanguageVersion??1;this.#observation = raw.observe();if((this.#language===3||this.#language===4)&&!this.supportsBlockLayout())throw new RichCommandError("breditor_rich.layout_runtime","Use matching native layout V3 commands and reads");if(this.#language===4&&!this.supportsListNumbering())throw new RichCommandError("breditor_rich.list_numbering_runtime","Use matching native rich V4 list numbering commands");if(this.#language===4&&!this.supportsTextLanguage())throw new RichCommandError("breditor_rich.text_language_runtime","Use matching native rich V4 text language commands");if(this.#language===4&&!this.supportsImageLinks())throw new RichCommandError("breditor_rich.image_link_runtime","Use matching native rich V4 image link commands");if(this.#language===4&&!this.supportsDetails())throw new RichCommandError("breditor_rich.details_runtime","Use matching native rich V4 collapsible section commands");if(this.#language===4&&!this.supportsMentions())throw new RichCommandError("breditor_rich.mention_runtime","Use matching native rich V4 mention commands");if(this.#language===4&&!this.supportsTableCaptions())throw new RichCommandError("breditor_rich.table_caption_runtime","Use matching native rich V4 table caption commands");if(selectionPolicy==="document-v1"&&!this.supportsDocumentSelection())throw new RichCommandError("breditor_rich.document_selection_unavailable","Use complete matching native document-selection capabilities");}catch(error){this.#observation?.free();raw.free();this.#raw=undefined;throw error;} }
   richLanguageVersion(){this.#live();return this.#language;}
   supportsRetainedAssetReferences(){const raw=this.#live();return raw.retainedAssetReferencesVersion?.()==="1"&&typeof raw.retainedAssetReferencesJson==="function";}
   retainedAssetReferences(revision){const raw=this.#live(),current=this.#observation.revision;if(revision!==undefined&&revision!==current)throw new RichCommandError("breditor_rich.stale_observation","The asset read was prepared from an older rich publication");if(!this.supportsRetainedAssetReferences())throw new RichCommandError("breditor_rich.asset_references_unavailable","Use complete matching native retained asset reads");return this.#assetReferences.retain(read(raw.retainedAssetReferencesJson(this.#observation)),current,"local-history",this.view().documentJson);}
@@ -203,6 +210,18 @@ class RichCoreEditor {
   insertPlainTextWithMarkdownRules(text,namespace,revision){return this.#markdownInput("insertPlainTextWithMarkdownRules",{text,namespace},revision);}
   /** Natural input and conversion complete before this call returns to any subscriber. */
   insertTypingTextWithMarkdownRules(text,clockMs,namespace,revision){return this.#markdownInput("insertTypingTextWithMarkdownRules",{text,clockMs,namespace},revision);}
+  /** Version1 rule sets: plain/natural calls with explicit `rules` plus the Enter autolink split. */
+  supportsInputRuleSets(){const r=this.#live();return this.supportsMarkdownInputRules()&&r.inputRuleSetsVersion?.()==="1"&&[r.insertPlainTextWithInputRules,r.insertTypingTextWithInputRules,r.insertParagraphWithAutolink].every(method=>typeof method==="function");}
+  #ruleSetInput(method,data,revision){
+    if(revision!==undefined&&revision!==this.#observation.revision)throw new RichCommandError("breditor_rich.stale_observation","The input was prepared from an older rich view");
+    if(!this.supportsInputRuleSets())throw new RichCommandError("breditor_rich.input_rules_unavailable","Use complete matching native input rule sets");
+    return this.#markdownInput(method,data,revision);
+  }
+  /** `rules` is a nonempty duplicate-free list of `markdown-v1`/`autolink-v1`; refused retains the typed text. */
+  insertPlainTextWithInputRules(text,rules,namespace,revision){return this.#ruleSetInput("insertPlainTextWithInputRules",{text,namespace,rules:[...rules]},revision);}
+  insertTypingTextWithInputRules(text,clockMs,rules,namespace,revision){return this.#ruleSetInput("insertTypingTextWithInputRules",{text,clockMs,namespace,rules:[...rules]},revision);}
+  /** Enter at a collapsed caret, then `autolink-v1`; one Undo removes only the link. */
+  insertParagraphWithAutolink(data,revision){return this.#ruleSetInput("insertParagraphWithAutolink",{right:data.right,newItem:data.newItem},revision);}
   supportsSearch(){const raw=this.#live();return raw.searchVersion?.()==="1"&&[raw.findText,raw.checkSearchResults,raw.selectSearchMatch,raw.replaceSearchOne,raw.replaceSearchAll].every(method=>typeof method==="function");}
   #searchOwner(revision){const raw=this.#live();if(revision!==undefined&&revision!==this.#observation.revision)throw new RichCommandError("breditor_rich.stale_observation","The search request was prepared from an older rich view");if(!this.supportsSearch())throw new RichCommandError("breditor_rich.search_unavailable","Use complete matching native search capabilities");return raw;}
   findText(query,revision){const input=JSON.stringify(query),raw=this.#searchOwner(revision);const native=transfer(raw.findText(this.#observation,input),"results","takeResults");let results;results=new OwnedRichSearchResults(this,native,()=>this.#searches.delete(results));this.#searches.add(results);return results;}
@@ -270,6 +289,7 @@ class RichCoreEditor {
   supportsImageLinks(){const raw=this.#live();return this.#language===4&&typeof raw.imageLinkVersion==="function"&&raw.imageLinkVersion()==="1";}
   supportsDetails(){const raw=this.#live();return this.#language===4&&typeof raw.detailsVersion==="function"&&raw.detailsVersion()==="1";}
   supportsMentions(){const raw=this.#live();return this.#language===4&&typeof raw.mentionVersion==="function"&&raw.mentionVersion()==="1";}
+  supportsTableCaptions(){const raw=this.#live();return this.#language===4&&typeof raw.tableCaptionVersion==="function"&&raw.tableCaptionVersion()==="1";}
   blockLayoutState(){this.#live();if(!this.supportsBlockLayout())throw new RichCommandError("breditor_rich.layout_unavailable","Use an explicitly selected matching native layout V3 owner");return JSON.parse(read(this.#observation.blockLayoutStateJson()));}
   selectionCoverage(scope="selection"){this.#live();if(!this.supportsSelectionFormatting())throw new RichCommandError("breditor_rich.selection_formatting_unavailable","Use a matching native selection-formatting owner");return JSON.parse(read(this.#observation.selectionCoverageJson(scope)));}
   selectionFormatState(kind){this.#live();if(!this.supportsSelectionFormatting())throw new RichCommandError("breditor_rich.selection_formatting_unavailable","Use a matching native selection-formatting owner");return JSON.parse(read(this.#observation.selectionFormatStateJson(kind)));}
@@ -301,3 +321,4 @@ class RichCoreEditor {
   dispose() { for(const results of [...this.#searches])results.dispose();this.#observation?.free(); this.#observation = undefined; this.#raw?.free(); this.#raw = undefined; }
 }
 export {resolveRichUi,defaultRichUi,richUiStringsEn,richChromeIsRtl} from "./dist/browser/ui_locale.js";
+export {richUiPanelStringsEn,richUiNoticeCodes} from "./dist/browser/ui_locale.js";

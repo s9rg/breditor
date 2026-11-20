@@ -6,6 +6,57 @@ its durable formats and Wasm transport.
 
 ## Unreleased
 
+- Add opt-in, provider-agnostic AI rewrite and language-check tools for local
+  editors (`mountRichAiTools` / `mountAiTools` / `BreditorAiTools` and
+  `mountRichLanguageCheck` / `mountLanguageCheck` / `BreditorLanguageCheck`). The
+  host supplies the provider function; Breditor makes no network calls. Only the
+  explicitly scoped plain text (selection, block or, for language checks, the
+  whole document) is passed to the provider with an `AbortSignal`, deadline and
+  size bounds. Provider output is untrusted: shapes and encodings are checked,
+  Markdown/HTML goes only through an explicit `@breditor/interchange` adapter
+  with loss notices, and nothing is inserted into the DOM as HTML. A rewrite is
+  reviewed as a before/after diff and applied on Accept as one ordinary guarded
+  range command (one Undo step), refused as stale when the document content
+  changed. Language issues are painted outside the editing DOM, reviewed from a
+  keyboard list and applied one guarded replacement at a time; issues in changed
+  blocks are dropped. New `ai*`/`lang*` UI catalog keys live in a separate block;
+  existing keys are unchanged. Shared editors are not wired yet. See
+  docs/AI_AND_LANGUAGE_TOOLS.md.
+- Add table captions to the unreleased local-only candidate rich V4: a V4
+  `breditor/table` admits, after its rows, at most one `breditor/paragraph`
+  caption (rows keep their child indices; row/column/merge grammar is unchanged).
+  The caption is an ordinary paragraph (formats, language, mentions, layout) that
+  is never split, joined, converted or moved alone; Enter inserts a line break and
+  Backspace in an empty caption removes it. Guarded `addTableCaption` (caret moves
+  into the new empty caption) and `removeTableCaption` commands are one history
+  group each; every row, column and cell action keeps the caption last, grid
+  selections and grid copies never include it, flow navigation leaves it through
+  its table, search covers it after the cells and node/document copies keep it.
+  Live and static renderers emit `<table><caption data-rich-table-caption
+  style="caption-side:bottom">…` (first in the DOM, laid out after the rows) and
+  the V4 toolbar gains **Table caption**. V4-only HTML interchange maps
+  `<caption>` (`supportsTableCaptions()`), Markdown falls back to HTML with
+  `markdown-feature`. Wasm descriptor `tableCaptionVersion: 1`. The V4 fingerprint
+  changes; V1–V3, their fingerprints and their `<caption>` conversion are
+  unchanged.
+- Add optional typed autolink (`inputRules: "autolink-v1"`, alone or as
+  `["markdown-v1", "autolink-v1"]`) for local and shared owners, vanilla and
+  React. A typed space, or Enter at a caret, after a lowercase `https://`,
+  `http://` or `www.` run converts it to the standard link format
+  (`www.` targets `https://www.…`); trailing `.`, `,`, `:`, `;`, `!`, `?`,
+  quotes and unbalanced `)`/`]`/`}` stay plain. The target must already be a
+  canonical value of the native `safeLinkV1` subset that image links use, so
+  unsafe schemes (`javascript:`, `data:`…), credentials, Unicode/IDN and other
+  non-canonical spellings stay literal. Code, existing links, paste,
+  composition, remote and read-only input never convert. One Undo removes only
+  the link and keeps the typed space or paragraph split. New additive native
+  calls (`inputRuleSetsVersion`/`input_rule_sets_version` `1`, rule-set typing
+  calls, `insertParagraphWithAutolink`/`split_with_autolink`) and SDK methods
+  (`supportsInputRuleSets`, `insertPlainTextWithInputRules`,
+  `insertTypingTextWithInputRules`, `insertParagraphWithAutolink`,
+  `splitWithAutolink`); omitted `inputRules` and `markdown-v1` behave as before.
+  No schema, fingerprint, saved format or recovery family changes.
+
 - Add durable mention entities to the unreleased local-only candidate rich V4: a
   native `breditor/mention` inline format over the exact text `@` + label with a
   closed kind (`user`, `page`, `tag`), a bounded opaque id and a label snapshot.

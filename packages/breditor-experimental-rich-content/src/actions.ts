@@ -27,8 +27,8 @@ export function positionAfter(context:IntentContext):FlowPosition {
  let node=selection?.kind==="node"?value.nodes.get(selection.block):selectedText(value);
  if(!node)return {parent:{kind:"document"},before:null};
  let parent=value.parents.get(id(node));
- // A caption is not a general flow insertion parent. Insert after its image.
- if(parent?.type==="breditor/image"){node=parent;parent=value.parents.get(id(node));}
+ // A caption is not a general flow insertion parent. Insert after its image or (V4) table.
+ if(parent?.type==="breditor/image"||parent?.type==="breditor/table"){node=parent;parent=value.parents.get(id(node));}
  const index=parent?.children.findIndex(child=>child.kind==="element"&&id(child)===id(node))??-1;
  const next=parent?.children[index+1];
  let target:FlowPosition["parent"]={kind:"document"};
@@ -84,7 +84,8 @@ export function enter(context:IntentContext,general=false,target?:Extract<RichSe
  // Candidate V4: Enter in a summary never splits it. A caret opens a fresh first body paragraph
  // (expanding a collapsed section); a range inside a summary is left unchanged.
  if(summary&&isSummary(summary)&&!cross)return selection.anchor.offset===selection.focus.offset?{kind:"enterDetailsBody",data:{paragraph:context.allocate("p")}}:null;
- if(parent?.type==="breditor/image"||value.nodes.get(point.block)?.type==="breditor/code-block")return general&&cross?{kind:"replaceGeneralRangePlainText",data:{selection,text:"\n",prefix:context.allocate("range")}}:{kind:"insertHardBreak"};
+ // Image and (candidate V4) table captions keep one paragraph: Enter inserts a line break.
+ if(parent?.type==="breditor/image"||parent?.type==="breditor/table"||value.nodes.get(point.block)?.type==="breditor/code-block")return general&&cross?{kind:"replaceGeneralRangePlainText",data:{selection,text:"\n",prefix:context.allocate("range")}}:{kind:"insertHardBreak"};
  if(general&&cross){if(context.core?.supportsGeneralParagraph?.()!==true)throw Error("Use matching native general paragraph editing");return {kind:"insertGeneralParagraph",data:{selection,prefix:context.allocate("range")}};}
  const right=context.allocate("p");
  if((parent?.type==="breditor/list-item"||parent?.type==="breditor/task-item")&&parent.children[0]?.kind==="element"&&id(parent.children[0])===point.block)
@@ -101,6 +102,9 @@ export function boundaryDelete(context:IntentContext,backward:boolean):RichComma
   const a=list.items[Math.min(current,other)],b=list.items[Math.max(current,other)];
   return a&&b?{kind:list.list.type==="breditor/task-list"?"joinTaskItems":"joinListItems",data:{container:id(list.list),left:id(a),right:id(b)}}:null;
  }
+ // A candidate V4 table caption never merges with a cell or the next block. Backspace at the start
+ // of an empty caption removes it; other caption boundaries do nothing.
+ if(parent.type==="breditor/table")return backward&&text(node)===""?{kind:"removeTableCaption",data:{table:String(property(parent,"table-id"))}}:null;
  const position=parent.children.indexOf(node),other=parent.children[position+(backward?-1:1)];
  // Candidate V4 section boundaries never merge summary and body text. Backspace at a summary start
  // removes the section (its summary becomes a paragraph); the other boundaries only move the caret.
@@ -149,14 +153,14 @@ const flowTextEnabled=(context:IntentContext):boolean=>{
  // without an explicit policy for the task's completion state and rich tail.
  for(const point of [selection.anchor,selection.focus]){
   const node=value.nodes.get(point.block),parent=value.parents.get(point.block);
-  if(parent?.type==="breditor/image"||parent?.type==="breditor/task-item"&&parent.children[0]===node||node&&isSummary(node))return false;
+  if(parent?.type==="breditor/image"||parent?.type==="breditor/table"||parent?.type==="breditor/task-item"&&parent.children[0]===node||node&&isSummary(node))return false;
  }
  return true;
 };
 const anyTextEnabled=(context:IntentContext):boolean=>context.model.view.selection?.kind==="text";
 // A V4 section summary keeps its kind: heading/paragraph conversion is unavailable there.
 const blockKindEnabled=(context:IntentContext):boolean=>{const node=selectedText(context.model);return anyTextEnabled(context)&&!(node&&isSummary(node));};
-const headingEnabled=(context:IntentContext):boolean=>blockKindEnabled(context)&&context.model.parents.get(selectedText(context.model)?id(selectedText(context.model)!):"")?.type!=="breditor/image";
+const headingEnabled=(context:IntentContext):boolean=>blockKindEnabled(context)&&!["breditor/image","breditor/table"].includes(context.model.parents.get(selectedText(context.model)?id(selectedText(context.model)!):"")?.type??"");
 const gridEnabled=(context:IntentContext):boolean=>context.model.view.selection?.kind==="grid";
 const tableEnabled=(context:IntentContext):boolean=>selectedTable(context.model)!==undefined;
 const imageEnabled=(context:IntentContext):boolean=>selectedImage(context.model)!==undefined;

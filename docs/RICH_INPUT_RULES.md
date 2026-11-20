@@ -181,8 +181,87 @@ than the same marker. Odd backslash escaping, empty/whitespace-edged bodies,
 line breaks, ambiguous repeated delimiters and intraword openers stay literal.
 Recognition does not unescape or normalize body text. Existing code blocks and
 inline code/link ranges do not autoformat. General CommonMark parsing, nested
-delimiter interpretation, URL autolinking, smart punctuation and arbitrary
-host-defined patterns are not implied by this first native policy.
+delimiter interpretation, smart punctuation and arbitrary host-defined patterns
+are not implied by this first native policy. URL autolinking is the separate
+opt-in `autolink-v1` set below.
+
+## Optional autolink (`autolink-v1`)
+
+`autolink-v1` is a second, separately selected rule set. It converts a typed
+URL into the existing standard link format (`breditor-inline/link` with
+`breditor-inline/href` and `breditor-inline/new-window: false`) and changes no
+text. It is not a linkifier for paste, import, remote updates or arbitrary
+HTML, and it is off unless a host selects it.
+
+**Boundaries.** Recognition runs only after a retained local boundary:
+
+- one typed ASCII space (`insertText " "`), through the same exclusive typing
+  call as Markdown shortcuts; or
+- Enter (`insertParagraph`) at a collapsed caret, through a separate exclusive
+  split-and-link call. The URL must then end the retained left block.
+
+Closing punctuation is deliberately not a trigger: typing `)` or `.` cannot know
+whether the URL continues (`…/A_(b)`, `…/v1.2`). It is handled when the
+following space or Enter arrives. Tab, no-break space, Shift+Enter (a hard
+break), paste, replacement/autocorrection and composition never trigger.
+
+**Candidate grammar.** The candidate is the final whitespace-free run before
+the boundary, after skipping leading `(`, `[`, `{`, `<`, `"` or `'`. It must
+begin with lowercase `https://`, `http://` or `www.`. Trailing `.`, `,`, `:`,
+`;`, `!`, `?`, `'`, `"`, `*`, `_`, `~` and `>` are excluded repeatedly, as is a
+closing `)`, `]` or `}` that has no matching opener inside the candidate (so
+`(https://example.com/x_(y)).` links `https://example.com/x_(y)`). Excluded
+characters stay plain text after the link.
+
+**Target policy.** `www.` candidates target `https://www.…` (HTTPS is the safe
+default; nothing is fetched to discover a scheme). A missing path serializes as
+`/`, exactly as a WHATWG URL parser does. That is the only repair. The target
+must then be admitted unchanged by the native canonical `safeLinkV1` subset —
+the same Rust check that admits image links (`is_canonical_href`): absolute
+HTTP(S), no credentials, ASCII only, lowercase host, no default port, no dot
+segments, only complete percent escapes, no quotes, angle brackets, backslashes
+or whitespace, and at most 2,048 UTF-8 bytes. Every admitted value is its own
+`safeLinkV1` canonical serialization, so the renderer, the explicit link editor,
+clipboard/HTML export and static rendering all treat it identically. Anything
+the policy rejects — `javascript:`, `data:`, `mailto:`, `ftp:`, uppercase
+schemes or hosts, IDN/Unicode text, user info, over-long targets — stays literal.
+Use the explicit link editor for those spellings; it still applies `safeLinkV1`
+itself.
+
+**Exclusions.** No conversion inside code blocks, over inline code, over or
+overlapping an existing link, when the standard link format is not installed in
+the schema (the rule is inactive, not refused), in read-only owners, on a
+selection that is not a collapsed caret, during composition, on paste or on a
+remote update. A candidate that reaches the truncated recognition window floor
+is not invented.
+
+**History.** The literal boundary is retained first through the ordinary typing
+or split path. The link is then one isolated native history group: one Undo
+removes only the link and keeps the typed space or the paragraph split; Redo
+reapplies it. The caret and effective pending formats after the boundary are
+unchanged, so following input is never linked. Shared owners lower the plan to
+one original guarded `set_format` command; recovery families and saved formats
+are unchanged.
+
+**API.** Rust: `RichInputRuleSet` (`MARKDOWN_V1`, `AUTOLINK_V1`, `union`),
+`plan_rich_input_rule`, `plan_rich_paragraph_autolink_input_rule`,
+`rich_autolink_candidate`, local `insert_plain_text_with_input_rules` /
+`insert_typing_text_with_input_rules` / `apply_input_rule` /
+`apply_paragraph_autolink_input_rule`, and shared `…_guarded` equivalents plus
+`split_with_autolink_guarded`. Wasm exposes `inputRuleSetsVersion()` /
+`input_rule_sets_version()` string `1`, strict JSON requests with a nonempty
+duplicate-free `rules` list (`"markdown-v1"`, `"autolink-v1"`), and
+`insertParagraphWithAutolink` / `split_with_autolink`. SDKs expose
+`supportsInputRuleSets()`, `insertPlainTextWithInputRules`,
+`insertTypingTextWithInputRules` and local `insertParagraphWithAutolink` /
+shared `splitWithAutolink`. Outcomes are the same four payload-free states.
+
+Browser owners select it with `inputRules: "autolink-v1"` or
+`inputRules: ["markdown-v1", "autolink-v1"]` (local and shared DOM options,
+top-level startup options and React `initialOptions`). An unknown, empty or
+duplicate selection rejects before storage or native ownership. Markdown-only
+selections keep the original native pair and runtime minimum; selecting
+`autolink-v1` additionally requires the version-1 rule-set capability.
 
 ## Planning and admission
 

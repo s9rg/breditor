@@ -65,6 +65,36 @@ impl RichInputRulePlan {
         }
         Ok(())
     }
+    /// Capture every dependent step against its admitted predecessor, then recheck the group.
+    pub(super) fn build(
+        context: &EditorContext,
+        document: &RichDocument,
+        kind: RichInputRuleKind,
+        block: BlockId,
+        steps: Vec<RichInputRuleStep>,
+        caret: RichTextPoint,
+    ) -> Result<Self, RichInputRuleError> {
+        let mut plan = Self {
+            source: document.clone(),
+            kind,
+            block,
+            steps: vec![],
+            actions: vec![],
+            document: document.clone(),
+            caret,
+        };
+        for step in steps {
+            plan.push(context, step)?;
+        }
+        // Recheck the complete group ceiling and actual resulting caret, not only individual steps.
+        actions::apply_batch(context, document, &plan.actions)?;
+        RichSelection::try_new(
+            &plan.document,
+            RichSelectionKind::TextRange { anchor: plan.caret.clone(), focus: plan.caret.clone() },
+        )
+        .map_err(|_| RichInputRuleError::Selection)?;
+        Ok(plan)
+    }
     fn push(
         &mut self,
         context: &EditorContext,
@@ -119,7 +149,9 @@ fn structural_step(
         RichInputRuleKind::HorizontalRule => {
             RichInputRuleStep::HorizontalRule { block: fresh(document, namespace, "hr")?, position }
         }
-        RichInputRuleKind::Inline(_) => unreachable!("block recognizer cannot return inline rules"),
+        RichInputRuleKind::Inline(_) | RichInputRuleKind::Link => {
+            unreachable!("block recognizer cannot return inline rules")
+        }
     })
 }
 /// Plan one explicit local plain-input trigger against its exact post-input caret.
@@ -201,26 +233,57 @@ pub fn plan_rich_markdown_input_rule(
             caret,
         )
     };
-    let mut plan = RichInputRulePlan {
-        source: document.clone(),
+    RichInputRulePlan::build(
+        context,
+        document,
         kind,
-        block: focus.block().clone(),
-        steps: vec![],
-        actions: vec![],
-        document: document.clone(),
-        caret: RichTextPoint::new(focus.block().clone(), caret, Affinity::After),
-    };
-    for step in steps {
-        plan.push(context, step)?;
-    }
-    // Recheck the complete group ceiling and actual resulting caret, not only individual steps.
-    actions::apply_batch(context, document, &plan.actions)?;
-    RichSelection::try_new(
-        &plan.document,
-        RichSelectionKind::TextRange { anchor: plan.caret.clone(), focus: plan.caret.clone() },
+        focus.block().clone(),
+        steps,
+        RichTextPoint::new(focus.block().clone(), caret, Affinity::After),
     )
-    .map_err(|_| RichInputRuleError::Selection)?;
-    Ok(Some(plan))
+    .map(Some)
+}
+/// Plan one plain-input trigger under an explicitly selected rule set.
+///
+/// Markdown recognition (when selected) runs first; a space that matched no
+/// Markdown shortcut may then autolink the URL candidate before it. The empty
+/// set never matches. The host retains the literal input first, exactly as for
+/// [`plan_rich_markdown_input_rule`].
+/// # Errors
+/// Invalid/stale selections, exhausted bounds, reused IDs or receiving admission fail closed.
+pub fn plan_rich_input_rule(
+    context: &EditorContext,
+    document: &RichDocument,
+    selection: Option<&RichSelection>,
+    trigger: &str,
+    namespace: &str,
+    rules: super::RichInputRuleSet,
+) -> Result<Option<RichInputRulePlan>, RichInputRuleError> {
+    if rules.markdown()
+        && let Some(plan) =
+            plan_rich_markdown_input_rule(context, document, selection, trigger, namespace)?
+    {
+        return Ok(Some(plan));
+    }
+    if rules.autolink() && trigger == " " {
+        return super::autolink::plan(context, document, selection, None);
+    }
+    Ok(None)
+}
+/// Plan a typed autolink after an Enter split retained the candidate at its block end.
+///
+/// `end` is the original pre-split caret, now the end of the retained left
+/// block. The selection is the post-split caret and is kept unchanged. Only
+/// the optional `autolink-v1` policy uses this; it changes no text.
+/// # Errors
+/// Invalid/stale points, exhausted bounds or receiving admission fail closed.
+pub fn plan_rich_paragraph_autolink_input_rule(
+    context: &EditorContext,
+    document: &RichDocument,
+    selection: Option<&RichSelection>,
+    end: &RichTextPoint,
+) -> Result<Option<RichInputRulePlan>, RichInputRuleError> {
+    super::autolink::plan(context, document, selection, Some(end))
 }
 fn capture(
     document: &RichDocument,
@@ -272,5 +335,33 @@ fn capture(
                 &RichFormatChange::Set(Format::new(format.kind(), PropertyMap::default())),
             )?)
         }
+        RichInputRuleStep::Link { start, end, href } => {
+            RichAction::SetInlineFormat(SetInlineFormat::capture(
+                document,
+                block,
+                *start,
+                *end,
+                &RichFormatChange::Set(link_format(href)?),
+            )?)
+        }
     })
+}
+/// The standard link format with an admitted target and the same-window flag.
+fn link_format(href: &str) -> Result<Format, actions::RichActionError> {
+    use crate::rich_content::{
+        STANDARD_INLINE_HREF_V1, STANDARD_INLINE_NEW_WINDOW_V1, StandardInlineFormatV1,
+    };
+    use crate::{document::PropertyValue, identity::QualifiedName};
+    let properties = PropertyMap::try_from_sorted(vec![
+        (
+            QualifiedName::from_known_static(STANDARD_INLINE_HREF_V1),
+            PropertyValue::from_string(href),
+        ),
+        (
+            QualifiedName::from_known_static(STANDARD_INLINE_NEW_WINDOW_V1),
+            PropertyValue::boolean(false),
+        ),
+    ])
+    .map_err(|_| actions::RichActionError::FormatChanges)?;
+    Ok(Format::new(StandardInlineFormatV1::Link.kind(), properties))
 }

@@ -30,6 +30,7 @@ export {createRichToolbarV4} from "./rich_toolbar_v4.js";
 export {listNumberingControl,selectedOrderedList,type ListNumberingControl} from "./list_numbering_controls.js";
 export {imageLinkControls,imageLinkOf,canonicalImageLinkHref,richImageHrefProperty,richImageLinkNewWindowProperty,type ImageLinkControl,type RichImageLinkRead} from "./image_link.js";
 export {detailsToolbarControls,detailsOpen,selectedDetails,detailsInterval,richDetailsKind,richDetailsSummaryKind,richDetailsOpenProperty} from "./details.js";
+export {tableCaptionToolbarControls,tableCaptionOf,isTableCaption,selectedTableCaption,richTableCaptionKind} from "./table_caption.js";
 export {textLanguageControls,canonicalTextLanguage,textLanguageOf,richTextLanguageFormat,richTextLanguageTagProperty,richTextLanguageRecipeV4,type TextLanguageControl} from "./text_language.js";
 export {createFlowNavigationControls,flowEdgeEligible,selectedFlowAtom} from "./flow_controls.js";
 export type {RichToolbarField,RichToolbarReading} from "./toolbar_control_view.js";
@@ -41,6 +42,7 @@ export type {RichFullscreenHost,RichFullscreenHostState,RichFullscreenOptions,Ri
 export {createRichFullscreen} from "./fullscreen_controller.js";
 export {mountRichFullscreenControls,type RichFullscreenControls,type RichFullscreenControlsOptions} from "./fullscreen_controls.js";
 export {mountRichTableColumnResize,richTableColumnResizeCommit,clampRichTableColumnWidth,richTableColumnResizeStyles,RICH_TABLE_COLUMN_WIDTH_MIN,RICH_TABLE_COLUMN_WIDTH_MAX,type RichTableColumnResize,type RichTableColumnResizeHost,type RichTableColumnResizeHostState,type RichTableColumnResizeOptions,type RichTableColumnResizeRequest,type RichTableColumnResizePreview,type RichTableColumnResizeCancel,type RichTableColumnGeometry} from "./table_column_resize.js";
+export {mountRichImageResize,richImageResizeCommit,clampRichImageDimension,scaleRichImageSize,richImageResizeStyles,RICH_IMAGE_SIZE_MIN,RICH_IMAGE_SIZE_MAX,type RichImageResize,type RichImageResizeHost,type RichImageResizeHostState,type RichImageResizeOptions,type RichImageResizeRequest,type RichImageResizePreview,type RichImageResizeCancel,type RichImageResizeHandleKind,type RichImageSize} from "./image_resize.js";
 export {createRichSlashCommands,filterRichSlashItems,standardRichSlashPicks,type RichSlashContext,type RichSlashItem,type RichSlashPick} from "./slash_command_items.js";
 export {mountRichBlockDrag,mountRichBlockDragPort,richBlockDragStyles,type RichBlockDrag,type RichBlockDragOptions,type RichBlockDragPort} from "./block_drag.js";
 export {resolveRichBlockMove,resolveRichBlockStep,richBlockDropTargets,richHandleBlock,richSelectionBlock,isMovableBlock,type RichBlockMove,type RichBlockMovePolicy,type RichBlockDropSide,type RichBlockDropTarget,type RichLocatedBlockDropTarget,type RichBlockMoveRejection,type RichBlockMoveResolution} from "./block_move.js";
@@ -51,5 +53,10 @@ export {mountRichSlashCommands,type RichSlashCommandHost,type RichSlashCommands,
 export type {RichContextUiHost,RichContextUiHostState,RichContextSelectionKind,RichContextControlView,RichContextUiOptions,RichSelectionToolbar,RichSelectionToolbarOptions,RichSelectionToolbarState,RichContextMenu,RichContextMenuOptions,RichContextMenuState} from "./context_ui_types.js";
 export {mountRichSelectionToolbar,mountRichContextMenu,richSelectionToolbarDefaults,richContextMenuDefaults,richContextUiStyles} from "./context_ui.js";
 export {mountRichSourceView,type RichSourceView,type RichSourceViewOptions,type RichSourceViewState} from "./source_view.js";
+export {mountRichAiTools,type RichAiTools,type RichAiToolsOptions,type RichAiToolsState,type RichAiReview,type RichAiPhase,type RichRewriteScope,type RichRewriteRequest,type RichRewriteOutput,type RichRewriteProvider,type RichRewriteProviderRequest} from "./ai_rewrite.js";
+export {mountRichLanguageCheck,type RichLanguageCheck,type RichLanguageCheckOptions,type RichLanguageCheckState,type RichLanguageCheckRequest,type RichLanguageIssue,type RichLanguageIssueKind,type RichLanguageIssueView,type RichLanguagePhase,type RichLanguageProvider,type RichLanguageProviderRequest} from "./language_check.js";
+export {richAiToolsHost,RICH_AI_MAX_BYTES,RICH_AI_MAX_INSTRUCTION,RICH_AI_MAX_TIMEOUT_MS,type RichAiToolsHost,type RichAiHostState,type RichAiViewRead,type RichAiEditorPort,type RichAiScope,type RichAiSegment,type RichAiTransfer} from "./ai_tools_host.js";
+export {richAiUiStringsEn,type RichAiUiStrings} from "./ui_locale_ai.js";
 export {RICH_DOCUMENT_SOURCE_MAX_BYTES,type RichDocumentSourceHost,type RichDocumentSourceHostState,type RichDocumentSourceRead,type RichDocumentSourcePreview} from "./source_view_types.js";
 export {resolveRichUi,defaultRichUi,richUiStringsEn,richChromeIsRtl,type RichUiOptions,type RichUiLocale,type RichUiStrings,type RichUiStringKey,type RichUiControlStrings,type RichUiFieldStrings,type RichUiSlashItemStrings,type RichUiDirection,type RichStandardSlashItemId} from "./ui_locale.js";
+export {richUiPanelStringsEn,richUiNoticeCodes,type RichUiPanelStrings,type RichUiNoticeCode} from "./ui_locale.js";

@@ -8,6 +8,7 @@ export type {RichFullscreenHost,RichFullscreenHostState,RichFullscreenOptions,Ri
 export {createRichFullscreen} from "./dist/browser/fullscreen_controller.js";
 export {mountRichFullscreenControls,type RichFullscreenControls,type RichFullscreenControlsOptions} from "./dist/browser/fullscreen_controls.js";
 export {mountRichTableColumnResize,richTableColumnResizeCommit,clampRichTableColumnWidth,richTableColumnResizeStyles,RICH_TABLE_COLUMN_WIDTH_MIN,RICH_TABLE_COLUMN_WIDTH_MAX,type RichTableColumnResize,type RichTableColumnResizeHost,type RichTableColumnResizeHostState,type RichTableColumnResizeOptions,type RichTableColumnResizeRequest,type RichTableColumnResizePreview,type RichTableColumnResizeCancel,type RichTableColumnGeometry} from "./dist/browser/table_column_resize.js";
+export {mountRichImageResize,richImageResizeCommit,clampRichImageDimension,scaleRichImageSize,richImageResizeStyles,RICH_IMAGE_SIZE_MIN,RICH_IMAGE_SIZE_MAX,type RichImageResize,type RichImageResizeHost,type RichImageResizeHostState,type RichImageResizeOptions,type RichImageResizeRequest,type RichImageResizePreview,type RichImageResizeCancel,type RichImageResizeHandleKind,type RichImageSize} from "./dist/browser/image_resize.js";
 export {createRichSlashCommands,filterRichSlashItems,standardRichSlashPicks,type RichSlashContext,type RichSlashItem,type RichSlashPick} from "./dist/browser/slash_command_items.js";
 export {mountRichBlockDrag,mountRichBlockDragPort,richBlockDragStyles,type RichBlockDrag,type RichBlockDragOptions,type RichBlockDragPort} from "./dist/browser/block_drag.js";
 export {resolveRichBlockMove,resolveRichBlockStep,richBlockDropTargets,richHandleBlock,richSelectionBlock,isMovableBlock,type RichBlockMove,type RichBlockMovePolicy,type RichBlockDropSide,type RichBlockDropTarget,type RichLocatedBlockDropTarget,type RichBlockMoveRejection,type RichBlockMoveResolution} from "./dist/browser/block_move.js";
@@ -17,6 +18,10 @@ export {mountRichSlashCommands,type RichSlashCommandHost,type RichSlashCommands,
 export type {RichContextUiHost,RichContextUiHostState,RichContextSelectionKind,RichContextControlView,RichContextUiOptions,RichSelectionToolbar,RichSelectionToolbarOptions,RichSelectionToolbarState,RichContextMenu,RichContextMenuOptions,RichContextMenuState} from "./dist/browser/context_ui_types.js";
 export {mountRichSelectionToolbar,mountRichContextMenu,richSelectionToolbarDefaults,richContextMenuDefaults,richContextUiStyles} from "./dist/browser/context_ui.js";
 export {mountRichSourceView,type RichSourceView,type RichSourceViewOptions,type RichSourceViewState} from "./dist/browser/source_view.js";
+export {mountRichAiTools,type RichAiTools,type RichAiToolsOptions,type RichAiToolsState,type RichAiReview,type RichAiPhase,type RichRewriteScope,type RichRewriteRequest,type RichRewriteOutput,type RichRewriteProvider,type RichRewriteProviderRequest} from "./dist/browser/ai_rewrite.js";
+export {mountRichLanguageCheck,type RichLanguageCheck,type RichLanguageCheckOptions,type RichLanguageCheckState,type RichLanguageCheckRequest,type RichLanguageIssue,type RichLanguageIssueKind,type RichLanguageIssueView,type RichLanguagePhase,type RichLanguageProvider,type RichLanguageProviderRequest} from "./dist/browser/language_check.js";
+export {richAiToolsHost,RICH_AI_MAX_BYTES,RICH_AI_MAX_INSTRUCTION,RICH_AI_MAX_TIMEOUT_MS,type RichAiToolsHost,type RichAiHostState,type RichAiViewRead,type RichAiEditorPort,type RichAiScope,type RichAiSegment,type RichAiTransfer} from "./dist/browser/ai_tools_host.js";
+export {richAiUiStringsEn,type RichAiUiStrings} from "./dist/browser/ui_locale_ai.js";
 export {RICH_DOCUMENT_SOURCE_MAX_BYTES,type RichDocumentSourceHost,type RichDocumentSourceHostState,type RichDocumentSourceRead,type RichDocumentSourcePreview} from "./dist/browser/source_view_types.js";
 export type {RichClipboardInterchange,RichClipboardInterchangeReport,RichInterchangeFormatReport,RichInterchangeNotice,RichInterchangeResult} from "./dist/browser/clipboard_interchange.js";
 export {mountRichEditor,mountDocumentRichEditor,RichDomEditor,defaultToolbar,RichAssetStore,defaultAssetLimits,insertImageFiles,type RichEditorOptions,type RichDocumentEditorOptions,type ToolbarControl,type ActionContext,type AssetBinding,type RenderOptions,type RichAssetOptions,type AssetInfo,type AssetLimits,type AssetStatus,type AssetUploader,type RasterMime} from "./dist/browser/index.js";
@@ -41,6 +46,7 @@ export function compileStandardRichProfileV4(wasm:RichWasmModule,bootstrapJson:s
 export {createRichToolbarV4,listNumberingControl,selectedOrderedList,type ListNumberingControl} from "./dist/browser/index.js";
 export {imageLinkControls,imageLinkOf,canonicalImageLinkHref,richImageHrefProperty,richImageLinkNewWindowProperty,type ImageLinkControl,type RichImageLinkRead} from "./dist/browser/index.js";
 export {detailsToolbarControls,detailsOpen,selectedDetails,detailsInterval,richDetailsKind,richDetailsSummaryKind,richDetailsOpenProperty} from "./dist/browser/index.js";
+export {tableCaptionToolbarControls,tableCaptionOf,isTableCaption,selectedTableCaption,richTableCaptionKind} from "./dist/browser/index.js";
 export {textLanguageControls,canonicalTextLanguage,textLanguageOf,richTextLanguageFormat,richTextLanguageTagProperty,richTextLanguageRecipeV4,type TextLanguageControl} from "./dist/browser/index.js";
 export {createFlowNavigationControls} from "./dist/browser/index.js";
 export {createSelectionRichToolbarV1} from "./dist/browser/index.js";
@@ -50,3 +56,4 @@ export {createRichInlinePresentation,type RichInlinePresentation,type RichInline
 export {createStandardRichInlinePresentationV1,standardInlineKindsV1,standardInlinePropertiesV1,standardInlineStylesV1} from "./dist/browser/index.js";
 export {createStandardRichToolbarV1,type RichToolbarField,type RichToolbarReading} from "./dist/browser/index.js";
 export {resolveRichUi,defaultRichUi,richUiStringsEn,richChromeIsRtl,type RichUiOptions,type RichUiLocale,type RichUiStrings,type RichUiStringKey,type RichUiControlStrings,type RichUiFieldStrings,type RichUiSlashItemStrings,type RichUiDirection,type RichStandardSlashItemId} from "./dist/browser/ui_locale.js";
+export {richUiPanelStringsEn,richUiNoticeCodes,type RichUiPanelStrings,type RichUiNoticeCode} from "./dist/browser/ui_locale.js";

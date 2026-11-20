@@ -158,6 +158,23 @@ owner:
 - Markdown has no section syntax: a section is exported as a safe HTML block with
   `markdown-feature` (blank lines inside it are escaped), which reimports exactly.
 
+### Table captions (candidate rich V4 owners)
+
+The adapter also reads the owner's optional `supportsTableCaptions()` once. Only a
+local candidate rich V4 owner reports `true`; every other owner keeps the original
+conversion (`<caption>` content becomes flow before the table with
+`block-structure`). With a V4 owner:
+
+- HTML import maps a table's first `<caption>` to its caption paragraph. One
+  paragraph imports without a notice; a leading heading becomes the caption
+  paragraph and further or unsupported blocks stay as flow before the table, each
+  reported as `block-structure`. A second `<caption>` keeps the original conversion.
+- HTML export writes `<table><caption><p …>…</p></caption><colgroup>…`; V4 HTML round
+  trips exactly. A hidden (rowless) captioned table exports its caption as a
+  paragraph with `table-geometry`.
+- GFM tables have no caption: a captioned table falls back to a safe HTML block with
+  `markdown-feature`, which reimports as the caption.
+
 ### Mentions (candidate rich V4 owners)
 
 The adapter also reads the owner's optional `supportsMentions()` once. Only a

@@ -18,7 +18,9 @@ function owner(grouped=false){
 }
 const key=["room","101"] as const;
 let released:ReturnType<typeof vi.fn>;
-beforeEach(()=>{vi.stubGlobal("indexedDB",new IDBFactory());released=vi.fn(async()=>{});vi.spyOn(SharedWriterLease,"acquire").mockResolvedValue({assertLive:()=>{},close:released} as unknown as SharedWriterLease);});
+beforeEach(()=>{vi.stubGlobal("indexedDB",new IDBFactory());released=vi.fn(async()=>{});vi.stubGlobal("navigator",Object.assign(Object.create(globalThis.navigator),{locks:{request:(_n:string,_o:unknown,callback:(lock:object)=>Promise<void>)=>Promise.resolve().then(()=>callback({})).then(()=>{void released();})}}));vi.spyOn(SharedWriterLease,"acquire");});
+// SharedWriterLease rejects look-alike objects (private-field brand checks, prototype methods captured at load), so
+// sessions acquire a real lease over a stubbed, asynchronously granting Web Locks API; `released` fires when the lock is freed.
 afterEach(()=>{vi.restoreAllMocks();vi.unstubAllGlobals();});
 
 describe("shared native history facade",()=>{

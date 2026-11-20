@@ -1,5 +1,9 @@
 import type {RichFullscreenController,RichFullscreenHost,RichFullscreenOptions,RichFullscreenState} from "./fullscreen_types.js";
 import {captureFullscreenFocus,restoreFullscreenFocus,type FullscreenFocus} from "./fullscreen_focus.js";
+import {defaultRichUi,richUiError,type RichUiLocale} from "./ui_locale.js";
+/** @internal Last reported failure per controller, so controls can show catalog text for `state().error`. */
+const causes=new WeakMap<RichFullscreenController,unknown>();
+export function richFullscreenErrorCause(controller:RichFullscreenController):unknown{return causes.get(controller);}
 const targets=new WeakMap<HTMLElement,FullscreenController>(),leases=new WeakMap<Document,FullscreenController>();
 function flagged(target:HTMLElement):boolean{try{return currentTarget(target)||target.matches(":fullscreen");}catch{return false;}}
 /** @internal Respect retargeting through open or closed shadow roots, without claiming a child on top. */
@@ -37,37 +41,38 @@ class FullscreenController implements RichFullscreenController {
  #current():boolean{return this.target.ownerDocument===this.#document&&currentTarget(this.target);}
  #flagged():boolean{return this.target.ownerDocument===this.#document&&flagged(this.target);}
  #reconcile():void{if(this.#leased()&&!this.#flagged()&&this.#operation!=="entering")leases.delete(this.#document);}
- #report(error:unknown):void{this.#error=error instanceof Error?error.message:String(error);try{this.#options.onError?.(error);}catch{/* Reporting cannot transfer native fullscreen or editor ownership. */}}
+ #report(error:unknown):void{this.#error=error instanceof Error?error.message:String(error);causes.set(this,error);try{this.#options.onError?.(error);}catch{/* Reporting cannot transfer native fullscreen or editor ownership. */}}
  #emit():void{if(this.#notifying)return;this.#notifying=true;try{for(const listener of [...this.#listeners])try{listener();}catch(error){this.#report(error);}}finally{this.#notifying=false;}}
  #live():void{if(this.#disposed||this.#retiring)throw Error("Fullscreen controller is retiring or disposed");}
  state():RichFullscreenState {
   const state=this.#host.fullscreenState(),active=this.#leased()&&this.#current(),foreign=(this.#document.fullscreenElement??null)!==null&&!active;
   return Object.freeze({...state,supported:this.#supported(),active,foreign,phase:this.#disposed?"disposed":this.#retiring?"retiring":this.#operation??(active?"active":"idle"),retiring:this.#retiring,disposed:this.#disposed,error:this.#error});
  }
+ uiLocale():RichUiLocale{return this.#host.uiLocale?.()??defaultRichUi;}
  subscribe(listener:()=>void):()=>void{this.#live();this.#listeners.add(listener);return()=>this.#listeners.delete(listener);}
  /** Calls the browser synchronously, before callbacks/microtasks consume the user gesture. */
  enter(revision=this.#host.fullscreenState().revision):Promise<void> {
   try{this.#live();const state=this.#host.fullscreenState();
-   if(state.closed||state.busy||state.composing||state.revision!==revision)throw Error("Fullscreen entry requires the exact idle editor publication outside composition");
-   if(this.#pending||(this.#document.fullscreenElement??null)!==null||leases.has(this.#document))throw Error("Another fullscreen session or transition is active");
-   if(!this.#supported())throw Error("Native fullscreen is unavailable or denied by this environment");
-   if(this.target.ownerDocument!==this.#document||this.surface.ownerDocument!==this.#document||!this.target.isConnected||!this.target.contains(this.#host.fullscreenRoot)||!this.target.contains(this.surface))throw Error("Fullscreen target no longer contains this connected editor in its original document");
+   if(state.closed||state.busy||state.composing||state.revision!==revision)throw richUiError("fullscreenErrorIdle");
+   if(this.#pending||(this.#document.fullscreenElement??null)!==null||leases.has(this.#document))throw richUiError("fullscreenErrorBusy");
+   if(!this.#supported())throw richUiError("fullscreenErrorUnavailable");
+   if(this.target.ownerDocument!==this.#document||this.surface.ownerDocument!==this.#document||!this.target.isConnected||!this.target.contains(this.#host.fullscreenRoot)||!this.target.contains(this.surface))throw richUiError("fullscreenErrorDetached");
    leases.set(this.#document,this);this.#operation="entering";this.#error=null;this.#focus=captureFullscreenFocus(this.#host,this.target);
    let native:Promise<void>;try{native=this.target.requestFullscreen({navigationUI:this.#options.navigationUI??"auto"});}catch(error){this.#operation=null;this.#focus=null;this.#reconcile();throw error;}
-   return this.#track(native,()=>{if(!this.#current())throw Error("Fullscreen request no longer owns the active target");if(!this.#retiring)restoreFullscreenFocus(this.#host,this.target,this.#focus);});
+   return this.#track(native,()=>{if(!this.#current())throw richUiError("fullscreenErrorLost");if(!this.#retiring)restoreFullscreenFocus(this.#host,this.target,this.#focus);});
   }catch(error){this.#report(error);this.#emit();return Promise.reject(error);}
  }
  #track(native:Promise<void>,success:()=>void):Promise<void>{
   const pending=Promise.resolve(native).then(success).catch(error=>{this.#report(error);throw error;}).finally(()=>{this.#pending=null;this.#operation=null;this.#focus=null;this.#reconcile();this.#emit();});this.#pending=pending;this.#emit();return pending;
  }
  #exit(retiring:boolean):Promise<void> {
-  if(this.#pending)throw Error("A fullscreen transition is already pending");
-  if(!this.#leased()){if(!retiring&&(this.#document.fullscreenElement??null)!==null)throw Error("Cannot exit another fullscreen session");return Promise.resolve();}
+  if(this.#pending)throw richUiError("fullscreenErrorPending");
+  if(!this.#leased()){if(!retiring&&(this.#document.fullscreenElement??null)!==null)throw richUiError("fullscreenErrorForeignExit");return Promise.resolve();}
   if(!this.#flagged()){this.#reconcile();return Promise.resolve();}
-  if(!this.#current())throw Error("Another fullscreen target is above this session; leave it before retrying cleanup");
+  if(!this.#current())throw richUiError("fullscreenErrorAbove");
   this.#operation="exiting";this.#error=null;this.#focus=retiring?null:captureFullscreenFocus(this.#host,this.target);
   let native:Promise<void>;try{native=this.#document.exitFullscreen();}catch(error){this.#operation=null;this.#focus=null;throw error;}
-  return this.#track(native,()=>{if(this.#flagged())throw Error("Native fullscreen exit did not release this target");if(!retiring)restoreFullscreenFocus(this.#host,this.target,this.#focus);});
+  return this.#track(native,()=>{if(this.#flagged())throw richUiError("fullscreenErrorNotReleased");if(!retiring)restoreFullscreenFocus(this.#host,this.target,this.#focus);});
  }
  exit():Promise<void>{try{this.#live();return this.#exit(false);}catch(error){this.#report(error);this.#emit();return Promise.reject(error);}}
  toggle(revision?:string):Promise<void>{return this.#leased()&&this.#flagged()?this.exit():this.enter(revision);}

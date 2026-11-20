@@ -16,6 +16,8 @@ export type RichSelectionPolicy="original"|"document-v1";
 export type RichHistoryPolicy="explicit"|"typing-v1";
 /** Refused means literal input committed; report separately and never retry it. */
 export type RichInputRuleOutcome="unchanged"|"inserted"|"applied"|"refused";
+/** Explicitly selected native input-rule policies; never a saved document setting. */
+export type RichInputRuleId="markdown-v1"|"autolink-v1";
 /** Explicit native matching intent; never a persisted editor command. */
 export interface RichSearchQuery {pattern:string;mode:"literal"|"regex";caseSensitive:boolean;wholeWords:boolean}
 export interface RichSearchReplacement {text:string;mode:"literal"|"captures"}
@@ -35,7 +37,7 @@ export interface RichSearchResults {
 /** Pure schema-admitted source content. This carries no destination allocation or edit authority. */
 export interface RichClipboardTransfer {format:"breditor/rich-clipboard-transfer";formatVersion:1;kind:"text"|"flow"|"grid";structuredJson:string;plainText:string}
 export type RichDocumentSelection=RichSelection|Readonly<{kind:"document"}>;
-export interface RichProfileDescriptor {kind: "rich"; abiVersion: 1; schema: {name: string; version: number}; schemaFingerprint: string;richLanguageVersion?:2|3|4;taskStructureVersion?:1;blockLayoutVersion?:1;listNumberingVersion?:1;textLanguageVersion?:1;imageLinkVersion?:1;detailsVersion?:1;mentionVersion?:1}
+export interface RichProfileDescriptor {kind: "rich"; abiVersion: 1; schema: {name: string; version: number}; schemaFingerprint: string;richLanguageVersion?:2|3|4;taskStructureVersion?:1;blockLayoutVersion?:1;listNumberingVersion?:1;textLanguageVersion?:1;imageLinkVersion?:1;detailsVersion?:1;mentionVersion?:1;tableCaptionVersion?:1}
 /** Closed native intent. Omission keeps, null clears; bounds are enforced in Rust. */
 export interface RichBlockLayoutPatch {alignment?:"start"|"center"|"end"|"justify"|"left"|"right"|null;direction?:"ltr"|"rtl"|"auto"|null;indent?:number|null;lineHeightPercent?:number|null}
 /** Closed candidate rich V4 ordered-list marker families (CSS `list-style-type` keywords). */
@@ -107,6 +109,12 @@ export interface RichCoreEditor<P extends RichSelectionPolicy="original"> {
   supportsMarkdownInputRouting?():boolean;
   insertPlainTextWithMarkdownRules?(text:string,namespace:string,expectedRevision?:string):RichInputRuleOutcome;
   insertTypingTextWithMarkdownRules?(text:string,clockMs:string,namespace:string,expectedRevision?:string):RichInputRuleOutcome;
+  /** Version1 rule-set calls (`markdown-v1`, `autolink-v1`) and the Enter autolink split; no JS matching. */
+  supportsInputRuleSets?():boolean;
+  insertPlainTextWithInputRules?(text:string,rules:readonly RichInputRuleId[],namespace:string,expectedRevision?:string):RichInputRuleOutcome;
+  insertTypingTextWithInputRules?(text:string,clockMs:string,rules:readonly RichInputRuleId[],namespace:string,expectedRevision?:string):RichInputRuleOutcome;
+  /** The `insertParagraph` record at a collapsed caret, then `autolink-v1` on the retained left block. */
+  insertParagraphWithAutolink?(data:{readonly right:string;readonly newItem:string|null},expectedRevision?:string):RichInputRuleOutcome;
   /** Complete optional Rust capability; absent/older runtimes never fall back to DOM matching. */
   supportsSearch?():boolean;
   findText?(query:RichSearchQuery,expectedRevision?:string):RichSearchResults;
@@ -158,6 +166,8 @@ export interface RichCoreEditor<P extends RichSelectionPolicy="original"> {
   supportsDetails?():boolean;
   /** Candidate rich V4 mention entities (`insertMention`); an older owner may omit it. */
   supportsMentions?():boolean;
+  /** Candidate rich V4 table captions (`addTableCaption`, `removeTableCaption`); an older owner may omit it. */
+  supportsTableCaptions?():boolean;
   selectionCoverage?(scope?:"selection"|"document"):RichSelectionCoverageRead;
   selectionFormatState?(kind:string):RichSelectionFormatStateRead;
   enableTypingHistory?(expectedRevision?:string):boolean;

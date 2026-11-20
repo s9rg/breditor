@@ -15,7 +15,9 @@ function owner(general=false,typing=false,language:1|2|3=1){
  return {raw:raw as unknown as SharedRustOwner,methods:raw,checkpoint};
 }
 let released:ReturnType<typeof vi.fn>;
-beforeEach(()=>{vi.stubGlobal("indexedDB",new IDBFactory());released=vi.fn(async()=>{});vi.spyOn(SharedWriterLease,"acquire").mockResolvedValue({assertLive:()=>{},close:released} as unknown as SharedWriterLease);});
+beforeEach(()=>{vi.stubGlobal("indexedDB",new IDBFactory());released=vi.fn(async()=>{});vi.stubGlobal("navigator",Object.assign(Object.create(globalThis.navigator),{locks:{request:(_n:string,_o:unknown,callback:(lock:object)=>Promise<void>)=>Promise.resolve().then(()=>callback({})).then(()=>{void released();})}}));vi.spyOn(SharedWriterLease,"acquire");});
+// SharedWriterLease rejects look-alike objects (private-field brand checks, prototype methods captured at load), so
+// sessions acquire a real lease over a stubbed, asynchronously granting Web Locks API; `released` fires when the lock is freed.
 afterEach(()=>{vi.restoreAllMocks();vi.unstubAllGlobals();});
 async function put(db:IDBDatabase,value:unknown){const tx=db.transaction("journals","readwrite");tx.objectStore("journals").put(value,[...key]);await new Promise<void>((resolve,reject)=>{tx.oncomplete=()=>resolve();tx.onabort=()=>reject(tx.error);});}
 describe("declared general session records",()=>{

@@ -1,6 +1,6 @@
 //! Explicit unreleased candidate rich V4: V3 grammar plus bounded ordered-list numbering,
-//! one native text-language inline format, bounded image links, collapsible sections and
-//! mention entities.
+//! one native text-language inline format, bounded image links, collapsible sections,
+//! mention entities and table captions.
 //!
 //! V1–V3 specifications and fingerprints stay exact. Later V4 candidate slices
 //! change this revision's rules before release, so no V4 data is persisted yet.
@@ -72,6 +72,26 @@ fn details() -> ChildConstraint {
     }
 }
 
+/// Slice 6: a table is its rows (unchanged bounds) followed by at most one trailing
+/// caption paragraph. Rows stay children `0..rows`, so every row index is unchanged.
+fn table() -> ChildConstraint {
+    let name = super::rich_content_profile::name;
+    ChildConstraint {
+        groups: vec![
+            ChildGroup {
+                kinds: vec![ChildKind::Element(name("table-row"))],
+                minimum: 0,
+                maximum: Some(256),
+            },
+            ChildGroup {
+                kinds: vec![ChildKind::Element(name("paragraph"))],
+                minimum: 0,
+                maximum: Some(1),
+            },
+        ],
+    }
+}
+
 pub(super) fn specification(spec: SchemaSpec) -> SchemaSpec {
     let mut spec = super::rich_content_profile_v3::specification(spec);
     spec.rich_content_contract = Some(4);
@@ -83,6 +103,7 @@ pub(super) fn specification(spec: SchemaSpec) -> SchemaSpec {
             | "breditor/blockquote"
             | "breditor/task-item" => element.children = flow(true),
             "breditor/table-cell" => element.children = flow(false),
+            "breditor/table" => element.children = table(),
             _ => {}
         }
     }

@@ -31,4 +31,5 @@ export {compileInlineFormatRecipes,createInlineFormatRenderManifest,resolveInlin
 export {imageLinkOf,wrapImageLink,richImageHrefProperty,richImageLinkNewWindowProperty,type RichImageLinkRead} from "./dist/browser/image_link.js";
 export {richTextLanguageFormat,richTextLanguageTagProperty,richTextLanguageRecipeV4,textLanguageOf} from "./dist/browser/text_language.js";
 export * from "./dist/browser/ui_locale.js";
+export * from "./dist/browser/ui_chrome_text.js";
 export {richMentionFormat,richMentionKindProperty,richMentionIdProperty,richMentionLabelProperty,richMentionKinds,richMentionClass,richMentionStyles,isRichMentionId,isRichMentionKind,isRichMentionLabel,mentionOf,mentionText,mentionFormat,groupMentionRuns,mentionChipAttributes,createMentionChip,type RichMention,type RichMentionKind,type MentionRun,type MentionInlineItem} from "./dist/browser/mention.js";

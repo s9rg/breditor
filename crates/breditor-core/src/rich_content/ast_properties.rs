@@ -387,8 +387,11 @@ pub(crate) fn table_view(node: &ElementNode) -> PropertyResult<RichTableView> {
     let table =
         TableId::try_new(string(node, "table-id")?).map_err(|_| "invalid table identity")?;
     let column_records = array(node, "columns", 128)?;
-    if node.children().len() > 256
-        || node.children().len().checked_mul(column_records.len()).is_none_or(|count| count > 4096)
+    // A candidate V4 caption is a trailing paragraph, not a row; the grammar admits it
+    // only in V4 and only last, so older languages never reach this exclusion.
+    let row_nodes = super::table_caption::rows(node);
+    if row_nodes.len() > 256
+        || row_nodes.len().checked_mul(column_records.len()).is_none_or(|count| count > 4096)
     {
         return Err("table exceeds its row or base-cell ceiling");
     }
@@ -409,8 +412,7 @@ pub(crate) fn table_view(node: &ElementNode) -> PropertyResult<RichTableView> {
             Ok(RichColumn { id, width: u32::try_from(width).map_err(|_| "invalid column width")? })
         })
         .collect::<PropertyResult<_>>()?;
-    let rows: Vec<_> = node
-        .children()
+    let rows: Vec<_> = row_nodes
         .iter()
         .map(|row| {
             let row = row

@@ -3,12 +3,13 @@ import {isStructuralRichLanguage} from "@breditor/experimental-rich-content/rend
 import {id,isText,property,sourceCell,text,formatsAt,textTargets,taskContext,selectedFlowAtom,type RichModel,type RichPresentationModel,type ElementNode} from "@breditor/experimental-rich-content/rendering";
 import {exitEmptySharedTask} from "./task_actions_v2.js";
 import type {SharedRichEditor} from "./core.js";
+import type {RichInputRuleOutcome} from "@breditor/experimental-rich-content";
 import type {SharedCommand,SharedDispatch,SharedNode,SharedParagraph,RichSelection,RichPoint,RichCell,FormatLiteral,SharedSelectionPolicy} from "./types.js";
 import type {RichToolbarField,RichToolbarReading} from "@breditor/experimental-rich-content/rendering";
 export interface ActionContext<P extends SharedSelectionPolicy="original"> {core:SharedRichEditor<P>;model:RichModel<P>;revision:string;allocate:(kind:string)=>string;image?:{asset:string;alt:string}}
 /** Minimal intent port, not a replacement owner/view. Private generic observer/listener state is
  * deliberately absent; every operation still invokes the real native-backed facade. */
-type IntentCore=Pick<SharedRichEditor,"dispatch"|"select"|"setPendingFormats"|"replace"|"richLanguageVersion"|"supportsAtomEditing"|"deleteAtom"|"hardBreak"|"replaceGeneralRangePlainText"|"insertGeneralParagraph"|"undo"|"redo">&{
+type IntentCore=Pick<SharedRichEditor,"splitWithAutolink"|"dispatch"|"select"|"setPendingFormats"|"replace"|"richLanguageVersion"|"supportsAtomEditing"|"deleteAtom"|"hardBreak"|"replaceGeneralRangePlainText"|"insertGeneralParagraph"|"undo"|"redo">&{
  selectionPolicy?():SharedSelectionPolicy;replaceDocumentPlainText?(paragraph:string,text:string,revision?:string):boolean;
 };
 export interface SharedIntentContext extends Omit<ActionContext,"core"|"model"> {core:IntentCore;model:RichPresentationModel}
@@ -60,7 +61,8 @@ export function removeSelection(ctx:SharedIntentContext,movement:"before"|"after
  }
  if(s?.kind==="grid")publish(ctx,[{kind:"clear_table_cells",data:{anchor:cellBlock(ctx.model,s.anchor),focus:cellBlock(ctx.model,s.focus),empty:(ctx.model.view.grid?.cells??[]).map(()=>ctx.allocate("empty"))}}]);
 }
-export function enter(ctx:SharedIntentContext,target?:Extract<RichSelection,{kind:"text"}>):void{
+/** With `autolink`, a plain caret split takes the exclusive native split-and-link call and returns its outcome. */
+export function enter(ctx:SharedIntentContext,target?:Extract<RichSelection,{kind:"text"}>,autolink=false):RichInputRuleOutcome|undefined{
  const s=target??ctx.model.view.selection;if(s?.kind!=="text")return;const[start,end]=ordered(ctx.model,s),node=ctx.model.nodes.get(start.block);if(!node)return;
  const cross=ctx.model.view.rangeEditing==="general-v1"&&s.anchor.block!==s.focus.block,parent=ctx.model.parents.get(start.block);
  if(node.type==="breditor/code-block"||parent?.type==="breditor/image"){if(cross)ctx.core.replaceGeneralRangePlainText(s,"\n",ctx.allocate("range"),ctx.revision);else ctx.core.hardBreak(ctx.revision);return;}
@@ -73,7 +75,9 @@ export function enter(ctx:SharedIntentContext,target?:Extract<RichSelection,{kin
  if(parent?.type==="breditor/task-item"&&parent.children[0]===node)commands.push({kind:"split_task_item",data:{block:start.block,offset:Number(start.offset),new_item:ctx.allocate("task"),right,right_heading:rank}});
  else if(parent?.type==="breditor/list-item"&&parent.children[0]===node)commands.push({kind:"split_list_item",data:{block:start.block,offset:Number(start.offset),new_item:ctx.allocate("item"),right,right_heading:rank}});
  else commands.push({kind:"split_text_block",data:{block:start.block,offset:Number(start.offset),right,right_heading:rank}});
+ if(autolink&&commands.length===1&&start.block===end.block&&start.offset===end.offset)return ctx.core.splitWithAutolink({commands,selectionUpdate:{kind:"set",value:caret(right)}},ctx.revision);
  publish(ctx,commands,caret(right));
+ return undefined;
 }
 export function boundaryDelete(ctx:SharedIntentContext,backward:boolean):boolean{
  const s=ctx.model.view.selection;if(s?.kind!=="text"||s.anchor.block!==s.focus.block||s.anchor.offset!==s.focus.offset)return false;
