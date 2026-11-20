@@ -1,8 +1,8 @@
 {
   "format": "breditor/v1-readiness",
   "formatVersion": 1,
-  "reviewedAt": "2026-10-18",
-  "baselineCommit": "e929cc78b0703463126454684d8a1385c3a78c2b",
+  "reviewedAt": "2026-11-20",
+  "baselineCommit": "620a9520b28233d0d631345b1f6a27f396d5ffe3",
   "coverage": "grouped-audit-not-exhaustive",
   "target": "Feature parity is the requested target. No smaller V1 scope has been approved.",
   "sources": [
