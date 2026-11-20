@@ -97,7 +97,9 @@ test("collapse/expand is explicit: a body caret moves to the summary and summary
 test("Backspace at a summary start removes the section; copy/paste keeps whole sections; V3 refuses the record",async({page})=>{
  await page.evaluate(()=>window.dt.mount("open"));
  await page.locator("details[data-rich-details] > summary").click();
- await page.keyboard.press("Home");await page.keyboard.press("Backspace");
+ // Home is not "line start" for editable text in macOS Firefox/WebKit (that is Cmd+Left), so place the
+ // caret at the summary start through the editor, then press a real Backspace.
+ await page.evaluate(()=>window.dt.editor.execute(window.dt.select("s",0)));await page.keyboard.press("Backspace");
  expect(await shapes(page)).toEqual([{type:"paragraph",children:["Hello world"]},{type:"paragraph",children:["Title"]},{type:"paragraph",children:["Body one"]},{type:"paragraph",children:["Body two"]},{type:"paragraph",children:["Second"]}]);
  await page.keyboard.press("ControlOrMeta+z");
  await expect(page.locator("details[data-rich-details] > summary")).toHaveText("Title");
