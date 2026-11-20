@@ -108,6 +108,17 @@ Mentions render as inert `span.breditor-mention` chips
 `mentionLabel`, `mentionLoading`, `mentionCountOne`, `mentionCount`,
 `mentionEmpty`. See `docs/RICH_LANGUAGE_V4.md` (Slice 5).
 
+## Table captions (candidate rich V4)
+
+A candidate rich V4 table may end with one caption paragraph after its rows
+(`supportsTableCaptions()`, descriptor `tableCaptionVersion: 1`). It renders as the
+table's first DOM child, `<caption data-rich-table-caption style="caption-side: bottom">`,
+so it is laid out below the rows and edited like any paragraph.
+`tableCaptionToolbarControls(core)` (included in `createRichToolbarV4`) provides the
+**Table caption** toggle, which sends `addTableCaption {table, caption}` or
+`removeTableCaption {table}`; `tableCaptionOf`, `isTableCaption` and
+`selectedTableCaption` are read-only helpers. See `docs/RICH_LANGUAGE_V4.md` (Slice 6).
+
 ## Chrome localization
 
 Pass an opt-in `ui` catalog to `mountRichEditor` / `mountDocumentRichEditor` to
