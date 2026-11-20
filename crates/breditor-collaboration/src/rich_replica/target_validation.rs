@@ -75,9 +75,9 @@ pub(super) fn validate_context(owner: &Context<'_>, commands: &[Command]) -> Res
             ));
         }
         if matches!(command, Command::SetBlockLayout(_) | Command::ChangeDocumentLayoutV1(_))
-            && owner.protocol != super::protocol::Protocol::LayoutV3
+            && !owner.protocol.layout()
         {
-            return Err(Error::Contract("shared layout requires model 13"));
+            return Err(Error::Contract("shared layout requires model 13 or 14"));
         }
         if command.requires_structural_v2() && !owner.protocol.structural() {
             return Err(Error::Contract("shared structural V2 command requires model 12"));
@@ -94,10 +94,7 @@ pub(super) fn validate_context(owner: &Context<'_>, commands: &[Command]) -> Res
             let block = BlockId::try_new(primary(command)?).map_err(contract)?;
             let kind = declared.kind(owner.document, &block)?;
             let expected = match command {
-                Command::SetBlockLayout(_) => {
-                    owner.protocol == super::protocol::Protocol::LayoutV3
-                        && owner.protocol.text(&kind)
-                }
+                Command::SetBlockLayout(_) => owner.protocol.layout_owner(&kind),
                 Command::InsertText(_) | Command::DeleteText(_) | Command::SetHeading(_) => {
                     owner.protocol.text(&kind)
                 }

@@ -656,6 +656,7 @@ impl RichReplica {
         let before_ui = self.journal.ui.clone();
         let before_selection = self.selection_for_mapping()?;
         self.validate_targets(commands)?;
+        let repairs = self.v4_repairs()?;
         // Semantic priority is captured at the admitted request basis. Immutable
         // preparation (including initial characters) must not make a longer
         // concurrently-created caption outrank another writer's equal-basis edit.
@@ -717,6 +718,7 @@ impl RichReplica {
         if !keep_open {
             self.undo.group_end();
         }
+        self.require_no_new_v4_repairs(repairs)?;
         let authored = self.doc.state_frontiers() != frontier;
         if authored && !join && self.segmented.is_some() && undo_count >= self.undo_limit {
             return Err(Error::Limit("segmented retained undo items"));
@@ -754,6 +756,19 @@ impl RichReplica {
         Ok(history_key)
     }
 
+    /// V4 merge repairs of the current projection (`None` for other models).
+    fn v4_repairs(&self) -> Result<Option<usize>, Error> {
+        self.protocol.v4().then(|| super::v4_projection::repair_count(&self.doc)).transpose()
+    }
+    /// A local V4 command must never rely on a merge repair to look admitted.
+    fn require_no_new_v4_repairs(&self, before: Option<usize>) -> Result<(), Error> {
+        if let Some(before) = before
+            && super::v4_projection::repair_count(&self.doc)? > before
+        {
+            return Err(Error::Contract("shared V4 command needs a merge repair"));
+        }
+        Ok(())
+    }
     pub(super) fn enable_continued_undo(&mut self) -> Result<(), Error> {
         let state = self.segmented.as_ref().ok_or(Error::ReplayMismatch)?;
         if let Some(reviewed) = &self.reviewed_history {
@@ -1372,6 +1387,11 @@ impl RichReplica {
     #[must_use]
     pub const fn model_version(&self) -> u32 {
         self.protocol.model()
+    }
+    /// Explicit rich language selected by the immutable compiled profile (1 through 4).
+    #[must_use]
+    pub const fn rich_language_version(&self) -> u32 {
+        self.protocol.rich_language()
     }
     /// Original journal binding for this causal model; opt-in families declare their own versions.
     #[must_use]

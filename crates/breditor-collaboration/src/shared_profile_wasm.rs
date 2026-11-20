@@ -20,6 +20,14 @@ pub struct SharedRichProfile {
 }
 #[wasm_bindgen]
 impl SharedRichProfile {
+    /// Explicit frozen rich language V4, causal model14 and journal15; never a migration.
+    pub fn from_configuration_json_v4(input: &str) -> Result<Self, JsValue> {
+        Ok(Self { inner: Profile::from_configuration_json_v4(input).map_err(error)? })
+    }
+    /// Compose standard inline V1 with frozen rich V4 using explicit configuration format4.
+    pub fn from_standard_configuration_json_v4(input: &str) -> Result<Self, JsValue> {
+        Ok(Self { inner: Profile::from_standard_configuration_json_v4(input).map_err(error)? })
+    }
     /// Explicit bounded layout V3, causal model13 and journal14; never an implicit migration.
     pub fn from_configuration_json_v3(input: &str) -> Result<Self, JsValue> {
         Ok(Self { inner: Profile::from_configuration_json_v3(input).map_err(error)? })

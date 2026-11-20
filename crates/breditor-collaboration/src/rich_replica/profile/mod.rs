@@ -87,6 +87,36 @@ impl SharedRichProfile {
         let (schema, limits) = configuration::compile_revision(input, true, 3)?;
         Self::from_schema_v3(schema, limits)
     }
+    /// Explicit frozen rich-language V4 profile, causal model 14 and journal 15.
+    ///
+    /// The grammar is exactly the frozen local V4 grammar (same compiler entry, rule
+    /// revision and fingerprint). Old constructors never select or migrate to it.
+    /// # Errors
+    /// Rejects non-V4 schema and budgets that widen native defaults.
+    pub fn from_schema_v4(schema: CompiledSchema, limits: DocumentLimits) -> Result<Self, Error> {
+        if schema.rich_content_revision() != Some(4) {
+            return Err(Error::Contract("shared model 14 requires rich-language V4"));
+        }
+        limits::validate(&limits)?;
+        Ok(Self {
+            codec: DocumentJsonCodecV2::new(schema).with_limits(limits),
+            protocol: super::protocol::Protocol::LanguageV4,
+        })
+    }
+    /// Compile explicit configuration format 4 without adding inline declarations.
+    /// # Errors
+    /// Rejects old/unknown configurations and invalid declarations or budgets.
+    pub fn from_configuration_json_v4(input: &str) -> Result<Self, Error> {
+        let (schema, limits) = configuration::compile_revision(input, false, 4)?;
+        Self::from_schema_v4(schema, limits)
+    }
+    /// Compose the original standard inline declarations with frozen rich V4.
+    /// # Errors
+    /// Rejects conflicting declarations and configurations other than format 4.
+    pub fn from_standard_configuration_json_v4(input: &str) -> Result<Self, Error> {
+        let (schema, limits) = configuration::compile_revision(input, true, 4)?;
+        Self::from_schema_v4(schema, limits)
+    }
     /// Compile bounded configuration format 2 without automatically adding inline formats.
     /// # Errors
     /// Rejects V1 configuration, unknown fields and invalid declarations or budgets.
@@ -129,12 +159,7 @@ impl SharedRichProfile {
             "abiVersion":1,"modelVersion":self.protocol.model(),"journalVersion":self.protocol.journal(),
             "schema":{"name":schema.id().name().as_str(),"version":schema.id().version().get()},
             "schemaFingerprint":schema.fingerprint().to_string(),"limits":limits::descriptor(self.limits())});
-        if self.protocol.structural() {
-            descriptor["richLanguageVersion"] = serde_json::json!(self.protocol.rich_language());
-        }
-        if self.protocol == super::protocol::Protocol::LayoutV3 {
-            descriptor["blockLayoutVersion"] = serde_json::json!(1);
-        }
+        self.protocol.describe(&mut descriptor);
         descriptor.to_string()
     }
     /// Read exact typed inline declarations for a schema-bound presentation compiler.

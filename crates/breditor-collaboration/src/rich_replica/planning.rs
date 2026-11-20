@@ -44,33 +44,7 @@ pub(super) fn validate(
         Command::InsertBlocks(value) => {
             insert_flow(doc, &mut preview, value)?;
         }
-        Command::InsertRow(value) => {
-            crate::identity::validate_id(&value.row)?;
-            for row in super::placement::children(doc, Some(&value.block))? {
-                if model::object_string(&model::metadata(doc, &row)?, "identity")?["breditor/row-id"]
-                    == value.row
-                {
-                    return Err(Error::Contract("fresh historical row identity"));
-                }
-            }
-            let table = table_mut(&mut preview, &value.block)?;
-            let mut row = creation::empty_row(&value.row_block, &value.row);
-            row["children"] = Value::Array(
-                table["properties"]["breditor/columns"]
-                    .as_array()
-                    .ok_or(Error::Contract("shared table columns"))?
-                    .iter()
-                    .map(|column| {
-                        empty_cell(
-                            &table["properties"]["breditor/table-id"],
-                            &json!(value.row),
-                            &column["id"],
-                        )
-                    })
-                    .collect::<Result<Vec<_>, _>>()?,
-            );
-            insert_children(table, value.before.as_deref(), vec![row])?;
-        }
+        Command::InsertRow(value) => insert_row(doc, &mut preview, value)?,
         Command::InsertColumn(value) => {
             let table = table_mut(&mut preview, &value.block)?;
             let columns = table["properties"]["breditor/columns"]
@@ -86,8 +60,11 @@ pub(super) fn validate(
             };
             columns.insert(index, json!({"id":value.column,"width":value.width}));
             let table_id = table["properties"]["breditor/table-id"].clone();
-            for row in
-                table["children"].as_array_mut().ok_or(Error::Contract("shared table rows"))?
+            for row in table["children"]
+                .as_array_mut()
+                .ok_or(Error::Contract("shared table rows"))?
+                .iter_mut()
+                .filter(|child| child["type"] == "breditor/table-row")
             {
                 let cell = empty_cell(
                     &table_id,
@@ -216,6 +193,50 @@ fn headers_closed(document: &RichDocument, blocks: &[String]) -> Result<(), Erro
     Ok(())
 }
 
+fn insert_row(
+    doc: &LoroDoc,
+    preview: &mut Value,
+    value: &super::actions::InsertRow,
+) -> Result<(), Error> {
+    crate::identity::validate_id(&value.row)?;
+    for row in super::placement::children(doc, Some(&value.block))? {
+        if model::object_string(&model::metadata(doc, &row)?, "identity")?["breditor/row-id"]
+            == value.row
+        {
+            return Err(Error::Contract("fresh historical row identity"));
+        }
+    }
+    let table = table_mut(preview, &value.block)?;
+    let mut row = creation::empty_row(&value.row_block, &value.row);
+    row["children"] = Value::Array(
+        table["properties"]["breditor/columns"]
+            .as_array()
+            .ok_or(Error::Contract("shared table columns"))?
+            .iter()
+            .map(|column| {
+                empty_cell(
+                    &table["properties"]["breditor/table-id"],
+                    &json!(value.row),
+                    &column["id"],
+                )
+            })
+            .collect::<Result<Vec<_>, _>>()?,
+    );
+    if value.before.is_none() {
+        // V4: appending places the row after every row, before a table caption.
+        let children =
+            table["children"].as_array_mut().ok_or(Error::Contract("shared table rows"))?;
+        let index = children
+            .iter()
+            .rposition(|child| child["type"] == "breditor/table-row")
+            .map_or(0, |index| index + 1);
+        children.insert(index, row);
+    } else {
+        insert_children(table, value.before.as_deref(), vec![row])?;
+    }
+    Ok(())
+}
+
 fn insert_flow(
     doc: &LoroDoc,
     preview: &mut Value,
@@ -226,7 +247,9 @@ fn insert_flow(
     }
     let protocol = super::protocol::Protocol::read(doc)?;
     for node in &value.nodes {
-        if !node["type"].as_str().is_some_and(|kind| protocol.flow(kind)) {
+        if !node["type"].as_str().is_some_and(|kind| {
+            protocol.flow(kind) || (value.parent.is_none() && protocol.root_only(kind))
+        }) {
             return Err(Error::Contract("shared inserted flow kind"));
         }
         creation::fresh_entities(doc, node)?;
@@ -238,7 +261,8 @@ fn insert_flow(
             node["type"].as_str(),
             Some("breditor/table-cell" | "breditor/list-item" | "breditor/image")
         ) || (protocol.structural()
-            && matches!(node["type"].as_str(), Some("breditor/blockquote" | "breditor/task-item")));
+            && matches!(node["type"].as_str(), Some("breditor/blockquote" | "breditor/task-item")))
+            || (protocol.v4() && node["type"] == "breditor/details");
         if !allowed {
             return Err(Error::Contract("shared creation flow parent"));
         }
