@@ -9,8 +9,11 @@ test.beforeEach(async({page})=>{await page.goto("/demo");await expect(page.locat
 const slider=page=>page.getByRole("slider",{name:"Resize image 1 of 1"});
 /** Hover the image so its handles show, then return the corner slider's centre. */
 async function corner(page){
- const image=page.locator('figure[data-rich-image="image"] img');await image.scrollIntoViewIfNeeded();const box=await image.boundingBox();
- await page.mouse.move(box.x+box.width/2,box.y+box.height/2);await expect(page.locator("[data-image-resize-group]")).toHaveAttribute("data-hover","");
+ const image=page.locator('figure[data-rich-image="image"] img'),group=page.locator("[data-image-resize-group]");await image.scrollIntoViewIfNeeded();
+ // The demo image decodes and its table relayouts after load, so a single hover can land on a stale box and,
+ // with the pointer then still, hover state never updates. Re-measure and re-hover until the handles respond.
+ await expect(async()=>{const current=await image.boundingBox();await page.mouse.move(current.x+current.width/2,current.y+current.height/2);await expect(group).toHaveAttribute("data-hover","",{timeout:500});}).toPass({timeout:15000});
+ const box=await image.boundingBox();
  const handle=await slider(page).boundingBox();return {x:handle.x+handle.width/2,y:handle.y+handle.height/2,image:box};
 }
 
