@@ -22,8 +22,9 @@ its durable formats and Wasm transport.
   numbering**, **Bookmark**, **Remove bookmark**, **Link to bookmark** and
   **Expand/Collapse section**. The shared surface now renders bookmarks and internal
   links for V4 owners and keeps sections and internal links inert while editing.
-  Shared projections now apply owned fields in causal order, so a `set_list_kind`
-  start change on a seeded ordered list wins over the seed start (such edits were
+  A `set_list_kind` start change on a seeded ordered list now also rewrites the seeded
+  start field, so it is no longer refused, and splitting a styled or reversed shared
+  ordered list keeps the style and counting order on the new tail list (both were
   previously refused).
 - Add explicit **shared rich language V4** (foundation). A shared room can now
   hold, replicate, persist and replay documents using any of the eight frozen V4

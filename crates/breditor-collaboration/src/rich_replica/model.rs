@@ -98,14 +98,11 @@ pub(super) fn patches(doc: &LoroDoc, effects: &Value) -> Result<Vec<Patch>, Erro
                 selected = Some((stamp, patch));
             }
         }
-        if let Some(selected) = selected {
-            output.push(selected);
+        if let Some((_, patch)) = selected {
+            output.push(patch);
         }
     }
-    // Fields that touch the same AST property (a seeded `property:breditor/start` and a
-    // later `list-kind` choice) apply in causal order, so the newer contribution wins.
-    output.sort_by_key(|(stamp, _)| *stamp);
-    Ok(output.into_iter().map(|(_, patch)| patch).collect())
+    Ok(output)
 }
 
 pub(super) fn object_string(map: &LoroMap, key: &str) -> Result<Value, Error> {

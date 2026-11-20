@@ -165,11 +165,17 @@ follow the same winner. A link created concurrently with a rename (or to a remov
 bookmark) is not seen by the rename and dangles, exactly as a local rename leaves
 later links alone; the index and the renderer report it as broken.
 
-**Projection order.** Owned fields that touch the same AST property now apply in
-causal order. Before, a seeded ordered list's `property:breditor/start` was applied
-after a later `list-kind` choice, so a start change on a seeded list was refused by
-the lowering check; it is now the newer contribution that wins. No admitted history
-changes its projection (such edits could not be published before).
+**Seeded list start.** A list loaded with a start keeps it in its own seeded
+`property:breditor/start` field, which projects after `list-kind` (fields still apply
+in field-name order). A kind/start change now also writes that field, with the same
+stamp, so the newest choice wins in both and a start change on a seeded list is no
+longer refused. Field projection order is unchanged, so no existing history projects
+differently.
+
+**Split lists.** A fresh list created by a structural command (an outdent or exit
+that splits an ordered list) writes its `list-style` and `list-reversed` fields from
+the native result, so the tail keeps the source list's style and counting order, as
+the local V4 owner does. These fields are prepared with the reserved list.
 
 ## Tests
 

@@ -7,8 +7,8 @@ use breditor_collaboration::{
     rich_replica::{
         Command, RichReplica, SharedRichProfile,
         actions::{
-            DeleteBlock, InsertText, ListStyle, ListStyleChange, RenameBookmark, SetBookmark,
-            SetDetailsOpen, SetFormat, SetListKind, SetListNumbering, SplitTextBlock,
+            DeleteBlock, InsertText, ListStyle, ListStyleChange, OutdentListItems, RenameBookmark,
+            SetBookmark, SetDetailsOpen, SetFormat, SetListKind, SetListNumbering, SplitTextBlock,
         },
         selection::{Selection, TextPoint},
     },
@@ -539,5 +539,45 @@ fn block_fields_refuse_older_languages() -> Result {
     }
     assert!(a.set_details_open_guarded(&a.observe()?, "p", true).is_err());
     assert!(a.bookmark_index_json(&a.observe()?).is_err());
+    Ok(())
+}
+
+/// Splitting a styled, reversed ordered list (top-level outdent of a middle item) gives
+/// the fresh tail list the same style and counting order, as the local V4 owner does.
+#[test]
+fn splitting_an_ordered_list_copies_style_and_reversal_to_the_tail() -> Result {
+    let p = profile()?;
+    let item = |id: &str, text: &str| el("list-item", id, vec![para(&format!("{id}-text"), text)]);
+    let mut list =
+        el("ordered-list", "ol", vec![item("x", "one"), item("y", "two"), item("z", "three")]);
+    list["properties"]["breditor/start"] = json!(9);
+    let mut root = el("document", "unused", vec![list, para("end", "End")]);
+    root["properties"] = json!({"breditor/document-id":"room"});
+    let mut a = p.create(&source(&p, &root), "101".into())?;
+    let mut b = p.join_frame("room".into(), "202".into(), &a.update_frame()?)?;
+    let seed = a.document_json().to_owned();
+    assert!(a.apply(vec![numbering("ol", style("upper-alpha"), Some(true))])?);
+    assert!(a.apply(vec![Command::OutdentListItems(OutdentListItems {
+        container: "ol".into(),
+        first: "y".into(),
+        last: "y".into(),
+        fresh_tail: Some("ol-tail".into()),
+    })])?);
+    assert_eq!(
+        (prop(&a, "ol-tail", "list-style")?, prop(&a, "ol-tail", "list-reversed")?),
+        (json!(3), json!(true))
+    );
+    assert_eq!(prop(&a, "ol-tail", "start")?, json!(7));
+    sync(&mut [&mut a, &mut b])?;
+    // A later style change on the prefix does not touch the tail.
+    assert!(b.apply(vec![numbering("ol", style("lower-roman"), None)])?);
+    sync(&mut [&mut a, &mut b])?;
+    assert_eq!(prop(&a, "ol-tail", "list-style")?, json!(3));
+    future(&p, &mut a)?;
+    for peer in [&mut a, &mut b] {
+        undo_all(peer)?;
+    }
+    sync(&mut [&mut a, &mut b])?;
+    assert_eq!(a.document_json(), seed);
     Ok(())
 }
