@@ -290,3 +290,23 @@ compiled SDK/React integration with actual Wasm and synthetic clipboard events.
 offline, repeats those checks, verifies consumer types and checks production
 bundle parser separation. These functional checks do not qualify OS clipboard
 applications, broad browser reliability or release readiness.
+
+## DOCX export (`@breditor/interchange/docx`)
+
+A separate entry point exports a native rich document (an editor view's
+`documentJson`) to a deterministic Word `.docx` package. It imports no HTML or
+Markdown parser and never fetches: image bytes come from the host by native
+asset binding.
+
+```ts
+import {exportDocxWithImages,docxContentType} from "@breditor/interchange/docx";
+
+const result = await exportDocxWithImages(editor.view().documentJson, {
+  loadImage: binding => assetStore.blob(binding.asset),
+});
+if (result.ok) download(new Blob([result.value], {type: docxContentType}));
+// result.losses reports every feature Word cannot represent (for example reversed lists).
+```
+
+See [docs/DOCUMENT_CONVERSION.md](../../docs/DOCUMENT_CONVERSION.md) for the
+fidelity map, loss codes, bounds, licensing and non-goals.

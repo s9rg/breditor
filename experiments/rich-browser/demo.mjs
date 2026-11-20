@@ -79,6 +79,20 @@ save();await showAssets();
 document.getElementById("export").addEventListener("click",()=>{
  const blob=new Blob([editor.checkpointJson()],{type:"application/json"}),url=URL.createObjectURL(blob),link=document.createElement("a");link.href=url;link.download="breditor-rich-session.json";link.click();setTimeout(()=>URL.revokeObjectURL(url),0);
 });
+// Word export: the opt-in @breditor/interchange/docx entry, loaded on demand. Image bytes come from
+// this page (demo canvases) or the local asset store; nothing is sent over the network.
+document.getElementById("export-docx").addEventListener("click",async()=>{
+ try{
+  const {exportDocxWithImages,docxContentType}=await import("/interchange/docx.js");
+  const dataBytes=url=>Uint8Array.from(atob(url.slice(url.indexOf(",")+1)),c=>c.charCodeAt(0));
+  const result=await exportDocxWithImages(editor.view().documentJson,{title:"Breditor rich content demo",
+   loadImage:binding=>assets.has(binding.asset)?dataBytes(assets.get(binding.asset)):assetStore.blob(binding.asset)});
+  window.demo.lastDocx=result.ok?{ok:true,bytes:result.value.length,losses:result.losses}:{ok:false,error:result.error,losses:result.losses};
+  if(!result.ok)throw Error(`Word export failed: ${result.error}`);
+  const url=URL.createObjectURL(new Blob([result.value],{type:docxContentType})),link=document.createElement("a");link.href=url;link.download="breditor-document.docx";link.click();setTimeout(()=>URL.revokeObjectURL(url),0);
+  document.getElementById("notice").textContent=result.losses.length?`Exported Word document. Not fully represented: ${result.losses.map(loss=>`${loss.code} ×${loss.count}`).join(", ")}.`:"Exported Word document with no reported losses.";
+ }catch(error){document.getElementById("notice").textContent=error instanceof Error?error.message:"Word export failed";}
+});
 document.getElementById("import").addEventListener("change",async event=>{
  const file=event.target.files?.[0];if(!file)return;
  try {if(file.size>16*1024*1024)throw Error("Session file exceeds 16 MiB");const restored=profile.restoreEditor(await file.text());for(const extra of extras)extra.dispose();extras=[];editor.dispose();editor=mount(restored);mountExtras(editor);save();document.getElementById("notice").textContent="Restored the exact local content and undo/redo branch.";}
