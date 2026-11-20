@@ -144,8 +144,11 @@ creation. Local V4 owners report `true`; V1–V3 and shared owners do not.
   `unsupported-attribute` notice. A reversed list without `start` gets the
   HTML default start (its item count) stored explicitly. Bullet markers on an
   `<ol>`, unknown `type` tokens and other counter styles report
-  `list-numbering`. Word for the web/desktop flat-list reconstruction is
-  unchanged and still reports non-decimal numbering.
+  `list-numbering`. Word desktop `mso-list` markers (`a.`, `A.`, `i.`, `I.`,
+  with `.` or `)`) and Word for the web items whose `list-style-type` is one of
+  these styles with `%N.`/`%N)` level text become `list-style` with their start
+  and no notice; parenthesized, compound or unprovable formats keep the closest
+  style and still report `list-numbering` (see the interchange package guide).
 - **HTML import, V1–V3 owners:** unchanged; `type`, `reversed` and non-decimal
   `list-style-type` drop with the original `list-numbering` (and
   `unsupported-attribute` for `reversed`) notices.

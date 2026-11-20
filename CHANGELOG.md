@@ -26,6 +26,26 @@ its durable formats and Wasm transport.
   hosts must obtain their consent. No new command, history family, saved setting
   or Rust capability. See the "Shared editors" section of
   docs/AI_AND_LANGUAGE_TOOLS.md.
+- `@breditor/interchange`: opt-in GFM autolink literals for Markdown import
+  (audit gap `markdown`). `importMarkdown(source, {autolinks: true})` links bare
+  `https://…`, `http://…` and `www.…` literals only when the editor's typed
+  `autolink-v1` rule would: the same candidate grammar and trailing punctuation
+  (mirrored from Rust `rich_autolink_candidate` and parity-tested against it)
+  and the same canonical `safeLinkV1` target subset as image links. Never inside
+  code, existing links, `<…>` autolinks, image labels or raw `<a>`/`<code>`, nor
+  across a backslash escape or entity. The version-one dialect is unchanged when
+  the option is omitted; `interchangeContractV1.markdownAutolinks` names the
+  opt-in. Markdown export now writes a link whose text is its exact target as
+  `<url>` (when that re-parses identically) and escapes `://` in plain text
+  (`https\://…`), so round trips stay exact with or without the option.
+- `@breditor/interchange`: Word desktop and Word for the web list numbering maps
+  to candidate rich V4 list styles (audit gap `office-paste`). For owners that
+  report `supportsListNumbering()`, Word desktop `a.`/`A.`/`i.`/`I.` markers and
+  Word for the web lettered/roman `list-style-type` with `%N.` level text become
+  native lower/upper alpha or roman ordered lists with their start and no
+  `list-numbering` notice; parenthesized, compound or unprovable formats keep the
+  closest style and are still reported. Other owners keep the original decimal
+  conversion and notices exactly.
 - Fix typing after a line break at the very end of a text block in rich local
   and shared editors. In Chromium and WebKit, Shift+Enter at the end of a
   paragraph or heading (or Enter at the end of an image or table caption)

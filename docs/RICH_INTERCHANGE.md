@@ -104,6 +104,21 @@ separate on reimport. Import reports fence info beyond the language word
 ordered starts below 1, which become 1 (`list-numbering`). Single-tilde
 strikethrough and bare URL/`www.` autolink literals remain literal text.
 
+GFM autolink literals are a separate opt-in, `importMarkdown(source, {autolinks:
+true})` (named by `interchangeContractV1.markdownAutolinks`). The version-one
+dialect itself is unchanged: omitting the option (or `false`) parses exactly as
+before, so no stored or exchanged Markdown changes meaning for existing hosts,
+and no new dialect version is needed. With the option, a literal is linked only
+when the editor's typed `autolink-v1` rule would link it: the same candidate
+grammar and trailing punctuation, the same `www.` → `https://www.` and empty-path
+repair, and the same canonical `safeLinkV1` target subset as native image links.
+Code spans and blocks, existing links, `<…>` autolinks, image labels, raw `<a>`
+and `<code>` HTML, and literals touching a backslash escape or entity stay text;
+rejected candidates are not notices. Markdown export writes a link whose text is
+its exact target as `<url>` when that re-parses identically and escapes `://` in
+plain text, so export and reimport, with or without the option, are exact. See
+the [package guide](../packages/breditor-interchange/README.md#opt-in-gfm-autolink-literals).
+
 HTML inline fragments retain text scope; explicit blocks use flow. Hosts may
 request flow or grid admission explicitly, but native kind/shape checks still
 reject incompatible content. HTML merged cells use relative, complete,
@@ -135,20 +150,28 @@ marks, host image-registry calls and complete `{code, count, effect}` notices
 through the same `importHtml` admission path. The package guide lists the
 [producer conversions and notice policy](../packages/breditor-interchange/README.md#producer-clipboard-shapes).
 In brief: Word alphabetic/roman/compound markers become ordered lists with
-`list-numbering`; skipped Word levels nest with `block-structure` rather than
+`list-numbering` (for V4 owners, exact letter/roman markers become styled lists
+without it); skipped Word levels nest with `block-structure` rather than
 rejecting; `file:` images report `image-reference` without consulting the host
 registry; content-free syntax (namespace declarations, document metadata,
 conditional markers, legacy doctypes, structural ARIA, no-op CSS values) no
 longer produces notices. All resource bounds are unchanged.
 
 Word for the web ordered items that are not provably decimal (CSS
-`list-style-type: decimal` plus `%N.`/`%N)` level text) report `list-numbering`.
+`list-style-type: decimal` plus `%N.`/`%N)` level text) report `list-numbering` for owners without V4 list numbering.
 
 Owners of the unreleased candidate rich V4 report `supportsListNumbering()`.
 For them, `<ol type>`, `list-style-type` and `reversed` map to native ordered-list
 numbering, HTML export emits them and Markdown export falls back to HTML for
-letter, roman or reversed lists. Other owners keep the original notices. See
-[RICH_LANGUAGE_V4.md](RICH_LANGUAGE_V4.md).
+letter, roman or reversed lists. Word flat lists map too: Word desktop `a.`/`A.`/
+`i.`/`I.` markers (with `.` or `)`) become lower/upper alpha or roman lists with
+their start (ambiguous letters follow the open list's next ordinal and style),
+and Word for the web items whose `list-style-type` is a native style and whose
+`data-leveltext` is `%N.`/`%N)` keep that style. Those exact mappings report no
+`list-numbering`; parenthesized, compound or unprovable formats keep the closest
+style and are still reported. Other owners keep the original conversion and
+notices exactly. See [RICH_LANGUAGE_V4.md](RICH_LANGUAGE_V4.md) and the
+[package guide's mapping table](../packages/breditor-interchange/README.md#ordered-list-numbering-candidate-rich-v4-owners).
 
 V4 owners also report `supportsTextLanguage()`. For them, `lang` and `xml:lang`
 on inline or block elements become the native `breditor/text-language` format on
