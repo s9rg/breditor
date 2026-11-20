@@ -2,7 +2,7 @@
 import init,* as wasm from "/wasm.js";
 import {compileRichProfile,mountRichEditor,RichAssetStore,RichLocalSessionStore,insertImageFiles,defaultToolbar,
  mountRichSlashCommands,createRichSlashCommands,mountRichSelectionToolbar,mountRichContextMenu,
- mountRichTableColumnResize,richTableColumnResizeCommit,mountRichBlockDrag,richUiStringsEn,standardRichSlashPicks} from "/rich.js";
+ mountRichTableColumnResize,richTableColumnResizeCommit,mountRichImageResize,richImageResizeCommit,mountRichBlockDrag,richUiStringsEn,standardRichSlashPicks} from "/rich.js";
 // ?ui=pseudo wraps every chrome string to show the opt-in catalog; &dir=rtl mirrors the chrome only, never content.
 const query=new URLSearchParams(location.search);
 const ui=query.get("ui")==="pseudo"?{strings:Object.fromEntries(Object.entries(richUiStringsEn).map(([key,value])=>[key,`⟦${value}⟧`])),lang:"en-XA",direction:query.get("dir")==="rtl"?"rtl":"ltr"}:undefined;
@@ -35,6 +35,7 @@ if(saved){try{owner=profile.restoreEditor(saved);core.dispose();}catch(error){co
 // Opt-in parity features. Each borrows the editor and runs existing Rust commands; remounts dispose them first.
 const overlay=document.createElement("div");overlay.id="table-resize";overlay.style.position="relative";
 document.getElementById("editor").before(overlay);
+const imageOverlay=document.createElement("div");imageOverlay.id="image-resize";imageOverlay.style.position="relative";overlay.after(imageOverlay);
 let extras=[];
 function mountExtras(editor){
  for(const extra of extras)extra.dispose();
@@ -43,6 +44,7 @@ function mountExtras(editor){
   mountRichSelectionToolbar(editor,{onError:report}),
   mountRichContextMenu(editor,{onError:report}),
   mountRichTableColumnResize(overlay,editor,{commit:richTableColumnResizeCommit(editor),onError:report}),
+  mountRichImageResize(imageOverlay,editor,{commit:richImageResizeCommit(editor),onError:report}),
   mountRichBlockDrag(editor),
  ];
 }
