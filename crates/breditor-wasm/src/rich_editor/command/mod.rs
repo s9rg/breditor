@@ -66,6 +66,7 @@ mod replace_general_range_text;
 mod replace_general_range_typing_text;
 mod replace_image;
 mod replace_text_range;
+mod replace_trigger_then;
 mod resize_image;
 mod resize_table_column;
 mod set_code_block;
@@ -194,6 +195,7 @@ enum CommandTag {
     MergeTableCells,
     ClearTableCells,
     NavigateGrid,
+    ReplaceTriggerThen,
 }
 #[derive(Deserialize)]
 #[serde(deny_unknown_fields)]
@@ -335,6 +337,9 @@ pub(super) fn execute(
             &value::<String>(command.block)?,
             value(command.level)?,
         ),
+        CommandTag::ReplaceTriggerThen => {
+            replace_trigger_then::execute(owner, observation, command.data.ok_or(invalid())?.get())
+        }
         CommandTag::SetPendingFormats => set_pending_formats::execute(
             owner,
             observation,

@@ -22,6 +22,8 @@ export interface RichSuggestionHost {
  focus():void;
  /** Optional chrome catalog: menu strings, item labels and the menu's `dir`/`lang`. */
  uiLocale?():RichUiLocale;
+ /** Optional native capability probe: `replaceTriggerThen` (trigger removal + command as one Undo step). */
+ supportsTriggerComposite?():boolean;
 }
 export type RichSuggestionCancelReason=
  |"dismissed"|"composition"|"trigger-invalidated"|"selection-left"|"query-ended"|"blur"|"read-only"|"editor-closed"|"disposed";

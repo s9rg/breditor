@@ -208,10 +208,14 @@ paragraph or heading, or after whitespace.
   controls (headings, lists, table, and the structural V2 quote, code block,
   task list and divider) to menu items. Alternatively, pass a cancellable async
   provider `(query, {signal}) => items`.
-- **Running a command.** Choosing an item removes the typed `/query` with a
-  guarded native command. It then runs the item's existing typed command
-  through `execute`. Neither step edits the DOM.
-- **Undo.** Undo takes two steps: the first reverts the command, the second
+- **Running a command.** Choosing an item removes the typed `/query` and runs
+  the item's existing typed command. With a current native owner
+  (`editor.supportsTriggerComposite()`), both happen in one guarded
+  `replaceTriggerThen` command. Older owners, and commands outside its
+  structural allowlist, use two guarded commands instead. Neither path edits the
+  DOM.
+- **Undo.** With the native composite, one Undo restores the typed `/query`.
+  On the two-step fallback, the first Undo reverts the command and the second
   restores the typed `/query`.
 - **Cancellation.** Sessions cancel on Escape, composition, blur, read-only
   policy, editor disposal, or any publication that moves the caret out of the

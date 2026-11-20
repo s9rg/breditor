@@ -781,7 +781,8 @@ by one plain space, both with the styles of the range start (never a mention).
 The caret lands after the space. It is **one** guarded `ReplaceTextRange`
 history group, so one Undo restores the typed trigger and the actual pre-edit
 selection, and the typing burst that typed the trigger stays a separate group.
-This is how mentions avoid the slash commands' two-step undo. Read-only owners,
+Slash commands reach the same one-step Undo through the native
+`replaceTriggerThen` composite ([SLASH_COMMANDS.md](SLASH_COMMANDS.md)). Read-only owners,
 stale observations, cross-block, code, missing targets and non-V4 contexts
 (`RichMentionError::Profile`) are refused without publication.
 

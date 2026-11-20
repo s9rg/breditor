@@ -3,7 +3,7 @@ import type {RichWritingToolsRead} from "./writing_tools_types.js";
 export type {RichWritingToolsRead,RichWritingCounts,RichWritingHeading} from "./writing_tools_types.js";
 import type {RichRetainedAssetReferencesRead} from "./retained_asset_references_types.js";
 export type {RichRetainedAssetReferencesRead,RichRetainedAssetReference} from "./retained_asset_references_types.js";
-export type {RichCommand,RichSelectionFormatChange,FormatLiteral,ImageAlt,ImageSize,TextDraft,ImageDraft,TableColumnDraft,TableCellDraft,TableRowDraft,TableDraft,FlowDraft,FlowPosition,ClipboardAllocation} from "./commands.js";
+export type {RichCommand,RichTriggerCompositeKind,RichTriggerCompositeCommand,RichSelectionFormatChange,FormatLiteral,ImageAlt,ImageSize,TextDraft,ImageDraft,TableColumnDraft,TableCellDraft,TableRowDraft,TableDraft,FlowDraft,FlowPosition,ClipboardAllocation} from "./commands.js";
 /** Initialized generated Wasm module; pass the same instance for all owners using it. */
 export interface RichWasmModule {
   readonly BreditorRichProfile: {fromBootstrapJson(input: string): unknown;fromStandardBootstrapJsonV1?(input:string):unknown;fromStructuralBootstrapJsonV2?(input:string):unknown;fromStandardStructuralBootstrapJsonV2?(input:string):unknown;fromLayoutBootstrapJsonV3?(input:string):unknown;fromStandardLayoutBootstrapJsonV3?(input:string):unknown;fromBootstrapJsonV4?(input:string):unknown;fromStandardBootstrapJsonV4?(input:string):unknown};
@@ -166,6 +166,8 @@ export interface RichCoreEditor<P extends RichSelectionPolicy="original"> {
   supportsDetails?():boolean;
   /** Candidate rich V4 mention entities (`insertMention`); an older owner may omit it. */
   supportsMentions?():boolean;
+  /** Native `replaceTriggerThen` (slash commands as one Undo step); an older owner may omit it. */
+  supportsTriggerComposite?():boolean;
   /** Candidate rich V4 table captions (`addTableCaption`, `removeTableCaption`); an older owner may omit it. */
   supportsTableCaptions?():boolean;
   selectionCoverage?(scope?:"selection"|"document"):RichSelectionCoverageRead;

@@ -35,6 +35,7 @@ mod search;
 mod select_document;
 mod selection;
 mod selection_formatting;
+mod trigger_composite;
 mod view;
 mod writing_tools;
 pub use search::{BreditorRichSearchResults, BreditorRichSearchResultsResult};

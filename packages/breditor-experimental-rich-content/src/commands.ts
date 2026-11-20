@@ -23,6 +23,9 @@ export interface FlowPosition {parent:{kind:"document"}|{kind:"cell";cell:RichCe
 export interface ClipboardAllocation {prefix:string;replica:string;counter:string;lamport:string}
 /** Full admitted literals are retained for removals; Rust chooses all selected targets. */
 export type RichSelectionFormatChange={kind:"set"|"remove";formatsJson:string}|{kind:"patch";formatsJson:string;properties:readonly string[]};
+/** Follow-up kinds admitted by `replaceTriggerThen`; each addresses blocks by identity, never text offsets. */
+export type RichTriggerCompositeKind="setHeading"|"setCodeBlock"|"wrapList"|"setListKind"|"wrapTaskList"|"wrapBlockquote"|"wrapDetails"|"insertHorizontalRule"|"insertTable"|"insertBlocks";
+export type RichTriggerCompositeCommand=Extract<RichCommand,{kind:RichTriggerCompositeKind}>;
 export type RichCommand =
  |{kind:"replaceGeneralRangeText";data:{selection:Extract<RichSelection,{kind:"text"}>;runs:readonly {text:string;formatsJson:string}[];prefix:string}}
  |{kind:"pasteGeneralInlineClipboard";data:{selection:Extract<RichSelection,{kind:"text"}>;clipboardJson:string;prefix:string}}
@@ -118,6 +121,10 @@ export type RichCommand =
  /** Candidate rich V4 only: replace one text range inside a paragraph or heading (normally the typed
   * `@query` trigger) by one mention plus a plain space, in one history group (one Undo step). */
  |{kind:"insertMention";data:{selection:Extract<RichSelection,{kind:"text"}>;mention:import("./mention.js").RichMention}}
+ /** Remove one typed trigger range (a nonempty same-block range in a paragraph, heading or section
+  * summary), then run one allowlisted command (`RichTriggerCompositeKind`) against the post-removal
+  * document, as ONE native history unit. Requires `supportsTriggerComposite()`. */
+ |{kind:"replaceTriggerThen";data:{selection:Extract<RichSelection,{kind:"text"}>;command:RichTriggerCompositeCommand}}
  |{kind:"indentListItems";data:{container:string;first:string;last:string;nested:{block:string;start:number|null}|null}}
  |{kind:"outdentListItems";data:{container:string;first:string;last:string;tail:string|null}}
  |{kind:"splitTextBlock";data:{point:RichPoint;right:string;rightHeading:number|null}}
