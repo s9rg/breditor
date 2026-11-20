@@ -8,6 +8,7 @@ import {Stylesheets} from "./html_stylesheet.js";
 import {canonicalLanguageTagV1} from "./language_tag.js";
 import {imageHrefProperty,imageLinkNewWindowProperty,isImageLinkHrefV1} from "./image_link_href.js";
 import {mentionFormat,mentionFromSpan} from "./mention.js";
+import {anchorName,bookmarkProperty,internalLinkFormat} from "./bookmark.js";
 /** Attributes consumed by a recognized candidate V4 mention span. */
 const mentionAttributes:ReadonlySet<string>=new Set(["data-mention-kind","data-mention-id"]);
 const blocks=new Set(["p","div","h1","h2","h3","h4","h5","h6","ul","ol","li","pre","blockquote","table","figure","hr","section","article","main","header","footer"]);
@@ -23,7 +24,7 @@ const structuralRoles=new Set(["presentation","none","list","listitem"]);
 const flatListAttributes:ReadonlySet<string>=new Set(["data-aria-level","data-aria-posinset","data-listid","aria-setsize"]);
 const wordBullets=/^[·•●○◦▪■□◆◇►➢➤✓✔\-–—*o§Øüvqnl]$/;
 /** Target-owner capabilities read once by the adapter; they select conversion, never admission. */
-export interface ImportCapabilities {readonly listNumbering:boolean;readonly textLanguage?:boolean;readonly imageLinks?:boolean;readonly details?:boolean;readonly mentions?:boolean;readonly tableCaptions?:boolean;readonly pageBreaks?:boolean}
+export interface ImportCapabilities {readonly listNumbering:boolean;readonly textLanguage?:boolean;readonly imageLinks?:boolean;readonly details?:boolean;readonly mentions?:boolean;readonly tableCaptions?:boolean;readonly pageBreaks?:boolean;readonly bookmarks?:boolean}
 /** Candidate rich V4 native text-language format (Rust `text_language.rs`). */
 export const textLanguageFormat="breditor/text-language",textLanguageTag="breditor/language-tag";
 const htmlSpace=/^[\t\n\f\r ]+|[\t\n\f\r ]+$/g;
@@ -78,14 +79,20 @@ export class HtmlConversion {
   #preservedEnd=new WeakSet<Text>();#detailsDepth=0;
   /** Candidate V4: nodes whose forced-break declarations were consumed, and page breaks derived from block properties. */
   #breakConsumed=new WeakSet<HtmlElement>();#carrier=new WeakSet<HtmlElement>();#soft=new WeakSet<Element>();
+  /** Candidate V4: `<a name|id>` anchors already adopted or reported, and every adopted bookmark name. */
+  #anchors=new WeakSet<HtmlElement>();#bookmarkNames=new Set<string>();
   constructor(readonly b:Budget,readonly options:InterchangeOptions,readonly sheets:Stylesheets,readonly capabilities:ImportCapabilities={listNumbering:false}){}
   css(node:HtmlElement):Map<string,string>{let value=this.#css.get(node);if(!value){const important=new Set<string>();value=this.sheets.apply(node,declarations(node,this.b,important),important);this.#css.set(node,value);}return value;}
   /** `interpreted` names attributes that structural conversion already consumed for this node. */
   style(node:HtmlElement,parent:StyleState,interpreted?:ReadonlySet<string>):StyleState {
     if(interpreted===undefined&&node.tagName==="ol"&&this.capabilities.listNumbering)interpreted=numberingAttributes;
+    if(this.#anchors.has(node))interpreted=new Set([...(interpreted??[]),"name"]);
     for(const attr of node.attrs)if(attr.namespace!==undefined||attr.prefix!==undefined||!this.#knownAttribute(node,attr.name,attr.value,interpreted))this.b.loss("unsupported-attribute");
     const css=this.css(node),consumed=this.#breakConsumed.has(node)?this.#carrier.has(node)?carrierProperties:new Set<string>(breakProperties):undefined;
-    const state=styleFor(node,parent,this.b,consumed?new Map([...css].filter(([name])=>!consumed.has(name))):css);
+    // Candidate V4: `href="#name"` (or `#bm-name`) is an internal link; the external link policy never sees it.
+    const internal=this.#internalHref(node),source=internal===undefined?node:{...node,attrs:node.attrs.filter(attr=>attr.name!=="href")};
+    const state=styleFor(source,parent,this.b,consumed?new Map([...css].filter(([name])=>!consumed.has(name))):css);
+    if(internal!==undefined){state.formats.set("breditor-inline/link",internalLinkFormat(internal));if(attribute(node,"target")?.toLowerCase()==="_blank")this.b.loss("unsupported-attribute");}
     if(this.capabilities.textLanguage)this.#language(node,state);
     return state;
   }
@@ -114,6 +121,38 @@ export class HtmlConversion {
     if(name==="xmlns"||name.startsWith("xmlns:")||name==="xml:lang")return true;
     // Structural ARIA that only restates the list/paragraph structure being imported.
     return name==="role"&&structuralRoles.has(value.trim().toLowerCase())||name==="aria-level"&&node.tagName==="li";
+  }
+  /** Bookmark-capable owners only: the bookmark name of an `<a href="#…">` fragment in the native grammar. */
+  #internalHref(node:HtmlElement):string|undefined {
+    if(!this.capabilities.bookmarks||node.tagName!=="a")return undefined;
+    const raw=attribute(node,"href");
+    return raw?.startsWith("#")?anchorName(raw.slice(1)):undefined;
+  }
+  /**
+   * Candidate V4 anchors of one `<p>`, `<h1>`–`<h6>` or `<pre>`: its own `id`, then every `<a name>` /
+   * `<a id>` inside it, in document order. Collected before the block converts so `name` is consumed.
+   */
+  #anchorCandidates(node:HtmlElement):string[] {
+    if(!this.capabilities.bookmarks)return [];
+    const found:string[]=[],own=attribute(node,"id");if(own!==undefined)found.push(own);
+    const walk=(items:readonly HtmlNode[])=>{for(const item of items){if(!isElement(item))continue;
+      if(item.tagName==="a"){const value=attribute(item,"name")??attribute(item,"id");if(value!==undefined){found.push(value);this.#anchors.add(item);}}
+      walk(item.childNodes);}};
+    walk(node.childNodes);return found;
+  }
+  /**
+   * The first valid, unused candidate becomes the bookmark of the block's first paragraph, heading or code
+   * block. Invalid names, names already used in this import and further anchors are reported
+   * (`unsupported-attribute`): a document has at most one bookmark per block and unique names.
+   */
+  #adoptAnchors(candidates:readonly string[],output:readonly Element[],start:number):void {
+    if(!candidates.length)return;
+    const target=output.slice(start).find(n=>["breditor/paragraph","breditor/heading","breditor/code-block"].includes(n.type));
+    for(const raw of candidates){
+      const name=anchorName(raw);
+      if(target&&name!==undefined&&!this.#bookmarkNames.has(name)&&target.properties[bookmarkProperty]===undefined){target.properties[bookmarkProperty]=name;this.#bookmarkNames.add(name);}
+      else this.b.loss("unsupported-attribute");
+    }
   }
   #metadata(node:HtmlElement):boolean {
     if(!metadata.has(node.tagName))return false;
@@ -222,10 +261,10 @@ export class HtmlConversion {
       const breaks=this.#blockBreaks(node),mark=output.length;
       const next=this.style(node,state),tag=node.tagName;
       if(containers.has(tag)){if(tag==="center")next.layout["breditor/block-align"]=2;output.push(...this.flow(node.childNodes,next,insideTable));}
-      else if(tag==="p"||/^h[1-6]$/.test(tag))output.push(...this.prose(node.childNodes,next,tag==="p"?undefined:Number(tag[1])));
+      else if(tag==="p"||/^h[1-6]$/.test(tag)){const anchors=this.#anchorCandidates(node),start=output.length;output.push(...this.prose(node.childNodes,next,tag==="p"?undefined:Number(tag[1])));this.#adoptAnchors(anchors,output,start);}
       else if(tag==="ul"||tag==="ol")output.push(...this.#list(node,next,insideTable));
       else if(tag==="blockquote"){const body=this.flow(node.childNodes,next,insideTable);output.push(element(this.b,"blockquote",body.length?body:[element(this.b,"paragraph")]));}
-      else if(tag==="pre")output.push(this.#code(node,next));
+      else if(tag==="pre"){const anchors=this.#anchorCandidates(node),start=output.length;output.push(this.#code(node,next));this.#adoptAnchors(anchors,output,start);}
       else if(tag==="hr")output.push(element(this.b,"horizontal-rule"));
       else if(tag==="table"){if(insideTable)fail("unsupported-content");output.push(...importTable(this,node,next));}
       else if(tag==="figure")output.push(...this.#figure(node,next,insideTable));

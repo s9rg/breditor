@@ -196,6 +196,21 @@ stays a line break, Google Docs' hidden page-break `<hr>` is removed). With a V4
 - Markdown has no page break: it falls back to that HTML block with
   `markdown-feature`, which reimports as a page break.
 
+### Bookmarks and internal links (candidate rich V4 owners)
+
+The adapter reads the owner's optional `supportsBookmarks()` once (local V4 owners).
+
+- Import: an `id` on `<p>`, `<h1>`–`<h6>` or `<pre>`, or an `<a name>`/`<a id>` inside
+  one, becomes the block's bookmark; `href="#name"` becomes an internal link. A `bm-`
+  prefix is removed on both sides. Invalid, duplicate and extra anchors report
+  `unsupported-attribute`.
+- Export: `id="bm-<name>"` and `<a href="#bm-<name>">`, which round trip exactly;
+  Markdown falls back to that HTML with `markdown-feature`.
+- DOCX: `w:bookmarkStart`/`w:bookmarkEnd` and `w:hyperlink w:anchor`; a dangling link
+  keeps its text (`unsafe-link`).
+- Other owners keep the original conversion (ids dropped, `<a name>` reported,
+  `href="#…"` reported as `unsafe-link`).
+
 ### Mentions (candidate rich V4 owners)
 
 The adapter also reads the owner's optional `supportsMentions()` once. Only a
