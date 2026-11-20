@@ -30,6 +30,7 @@ mod input_rules;
 mod list_draft;
 pub(crate) mod list_numbering;
 pub(crate) mod local_session;
+pub(crate) mod mention;
 mod native_history_usage;
 mod navigate_flow;
 mod navigate_grid;
@@ -97,6 +98,12 @@ pub use local_session::{
     RICH_TYPING_GROUP_MAX_STEPS, RICH_TYPING_GROUP_WINDOW_MS, RichGeneralPlainRangePlan,
     RichLocalOutcome, RichLocalSession, RichLocalSessionError, RichLocalSnapshot, RichLocalState,
     RichPendingFormatsUpdate, RichSelectionUpdate, RichTypingDeleteDirection,
+};
+pub use mention::{
+    RICH_MENTION_FORMAT, RICH_MENTION_ID_MAX_BYTES, RICH_MENTION_ID_PROPERTY,
+    RICH_MENTION_KIND_PROPERTY, RICH_MENTION_LABEL_MAX_BYTES, RICH_MENTION_LABEL_PROPERTY,
+    RICH_MENTION_PREFIX, RichMention, RichMentionError, RichMentionId, RichMentionKind,
+    RichMentionLabel,
 };
 pub use native_history_usage::NativeHistoryUsage;
 pub use navigate_flow::{FlowMove, FlowNavigationOutcome, navigate_flow};

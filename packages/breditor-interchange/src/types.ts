@@ -24,6 +24,9 @@ export interface InterchangeOwner {
   /** Candidate rich V4 owners admit collapsible sections (`breditor/details`). Absent or false keeps
    * the original conversion: `<details>`/`<summary>` are unwrapped into ordinary flow. */
   supportsDetails?():boolean;
+  /** Candidate rich V4 owners admit native mention entities (`breditor/mention`). Absent or false keeps
+   * the original conversion: a `<span class="breditor-mention" …>` imports as its plain `@label` text. */
+  supportsMentions?():boolean;
 }
 export type InterchangeLossCode = "html-repaired"|"removed-content"|"unsupported-element"|"unsupported-attribute"|"unsupported-style"|"style-approximation"|"unsafe-link"|"image-reference"|"image-alt"|"image-size"|"block-structure"|"table-geometry"|"table-width"|"list-numbering"|"markdown-feature";
 /** Counts are aggregated and bounded. No source text, URL, CSS, HTML or asset identifier is echoed. */

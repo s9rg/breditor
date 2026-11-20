@@ -20,6 +20,7 @@ export const arabicStrings:RichUiStrings={
  selectionToolbarLabel:"تنسيق التحديد",contextMenuLabel:"إجراءات المحرر",
  slashLabel:"الأوامر",slashLoading:"جارٍ تحميل الأوامر…",slashCountOne:"أمر واحد متاح",slashCount:"الأوامر المتاحة: {count}",slashEmpty:"لا توجد أوامر مطابقة",
  slashUnavailable:"{label} غير متاح هنا",slashInapplicable:"{label} لم يعد منطبقًا؛ أُزيل المحفّز المكتوب فقط",
+mentionLabel:"الإشارات",mentionLoading:"جارٍ تحميل الاقتراحات…",mentionCountOne:"اقتراح واحد متاح",mentionCount:"الاقتراحات المتاحة: {count}",mentionEmpty:"لا توجد اقتراحات مطابقة",
  columnResizeLabel:"تغيير عرض العمود {index} من {count}",columnResizeValue:"{width} بكسل",columnResizePreview:"{width} بكسل (معاينة)",columnResizeBadge:"{width} بكسل",
  blockDragLabel:"نقل الكتلة",
  blockDragHelp:"اسحب للنقل. أو اضغط Enter للالتقاط، والأسهم لاختيار موضع، وEnter للإفلات، وEscape للإلغاء.",

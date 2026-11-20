@@ -5,6 +5,7 @@ import {encodeBlockLayoutPatch} from "./dist/browser/block_layout_serialization.
 import {encodeListNumberingPatch} from "./dist/browser/list_numbering_serialization.js";
 import {encodeTextLanguageIntent} from "./dist/browser/text_language.js";
 import {encodeImageLinkIntent} from "./dist/browser/image_link.js";
+import {encodeMentionIntent} from "./dist/browser/mention.js";
 import {parseRichSearchMetadata} from "./dist/browser/search_metadata.js";
 import {parseRichWritingTools} from "./dist/browser/writing_tools_metadata.js";
 import {RichRetainedAssetReferenceRegistry} from "./dist/browser/retained_asset_references_registry.js";
@@ -17,6 +18,8 @@ export {createRichSlashCommands,filterRichSlashItems,standardRichSlashPicks} fro
 export {mountRichBlockDrag,mountRichBlockDragPort,richBlockDragStyles} from "./dist/browser/block_drag.js";
 export {resolveRichBlockMove,resolveRichBlockStep,richBlockDropTargets,richHandleBlock,richSelectionBlock,isMovableBlock} from "./dist/browser/block_move.js";
 export {mountRichSlashCommands} from "./dist/browser/slash_command_session.js";
+export {mountRichMentions,requireRichMentionSuggestions,filterRichMentionSuggestions} from "./dist/browser/mention_session.js";
+export {richMentionFormat,richMentionKindProperty,richMentionIdProperty,richMentionLabelProperty,richMentionKinds,richMentionClass,richMentionStyles,isRichMentionId,isRichMentionKind,isRichMentionLabel,mentionOf,mentionText,mentionFormat,requireRichMention} from "./dist/browser/mention.js";
 export {mountRichSelectionToolbar,mountRichContextMenu,richSelectionToolbarDefaults,richContextMenuDefaults,richContextUiStyles} from "./dist/browser/context_ui.js";
 export {mountRichSourceView} from "./dist/browser/source_view.js";
 export {RICH_DOCUMENT_SOURCE_MAX_BYTES} from "./dist/browser/source_view_types.js";
@@ -102,6 +105,7 @@ function compiledProfile(result,language=1) {
     if(language===4?descriptor.textLanguageVersion!==1:descriptor.textLanguageVersion!==undefined)throw new RichCommandError("breditor_rich.text_language_runtime","Use the matching explicitly selected rich V4 profile");
     if(language===4?descriptor.imageLinkVersion!==1:descriptor.imageLinkVersion!==undefined)throw new RichCommandError("breditor_rich.image_link_runtime","Use the matching explicitly selected rich V4 profile");
     if(language===4?descriptor.detailsVersion!==1:descriptor.detailsVersion!==undefined)throw new RichCommandError("breditor_rich.details_runtime","Use the matching explicitly selected rich V4 profile");
+    if(language===4?descriptor.mentionVersion!==1:descriptor.mentionVersion!==undefined)throw new RichCommandError("breditor_rich.mention_runtime","Use the matching explicitly selected rich V4 profile");
     return new RichCoreProfile(raw, descriptor);
   } catch (error) { raw.free(); throw error; }
 }
@@ -175,7 +179,7 @@ class RichCoreEditor {
   #raw; #observation; #language; #selectionPolicy;
   #assetReferences=new RichRetainedAssetReferenceRegistry();
   #searches=new Set();
-  constructor(raw,descriptor,selectionPolicy="original") { this.#raw = raw;this.#selectionPolicy=selectionPolicy;try{this.#language=JSON.parse(descriptor).richLanguageVersion??1;this.#observation = raw.observe();if((this.#language===3||this.#language===4)&&!this.supportsBlockLayout())throw new RichCommandError("breditor_rich.layout_runtime","Use matching native layout V3 commands and reads");if(this.#language===4&&!this.supportsListNumbering())throw new RichCommandError("breditor_rich.list_numbering_runtime","Use matching native rich V4 list numbering commands");if(this.#language===4&&!this.supportsTextLanguage())throw new RichCommandError("breditor_rich.text_language_runtime","Use matching native rich V4 text language commands");if(this.#language===4&&!this.supportsImageLinks())throw new RichCommandError("breditor_rich.image_link_runtime","Use matching native rich V4 image link commands");if(this.#language===4&&!this.supportsDetails())throw new RichCommandError("breditor_rich.details_runtime","Use matching native rich V4 collapsible section commands");if(selectionPolicy==="document-v1"&&!this.supportsDocumentSelection())throw new RichCommandError("breditor_rich.document_selection_unavailable","Use complete matching native document-selection capabilities");}catch(error){this.#observation?.free();raw.free();this.#raw=undefined;throw error;} }
+  constructor(raw,descriptor,selectionPolicy="original") { this.#raw = raw;this.#selectionPolicy=selectionPolicy;try{this.#language=JSON.parse(descriptor).richLanguageVersion??1;this.#observation = raw.observe();if((this.#language===3||this.#language===4)&&!this.supportsBlockLayout())throw new RichCommandError("breditor_rich.layout_runtime","Use matching native layout V3 commands and reads");if(this.#language===4&&!this.supportsListNumbering())throw new RichCommandError("breditor_rich.list_numbering_runtime","Use matching native rich V4 list numbering commands");if(this.#language===4&&!this.supportsTextLanguage())throw new RichCommandError("breditor_rich.text_language_runtime","Use matching native rich V4 text language commands");if(this.#language===4&&!this.supportsImageLinks())throw new RichCommandError("breditor_rich.image_link_runtime","Use matching native rich V4 image link commands");if(this.#language===4&&!this.supportsDetails())throw new RichCommandError("breditor_rich.details_runtime","Use matching native rich V4 collapsible section commands");if(this.#language===4&&!this.supportsMentions())throw new RichCommandError("breditor_rich.mention_runtime","Use matching native rich V4 mention commands");if(selectionPolicy==="document-v1"&&!this.supportsDocumentSelection())throw new RichCommandError("breditor_rich.document_selection_unavailable","Use complete matching native document-selection capabilities");}catch(error){this.#observation?.free();raw.free();this.#raw=undefined;throw error;} }
   richLanguageVersion(){this.#live();return this.#language;}
   supportsRetainedAssetReferences(){const raw=this.#live();return raw.retainedAssetReferencesVersion?.()==="1"&&typeof raw.retainedAssetReferencesJson==="function";}
   retainedAssetReferences(revision){const raw=this.#live(),current=this.#observation.revision;if(revision!==undefined&&revision!==current)throw new RichCommandError("breditor_rich.stale_observation","The asset read was prepared from an older rich publication");if(!this.supportsRetainedAssetReferences())throw new RichCommandError("breditor_rich.asset_references_unavailable","Use complete matching native retained asset reads");return this.#assetReferences.retain(read(raw.retainedAssetReferencesJson(this.#observation)),current,"local-history",this.view().documentJson);}
@@ -213,7 +217,7 @@ class RichCoreEditor {
     if (expectedRevision !== undefined && expectedRevision !== this.#observation.revision) {
       throw new RichCommandError("breditor_rich.stale_observation", "The command was prepared from an older rich view");
     }
-    const input = typeof command === "string" ? command : JSON.stringify(command?.kind==="changeSelectionLayout"?{...command,data:JSON.parse(encodeBlockLayoutPatch(command.data))}:command?.kind==="setListNumbering"?{...command,data:encodeListNumberingPatch(command.data)}:command?.kind==="setTextLanguage"?{...command,data:encodeTextLanguageIntent(command.data)}:command?.kind==="setImageLink"?{...command,data:encodeImageLinkIntent(command.data)}:command);
+    const input = typeof command === "string" ? command : JSON.stringify(command?.kind==="changeSelectionLayout"?{...command,data:JSON.parse(encodeBlockLayoutPatch(command.data))}:command?.kind==="setListNumbering"?{...command,data:encodeListNumberingPatch(command.data)}:command?.kind==="setTextLanguage"?{...command,data:encodeTextLanguageIntent(command.data)}:command?.kind==="setImageLink"?{...command,data:encodeImageLinkIntent(command.data)}:command?.kind==="insertMention"?{...command,data:encodeMentionIntent(command.data)}:command);
     return this.#publish(raw.execute(this.#observation,input));
   }
   #publish(result){
@@ -265,6 +269,7 @@ class RichCoreEditor {
   supportsTextLanguage(){const raw=this.#live();return this.#language===4&&typeof raw.textLanguageVersion==="function"&&raw.textLanguageVersion()==="1";}
   supportsImageLinks(){const raw=this.#live();return this.#language===4&&typeof raw.imageLinkVersion==="function"&&raw.imageLinkVersion()==="1";}
   supportsDetails(){const raw=this.#live();return this.#language===4&&typeof raw.detailsVersion==="function"&&raw.detailsVersion()==="1";}
+  supportsMentions(){const raw=this.#live();return this.#language===4&&typeof raw.mentionVersion==="function"&&raw.mentionVersion()==="1";}
   blockLayoutState(){this.#live();if(!this.supportsBlockLayout())throw new RichCommandError("breditor_rich.layout_unavailable","Use an explicitly selected matching native layout V3 owner");return JSON.parse(read(this.#observation.blockLayoutStateJson()));}
   selectionCoverage(scope="selection"){this.#live();if(!this.supportsSelectionFormatting())throw new RichCommandError("breditor_rich.selection_formatting_unavailable","Use a matching native selection-formatting owner");return JSON.parse(read(this.#observation.selectionCoverageJson(scope)));}
   selectionFormatState(kind){this.#live();if(!this.supportsSelectionFormatting())throw new RichCommandError("breditor_rich.selection_formatting_unavailable","Use a matching native selection-formatting owner");return JSON.parse(read(this.#observation.selectionFormatStateJson(kind)));}

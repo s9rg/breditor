@@ -1,10 +1,11 @@
 // Render only the admitted Rust AST and its derived non-destructive table geometry.
 import type {FormatLiteral,RichCell} from "./core.js";
-import {cellKey,id,property,type AstNode,type ElementNode,type RichPresentationModel} from "./model.js";
+import {cellKey,id,property,type AstNode,type ElementNode,type RichPresentationModel,type TextNode} from "./model.js";
 import {requireRichInlinePresentation,richInlineRecipes,type RichInlinePresentation} from "./inline_presentation.js";
 import {applyBlockLayout} from "./block_layout_presentation.js";
 import {applyListNumbering} from "./list_numbering_presentation.js";
 import {wrapImageLink} from "./image_link.js";
+import {createMentionChip,groupMentionRuns} from "./mention.js";
 export const structuralBlockStylesV2=`[data-breditor-rich] [data-rich-text]{white-space:pre-wrap;min-height:1em}[data-breditor-rich] blockquote{border-left:3px solid #9dbbb0;margin:12px 0;padding:1px 16px}[data-breditor-rich] pre{font-family:ui-monospace,monospace;background:#f1f5f2;padding:12px;overflow:auto}[data-breditor-rich] [data-task-list]{list-style:none;padding-left:12px}[data-breditor-rich] [data-rich-task]{display:grid;grid-template-columns:24px minmax(0,1fr);gap:8px;margin:8px 0}[data-breditor-rich] input[data-task-check]{width:18px;height:18px;margin:4px 0}[data-breditor-rich] [data-task-body]>:first-child{margin-top:0}[data-breditor-rich] hr{border:0;border-top:2px solid #9dbbb0;margin:16px 0}[data-breditor-rich] details[data-rich-details]{border:1px solid #c9d8d2;border-radius:6px;margin:12px 0;padding:4px 12px}[data-breditor-rich] summary[data-rich-text]{font-weight:600;cursor:text;padding:4px 0}[data-breditor-rich] details[data-rich-details][open]>summary[data-rich-text]{border-bottom:1px solid #e3ece8;margin-bottom:4px}`;
 export interface AssetBinding {image:string;asset:string;generation:string}
 export interface RenderOptions {
@@ -48,6 +49,8 @@ export function applyEditingPolicy(surface:HTMLElement,readOnly:boolean):void {
 export function render(surface:HTMLElement,value:RichPresentationModel,options:RenderOptions):void {
  requireRenderOptions(value,options);
  const document=surface.ownerDocument;
+ // Candidate V4 mentions render as inert chips grouping their styled pieces (text blocks and summaries).
+ const appendInline=(target:HTMLElement,node:ElementNode):void=>{for(const item of groupMentionRuns(node.children.filter((child):child is TextNode=>child.kind==="text"),(run,text,formats)=>({...run,text,formats})))target.append(item.kind==="run"?flow(item.run):createMentionChip(document,item.mention,item.pieces.map(flow)));};
  const flow=(node:AstNode):Node=>{
   if(node.kind==="text"){
    let result:Node=document.createTextNode(node.text);
@@ -77,7 +80,7 @@ export function render(surface:HTMLElement,value:RichPresentationModel,options:R
   if(node.type==="breditor/details-summary"){
    const summary=document.createElement("summary");summary.dataset["richBlock"]=id(node);summary.dataset["richText"]=id(node);
    if(node.children.length===0)summary.append(document.createElement("br"));
-   for(const child of node.children)summary.append(flow(child));return summary;
+   appendInline(summary,node);return summary;
   }
   if(node.type==="breditor/code-block"){
    const pre=document.createElement("pre");pre.dataset["richBlock"]=id(node);pre.dataset["richText"]=id(node);applyBlockLayout(pre,node);const language=property(node,"language");if(typeof language==="string")pre.dataset["language"]=language;
@@ -92,7 +95,9 @@ export function render(surface:HTMLElement,value:RichPresentationModel,options:R
    applyBlockLayout(element,node);
    if(node.children.length===0)element.append(document.createElement("br"));
   }
-  for(const child of node.children)element.append(flow(child));
+  // Candidate V4 mentions render as inert chips grouping their styled pieces.
+  if(node.type==="breditor/paragraph"||node.type==="breditor/heading")appendInline(element,node);
+  else for(const child of node.children)element.append(flow(child));
   return element;
  };
  const image=(node:ElementNode):HTMLElement=>{

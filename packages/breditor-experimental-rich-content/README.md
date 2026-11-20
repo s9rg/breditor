@@ -92,6 +92,22 @@ DOM focus stays in the editor. The surface gets `aria-controls`,
 
 See [the contract](../../docs/SLASH_COMMANDS.md).
 
+## Mentions (candidate rich V4)
+
+`mountRichMentions(dom, {items, core?})` mounts the same kind of session for a
+typed `@` on a candidate rich V4 owner (`supportsMentions()`; pass `core` to
+refuse other owners). The slash and mention menus share one typed-trigger
+session (`RichSuggestionSession`) and may both be mounted on one surface.
+`items` is a static list of `{kind: "user"|"page"|"tag", id, label,
+description?}` (filtered locally) or an async provider
+`(query, {signal, revision, session})`; aborted and stale results are discarded.
+Choosing a suggestion runs **one** native `insertMention` that replaces the
+typed `@query` by the mention plus a space, so one Undo restores the trigger.
+Mentions render as inert `span.breditor-mention` chips
+(`data-mention-kind`/`data-mention-id`, `contenteditable="false"`). Catalog keys:
+`mentionLabel`, `mentionLoading`, `mentionCountOne`, `mentionCount`,
+`mentionEmpty`. See `docs/RICH_LANGUAGE_V4.md` (Slice 5).
+
 ## Chrome localization
 
 Pass an opt-in `ui` catalog to `mountRichEditor` / `mountDocumentRichEditor` to

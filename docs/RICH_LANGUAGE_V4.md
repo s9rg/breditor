@@ -1,10 +1,9 @@
 # Rich language V4 (unreleased candidate)
 
 Rich V4 is an explicit, opt-in rich language under construction. It is **not
-released**. It is built in five slices; this document records the first four
-(ordered-list numbering, text-run language, image links and collapsible
-sections). The remaining slice (mention entities) will extend this same language
-before it is released.
+released**. It is built in five slices, all recorded here: ordered-list
+numbering, text-run language, image links, collapsible sections and mention
+entities.
 
 Because each slice changes V4's grammar or rule revision, **the V4 schema
 fingerprint changes as later slices land**. No persisted V4 data exists, and
@@ -23,8 +22,8 @@ reinterprets an older document, and older profiles reject every V4 property.
 | Layer | V4 selector |
 | --- | --- |
 | Rust | `CompiledSchema::try_compile_rich_content_profile_v4`, `rich_content_revision() == Some(4)`, sealed rich rule revision 4 under compiler contract 6 |
-| Capability queries | `supports_rich_block_layout()` (V3 and V4), `supports_rich_list_numbering()`, `supports_rich_text_language()`, `supports_rich_image_links()` and `supports_rich_details()` (V4 only) |
-| Wasm | explicit profile bootstrap **format 9**: `BreditorRichProfile.fromBootstrapJsonV4` / `fromStandardBootstrapJsonV4`; descriptor `richLanguageVersion: 4`, `taskStructureVersion: 1`, `blockLayoutVersion: 1`, `listNumberingVersion: 1`, `textLanguageVersion: 1`, `imageLinkVersion: 1`, `detailsVersion: 1`; owner `listNumberingVersion()`, `textLanguageVersion()`, `imageLinkVersion()` and `detailsVersion()` all `"1"` |
+| Capability queries | `supports_rich_block_layout()` (V3 and V4), `supports_rich_list_numbering()`, `supports_rich_text_language()`, `supports_rich_image_links()`, `supports_rich_details()` and `supports_rich_mentions()` (V4 only) |
+| Wasm | explicit profile bootstrap **format 9**: `BreditorRichProfile.fromBootstrapJsonV4` / `fromStandardBootstrapJsonV4`; descriptor `richLanguageVersion: 4`, `taskStructureVersion: 1`, `blockLayoutVersion: 1`, `listNumberingVersion: 1`, `textLanguageVersion: 1`, `imageLinkVersion: 1`, `detailsVersion: 1`, `mentionVersion: 1`; owner `listNumberingVersion()`, `textLanguageVersion()`, `imageLinkVersion()`, `detailsVersion()` and `mentionVersion()` all `"1"` |
 | JavaScript factories | `compileRichProfileV4`, `compileStandardRichProfileV4` (`@breditor/experimental-rich-content`); `createLocalProfileV4`, `profileBootstrapJsonV4` (`@breditor/editor`, schema `breditor-editor/standard@4`) |
 | SDK openings | `openLocalEditor({richLanguage: 4})`, `openLocalDocumentEditor({richLanguage: 4, ...})` and both local React components' `initialOptions` |
 | Toolbar | `createRichToolbarV4(core, presentation)`: the V3 structural/layout controls plus **List numbering**, **Language**, **Clear language**, **Image link**, **Remove image link**, **Collapsible section**, **Remove collapsible section** and **Expand/Collapse section** |
@@ -45,8 +44,9 @@ React components reject `richLanguage: 4` with the explicit error *"richLanguage
 4 is the unreleased local-only candidate; shared editing supports richLanguage
 1, 2 or 3"* before claiming the host or initializing Wasm. They never fall back
 to V3. Shared interchange owners do not report list numbering, text language, image
-links or sections, so imports into a shared owner keep the original `list-numbering` notices,
-keep dropping `lang` silently and keep the original image-link and `<details>` conversion.
+links, sections or mentions, so imports into a shared owner keep the original `list-numbering` notices,
+keep dropping `lang` silently, keep the original image-link and `<details>` conversion and
+import mention spans as plain `@label` text.
 
 ## Slice 1: ordered-list numbering (audit gap `list-properties`)
 
@@ -663,15 +663,12 @@ owners only).
   sanitized HTML importer, so a V4 owner gets the section back and V1–V3 unwrap
   it.
 
-### Fingerprint (current)
+### Fingerprint
 
-Current candidate V4 lock for schema `example/layout@1` with the standard inline
-preset:
-`sha256:f19134f8bf95a5170a36eb2f5a9f5e3819dbfd2b0dcd9507ab846c60cffb5428`
-(asserted in the core and Wasm text-language, image-link and section tests).
-V1–V3 locks are unchanged. The schema unit test proves V4 differs from V3 only by
-its rule revision, the text-language format, the image revision and the section
-grammar (two new elements plus the section in five flow containers).
+The section slice moved the lock to
+`sha256:f19134f8bf95a5170a36eb2f5a9f5e3819dbfd2b0dcd9507ab846c60cffb5428`; the
+mention slice moved it again (see [Slice 5](#fingerprint-current)).
+V1–V3 locks are unchanged.
 
 ### Not included
 
@@ -699,3 +696,194 @@ disclosure markers, an in-surface toggle button and shared-collaboration rules
   body, Enter from the summary, Undo/Redo/restore, collapse/expand with a body
   caret, summary clicks never toggling, browser toggles reverted, Backspace
   unwrap, copy/paste with V3 refusing the record and interchange for V4 versus V3.
+
+## Slice 5: mentions (audit gap `mentions-slash`, durable mention entities)
+
+Slash commands already existed; durable mention entities did not. V4 adds a
+native mention entity with a stable host reference, an opt-in `@` suggestion
+menu and command execution entirely through Rust.
+
+### Representation decision
+
+Rich text blocks (paragraph, heading, code block, section summary) contain only
+text runs: there is no inline element child kind, and every text coordinate,
+selection, action, search, clipboard and writing tool assumes text-only
+children. A true inline atom node would need a new grammar child kind plus new
+position, mapping and editing rules across all of those subsystems. V4 therefore
+represents a mention as **one native valued inline format over the exact text
+`@` + label**, plus an immutability law and native editing rules that make it
+behave atomically:
+
+- **Immutability law (admission).** Every maximal contiguous stretch of
+  characters carrying one equal `breditor/mention` format must be one or more
+  whole copies of `@` + its label. Other formats may vary inside it (a bold half
+  is still the same mention). A partial edit is never admitted
+  (`RichContentContract`). Two equal adjacent mentions merge into one run
+  `@Ann@Ann`, which is two units.
+- **Selection snapping.** `RichSelection::try_new` (every admitted selection,
+  including command targets and mapped selections) snaps text endpoints out of
+  mentions: a caret inside a mention moves to its nearest edge and a range
+  endpoint inside one expands outward, keeping direction. Deleting, replacing,
+  copying or formatting therefore always covers whole mentions; Backspace right
+  after a mention (a one-character target) deletes the mention whole in one step.
+  Documents without mentions (all V1–V3 documents) are untouched.
+- **No inheritance.** Effective caret formats and pending typing formats never
+  contain a mention, so typing next to a mention (or after a pasted mention) is
+  plain text.
+- **Code blocks** carry no inline formats, so they never contain a mention;
+  converting a paragraph with a mention to a code block follows the existing
+  format policy (its text stays `@label`).
+- **Section summaries** are phrasing content like a paragraph, so they admit and
+  insert mentions under the same law.
+
+The live renderer shows each unit as a `contenteditable="false"` chip, so the
+browser caret cannot enter it either.
+
+### Format and property domains
+
+| Item | Value |
+| --- | --- |
+| Format kind | `breditor/mention`, revision 1, owned by Breditor (no extension can declare it) |
+| `breditor/mention-kind` | required string, closed set `user`, `page`, `tag` |
+| `breditor/mention-id` | required string `[A-Za-z0-9][A-Za-z0-9._:-]{0,127}` (1–128 bytes, the content-identity charset) |
+| `breditor/mention-label` | required string, 1–256 UTF-8 bytes, no leading/trailing Unicode white space, no control characters (C0, DEL, C1), no U+2028/U+2029 and no bidi embedding/override/isolate controls (U+202A–U+202E, U+2066–U+2069) |
+| Text | exactly `@` + label per unit (the prefix is `@` for every kind) |
+| Profiles | V4 only (plain and standard-inline V4). V1–V3 reject it as an unknown format |
+| Format budget | V4 now reserves two of the 256 inline-format slots (text language and mention), so V4 admits at most 253 extension formats |
+
+Values are admitted exactly: there is no case folding, trimming or Unicode
+normalization at any boundary.
+
+### Identity semantics
+
+`(kind, id)` is the durable host identity; it never changes after insertion. The
+label is a **snapshot** captured at insertion and is part of the document text
+(selection offsets, copy, plain text and word counts see `@label`). A host that
+wants the current display name re-resolves it from `data-mention-kind` /
+`data-mention-id` for secondary presentation (tooltip, hover card), never by
+rewriting the chip text; static output and every export use the stored label.
+The element `entityId` field stays `null`: it identifies elements, while a
+mention is an inline format value. V4 renders **no link** for a mention (no URL
+resolver exists in V4).
+
+### Native action and command
+
+`RichLocalSession::insert_mention(snapshot, target, &RichMention)` replaces one
+text range inside a paragraph, heading or section summary (normally the typed
+`@query` trigger; a collapsed range inserts at the caret) by the mention followed
+by one plain space, both with the styles of the range start (never a mention).
+The caret lands after the space. It is **one** guarded `ReplaceTextRange`
+history group, so one Undo restores the typed trigger and the actual pre-edit
+selection, and the typing burst that typed the trigger stays a separate group.
+This is how mentions avoid the slash commands' two-step undo. Read-only owners,
+stale observations, cross-block, code, missing targets and non-V4 contexts
+(`RichMentionError::Profile`) are refused without publication.
+
+Deleting a mention is ordinary deletion (snapping makes it whole). Search
+(`find_rich_text`, therefore replace-one/replace-all) never reports a match that
+intersects a mention: a label is an entity snapshot, not editable text.
+
+The Wasm/TS command is
+`{kind:"insertMention",data:{selection:{kind:"text",anchor,focus},mention:{kind,id,label}}}`.
+The strict decoder (`codec::decode_rich_mention`) rejects unknown/duplicate
+fields, non-objects, out-of-domain values, a 2 KiB overflow and a non-V4 context
+with `breditor_rich.mention_intent`. JavaScript snapshots the intent to
+primitives (`encodeMentionIntent`). The descriptor reports `mentionVersion: 1`,
+the owner `mentionVersion()` `"1"`, the facade `supportsMentions()`; a V4 profile
+or owner without them is refused.
+
+### Suggestion menu
+
+`mountRichMentions(host, options)` (`@breditor/experimental-rich-content`, and
+`mountMentions(editor, options)` in `@breditor/editor`) is opt-in. The slash
+command session was generalised into one shared typed-trigger session
+(`suggestion_session.ts`) configured with a trigger character, its menu
+attributes, catalog strings and an execution; `mountRichSlashCommands` keeps its
+exact behaviour, DOM and messages, and a surface may carry both menus. The `@`
+session:
+
+- opens when `@` is typed at a block start or after white space and reads the
+  trigger and query from admitted Rust views (the query ends at white space or a
+  second `@`, or after `maxQueryLength`);
+- takes a static suggestion list (filtered locally) or a host provider
+  `(query, {signal, revision, session})`; superseded requests are aborted through
+  the `AbortSignal` and stale results are discarded;
+- renders an accessible listbox outside the surface (`aria-controls`,
+  `aria-expanded`, `aria-activedescendant`, live status) and never takes focus;
+- on choose runs exactly one `insertMention` replacing the typed trigger.
+
+Suggestions are `{kind, id, label, description?}`; `(kind, id)` must be unique
+per list and the label is validated with the Rust grammar before any command.
+New catalog keys (English defaults): `mentionLabel` "Mentions",
+`mentionLoading` "Loading suggestions…", `mentionCountOne` "1 suggestion
+available", `mentionCount` "{count} suggestions available", `mentionEmpty` "No
+matching suggestions". Existing strings are byte-identical.
+
+### Rendering
+
+Live: `<span class="breditor-mention" data-mention-kind="…" data-mention-id="…" contenteditable="false">@label</span>`
+grouping the unit's styled pieces (each piece keeps its other formats; the
+mention has no inline recipe). Restored carets rest beside a chip, never inside.
+Static (`renderStaticDocument`): the same span without `contenteditable`;
+partial mention text is a `grammar` error and out-of-domain values a `format`
+error. `richMentionStyles` is an optional host CSS hook.
+
+### Interchange
+
+`@breditor/interchange` reads `supportsMentions()` once. Local V4 owners report
+`true`; V1–V3 and shared owners do not.
+
+- **HTML export:** each unit is the span above around its styled pieces.
+- **HTML import, V4 owner:** only that exact shape (class `breditor-mention`,
+  valid kind/id, text `@` + a valid label without tab/newline/double space)
+  becomes a mention; anything else stays text. V4 HTML round trips exactly.
+- **HTML import, V1–V3 owners:** unchanged; the span imports as plain `@label`.
+- **Markdown:** Markdown has no mention syntax, so a block with a mention falls
+  back to safe HTML with `markdown-feature`; that HTML reimports as a mention into
+  a V4 owner. Typed `@name` in Markdown is ordinary text.
+- **Clipboard:** native copy/paste inside V4 keeps kind, id and label (a partial
+  copy range snaps outward); the plain-text flavour is `@label`; a V1–V3 owner
+  refuses a V4 record carrying a mention.
+
+### Fingerprint (current)
+
+Current candidate V4 lock for schema `example/layout@1` with the standard inline
+preset:
+`sha256:39fcdb478f73d51a6a3187785ab43bd2d0cca167940d8892614e16c4ad52202e`
+(asserted in the core and Wasm text-language, image-link, section and mention
+tests). V1–V3 locks are unchanged. The schema unit test proves V4 differs from V3
+only by its rule revision, the text-language and mention formats, the image
+revision and the section grammar.
+
+### Not included
+
+Host-declared kinds, kind-specific prefixes (`#tag`), live label re-resolution
+inside the chip, mention links, mention search by id, shared-collaboration rules
+(V4 is local only).
+
+### Tests
+
+- Rust core unit tests (`rich_content/mention.rs`): property domain accept/reject
+  table and format round trip. Schema unit test: V4 vs V3 differences.
+- Rust core `tests/rich_mention_v4.rs`: fingerprint locks, admission only in V4,
+  property domains, the whole-label law, insertion in one history group with
+  Undo/Redo and checkpoint restore, separate typing and mention undo steps,
+  snapping (caret, ranges, Backspace, explicit partial targets, typing at edges,
+  formatting part of a mention), search exclusion, read-only/stale/target/V3
+  refusal, strict decoding, native clipboard with V3 refusal, and summaries,
+  search and clipboard across sections.
+- Wasm `tests/rich_mention_v4.rs`: descriptor, catalog and owner capability,
+  V1–V3 refusal, insert/delete/Undo/Redo/restore, malformed, read-only and stale
+  intent.
+- TypeScript: rich-content `tests/mention.test.ts` (grammar mirror, intent,
+  grouping, live chips, static parity, caret restore, factory boundary, `@`
+  session with async cancellation and one-step undo, coexistence with slash
+  commands), editor `tests/static_mention.test.ts` (static output, rejection,
+  live parity), interchange `tests/mention.test.ts` (grammar parity, per-profile
+  import/export/Markdown fallback and round trip).
+- Playwright `experiments/rich-browser/mention-v4.spec.mjs` in Chromium, Firefox
+  and WebKit on a real Wasm V4 owner: capability and V3 refusal, typing `@` and a
+  query, the async menu, choosing, the chip, the caret moving past it, plain
+  typing after it, Backspace deleting it whole, one Undo restoring `@query`,
+  snapping, copy/paste with plain text `@label` and V3 refusing the record, and
+  interchange for V4 versus V3.

@@ -276,9 +276,9 @@
     {
       "id":"mentions-slash","area":"Productivity","status":"partial",
       "summary":"Mentions and slash commands",
-      "current":"There is no durable mention entity contract. An opt-in local slash-command session now opens an accessible listbox from a typed slash, cancels on composition, blur, selection or remote trigger changes, aborts stale async providers and runs existing typed commands through execute. Undo takes two steps (trigger removal, then the command), shared editors are not wired, and durable mention entities remain missing.",
+      "current":"Candidate local rich V4 now adds durable mention entities (breditor/mention over exact @label text, identity = kind + id, label snapshot) kept atomic by admission and selection snapping, inserted by one guarded insertMention that replaces the typed @query in one Undo step, with an opt-in @ menu generalised from the slash session, live/static chips and V4-only HTML interchange. An opt-in local slash-command session now opens an accessible listbox from a typed slash, cancels on composition, blur, selection or remote trigger changes, aborts stale async providers and runs existing typed commands through execute. Undo takes two steps (trigger removal, then the command), shared editors are not wired,.",
       "acceptance":"Specify entity identity, async suggestion cancellation, accessible menus and command execution through Rust rather than DOM mutation.",
-      "evidence":["crates/breditor-core/src/rich_content/drafts.rs","packages/breditor-collaboration/src/index.ts","docs/SLASH_COMMANDS.md","packages/breditor-experimental-rich-content/src/slash_command_session.ts"],
+      "evidence":["crates/breditor-core/src/rich_content/drafts.rs","packages/breditor-collaboration/src/index.ts","docs/SLASH_COMMANDS.md","packages/breditor-experimental-rich-content/src/slash_command_session.ts","crates/breditor-core/tests/rich_mention_v4.rs","experiments/rich-browser/mention-v4.spec.mjs"],
       "sources":["tiptap-catalog","ckeditor-digest"]
     },
     {

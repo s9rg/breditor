@@ -6,6 +6,23 @@ its durable formats and Wasm transport.
 
 ## Unreleased
 
+- Add durable mention entities to the unreleased local-only candidate rich V4: a
+  native `breditor/mention` inline format over the exact text `@` + label with a
+  closed kind (`user`, `page`, `tag`), a bounded opaque id and a label snapshot.
+  A sealed law admits only whole `@label` copies; every selection snaps out of
+  mentions (Backspace deletes one whole), typing never inherits one and search
+  never matches inside one. A guarded `insertMention` command replaces the typed
+  `@query` trigger plus a trailing space in one history group (one Undo step).
+  The slash-command session is generalised into a shared typed-trigger session
+  (slash behaviour unchanged) and `mountRichMentions` / `mountMentions` add an
+  opt-in `@` menu with AbortSignal-cancelled async providers and new
+  `mention*` UI catalog keys. Live and static renderers show an inert
+  `span.breditor-mention` chip (no link); V4-only HTML interchange maps that
+  span, Markdown falls back to HTML with `markdown-feature`, native clipboard
+  keeps the entity and plain text is `@label`. Mentions are allowed in section
+  summaries. The V4 fingerprint changes; V1–V3, their fingerprints and their
+  interchange are unchanged.
+
 - Add collapsible sections to the unreleased local-only candidate rich V4: a
   `breditor/details` container (exactly one leading `breditor/details-summary`
   inline text block, then one or more flow blocks) admitted in every V4 flow

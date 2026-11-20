@@ -92,12 +92,12 @@ describe("candidate rich V4 language Wasm facade boundary",()=>{
  function stringResult(value:string){return {status:"value",takeValue:()=>value,free:vi.fn()};}
  function local(binding:object,capability:unknown="1"){
   const observation={revision:"1",blockLayoutStateJson:vi.fn(),free:vi.fn()};
-  const editor={observe:()=>observation,blockLayoutVersion:()=>"1",listNumberingVersion:()=>"1",textLanguageVersion:()=>capability,imageLinkVersion:()=>"1",detailsVersion:()=>"1",execute:vi.fn(()=>({status:"content",takeObservation:()=>observation,free:vi.fn()})),free:vi.fn()};
+  const editor={observe:()=>observation,blockLayoutVersion:()=>"1",listNumberingVersion:()=>"1",textLanguageVersion:()=>capability,imageLinkVersion:()=>"1",detailsVersion:()=>"1",mentionVersion:()=>"1",execute:vi.fn(()=>({status:"content",takeObservation:()=>observation,free:vi.fn()})),free:vi.fn()};
   const raw={descriptorJson:()=>stringResult(JSON.stringify({kind:"rich",abiVersion:1,...binding})),createEditor:()=>({status:"editor",takeEditor:()=>editor,free:vi.fn()}),free:vi.fn()};
   const factory=vi.fn(()=>({status:"profile",takeProfile:()=>raw,free:vi.fn()}));
   return {wasm:{BreditorRichProfile:{fromBootstrapJson:factory,fromStandardBootstrapJsonV4:factory}} as unknown as RichWasmModule,raw,editor};
  }
- const v4={richLanguageVersion:4,taskStructureVersion:1,blockLayoutVersion:1,listNumberingVersion:1,textLanguageVersion:1,imageLinkVersion:1,detailsVersion:1};
+ const v4={richLanguageVersion:4,taskStructureVersion:1,blockLayoutVersion:1,listNumberingVersion:1,textLanguageVersion:1,imageLinkVersion:1,detailsVersion:1,mentionVersion:1};
  it("snapshots primitive intent and requires every matching capability",()=>{
   expect(encodeTextLanguageIntent({language:"fr-CA"})).toEqual({language:"fr-CA"});expect(encodeTextLanguageIntent({language:null})).toEqual({language:null});
   for(const bad of [{},{language:7},{language:{toJSON:()=>"en"}},{language:"en",extra:1},null,[],new Date()])expect(()=>encodeTextLanguageIntent(bad)).toThrow(TypeError);

@@ -18,6 +18,7 @@ import {
  compileInlineFormatRecipes,createInlineFormatRenderManifest,resolveInlineFormatRenderAttributes,isCanonicalLanguageTagV1,isImageLinkHrefV1,imageLinkRenderAttributesV1,
  type BrowserProfileFormatDescriptor,type InlineFormatRenderRecipe,type InlineFormatRenderAttribute,
 } from "@breditor/experimental-rich-content/rendering";
+import {groupMentionRuns,mentionChipAttributes,mentionOf,richMentionFormat,richMentionIdProperty,richMentionKindProperty,richMentionLabelProperty} from "@breditor/experimental-rich-content/rendering";
 
 /** Immutable image binding handed to the host resolver; mirrors the live `AssetBinding`. */
 export interface StaticAssetBinding {readonly image:string;readonly asset:string;readonly generation:string}
@@ -133,7 +134,17 @@ export const staticInlineRecipesV4:readonly InlineFormatRenderRecipe[]=compileIn
  {formatKind:K.fontFamily,element:"span",classes:["breditor-inline-font-family"],attributes:{kind:"safeIntegerTokenV1",propertyName:P.family,tokens:[{value:1,token:"system"},{value:2,token:"sans"},{value:3,token:"serif"},{value:4,token:"mono"}]}},
  {formatKind:LANGUAGE,element:"span",classes:["breditor-text-language"],attributes:{kind:"safeLanguageTagV1",propertyName:LANGUAGE_TAG}},
 ]}));
-const catalogByKind=new Map(staticInlineCatalogV4.map(format=>[format.kind,format]));
+/**
+ * @internal Candidate rich V4 `breditor/mention` declaration (Rust `mention.rs`). It has no inline
+ * recipe: a mention renders as one structural chip `<span class="breditor-mention" data-mention-kind
+ * data-mention-id>@label</span>` grouping its styled pieces, exactly like the live renderer.
+ */
+export const staticMentionFormatV4:BrowserProfileFormatDescriptor=Object.freeze({kind:richMentionFormat,revision:1,properties:Object.freeze([
+ {name:richMentionIdProperty,presence:"required",valueType:{kind:"string",minimumUtf8Bytes:1,maximumUtf8Bytes:128}},
+ {name:richMentionKindProperty,presence:"required",valueType:{kind:"string",minimumUtf8Bytes:3,maximumUtf8Bytes:4}},
+ {name:richMentionLabelProperty,presence:"required",valueType:{kind:"string",minimumUtf8Bytes:1,maximumUtf8Bytes:256}},
+])} as BrowserProfileFormatDescriptor);
+const catalogByKind=new Map([...staticInlineCatalogV4,staticMentionFormatV4].map(format=>[format.kind,format]));
 const linkPolicy=staticInlineRecipesV1.find(recipe=>recipe.formatKind===K.link)!.attributes!;
 
 /** Block layout codes, identical to `applyBlockLayout` and Rust `block_layout.rs`. */
@@ -337,6 +348,7 @@ class Renderer {
     if(!valid||declaration.kind===LANGUAGE&&!isCanonicalLanguageTagV1(item))this.#fail("format","Format literal property is outside its declared domain",formatPath);
     copy[property.name]=item;
    }
+   if(declaration.kind===richMentionFormat&&!mentionOf({type,properties:copy}))this.#fail("format","Format literal property is outside its declared domain",formatPath);
    admitted.push({type,properties:Object.freeze(copy)});
   }
   return Object.freeze({kind:"text",text,formats:Object.freeze(admitted)});
@@ -419,9 +431,21 @@ class Renderer {
   }
   return html;
  }
+ /** Candidate V4 mentions: whole `@label` units become chips around their styled pieces. */
+ #inlineChildren(node:Element):string {
+  const runs=node.children.filter((child):child is Text=>child.kind==="text");
+  let items;
+  try{items=groupMentionRuns(runs,(run,text,formats)=>Object.freeze({kind:"text" as const,text,formats}),true);}
+  catch{return this.#fail("grammar","Mention text must be whole copies of @ plus its label",node.path);}
+  return items.map(item=>{
+   if(item.kind==="run")return this.#inline(item.run);
+   const open=mentionChipAttributes(item.mention).map(({name,value})=>` ${name}="${escapeHtmlAttribute(value)}"`).join("");
+   return `<span${open}>${item.pieces.map(piece=>this.#inline(piece)).join("")}</span>`;
+  }).join("");
+ }
  #flow(node:Node):string {
   if(node.kind==="text")return this.#inline(node);
-  const p=node.properties,inner=()=>node.children.map(child=>this.#flow(child)).join("");
+  const p=node.properties,inner=()=>node.type==="breditor/paragraph"||node.type==="breditor/heading"||node.type==="breditor/details-summary"?this.#inlineChildren(node):node.children.map(child=>this.#flow(child)).join("");
   switch(node.type){
    case "breditor/paragraph":case "breditor/heading":{
     const tag=node.type==="breditor/paragraph"?"p":`h${String(p["level"])}`;

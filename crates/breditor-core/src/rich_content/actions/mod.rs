@@ -469,6 +469,9 @@ pub enum RichActionError {
     /// Typed V4 text-language profile or tag admission failed.
     #[error(transparent)]
     TextLanguage(#[from] super::RichTextLanguageError),
+    /// Typed V4 mention profile, target or value admission failed.
+    #[error(transparent)]
+    Mention(#[from] super::RichMentionError),
     /// The operation requires an existing code block rather than arbitrary prose/flow.
     #[error("rich code action requires a code block")]
     CodeTarget,

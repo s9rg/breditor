@@ -22,6 +22,7 @@ mod history_entry;
 mod history_recipe;
 mod insert_general_paragraph;
 mod insert_hard_break;
+mod insert_mention;
 mod insert_paragraph_adjacent;
 mod insert_plain_text;
 mod insert_plain_text_with_markdown_rules;

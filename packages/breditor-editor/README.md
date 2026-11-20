@@ -499,8 +499,8 @@ for bounds, independent shared fields, history and qualification scope.
 
 `richLanguage: 4` selects the unreleased candidate V4 for local openings
 (`openLocalEditor`, `openLocalDocumentEditor` and the local React components'
-`initialOptions`). It is V3 plus bounded ordered-list numbering, text-run language, image links and collapsible sections, and will gain
-more features before release, so its fingerprint changes and V4 data must not be
+`initialOptions`). It is V3 plus bounded ordered-list numbering, text-run language, image links, collapsible sections and mention entities, and may still
+change before release, so its fingerprint changes and V4 data must not be
 persisted yet. Shared openings reject `richLanguage: 4` explicitly; shared
 editing stays on languages 1–3. The standard schema is
 `breditor-editor/standard@4` (`profileBootstrapJsonV4`, bootstrap format 9);
@@ -558,6 +558,19 @@ a summary start removes the section. The static renderer emits `<details open>`.
 editor.execute({kind: 'wrapDetails', data: {first: 'p1', last: 'p2', wrapper: 'sec-1', summary: 'sum-1', open: true}});
 editor.execute({kind: 'setDetailsOpen', data: {block: 'sec-1', open: false}});
 editor.execute({kind: 'unwrapDetails', data: {wrapper: 'sec-1'}});
+```
+
+V4 adds mention entities: an inline `@label` chip carrying a closed kind
+(`user`, `page`, `tag`), a host id and the label captured at insertion. The chip
+is atomic (the caret skips it, Backspace deletes it whole, typing next to it is
+plain). `mountMentions(editor, {items})` adds an opt-in `@` menu; choosing a
+suggestion replaces the typed `@query` in one Undo step. The static renderer
+emits `<span class="breditor-mention" data-mention-kind data-mention-id>@label</span>`.
+
+```js
+import {mountMentions} from '@breditor/editor';
+const mentions = mountMentions(editor, {items: async (query, {signal}) => (await fetch(`/people?q=${encodeURIComponent(query)}`, {signal})).json()});
+editor.execute({kind: 'insertMention', data: {selection, mention: {kind: 'user', id: 'u-1', label: 'Ann Lee'}}});
 ```
 
 See `docs/RICH_LANGUAGE_V4.md` in the repository for domains, semantics,

@@ -137,9 +137,14 @@ fn explicit_candidate_v4_is_v3_grammar_plus_sections_with_its_own_rule_revision(
     lookalike.rich_content_contract = Some(4);
     let language = QualifiedName::try_new("breditor/text-language")?;
     let declared = v4.definition().inline_formats.get(&language).ok_or("format")?.clone();
-    assert_eq!(v4.definition().inline_formats.len(), v3.definition().inline_formats.len() + 1);
+    // Slice 5 adds the core-owned mention format.
+    let mention = QualifiedName::try_new("breditor/mention")?;
+    let mentions = v4.definition().inline_formats.get(&mention).ok_or("mention")?.clone();
+    assert_eq!(v4.definition().inline_formats.len(), v3.definition().inline_formats.len() + 2);
     assert_ne!(fingerprint(&lookalike), v4.fingerprint());
     lookalike.inline_formats.insert(language, declared);
+    assert_ne!(fingerprint(&lookalike), v4.fingerprint());
+    lookalike.inline_formats.insert(mention, mentions);
     assert_ne!(fingerprint(&lookalike), v4.fingerprint());
     let image = QualifiedName::try_new("breditor/image")?;
     assert_eq!(v3.definition().elements.get(&image).ok_or("image")?.revision.get(), 1);
@@ -176,6 +181,7 @@ fn explicit_candidate_v4_is_v3_grammar_plus_sections_with_its_own_rule_revision(
     assert!(v4.supports_rich_list_numbering());
     assert!(!v3.supports_rich_text_language());
     assert!(v4.supports_rich_text_language());
+    assert!(!v3.supports_rich_mentions() && v4.supports_rich_mentions());
     assert!(v3.supports_rich_block_layout() && v4.supports_rich_block_layout());
     Ok(())
 }

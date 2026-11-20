@@ -1,5 +1,6 @@
 //! Explicit unreleased candidate rich V4: V3 grammar plus bounded ordered-list numbering,
-//! one native text-language inline format, bounded image links and collapsible sections.
+//! one native text-language inline format, bounded image links, collapsible sections and
+//! mention entities.
 //!
 //! V1–V3 specifications and fingerprints stay exact. Later V4 candidate slices
 //! change this revision's rules before release, so no V4 data is persisted yet.
@@ -24,7 +25,7 @@ use crate::{
 const IMAGE_REVISION: u32 = 2;
 
 /// Native formats V4 adds to the extension-declared set (counted against the 256 ceiling).
-pub(super) const NATIVE_INLINE_FORMATS: u32 = 1;
+pub(super) const NATIVE_INLINE_FORMATS: u32 = 2;
 
 /// V4 flow: the V2/V3 flow kinds plus the collapsible section container.
 fn flow_kinds(include_tables: bool) -> Vec<ChildKind> {
@@ -129,5 +130,48 @@ pub(super) fn specification(spec: SchemaSpec) -> SchemaSpec {
         revision: PersistedTypeRevision::one(),
         property_contract: Some(contract),
     });
+    // Slice 5: the native mention entity format.
+    spec.inline_formats.push(mention_format());
     spec
+}
+
+/// Candidate V4 mention: three required strings; their closed domains and the
+/// whole-label immutability law are sealed V4 rich rules checked by validation.
+fn mention_format() -> InlineFormatSpec {
+    use crate::rich_content::mention;
+    let kind = QualifiedName::from_known_static(mention::RICH_MENTION_FORMAT);
+    let string = |minimum, maximum| {
+        InlineFormatPropertyTypeV1::try_string(minimum, maximum)
+            .unwrap_or_else(|_| unreachable!("trusted mention bounds"))
+    };
+    let property = |name, value_type| {
+        InlineFormatPropertySpecV1::new(
+            QualifiedName::from_known_static(name),
+            PropertyPresenceV1::Required,
+            value_type,
+        )
+    };
+    let contract = InlineFormatPropertyContractV1::new_core(
+        kind.clone(),
+        vec![
+            property(
+                mention::RICH_MENTION_ID_PROPERTY,
+                string(1, mention::RICH_MENTION_ID_MAX_BYTES),
+            ),
+            property(
+                mention::RICH_MENTION_KIND_PROPERTY,
+                string(mention::KIND_MIN_BYTES, mention::KIND_MAX_BYTES),
+            ),
+            property(
+                mention::RICH_MENTION_LABEL_PROPERTY,
+                string(1, mention::RICH_MENTION_LABEL_MAX_BYTES),
+            ),
+        ],
+    );
+    InlineFormatSpec {
+        kind,
+        owner: DeclarationOwner::Breditor,
+        revision: PersistedTypeRevision::one(),
+        property_contract: Some(contract),
+    }
 }

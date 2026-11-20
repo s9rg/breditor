@@ -158,6 +158,21 @@ owner:
 - Markdown has no section syntax: a section is exported as a safe HTML block with
   `markdown-feature` (blank lines inside it are escaped), which reimports exactly.
 
+### Mentions (candidate rich V4 owners)
+
+The adapter also reads the owner's optional `supportsMentions()` once. Only a
+local candidate rich V4 owner reports `true`; every other owner imports a
+mention span as its plain `@label` text. With a V4 owner:
+
+- HTML export writes each mention as
+  `<span class="breditor-mention" data-mention-kind="…" data-mention-id="…">@label</span>`
+  around its styled pieces; V4 HTML round trips exactly.
+- HTML import maps only that exact shape (valid kind and id, text `@` + a valid
+  label without tab, newline or double space) to a mention; anything else stays
+  text.
+- Markdown has no mention syntax: a block with a mention falls back to a safe HTML
+  block with `markdown-feature`, which reimports as the mention.
+
 ### Text language (candidate rich V4 owners)
 
 The adapter also reads the owner's optional `supportsTextLanguage()` once. Only a
