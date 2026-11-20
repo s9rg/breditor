@@ -1,6 +1,6 @@
 //! Explicit unreleased candidate rich V4: V3 grammar plus bounded ordered-list numbering,
 //! one native text-language inline format, bounded image links, collapsible sections,
-//! mention entities and table captions.
+//! mention entities, table captions and explicit page breaks.
 //!
 //! V1–V3 specifications and fingerprints stay exact. Later V4 candidate slices
 //! change this revision's rules before release, so no V4 data is persisted yet.
@@ -72,6 +72,14 @@ fn details() -> ChildConstraint {
     }
 }
 
+/// Slice 7: the document root additionally admits explicit page breaks. They are a
+/// root-only flow kind: list items, quotes, task items, sections and cells never admit them.
+fn document() -> ChildConstraint {
+    let mut kinds = flow_kinds(true);
+    kinds.push(ChildKind::Element(super::rich_content_profile::name("page-break")));
+    ChildConstraint { groups: vec![ChildGroup { kinds, minimum: 1, maximum: None }] }
+}
+
 /// Slice 6: a table is its rows (unchanged bounds) followed by at most one trailing
 /// caption paragraph. Rows stay children `0..rows`, so every row index is unchanged.
 fn table() -> ChildConstraint {
@@ -98,10 +106,10 @@ pub(super) fn specification(spec: SchemaSpec) -> SchemaSpec {
     // Every V2 flow container also admits a collapsible section.
     for element in &mut spec.elements {
         match element.kind.as_str() {
-            "breditor/document"
-            | "breditor/list-item"
-            | "breditor/blockquote"
-            | "breditor/task-item" => element.children = flow(true),
+            "breditor/document" => element.children = document(),
+            "breditor/list-item" | "breditor/blockquote" | "breditor/task-item" => {
+                element.children = flow(true);
+            }
             "breditor/table-cell" => element.children = flow(false),
             "breditor/table" => element.children = table(),
             _ => {}
@@ -110,6 +118,8 @@ pub(super) fn specification(spec: SchemaSpec) -> SchemaSpec {
     for (local, children) in [
         ("details", details()),
         ("details-summary", ChildConstraint::repeated(ChildKind::Text, 0, None)),
+        // Slice 7: an atomic page break with no content (like the V2 horizontal rule).
+        ("page-break", ChildConstraint::repeated(ChildKind::Text, 0, Some(0))),
     ] {
         spec.elements.push(ElementSpec {
             kind: super::rich_content_profile::name(local),

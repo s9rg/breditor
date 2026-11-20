@@ -196,6 +196,17 @@ no caption, so a captioned table falls back to safe HTML with `markdown-feature`
 Other owners keep the original conversion: `<caption>` content becomes flow before
 the table with `block-structure`.
 
+V4 owners also report `supportsPageBreaks()`. For them, Word's
+`<br clear=all style='page-break-before:always'>`, Google Docs'
+`<hr style="page-break-before:always;display:none">` and an empty `<div>` with a
+forced break each become one root-level page break; forced breaks declared on content
+blocks become page breaks around them (collapsed at the content edges and next to
+another break); breaks below the root are removed with `block-structure`. HTML export
+writes `<div style="break-after:page;page-break-after:always"></div>` (exact round
+trip); Markdown falls back to it with `markdown-feature`. Other owners keep the
+original conversion (`unsupported-style`, a line break, `removed-content`). See
+[PAGINATION_AND_PRINT.md](PAGINATION_AND_PRINT.md).
+
 Remaining gaps: real captured clipboard dumps per producer/platform/version,
 Word for the web non-decimal formats (reported, rendered as decimal), CSS
 `font` shorthand, Excel/Sheets hidden rows and columns (still rejected), cell

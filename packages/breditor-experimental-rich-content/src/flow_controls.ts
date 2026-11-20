@@ -4,7 +4,7 @@ import {text,type RichPresentationModel} from "./model.js";
 import type {ToolbarControl} from "./actions.js";
 export function selectedFlowAtom(value:RichPresentationModel):boolean{
  const s=value.view.selection,n=s?.kind==="node"?value.nodes.get(s.block):undefined;
- return !!n&&["breditor/image","breditor/table","breditor/horizontal-rule"].includes(n.type);
+ return !!n&&["breditor/image","breditor/table","breditor/horizontal-rule","breditor/page-break"].includes(n.type);
 }
 /** A ranged/grid/interior selection belongs to another command; never silently collapse it. */
 export function flowEdgeEligible(value:RichPresentationModel,movement:"before"|"after"):boolean{

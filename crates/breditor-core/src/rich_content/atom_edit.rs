@@ -36,7 +36,7 @@ pub fn selected_flow_atom(
     };
     if !matches!(
         block(document, id)?.kind().as_str(),
-        "breditor/image" | "breditor/table" | "breditor/horizontal-rule"
+        "breditor/image" | "breditor/table" | "breditor/horizontal-rule" | "breditor/page-break"
     ) || document.flow_position_before(id).is_none()
     {
         return Err(RichSelectionError::TargetKind);

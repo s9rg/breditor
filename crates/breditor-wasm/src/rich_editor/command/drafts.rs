@@ -33,6 +33,9 @@ pub(super) enum FlowRecord {
     HorizontalRule(RuleRecord),
     TaskList(TaskListRecord),
     Details(DetailsRecord),
+    /// Candidate V4 page break `{kind:"pageBreak",block}`; root-only placement is proved
+    /// by the complete-tree grammar on publication.
+    PageBreak(RuleRecord),
 }
 impl FlowRecord {
     pub(super) fn draft(self, context: &EditorContext) -> Result<RichBlockDraft, BreditorError> {
@@ -72,6 +75,9 @@ impl FlowRecord {
             )),
             Self::HorizontalRule(record) => {
                 checked(RichBlockDraft::horizontal_rule(&checked(BlockId::try_new(record.block))?))
+            }
+            Self::PageBreak(record) => {
+                checked(RichBlockDraft::page_break(&checked(BlockId::try_new(record.block))?))
             }
             Self::TaskList(record) => {
                 let items = record

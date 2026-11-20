@@ -56,6 +56,8 @@ export class HtmlExport {
         case "breditor/details-summary":return `<summary>${this.inline(node.children)}</summary>`;
         case "breditor/code-block":{const language=property(node,"language");return `<pre${this.#layout(node)}><code${typeof language==="string"?` class="language-${a(language)}"`:""}>${t(nodeText(node))}</code></pre>`;}
         case "breditor/horizontal-rule":return"<hr>";
+        // Candidate V4 page break: an empty block forcing a page after it (modern and legacy CSS spellings).
+        case "breditor/page-break":return '<div style="break-after:page;page-break-after:always"></div>';
         case "breditor/bullet-list":return `<ul>${body()}</ul>`;
         case "breditor/ordered-list":{
           const start=property(node,"start"),style=property(node,"list-style"),reversed=property(node,"list-reversed");

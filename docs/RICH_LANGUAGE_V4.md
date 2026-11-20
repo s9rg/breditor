@@ -1,9 +1,9 @@
 # Rich language V4 (unreleased candidate)
 
 Rich V4 is an explicit, opt-in rich language under construction. It is **not
-released**. It is built in six slices, all recorded here: ordered-list
+released**. It is built in seven slices, all recorded here: ordered-list
 numbering, text-run language, image links, collapsible sections, mention
-entities and table captions.
+entities, table captions and page breaks.
 
 Because each slice changes V4's grammar or rule revision, **the V4 schema
 fingerprint changes as later slices land**. No persisted V4 data exists, and
@@ -22,11 +22,11 @@ reinterprets an older document, and older profiles reject every V4 property.
 | Layer | V4 selector |
 | --- | --- |
 | Rust | `CompiledSchema::try_compile_rich_content_profile_v4`, `rich_content_revision() == Some(4)`, sealed rich rule revision 4 under compiler contract 6 |
-| Capability queries | `supports_rich_block_layout()` (V3 and V4), `supports_rich_list_numbering()`, `supports_rich_text_language()`, `supports_rich_image_links()`, `supports_rich_details()`, `supports_rich_mentions()` and `supports_rich_table_captions()` (V4 only) |
-| Wasm | explicit profile bootstrap **format 9**: `BreditorRichProfile.fromBootstrapJsonV4` / `fromStandardBootstrapJsonV4`; descriptor `richLanguageVersion: 4`, `taskStructureVersion: 1`, `blockLayoutVersion: 1`, `listNumberingVersion: 1`, `textLanguageVersion: 1`, `imageLinkVersion: 1`, `detailsVersion: 1`, `mentionVersion: 1`, `tableCaptionVersion: 1`; owner `listNumberingVersion()`, `textLanguageVersion()`, `imageLinkVersion()`, `detailsVersion()`, `mentionVersion()` and `tableCaptionVersion()` all `"1"` |
+| Capability queries | `supports_rich_block_layout()` (V3 and V4), `supports_rich_list_numbering()`, `supports_rich_text_language()`, `supports_rich_image_links()`, `supports_rich_details()`, `supports_rich_mentions()`, `supports_rich_table_captions()` and `supports_rich_page_breaks()` (V4 only) |
+| Wasm | explicit profile bootstrap **format 9**: `BreditorRichProfile.fromBootstrapJsonV4` / `fromStandardBootstrapJsonV4`; descriptor `richLanguageVersion: 4`, `taskStructureVersion: 1`, `blockLayoutVersion: 1`, `listNumberingVersion: 1`, `textLanguageVersion: 1`, `imageLinkVersion: 1`, `detailsVersion: 1`, `mentionVersion: 1`, `tableCaptionVersion: 1`, `pageBreakVersion: 1`; owner `listNumberingVersion()`, `textLanguageVersion()`, `imageLinkVersion()`, `detailsVersion()`, `mentionVersion()`, `tableCaptionVersion()` and `pageBreakVersion()` all `"1"` |
 | JavaScript factories | `compileRichProfileV4`, `compileStandardRichProfileV4` (`@breditor/experimental-rich-content`); `createLocalProfileV4`, `profileBootstrapJsonV4` (`@breditor/editor`, schema `breditor-editor/standard@4`) |
 | SDK openings | `openLocalEditor({richLanguage: 4})`, `openLocalDocumentEditor({richLanguage: 4, ...})` and both local React components' `initialOptions` |
-| Toolbar | `createRichToolbarV4(core, presentation)`: the V3 structural/layout controls plus **List numbering**, **Language**, **Clear language**, **Image link**, **Remove image link**, **Collapsible section**, **Remove collapsible section**, **Expand/Collapse section** and **Table caption** |
+| Toolbar | `createRichToolbarV4(core, presentation)`: the V3 structural/layout controls plus **List numbering**, **Language**, **Clear language**, **Image link**, **Remove image link**, **Collapsible section**, **Remove collapsible section**, **Expand/Collapse section**, **Table caption** and **Page break** |
 
 Each factory checks its exact descriptor tuple. A V3 factory refuses a V9
 bootstrap and a V4 factory refuses a V8 bootstrap. `createRichToolbarV4`
@@ -46,7 +46,8 @@ React components reject `richLanguage: 4` with the explicit error *"richLanguage
 to V3. Shared interchange owners do not report list numbering, text language, image
 links, sections, mentions or table captions, so imports into a shared owner keep the original `list-numbering` notices,
 keep dropping `lang` silently, keep the original image-link and `<details>` conversion,
-import mention spans as plain `@label` text and keep converting `<caption>` to flow before the table.
+import mention spans as plain `@label` text, keep converting `<caption>` to flow before the table and keep
+reporting forced page-break CSS as `unsupported-style`.
 
 ## Slice 1: ordered-list numbering (audit gap `list-properties`)
 
@@ -1043,14 +1044,12 @@ only).
   the caption back and V1–V3 the original flow conversion. Uncaptioned tables keep
   their GFM export.
 
-### Fingerprint (current)
+### Fingerprint
 
-Current candidate V4 lock for schema `example/layout@1` with the standard inline
-preset: `sha256:6daf61c3c5a216bb4d831c8bd6b9b776044b0a4598a346270ecf6579373959c0`
-(asserted in the core and Wasm text-language, image-link, section, mention and
-table-caption tests). V1–V3 locks are unchanged. The schema unit test proves V4
-differs from V3 only by its rule revision, the text-language and mention formats,
-the image revision, the section grammar and the table's caption grammar.
+The table-caption slice moved the lock to
+`sha256:6daf61c3c5a216bb4d831c8bd6b9b776044b0a4598a346270ecf6579373959c0`; the
+page-break slice moved it again (see [Slice 7](#fingerprint-current)). V1–V3 locks
+are unchanged.
 
 ### Not included
 
@@ -1089,3 +1088,104 @@ shared-collaboration rules (V4 is local only).
   navigation out of it, table actions keeping it, grid
   copy excluding it, Backspace in an empty caption, copy/paste with V3 refusal and
   interchange for V4 versus V3.
+
+## Slice 7: page breaks (audit gap `pagination`)
+
+Breditor stays a continuous flow editor; it is not a pagination engine. This slice
+adds the one page fact a document stores, an explicit page break, plus an opt-in
+CSS print layer outside the language. The full scope decision, print layer and
+limitations are in [PAGINATION_AND_PRINT.md](PAGINATION_AND_PRINT.md).
+
+### Grammar and placement
+
+| Node | Children | Properties |
+| --- | --- | --- |
+| `breditor/page-break` | none | `block-id` (required), nothing else |
+
+The document root's V4 child grammar is the V4 flow kinds **plus** the page break.
+No other container admits it: list items, task items, blockquotes, collapsible
+section bodies and table cells keep the V4 flow kinds without it (a page break in
+a section nested in a list item or cell would otherwise have been admitted, since
+child grammar is per element kind). V1–V3 reject the kind. The grammar change and
+the new element are recorded in the fingerprint.
+
+### Native actions and commands
+
+| Rust | Wasm/TS command | Semantics |
+| --- | --- | --- |
+| `RichLocalSession::insert_page_break(snapshot, position, block)` | `{kind:"insertPageBreak",data:{position,block}}` | One page break with the fresh identity `block` at a document-root position, as one `InsertBlocks` history group; the selection maps. A non-root position is refused (`RichPageBreakError::Placement`). |
+| `RichLocalSession::delete_page_break(snapshot, block, paragraph)` | `{kind:"deletePageBreak",data:{block,paragraph}}` | Removes one page break as one `ReplaceBlocks` group. A node-selected page break recovers like `delete_atom`; `paragraph` is a fresh floor used only when nothing else would remain. A non-page-break target is refused (`RichPageBreakError::Target`). |
+| `RichBlockDraft::page_break(id)` | flow draft `{kind:"pageBreak",block}` | For `insertBlocks` and clipboard drafts; placement is proved by the grammar. |
+
+Each refuses read-only owners, stale observations and non-V4 contexts
+(`RichPageBreakError::Profile`), with exact Undo/Redo and checkpoint restore.
+`RichDocument::is_page_break(block)` reads the kind.
+
+A page break joins the existing whole-atom set (image, table, horizontal rule):
+node selection, `selected_flow_atom` / `deleteAtom`, typing over a node
+selection, `insertParagraphAdjacent`, and logical flow-navigation stops. Block
+moves keep it in the root (the grammar refuses any other destination, and the
+TypeScript move planner never offers one). Search and writing tools skip it. A
+general range across it removes it; node, range and document copies keep it with
+a fresh identity on paste; its plain text is an empty line; a V1–V3 owner refuses
+a clipboard record containing it.
+
+### Rendering
+
+Live: `<div data-rich-block data-rich-page-break class="breditor-page-break" role="separator" aria-label="{pageBreakLabel}" style="break-after:page;page-break-after:always" contenteditable="false" data-select-node>`,
+drawn as a dashed line with the catalog label (`richPageBreakStyles`). The label
+is the new UI catalog key `pageBreakLabel` ("Page break"); the print preview's
+description is the new key `printPreviewLabel`. Both live in their own block of
+`ui_locale.ts`; existing keys are byte-identical. Static: the same element without
+`contenteditable`/`data-select-node` (option `pageBreakLabel`), with a live
+parity test.
+
+The V4 toolbar adds **Page break** (`page-break`, inserts after the root block
+holding the selection) and the standard slash menu gains a **Page break** item
+(V4 toolbar only).
+
+### Interchange
+
+`@breditor/interchange` reads `supportsPageBreaks()` once (local V4 owners only).
+HTML import maps Word's `<br clear=all style='page-break-before:always'>` (also
+inside a paragraph, which is split), Google Docs'
+`<hr style="page-break-before:always;display:none">`, an empty `<div>` with a
+forced break and forced breaks declared on content blocks (collapsed at the
+content edges and next to another break, as CSS does); breaks below the root are
+removed with `block-structure`. V1–V3 conversion is unchanged. Export writes
+`<div style="break-after:page;page-break-after:always"></div>`; Markdown falls
+back to that HTML with `markdown-feature`, which reimports exactly.
+
+### Fingerprint (current)
+
+Current candidate V4 lock for schema `example/layout@1` with the standard inline
+preset: `sha256:eb74301f1eedccc6838cf67090b2ce47e91e51112f9550d5ba25a22a20d0e9cb`
+(asserted in the core and Wasm text-language, image-link, section, mention,
+table-caption and page-break tests). V1–V3 locks are unchanged. The schema unit
+test proves V4 differs from V3 only by its rule revision, the text-language and
+mention formats, the image revision, the section grammar, the table's caption
+grammar and the root-only page-break element.
+
+### Not included
+
+Page numbers, running headers/footers, breaks inside containers, column breaks,
+keep-with-next or avoid-break document properties, section-specific page setup and
+shared-collaboration rules (V4 is local only).
+
+### Tests
+
+- Rust core `tests/rich_page_break_v4.rs`: fingerprint locks, root-only grammar
+  accept/reject table (quote, list item, task item, section body, table cell,
+  image caption, content, extra property, duplicate identity, V1–V3), insert/
+  append/delete history groups with Undo/Redo and checkpoint restore, placement/
+  identity/anchor/target/stale/read-only/V1–V3 refusals, node selection and
+  atom deletion recovery (including a sole page break), `insertParagraphAdjacent`,
+  flow navigation, block moves and wrapping, search, general ranges and clipboard
+  with V3 refusal and nested paste refusal. Schema unit test: V4 vs V3 differences.
+- Wasm `tests/rich_page_break_v4.rs`: descriptor and owner capability, V1–V3
+  refusal of commands, drafts and documents, insert/delete/Undo/Redo/restore, the
+  `pageBreak` draft, malformed, misplaced, read-only and stale intent.
+- TypeScript: rich-content `tests/page_break.test.ts`, editor
+  `tests/static_page_break.test.ts`, interchange `tests/page_break.test.ts`.
+- Playwright `experiments/rich-browser/page-break-v4.spec.mjs` in Chromium,
+  Firefox and WebKit on a real Wasm V4 owner, including print-media emulation.

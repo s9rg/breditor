@@ -51,6 +51,7 @@ mod navigate_flow;
 mod navigate_grid;
 mod outdent_list_items;
 mod outdent_task_items;
+mod page_break;
 mod paste_flow_at_text;
 mod paste_flow_clipboard;
 mod paste_general_flow_clipboard;
@@ -181,6 +182,8 @@ enum CommandTag {
     InsertMention,
     AddTableCaption,
     RemoveTableCaption,
+    InsertPageBreak,
+    DeletePageBreak,
     OutdentListItems,
     JoinTextBlocks,
     JoinListItems,

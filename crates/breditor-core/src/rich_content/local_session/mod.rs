@@ -30,6 +30,7 @@ mod insert_typing_text;
 mod insert_typing_text_with_markdown_rules;
 pub(crate) mod local_rewrite;
 mod navigate_flow;
+mod page_break;
 mod paste_document_clipboard;
 mod paste_general_flow_clipboard;
 mod paste_general_inline_clipboard;

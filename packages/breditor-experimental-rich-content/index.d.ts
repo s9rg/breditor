@@ -47,6 +47,8 @@ export {createRichToolbarV4,listNumberingControl,selectedOrderedList,type ListNu
 export {imageLinkControls,imageLinkOf,canonicalImageLinkHref,richImageHrefProperty,richImageLinkNewWindowProperty,type ImageLinkControl,type RichImageLinkRead} from "./dist/browser/index.js";
 export {detailsToolbarControls,detailsOpen,selectedDetails,detailsInterval,richDetailsKind,richDetailsSummaryKind,richDetailsOpenProperty} from "./dist/browser/index.js";
 export {tableCaptionToolbarControls,tableCaptionOf,isTableCaption,selectedTableCaption,richTableCaptionKind} from "./dist/browser/index.js";
+export {pageBreakToolbarControls,pageBreakPosition,rootBlockOfSelection,isPageBreak,richPageBreakKind,richPageBreakClass,richPageBreakStyle,richPageBreakStyles,pageBreakAttributes} from "./dist/browser/index.js";
+export {richPrintStyles,resolveRichPrintLayout,richPrintPreviewStyles,mountRichPrintPreview,richPrintPageSizes,richPrintOrientations,richPrintMargins,type RichPrintOptions,type RichPrintLayout,type RichPrintPageSize,type RichPrintOrientation,type RichPrintMargin,type RichPrintPreview} from "./dist/browser/index.js";
 export {textLanguageControls,canonicalTextLanguage,textLanguageOf,richTextLanguageFormat,richTextLanguageTagProperty,richTextLanguageRecipeV4,type TextLanguageControl} from "./dist/browser/index.js";
 export {createFlowNavigationControls} from "./dist/browser/index.js";
 export {createSelectionRichToolbarV1} from "./dist/browser/index.js";

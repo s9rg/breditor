@@ -16,6 +16,29 @@ its durable formats and Wasm transport.
   ending in LF. It has no text: document content, model offsets, clipboard,
   search and static rendering are unchanged. See the hard-break section of
   docs/RICH_STRUCTURAL_V2.md.
+- Add explicit page breaks to the unreleased local-only candidate rich V4 and an
+  opt-in print presentation layer (audit gap `pagination`). Breditor stays a flow
+  editor, not a pagination engine. `breditor/page-break` is an atomic,
+  content-free block admitted only as a direct child of the document root;
+  guarded `insertPageBreak` (root positions only, caret kept) and
+  `deletePageBreak` commands are one history group each, and a page break is
+  node-selectable, a flow-navigation stop, deleted whole, moved only within the
+  root, skipped by search and kept by copy/paste (V1–V3 owners refuse the record).
+  Live and static renderers emit `<div class="breditor-page-break" role="separator"
+  aria-label="Page break" style="break-after:page;page-break-after:always">`; the
+  V4 toolbar and slash menu gain **Page break**. New `richPrintStyles` (A4/Letter,
+  portrait/landscape, three margin presets: forced breaks, rows, captions and
+  figures kept whole, headings kept with the next block, `<thead>` repeated,
+  chrome hidden), `mountRichPrintPreview` (approximate on-screen page guides) and
+  the static renderer's `print` option (embedded print CSS, leading header rows in
+  `<thead>`). V4-only HTML interchange maps Word and Google Docs page breaks and
+  forced-break CSS (`supportsPageBreaks()`), exports
+  `<div style="break-after:page;page-break-after:always"></div>`, and Markdown
+  falls back to that HTML with `markdown-feature`. New UI catalog keys
+  `pageBreakLabel` and `printPreviewLabel` (separate block). Wasm descriptor
+  `pageBreakVersion: 1`. The V4 fingerprint changes; V1–V3, their fingerprints and
+  their conversion are unchanged. See docs/PAGINATION_AND_PRINT.md.
+
 - Add opt-in, provider-agnostic AI rewrite and language-check tools for local
   editors (`mountRichAiTools` / `mountAiTools` / `BreditorAiTools` and
   `mountRichLanguageCheck` / `mountLanguageCheck` / `BreditorLanguageCheck`). The

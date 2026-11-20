@@ -34,6 +34,7 @@ pub(crate) mod mention;
 mod native_history_usage;
 mod navigate_flow;
 mod navigate_grid;
+pub(crate) mod page_break;
 pub mod review;
 mod rich_document;
 mod rich_grid_selection;
@@ -113,6 +114,7 @@ pub use navigate_flow::{FlowMove, FlowNavigationOutcome, navigate_flow};
 pub use navigate_grid::{
     GridBoundary, GridMove, GridNavigationMode, GridNavigationOutcome, navigate_grid,
 };
+pub use page_break::{RICH_PAGE_BREAK_KIND, RichPageBreakError};
 pub use rich_document::{RichDocument, RichDocumentError};
 pub use rich_grid_selection::ResolvedRichGrid;
 pub use rich_selection::{
