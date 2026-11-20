@@ -31,6 +31,7 @@ mod insert_general_paragraph;
 mod insert_hard_break;
 mod insert_horizontal_rule;
 mod insert_image;
+mod insert_mention;
 mod insert_paragraph;
 mod insert_paragraph_adjacent;
 mod insert_plain_text;
@@ -175,6 +176,7 @@ enum CommandTag {
     UnwrapDetails,
     SetDetailsOpen,
     EnterDetailsBody,
+    InsertMention,
     OutdentListItems,
     JoinTextBlocks,
     JoinListItems,

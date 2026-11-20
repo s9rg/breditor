@@ -61,7 +61,10 @@ impl RichLocalSession {
             },
         };
         let pending_formats = match pending_update {
-            RichPendingFormatsUpdate::Set(formats) => formats,
+            // A candidate V4 mention is never a pending typing style.
+            RichPendingFormatsUpdate::Set(formats) => {
+                formats.map(|formats| crate::rich_content::mention::without_mentions(&formats))
+            }
             RichPendingFormatsUpdate::Map => super::typing_state::mapped(
                 &self.state,
                 &document,

@@ -21,6 +21,7 @@ mod flow_navigation;
 mod general_range;
 mod inline_format_state;
 mod input_rules;
+mod mention;
 mod observation;
 mod paste_document_clipboard;
 mod placeholder_empty;

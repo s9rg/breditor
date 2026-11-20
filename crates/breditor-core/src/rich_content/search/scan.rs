@@ -53,6 +53,8 @@ pub fn find_rich_text(
             return Err(RichSearchError::DocumentLimit);
         }
         let boundaries = query.whole_words().then(|| word_boundaries(&text));
+        // Candidate V4 mentions are atomic entities: no match may touch one.
+        let protected = crate::rich_content::mention::byte_units(document, &block);
         let mut cursor = Coordinates::default();
         if let Some(regex) = &compiled {
             let cache = cache.as_mut().ok_or(RichSearchError::Invariant)?;
@@ -78,7 +80,13 @@ pub fn find_rich_text(
                     start = found.end() + next.len_utf8();
                     continue;
                 }
-                if !whole_word(boundaries.as_deref(), found.start(), found.end()) {
+                if !whole_word(boundaries.as_deref(), found.start(), found.end())
+                    || crate::rich_content::mention::intersects(
+                        &protected,
+                        found.start(),
+                        found.end(),
+                    )
+                {
                     // A rejected candidate must not hide a later whole-word occurrence that
                     // starts inside it, so resume one scalar after its start, not its end.
                     let Some(next) = text.get(found.start()..).and_then(|tail| tail.chars().next())
@@ -108,7 +116,7 @@ pub fn find_rich_text(
                 &block,
                 &text,
                 query.pattern(),
-                boundaries.as_deref(),
+                (boundaries.as_deref(), &protected),
                 &mut cursor,
             )?;
         }
@@ -123,14 +131,16 @@ fn scan_literal(
     block: &BlockId,
     text: &str,
     pattern: &str,
-    boundaries: Option<&[usize]>,
+    (boundaries, protected): (Option<&[usize]>, &[(usize, usize)]),
     cursor: &mut Coordinates,
 ) -> Result<(), RichSearchError> {
     let mut from = 0usize;
     while let Some(offset) = text.get(from..).and_then(|tail| tail.find(pattern)) {
         let start = from + offset;
         let end = start + pattern.len();
-        if whole_word(boundaries, start, end) {
+        if whole_word(boundaries, start, end)
+            && !crate::rich_content::mention::intersects(protected, start, end)
+        {
             record(output, block, text, start..end, vec![Some(start..end)], cursor)?;
             from = end;
         } else {

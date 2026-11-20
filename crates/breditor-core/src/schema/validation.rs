@@ -33,6 +33,9 @@ mod element_properties;
 #[path = "rich_content_validation.rs"]
 #[cfg(feature = "experimental-rich-content")]
 mod rich_content;
+#[path = "rich_mention_validation.rs"]
+#[cfg(feature = "experimental-rich-content")]
+mod rich_mention;
 
 /// Maximum issues retained by one validation report, including truncation metadata.
 pub const MAX_VALIDATION_REPORT_ISSUES: usize = 1_024;
@@ -764,6 +767,7 @@ impl<'a> ValidationState<'a> {
         #[cfg(feature = "experimental-rich-content")]
         if self.schema.is_rich_content_profile() && definition.is_some() {
             self.validate_rich_content(element, path);
+            self.validate_rich_mention_text(element, path);
         }
         if self.report_is_saturated() {
             return;
@@ -1080,6 +1084,8 @@ impl<'a> ValidationState<'a> {
         self.visit_properties(format.properties(), path, Some(index));
         #[cfg(feature = "experimental-rich-content")]
         self.validate_rich_text_language(format, path, index);
+        #[cfg(feature = "experimental-rich-content")]
+        self.validate_rich_mention(format, path, index);
         let property_contract = self.schema.format_property_contract(format.kind());
         if let Some(contract) = property_contract {
             self.validate_format_property_contract(contract, format.properties(), path, index);

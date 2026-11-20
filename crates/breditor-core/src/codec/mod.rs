@@ -33,6 +33,10 @@ mod rich_list_numbering;
 #[cfg(feature = "experimental-rich-content")]
 pub use rich_list_numbering::{RichListNumberingCodecError, decode_rich_list_numbering_command};
 #[cfg(feature = "experimental-rich-content")]
+mod rich_mention;
+#[cfg(feature = "experimental-rich-content")]
+pub use rich_mention::{RichMentionCodecError, decode_rich_mention};
+#[cfg(feature = "experimental-rich-content")]
 mod rich_text_language;
 #[cfg(feature = "experimental-rich-content")]
 pub use rich_text_language::{RichTextLanguageCodecError, decode_rich_text_language_command};

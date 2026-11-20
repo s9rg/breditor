@@ -123,6 +123,7 @@ fn candidate_v4(
         CommandTag::UnwrapDetails => super::details::unwrap(owner, observation, input),
         CommandTag::SetDetailsOpen => super::details::set_open(owner, observation, input),
         CommandTag::EnterDetailsBody => super::details::enter_body(owner, observation, input),
+        CommandTag::InsertMention => super::insert_mention::execute(owner, observation, input),
         _ => Err(super::invalid()),
     }
 }
