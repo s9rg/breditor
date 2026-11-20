@@ -118,6 +118,7 @@ mod set_read_only;
 mod set_selection;
 mod split_with_autolink;
 mod structural_text;
+mod structure_v4_targets;
 mod suggestions;
 mod target_kinds;
 mod target_validation;

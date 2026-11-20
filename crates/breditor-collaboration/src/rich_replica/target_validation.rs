@@ -90,6 +90,12 @@ pub(super) fn validate_context(owner: &Context<'_>, commands: &[Command]) -> Res
                 owner.canonical,
                 command,
             )?;
+        } else if super::structure_v4_targets::validate(
+            owner.protocol,
+            command,
+            owner.document,
+            &declared,
+        )? {
         } else if !super::list_targets::validate(command, owner.document, &declared)? {
             let block = BlockId::try_new(primary(command)?).map_err(contract)?;
             let kind = declared.kind(owner.document, &block)?;

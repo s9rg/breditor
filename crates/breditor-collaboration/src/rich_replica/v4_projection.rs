@@ -184,6 +184,11 @@ pub(super) fn repair_image_link(properties: &mut serde_json::Map<String, Value>)
 /// Every V4 per-node property rule of the projection.
 pub(super) fn project_properties(kind: &str, properties: &mut serde_json::Map<String, Value>) {
     project_list_numbering(kind, properties);
+    // A summary carries no block layout. An unwrapped summary is a paragraph that may own
+    // layout; if a later Undo makes it a summary again, the values stay causal, unprojected.
+    if kind == SUMMARY {
+        properties.retain(|name, _| !super::layout_fields::is_property(name));
+    }
     if kind == "breditor/image" {
         repair_image_link(properties);
     }

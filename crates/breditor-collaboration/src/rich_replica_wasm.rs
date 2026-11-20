@@ -34,6 +34,8 @@ mod verify_retained_native_branch;
 mod writer_clock_at;
 mod writer_transport_v2;
 mod writing_tools;
+// Shared rich language V4 structure commands (sections, page breaks, table captions).
+mod structure_v4;
 use crate::{
     Error,
     rich_replica::{
