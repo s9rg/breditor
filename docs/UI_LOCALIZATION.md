@@ -241,3 +241,12 @@ with panels from another.
   descriptions and is not wired to the catalog.
 - In Playwright's Firefox, non-layout characters arrive as IME composition, and a
   slash session ends on composition by design.
+
+## AI and language tools
+
+The opt-in rewrite review and language-check panels read their labels, buttons
+and status messages from the editor catalog through separate `ai*` and `lang*` keys (a block kept in
+`ui_locale_ai.ts`, merged into `RichUiStrings`), and take the catalog's chrome
+`dir`/`lang`. Provider and document text are never translated; the "Editor
+closed" notice and API-misuse errors stay English, as elsewhere. See
+[AI_AND_LANGUAGE_TOOLS.md](AI_AND_LANGUAGE_TOOLS.md).

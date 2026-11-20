@@ -2,7 +2,8 @@
 import type {RichSearchResults} from "./core.js";
 import type {RichSearchHost} from "./search_host.js";
 const paintLimit=8192;
-function endpoint(block:HTMLElement,offset:string):[Node,number]|null{
+/** @internal Also used by the language-check overlay (same block/UTF-16 to DOM mapping). */
+export function endpoint(block:HTMLElement,offset:string):[Node,number]|null{
  let left=Number(offset);if(!Number.isSafeInteger(left)||left<0)return null;
  const walker=block.ownerDocument.createTreeWalker(block,4);let node=walker.nextNode();
  while(node){const size=node.textContent?.length??0;if(left<=size)return[node,left];left-=size;node=walker.nextNode();}

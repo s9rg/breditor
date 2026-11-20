@@ -6,8 +6,11 @@
  */
 import {richUiPanelStringsEn,richUiPanelParameters,richUiNoticeCodes,type RichUiPanelStrings,type RichUiNoticeCode} from "./ui_locale_panels.js";
 export {richUiPanelStringsEn,richUiNoticeCodes,type RichUiPanelStrings,type RichUiNoticeCode} from "./ui_locale_panels.js";
+// AI and language-tool chrome strings live in a separate block (ui_locale_ai.ts) merged below.
+import {richAiUiStringsEn,richAiUiParameters,type RichAiUiStrings} from "./ui_locale_ai.js";
+export type {RichAiUiStrings} from "./ui_locale_ai.js";
 /** Every built-in chrome string. Templates use `{name}` placeholders only; there are no plural or select forms. */
-export interface RichUiStrings extends RichUiPanelStrings {
+export interface RichUiStrings extends RichUiPanelStrings, RichAiUiStrings {
  readonly richEditorLabel:string;readonly richToolbarLabel:string;
  readonly richStatusReadOnly:string;readonly richStatusEditable:string;readonly richStatusOutcome:string;readonly richStatusReadOnlyOutcome:string;
  readonly richOperationFailed:string;
@@ -64,6 +67,8 @@ export const richUiStringsEn:Readonly<RichUiStrings>=Object.freeze({
  // Image resize handles (image_resize.ts).
  imageResizeLabel:"Resize image {index} of {count}",imageResizeValue:"{width} by {height} pixels",imageResizeOriginal:"{width} by {height} pixels (original size)",
  imageResizePreview:"{width} by {height} pixels (preview)",imageResizeBadge:"{width} × {height}",
+ // AI and language tools (separate block).
+ ...richAiUiStringsEn,
 });
 /** Placeholders each template may use. Anything else in braces is rejected. */
 const parameters:Readonly<Partial<Record<RichUiStringKey,readonly string[]>>>={
@@ -75,6 +80,8 @@ const parameters:Readonly<Partial<Record<RichUiStringKey,readonly string[]>>>={
  ...richUiPanelParameters,
  // Image resize handles (image_resize.ts).
  imageResizeLabel:["index","count"],imageResizeValue:["width","height"],imageResizeOriginal:["width","height"],imageResizePreview:["width","height"],imageResizeBadge:["width","height"],
+ // AI and language tools (separate block).
+ ...richAiUiParameters,
 };
 /** Ids of `standardRichSlashPicks`; other provider items carry their own labels. */
 export type RichStandardSlashItemId="paragraph"|"heading-1"|"heading-2"|"heading-3"|"bullet-list"|"numbered-list"|"task-list"|"blockquote"|"code-block"|"horizontal-rule"|"table"|"details";

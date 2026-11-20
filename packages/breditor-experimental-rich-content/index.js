@@ -23,6 +23,10 @@ export {mountRichMentions,requireRichMentionSuggestions,filterRichMentionSuggest
 export {richMentionFormat,richMentionKindProperty,richMentionIdProperty,richMentionLabelProperty,richMentionKinds,richMentionClass,richMentionStyles,isRichMentionId,isRichMentionKind,isRichMentionLabel,mentionOf,mentionText,mentionFormat,requireRichMention} from "./dist/browser/mention.js";
 export {mountRichSelectionToolbar,mountRichContextMenu,richSelectionToolbarDefaults,richContextMenuDefaults,richContextUiStyles} from "./dist/browser/context_ui.js";
 export {mountRichSourceView} from "./dist/browser/source_view.js";
+export {mountRichAiTools} from "./dist/browser/ai_rewrite.js";
+export {mountRichLanguageCheck} from "./dist/browser/language_check.js";
+export {richAiToolsHost,RICH_AI_MAX_BYTES,RICH_AI_MAX_INSTRUCTION,RICH_AI_MAX_TIMEOUT_MS} from "./dist/browser/ai_tools_host.js";
+export {richAiUiStringsEn} from "./dist/browser/ui_locale_ai.js";
 export {RICH_DOCUMENT_SOURCE_MAX_BYTES} from "./dist/browser/source_view_types.js";
 
 const searchResults=new WeakMap();
