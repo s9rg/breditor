@@ -39,6 +39,20 @@ its durable formats and Wasm transport.
   `pageBreakVersion: 1`. The V4 fingerprint changes; V1–V3, their fingerprints and
   their conversion are unchanged. See docs/PAGINATION_AND_PRINT.md.
 
+- Finish the `markdown-v1` list and code shortcuts (opt-in; no new rule-set name,
+  Wasm method, capability or saved format). Typing `[ ] `, `[x] ` or `[X] ` at the
+  start of a top-level bullet item's first line converts that one item to a task,
+  splitting the list around it (a converted first item joins a directly preceding
+  task list). A bullet, numbered or task marker typed in a paragraph directly after
+  a compatible list appends one item to that list instead of starting a second
+  adjacent list (numbered markers join only as the list's next ordinal). A third
+  Enter at the end of a code block whose text ends in two empty lines removes those
+  line feeds and enters a fresh paragraph after the code. Each conversion is one
+  isolated Undo step that restores the typed text, built only from existing
+  retained-identity actions/causal commands (wrap, move, outdent, insert); paste,
+  composition, remote updates and read-only owners never trigger them. Ordered,
+  nested and multi-paragraph items, typed markers inside an item's first line,
+  forward joins and Shift+Enter in code stay literal. See docs/RICH_INPUT_RULES.md.
 - Add opt-in, provider-agnostic AI rewrite and language-check tools for local
   editors (`mountRichAiTools` / `mountAiTools` / `BreditorAiTools` and
   `mountRichLanguageCheck` / `mountLanguageCheck` / `BreditorLanguageCheck`). The

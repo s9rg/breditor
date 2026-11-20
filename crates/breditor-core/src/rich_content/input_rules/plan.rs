@@ -1,7 +1,7 @@
 //! Capture dependent ordinary actions against private admitted snapshots; replay never reruns a rule.
 use super::{
-    RichInputRuleError, RichInputRuleKind, RichInputRuleStep, block_rule, inline_rule,
-    source::Source,
+    RichInputRuleError, RichInputRuleKind, RichInputRuleStep, block_rule, code_exit, inline_rule,
+    list_rule, source::Source,
 };
 use crate::{
     document::{Format, PropertyMap},
@@ -109,7 +109,7 @@ impl RichInputRulePlan {
         Ok(())
     }
 }
-fn fresh(
+pub(super) fn fresh(
     document: &RichDocument,
     namespace: &str,
     suffix: &str,
@@ -149,8 +149,13 @@ fn structural_step(
         RichInputRuleKind::HorizontalRule => {
             RichInputRuleStep::HorizontalRule { block: fresh(document, namespace, "hr")?, position }
         }
-        RichInputRuleKind::Inline(_) | RichInputRuleKind::Link => {
-            unreachable!("block recognizer cannot return inline rules")
+        RichInputRuleKind::Inline(_)
+        | RichInputRuleKind::Link
+        | RichInputRuleKind::ListJoin(_)
+        | RichInputRuleKind::TaskJoin(_)
+        | RichInputRuleKind::ListItemTask(_)
+        | RichInputRuleKind::CodeExit => {
+            unreachable!("block recognizer returns only base structural rules")
         }
     })
 }
@@ -169,6 +174,9 @@ pub fn plan_rich_markdown_input_rule(
     trigger: &str,
     namespace: &str,
 ) -> Result<Option<RichInputRulePlan>, RichInputRuleError> {
+    if trigger == "\n" {
+        return code_exit::plan(context, document, selection, namespace);
+    }
     if !super::is_rich_markdown_input_rule_trigger(trigger) {
         return Ok(None);
     }
@@ -193,10 +201,14 @@ pub fn plan_rich_markdown_input_rule(
         let Some(position) = document.flow_position_before(focus.block()) else {
             return Ok(None);
         };
-        let prose_head =
-            matches!(position.parent(), RichFlowParent::ListItem(_) | RichFlowParent::TaskItem(_))
-                && document.block_path(focus.block()).is_some_and(|p| p.last_index() == Some(0));
-        if prose_head && !matches!(kind, RichInputRuleKind::Heading(_)) {
+        let item_head = matches!(position.parent(), RichFlowParent::ListItem(_));
+        let prose_head = (item_head || matches!(position.parent(), RichFlowParent::TaskItem(_)))
+            && document.block_path(focus.block()).is_some_and(|p| p.last_index() == Some(0));
+        // A required item head keeps its prose shape; only a bullet item's task marker converts.
+        if prose_head
+            && !matches!(kind, RichInputRuleKind::Heading(_))
+            && !(item_head && matches!(kind, RichInputRuleKind::Task(_)))
+        {
             return Ok(None);
         }
         if context.schema().rich_content_revision().is_none_or(|v| v < 2)
@@ -204,12 +216,22 @@ pub fn plan_rich_markdown_input_rule(
         {
             return Ok(None);
         }
-        let step = structural_step(document, namespace, &kind, position)?;
-        (
-            kind,
-            vec![RichInputRuleStep::Delete { start: TextOffset::ZERO, end: focus.offset() }, step],
-            TextOffset::ZERO,
-        )
+        let (kind, structural) = match (prose_head, kind) {
+            (true, RichInputRuleKind::Task(checked)) => {
+                match list_rule::item_task(document, namespace, focus.block(), checked)? {
+                    Some(found) => found,
+                    None => return Ok(None),
+                }
+            }
+            (_, kind) => {
+                let step = structural_step(document, namespace, &kind, position)?;
+                list_rule::join(document, focus.block(), kind, step)
+            }
+        };
+        let mut steps =
+            vec![RichInputRuleStep::Delete { start: TextOffset::ZERO, end: focus.offset() }];
+        steps.extend(structural);
+        (kind, steps, TextOffset::ZERO)
     } else {
         let Some(found) = inline_rule::recognize(&source, trigger)? else {
             return Ok(None);
@@ -290,9 +312,11 @@ fn capture(
     block: &BlockId,
     step: &RichInputRuleStep,
 ) -> Result<RichAction, actions::RichActionError> {
+    use crate::{document::TextFragment, rich_content::RichBlockDraft};
     use actions::{
-        CodeFormatPolicy, DeleteText, InsertHorizontalRule, RichFormatChange, SetCodeBlock,
-        SetHeading, SetInlineFormat, WrapBlockquote, WrapList, WrapTaskList,
+        CodeFormatPolicy, DeleteText, InsertBlocks, InsertHorizontalRule, MoveBlock,
+        OutdentListItems, OutdentTaskItems, RichFormatChange, SetCodeBlock, SetHeading,
+        SetInlineFormat, WrapBlockquote, WrapList, WrapTaskList,
     };
     Ok(match step {
         RichInputRuleStep::Delete { start, end } => {
@@ -333,6 +357,37 @@ fn capture(
                 *start,
                 *end,
                 &RichFormatChange::Set(Format::new(format.kind(), PropertyMap::default())),
+            )?)
+        }
+        RichInputRuleStep::TaskRange { last, container, item, checked } => {
+            RichAction::WrapTaskList(WrapTaskList::capture(
+                document,
+                block,
+                last,
+                container,
+                &[(item.clone(), *checked)],
+            )?)
+        }
+        RichInputRuleStep::MoveBlock { block, parent, before } => RichAction::MoveBlock(
+            MoveBlock::capture(document, block, parent.as_ref(), before.as_ref())?,
+        ),
+        RichInputRuleStep::OutdentListItem { container, item, fresh_tail } => {
+            RichAction::OutdentListItems(OutdentListItems::capture(
+                document,
+                container,
+                item,
+                item,
+                fresh_tail.as_ref(),
+            )?)
+        }
+        RichInputRuleStep::OutdentTaskItem { container, item } => RichAction::OutdentTaskItems(
+            OutdentTaskItems::capture(document, container, item, item, None)?,
+        ),
+        RichInputRuleStep::Paragraph { block, position } => {
+            RichAction::InsertBlocks(InsertBlocks::capture(
+                document,
+                position,
+                vec![RichBlockDraft::paragraph(block, &TextFragment::empty())?],
             )?)
         }
         RichInputRuleStep::Link { start, end, href } => {

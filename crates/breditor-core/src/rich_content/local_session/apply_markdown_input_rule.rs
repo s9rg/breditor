@@ -86,10 +86,11 @@ impl RichLocalSession {
         let Some(plan) = plan else {
             return Ok(RichLocalOutcome::Unchanged);
         };
-        let pending = if matches!(plan.kind(), RichInputRuleKind::Code(_)) {
-            Some(FormatSet::default())
-        } else {
-            Some(self.state.effective_caret_formats()?)
+        // Code is explicitly plain; a code exit derives the fresh paragraph's styles afresh.
+        let pending = match plan.kind() {
+            RichInputRuleKind::Code(_) => Some(FormatSet::default()),
+            RichInputRuleKind::CodeExit => None,
+            _ => Some(self.state.effective_caret_formats()?),
         };
         let caret = plan.caret().clone();
         self.dispatch_with_pending_formats(
