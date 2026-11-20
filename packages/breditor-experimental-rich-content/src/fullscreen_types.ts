@@ -7,6 +7,8 @@ export interface RichFullscreenHost {
  subscribeFullscreen(listener:()=>void):()=>void;
  /** Restore the current native selection only at this exact unchanged publication. */
  focusFullscreen(revision:string):void;
+ /** Optional chrome catalog (the editor's `uiLocale()`); hosts that omit it keep the English defaults. */
+ uiLocale?():import("./ui_locale.js").RichUiLocale;
 }
 export interface RichFullscreenOptions {target?:HTMLElement;navigationUI?:"auto"|"show"|"hide";onError?:(error:unknown)=>void}
 export interface RichFullscreenState extends RichFullscreenHostState {
@@ -21,4 +23,6 @@ export interface RichFullscreenController {
  enter(revision?:string):Promise<void>;exit():Promise<void>;toggle(revision?:string):Promise<void>;
  /** Await before replacing the controller; failed cleanup retains ownership and can be retried. */
  dispose():Promise<void>;
+ /** The borrowed editor's chrome catalog, read by fullscreen controls. Optional for custom controllers. */
+ uiLocale?():import("./ui_locale.js").RichUiLocale;
 }

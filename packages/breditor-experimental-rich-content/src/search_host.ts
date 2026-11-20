@@ -15,6 +15,8 @@ export interface RichSearchHost<R extends RichSearchResults=RichSearchResults> {
  replaceSearchOne(results:R,index:string,replacement:RichSearchReplacement,revision?:string):Promise<void>;
  replaceSearchAll(results:R,replacement:RichSearchReplacement,revision?:string):Promise<void>;
  focus():void;
+ /** Optional chrome catalog (the editor's `uiLocale()`); custom ports that omit it keep the English defaults. */
+ uiLocale?():import("./ui_locale.js").RichUiLocale;
 }
 /** Completion is independent of display callbacks: a native commit cannot be rewound by rendering. */
 export interface RichSearchCompletion {resolve:()=>void;reject:(error:unknown)=>void}

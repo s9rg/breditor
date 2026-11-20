@@ -5,7 +5,7 @@ import type {SharedDocumentSuggestionPreview} from "../suggestion_preview.js";
 import type {SharedSuggestionQueueStatus,SharedSuggestionPublication,SharedSuggestionDecision} from "../suggestions/types.js";
 import type {SharedSuggestionSyncState} from "../suggestions/sync.js";
 import type {SharedSuggestionFormatRebaseQueued,SharedSuggestionTextRebaseQueued} from "../suggestion_revisions/types.js";
-import type {RichPresentationModel} from "@breditor/experimental-rich-content/rendering";
+import type {RichPresentationModel,RichUiLocale,RichUiOptions} from "@breditor/experimental-rich-content/rendering";
 export type SharedSuggestionPanelCore=Pick<SharedRichEditor<SharedSelectionPolicy>,"view"|"subscribe"|"supportsDocumentSuggestions"|"prepareSuggestion"|"checkSuggestionPreview">&Partial<Pick<SharedRichEditor<SharedSelectionPolicy>,"supportsSuggestionGeneralText"|"planSuggestionGeneralText">>;
 export interface SharedSuggestionPanelEntry {suggestion:SharedDocumentSuggestionInfo;publication:SharedSuggestionPublication|null;decision:SharedSuggestionDecision|null;local:SharedSuggestionQueueStatus|null;
  supersededBy?:string;
@@ -55,5 +55,10 @@ export interface SharedSuggestionPanelOptions {
  /** Permanently consume fresh IDs, including for refused/discarded drafts. Required for
   * structural builders and text rebases; a missing allocator refuses rather than guessing. */
  allocate?:(kind:string)=>string;nowMs?:()=>string;onError?:(error:unknown)=>void;
+ /**
+  * Chrome catalog, normally the borrowed editor's `uiLocale()`. Relabels the panel and the standard proposal
+  * actions; custom actions keep their own labels. Validated before any DOM is created.
+  */
+ ui?:RichUiLocale|RichUiOptions;
 }
 export interface SharedSuggestionPanel {readonly element:HTMLElement;refresh():void;dispose():void}

@@ -3,6 +3,7 @@
  * or reviewed translation and is deliberately kept out of the packages.
  */
 import type {RichUiOptions,RichUiStrings} from "../../breditor-experimental-rich-content/src/ui_locale.js";
+import {arabicPanelStrings,arabicNotices,arabicRefusals} from "./ui_locale_ar_panels.js";
 
 export const arabicStrings:RichUiStrings={
  richEditorLabel:"محرر النص المنسق",richToolbarLabel:"تنسيق النص",
@@ -31,9 +32,10 @@ mentionLabel:"الإشارات",mentionLoading:"جارٍ تحميل الاقتر
  blockDragCrossContainer:"يمكن إعادة ترتيب الكتل داخل حاويتها فقط.",blockDragGrammar:"هذه الحاوية لا تقبل هذه الكتلة.",
  blockDragEmptiesSource:"نقل الكتلة الأخيرة سيترك حاويتها فارغة.",blockDragItemLead:"يجب أن يبدأ عنصر القائمة بسطر نصي.",
  blockDragBoundary:"الكتلة عند حافة حاويتها بالفعل.",blockDragNative:"رفض المحرر النقل.",
+ ...arabicPanelStrings,
 };
 export const arabicUi:RichUiOptions={
- lang:"ar",direction:"rtl",strings:arabicStrings,
+ lang:"ar",direction:"rtl",strings:arabicStrings,notices:arabicNotices,refusals:arabicRefusals,
  controls:{bold:{label:"عريض"},italic:{label:"مائل"},undo:{label:"تراجع"},link:{label:"رابط",fields:{href:{label:"عنوان الرابط"}}},table:{label:"إدراج جدول"}},
  slashItems:{paragraph:{label:"نص",keywords:["فقرة"]},"heading-1":{label:"عنوان 1"},"heading-2":{label:"عنوان 2"},"heading-3":{label:"عنوان 3"},"bullet-list":{label:"قائمة نقطية"},"numbered-list":{label:"قائمة مرقمة"},table:{label:"جدول"}},
 };

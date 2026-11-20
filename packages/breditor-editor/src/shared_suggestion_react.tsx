@@ -1,4 +1,5 @@
 import {forwardRef,useEffect,useImperativeHandle,useRef,useState,type ReactElement} from "react";
+import {chromeAttributes,panelLocale} from "./panel_locale.js";
 import {mountSharedSuggestionPanel,type SharedSuggestionPanel,type SharedSuggestionPanelCore,type SharedSuggestionPanelOptions} from "@breditor/collaboration";
 export interface BreditorSharedSuggestionPanelProps {
  /** Borrowed native core; this component never opens/closes the source, queue or networking. */
@@ -9,12 +10,13 @@ export interface BreditorSharedSuggestionPanelHandle {getPanel():SharedSuggestio
 /** Stable drafts and native previews across ordinary parent renders. A new core/key explicitly
  * replaces only controls; pending requests and persistence remain host-owned after unmount. */
 export const BreditorSharedSuggestionPanel=forwardRef<BreditorSharedSuggestionPanelHandle,BreditorSharedSuggestionPanelProps>(function BreditorSharedSuggestionPanel(props,ref):ReactElement {
+ const read=()=>props.initialOptions.ui;
  const [host,setHost]=useState<HTMLDivElement|null>(null),[failure,setFailure]=useState<string|null>(null),panel=useRef<SharedSuggestionPanel|null>(null),configuration=useRef(props.initialOptions),callbacks=useRef(props);
  useEffect(()=>{configuration.current=props.initialOptions;callbacks.current=props;});
  useImperativeHandle(ref,()=>({getPanel:()=>panel.current,refresh:()=>panel.current?.refresh()}),[]);
  useEffect(()=>{if(!host)return;const initial=configuration.current;setFailure(null);const report=(error:unknown)=>{try{(callbacks.current.onError??initial.onError)?.(error);}catch{/* Reporting cannot change durable intent or native state. */}};
   try{const mounted=mountSharedSuggestionPanel(host,props.core,{...initial,onError:report});panel.current=mounted;return()=>{if(panel.current===mounted)panel.current=null;mounted.dispose();};}
-  catch(error){setFailure(error instanceof Error?error.message:String(error));report(error);return;}
+  catch(error){setFailure(panelLocale(read).describe(error,String(error)));report(error);return;}
  },[host,props.core,props.sessionKey]);
- return <section className={props.className}><div ref={setHost}/>{failure===null?null:<p role="alert">Suggestion controls could not start: {failure}</p>}</section>;
+ return <section className={props.className}><div ref={setHost}/>{failure===null?null:<p role="alert" {...chromeAttributes(panelLocale(read))}>{panelLocale(read).text("suggestStartFailed",{error:failure})}</p>}</section>;
 });

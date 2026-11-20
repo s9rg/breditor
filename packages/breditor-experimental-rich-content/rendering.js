@@ -30,4 +30,7 @@ export {compileInlineFormatRecipes,createInlineFormatRenderManifest,resolveInlin
 export {imageLinkOf,wrapImageLink,richImageHrefProperty,richImageLinkNewWindowProperty} from "./dist/browser/image_link.js";
 export {richTextLanguageFormat,richTextLanguageTagProperty,richTextLanguageRecipeV4,textLanguageOf} from "./dist/browser/text_language.js";
 export {resolveRichUi,defaultRichUi,richUiStringsEn,richChromeIsRtl} from "./dist/browser/ui_locale.js";
+export {richUiError,richUiPanelStringsEn,richUiNoticeCodes} from "./dist/browser/ui_locale.js";
+export {setRichChromeText} from "./dist/browser/ui_chrome_text.js";
+export {clipboardProjectionText} from "./dist/browser/clipboard_interchange.js";
 export {richMentionFormat,richMentionKindProperty,richMentionIdProperty,richMentionLabelProperty,richMentionKinds,richMentionClass,richMentionStyles,isRichMentionId,isRichMentionKind,isRichMentionLabel,mentionOf,mentionText,mentionFormat,groupMentionRuns,mentionChipAttributes,createMentionChip} from "./dist/browser/mention.js";

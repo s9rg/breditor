@@ -7,6 +7,8 @@ export interface RichWritingToolsHost {
  subscribeWriting(listener:()=>void):()=>void;
  readWritingTools(revision?:string):RichWritingToolsRead;
  selectWritingHeading(read:RichWritingToolsRead,index:number,revision?:string):Promise<void>;
+ /** Optional chrome catalog (the editor's `uiLocale()`); custom ports that omit it keep the English defaults. */
+ uiLocale?():import("./ui_locale.js").RichUiLocale;
 }
 /** @internal Parsed metadata alone is not a source belonging to this borrowed host. */
 export class RichWritingReadRegistry {

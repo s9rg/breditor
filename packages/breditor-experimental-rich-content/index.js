@@ -301,3 +301,4 @@ class RichCoreEditor {
   dispose() { for(const results of [...this.#searches])results.dispose();this.#observation?.free(); this.#observation = undefined; this.#raw?.free(); this.#raw = undefined; }
 }
 export {resolveRichUi,defaultRichUi,richUiStringsEn,richChromeIsRtl} from "./dist/browser/ui_locale.js";
+export {richUiPanelStringsEn,richUiNoticeCodes} from "./dist/browser/ui_locale.js";

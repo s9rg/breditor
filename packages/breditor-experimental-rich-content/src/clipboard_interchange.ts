@@ -1,5 +1,6 @@
 /** Optional structural port only. Default editor imports never load a foreign parser. */
 import type {RichClipboardTextProjection,RichClipboardTransfer} from "./core.js";
+import {defaultRichUi,type RichUiLocale} from "./ui_locale.js";
 export interface RichInterchangeNotice {readonly code:string;readonly count:number;readonly effect:"loss"|"compatibility"}
 export type RichInterchangeResult<T>=Readonly<{ok:true;value:T;losses:readonly RichInterchangeNotice[]}>|Readonly<{ok:false;error:string;losses:readonly RichInterchangeNotice[]}>;
 export interface RichClipboardInterchange {
@@ -64,9 +65,17 @@ export function writeClipboard(data:DataTransfer,plain:string,rich:string,extra:
 export function clipboardInterchangeReport(operation:RichClipboardInterchangeReport["operation"],sourceRevision:string,formats:readonly RichInterchangeFormatReport[],destination?:RichClipboardTextProjection):RichClipboardInterchangeReport {
  return Object.freeze({format:"breditor/clipboard-interchange-report",formatVersion:1,operation,sourceRevision,formats,...(destination?{destination:Object.freeze({...destination,losses:Object.freeze([...destination.losses])})}:{})});
 }
-/** Plain text only, never imported markup. Empty notices leave the ordinary revision status intact. */
-export function clipboardInterchangeStatus(report:RichClipboardInterchangeReport):string|null {
- const messages=report.formats.filter(f=>f.losses.length).map(f=>`${f.kind}: ${f.losses.map(n=>`${n.code}${n.count>1?` ×${n.count}`:""}`).join(", ")}`);
- if(report.destination)messages.push(`text into ${report.destination.target}; formatting loss: ${report.destination.losses.join(", ")}`);
- return messages.length?`${report.operation==="paste"?"Pasted":report.operation==="cut"?"Cut":"Copied"} · ${messages.join("; ")}.`:null;
+/** Catalog values for a caption/code paste projection: the `{target}` and `{losses}` of `pasteLoss`. */
+export function clipboardProjectionText(projection:Pick<RichClipboardTextProjection,"target"|"losses">,ui:RichUiLocale=defaultRichUi):{target:string;losses:string}{
+ return {target:ui.text(projection.target==="caption"?"pasteTargetCaption":"pasteTargetCode"),losses:projection.losses.map(code=>ui.notice(code)).join(ui.text("panelListSeparator"))};
+}
+/**
+ * Plain text only, never imported markup. Empty notices leave the ordinary revision status intact. Loss codes are
+ * end-user text through the catalog's `notices` (the code itself by default); the report keeps the stable codes.
+ */
+export function clipboardInterchangeStatus(report:RichClipboardInterchangeReport,ui:RichUiLocale=defaultRichUi):string|null {
+ const list=ui.text("panelListSeparator"),notice=(n:RichInterchangeNotice)=>n.count>1?ui.text("clipboardNoticeCount",{notice:ui.notice(n.code),count:n.count}):ui.notice(n.code);
+ const messages=report.formats.filter(f=>f.losses.length).map(f=>ui.text("clipboardFormatLosses",{format:ui.text(f.kind==="html"?"clipboardFormatHtml":"clipboardFormatMarkdown"),losses:f.losses.map(notice).join(list)}));
+ if(report.destination)messages.push(ui.text("clipboardDestination",clipboardProjectionText(report.destination,ui)));
+ return messages.length?ui.text("clipboardStatus",{operation:ui.text(report.operation==="paste"?"clipboardPasted":report.operation==="cut"?"clipboardCut":"clipboardCopied"),messages:messages.join(ui.text("panelGroupSeparator"))}):null;
 }

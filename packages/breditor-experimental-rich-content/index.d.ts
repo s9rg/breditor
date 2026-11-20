@@ -50,3 +50,4 @@ export {createRichInlinePresentation,type RichInlinePresentation,type RichInline
 export {createStandardRichInlinePresentationV1,standardInlineKindsV1,standardInlinePropertiesV1,standardInlineStylesV1} from "./dist/browser/index.js";
 export {createStandardRichToolbarV1,type RichToolbarField,type RichToolbarReading} from "./dist/browser/index.js";
 export {resolveRichUi,defaultRichUi,richUiStringsEn,richChromeIsRtl,type RichUiOptions,type RichUiLocale,type RichUiStrings,type RichUiStringKey,type RichUiControlStrings,type RichUiFieldStrings,type RichUiSlashItemStrings,type RichUiDirection,type RichStandardSlashItemId} from "./dist/browser/ui_locale.js";
+export {richUiPanelStringsEn,richUiNoticeCodes,type RichUiPanelStrings,type RichUiNoticeCode} from "./dist/browser/ui_locale.js";
