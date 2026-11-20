@@ -51,7 +51,11 @@ test("Shift frees the corner and the edges change one axis",async({page})=>{
  const [width,height]=await imageSize(page);expect(width).toBeLessThan(340);expect(height).toBeGreaterThan(150);
  const image=await page.locator('figure[data-rich-image="image"] img').boundingBox();
  await page.mouse.move(image.x+image.width/2,image.y+image.height/2);
- const edge=page.locator("[data-image-resize-handle=block-end]"),box=await edge.boundingBox();
+ // Handles reposition asynchronously after a publication (ResizeObserver / next frame). Under load the
+ // bottom-edge handle can still sit at the old image bottom, so wait until it tracks the resized image.
+ const edge=page.locator("[data-image-resize-handle=block-end]");
+ await expect.poll(async()=>{const b=await edge.boundingBox();return b?Math.abs(b.y+b.height/2-(image.y+image.height)):Infinity;}).toBeLessThan(3);
+ const box=await edge.boundingBox();
  await page.mouse.move(box.x+box.width/2,box.y+box.height/2);await page.mouse.down();await page.mouse.move(box.x+box.width/2+80,box.y+box.height/2+30,{steps:4});await page.mouse.up();
  expect(await imageSize(page)).toEqual([width,height+30]);
 });
