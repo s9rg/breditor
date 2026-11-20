@@ -1,7 +1,7 @@
 /**
  * Opt-in AI rewrite and language-check tools over a local SDK editor (docs/AI_AND_LANGUAGE_TOOLS.md).
  * The host supplies the provider; this package makes no network calls and bundles no AI client.
- * Local editors only: shared sessions are not wired (see the contract document).
+ * Local editors here; shared sessions use `mountSharedAiTools` from the collaboration entry.
  */
 import {mountRichAiTools,mountRichLanguageCheck,richAiToolsHost,type RichAiTools,type RichAiToolsHost,type RichAiToolsOptions,type RichLanguageCheck,type RichLanguageCheckOptions} from "@breditor/experimental-rich-content";
 import {slashCommandHost,type SlashCommandEditor} from "./slash_commands.js";

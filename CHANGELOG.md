@@ -6,6 +6,26 @@ its durable formats and Wasm transport.
 
 ## Unreleased
 
+- Wire the opt-in AI rewrite and language-check tools to shared editors (audit
+  gap `ai-and-language-tools`): `sharedAiToolsHost`, `mountSharedAiTools` and
+  `mountSharedLanguageCheck` in `@breditor/collaboration`, `aiTools()` on the
+  SDK's `SharedEditorSession` / `SharedDocumentEditorSession`, and React
+  `BreditorSharedAiTools` / `BreditorSharedLanguageCheck`. Same provider
+  contract, scopes, bounds and cancellation as local editors; text is read from
+  the shared owner's admitted document JSON. Accept and each language suggestion
+  are one new `SharedDomEditor.replacePlainTextRange(...)` call: one guarded native
+  plain-text range replacement (`replace_plain_text`, or general range plain
+  input for general-v1 owners) with the current revision, one writer-local
+  history group never joined with typing; Undo leaves peers' edits intact. A
+  rewrite review is bound to its target region only (new host option
+  `aiStaleScope: "target"`; local editors keep whole-document binding), so peers
+  editing elsewhere never stale it, while a peer edit, format or insertion inside
+  the target does. Language issues in blocks a peer changed are dropped; others
+  stay. Formatted (Markdown/HTML) rewrite output is not offered for shared
+  editors. In shared rooms the provider may receive other participants' text;
+  hosts must obtain their consent. No new command, history family, saved setting
+  or Rust capability. See the "Shared editors" section of
+  docs/AI_AND_LANGUAGE_TOOLS.md.
 - Fix typing after a line break at the very end of a text block in rich local
   and shared editors. In Chromium and WebKit, Shift+Enter at the end of a
   paragraph or heading (or Enter at the end of an image or table caption)
@@ -53,8 +73,8 @@ its durable formats and Wasm transport.
   changed. Language issues are painted outside the editing DOM, reviewed from a
   keyboard list and applied one guarded replacement at a time; issues in changed
   blocks are dropped. New `ai*`/`lang*` UI catalog keys live in a separate block;
-  existing keys are unchanged. Shared editors are not wired yet. See
-  docs/AI_AND_LANGUAGE_TOOLS.md.
+  existing keys are unchanged. Shared editors: see the shared AI tools entry.
+  See docs/AI_AND_LANGUAGE_TOOLS.md.
 - Add table captions to the unreleased local-only candidate rich V4: a V4
   `breditor/table` admits, after its rows, at most one `breditor/paragraph`
   caption (rows keep their child indices; row/column/merge grammar is unchanged).

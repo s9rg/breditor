@@ -8,7 +8,7 @@ import {
 import {createStandardRichInlinePresentationV1} from "@breditor/experimental-rich-content";
 import type {RichSearchHost} from "@breditor/experimental-rich-content";
 import type {SharedSearchResults} from "@breditor/collaboration";
-import {supportsSharedSearchHistory,restoreSharedSearchEditor} from "@breditor/collaboration";
+import {supportsSharedSearchHistory,restoreSharedSearchEditor,sharedAiToolsHost} from "@breditor/collaboration";
 import {initializeSharedRuntime,standardSharedProfileConfiguration,structuralSharedProfileConfigurationV2,layoutSharedProfileConfigurationV3} from "./shared_profile.js";
 import {checkSharedRichLanguage} from "./shared_language.js";
 import {claimHost,awaitInitialization} from "./host.js";
@@ -70,6 +70,8 @@ export interface SharedEditorSession extends SharedEditorRecovery {
  fullscreen():import("@breditor/experimental-rich-content").RichFullscreenHost;
  /** Borrowed port for the opt-in selection toolbar and context menu; it never publishes. */
  contextUi():import("@breditor/experimental-rich-content").RichContextUiHost;
+ /** Borrowed port for the opt-in AI rewrite and language-check tools (`mountSharedAiTools`); it never publishes by itself. */
+ aiTools():import("@breditor/experimental-rich-content").RichAiToolsHost;
  setPlaceholderLabel(label:string|null):void;
  /** The validated chrome catalog from the `ui` option (English, direction-neutral by default). */
  uiLocale():import("@breditor/experimental-rich-content").RichUiLocale;
@@ -103,6 +105,7 @@ class SharedEditorSessionOwner implements SharedEditorSession {
  writing():import("@breditor/experimental-rich-content").RichWritingToolsHost{this.#active();return this.#dom;}
  fullscreen():import("@breditor/experimental-rich-content").RichFullscreenHost{this.#active();return this.#dom;}
  contextUi():import("@breditor/experimental-rich-content").RichContextUiHost{this.#active();return this.#dom;}
+ aiTools():import("@breditor/experimental-rich-content").RichAiToolsHost{this.#active();return sharedAiToolsHost(this.#dom);}
  setPlaceholderLabel(label:string|null):void{this.#active();this.#dom.setPlaceholderLabel(label);}
  uiLocale():import("@breditor/experimental-rich-content").RichUiLocale{this.#active();return this.#dom.uiLocale();}
  historyPolicy():"explicit"|"typing-v1"{return this.core.view().historyGrouping==="typing-v1"?"typing-v1":"explicit";}

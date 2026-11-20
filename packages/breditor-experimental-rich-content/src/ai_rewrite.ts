@@ -6,7 +6,7 @@
 import type {RichCommandOutcome} from "./core.js";
 import type {RichClipboardInterchange,RichInterchangeNotice} from "./clipboard_interchange.js";
 import {defaultRichUi,type RichUiLocale,type RichUiStringKey} from "./ui_locale.js";
-import {RICH_AI_MAX_BYTES,RICH_AI_MAX_INSTRUCTION,RICH_AI_MAX_TIMEOUT_MS,RichAiAbortError,RichAiScopeError,admitAiText,boundedOption,plainRecord,resolveAiTarget,runAiProvider,utf8Bytes,type RichAiSegment,type RichAiTarget,type RichAiToolsHost,type RichAiTransfer} from "./ai_tools_host.js";
+import {RICH_AI_MAX_BYTES,RICH_AI_MAX_INSTRUCTION,RICH_AI_MAX_TIMEOUT_MS,RichAiAbortError,RichAiScopeError,admitAiText,boundedOption,plainRecord,aiTargetKey,resolveAiTarget,runAiProvider,utf8Bytes,type RichAiSegment,type RichAiTarget,type RichAiToolsHost,type RichAiTransfer} from "./ai_tools_host.js";
 import {importAiSource} from "./ai_interchange.js";
 import {diffAiText,type RichAiDiffPart} from "./ai_diff.js";
 
@@ -77,10 +77,11 @@ class AiTools implements RichAiTools {
  readonly #review:HTMLDivElement;readonly #before:HTMLDivElement;readonly #after:HTMLDivElement;readonly #losses:HTMLUListElement;readonly #accept:HTMLButtonElement;readonly #reject:HTMLButtonElement;readonly #rerun:HTMLButtonElement;readonly #status:HTMLParagraphElement;
  #phase:RichAiPhase="idle";#disposed=false;#error:string|null=null;#message:string|null=null;#generation=0;#pending:AbortController|undefined;#scheduled=false;#keyboard=false;#panelRequest=false;
  #request:RichRewriteRequest|null=null;#provider:RichRewriteProvider|undefined;
- #target:RichAiTarget|undefined;#result:{review:RichAiReview;text?:string;transfer?:RichAiTransfer}|undefined;
+ #target:RichAiTarget|undefined;#targetKey:string|null=null;#result:{review:RichAiReview;text?:string;transfer?:RichAiTransfer}|undefined;
  constructor(root:HTMLElement,host:RichAiToolsHost,options:RichAiToolsOptions){
   if(hosts.has(root)||root===host.surface||root.contains(host.surface)||host.surface.contains(root)||root.ownerDocument!==host.surface.ownerDocument)throw Error("AI tools require an unused separate host outside the editing surface");
   const state=host.aiState();if(state.closed)throw Error("Use an open editor");
+  if(host.aiStaleScope!==undefined&&host.aiStaleScope!=="document"&&host.aiStaleScope!=="target")throw new TypeError("Expected aiStaleScope document or target");
   if(options.provider!==undefined&&typeof options.provider!=="function")throw new TypeError("Expected a provider function");
   if(options.interchange!==undefined&&(!options.interchange||typeof options.interchange.importHtml!=="function"||typeof options.interchange.importMarkdown!=="function"))throw new TypeError("Expected an explicit interchange adapter");
   if(options.label!==undefined&&(typeof options.label!=="string"||!options.label||options.label.length>256))throw new TypeError("Expected a bounded label");
@@ -136,12 +137,18 @@ class AiTools implements RichAiTools {
  /** A changed document invalidates a displayed review; selection-only publications do not. */
  #published():void{
   if(this.#disposed)return;
-  if(this.#phase==="review"&&this.#target){let changed=true;try{const s=this.#host.aiState();changed=s.closed||this.#host.aiView().documentJson!==this.#target.documentJson;}catch{changed=true;}
+  if(this.#phase==="review"&&this.#target){let changed=true;try{const s=this.#host.aiState();changed=s.closed||!this.#holds(this.#host.aiView().documentJson);}catch{changed=true;}
    if(changed){this.#markStale();return;}}
   this.#render();
  }
+ /** The review binding: the whole document (default) or, for `aiStaleScope:"target"`, only the target region. */
+ #holds(documentJson:string):boolean{
+  const target=this.#target;if(!target)return false;
+  if(this.#host.aiStaleScope!=="target")return documentJson===target.documentJson;
+  return documentJson===target.documentJson||this.#targetKey!==null&&aiTargetKey(documentJson,target.segments)===this.#targetKey;
+ }
  #markStale():void{this.#phase="stale";this.#error=this.#ui.text("aiStale");this.#message=null;this.#render();try{this.#options.onStale?.();}catch(error){this.#report(error);}}
- #clear():void{this.#target=undefined;this.#result=undefined;}
+ #clear():void{this.#target=undefined;this.#targetKey=null;this.#result=undefined;}
  async requestRewrite(request:RichRewriteRequest,provider:RichRewriteProvider|undefined=this.#provider):Promise<RichAiReview|null>{
   const fromPanel=this.#panelRequest;this.#panelRequest=false;
   this.#live();
@@ -161,7 +168,7 @@ class AiTools implements RichAiTools {
   // Focus follows the request only when it was started from this panel (never stolen from the editor).
   // (WebKit does not focus clicked buttons, so a request from this panel's own controls also counts.)
   this.#keyboard=fromPanel||this.#element.contains(this.#root.ownerDocument.activeElement);
-  this.#target=target;this.#phase="pending";this.#render();
+  this.#target=target;this.#targetKey=this.#host.aiStaleScope==="target"?aiTargetKey(target.documentJson,target.segments):null;this.#phase="pending";this.#render();
   const realm=this.#window as unknown as {AbortController:typeof AbortController},controller=new realm.AbortController();this.#pending=controller;
   const live=()=>!this.#disposed&&this.#generation===generation;
   let output:unknown;
@@ -197,7 +204,7 @@ class AiTools implements RichAiTools {
   const active=this.#root.ownerDocument.activeElement,focusInside=this.#keyboard&&(!active||active===this.#root.ownerDocument.body||this.#element.contains(active));
   this.#render();
   // A document change while the provider ran makes the review stale before it can be accepted.
-  if(this.#host.aiView().documentJson!==target.documentJson)this.#markStale();
+  if(!this.#holds(this.#host.aiView().documentJson))this.#markStale();
   else if(focusInside)this.#review.focus({preventScroll:true});
   return review;
  }
@@ -210,7 +217,7 @@ class AiTools implements RichAiTools {
   if(state.busy||state.composing){const error=Error(this.#ui.text("aiBusy"));this.#error=error.message;this.#render();this.#report(error);throw error;}
   if(state.readOnly){const error=Error(this.#ui.text("aiReadOnly"));this.#error=error.message;this.#render();this.#report(error);throw error;}
   const view=this.#host.aiView();
-  if(view.documentJson!==target.documentJson){this.#markStale();const error=Error(this.#ui.text("aiStale"));this.#report(error);throw error;}
+  if(!this.#holds(view.documentJson)){this.#markStale();const error=Error(this.#ui.text("aiStale"));this.#report(error);throw error;}
   if(result.review.unchanged){this.#clear();this.#phase="applied";this.#error=null;this.#message=this.#ui.text("aiNoChange");this.#render();return "unchanged";}
   let outcome:RichCommandOutcome|"queued";
   // The document content is the snapshot's; the guard is the exact current publication (selection may have moved).

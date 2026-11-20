@@ -372,6 +372,25 @@ may be replaced without exiting; await the separately owned controller's
 `dispose()` before replacing its target/editor. Failed native cleanup retains a
 retryable retirement handle and never exits a foreign session. See [the contract](../../docs/RICH_WRITING_TOOLS.md#native-fullscreen).
 
+## AI rewrite and language check
+
+`mountSharedAiTools(asideHost, domController, {provider})` and
+`mountSharedLanguageCheck(asideHost, domController, {provider})` (or
+`sharedAiToolsHost(domController)` for the structural port) mount the same
+opt-in, provider-agnostic panels as local editors. Nothing leaves the page unless
+the host provider sends it; only the explicit scope is sent, as plain text read
+from the admitted document JSON. Accept, and each applied language suggestion, is
+one `SharedDomEditor.replacePlainTextRange(...)` call: one guarded native
+plain-text range replacement (`replace_plain_text`, or general range plain input
+for general-v1 owners) with the current revision, one writer-local history group
+that Undo removes without touching peers' edits. A rewrite review is bound only
+to its target region, so peers editing elsewhere never stale it; a peer edit in
+the target does. Language issues in blocks a peer changed are dropped. Formatted
+(`markdown`/`html`) rewrite output is not offered for shared editors. In a shared
+room the provider may receive text other participants wrote: hosts must obtain
+their consent before enabling a third-party provider. See
+[the contract](../../docs/AI_AND_LANGUAGE_TOOLS.md#shared-editors).
+
 ## Chrome localization
 
 `mountSharedEditor` / `mountSharedDocumentEditor` accept the same opt-in `ui`

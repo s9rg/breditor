@@ -227,7 +227,7 @@ See [the slash-command contract](../../docs/SLASH_COMMANDS.md).
 
 ## AI rewrite and language check
 
-Both tools are opt-in, local-only and provider-agnostic: you pass the provider
+Both tools are opt-in and provider-agnostic: you pass the provider
 function, and the package makes no network calls of its own.
 
 ```js
@@ -251,6 +251,13 @@ const check = mountLanguageCheck(otherHost, editor, {
   applied one at a time from a keyboard list.
 - **React.** `BreditorAiTools` and `BreditorLanguageCheck` from
   `@breditor/editor/react`.
+- **Shared sessions.** `mountSharedAiTools(asideHost, session, options)` and
+  `mountSharedLanguageCheck(...)` from `@breditor/editor/collaboration` take a
+  `SharedEditorSession` or `SharedDocumentEditorSession` (its `aiTools()` port);
+  React: `BreditorSharedAiTools` and `BreditorSharedLanguageCheck` from
+  `@breditor/editor/collaboration/react`. Plain-text output only; a review stays
+  valid while peers edit elsewhere and goes stale when its target changes. The
+  provider may see other participants' text, so get their consent first.
 
 See [the AI and language tool contract](../../docs/AI_AND_LANGUAGE_TOOLS.md).
 
