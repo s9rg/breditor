@@ -56,7 +56,11 @@ table captions (one trailing `breditor/paragraph` after a table's rows), emitted
 `<caption data-rich-table-caption="…" style="caption-side:bottom">` so it is laid out after the rows
 (a hidden table still renders nothing), and candidate V4 page breaks (`breditor/page-break`, document root
 only, no children), emitted as `<div data-rich-page-break class="breditor-page-break" role="separator"
-aria-label="Page break" style="break-after:page;page-break-after:always">` (label option `pageBreakLabel`).
+aria-label="Page break" style="break-after:page;page-break-after:always">` (label option `pageBreakLabel`),
+and candidate V4 bookmarks (`breditor/bookmark` on paragraphs, headings and code blocks; valid and unique
+per document, else a `property` error), emitted as `id="bm-<name>" data-rich-bookmark="<name>"`, with
+same-window `#name` links emitted as `href="#bm-<name>" data-rich-internal-link="<name>"` or, when no block
+carries the name, without `href` and with `data-rich-link-broken`.
 The opt-in `print` option (`true` or bounded `{size, orientation, margin}`) starts the wrapper with
 `<style data-breditor-print>` holding `richPrintStyles` and emits a table's leading header group in
 `<thead>` so paged media repeats it; without it the output is unchanged (see

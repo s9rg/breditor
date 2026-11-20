@@ -207,6 +207,16 @@ trip); Markdown falls back to it with `markdown-feature`. Other owners keep the
 original conversion (`unsupported-style`, a line break, `removed-content`). See
 [PAGINATION_AND_PRINT.md](PAGINATION_AND_PRINT.md).
 
+V4 owners also report `supportsBookmarks()`. For them an `id` on `<p>`, `<h1>`–`<h6>`
+or `<pre>`, or an `<a name>`/`<a id>` inside one, becomes the block's bookmark and
+`href="#name"` an internal link (a `bm-` prefix is removed on both sides); invalid,
+duplicate and extra anchors report `unsupported-attribute`. Export writes
+`id="bm-<name>"` and `<a href="#bm-<name>">` (exact round trip); Markdown falls back
+to that HTML with `markdown-feature`; DOCX writes `w:bookmarkStart`/`w:bookmarkEnd` and
+`w:hyperlink w:anchor`. Other owners keep the original conversion (ids dropped,
+`<a name>` → `unsupported-attribute`, `href="#…"` → `unsafe-link`). See
+[RICH_LANGUAGE_V4.md](RICH_LANGUAGE_V4.md#slice-8-bookmarks-and-internal-links-audit-gap-document-utilities).
+
 Remaining gaps: real captured clipboard dumps per producer/platform/version,
 Word for the web non-decimal formats (reported, rendered as decimal), CSS
 `font` shorthand, Excel/Sheets hidden rows and columns (still rejected), cell
