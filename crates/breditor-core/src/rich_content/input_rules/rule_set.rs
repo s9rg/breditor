@@ -44,9 +44,11 @@ impl RichInputRuleSet {
     /// Recognition fast path for one complete plain-input event under this set.
     ///
     /// Autolink triggers only on one ASCII space; Enter uses its separate split call.
+    /// Markdown additionally treats one retained line feed (`"\n"`, a code-block Enter
+    /// routed through the exclusive call) as its conventional code-exit trigger.
     #[must_use]
     pub fn is_trigger(self, input: &str) -> bool {
-        self.markdown && super::is_rich_markdown_input_rule_trigger(input)
+        self.markdown && (super::is_rich_markdown_input_rule_trigger(input) || input == "\n")
             || self.autolink && input == " "
     }
 }

@@ -166,6 +166,8 @@ export class SharedDomEditor<P extends SharedSelectionPolicy="original"> {
   let outcome:RichInputRuleOutcome|undefined;
   this.#perform(c=>{outcome=publishMarkdownInput(c.core,inputRule,c.revision);},true,source.revision,false,()=>{if(outcome==="refused")this.#inputRuleRefused();});
  }
+ /** `markdown-v1` code Enter: only a collapsed code caret takes the exclusive call; Rust decides the exit. */
+ #codeEnter(c:ActionContext<P>):boolean{const s=c.model.view.selection;return !!this.#inputRuleIds?.includes("markdown-v1")&&!this.#logical&&s?.kind==="text"&&s.anchor.block===s.focus.block&&s.anchor.offset===s.focus.offset&&c.model.nodes.get(s.focus.block)?.type==="breditor/code-block";}
  #inputRuleRefused():void{if(this.#disposed)return;this.status.textContent=this.#ui.text("inputRuleRefused");try{this.#options.onInputRuleRefused?.();}catch(error){this.#report(error);}}
  #perform(run:(context:ActionContext<P>)=>void,focus=true,revision=this.#model.view.revision,boundary=false,accepted?:((display:boolean)=>void),completion?:RichSearchCompletion):void{
   this.#live();if((this.#searchEvents.notifying||this.#writingEvents.notifying))throw Error("Read notifications cannot publish reentrantly");if(this.#queue.length>=128)throw Error("Shared editor command queue is full");this.#queue.push({run,focus,revision,boundary,accepted,completion});if(this.#busy||this.#composition)return;
@@ -315,6 +317,7 @@ export class SharedDomEditor<P extends SharedSelectionPolicy="original"> {
     if((kind==="insertText"||kind==="insertReplacementText")&&event.data)this.#replaceDocumentInput(c,event.data,kind==="insertText");return;
    }
    if((kind==="insertParagraph"||kind==="insertLineBreak")&&isStructuralRichLanguage(c.core.richLanguageVersion())&&c.core.supportsFlowNavigation()&&selectedFlowAtom(c.model)){c.core.insertParagraphAdjacent(c.allocate("p"),kind==="insertLineBreak"?"before":"after",c.revision);return;}
+   if(kind==="insertParagraph"&&this.#codeEnter(c)){paragraph=publishMarkdownInput(c.core,{text:"\n",namespace:this.#allocate("rule"),...(needsInputRuleSets(this.#inputRuleIds)?{rules:this.#inputRuleIds!}:{})},c.revision);return;}
    if(kind==="insertParagraph"){const range=event.getTargetRanges?.()[0],target=c.model.view.rangeEditing==="general-v1"&&range?readTarget(this.surface,range):null;paragraph=enter(c,target&&target.anchor.block!==target.focus.block?target:undefined,!!this.#inputRuleIds?.includes("autolink-v1")&&!this.#logical);return;}
    if(isStructuralRichLanguage(c.core.richLanguageVersion())&&c.core.supportsAtomEditing()&&selectedFlowAtom(c.model)){
     if(kind.startsWith("delete")){c.core.deleteAtom(c.allocate("p"),kind.includes("Backward")?"before":"after",c.revision);return;}

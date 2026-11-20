@@ -203,6 +203,20 @@ export class RichDomEditor<P extends RichSelectionPolicy="original"> {
   this.#queue.push({paragraph:{right:command.data.right,newItem:command.data.newItem},revision:this.#model.view.revision,focus:true});this.#drain();
   return true;
  }
+ /**
+  * `markdown-v1` code Enter: a collapsed code caret retains one line feed through the exclusive
+  * native call, which alone decides the conventional exit. Shift+Enter and ranges stay ordinary.
+  */
+ #codeEnter(command:RichCommand,target:Extract<RichSelection,{kind:"text"}>|null):boolean {
+  if(!this.#inputRuleIds?.includes("markdown-v1")||command.kind!=="insertHardBreak"||this.#logicalSelection)return false;
+  const selection=this.#model.view.selection;
+  if(selection?.kind!=="text"||selection.anchor.block!==selection.focus.block||selection.anchor.offset!==selection.focus.offset||this.#model.nodes.get(selection.focus.block)?.type!=="breditor/code-block"||target&&!isCurrentCaretTarget(selection,target))return false;
+  this.#live();if((this.#searchEvents.notifying||this.#writingEvents.notifying))throw Error("Read notifications cannot publish reentrantly");
+  if(this.#queue.length>=128)throw Error("Rich editor command queue is full");
+  const inputRule=Object.freeze({text:"\n",namespace:this.#allocate("rule"),...(needsInputRuleSets(this.#inputRuleIds)?{rules:this.#inputRuleIds}:{})});
+  this.#queue.push({inputRule,revision:this.#model.view.revision,focus:true});this.#drain();
+  return true;
+ }
  #inputRuleRefused():void {
   if(this.#disposed)return;this.status.textContent=this.#ui.text("inputRuleRefused");
   try{this.#options.onInputRuleRefused?.();}catch(error){this.#report(error);}
@@ -454,7 +468,7 @@ export class RichDomEditor<P extends RichSelectionPolicy="original"> {
     return;
    }
    if((type==="insertParagraph"||type==="insertLineBreak")&&isStructuralRichLanguage(this.#options.core.richLanguageVersion?.())&&this.#options.core.supportsFlowNavigation?.()===true&&selectedFlowAtom(this.#model)){this.execute({kind:"insertParagraphAdjacent",data:{paragraph:this.#context().allocate("p"),side:type==="insertLineBreak"?"before":"after"}});return;}
-   if(type==="insertParagraph"){const range=event.getTargetRanges?.()[0],target=this.#general&&range?readTarget(this.surface,range):null;const command=enter(this.#context(),this.#general,target&&target.anchor.block!==target.focus.block?target:undefined);if(command&&!this.#autolinkParagraph(command,target))this.execute(command);return;}
+   if(type==="insertParagraph"){const range=event.getTargetRanges?.()[0],target=this.#general&&range?readTarget(this.surface,range):null;const command=enter(this.#context(),this.#general,target&&target.anchor.block!==target.focus.block?target:undefined);if(command&&!this.#autolinkParagraph(command,target)&&!this.#codeEnter(command,target))this.execute(command);return;}
    const selection=this.#model.view.selection;
    if(isStructuralRichLanguage(this.#options.core.richLanguageVersion?.())&&this.#options.core.supportsAtomEditing?.()===true&&selectedFlowAtom(this.#model)){
     if(type.startsWith("delete")){this.execute({kind:"deleteAtom",data:{paragraph:this.#allocate("p"),movement:type.includes("Backward")?"before":"after"}});return;}
