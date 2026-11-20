@@ -6,6 +6,26 @@ its durable formats and Wasm transport.
 
 ## Unreleased
 
+- Test infrastructure: shared-editor browser qualification builds again. The
+  research feasibility crate (`experiments/collaboration`, which compiles the
+  canonical collaboration sources with `research`) failed for wasm32 and natively
+  because the research-only `RichReplicaProbe.join_frame` constructor lacked the
+  owner's newer `initial_read_only`, `review` and `search_reads` fields; it now uses
+  the same `from_replica` initialization as every other constructor (open one-shot
+  read-only initialization, no review session, a fresh search-read lease). Seven
+  newer canonical conformance files (autolink/list input rules, shared slash
+  batches, trigger composites, AI rewrite, native branch union, writer clocks)
+  gained their research-manifest shims, as `scripts/collaboration-promotion.test.mjs`
+  requires; they pass there too. The
+  shared-browser Playwright config splits WebKit into `webkit-1`…`webkit-N`
+  projects like the rich-browser suite (the per-file matrix selects them with
+  `--project='webkit*'`; whole-run cap 45 minutes, per-test deadline unchanged).
+  New two-writer shared specs cover slash commands, AI rewrite review and
+  `markdown-v1` list/code-block input rules. The `/demo` spec now clicks the
+  editor toolbar's Undo/Redo explicitly: since the demo mounted the selection
+  toolbar and context menu, `#a [data-shared-action="undo"]` matched two buttons
+  (a test selector defect, not an editor change). Build steps are in
+  `experiments/collaboration/README.md`.
 - Test infrastructure: the rich-browser Playwright suite now runs WebKit as
   `webkit-1`…`webkit-N` projects (one per five spec files, round-robin). Playwright's
   macOS WebKit stops opening pages after about 63 test contexts in one browser
