@@ -39,6 +39,7 @@ import {nativeRecoveryFrame,nativeRecoverySource} from './native_recovery/input.
 import{nativeBranchAuthorizations}from'./native_recovery/branch_authorizations.js';
 import{reviewCounterInput}from'./review_counter_input.js';
 import type{SharedNativeBranchUnionAuthorization,SharedNativeBranchUnionOutcome}from'./native_branch_union_types.js';
+import {sharedListNumberingCommands,encodeSharedSetBookmark,encodeSharedRenameBookmark,parseSharedBookmarkIndex,type SharedListNumberingIntent,type SharedSetBookmarkIntent,type SharedRenameBookmarkIntent,type SharedBookmarkIndex} from './v4_block_fields.js';
 export {SharedEditorError} from './shared_editor_error.js';
 const actualNativeReservations=new WeakMap<object,(members:readonly unknown[])=>void>();
 /** SDK-private exact whole-cohort check. A copied interface or replaced public
@@ -619,6 +620,17 @@ export class SharedRichEditor<P extends SharedSelectionPolicy="original"> {
  supportsSelectionFormatting():boolean{const raw=this.#live();return typeof raw.selection_formatting_version==="function"&&raw.selection_formatting_version()==="1"&&typeof raw.selection_coverage_json==="function"&&typeof raw.selection_format_state_json==="function"&&typeof raw.change_selection_formats==="function";}
  /** Exact frozen V4 capability: model 14 plus every slice version "1" on the Rust owner. */
  supportsRichLanguageV4():boolean{const raw=this.#live();return this.richLanguageVersion()===4&&typeof raw.rich_language_version==="function"&&raw.rich_language_version()==="4"&&sharedV4SliceMethods.every(name=>typeof raw[name]==="function"&&raw[name]!()==="1");}
+ /** Shared V4 block-field commands (list numbering, bookmarks with link-preserving rename, section open state). */
+ #supportsV4BlockFields():boolean{const raw=this.#live();return this.supportsRichLanguageV4()&&raw.v4_block_fields_version?.()==="1"&&typeof raw.set_details_open==="function"&&typeof raw.bookmark_index_json==="function";}
+ supportsListNumbering():boolean{return this.#supportsV4BlockFields();}
+ supportsBookmarks():boolean{return this.#supportsV4BlockFields();}
+ supportsDetails():boolean{return this.#supportsV4BlockFields();}
+ #requireV4BlockFields():void{if(!this.#supportsV4BlockFields())throw new SharedEditorError("language_unavailable","Use a matching native shared V4 owner with block-field commands");}
+ setListNumbering(intent:SharedListNumberingIntent,revision?:string):boolean{this.#requireV4BlockFields();return this.dispatch({commands:sharedListNumberingCommands(intent)},revision);}
+ setBookmark(intent:SharedSetBookmarkIntent,revision?:string):boolean{this.#requireV4BlockFields();return this.dispatch({commands:[encodeSharedSetBookmark(intent)]},revision);}
+ renameBookmark(intent:SharedRenameBookmarkIntent,revision?:string):boolean{this.#requireV4BlockFields();return this.dispatch({commands:[encodeSharedRenameBookmark(intent)]},revision);}
+ setDetailsOpen(block:string,open:boolean,revision?:string):boolean{if(typeof block!=="string"||typeof open!=="boolean")throw new TypeError("Section open intent needs a block string and a Boolean");return this.#run("local",(raw,o)=>{this.#requireV4BlockFields();return raw.set_details_open!(o,block,open);},revision);}
+ bookmarkIndex():SharedBookmarkIndex{this.#requireV4BlockFields();return parseSharedBookmarkIndex(this.#live().bookmark_index_json!(this.#observation));}
  supportsBlockLayout():boolean{const raw=this.#live();const language=this.richLanguageVersion();return (language===3||language===4)&&typeof raw.block_layout_version==="function"&&raw.block_layout_version()==="1"&&typeof raw.block_layout_state_json==="function"&&typeof raw.change_selection_layout==="function";}
  blockLayoutState():import("@breditor/experimental-rich-content").RichBlockLayoutStateRead{if(!this.supportsBlockLayout())throw new SharedEditorError("layout_unavailable","Use an explicitly selected matching native layout V3 owner");const raw=this.#live();return JSON.parse(this.#selectionPolicy==="document-v1"&&this.supportsDocumentTools()?raw.document_block_layout_state_json!(this.#observation):raw.block_layout_state_json!(this.#observation)) as import("@breditor/experimental-rich-content").RichBlockLayoutStateRead;}
  changeSelectionLayout(patch:import("@breditor/experimental-rich-content").RichBlockLayoutPatch,revision?:string):boolean{return this.#run("local",(raw,o)=>{if(!this.supportsBlockLayout())throw new SharedEditorError("layout_unavailable","Use matching native layout V3 commands and reads");const input=encodeBlockLayoutPatch(patch);return this.#selectionPolicy==="document-v1"&&this.supportsDocumentTools()?raw.change_document_selection_layout!(o,input):raw.change_selection_layout!(o,input);},revision);}

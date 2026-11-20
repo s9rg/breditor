@@ -465,6 +465,16 @@ impl<'a> ReadSet<'a> {
                 self.property(&value.block, "breditor/image-href")?;
                 self.property(&value.block, "breditor/image-link-new-window")?;
             }
+            Command::SetListNumbering(value) => {
+                self.property(&value.list, "breditor/list-style")?;
+                self.property(&value.list, "breditor/list-reversed")?;
+            }
+            Command::SetBookmark(value) => self.property(&value.block, "breditor/bookmark")?,
+            // A rename reads every bookmark and every internal link of the document.
+            Command::RenameBookmark(_) => self.add(SuggestionConflictTarget::Document)?,
+            Command::SetDetailsOpen(value) => {
+                self.property(&value.block, "breditor/details-open")?;
+            }
         }
         Ok(())
     }

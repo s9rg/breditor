@@ -19,6 +19,10 @@ also still open (see [Remaining work](#remaining-work)). The inline slice comman
 (text language, mentions with the `@` menu, image links) have since landed; see
 [Shared inline commands](#shared-inline-commands-text-language-mentions-image-links).
 
+**Block fields (same day).** List numbering, bookmarks with internal links and
+section open state now have shared commands and toolbar controls; see
+[Block-field commands](#block-field-commands-list-numbering-bookmarks-sections).
+
 ## Selector
 
 Shared V4 follows the V2/V3 precedent exactly: an explicit selector, its own
@@ -176,6 +180,57 @@ published. Code lives in `rich_replica/v4_inline.rs` (owner entry points),
   owners, `"0"` otherwise); the facade's `supportsInlineCommandsV4()` requires it
   and all three methods on a complete V4 owner.
 
+## Block-field commands (list numbering, bookmarks, sections)
+
+Three V4 slices now have shared commands with the local V4 semantics
+([RICH_LANGUAGE_V4.md](RICH_LANGUAGE_V4.md) slices 1, 4 and 8). Every command first
+captures and admits the frozen native action on the request basis (so it has the
+exact local errors and no-ops), then writes only its own owned field and compares the
+published projection with the native result. One command, or one rename, is one
+writer-local history group.
+
+| Command (`dispatch`) | Fields written | Semantics |
+| --- | --- | --- |
+| `set_list_numbering {list, style, reversed}` | `property:breditor/list-style`, `property:breditor/list-reversed` (only the changed ones) | `style` is `"keep"`, `"clear"` or `{"set": token}` (`decimal`, `lower-alpha`, `upper-alpha`, `lower-roman`, `upper-roman`); `reversed` is `true`, `false` (removes) or an explicit `null` (keep). An all-keep intent, a non-ordered target and unknown tokens are refused. The start is the list's existing paired kind/start field: `SharedRichEditor.setListNumbering({list, style?, reversed?, start?})` sends `set_list_kind` first in the same group, so a reversal and its start are one Undo step. |
+| `set_bookmark {block, name}` | `property:breditor/bookmark` | Set, replace or clear (`null`) the bookmark of a paragraph, heading or code block (including derived fallback paragraphs, which are activated first). Links are never rewritten. A name another block holds is refused locally with `shared bookmark name is already used in this document`. |
+| `rename_bookmark {from, to}` | the holder's bookmark field plus one link annotation per maximal `#from` link run | Moves the anchor and retargets every same-window `#from` link in every text block (paragraphs, headings, summaries, captions, cells) as one group with one stamp. Absent `from` (`shared bookmark does not exist`) or taken `to` are refused; `from == to` publishes nothing. |
+| `set_details_open {block, open}` | `property:breditor/details-open` | Expanded is `true`, collapsed is absence. The owner call `set_details_open` (TS `setDetailsOpen`) also moves a selection with an endpoint, node or grid in the hidden body to a caret at the summary end in the same publication (and clears pending formats), exactly like the local session. |
+
+Wasm adds `v4_block_fields_version()` (`"1"` on V4 owners, `"0"` otherwise),
+`set_details_open(observation, block, open)` and `bookmark_index_json(observation)`
+(the local `{bookmarks, links, brokenLinks}` inventory). TypeScript adds
+`supportsListNumbering()`, `supportsBookmarks()`, `supportsDetails()`,
+`setListNumbering()`, `setBookmark()`, `renameBookmark()`, `setDetailsOpen()` and
+`bookmarkIndex()`; `createRichSharedToolbarV4` appends **List numbering**,
+**Bookmark** (sets, or renames an existing bookmark so links follow), **Remove
+bookmark**, **Link to bookmark** (selection formatting with the literal
+`{href:"#name", new-window:false}`) and **Expand/Collapse section**. The shared
+surface renders bookmarks (`id="bm-<name>"`) and internal links like the local V4
+controller, and keeps summaries and internal links inert while editing (a
+browser-initiated `<details>` toggle reverts to document state).
+
+**Conflicts.** Disjoint fields merge (another writer's reversal survives a style
+change). The same field resolves by the register order (highest causal stamp wins),
+and selective Undo removes only its writer's contribution. Concurrent equal bookmark
+names are both admitted locally and the existing document-order repair keeps the
+first; once merged, a local set of the same name is refused. Two concurrent renames
+write the anchor and every link with one stamp each, so the field and the links
+follow the same winner. A link created concurrently with a rename (or to a removed
+bookmark) is not seen by the rename and dangles, exactly as a local rename leaves
+later links alone; the index and the renderer report it as broken.
+
+**Seeded list start.** A list loaded with a start keeps it in its own seeded
+`property:breditor/start` field, which projects after `list-kind` (fields still apply
+in field-name order). A kind/start change now also writes that field, with the same
+stamp, so the newest choice wins in both and a start change on a seeded list is no
+longer refused. Field projection order is unchanged, so no existing history projects
+differently.
+
+**Split lists.** A fresh list created by a structural command (an outdent or exit
+that splits an ordered list) writes its `list-style` and `list-reversed` fields from
+the native result, so the tail keeps the source list's style and counting order, as
+the local V4 owner does. These fields are prepared with the reserved list.
+
 ## Tests
 
 - `crates/breditor-collaboration/tests/shared_v4_contracts.rs` (also compiled by the
@@ -207,6 +262,16 @@ published. Code lives in `rich_replica/v4_inline.rs` (owner entry points),
   every slice, durable admission, catch-up, restart, duplicate receipts and
   descriptors; wrong-revision creation and cross-version writer groups (V3 into
   V4, V4 into V3) refused without touching the log.
+- `crates/breditor-collaboration/tests/shared_v4_block_fields.rs` (research shim
+  `experiments/collaboration/tests/shared_v4_block_fields.rs`): wire shapes; list
+  numbering with disjoint and same-field concurrency over three peers, per-writer
+  Undo/Redo, a start change in the same group and kind round trips; bookmark set,
+  replace, clear, split and duplicate refusal; concurrent equal names; rename of links
+  in paragraphs, summaries, captions and cells in one Undo step; concurrent renames,
+  rename versus removal and new links; section open state with the collapse selection
+  rule; V3 refusal; exact checkpoint replay of every writer.
+- `packages/breditor-editor/tests/shared_v4_block_fields.test.ts` and
+  `experiments/shared-browser/v4-block-fields.spec.mjs` (two real Wasm writers).
 - `packages/breditor-editor/tests`: explicit V4 selection for `openSharedEditor`
   and `openSharedDocumentEditor`, unknown languages refused, durable records
   accepting language 4 and refusing 5.
@@ -214,11 +279,13 @@ published. Code lives in `rich_replica/v4_inline.rs` (owner entry points),
 ## Remaining work
 
 - Per-slice shared commands, their Wasm/TS commands and toolbar controls for the
-  remaining slices (list numbering, sections, table captions, page breaks,
-  bookmarks); the inline slices (text language, mentions, image links) are done
-  (see above). Shared interchange that reports V4 capabilities (until then shared
+  structural slices: wrap/unwrap of sections, table captions and page breaks. The
+  inline slices (text language, mentions, image links) and the block-field slices
+  (list numbering, bookmarks/internal links, section open state) are done (see
+  above). Shared interchange that reports V4 capabilities (until then shared
   imports keep the V1–V3 conversions).
-- Shared-browser (Playwright) qualification of the remaining V4 slices; the inline
-  slices are covered by `v4-inline.spec.mjs` in all three engines.
+- Shared-browser (Playwright) qualification of the structural V4 slices;
+  `v4-inline.spec.mjs` and `v4-block-fields.spec.mjs` cover the others in all
+  three engines.
 - A second concurrent caption is currently hidden by the projection; a later
   round may instead suspend the losing move in the placement resolver.

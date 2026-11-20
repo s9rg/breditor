@@ -22,6 +22,26 @@ its durable formats and Wasm transport.
   **Remove image link** in `createRichSharedToolbarV4` (`sharedInlineControlsV4`).
   Linking a decorative image is refused with a clear error. See
   [docs/SHARED_RICH_V4.md](docs/SHARED_RICH_V4.md#shared-inline-commands-text-language-mentions-image-links).
+- Add **shared V4 block-field commands** (list numbering, bookmarks with internal
+  links, section open state) for shared rich language V4 rooms. New shared commands
+  `set_list_numbering` (owned fields `list-style` and `list-reversed`; a start change
+  rides along as `set_list_kind` in the same group), `set_bookmark`, `rename_bookmark`
+  (moves the anchor and retargets every same-window `#name` link in one group) and
+  `set_details_open`; a guarded `set_details_open` owner call that moves a selection
+  out of a collapsed body; and the `bookmark_index_json` read (Wasm capability
+  `v4_block_fields_version()` `"1"`). Each is one Undo step with the local V4
+  semantics: duplicate bookmark names are refused locally with a clear error, and
+  concurrent same-field edits resolve by the existing register order. TypeScript:
+  `SharedRichEditor.supportsListNumbering()`, `supportsBookmarks()`,
+  `supportsDetails()`, `setListNumbering()`, `setBookmark()`, `renameBookmark()`,
+  `setDetailsOpen()` and `bookmarkIndex()`; `createRichSharedToolbarV4` adds **List
+  numbering**, **Bookmark**, **Remove bookmark**, **Link to bookmark** and
+  **Expand/Collapse section**. The shared surface now renders bookmarks and internal
+  links for V4 owners and keeps sections and internal links inert while editing.
+  A `set_list_kind` start change on a seeded ordered list now also rewrites the seeded
+  start field, so it is no longer refused, and splitting a styled or reversed shared
+  ordered list keeps the style and counting order on the new tail list (both were
+  previously refused).
 - Add explicit **shared rich language V4** (foundation). A shared room can now
   hold, replicate, persist and replay documents using any of the eight frozen V4
   slices with exact convergence. Selection follows the V2/V3 precedent: shared

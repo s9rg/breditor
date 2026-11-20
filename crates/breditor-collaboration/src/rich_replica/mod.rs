@@ -128,6 +128,7 @@ mod typing_history;
 mod ui_state;
 mod update_frame;
 mod v4_inline;
+mod v4_block_fields;
 mod v4_projection;
 mod verify_retained_branch;
 mod view;

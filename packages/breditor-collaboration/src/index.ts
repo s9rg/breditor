@@ -142,6 +142,7 @@ export {createSelectionSharedToolbarV1} from "./selection_toolbar.js";
 export {createStructuralSharedToolbarV2} from "./structural_controls_v2.js";
 export {createLayoutSharedToolbarV3} from "./layout_toolbar_v3.js";
 export {createRichSharedToolbarV4} from "./rich_toolbar_v4.js";
+export {sharedV4BlockFieldControls,sharedListNumberingCommands,encodeSharedSetBookmark,encodeSharedRenameBookmark,parseSharedBookmarkIndex,sharedSelectedOrderedList,sharedBookmarkTarget,sharedSelectedDetails,type SharedListNumberingIntent,type SharedSetBookmarkIntent,type SharedRenameBookmarkIntent,type SharedBookmarkIndex,type SharedListNumberStyle} from "./v4_block_fields.js";
 export {isSharedRichLanguage,sharedModelVersion,sharedJournalVersion,sharedV4SliceVersions,type SharedRichLanguage,type SharedV4SliceVersion} from "./protocol.js";
 export {createSharedFlowNavigationControls} from "./flow_controls.js";
 export {paragraph,imageNode,caret,type SharedToolbarControl,type ActionContext} from "./actions.js";

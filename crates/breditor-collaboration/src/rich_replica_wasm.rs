@@ -31,6 +31,7 @@ mod segmented_history;
 mod selection_formatting;
 mod suggestions;
 mod typing;
+mod v4_block_fields;
 mod verify_retained_native_branch;
 mod writer_clock_at;
 mod writer_transport_v2;

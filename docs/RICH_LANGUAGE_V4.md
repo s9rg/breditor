@@ -1321,7 +1321,8 @@ renaming is reference-preserving.
   are kept (they resolve to the original anchor if it still exists).
 - **Shared history and permissions.** Shared V4 replicates bookmarks as an owned block
   field with document-order uniqueness on concurrent merges
-  ([SHARED_RICH_V4.md](SHARED_RICH_V4.md)); the bookmark commands are not shared yet.
+  ([SHARED_RICH_V4.md](SHARED_RICH_V4.md)); `set_bookmark` and the link-preserving
+  `rename_bookmark` are shared commands with these semantics.
   Bookmark edits follow the owner's read-only policy like every other command.
 
 ### Native actions and commands
@@ -1409,9 +1410,8 @@ is added, so the trigger-composite allowlist is unchanged.
 
 Footnotes and endnotes, template/merge fields, cross-reference fields that display the
 target's text or page number, bookmarks on a span of text or on non-text blocks, links
-to other documents' bookmarks, automatic heading anchors, a link-preserving cut, and
-the slice's shared command (shared V4 replicates
-the slice's content; see [SHARED_RICH_V4.md](SHARED_RICH_V4.md)).
+to other documents' bookmarks, automatic heading anchors and a link-preserving cut. (Shared V4 has the slice's
+commands; see [SHARED_RICH_V4.md](SHARED_RICH_V4.md).)
 
 ### Fingerprint (current)
 
