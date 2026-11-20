@@ -41,6 +41,10 @@ describe("durable SDK session coordinator",()=>{
   mocks.open.mockImplementation(async options=>{options.restore("ordinary general","explicit","general-v1");options.restore("natural general","typing-v1","general-v1");options.restore("ordinary original","explicit");options.restore("natural original","typing-v1");return t.session;});
   const editor=await openSharedEditor({...t.options,rangeEditing:"general-v1",history:"typing-v1"});expect(mocks.restoreGeneral.mock.calls).toEqual([[t.profile,"room","ordinary general","explicit"],[t.profile,"room","natural general","typing-v1"]]);expect(t.profile.restore).toHaveBeenCalledWith("room","ordinary original");expect(mocks.restoreTyping).toHaveBeenCalledWith(t.profile,"room","natural original");await editor.close();
  });
+ it("exposes exactly the mounted toolbar controls for shared slash-command catalogs",async()=>{
+  const t=setup(),custom=[{id:"h1",label:"H1",enabled:()=>true,run:()=>{}}],editor=await openSharedEditor({...t.options,toolbar:()=>custom});
+  expect(mocks.mount.mock.calls[0]![1].toolbar).toBe(custom);expect(editor.toolbarControls()).toEqual(custom);expect(Object.isFrozen(editor.toolbarControls())).toBe(true);await editor.close();
+ });
  it("default options neither require new capability nor add a general storage discriminator",async()=>{
   const t=setup(),editor=await openSharedEditor(t.options);expect(mocks.supportsGeneral).not.toHaveBeenCalled();expect(mocks.open.mock.calls[0]![0]).not.toHaveProperty("rangeEditing");expect(editor.rangePolicy()).toBe("original");await editor.close();
  });

@@ -10,6 +10,7 @@ export {BreditorSharedReviewPanel,type BreditorSharedReviewPanelProps,type Bredi
 export {BreditorSharedSuggestionPanel,type BreditorSharedSuggestionPanelProps,type BreditorSharedSuggestionPanelHandle} from "./shared_suggestion_react.js";
 export {BreditorSearchPanel,type BreditorSearchPanelProps,type BreditorSearchPanelHandle} from "./search_react.js";
 export {BreditorWritingTools,type BreditorWritingToolsProps,type BreditorWritingToolsHandle} from "./writing_tools_react.js";
+export {BreditorSharedSlashCommands,type BreditorSharedSlashCommandsProps,type BreditorSharedSlashCommandsHandle} from "./shared_slash_commands_react.js";
 
 export interface BreditorSharedEditorProps {
  initialOptions:Omit<SharedEditorSessionOptions,"host"|"signal"|"onChange"|"onError"|"onSaveState"|"onClosing">;

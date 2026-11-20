@@ -6,6 +6,24 @@ its durable formats and Wasm transport.
 
 ## Unreleased
 
+- Add opt-in slash commands to shared (collaborative) editors (audit gap
+  `mentions-slash`, shared half). `mountSharedSlashCommands(dom, {items})` in
+  `@breditor/collaboration` reuses the local typed-trigger session unchanged
+  (trigger detection, cancellation, async providers, accessible listbox, UI
+  catalog strings); remote publications re-check the trigger, so a peer edit
+  before the slash, removal of the trigger block or a remote read-only policy
+  cancels the menu. Choosing an item publishes one guarded shared dispatch,
+  `{commands:[delete_text(trigger), command]}`, at the checked revision, which
+  shared history undoes and redoes as one group; a refused batch publishes
+  nothing. `createSharedSlashCommands(controls)` maps Text, Heading 1–3, Bullet
+  and Numbered list, Table and, on V2/V3 toolbars, Task list, Quote, Code block
+  and Divider onto the shared toolbar's own controls (only block-identity
+  commands, `sharedSlashCommandKinds`, are admitted). Collapsible section, Page
+  break and the `@` mention menu stay local-only: shared editors are rich V1–V3.
+  The SDK adds `mountSlashCommands(session)` to `@breditor/editor/collaboration`
+  (default items from the new `toolbarControls()` on shared sessions) and
+  `BreditorSharedSlashCommands` to `@breditor/editor/collaboration/react`. See
+  docs/SLASH_COMMANDS.md#shared-editors.
 - Fix typing after a line break at the very end of a text block in rich local
   and shared editors. In Chromium and WebKit, Shift+Enter at the end of a
   paragraph or heading (or Enter at the end of an image or table caption)

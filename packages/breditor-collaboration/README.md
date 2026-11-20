@@ -372,6 +372,27 @@ may be replaced without exiting; await the separately owned controller's
 `dispose()` before replacing its target/editor. Failed native cleanup retains a
 retryable retirement handle and never exits a foreign session. See [the contract](../../docs/RICH_WRITING_TOOLS.md#native-fullscreen).
 
+## Slash commands
+
+`mountSharedSlashCommands(dom, {items})` borrows a `SharedDomEditor` (original
+or document scope) and reuses the local typed-trigger session unchanged: the
+same `/` trigger detection, cancellation reasons, async providers, accessible
+listbox and UI catalog strings. Remote publications are re-checked like local
+ones, so a peer edit before the slash, removal of the trigger block or a remote
+read-only policy cancels the menu; unrelated remote edits leave it open.
+`createSharedSlashCommands(controls, picks?, ui?)` maps the shared toolbar's own
+controls (`paragraph`, `h1`–`h3`, `bullet`, `numbered`, `tasks`, `blockquote`,
+`code-block`, `horizontal-rule`, `table`) by capturing the single dispatch each
+control would publish. Choosing an item publishes **one** guarded dispatch,
+`{commands:[delete_text(trigger), command]}`, at the checked revision; shared
+history makes that one Undo group, and a refused batch publishes nothing. Only
+block-identity commands (`sharedSlashCommandKinds`) are admitted after the
+trigger removal. Shared editors are rich V1–V3, so there is no `@` mention menu
+and no Collapsible section or Page break item. `@breditor/editor/collaboration`
+exposes `mountSlashCommands(session)` (default items from the session's
+`toolbarControls()`) and `@breditor/editor/collaboration/react` exposes
+`BreditorSharedSlashCommands`. See [the slash-command contract](../../docs/SLASH_COMMANDS.md#shared-editors).
+
 ## Chrome localization
 
 `mountSharedEditor` / `mountSharedDocumentEditor` accept the same opt-in `ui`
