@@ -460,6 +460,11 @@ impl<'a> ReadSet<'a> {
             Command::PasteTableCells(value) => {
                 self.grid(&value.anchor, &value.focus)?;
             }
+            Command::InsertMention(value) => self.range(&value.anchor, &value.focus)?,
+            Command::SetImageLink(value) => {
+                self.property(&value.block, "breditor/image-href")?;
+                self.property(&value.block, "breditor/image-link-new-window")?;
+            }
         }
         Ok(())
     }

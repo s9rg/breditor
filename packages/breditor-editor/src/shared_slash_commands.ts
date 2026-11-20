@@ -1,7 +1,7 @@
 /**
  * Borrow a shared SDK session as a slash-command host. The session, its history and its native
- * owner stay owned elsewhere. Execution is one guarded shared batch (one Undo step); shared editors
- * are rich V1–V3, so there is no `@` mention menu for them.
+ * owner stay owned elsewhere. Execution is one guarded shared batch (one Undo step). Shared rich
+ * V4 sessions also take an `@` mention menu (`mountMentions`, shared_mentions.ts).
  */
 import {mountSharedSlashCommands,createSharedSlashCommands,standardSharedSlashPicks,type SharedSlashCommandHost,type SharedSlashCommandOptions,type SharedSlashCommands,type SharedSlashProvider,type SharedDispatch,type SharedToolbarControl,type SharedSelectionPolicy,type SharedEditorView,type RichSearchHost} from "@breditor/collaboration";
 import type {RichUiLocale} from "@breditor/experimental-rich-content";

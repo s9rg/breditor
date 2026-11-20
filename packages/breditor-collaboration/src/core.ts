@@ -21,6 +21,7 @@ import {SharedDocumentSuggestionEffectProof,nativeSuggestionEffectProof} from ".
 import {reviewedHistoryIdentity,sameReviewedHistory} from "./reviewed_history_validation.js";
 import type {SharedReviewedHistoryIdentity,SharedOwnedSuggestionAcceptance,SharedDocumentSuggestionEffect,SharedSuggestionEffectSummary,SharedSuggestionEffectVerification} from "./reviewed_history_types.js";
 import {sharedProtocolLanguage} from "./protocol.js";
+import {sharedTextLanguageInput,sharedMentionInput,sharedImageLinkInput,type SharedImageLinkIntent} from "./inline_v4_input.js";
 import {encodeBlockLayoutPatch} from "@breditor/experimental-rich-content/rendering";
 import type {RichSearchQuery,RichSearchReplacement,RichInputRuleOutcome,RichInputRuleId} from "@breditor/experimental-rich-content";
 import {SharedSearchResults,nativeSearchResults} from "./search_results.js";
@@ -627,6 +628,17 @@ export class SharedRichEditor<P extends SharedSelectionPolicy="original"> {
  deleteAtom(paragraph:string,movement:"before"|"after",revision?:string):boolean{return this.#run("local",(raw,o)=>{if(!this.supportsAtomEditing())throw new SharedEditorError("atom_edit_unavailable","Use a matching native atom-edit owner");return raw.delete_atom!(o,paragraph,movement);},revision);}
  replaceAtomPlainText(paragraph:string,text:string,revision?:string):boolean{return this.#run("local",(raw,o)=>{if(!this.supportsAtomEditing())throw new SharedEditorError("atom_edit_unavailable","Use a matching native atom-edit owner");return raw.replace_atom_plain_text!(o,paragraph,text);},revision);}
  replaceAtomTypingText(paragraph:string,text:string,clockMs:string,revision?:string):boolean{return this.#run("local",(raw,o)=>{if(!this.supportsAtomEditing())throw new SharedEditorError("atom_edit_unavailable","Use a matching native atom-edit owner");return raw.replace_atom_typing_text!(o,paragraph,text,clockMs);},revision);}
+ /** Shared V4 inline commands (text language, mentions, image links): one native command and Undo step each. */
+ supportsInlineCommandsV4():boolean{const raw=this.#live();return this.supportsRichLanguageV4()&&raw.inline_commands_v4_version?.()==="1"&&typeof raw.set_text_language==="function"&&typeof raw.insert_mention==="function"&&typeof raw.set_image_link==="function";}
+ supportsTextLanguage():boolean{return this.supportsInlineCommandsV4()&&this.supportsSelectionFormatting();}
+ supportsMentions():boolean{return this.supportsInlineCommandsV4();}
+ supportsImageLinks():boolean{return this.supportsInlineCommandsV4();}
+ /** Set (any letter case) or clear (`null`) the selection's language; a caret changes pending formats only. */
+ setTextLanguage(language:string|null,revision?:string):boolean{const input=sharedTextLanguageInput(language);return this.#run("local",(raw,o)=>{if(!this.supportsTextLanguage())throw new SharedEditorError("text_language_unavailable","Use an explicitly selected native shared V4 owner");return raw.set_text_language!(o,input);},revision);}
+ /** Replace one text range (normally the typed `@query`) by `@label` and one plain space. */
+ insertMention(selection:Extract<RichSelection,{kind:"text"}>,mention:{kind:"user"|"page"|"tag";id:string;label:string},revision?:string):boolean{const input=sharedMentionInput(selection,mention);return this.#run("local",(raw,o)=>{if(!this.supportsMentions())throw new SharedEditorError("mention_unavailable","Use an explicitly selected native shared V4 owner");return raw.insert_mention!(o,input);},revision);}
+ /** Set, replace or clear one image's link (`image` is its `breditor/image-id`); a decorative image is refused. */
+ setImageLink(intent:SharedImageLinkIntent,revision?:string):boolean{const input=sharedImageLinkInput(intent);return this.#run("local",(raw,o)=>{if(!this.supportsImageLinks())throw new SharedEditorError("image_link_unavailable","Use an explicitly selected native shared V4 owner");return raw.set_image_link!(o,input);},revision);}
  /** Logical before/after is not visual/bidi arrow layout; this publication never authors content. */
  navigateFlow(movement:"before"|"after",revision?:string):boolean{return this.#run("local",(raw,o)=>{if(!this.supportsFlowNavigation())throw new SharedEditorError("flow_navigation_unavailable","Use a matching native flow-navigation owner");return raw.navigate_flow!(o,movement);},revision,false);}
  insertParagraphAdjacent(paragraph:string,side:"before"|"after",revision?:string):boolean{return this.#run("local",(raw,o)=>{if(!this.supportsFlowNavigation())throw new SharedEditorError("flow_navigation_unavailable","Use a matching native flow-navigation owner");return raw.insert_paragraph_adjacent!(o,paragraph,side);},revision);}
