@@ -327,3 +327,4 @@ export type {
  SharedRecoveredBranchTextSuggestionOptions,
 } from './independent_delivery_branch_archive/contract.js';
 export {sharedAiToolsHost,mountSharedAiTools,mountSharedLanguageCheck,type SharedAiEditorPort,type SharedAiToolsSession,type SharedAiToolsSource} from "./ai_tools.js";
+export {mountSharedSlashCommands,createSharedSlashCommands,requireSharedSlashItems,standardSharedSlashPicks,sharedSlashCommandKinds,type SharedSlashCommandHost,type SharedSlashCommands,type SharedSlashCommandOptions,type SharedSlashContext,type SharedSlashExecution,type SharedSlashItem,type SharedSlashPick,type SharedSlashPreparation,type SharedSlashProvider} from "./slash_commands.js";

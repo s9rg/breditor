@@ -390,6 +390,26 @@ the target does. Language issues in blocks a peer changed are dropped. Formatted
 room the provider may receive text other participants wrote: hosts must obtain
 their consent before enabling a third-party provider. See
 [the contract](../../docs/AI_AND_LANGUAGE_TOOLS.md#shared-editors).
+## Slash commands
+
+`mountSharedSlashCommands(dom, {items})` borrows a `SharedDomEditor` (original
+or document scope) and reuses the local typed-trigger session unchanged: the
+same `/` trigger detection, cancellation reasons, async providers, accessible
+listbox and UI catalog strings. Remote publications are re-checked like local
+ones, so a peer edit before the slash, removal of the trigger block or a remote
+read-only policy cancels the menu; unrelated remote edits leave it open.
+`createSharedSlashCommands(controls, picks?, ui?)` maps the shared toolbar's own
+controls (`paragraph`, `h1`–`h3`, `bullet`, `numbered`, `tasks`, `blockquote`,
+`code-block`, `horizontal-rule`, `table`) by capturing the single dispatch each
+control would publish. Choosing an item publishes **one** guarded dispatch,
+`{commands:[delete_text(trigger), command]}`, at the checked revision; shared
+history makes that one Undo group, and a refused batch publishes nothing. Only
+block-identity commands (`sharedSlashCommandKinds`) are admitted after the
+trigger removal. Shared editors are rich V1–V3, so there is no `@` mention menu
+and no Collapsible section or Page break item. `@breditor/editor/collaboration`
+exposes `mountSlashCommands(session)` (default items from the session's
+`toolbarControls()`) and `@breditor/editor/collaboration/react` exposes
+`BreditorSharedSlashCommands`. See [the slash-command contract](../../docs/SLASH_COMMANDS.md#shared-editors).
 
 ## Chrome localization
 

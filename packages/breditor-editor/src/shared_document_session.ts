@@ -50,14 +50,17 @@ export interface SharedDocumentEditorSession extends SharedDocumentEditorRecover
  setPlaceholderLabel(label:string|null):void;
  /** The validated chrome catalog from the `ui` option (English, direction-neutral by default). */
  uiLocale():import("@breditor/experimental-rich-content").RichUiLocale;
+ /** The toolbar controls this session mounted (after the `toolbar` option). Read-only configuration, e.g. for `createSharedSlashCommands`. */
+ toolbarControls():readonly SharedToolbarControl<"document-v1">[];
  view():SharedDocumentView;state():SharedSaveState;flush():Promise<void>;retrySave():Promise<void>;
 }
 class DocumentSessionOwner implements SharedDocumentEditorSession {
  readonly surface:HTMLDivElement;readonly toolbar:HTMLDivElement;readonly status:HTMLParagraphElement;readonly recovered:boolean;readonly core:SharedRichEditor<"document-v1">;
- #session:SharedPersistentSession<"document-v1">;#dom:SharedDomEditor<"document-v1">;#release:()=>void;#options:Omit<SharedDocumentEditorSessionOptions,"initial">;
+ #session:SharedPersistentSession<"document-v1">;#dom:SharedDomEditor<"document-v1">;#release:()=>void;#options:Omit<SharedDocumentEditorSessionOptions,"initial">;#controls:readonly SharedToolbarControl<"document-v1">[];
  #phase:"active"|"closing"|"closed"="active";#closing:Promise<void>|undefined;
- constructor(session:SharedPersistentSession<"document-v1">,dom:SharedDomEditor<"document-v1">,release:()=>void,options:Omit<SharedDocumentEditorSessionOptions,"initial">){this.#session=session;this.#dom=dom;this.#release=release;this.#options=options;this.core=session.core;this.recovered=session.recovered;this.surface=dom.surface;this.toolbar=dom.toolbar;this.status=dom.status;}
+ constructor(session:SharedPersistentSession<"document-v1">,dom:SharedDomEditor<"document-v1">,release:()=>void,options:Omit<SharedDocumentEditorSessionOptions,"initial">,controls:readonly SharedToolbarControl<"document-v1">[]=[]){this.#controls=Object.freeze([...controls]);this.#session=session;this.#dom=dom;this.#release=release;this.#options=options;this.core=session.core;this.recovered=session.recovered;this.surface=dom.surface;this.toolbar=dom.toolbar;this.status=dom.status;}
  #active():void{if(this.#phase!=="active")throw Error("The shared document editor is closing or closed");}
+ toolbarControls():readonly SharedToolbarControl<"document-v1">[]{return this.#controls;}
  selectionPolicy():"document-v1"{return "document-v1";}rangePolicy():"general-v1"{return "general-v1";}
  historyPolicy():"explicit"|"typing-v1"{return this.core.view().historyGrouping==="typing-v1"?"typing-v1":"explicit";}
  searchHistoryPolicy():"search-v1"|null{return this.core.searchHistoryPolicy();}
@@ -135,7 +138,7 @@ async function openDocumentEditorFamily(options:SharedDocumentEditorSessionOptio
   claim.assert();if(options.readOnly!==undefined)session.core.setReadOnly(options.readOnly);
   const core=session.core,standard=language===3?createLayoutSharedToolbarV3(core,presentation):language===2?createStructuralSharedToolbarV2(core,presentation):createStandardSharedToolbarV1(core,presentation),toolbar=options.toolbar?.(core,standard)??standard;
   const {clipboardInterchange:interchangeFactory,...domOptions}=options,interchange=clipboardInterchangeOptions(interchangeFactory,core);
-  claim.assert();dom=mountSharedDocumentEditor(options.host,{...domOptions,...interchange,core,coreOwnership:"borrow",inlinePresentation:presentation,toolbar});claim.assert();return new DocumentSessionOwner(session,dom,claim.release,options);
+  claim.assert();dom=mountSharedDocumentEditor(options.host,{...domOptions,...interchange,core,coreOwnership:"borrow",inlinePresentation:presentation,toolbar});claim.assert();return new DocumentSessionOwner(session,dom,claim.release,options,toolbar);
  }catch(error){try{dom?.dispose();if(session)await session.close();}catch(closeError){throw new SharedDocumentEditorOpenError(new AggregateError([error,closeError],"Document opening and durable cleanup failed"),session!);}finally{claim.rollback();}throw error;}
  finally{profile?.free();}
 }

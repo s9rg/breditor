@@ -1,7 +1,8 @@
 # Slash-command suggestion sessions
 
-Status: opt-in browser candidate for local rich owners. This covers the slash
-command half of the `mentions-slash` readiness gap. Durable mention entities and
+Status: opt-in browser candidate for local rich owners and, through a separate
+dispatch adapter, shared (collaborative) editors ([Shared editors](#shared-editors)).
+This covers the slash command half of the `mentions-slash` readiness gap. Durable mention entities and
 the `@` menu are candidate rich V4 slice 5 ([RICH_LANGUAGE_V4.md](RICH_LANGUAGE_V4.md));
 both menus share one typed-trigger session (`suggestion_session.ts`), and slash
 behaviour, DOM and messages are unchanged.
@@ -294,6 +295,101 @@ example, from `BreditorEditor`'s `onReady`), `initialOptions` and an optional
 are always used, and a parent re-render does not remount the controller.
 Unmounting disposes only the controller.
 
+## Shared editors
+
+Shared editors (`SharedDomEditor`, managed `SharedEditorSession` and
+`SharedDocumentEditorSession`) get slash commands from
+`packages/breditor-collaboration/src/slash_commands.ts`:
+
+```js
+import {mountSharedSlashCommands, createSharedSlashCommands} from '@breditor/collaboration';
+const slash = mountSharedSlashCommands(dom, {items: createSharedSlashCommands(toolbarControls, undefined, dom.uiLocale())});
+```
+
+or, with the SDK, `mountSlashCommands(session)` from
+`@breditor/editor/collaboration` (items default to the standard catalog built
+from the session's own `toolbarControls()`; pass `items` to replace it) and
+`BreditorSharedSlashCommands` from `@breditor/editor/collaboration/react`
+(same props as `BreditorSlashCommands`; `initialOptions` is optional).
+
+**Same session.** The adapter mounts the generic `RichSuggestionSession` with
+the slash spec's trigger, menu attributes, ids, messages and catalog keys.
+Arming, opening, trigger identity, every cancellation reason, async providers,
+`AbortSignal` handling, keyboard handling, ARIA and `uiLocale()` strings are the
+local behaviour above. The shared view is read under the rendering format tag
+(`breditor/rich-view` or `breditor/rich-document-view`), exactly as the shared
+presentation model does; scope, AST, selection and revision are the native
+values.
+
+**Remote edits.** Shared editors notify the read channel after every remote
+publication. Each notification re-runs the trigger check, so a peer edit before
+the slash or to the slash itself, removal of the trigger block, a remote
+read-only policy change, or a selection mapped out of the query cancels the
+session (`trigger-invalidated`, `read-only`, `selection-left`). Remote edits
+elsewhere leave it open and only re-filter a static list; a provider is not
+called again for the same query. A cancelled trigger never reopens by itself.
+
+**One history group.** Choosing an item publishes exactly one guarded
+`SharedDomEditor.execute` call at the checked revision:
+
+```json
+{"commands":[{"kind":"delete_text","data":{"block":"<trigger block>","offset":<slash>,"length":<caret - slash>}}, <item command>]}
+```
+
+Shared dispatch applies one ordered batch atomically as one writer-local history
+group, so one Undo restores the typed `/query` and the original block, one Redo
+replays both, and the typing that produced `/query` stays its own earlier group.
+Peers receive the batch without gaining a local Undo step. A refused batch
+publishes nothing and the typed `/query` stays. Offsets are UTF-16 units read from
+the Rust view. There is no shared two-step fallback and no new shared command.
+
+The item command is prepared from the checked pre-removal view, so only kinds
+that address blocks by identity are admitted after the removal
+(`sharedSlashCommandKinds`): `set_heading`, `set_code_block`, `wrap_list`,
+`set_list_kind`, `wrap_task_list`, `wrap_blockquote`, `insert_horizontal_rule`,
+`insert_blocks` (at most 16 commands, optional `selectionUpdate`). Anything else,
+including text-offset commands, is refused before publication.
+
+**Items.** `createSharedSlashCommands(controls, picks?, ui?)` adapts the shared
+toolbar controls by id. Each item captures the single dispatch its control's
+`run` would publish, against a port whose only operation is `dispatch`; a control
+that needs any other owner operation, publishes more than once, sets pending
+formats, or emits a non-allowlisted kind is not representable and is disabled.
+Items are disabled while read-only. `standardSharedSlashPicks`:
+
+| Item | Shared control | Batch follow-up |
+| --- | --- | --- |
+| Text | `paragraph` | `set_heading` (`level: null`) |
+| Heading 1, 2 and 3 | `h1`, `h2`, `h3` | `set_heading` |
+| Bullet list, Numbered list | `bullet`, `numbered` | `wrap_list`, or `set_list_kind` inside a list |
+| Task list | `tasks` (V2/V3) | `wrap_task_list` |
+| Quote | `blockquote` (V2/V3) | `wrap_blockquote` |
+| Code block | `code-block` (V2/V3), `policy: "reject_formatted"` | `set_code_block` |
+| Divider | `horizontal-rule` (V2/V3) | `insert_horizontal_rule` |
+| Table | `table` | `insert_blocks` |
+
+Omitted from the shared catalog: **Collapsible section** and **Page break**
+(candidate rich V4 only; shared owners are V1–V3), and the structural items on a
+V1 toolbar. There is no shared `@` mention menu: mentions are a V4 record and
+shared editors do not admit V4.
+
+Custom shared items implement `{id, label, keywords?, description?,
+enabled(context), prepare(context)}`, where `context` is `{model, revision,
+allocate}` and `prepare` returns `{commands, selectionUpdate?}` or `null`.
+`onExecute` receives `{item, request, revision}`: the exact batch and the checked
+revision.
+
+Tests: `packages/breditor-editor/tests/shared_slash_commands.test.ts` (a real
+`SharedDomEditor` over a fixture shared owner in jsdom: one-batch dispatch and one
+Undo, the exact batch of every standard item, remote invalidation, remote
+read-only, composition, refusal, async providers, catalog strings, SDK default
+items), `shared_slash_commands_react.test.tsx`, and
+`crates/breditor-collaboration/tests/shared_slash_batch_contracts.rs` (the same
+batches against the real shared replica under explicit, natural-typing,
+general-range and document-selection history: one group, exact Undo/Redo,
+atomic refusal, peers without a local step). A real-browser shared run is not
+yet covered (see below).
+
 ## Not covered or unverified
 
 - **Real-browser behaviour.** Verification so far is jsdom only. Not yet checked
@@ -304,16 +400,14 @@ Unmounting disposes only the controller.
   - Android and IME `beforeinput` arming when `/` comes through composition. A
     composed slash cancels and does not open.
   - the order of document-capture listeners against browser extensions.
-- **Shared editors.** There is no shared slash session yet.
-  `SharedDomEditor.execute` takes `SharedDispatch`, not `RichCommand`, so shared
-  owners need a separate dispatch adapter. The trigger checks already handle
-  remote edits generically. Such an adapter needs no new shared command:
-  shared dispatch already treats one ordered `{commands:[...]}` batch as one
-  writer-local history group. A batch of `delete_text` (the trigger) followed by
-  `set_heading` undoes and redoes as one step, verified in
-  `crates/breditor-collaboration/tests/shared_trigger_composite_contracts.rs`.
-  Shared batch targets are validated against the pre-batch document, which is
-  sound for the same block-identity allowlist.
+- **Shared editors in a real browser.** The shared adapter is verified in jsdom
+  with a fixture owner and its exact batches against the real Rust replica. No
+  Playwright run covers it: the shared browser harness
+  (`experiments/shared-browser`) needs the `target/collaboration-feasibility-web`
+  Wasm build, and its `experiments/collaboration` crate did not compile for
+  `wasm32-unknown-unknown` when this adapter landed (an outdated struct
+  initializer unrelated to slash commands).
 - **Mentions.** Implemented for candidate rich V4 only (native
-  `insertMention`, one Undo step); see RICH_LANGUAGE_V4.md slice 5.
+  `insertMention`, one Undo step); see RICH_LANGUAGE_V4.md slice 5. Shared
+  editors are V1–V3 and have no mention menu.
 - No default menu styling theme or hotkey to open the menu without typing `/`.

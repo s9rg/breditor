@@ -11,6 +11,7 @@ export {BreditorSharedSuggestionPanel,type BreditorSharedSuggestionPanelProps,ty
 export {BreditorSearchPanel,type BreditorSearchPanelProps,type BreditorSearchPanelHandle} from "./search_react.js";
 export {BreditorWritingTools,type BreditorWritingToolsProps,type BreditorWritingToolsHandle} from "./writing_tools_react.js";
 export {BreditorSharedAiTools,BreditorSharedLanguageCheck,type BreditorSharedAiToolsProps,type BreditorSharedAiToolsHandle,type BreditorSharedLanguageCheckProps,type BreditorSharedLanguageCheckHandle} from "./shared_ai_tools_react.js";
+export {BreditorSharedSlashCommands,type BreditorSharedSlashCommandsProps,type BreditorSharedSlashCommandsHandle} from "./shared_slash_commands_react.js";
 
 export interface BreditorSharedEditorProps {
  initialOptions:Omit<SharedEditorSessionOptions,"host"|"signal"|"onChange"|"onError"|"onSaveState"|"onClosing">;
