@@ -6,6 +6,16 @@ its durable formats and Wasm transport.
 
 ## Unreleased
 
+- `@breditor/interchange` Markdown export: a paragraph, heading or GFM table cell
+  with a formatted run, code span or link next to a single space (`see **b** c`,
+  `see [a](<url>) b`, `see <https://example.com/> now`) now exports as Markdown
+  instead of a safe HTML block with a `markdown-feature` notice. Whitespace rules
+  (no leading/trailing block spaces, no runs of two or more spaces, no spaces
+  after a hard break, no tabs/CR) now apply to the block's whole text rather than
+  to each run. Emphasis whose own text starts or ends with a space (`**b **`)
+  still uses HTML. Every emitted block is still re-parsed and must reproduce the
+  same text and formats, so content is unchanged on reimport; only more output is
+  Markdown.
 - Test infrastructure: the rich-browser Playwright suite now runs WebKit as
   `webkit-1`…`webkit-N` projects (one per five spec files, round-robin). Playwright's
   macOS WebKit stops opening pages after about 63 test contexts in one browser

@@ -61,11 +61,6 @@ native-contract designs, not UI additions. The largest partial gaps are:
 
 ### Known defects and verification limits
 
-- **Markdown export of formatted paragraphs.** A formatted run next to a space
-  (for example `see **b** c`) makes the whole paragraph fall back to an HTML
-  block, because the whitespace check runs per text run instead of per
-  paragraph. Round trips stay exact; Markdown output is much less often Markdown
-  than intended.
 - **Shared editors have no browser qualification.** `experiments/collaboration`
   does not compile for wasm32 (a struct initializer is missing `initial_read_only`,
   `review` and `search_reads`), so the `experiments/shared-browser` harness cannot
@@ -93,18 +88,16 @@ native-contract designs, not UI additions. The largest partial gaps are:
 1. **Restore shared browser qualification.** Fix the `experiments/collaboration`
    wasm32 build, then run the shared-browser harness over the shared slash, AI
    and input-rule paths. This feeds the browser-reliability and release-ci gates.
-2. **Fix the Markdown formatted-paragraph export** so formatted text exports as
-   Markdown when it round-trips.
-3. **Decide the V4 release scope.** Freeze its grammar and fingerprint, allow the
+2. **Decide the V4 release scope.** Freeze its grammar and fingerprint, allow the
    durable store to persist it, and either add shared V4 or state that V4 stays
    local-only for V1. This is the compatibility gate's decision.
-4. **Automate release CI.** The repository workflows are manual-only. Run the Rust
+3. **Automate release CI.** The repository workflows are manual-only. Run the Rust
    suites, the package vitest suites and the grouped rich-browser suite on every
    change before attempting the release-ci gate.
-5. **Qualification gates.** Physical input, assistive technology and touch;
+4. **Qualification gates.** Physical input, assistive technology and touch;
    measured latency, memory and bundle size; dependency and license review of the
    actual distributed graph; coherent SDK documentation; a real application pilot.
-6. **Remaining parity.** Restricted editing and multiple roots, then the partial
+5. **Remaining parity.** Restricted editing and multiple roots, then the partial
    groups above. Recheck the Tiptap and CKEditor catalogs (catalog-coverage gate)
    before freezing the release-candidate baseline.
 
