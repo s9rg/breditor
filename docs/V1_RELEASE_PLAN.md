@@ -1,5 +1,117 @@
 # Breditor V1 release preparation
 
+## November 20 parity status
+
+**Status: not release ready.** Feature parity work advanced substantially; no
+release gate closed. The [capability audit](v1-readiness.json) now records 10
+implemented slices, 34 partial and 2 missing groups, against 10 / 27 / 9 when
+this round began. Those are unequal groups, not a completion percentage, and no
+row moved to `implemented`: every slice below is a functional candidate whose
+physical-input, accessibility, performance and release qualification remain open.
+All 13 qualification gates are still open.
+
+### What landed (s9rg/breditor PRs 1–11)
+
+- **Review fixes** (PR 1): Unicode whole-word search, spellcheck replacement
+  through `dataTransfer` and target ranges, Markdown escaping and round-trip
+  verification, IndexedDB reopen after an abnormal close, layout-independent
+  shortcuts, and relay hardening (catch-up frame budget, per-account writer cap,
+  upload body deadline).
+- **Editing and UI** (PRs 2, 3, 9): slash commands, floating selection toolbar and
+  context menu, block drag handle (shared, then local through a native
+  `MoveBlock`), table column and image resize handles, opt-in autolink, HTML
+  source view, inert static renderer (`@breditor/editor/static`), a complete UI
+  catalog with RTL chrome, and host-provided AI rewrite and language-check tools.
+- **Candidate rich language V4** (PRs 4–8, 9, 10): eight local-only slices —
+  ordered-list numbering, text-run language, image links, collapsible sections,
+  mentions, table captions, page breaks with a print layer, and bookmarks with
+  internal links. See [RICH_LANGUAGE_V4.md](RICH_LANGUAGE_V4.md).
+- **Round 4** (PR 10): one-step slash Undo (`replaceTriggerThen`), the trailing
+  line-break caret fix, list input rules (task conversion, list joining, code
+  exit), deterministic DOCX export, shared slash commands and shared AI tools,
+  Markdown GFM autolinks and Word list numbering for V4.
+- **Test health** (PRs 9–11): the 11 long-failing editor SDK tests now pass
+  (fixtures predated the writer-lease hardening and the native writer-group
+  shape); the collaboration clippy failure and the interchange test typecheck are
+  fixed; the rich-browser suite runs WebKit in bounded browser groups. One plain
+  `experiments/rich-browser` run passes 441 / 441 across Chromium, Firefox and
+  WebKit; the editor SDK suite passes 590 / 590.
+
+### Remaining feature gaps
+
+The two missing groups are **restricted-editing** (protected/editable region
+identities enforced through selection, history and remote changes) and
+**multiple-roots** (shared multi-root selection and one history owner). Both are
+native-contract designs, not UI additions. The largest partial gaps are:
+
+- **Shared rich V4.** Every V4 slice is local-only. Shared editing stays on V3 and
+  refuses V4, so collaborative users get none of the eight slices until a shared
+  V4 model, journal and replay contract exists.
+- **Advanced tables and images.** Captions and resize handles exist; table and
+  cell presentation panels, inline or wrapped images, responsive variants and
+  safe remote ingestion do not.
+- **Document utilities.** Bookmarks exist; footnotes, template fields and
+  cross-references do not.
+- **Widgets.** Collapsible sections exist; emoji, equations, audio/video and
+  diagrams do not.
+- **Conversion and print.** DOCX export exists; DOCX import, PDF/ODT, measured
+  pagination, page numbers and running headers do not.
+- **Extension SDK.** Typed inline extensions still do not amount to custom
+  nodes or node views.
+
+### Known defects and verification limits
+
+- **Markdown export of formatted paragraphs.** A formatted run next to a space
+  (for example `see **b** c`) makes the whole paragraph fall back to an HTML
+  block, because the whitespace check runs per text run instead of per
+  paragraph. Round trips stay exact; Markdown output is much less often Markdown
+  than intended.
+- **Shared editors have no browser qualification.** `experiments/collaboration`
+  does not compile for wasm32 (a struct initializer is missing `initial_read_only`,
+  `review` and `search_reads`), so the `experiments/shared-browser` harness cannot
+  build its runtime. Shared slash commands, shared AI tools and shared code Enter
+  are covered only by Rust contracts and fake-owner tests.
+- **WebKit context limit.** Playwright's macOS WebKit stops opening pages after
+  about 63 contexts in one browser instance. The rich-browser config works around
+  it by grouping; the underlying cause is environmental and unexplained.
+- **Unverified outputs.** Exported DOCX files were checked structurally, not
+  opened in Word or LibreOffice; print output was checked as computed CSS, not
+  printed. Office paste fixtures are reconstructed producer shapes, not captured
+  clipboards.
+- **No real assistive technology, IME or touch qualification** for any slice
+  above; screen-reader output is limited to ARIA roles and labels.
+- **Accepted trade-offs to revisit:**
+  - The relay's per-account writer cap is a lifetime limit, and its upload body
+    deadline is fixed at 60 seconds.
+  - Image links refuse a few valid URLs (IPv6 hosts and some raw characters)
+    rather than store a non-canonical value.
+  - Cut-and-paste drops a bookmark; only a block move keeps it.
+  - Word's `<body lang>` tags every pasted run when the owner is V4.
+
+### Recommended next order
+
+1. **Restore shared browser qualification.** Fix the `experiments/collaboration`
+   wasm32 build, then run the shared-browser harness over the shared slash, AI
+   and input-rule paths. This feeds the browser-reliability and release-ci gates.
+2. **Fix the Markdown formatted-paragraph export** so formatted text exports as
+   Markdown when it round-trips.
+3. **Decide the V4 release scope.** Freeze its grammar and fingerprint, allow the
+   durable store to persist it, and either add shared V4 or state that V4 stays
+   local-only for V1. This is the compatibility gate's decision.
+4. **Automate release CI.** The repository workflows are manual-only. Run the Rust
+   suites, the package vitest suites and the grouped rich-browser suite on every
+   change before attempting the release-ci gate.
+5. **Qualification gates.** Physical input, assistive technology and touch;
+   measured latency, memory and bundle size; dependency and license review of the
+   actual distributed graph; coherent SDK documentation; a real application pilot.
+6. **Remaining parity.** Restricted editing and multiple roots, then the partial
+   groups above. Recheck the Tiptap and CKEditor catalogs (catalog-coverage gate)
+   before freezing the release-candidate baseline.
+
+The audit's review date and baseline now point at this checkpoint. Rows touched
+by PRs 1–11 were re-checked against the code at that baseline; the other rows
+were carried forward unchanged and still need the catalog-coverage review.
+
 ## November 16 collaboration recovery
 
 [Repeated authenticated raster rollover](qualification/2026-11-16-repeated-raster-rollover.json)
@@ -6301,27 +6413,33 @@ No competitor implementation was copied into Breditor.
    including Link, scalar fields and caret styles. They still need promotion into
    the public V1 distribution. Complete-map replacement remains explicit; separate
    Rust-planned property patches now preserve other observed mixed properties.
-   Optional foreign interchange now exists; broader producer fidelity and
-   automatic Link detection remain open.
+   Optional foreign interchange now exists, and opt-in typed and Markdown
+   autolinks reuse the same canonical link subset; broader producer fidelity
+   remains open.
 2. **Complete editing grammar.** Explicit V2 blockquote, code, horizontal-rule
    and task contracts now reach Wasm, local/shared SDKs and the reference relay.
    Named hard breaks have a one-LF policy; code exit preserves the original source.
    Atomic-block navigation, general/document selections and natural typing
    histories now have installed functional paths. Complete supported-environment
    and bidi editing qualification without flattening unsupported structures.
-3. **Interchange.** The optional bounded HTML/Markdown adapter and authored
-   Office/Docs/Excel fixtures now reach installed mixed workflows. Finish captured
-   producer fidelity and native clipboard qualification. Deterministic JSON
+3. **Interchange.** The optional bounded HTML/Markdown adapter, a reconstructed
+   seven-producer Office/Docs/Sheets/LibreOffice/Cocoa corpus and a deterministic
+   DOCX exporter now exist. Finish captured producer fidelity, native clipboard
+   qualification, DOCX import and the Markdown formatted-paragraph export defect. Deterministic JSON
    remains canonical; imports retain declared losses, fresh IDs and one guarded
    transaction.
-4. **Product UI and host contracts.** Live native read-only mode is implemented;
-   finish contextual controls, accessible resize interaction, search and coherent
-   application integration. Relay Reader authority remains separate from local
+4. **Product UI and host contracts.** Live native read-only mode, a selection
+   toolbar and context menu, slash and mention menus, table and image resize
+   handles, block drag, an HTML source view and a localizable UI catalog now
+   exist as opt-in candidates. Finish their physical-input and assistive
+   technology qualification and coherent application integration. Relay Reader authority remains separate from local
    editing policy, and editable-region restrictions need their own native contract.
 5. **Extension and advanced document contracts.** Typed inline extensions do not
    constitute arbitrary custom-node support. Review comments, suggestions,
    versions, pagination and conversion as distinct features with their own
-   persistence and concurrency semantics.
+   persistence and concurrency semantics. Candidate rich V4 adds page breaks,
+   bookmarks, sections, mentions and other slices, but only for local editors;
+   a shared V4 contract and a frozen V4 grammar are still required.
 
 The [Tiptap StarterKit baseline](https://tiptap.dev/docs/editor/extensions/functionality/starterkit),
 [CKEditor basic styles](https://ckeditor.com/docs/ckeditor5/latest/features/basic-styles.html),

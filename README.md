@@ -32,6 +32,10 @@ and interchange gaps, compatibility and reliability work remain. The [V1 release
 [capability audit](docs/v1-readiness.json) track feature parity with Tiptap and
 CKEditor, package promotion and explicit release gates. Run `npm run audit:v1`
 to inspect the remaining work; `npm run check:v1` fails while it remains open.
+The [November 20 status](docs/V1_RELEASE_PLAN.md#november-20-parity-status)
+summarizes recent parity work, known defects and the recommended next order.
+An unreleased, local-only [candidate rich language V4](docs/RICH_LANGUAGE_V4.md)
+holds the newest schema slices; do not persist V4 documents yet.
 
 The opt-in [independent history delivery contract](docs/INDEPENDENT_DELIVERY.md)
 joins independently selected native document/comment histories, relay receipts
