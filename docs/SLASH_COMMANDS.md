@@ -222,8 +222,9 @@ text offsets, so a same-block trigger removal cannot retarget it:
 | `setCodeBlock` | Code block |
 | `insertHorizontalRule` | Divider |
 | `insertTable` | Table |
-| `insertBlocks` | custom inserts (and a future page-break item, if added as blocks) |
+| `insertBlocks` | custom inserts |
 | `wrapDetails` | Collapsible section (V4) |
+| `insertPageBreak` | Page break (V4; a root position and a fresh block id) |
 
 Anything else, including history, selection, text, mention and nested
 `replaceTriggerThen` commands, is refused with `breditor_rich.trigger_command`.

@@ -37,6 +37,7 @@ const fn admitted(tag: CommandTag) -> bool {
             | CommandTag::InsertHorizontalRule
             | CommandTag::InsertTable
             | CommandTag::InsertBlocks
+            | CommandTag::InsertPageBreak
     )
 }
 

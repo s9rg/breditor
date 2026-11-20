@@ -144,6 +144,7 @@ fn allowlisted() -> Vec<(u32, Value, Value)> {
                 json!({"first":"p","last":"p","wrapper":"details","summary":"summary","open":true}),
             ),
         ),
+        (4, prose(), data("insertPageBreak", json!({"position":position(),"block":"pb"}))),
     ]
 }
 

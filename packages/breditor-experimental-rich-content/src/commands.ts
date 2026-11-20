@@ -26,7 +26,7 @@ export interface ClipboardAllocation {prefix:string;replica:string;counter:strin
 /** Full admitted literals are retained for removals; Rust chooses all selected targets. */
 export type RichSelectionFormatChange={kind:"set"|"remove";formatsJson:string}|{kind:"patch";formatsJson:string;properties:readonly string[]};
 /** Follow-up kinds admitted by `replaceTriggerThen`; each addresses blocks by identity, never text offsets. */
-export type RichTriggerCompositeKind="setHeading"|"setCodeBlock"|"wrapList"|"setListKind"|"wrapTaskList"|"wrapBlockquote"|"wrapDetails"|"insertHorizontalRule"|"insertTable"|"insertBlocks";
+export type RichTriggerCompositeKind="setHeading"|"setCodeBlock"|"wrapList"|"setListKind"|"wrapTaskList"|"wrapBlockquote"|"wrapDetails"|"insertHorizontalRule"|"insertTable"|"insertBlocks"|"insertPageBreak";
 export type RichTriggerCompositeCommand=Extract<RichCommand,{kind:RichTriggerCompositeKind}>;
 export type RichCommand =
  |{kind:"replaceGeneralRangeText";data:{selection:Extract<RichSelection,{kind:"text"}>;runs:readonly {text:string;formatsJson:string}[];prefix:string}}

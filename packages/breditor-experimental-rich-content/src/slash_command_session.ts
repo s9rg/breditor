@@ -69,7 +69,7 @@ export interface RichSlashCommands {
  dispose():void;
 }
 /** Follow-up kinds the native `replaceTriggerThen` admits (mirrors the Rust allowlist). */
-export const richTriggerCompositeKinds:readonly RichTriggerCompositeKind[]=Object.freeze(["setHeading","setCodeBlock","wrapList","setListKind","wrapTaskList","wrapBlockquote","wrapDetails","insertHorizontalRule","insertTable","insertBlocks"]);
+export const richTriggerCompositeKinds:readonly RichTriggerCompositeKind[]=Object.freeze(["setHeading","setCodeBlock","wrapList","setListKind","wrapTaskList","wrapBlockquote","wrapDetails","insertHorizontalRule","insertTable","insertBlocks","insertPageBreak"]);
 const compositeKinds:ReadonlySet<string>=new Set(richTriggerCompositeKinds);
 const isRichTriggerCompositeCommand=(command:RichCommand):command is RichTriggerCompositeCommand=>compositeKinds.has(command.kind);
 const surfaces=new WeakSet<HTMLElement>();
