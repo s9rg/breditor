@@ -603,6 +603,14 @@ before mounting an owner. Await `flush` before closing if the last write matters
 Use a distinct store name per exclusive local editor; this helper does not lease
 writers, merge tabs, persist collaboration state or acknowledge a server save.
 
+`RichDocumentSessionStore.open(name, {richLanguage, history})` stores the
+document-scope families under a separate key. Languages 1–3 write record V1. The
+frozen candidate rich language 4 requires the exact profile fingerprint,
+`{richLanguage: 4, schemaFingerprint: profile.descriptor().schemaFingerprint}`, and
+writes record V2 with that fingerprint; it refuses checkpoints and records bound to
+any other fingerprint, language or history, and older runtimes refuse V4 records.
+See `docs/RICH_LANGUAGE_V4.md` in the repository.
+
 ## Command construction
 
 Basic commands use exact fields: `setSelection` has `selection` (or null),

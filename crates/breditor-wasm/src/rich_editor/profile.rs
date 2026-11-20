@@ -20,8 +20,8 @@ pub struct BreditorRichProfile {
 
 #[wasm_bindgen]
 impl BreditorRichProfile {
-    /// Compile explicit bootstrap V9 into the unreleased candidate rich V4 without inline
-    /// additions. V4 extends V3; its fingerprint changes until the candidate is complete.
+    /// Compile explicit bootstrap V9 into the frozen candidate rich V4 without inline
+    /// additions. V4 extends V3; its grammar and fingerprint are frozen (changes need a V5).
     #[must_use]
     #[wasm_bindgen(js_name=fromBootstrapJsonV4)]
     pub fn from_bootstrap_json_v4(input: &str) -> BreditorRichProfileResult {

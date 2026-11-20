@@ -1,10 +1,11 @@
-//! Explicit unreleased candidate rich V4: V3 grammar plus bounded ordered-list numbering,
+//! Explicit frozen candidate rich V4: V3 grammar plus bounded ordered-list numbering,
 //! one native text-language inline format, bounded image links, collapsible sections,
 //! mention entities, table captions, explicit page breaks and named bookmarks with
 //! internal links.
 //!
-//! V1–V3 specifications and fingerprints stay exact. Later V4 candidate slices
-//! change this revision's rules before release, so no V4 data is persisted yet.
+//! V1–V3 specifications and fingerprints stay exact. V4 is FROZEN at these eight slices:
+//! hosts persist V4 data bound to its fingerprint, so this specification and its sealed
+//! rule revision must never change (see `tests/rich_language_v4_frozen.rs`); add a V5 instead.
 use super::{
     ChildConstraint, ChildKind, DeclarationOwner, ElementSpec, InlineFormatSpec,
     PersistedTypeRevision, SchemaSpec,

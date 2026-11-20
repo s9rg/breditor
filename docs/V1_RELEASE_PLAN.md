@@ -95,9 +95,11 @@ native-contract designs, not UI additions. The largest partial gaps are:
    and input-rule paths. This feeds the browser-reliability and release-ci gates.
 2. **Fix the Markdown formatted-paragraph export** so formatted text exports as
    Markdown when it round-trips.
-3. **Decide the V4 release scope.** Freeze its grammar and fingerprint, allow the
-   durable store to persist it, and either add shared V4 or state that V4 stays
-   local-only for V1. This is the compatibility gate's decision.
+3. **Decide the V4 release scope.** Done: V4's grammar and fingerprint are frozen
+   and the durable local store persists it (see
+   [Rich language V4](RICH_LANGUAGE_V4.md#freeze-and-durable-persistence)). Open:
+   shared V4 is in progress; whether V4 ships in V1 remains the compatibility
+   gate's decision.
 4. **Automate release CI.** The repository workflows are manual-only. Run the Rust
    suites, the package vitest suites and the grouped rich-browser suite on every
    change before attempting the release-ci gate.
