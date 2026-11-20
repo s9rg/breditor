@@ -21,7 +21,7 @@ export interface SharedRecoveryDocumentRegistration {readonly principal:string;r
 export interface SharedRecoveryReviewRegistration {readonly principal:string;readonly observer:boolean;readonly clock:Readonly<SharedReviewWriterClock>}
 export interface SharedRoomParticipantInventoryMetadata {
  readonly format:"breditor/room-participant-inventory";readonly formatVersion:1;
- readonly room:SharedRoomBackupCut;readonly schemaFingerprint:string;readonly richLanguage:1|2|3;
+ readonly room:SharedRoomBackupCut;readonly schemaFingerprint:string;readonly richLanguage:1|2|3|4;
  readonly accounts:readonly Readonly<{principal:string;owner:boolean;documentRole:"reader"|"editor"|null;reviewRole:"comment"|"moderator"|null;suggestionRole:"propose"|"review"|null}>[];
  readonly writers:readonly SharedRecoveryDocumentRegistration[];
  readonly review:Readonly<{binding:string;writers:readonly SharedRecoveryReviewRegistration[]}>|null;

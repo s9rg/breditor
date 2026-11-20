@@ -45,7 +45,7 @@ import type {SharedReviewRelayStorageIdentity,SharedReviewRelayProgress} from ".
 import {admitPairedVersions,checkPairedNativeProgress} from "./review_record_admission.js";
 export type SharedPairedCheckpointRecord=ReviewCheckpointRecord|ReviewRelayCheckpointRecord|ReviewObserverCheckpointRecord|ReviewedReviewCheckpointRecord|SearchReviewCheckpointRecord;
 type PairedRecord=SharedPairedCheckpointRecord;
-export interface SharedReviewSessionPolicy<P extends SharedSelectionPolicy=SharedSelectionPolicy> {history:SharedHistoryPolicy;rangeEditing:SharedRangePolicy;selectionEditing:P;richLanguage:1|2|3}
+export interface SharedReviewSessionPolicy<P extends SharedSelectionPolicy=SharedSelectionPolicy> {history:SharedHistoryPolicy;rangeEditing:SharedRangePolicy;selectionEditing:P;richLanguage:1|2|3|4}
 /** Explicit paired recovery. Factories run only after both document and review writers are leased. */
 export interface SharedReviewSessionOptions<P extends SharedSelectionPolicy=SharedSelectionPolicy> extends SharedReviewSessionPolicy<P> {
  database:string;room:string;writer:string;review:SharedReviewPolicy;
@@ -153,7 +153,7 @@ export class SharedReviewPersistentSession<P extends SharedSelectionPolicy=Share
   if(input.relay!==undefined&&(!input.relay||typeof input.relay!=="object"||Array.isArray(input.relay)))throw new SharedEditorError("review_relay_identity","Expected an explicit nonsecret relay storage identity");
   const options:SessionOptions<Q>={...input,review:{...input.review},...(input.relay?{relay:reviewStorageIdentity(input.relay)}:{}),...(reviewed?{reviewedHistory:reviewed}:{}),...(search?{searchHistory:"search-v1"}:{})};
   if(options.relay?.reviewEditing==="read_only"&&options.review.access!=="read_only")throw new SharedEditorError("review_observer_policy","A fixed metadata observer must start with read-only native policy");
-  if(![1,2,3].includes(options.richLanguage)||(options.history!=="explicit"&&options.history!=="typing-v1")||(options.rangeEditing!=="original"&&options.rangeEditing!=="general-v1")||(options.selectionEditing!=="original"&&options.selectionEditing!=="document-v1")||(options.selectionEditing==="document-v1"&&options.rangeEditing!=="general-v1"))throw new SharedEditorError("review_session_policy","Explicit compatible review session policies are required");
+  if(![1,2,3,4].includes(options.richLanguage)||(options.history!=="explicit"&&options.history!=="typing-v1")||(options.rangeEditing!=="original"&&options.rangeEditing!=="general-v1")||(options.selectionEditing!=="original"&&options.selectionEditing!=="document-v1")||(options.selectionEditing==="document-v1"&&options.rangeEditing!=="general-v1"))throw new SharedEditorError("review_session_policy","Explicit compatible review session policies are required");
   const documentLease=await(takeActorDocumentLease(actorInput,'review',options.database,options.room,options.writer,options.review.actor)??SharedWriterLease.acquire(options.room,options.writer));let reviewLease:ReviewWriterLease|undefined,db:IDBDatabase|undefined,core:SharedRichEditor<Q>|undefined,raw:SharedRustOwner|undefined,nativeBackupAdmission=false;
   try{
    reviewLease=await(takeActorReviewLease(actorInput,'review',options.database,options.room,options.writer,options.review.actor)??ReviewWriterLease.acquire(options.room,options.review.actor));const retained=recoveryOrigin||completeOnly?await existingSessionDatabase(options.database,[options.room,options.writer],"review_open_versionchange"):undefined;db=retained?.db??await openSessionDatabase(options.database);

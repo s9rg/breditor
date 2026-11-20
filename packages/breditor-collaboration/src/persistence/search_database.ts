@@ -5,7 +5,7 @@ import {checkSearchCheckpoint} from "./search_checkpoint.js";
 import type {SharedHistoryPolicy,SharedRangePolicy,SharedSelectionPolicy} from "../types.js";
 export interface SearchCheckpointRecord {
  format:"breditor/shared-search-checkpoint-record";formatVersion:1;history:SharedHistoryPolicy;
- rangeEditing:SharedRangePolicy;selectionEditing:SharedSelectionPolicy;richLanguage:1|2|3;checkpointJson:string;
+ rangeEditing:SharedRangePolicy;selectionEditing:SharedSelectionPolicy;richLanguage:1|2|3|4;checkpointJson:string;
 }
 export function checkSearchRecord(input:unknown,key:readonly[string,string]):asserts input is SearchCheckpointRecord{
  if(!input||typeof input!=="object"||Array.isArray(input)||Object.keys(input).sort().join(",")!=="checkpointJson,format,formatVersion,history,rangeEditing,richLanguage,selectionEditing")throw new SharedEditorError("search_record","Expected an explicitly selected search record; old records require explicit migration");

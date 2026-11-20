@@ -89,7 +89,7 @@ pub(super) fn is_property(name: &str) -> bool {
     Field::ALL.into_iter().any(|field| field.property() == name)
 }
 pub(super) fn enabled(doc: &LoroDoc) -> Result<bool, Error> {
-    Ok(Protocol::read(doc)? == Protocol::LayoutV3)
+    Ok(Protocol::read(doc)?.layout())
 }
 pub(super) fn prepare_all(effects: &LoroMap) -> Result<(), Error> {
     for field in Field::ALL {

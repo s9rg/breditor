@@ -77,7 +77,7 @@ fn text_properties(
             serde_json::to_string(&patch)?.into(),
         )?;
     }
-    if super::layout_fields::enabled(doc)? && super::protocol::Protocol::read(doc)?.text(kind) {
+    if super::protocol::Protocol::read(doc)?.layout_owner(kind) {
         super::layout_fields::seed(effects, properties, stamp)?;
     }
     Ok(())
@@ -125,6 +125,8 @@ fn element(
             ("image-alt", &["breditor/alt-text", "breditor/decorative"][..]),
             ("image-asset", &["breditor/asset-id", "breditor/asset-generation"][..]),
             ("image-size", &["breditor/width", "breditor/height"][..]),
+            // V4: href and new-window are one atomic link choice (never a lone flag).
+            ("image-link", &["breditor/image-href", "breditor/image-link-new-window"][..]),
         ] {
             let patch = paired(&mut properties, keys, vec![]);
             if !patch.sets.is_empty() {

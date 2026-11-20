@@ -6,6 +6,74 @@ its durable formats and Wasm transport.
 
 ## Unreleased
 
+- Add explicit **shared rich language V4** (foundation). A shared room can now
+  hold, replicate, persist and replay documents using any of the eight frozen V4
+  slices with exact convergence. Selection follows the V2/V3 precedent: shared
+  configuration **format 4**, causal **model 14** and **journal 15**
+  (`SharedRichProfile::from_configuration_json_v4` /
+  `from_standard_configuration_json_v4` / `from_schema_v4`; Wasm
+  `from_configuration_json_v4`; TypeScript `compileRichSharedProfileV4`,
+  `compileStandardRichSharedProfileV4`, `createRichSharedProfileV4`,
+  `richSharedProfileConfigurationV4`, `createRichSharedToolbarV4`,
+  `SharedRichEditor.supportsRichLanguageV4()`). The shared grammar is the frozen
+  local V4 grammar (same compiler entry, rule revision and fingerprints, proved by
+  tests). `openSharedEditor`, `openSharedSearchEditor`, `openSharedDocumentEditor`
+  and `openSharedDocumentSearchEditor` now accept `richLanguage: 4` (they no longer
+  reject it); values outside 1–4 are still refused. Shared durable records bind
+  language 4 to model 14/journal 15. The reference relay adds
+  `create_language_v4` / `create_standard_language_v4` (`init-v4`,
+  `init-standard-v4`), a new `seedLanguageV4` record and
+  `AtomicTransportProfile::LanguageV4`. Older runtimes and relays refuse V4 rooms,
+  frames, journals and records, and V4 owners refuse V3 ones. Concurrent merges
+  that would break a V4 invariant (duplicate bookmark names, a partially edited
+  mention, a section without its summary or body, a non-root page break, a second
+  table caption, a link on a decorative image) are repaired deterministically on
+  every peer; local commands that would need such a repair are refused. Generic
+  shared editing works on V4 content; per-slice shared commands and toolbar
+  controls are the next step. See `docs/SHARED_RICH_V4.md`.
+- `@breditor/interchange` Markdown export: a paragraph, heading or GFM table cell
+  with a formatted run, code span or link next to a single space (`see **b** c`,
+  `see [a](<url>) b`, `see <https://example.com/> now`) now exports as Markdown
+  instead of a safe HTML block with a `markdown-feature` notice. Whitespace rules
+  (no leading/trailing block spaces, no runs of two or more spaces, no spaces
+  after a hard break, no tabs/CR) now apply to the block's whole text rather than
+  to each run. Emphasis whose own text starts or ends with a space (`**b **`)
+  still uses HTML. Every emitted block is still re-parsed and must reproduce the
+  same text and formats, so content is unchanged on reimport; only more output is
+  Markdown.
+- Freeze candidate rich language V4 at its eight slices and allow saving it
+  locally. V4's grammar, rule revision 4 and fingerprints no longer change; a
+  later grammar change is a new language (V5). The stock profile
+  `breditor-editor/standard@4` has the frozen fingerprint
+  `sha256:7ac98189f850119abd83956f49b82fdbdcc91a77033781fbde090ba931fccc77`,
+  exported as `standardSchemaFingerprintV4` from `@breditor/editor`. One
+  canonical Rust lock and a golden saved V4 checkpoint enforce the freeze.
+  `RichDocumentSessionStore` now accepts `{richLanguage: 4, schemaFingerprint}`
+  and writes record V2 with the exact fingerprint, refusing checkpoints and
+  records bound to another fingerprint, language or history; languages 1–3 keep
+  record V1 unchanged, and older runtimes refuse V4 records. Native V4
+  checkpoints already bind the fingerprint in their base document. V4 remains a
+  local-only candidate and is not released; shared V4 is in progress.
+- Test infrastructure: shared-editor browser qualification builds again. The
+  research feasibility crate (`experiments/collaboration`, which compiles the
+  canonical collaboration sources with `research`) failed for wasm32 and natively
+  because the research-only `RichReplicaProbe.join_frame` constructor lacked the
+  owner's newer `initial_read_only`, `review` and `search_reads` fields; it now uses
+  the same `from_replica` initialization as every other constructor (open one-shot
+  read-only initialization, no review session, a fresh search-read lease). Seven
+  newer canonical conformance files (autolink/list input rules, shared slash
+  batches, trigger composites, AI rewrite, native branch union, writer clocks)
+  gained their research-manifest shims, as `scripts/collaboration-promotion.test.mjs`
+  requires; they pass there too. The
+  shared-browser Playwright config splits WebKit into `webkit-1`…`webkit-N`
+  projects like the rich-browser suite (the per-file matrix selects them with
+  `--project='webkit*'`; whole-run cap 45 minutes, per-test deadline unchanged).
+  New two-writer shared specs cover slash commands, AI rewrite review and
+  `markdown-v1` list/code-block input rules. The `/demo` spec now clicks the
+  editor toolbar's Undo/Redo explicitly: since the demo mounted the selection
+  toolbar and context menu, `#a [data-shared-action="undo"]` matched two buttons
+  (a test selector defect, not an editor change). Build steps are in
+  `experiments/collaboration/README.md`.
 - Test infrastructure: the rich-browser Playwright suite now runs WebKit as
   `webkit-1`…`webkit-N` projects (one per five spec files, round-robin). Playwright's
   macOS WebKit stops opening pages after about 63 test contexts in one browser

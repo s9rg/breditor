@@ -97,7 +97,16 @@ Within that dialect, paragraph hard breaks export as backslash line breaks,
 uniform left/center/right table columns as GFM delimiter alignment, empty code
 blocks as empty fences, and captionless unsized images with a portable URL as
 Markdown images. Each emitted inline/image is re-parsed and must reproduce the
-same text, formats, URL and alt text, otherwise that block uses HTML. Adjacent
+same text, formats, URL and alt text, otherwise that block uses HTML.
+Whitespace is checked on a paragraph's, heading's or table cell's whole text,
+not per formatted run: single spaces next to bold, italic, strikethrough, code
+spans and links (`see **b** c`, `see [a](<url>) b`) stay Markdown, while
+leading or trailing block spaces, two or more consecutive spaces (even across
+runs), spaces at the start of a line after a hard break, tabs and CR use HTML.
+An emphasis or strikethrough run whose own text starts or ends with a space
+(`**b **`) also uses HTML: CommonMark delimiters next to that space are not
+left/right-flanking, and moving the space outside would drop its formatting.
+Adjacent
 separate lists alternate their bullet or ordered delimiter so they stay
 separate on reimport. Import reports fence info beyond the language word
 (`unsupported-attribute`), raw comments/declarations (`removed-content`) and

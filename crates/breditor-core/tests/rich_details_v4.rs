@@ -3,6 +3,8 @@
 #[path = "support/coverage_fixture.rs"]
 #[allow(dead_code)]
 mod fixture;
+#[path = "support/rich_v4_frozen.rs"]
+mod frozen;
 use breditor_core::{
     codec::{DocumentJsonCodecV2, RichClipboardJsonCodec, RichSessionJsonCodec},
     document::{Format, PropertyMap},
@@ -27,13 +29,9 @@ use breditor_core::{
     session::HistoryCapacity,
     state::EditorContext,
 };
+use frozen::{FROZEN, V4_LAYOUT_FINGERPRINT as V4_FINGERPRINT};
 use serde_json::{Value, json};
 type Result<T = ()> = std::result::Result<T, Box<dyn std::error::Error>>;
-
-/// Candidate V4 fingerprint for schema `example/layout@1` with the standard inline preset,
-/// pinned after the page-break slice (sections, mentions, table captions and page breaks).
-const V4_FINGERPRINT: &str =
-    "sha256:40ed4c0716f9baab1ec30da8b5641623b8fbbdafc7e6f838f5b0496e01add372";
 
 fn schema(revision: u32) -> Result<CompiledSchema> {
     let id = SchemaId::new(QualifiedName::try_new("example/layout")?, SchemaVersion::try_new(1)?);
@@ -145,7 +143,7 @@ fn v4_fingerprint_is_locked_and_v1_to_v3_stay_exact_without_sections() -> Result
         assert_eq!(old.fingerprint().to_string(), expected);
         assert!(!old.supports_rich_details());
     }
-    assert_eq!(d.fingerprint().to_string(), V4_FINGERPRINT);
+    assert_eq!(d.fingerprint().to_string(), V4_FINGERPRINT, "{FROZEN}");
     assert!(
         d.supports_rich_details()
             && d.supports_rich_image_links()

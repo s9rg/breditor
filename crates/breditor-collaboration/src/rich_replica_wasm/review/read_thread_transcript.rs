@@ -36,6 +36,7 @@ impl Write for BoundedTranscript {
 impl RichReplicaProbe {
     /// Bounded, one-pass thread transcript and direct birth reads.
     #[must_use]
+    #[allow(clippy::unused_self)] // Instance capability must be discoverable on the live JS owner.
     pub fn review_thread_transcript_version(&self) -> String {
         "1".into()
     }

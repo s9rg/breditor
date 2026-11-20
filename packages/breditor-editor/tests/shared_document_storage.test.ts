@@ -25,7 +25,7 @@ describe("declared document-family durable records",()=>{
   try{
    await writeCheckpoint(db,key,bytes);expect(await readDocumentSessionCheckpoint(db,key)).toEqual({history:"explicit",json:bytes});
    const base={format:"breditor/shared-document-checkpoint-record",formatVersion:1,history:"explicit",richLanguage:1,checkpointJson:bytes};
-   for(const value of [{...base,extra:true},{...base,formatVersion:2},{...base,history:"auto"},{...base,richLanguage:4},{...base,format:"breditor/shared-future-checkpoint-record"}]){await put(db,value);await expect(readDocumentSessionCheckpoint(db,key)).rejects.toThrow("Unknown stored");}
+   for(const value of [{...base,extra:true},{...base,formatVersion:2},{...base,history:"auto"},{...base,richLanguage:5},{...base,format:"breditor/shared-future-checkpoint-record"}]){await put(db,value);await expect(readDocumentSessionCheckpoint(db,key)).rejects.toThrow("Unknown stored");}
   }finally{db.close();}
  });
  it("rejects wrong identity/family/history/model before starting a write transaction",async()=>{
@@ -33,7 +33,7 @@ describe("declared document-family durable records",()=>{
   try{
    for(const bytes of [journal().replace('"303"','"404"'),journal().replace('"room"','"other"'),journal().replace("document-journal","general-journal"),journal("typing-v1"),"[]","null"]){await expect(writeDocumentSessionCheckpoint(db,key,bytes,"explicit")).rejects.toThrow();}
    expect(()=>checkDocumentCheckpoint(journal("typing-v1",2),...key,1,"typing-v1")).toThrow("policy");
-   expect(()=>checkDocumentCheckpoint(journal(),...key,4 as 1)).toThrow("policy");
+   expect(()=>checkDocumentCheckpoint(journal(),...key,5 as 1)).toThrow("policy");
    expect(transaction).not.toHaveBeenCalled();
   }finally{transaction.mockRestore();db.close();}
  });

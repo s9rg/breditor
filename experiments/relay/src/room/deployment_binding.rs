@@ -27,6 +27,7 @@ fn binding(asset_binding: &str, seed: ProfileSeed, atomic: bool) -> Result<Strin
         ProfileSeed::Original => (1, false),
         ProfileSeed::StructuralV2(standard) => (2, standard),
         ProfileSeed::LayoutV3(standard) => (3, standard),
+        ProfileSeed::LanguageV4(standard) => (4, standard),
     };
     let digest = Sha256::digest(serde_json::to_vec(&(
         "breditor/room-deployment-binding/1",

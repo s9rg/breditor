@@ -45,6 +45,14 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
             Room::create_standard_layout_v3(Path::new(log), &bounded(config, 256 * 1024)?, &bounded(document, 4 * 1024 * 1024)?, owner)?;
             println!("{}", json!({"kind":"created","richLanguageVersion":3}));
         }
+        ["init-v4", log, config, document, owner] => {
+            Room::create_language_v4(Path::new(log), &bounded(config, 256 * 1024)?, &bounded(document, 4 * 1024 * 1024)?, owner)?;
+            println!("{}", json!({"kind":"created","richLanguageVersion":4}));
+        }
+        ["init-standard-v4", log, config, document, owner] => {
+            Room::create_standard_language_v4(Path::new(log), &bounded(config, 256 * 1024)?, &bounded(document, 4 * 1024 * 1024)?, owner)?;
+            println!("{}", json!({"kind":"created","richLanguageVersion":4}));
+        }
         ["serve", log, auth, bind] => {
             let address: SocketAddr = bind.parse()?;
             if !address.ip().is_loopback() { return Err("reference relay currently requires loopback binding".into()); }

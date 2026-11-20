@@ -637,6 +637,9 @@ language and ordinary/natural history. It writes the closed
 `breditor/local-document-checkpoint-record` V1 at `current:document-v1` in the
 existing `checkpoint` object store. The original `RichLocalSessionStore` keeps
 its byte-identical string at `current`; neither family overwrites the other key.
+The frozen candidate rich language 4 additionally binds the exact schema
+fingerprint (`{richLanguage: 4, schemaFingerprint}`) in record V2; see
+[Rich language V4](RICH_LANGUAGE_V4.md#freeze-and-durable-persistence).
 The separate `loadLegacy` read supports an explicit old-family upgrade, not a
 fallback from an invalid document record. Header checks select storage identity;
 the matching native profile still proves schema and exact history replay.

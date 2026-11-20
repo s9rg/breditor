@@ -78,7 +78,7 @@ fn definition(doc: &LoroDoc, node: &Value, mode: &str) -> Result<(), Error> {
     defaults.remove("breditor/columns");
     if super::layout_fields::enabled(doc)? {
         super::layout_fields::strip_defaults(&mut defaults);
-        if super::protocol::Protocol::read(doc)?.text(kind) {
+        if super::protocol::Protocol::read(doc)?.layout_owner(kind) {
             super::layout_fields::prepare_all(&meta.ensure_mergeable_map("effects")?)?;
         }
     }

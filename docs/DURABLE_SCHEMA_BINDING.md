@@ -275,6 +275,39 @@ document cannot directly mint a new persistence root. This narrower source
 contract makes history/session reset observable and prevents a document-only
 helper from being mistaken for persistence migration.
 
+## Rich local checkpoints and frozen rich V4
+
+Rich local checkpoints (`breditor/rich-local-session`, `breditor/rich-typing-session`,
+`breditor/rich-document-session`, `breditor/rich-document-typing-session`, all
+version 1) embed a Document V2 base, so the base's `schema` and
+`schemaFingerprint` bind the whole retained history. Restore decodes that base
+under the restoring profile and replays every entry; another fingerprint is
+refused before any owner exists.
+
+Rich languages 1–3 and the frozen candidate rich language 4 all use these
+formats unchanged. V4's grammar, rule revision and fingerprints are frozen (see
+[Rich language V4](RICH_LANGUAGE_V4.md#freeze-and-durable-persistence)); a later
+grammar change is a new language with a new fingerprint, never a reinterpretation
+of saved V4 data. The stock V4 profile `breditor-editor/standard@4` has the frozen
+fingerprint
+`sha256:7ac98189f850119abd83956f49b82fdbdcc91a77033781fbde090ba931fccc77`.
+
+The browser `RichDocumentSessionStore` record at `current:document-v1` is
+`breditor/local-document-checkpoint-record`:
+
+- **Record V1** (languages 1–3): `format`, `formatVersion: 1`, `history`,
+  `richLanguage`, `checkpointJson`. Unchanged.
+- **Record V2** (language 4 only): record V1 plus `schemaFingerprint`, the exact
+  fingerprint the store was opened with. `save` refuses a checkpoint whose
+  embedded base names another fingerprint; `load` refuses any other version, key
+  set, language, history or fingerprint. Native restore still proves the complete
+  schema and replay.
+
+Runtimes released before V4 was persistable accept only record V1 for languages
+1–3, so they refuse a record V2 instead of reading it, and their profiles refuse a
+V4 checkpoint by fingerprint. The original `RichLocalSessionStore` string at
+`current` stays language-neutral; only the matching native profile admits it.
+
 ## Current limits
 
 - The public schema compiler remains

@@ -53,7 +53,7 @@ export {sharedImageResizeCommit,type SharedImageResizeRequest} from "./image_res
 export {mountRichSelectionToolbar as mountSharedSelectionToolbar,mountRichContextMenu as mountSharedContextMenu,richSelectionToolbarDefaults,richContextMenuDefaults,type RichContextUiHost,type RichContextUiHostState,type RichContextSelectionKind,type RichContextControlView,type RichContextUiOptions,type RichSelectionToolbar,type RichSelectionToolbarOptions,type RichSelectionToolbarState,type RichContextMenu,type RichContextMenuOptions,type RichContextMenuState} from "@breditor/experimental-rich-content";
 export {supportsSharedGeneralRanges,restoreSharedGeneralEditor} from "./profile.js";
 export {supportsSharedDocumentSelection,restoreSharedDocumentEditor} from "./profile.js";
-export {compileSharedProfile,compileStandardSharedProfileV1,compileStructuralSharedProfileV2,compileStandardStructuralSharedProfileV2,compileLayoutSharedProfileV3,compileStandardLayoutSharedProfileV3,supportsSharedTypingHistory,restoreSharedTypingEditor,type SharedProfileConfiguration,type SharedProfileConfigurationV2,type SharedProfileConfigurationV3,type SharedProfileDescriptor,type SharedProfileLimits,type SharedFormatPropertyType,type SharedRustProfile,type SharedProfileModule} from "./profile.js";
+export {compileSharedProfile,compileStandardSharedProfileV1,compileStructuralSharedProfileV2,compileStandardStructuralSharedProfileV2,compileLayoutSharedProfileV3,compileStandardLayoutSharedProfileV3,compileRichSharedProfileV4,compileStandardRichSharedProfileV4,supportsSharedTypingHistory,restoreSharedTypingEditor,type SharedProfileConfiguration,type SharedProfileConfigurationV2,type SharedProfileConfigurationV3,type SharedProfileConfigurationV4,type SharedProfileDescriptor,type SharedProfileLimits,type SharedFormatPropertyType,type SharedRustProfile,type SharedProfileModule} from "./profile.js";
 export {SharedPresence,createSharedDocumentPresence,type SharedPeerIdentity,type SharedPeerView,type SharedPresenceOptions} from "./presence.js";
 export {SharedPresenceOverlay,type SharedPresenceOverlayOptions} from "./presence_overlay.js";
 export type * from "./types.js";
@@ -141,6 +141,8 @@ export {createStandardSharedToolbarV1} from "./standard_toolbar.js";
 export {createSelectionSharedToolbarV1} from "./selection_toolbar.js";
 export {createStructuralSharedToolbarV2} from "./structural_controls_v2.js";
 export {createLayoutSharedToolbarV3} from "./layout_toolbar_v3.js";
+export {createRichSharedToolbarV4} from "./rich_toolbar_v4.js";
+export {isSharedRichLanguage,sharedModelVersion,sharedJournalVersion,sharedV4SliceVersions,type SharedRichLanguage,type SharedV4SliceVersion} from "./protocol.js";
 export {createSharedFlowNavigationControls} from "./flow_controls.js";
 export {paragraph,imageNode,caret,type SharedToolbarControl,type ActionContext} from "./actions.js";
 export {insertSharedImageFiles,type SharedAssetStore} from "./insert_image_files.js";

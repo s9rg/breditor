@@ -26,6 +26,11 @@ pub enum AtomicTransportProfile {
         /// Compose the standard inline V1 preset rather than only configured extensions.
         standard_inline_v1: bool,
     },
+    /// Explicit frozen rich-language V4 (model 14, journal 15).
+    LanguageV4 {
+        /// Compose the standard inline V1 preset rather than only configured extensions.
+        standard_inline_v1: bool,
+    },
 }
 impl AtomicTransportProfile {
     pub(super) fn compile(self, configuration: &str) -> Result<SharedRichProfile> {
@@ -43,6 +48,12 @@ impl AtomicTransportProfile {
             Self::LayoutV3 { standard_inline_v1: true } => {
                 SharedRichProfile::from_standard_configuration_json_v3(configuration)?
             }
+            Self::LanguageV4 { standard_inline_v1: false } => {
+                SharedRichProfile::from_configuration_json_v4(configuration)?
+            }
+            Self::LanguageV4 { standard_inline_v1: true } => {
+                SharedRichProfile::from_standard_configuration_json_v4(configuration)?
+            }
         })
     }
     pub(super) const fn seed(self) -> ProfileSeed {
@@ -52,6 +63,7 @@ impl AtomicTransportProfile {
                 ProfileSeed::StructuralV2(standard_inline_v1)
             }
             Self::LayoutV3 { standard_inline_v1 } => ProfileSeed::LayoutV3(standard_inline_v1),
+            Self::LanguageV4 { standard_inline_v1 } => ProfileSeed::LanguageV4(standard_inline_v1),
         }
     }
     pub(super) const fn from_seed(seed: ProfileSeed) -> Self {
@@ -61,6 +73,7 @@ impl AtomicTransportProfile {
                 Self::StructuralV2 { standard_inline_v1 }
             }
             ProfileSeed::LayoutV3(standard_inline_v1) => Self::LayoutV3 { standard_inline_v1 },
+            ProfileSeed::LanguageV4(standard_inline_v1) => Self::LanguageV4 { standard_inline_v1 },
         }
     }
 }

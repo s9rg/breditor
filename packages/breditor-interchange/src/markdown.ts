@@ -84,10 +84,19 @@ export function markdownHtml(source:string,b:Budget,autolinks=false):string {
   const result=md.renderer.render(tokens,md.options,{});if(result.length>limits.sourceBytes||bytes(result)>limits.sourceBytes)fail("resource-limit");return result;
 }
 const simpleFormats=new Set(["breditor/strong","breditor-inline/italic","breditor-inline/strike","breditor-inline/code","breditor-inline/link"]);
+/**
+ * Whitespace CommonMark does not keep literally, checked on the block's whole text (all runs joined), not per run:
+ * paragraph/heading/cell content is trimmed, 2+ spaces are collapsed by HTML (and before a line end form a hard
+ * break), a line's leading spaces are stripped, and tabs/CR are not kept as typed. A single space at a run boundary
+ * inside the block (`see **b** c`) is ordinary text. Whether an emphasis delimiter can open/close next to a space in
+ * its own run (`**b **`, `** b**`: not left/right-flanking) is left to `inlineRoundTrips`, which rejects it.
+ */
+const blockWhitespace=/^ | $| {2}|\n |[\t\r]/;
 /** Hard breaks are paragraph-only (ATX headings and table rows are single lines); alignment is table-column-only. */
 function simpleInline(node:Element,breaks=false,align=false):boolean {
   if(Object.keys(node.properties).some(k=>k!=="breditor/block-id"&&k!=="breditor/level"&&!(align&&k==="breditor/block-align")))return false;
-  return node.children.every(n=>n.kind==="text"&&!(breaks?/(^ | $| {2}|[\t\r])/:/(^ | $| {2}|[\t\r\n])/).test(n.text)&&n.formats.every(f=>simpleFormats.has(f.type))&&(!n.formats.some(f=>f.type==="breditor-inline/code")||n.formats.length===1)&&!n.formats.some(f=>f.type==="breditor-inline/link"&&f.properties["breditor-inline/new-window"]===true));
+  if(!node.children.every(n=>n.kind==="text"&&(breaks||!n.text.includes("\n"))&&n.formats.every(f=>simpleFormats.has(f.type))&&(!n.formats.some(f=>f.type==="breditor-inline/code")||n.formats.length===1)&&!n.formats.some(f=>f.type==="breditor-inline/link"&&f.properties["breditor-inline/new-window"]===true)))return false;
+  return !blockWhitespace.test(node.children.map(n=>(n as Text).text).join(""));
 }
 // `&` would start an entity. After a hard break a line-leading `-`/`=` could close a setext heading or start a
 // list/rule, and `:` a table delimiter row; the inline verifier cannot see block rules, so every line start is escaped.

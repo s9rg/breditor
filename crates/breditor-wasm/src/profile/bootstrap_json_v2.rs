@@ -262,7 +262,7 @@ pub(crate) fn decode_layout_rich_schema_v3(
         .map_err(|_| profile_compilation())
 }
 
-/// Bootstrap V9 selects the unreleased candidate rich V4; V6–V8 retain exact grammar.
+/// Bootstrap V9 selects the frozen candidate rich V4; V6–V8 retain exact grammar.
 #[cfg(feature = "experimental-rich-content")]
 pub(crate) fn decode_rich_schema_v4(
     json: &str,

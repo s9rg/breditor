@@ -144,5 +144,9 @@ describe("Markdown GFM autolink literals (opt-in autolinks)",()=>{
   expect(exported("https://example.com/a%20b").value).toBe("[https\\://example\\.com/a%20b](<https://example.com/a%20b>)");
   expect(exported("https://xn--bcher-kva.de/").value).toBe("[https\\://xn--bcher-kva\\.de/](<https://xn--bcher-kva.de/>)");
   expect(a.exportMarkdown(json(a.importMarkdown("<https://example.com/>"))).ok&&exported("<https://example.com/>").value).toBe("<https://example.com/>");
+  // Links between spaces in prose stay Markdown (whitespace is checked per block, not per run) and re-import exactly.
+  const prose="see https://example.com/a?b=1. and www.example.org, (https://en.example.org/wiki/A_(b)). javascript:alert(1) HTTPS://example.com/",linked=exported(prose);
+  expect(linked).toEqual({ok:true,value:"see <https://example.com/a?b=1>\\. and [www\\.example\\.org](<https://www.example.org/>), \\(<https://en.example.org/wiki/A_(b)>\\)\\. javascript:alert\\(1\\) HTTPS\\://example\\.com/",losses:[]});
+  for(const options of [on,{}])expect(json(a.importMarkdown(linked.value,options))).toBe(json(a.importMarkdown(prose,on)));
  });
 });

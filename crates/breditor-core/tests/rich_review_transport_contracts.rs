@@ -331,6 +331,7 @@ fn maximum_batch_preserves_history_anchor_checks_for_live_and_retained_inputs() 
 }
 
 #[test]
+#[allow(clippy::panic)] // The backend closure must prove it is never called.
 fn nonclosed_frame_preserves_backend_anchor_failure_order_and_pending_dependencies() -> Result {
     let a = source()?;
     let mut b = owner("202")?;

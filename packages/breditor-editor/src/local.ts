@@ -10,9 +10,15 @@ export const standardProfileBootstrapJson=JSON.stringify({format:"breditor/profi
 /** Explicit bootstrap V7; neither old schema selectors nor saved checkpoints migrate. */
 export const structuralProfileBootstrapJsonV2=JSON.stringify({format:"breditor/profile-bootstrap",formatVersion:7,schema:{name:"breditor-editor/standard",version:2},extensions:[]});
 export const layoutProfileBootstrapJsonV3=JSON.stringify({format:"breditor/profile-bootstrap",formatVersion:8,schema:{name:"breditor-editor/standard",version:3},extensions:[]});
-/** Explicit bootstrap V9 for the unreleased candidate rich V4 (V3 plus ordered-list numbering).
- * Its fingerprint changes while the candidate grows; do not persist V4 documents yet. */
+/** Explicit bootstrap V9 for the frozen candidate rich V4 (V3 plus its eight local slices).
+ * V4's grammar and fingerprint are frozen, so V4 documents, checkpoints and histories may be
+ * persisted locally, bound to the exact fingerprint (see `standardSchemaFingerprintV4`). */
 export const profileBootstrapJsonV4=JSON.stringify({format:"breditor/profile-bootstrap",formatVersion:9,schema:{name:"breditor-editor/standard",version:4},extensions:[]});
+/** Frozen fingerprint of the stock V4 profile (`profileBootstrapJsonV4`, standard inline preset).
+ * Saved stock V4 records bind it, e.g. `RichDocumentSessionStore.open(name,{richLanguage:4,
+ * schemaFingerprint:standardSchemaFingerprintV4})`; a custom bootstrap binds its own
+ * `profile.descriptor().schemaFingerprint`. It never changes: a grammar change is a new language. */
+export const standardSchemaFingerprintV4="sha256:7ac98189f850119abd83956f49b82fdbdcc91a77033781fbde090ba931fccc77";
 /** Select the exact standard profile for one explicit local rich language. */
 export function compileLocalLanguageProfile(runtime:Parameters<typeof compileStandardRichProfileV1>[0],language:1|2|3|4,bootstrapJson?:string):RichCoreProfile{
  return language===4?compileStandardRichProfileV4(runtime,bootstrapJson??profileBootstrapJsonV4):language===3?compileStandardLayoutRichProfileV3(runtime,bootstrapJson??layoutProfileBootstrapJsonV3):language===2?compileStandardStructuralRichProfileV2(runtime,bootstrapJson??structuralProfileBootstrapJsonV2):compileStandardRichProfileV1(runtime,bootstrapJson??standardProfileBootstrapJson);
@@ -29,7 +35,7 @@ export type LocalInitial={kind:"empty";documentId?:string;blockId?:string}|{kind
 export interface LocalEditorOptions extends Omit<RichEditorOptions,"core"|"toolbar"|"inlinePresentation"|"inlineTag"|"clipboardInterchange"> {
  host:HTMLElement;initial?:LocalInitial;profileBootstrapJson?:string;additionalInlinePresentation?:unknown;
  /** Explicit native grammar; omitted/1 preserves V1, 2 selects structure, 3 adds layout and 4
-  * selects the unreleased local-only candidate V4 (layout plus ordered-list numbering). */
+  * selects the frozen local-only candidate V4 (layout plus its eight slices; persistable locally). */
  richLanguage?:1|2|3|4;
  /** Initial live host policy, reapplied after checkpoint restore; not serialized permission. */
  readOnly?:boolean;

@@ -270,6 +270,18 @@ configuration and preset choice. Open replays that recorded policy; it never
 infers an upgrade from document content, relabels an old seed or overwrites a log.
 Older binaries reject the unfamiliar seed kind rather than treating it as V1.
 
+### Explicit rich language V4 rooms
+
+`Room::create_language_v4` (`init-v4`) selects configuration 4/model 14/journal
+15, the frozen rich-language V4 grammar. `create_standard_language_v4`
+(`init-standard-v4`) also composes standard inline V1, matching the SDK's
+`breditor-editor/standard@4` preset. The new `seedLanguageV4` durable record (and
+the `languageV4` atomic transport profile) retains the exact configuration and
+preset choice; older relays cannot parse it and refuse the room. V1–V3 seeds keep
+their compilers, wrong-version creation fails before a log exists, and V3 writer
+groups are refused by V4 rooms (and V4 groups by V3 rooms) without touching the
+log. See `docs/SHARED_RICH_V4.md`.
+
 ### Explicit layout V3 rooms
 
 `Room::create_layout_v3` (`init-v3`) selects configuration 3/model 13/journal 14.

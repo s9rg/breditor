@@ -13,7 +13,7 @@ import {admitPairedVersions,checkPairedNativeProgress} from './review_record_adm
 export interface OriginalReferenceNativeState{
  readonly slot:'committed'|'pending'|'live';readonly checkpoint:string;
  readonly history:SharedHistoryPolicy;readonly rangeEditing:SharedRangePolicy;
- readonly selectionEditing:SharedSelectionPolicy;readonly richLanguage:1|2|3;
+ readonly selectionEditing:SharedSelectionPolicy;readonly richLanguage:1|2|3|4;
  readonly searchHistory:'search-v1'|null;readonly reviewedHistory:SharedReviewedHistoryIdentity|null;
  readonly paired:PersistentPairedRecord|null;
 }

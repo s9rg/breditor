@@ -155,6 +155,23 @@ impl Grammar {
 }
 
 fn allows(protocol: super::super::protocol::Protocol, parent: Option<&str>, kind: &str) -> bool {
+    // V4: a page break lives only directly below the document; a section admits its
+    // summary plus V4 flow; a table admits rows plus its (trailing) caption paragraph.
+    // Child order and multiplicity are normalized by the projection, not placement.
+    if protocol.root_only(kind) {
+        return parent.is_none();
+    }
+    if protocol.v4() {
+        match parent {
+            Some("breditor/details") => {
+                return kind == "breditor/details-summary" || protocol.flow(kind);
+            }
+            Some("breditor/table") => {
+                return kind == "breditor/table-row" || kind == "breditor/paragraph";
+            }
+            _ => {}
+        }
+    }
     if protocol.structural() {
         match parent {
             Some("breditor/blockquote" | "breditor/task-item") => {
