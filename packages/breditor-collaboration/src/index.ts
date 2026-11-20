@@ -142,6 +142,7 @@ export {createSelectionSharedToolbarV1} from "./selection_toolbar.js";
 export {createStructuralSharedToolbarV2} from "./structural_controls_v2.js";
 export {createLayoutSharedToolbarV3} from "./layout_toolbar_v3.js";
 export {createRichSharedToolbarV4} from "./rich_toolbar_v4.js";
+export {createSharedStructureControlsV4,sharedStructureRequestV4,sharedStructureCommandKindsV4,sharedSelectedDetails,sharedDetailsInterval,sharedRootBlockOfSelection,sharedPageBreakBefore,sharedTableCaptionOf} from "./structure_v4.js";
 export {isSharedRichLanguage,sharedModelVersion,sharedJournalVersion,sharedV4SliceVersions,type SharedRichLanguage,type SharedV4SliceVersion} from "./protocol.js";
 export {createSharedFlowNavigationControls} from "./flow_controls.js";
 export {paragraph,imageNode,caret,type SharedToolbarControl,type ActionContext} from "./actions.js";

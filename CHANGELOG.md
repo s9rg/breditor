@@ -6,6 +6,28 @@ its durable formats and Wasm transport.
 
 ## Unreleased
 
+- Add the **shared V4 structure commands** for collapsible sections, page breaks
+  and table captions (explicit model-14 owners only; V1–V3 owners refuse them).
+  New shared commands `wrap_details` / `unwrap_details`, `insert_page_break` /
+  `delete_page_break` and `add_table_caption` / `remove_table_caption` are each one
+  guarded dispatch and one writer-local Undo step, converge across concurrent
+  writers, replay exactly from checkpoints and never rely on a V4 merge repair.
+  Wasm reports `structure_commands_v4_version()`; TypeScript adds
+  `SharedRichEditor.supportsSharedStructureV4()`, `wrapDetails`, `unwrapDetails`,
+  `insertPageBreak`, `deletePageBreak`, `addTableCaption`, `removeTableCaption` and
+  `createSharedStructureControlsV4`. `createRichSharedToolbarV4` (and therefore the
+  `@breditor/editor` shared V4 sessions) gains **Collapsible section**, **Remove
+  collapsible section**, **Page break** and **Table caption**; the standard shared
+  slash menu gains **Collapsible section** and **Page break** (V4 toolbars only, one
+  Undo step with the trigger removal). Backspace at a summary start unwraps the
+  section, Backspace in an empty caption removes it, Enter in a caption inserts a
+  line break and Enter in an open summary opens a first body paragraph, as locally.
+  Removing a caption also removes a concurrently added caption candidate that the
+  projection hid, so no hidden caption surfaces in its place. Shared editors now
+  render page breaks with the local page-break styles (`richPageBreakStyles`, also
+  exported from `@breditor/experimental-rich-content/rendering`), so a shared page
+  break is visible and node-selectable by click.
+
 - Add explicit **shared rich language V4** (foundation). A shared room can now
   hold, replicate, persist and replay documents using any of the eight frozen V4
   slices with exact convergence. Selection follows the V2/V3 precedent: shared

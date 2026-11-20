@@ -2,6 +2,7 @@ import {isStructuralRichLanguage} from "@breditor/experimental-rich-content/rend
 // Read-only UI preparation. Rust owns final semantic admission and all replicated state.
 import {id,isText,property,sourceCell,text,formatsAt,textTargets,taskContext,selectedFlowAtom,type RichModel,type RichPresentationModel,type ElementNode} from "@breditor/experimental-rich-content/rendering";
 import {exitEmptySharedTask} from "./task_actions_v2.js";
+import {sharedStructureBoundaryV4,sharedStructureEnterV4} from "./structure_v4.js";
 import type {SharedRichEditor} from "./core.js";
 import type {RichInputRuleOutcome} from "@breditor/experimental-rich-content";
 import type {SharedCommand,SharedDispatch,SharedNode,SharedParagraph,RichSelection,RichPoint,RichCell,FormatLiteral,SharedSelectionPolicy} from "./types.js";
@@ -65,6 +66,7 @@ export function removeSelection(ctx:SharedIntentContext,movement:"before"|"after
 export function enter(ctx:SharedIntentContext,target?:Extract<RichSelection,{kind:"text"}>,autolink=false):RichInputRuleOutcome|undefined{
  const s=target??ctx.model.view.selection;if(s?.kind!=="text")return;const[start,end]=ordered(ctx.model,s),node=ctx.model.nodes.get(start.block);if(!node)return;
  const cross=ctx.model.view.rangeEditing==="general-v1"&&s.anchor.block!==s.focus.block,parent=ctx.model.parents.get(start.block);
+ if(!cross&&!target&&sharedStructureEnterV4(ctx)!==undefined)return;
  if(node.type==="breditor/code-block"||parent?.type==="breditor/image"){if(cross)ctx.core.replaceGeneralRangePlainText(s,"\n",ctx.allocate("range"),ctx.revision);else ctx.core.hardBreak(ctx.revision);return;}
  if(cross){ctx.core.insertGeneralParagraph(s,ctx.allocate("range"),ctx.revision);return;}
  if(parent?.type==="breditor/task-item"&&parent.children[0]===node){const exit=exitEmptySharedTask(ctx);if(exit){publish(ctx,[exit],caret(start.block));return;}}
@@ -83,6 +85,7 @@ export function boundaryDelete(ctx:SharedIntentContext,backward:boolean):boolean
  const s=ctx.model.view.selection;if(s?.kind!=="text"||s.anchor.block!==s.focus.block||s.anchor.offset!==s.focus.offset)return false;
  const node=ctx.model.nodes.get(s.focus.block),parent=node?ctx.model.parents.get(id(node)):undefined;if(!node||!parent||Number(s.focus.offset)!==(backward?0:text(node).length))return false;
  if(node.type==="breditor/code-block")return false;
+ const v4=sharedStructureBoundaryV4(ctx,backward,node,parent);if(v4!==undefined)return v4;
  const task=taskContext(ctx.model);if(task&&parent.type==="breditor/task-item"&&parent.children[0]===node){const index=task.first,other=index+(backward?-1:1),left=task.items[Math.min(index,other)],right=task.items[Math.max(index,other)];if(left&&right){publish(ctx,[{kind:"join_task_items",data:{container:id(task.container),left:id(left),right:id(right)}}]);return true;}return false;}
  const list=listContext(ctx.model);if(list&&parent.type==="breditor/list-item"&&parent.children[0]===node){const index=list.first,other=index+(backward?-1:1),left=list.items[Math.min(index,other)],right=list.items[Math.max(index,other)];if(left&&right){publish(ctx,[{kind:"join_list_items",data:{container:id(list.list),left:id(left),right:id(right)}}]);return true;}return false;}
  const index=parent.children.indexOf(node),other=parent.children[index+(backward?-1:1)];if(other?.kind!=="element")return false;

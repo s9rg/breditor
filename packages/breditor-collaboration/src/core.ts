@@ -22,6 +22,7 @@ import {reviewedHistoryIdentity,sameReviewedHistory} from "./reviewed_history_va
 import type {SharedReviewedHistoryIdentity,SharedOwnedSuggestionAcceptance,SharedDocumentSuggestionEffect,SharedSuggestionEffectSummary,SharedSuggestionEffectVerification} from "./reviewed_history_types.js";
 import {sharedProtocolLanguage} from "./protocol.js";
 import {encodeBlockLayoutPatch} from "@breditor/experimental-rich-content/rendering";
+import {sharedStructureRequestV4} from "./structure_v4.js";
 import type {RichSearchQuery,RichSearchReplacement,RichInputRuleOutcome,RichInputRuleId} from "@breditor/experimental-rich-content";
 import {SharedSearchResults,nativeSearchResults} from "./search_results.js";
 import {parseSegmentedHistoryInfo,type SharedSegmentedHistoryInfo} from "./segmented_history.js";
@@ -618,6 +619,14 @@ export class SharedRichEditor<P extends SharedSelectionPolicy="original"> {
  supportsSelectionFormatting():boolean{const raw=this.#live();return typeof raw.selection_formatting_version==="function"&&raw.selection_formatting_version()==="1"&&typeof raw.selection_coverage_json==="function"&&typeof raw.selection_format_state_json==="function"&&typeof raw.change_selection_formats==="function";}
  /** Exact frozen V4 capability: model 14 plus every slice version "1" on the Rust owner. */
  supportsRichLanguageV4():boolean{const raw=this.#live();return this.richLanguageVersion()===4&&typeof raw.rich_language_version==="function"&&raw.rich_language_version()==="4"&&sharedV4SliceMethods.every(name=>typeof raw[name]==="function"&&raw[name]!()==="1");}
+ /** Explicit shared V4 structure commands (sections, page breaks, table captions): each is one guarded dispatch and one Undo step. */
+ supportsSharedStructureV4():boolean{const raw=this.#live();return this.supportsRichLanguageV4()&&raw.structure_commands_v4_version?.()==="1";}
+ wrapDetails(first:string,last:string,wrapper:string,summary:string,revision?:string):boolean{return this.dispatch(sharedStructureRequestV4(this,{kind:"wrap_details",data:{first,last,wrapper,summary,open:true}}),revision);}
+ unwrapDetails(wrapper:string,revision?:string):boolean{return this.dispatch(sharedStructureRequestV4(this,{kind:"unwrap_details",data:{wrapper}}),revision);}
+ insertPageBreak(block:string,before:string|null,revision?:string):boolean{return this.dispatch(sharedStructureRequestV4(this,{kind:"insert_page_break",data:{block,before}}),revision);}
+ deletePageBreak(block:string,paragraph:string|null,revision?:string):boolean{return this.dispatch(sharedStructureRequestV4(this,{kind:"delete_page_break",data:{block,paragraph}}),revision);}
+ addTableCaption(table:string,caption:string,revision?:string):boolean{return this.dispatch(sharedStructureRequestV4(this,{kind:"add_table_caption",data:{block:table,caption}}),revision);}
+ removeTableCaption(table:string,revision?:string):boolean{return this.dispatch(sharedStructureRequestV4(this,{kind:"remove_table_caption",data:{block:table}}),revision);}
  supportsBlockLayout():boolean{const raw=this.#live();const language=this.richLanguageVersion();return (language===3||language===4)&&typeof raw.block_layout_version==="function"&&raw.block_layout_version()==="1"&&typeof raw.block_layout_state_json==="function"&&typeof raw.change_selection_layout==="function";}
  blockLayoutState():import("@breditor/experimental-rich-content").RichBlockLayoutStateRead{if(!this.supportsBlockLayout())throw new SharedEditorError("layout_unavailable","Use an explicitly selected matching native layout V3 owner");const raw=this.#live();return JSON.parse(this.#selectionPolicy==="document-v1"&&this.supportsDocumentTools()?raw.document_block_layout_state_json!(this.#observation):raw.block_layout_state_json!(this.#observation)) as import("@breditor/experimental-rich-content").RichBlockLayoutStateRead;}
  changeSelectionLayout(patch:import("@breditor/experimental-rich-content").RichBlockLayoutPatch,revision?:string):boolean{return this.#run("local",(raw,o)=>{if(!this.supportsBlockLayout())throw new SharedEditorError("layout_unavailable","Use matching native layout V3 commands and reads");const input=encodeBlockLayoutPatch(patch);return this.#selectionPolicy==="document-v1"&&this.supportsDocumentTools()?raw.change_document_selection_layout!(o,input):raw.change_selection_layout!(o,input);},revision);}
