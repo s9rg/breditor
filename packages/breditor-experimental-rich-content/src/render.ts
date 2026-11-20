@@ -17,6 +17,20 @@ export interface RenderOptions {
 export function requireRenderOptions(value:RichPresentationModel,options:RenderOptions):void {
  if(options.inlinePresentation){if(options.inlineTag)throw new TypeError("Use either inlinePresentation or inlineTag, not both");requireRichInlinePresentation(options.inlinePresentation,value.schema);}
 }
+/** A lone LF at the very end of a `pre-wrap` text block creates no line box after it, so Chromium
+ * and WebKit canonicalize a caret after it to the position before it (their `beforeinput` target
+ * ranges point before the LF, so typed text landed before the break) and no engine shows the new
+ * empty line. The live renderer appends this presentation-only `<br>` to such a block: it has no
+ * text, so Range.toString, textContent and the text-node walkers in selection.ts ignore it, and
+ * model offsets, search, composition reconcile and clipboard are unchanged. Static output omits it. */
+export const trailingBreakAttribute="data-rich-trailing-break";
+export function endsWithLineBreak(children:readonly AstNode[]):boolean {
+ const last=children[children.length-1];return last?.kind==="text"&&last.text.endsWith("\n");
+}
+function appendTrailingBreak(target:HTMLElement,node:ElementNode):void {
+ if(!endsWithLineBreak(node.children))return;
+ const anchor=target.ownerDocument.createElement("br");anchor.setAttribute(trailingBreakAttribute,"");target.append(anchor);
+}
 const assetBindings=new WeakMap<HTMLElement,{bitmap:HTMLImageElement;binding:AssetBinding;attempt:number}>();
 function resolveImage(figure:HTMLElement,options:RenderOptions):void {
  const record=assetBindings.get(figure);if(!record)return;
@@ -80,11 +94,11 @@ export function render(surface:HTMLElement,value:RichPresentationModel,options:R
   if(node.type==="breditor/details-summary"){
    const summary=document.createElement("summary");summary.dataset["richBlock"]=id(node);summary.dataset["richText"]=id(node);
    if(node.children.length===0)summary.append(document.createElement("br"));
-   appendInline(summary,node);return summary;
+   appendInline(summary,node);appendTrailingBreak(summary,node);return summary;
   }
   if(node.type==="breditor/code-block"){
    const pre=document.createElement("pre");pre.dataset["richBlock"]=id(node);pre.dataset["richText"]=id(node);applyBlockLayout(pre,node);const language=property(node,"language");if(typeof language==="string")pre.dataset["language"]=language;
-   const code=document.createElement("code");for(const child of node.children)code.append(flow(child));if(node.children.length===0)code.append(document.createElement("br"));pre.append(code);return pre;
+   const code=document.createElement("code");for(const child of node.children)code.append(flow(child));if(node.children.length===0)code.append(document.createElement("br"));appendTrailingBreak(code,node);pre.append(code);return pre;
   }
   const tag=node.type==="breditor/paragraph"?"p":node.type==="breditor/heading"?`h${String(property(node,"level"))}`:node.type==="breditor/bullet-list"||node.type==="breditor/task-list"?"ul":node.type==="breditor/ordered-list"?"ol":node.type==="breditor/list-item"?"li":node.type==="breditor/blockquote"?"blockquote":"div";
   const element=document.createElement(tag);element.dataset["richBlock"]=id(node);
@@ -96,7 +110,7 @@ export function render(surface:HTMLElement,value:RichPresentationModel,options:R
    if(node.children.length===0)element.append(document.createElement("br"));
   }
   // Candidate V4 mentions render as inert chips grouping their styled pieces.
-  if(node.type==="breditor/paragraph"||node.type==="breditor/heading")appendInline(element,node);
+  if(node.type==="breditor/paragraph"||node.type==="breditor/heading"){appendInline(element,node);appendTrailingBreak(element,node);}
   else for(const child of node.children)element.append(flow(child));
   return element;
  };
