@@ -37,7 +37,10 @@ impl SetHeading {
         } else {
             RichBlockDraft::paragraph(block, &text)?
         };
-        let replacement = super::rewrite_properties::inherit_layout(source, draft.into_node())?;
+        let replacement = super::rewrite_properties::inherit_bookmark(
+            source,
+            super::rewrite_properties::inherit_layout(source, draft.into_node())?,
+        )?;
         Ok(Self { patch: NodePatch::capture(document, block, replacement)? })
     }
     /// Publish one exact undoable rank/kind change, keeping stable text/node selections.

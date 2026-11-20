@@ -13,6 +13,7 @@ pub(crate) mod block_layout;
 mod block_layout_draft;
 mod block_layout_patch;
 mod block_layout_state;
+pub(crate) mod bookmark;
 pub(crate) mod clipboard;
 mod code_language;
 mod collapse_document_selection;
@@ -67,6 +68,11 @@ pub use block_layout::{
 };
 pub use block_layout_patch::{RichBlockLayoutPatch, RichLayoutChange};
 pub use block_layout_state::{RichBlockLayoutState, RichLayoutFieldState, inspect_block_layout};
+pub use bookmark::{
+    RICH_BOOKMARK_NAME_MAX_BYTES, RICH_INTERNAL_LINK_PREFIX, RichBookmarkEntry, RichBookmarkError,
+    RichBookmarkIndex, RichBookmarkName, RichInternalLink, internal_link_name,
+    is_valid_name as is_valid_bookmark_name,
+};
 pub use clipboard::{
     RichClipboardError, RichClipboardFragment, RichClipboardIdAllocator, RichClipboardIdentityKind,
     RichClipboardKind, RichClipboardNamespace, RichClipboardTextProjection,

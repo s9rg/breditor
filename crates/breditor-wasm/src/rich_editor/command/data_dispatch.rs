@@ -128,6 +128,8 @@ fn candidate_v4(
         CommandTag::RemoveTableCaption => super::table_caption::remove(owner, observation, input),
         CommandTag::InsertPageBreak => super::page_break::insert(owner, observation, input),
         CommandTag::DeletePageBreak => super::page_break::delete(owner, observation, input),
+        CommandTag::SetBookmark => super::bookmark::set(owner, observation, input),
+        CommandTag::RenameBookmark => super::bookmark::rename(owner, observation, input),
         _ => Err(super::invalid()),
     }
 }

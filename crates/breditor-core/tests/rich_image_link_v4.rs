@@ -32,7 +32,7 @@ type Result<T = ()> = std::result::Result<T, Box<dyn std::error::Error>>;
 /// Candidate V4 fingerprint for schema `example/layout@1` with the standard inline preset,
 /// pinned after the page-break slice (`breditor/image` stays persisted type revision 2).
 const V4_FINGERPRINT: &str =
-    "sha256:eb74301f1eedccc6838cf67090b2ce47e91e51112f9550d5ba25a22a20d0e9cb";
+    "sha256:40ed4c0716f9baab1ec30da8b5641623b8fbbdafc7e6f838f5b0496e01add372";
 
 fn schema(revision: u32) -> Result<CompiledSchema> {
     let id = SchemaId::new(QualifiedName::try_new("example/layout")?, SchemaVersion::try_new(1)?);

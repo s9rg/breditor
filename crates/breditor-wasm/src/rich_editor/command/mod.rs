@@ -3,6 +3,7 @@
 //! Raw payloads are decoded directly from JSON, not from serde's internally
 //! tagged content buffer. Present null fields remain distinct from missing ones.
 
+mod bookmark;
 mod change_inline_formats;
 mod change_selection_formats;
 mod change_selection_layout;
@@ -184,6 +185,8 @@ enum CommandTag {
     RemoveTableCaption,
     InsertPageBreak,
     DeletePageBreak,
+    SetBookmark,
+    RenameBookmark,
     OutdentListItems,
     JoinTextBlocks,
     JoinListItems,
