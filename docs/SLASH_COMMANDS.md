@@ -1,8 +1,10 @@
 # Slash-command suggestion sessions
 
 Status: opt-in browser candidate for local rich owners. This covers the slash
-command half of the `mentions-slash` readiness gap. Durable mention entities are
-not part of it: they need a native model change and stay open.
+command half of the `mentions-slash` readiness gap. Durable mention entities and
+the `@` menu are candidate rich V4 slice 5 ([RICH_LANGUAGE_V4.md](RICH_LANGUAGE_V4.md));
+both menus share one typed-trigger session (`suggestion_session.ts`), and slash
+behaviour, DOM and messages are unchanged.
 
 Code:
 
@@ -211,5 +213,6 @@ Unmounting disposes only the controller.
   `RichCommand`, so shared owners need a separate dispatch adapter. The trigger
   checks already handle remote edits generically.
 - **Single-step Undo.** This needs a native composite intent (see above).
-- **Mentions.** A durable mention entity contract needs a Rust model change.
+- **Mentions.** Implemented for candidate rich V4 only (native
+  `insertMention`, one Undo step); see RICH_LANGUAGE_V4.md slice 5.
 - No default menu styling theme or hotkey to open the menu without typing `/`.

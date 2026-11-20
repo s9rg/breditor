@@ -179,6 +179,14 @@ exactly. Other owners keep the original conversion: `<details>`/`<summary>` are
 unwrapped into ordinary flow (the summary becomes a paragraph) with
 `unsupported-element`, and `open` reports `unsupported-attribute`.
 
+V4 owners also report `supportsMentions()`. For them, the exact span
+`<span class="breditor-mention" data-mention-kind data-mention-id>@label</span>`
+becomes a mention (kind, id and the label snapshot); anything else stays text.
+HTML export writes that span around each mention's styled pieces; Markdown has no
+mention syntax, so a block with a mention falls back to safe HTML with
+`markdown-feature`, which reimports exactly. Other owners import the span as
+plain `@label` text.
+
 Remaining gaps: real captured clipboard dumps per producer/platform/version,
 Word for the web non-decimal formats (reported, rendered as decimal), CSS
 `font` shorthand, Excel/Sheets hidden rows and columns (still rejected), cell

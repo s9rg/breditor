@@ -49,7 +49,9 @@ HTTP(S) target, and `image-link-new-window: true`; never on a decorative image),
 with the inline `safeLinkV1` attribute set, and candidate V4 collapsible sections (`breditor/details`
 with one leading `breditor/details-summary`, at most 8 nested, `details-open: true` only), emitted as
 native `<details data-rich-details [open]><summary data-rich-text>…</summary>…</details>` so readers
-can toggle static output. It checks the following:
+can toggle static output, and candidate V4 mentions (`breditor/mention` over whole `@label` text),
+emitted as one `<span class="breditor-mention" data-mention-kind="…" data-mention-id="…">` chip per
+mention around its styled pieces (no link; partial mention text is a `grammar` error). It checks the following:
 
 - Exact node and envelope fields. `entityId` must be `null`.
 - Required and allowed `breditor/*` properties for each element type. An unexpected property,
