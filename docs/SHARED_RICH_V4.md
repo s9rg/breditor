@@ -15,7 +15,9 @@ insert page break, bookmark/rename/link) are **not** part of this foundation;
 they are the next round. Until then V4 slice values arrive only by seeding,
 restore, rich clipboard and generic block insertion, and are then edited with
 the generic commands below. The browser harness qualification of shared V4 is
-also still open (see [Remaining work](#remaining-work)).
+also still open (see [Remaining work](#remaining-work)). The inline slice commands
+(text language, mentions with the `@` menu, image links) have since landed; see
+[Shared inline commands](#shared-inline-commands-text-language-mentions-image-links).
 
 ## Selector
 
@@ -122,6 +124,58 @@ the root only; sections are valid insertion parents), `MoveBlock`, `DeleteBlock`
 rich clipboard copy/paste (fresh identities), checkpoints of every history family,
 exact restore and relay frames.
 
+## Shared inline commands: text language, mentions, image links
+
+The first per-slice shared commands cover the three inline V4 features. Each is
+the shared form of the frozen local slice command: the same input JSON, the same
+user-visible semantics, **one writer-local history group** (one Undo step) and an
+exact check against the complete local core result before the shared group is
+kept. Outside an explicit shared V4 owner every one is refused before anything is
+published. Code lives in `rich_replica/v4_inline.rs` (owner entry points),
+`rich_replica/actions/insert_mention.rs` and `rich_replica/actions/set_image_link.rs`
+(new shared commands), `rich_replica_wasm/inline_v4.rs` (Wasm) and
+`packages/breditor-collaboration/src/inline_v4.ts` (TypeScript).
+
+| Feature | Rust / Wasm (`SharedEditorOwner`) | TypeScript (`SharedRichEditor`) | Replica write | Concurrency |
+| --- | --- | --- | --- | --- |
+| Text language | `set_text_language_json_guarded` / `set_text_language(observation, {"language": tag\|null})` | `setTextLanguage(tag \| null)`, `supportsTextLanguage()` | no new command: native selection formatting lowers to `SetFormat` annotations of `breditor/text-language` (the document-selection family uses the document formatting action) | per character, the highest causal stamp of the kind wins; other formats and the mention are untouched |
+| Mention | `insert_mention_json_guarded` / `insert_mention(observation, {"selection":{kind:"text",anchor,focus},"mention":{kind,id,label}})`; shared command `insert_mention {anchor, focus, mention}` | `insertMention(selection, mention)`, `supportsMentions()` | `InsertMention` is planned by the local `RichLocalSession::insert_mention` over the current projection (V4 profile, outward snapping, paragraph/heading/summary target, the trigger's styles) and lowered to the source-preserving `ReplaceTextRange` edit (`@label` with the mention, one plain space) | a concurrent edit inside the replaced trigger survives next to the unit; a stretch that stops being whole `@label` units projects as plain text (the existing atomicity repair) |
+| Image link | `set_image_link_json_guarded` / `set_image_link(observation, {"image": imageId, "href": url\|null, "newWindow"?})`; shared command `set_image_link {block, href, new_window}` | `setImageLink(intent)`, `supportsImageLinks()` | one write of the **paired** field `image-link` (`image-href` + `image-link-new-window`, a same-window link removes the flag in the same write, a clear removes both) | per-field register order: one writer's complete pair wins, never half of each; disjoint image fields (alt, size, caption) merge |
+
+- **Text language.** A range replaces every selected character's language in one
+  history group (canonical case, `fr-ca` is stored as `fr-CA`); an identical
+  value is an exact no-op; a caret changes pending typing formats only (no
+  history step); malformed, private-use and extension tags are refused. Clearing
+  removes only the language.
+- **Mentions.** The caret lands after the plain space and pending formats are
+  the trigger's styles (never a mention), so typing next to a mention is plain
+  text. Deleting is whole-unit (selection snapping plus the local refusal of
+  partial edits). One Undo restores the typed `@query` and the pre-edit selection;
+  under natural-typing history the typing burst stays its own earlier group.
+  Every JSON field is strictly decoded with the local V4 domains (closed kinds,
+  id charset, label rules).
+- **`@` menu.** `mountSharedMentions(host, {items, core?})` (`@breditor/collaboration`;
+  `mountMentions(session, options)` in `@breditor/editor/collaboration`) reuses the
+  local typed-trigger session exactly like the shared slash menu: the same
+  trigger detection, AbortSignal-cancelled providers, accessible listbox, catalog
+  strings (`mentionLabel` …) and DOM (`data-breditor-mention`). Choosing publishes
+  ONE guarded dispatch `{commands:[insert_mention], selectionUpdate:set(caret)}` at
+  the checked revision (a Rust contract proves it equals the native command); a
+  peer edit that invalidates the trigger closes the menu and publishes nothing.
+- **Image links.** A link on a decorative image is refused with
+  `a decorative image cannot be linked` (both the owner entry point and the shared
+  command); clearing an absent link is an admitted no-op; non-canonical or unsafe
+  targets and `newWindow` with a clear are refused. A concurrent "make decorative"
+  still wins in the projection (existing repair) and undoing it shows the retained
+  link again.
+- **Toolbar.** `createRichSharedToolbarV4` now adds **Language**, **Clear
+  language**, **Image link** and **Remove image link** (`sharedInlineControlsV4`),
+  the local V4 controls' fields, reads and validation, each publishing one native
+  shared command.
+- **Capabilities.** The owner reports `inline_commands_v4_version()` (`"1"` on V4
+  owners, `"0"` otherwise); the facade's `supportsInlineCommandsV4()` requires it
+  and all three methods on a complete V4 owner.
+
 ## Tests
 
 - `crates/breditor-collaboration/tests/shared_v4_contracts.rs` (also compiled by the
@@ -134,6 +188,21 @@ exact restore and relay frames.
   and local refusal of partial edits; engine-level insertion inside a mention;
   concurrent equal bookmarks; concurrent emptying of a section body; placement
   refusal for summaries and page breaks; image link versus decorative; clipboard.
+- `crates/breditor-collaboration/tests/shared_v4_inline_contracts.rs` (research shim
+  in `experiments/collaboration/tests/`): text language set/replace/clear by three
+  concurrent writers on overlapping ranges, caret pending formats and refusals;
+  mention insertion after a typing group, trigger styles, snapping, summaries,
+  direct command dispatch, a mention racing peer edits inside and around its
+  trigger and a concurrent trigger deletion; image link pairs from concurrent
+  writers, clear/no-op, decorative refusal (entry point and command), non-canonical
+  targets and decorative-versus-link merges. Every test checks exact restore and
+  identical Undo/Redo of each writer.
+- `packages/breditor-editor/tests/shared_inline_v4.test.ts`: input snapshots,
+  capability reads, the toolbar controls, the `@` menu batch, one-step Undo and
+  peer invalidation.
+- `experiments/shared-browser/v4-inline.spec.mjs` (fixture `v4-fixture-inline.mjs`):
+  two real Wasm writers in a V4 room render mention chips, `lang` spans and image
+  links, and drive the Language and Image link controls and the `@` menu.
 - `experiments/relay/tests/language_v4_room.rs`: plain and standard V4 rooms with
   every slice, durable admission, catch-up, restart, duplicate receipts and
   descriptors; wrong-revision creation and cross-version writer groups (V3 into
@@ -144,9 +213,12 @@ exact restore and relay frames.
 
 ## Remaining work
 
-- Per-slice shared commands, their Wasm/TS commands and toolbar controls (the
-  local slice commands of RICH_LANGUAGE_V4.md), and shared interchange that reports
-  V4 capabilities (until then shared imports keep the V1–V3 conversions).
-- Shared-browser (Playwright) qualification of V4 rooms in all three engines.
+- Per-slice shared commands, their Wasm/TS commands and toolbar controls for the
+  remaining slices (list numbering, sections, table captions, page breaks,
+  bookmarks); the inline slices (text language, mentions, image links) are done
+  (see above). Shared interchange that reports V4 capabilities (until then shared
+  imports keep the V1–V3 conversions).
+- Shared-browser (Playwright) qualification of the remaining V4 slices; the inline
+  slices are covered by `v4-inline.spec.mjs` in all three engines.
 - A second concurrent caption is currently hidden by the projection; a later
   round may instead suspend the losing move in the placement resolver.

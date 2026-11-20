@@ -65,6 +65,7 @@ function fixture(){
  for(const name of ["observe","dispatch","set_selection","set_pending_formats","insert_plain_text","insert_hard_break","replace_plain_text","undo_observed","redo_observed","checkpoint","receive_frame","update_frame","inline_format_state_json","caret_formats_json","patch_inline_format_properties","read_only_version","set_read_only","writer_groups","writer_clock","presence_frame","resolve_presence"])module.SharedEditorOwner.prototype[name]=()=>{};
  for(const name of ["from_configuration_json","from_standard_configuration_json_v1","from_configuration_json_v2","from_standard_configuration_json_v2","from_configuration_json_v3","from_standard_configuration_json_v3","from_configuration_json_v4","from_standard_configuration_json_v4"])module.SharedRichProfile[name]=()=>{};
  for(const name of ["rich_language_version","list_numbering_version","text_language_version","image_link_version","details_version","mention_version","table_caption_version","page_break_version","bookmark_version"])module.SharedEditorOwner.prototype[name]=()=>{};
+ for(const name of ["inline_commands_v4_version","set_text_language","insert_mention","set_image_link"])module.SharedEditorOwner.prototype[name]=()=>{};
  for(const name of ["typing_history_version","enable_typing_history","close_typing_group","insert_typing_text","delete_typing_range","typing_checkpoint"])module.SharedEditorOwner.prototype[name]=()=>{};
  for(const name of ["code_exit_version","exit_code_block"])module.SharedEditorOwner.prototype[name]=()=>{};
  for(const name of ["flow_navigation_version","navigate_flow","insert_paragraph_adjacent"])module.SharedEditorOwner.prototype[name]=()=>{};
@@ -191,6 +192,7 @@ test("missing real application capabilities and invalid Wasm bytes reject",()=>{
 });
 test("layout requires its native capability, independent state read and guarded intent",()=>{
  for(const name of ["rich_language_version","mention_version","bookmark_version"]){const f=fixture();delete f.module.SharedEditorOwner.prototype[name];assert.throws(()=>admitApplicationSurface(f.module,emptyWasm,f.declarations),/Missing shared V4 capability/);}
+ for(const name of ["inline_commands_v4_version","set_text_language","insert_mention","set_image_link"]){const f=fixture();delete f.module.SharedEditorOwner.prototype[name];assert.throws(()=>admitApplicationSurface(f.module,emptyWasm,f.declarations),/Missing shared V4 inline command/);}
  for(const name of ["block_layout_version","block_layout_state_json","change_selection_layout"]){const f=fixture();delete f.module.SharedEditorOwner.prototype[name];assert.throws(()=>admitApplicationSurface(f.module,emptyWasm,f.declarations),/Missing native layout capability/);}
  for(const name of ["from_configuration_json_v3","from_standard_configuration_json_v3","from_configuration_json_v4","from_standard_configuration_json_v4"]){const f=fixture();delete f.module.SharedRichProfile[name];assert.throws(()=>admitApplicationSurface(f.module,emptyWasm,f.declarations));}
 });

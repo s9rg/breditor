@@ -27,7 +27,7 @@ export function sharedInlineControlsV4<P extends SharedSelectionPolicy>(core:Sha
  const bound=(context:ActionContext<P>,what:string)=>{if(context.core!==core)throw Error(`${what} control belongs to a different Rust owner`);};
  const language=core.supportsTextLanguage()?textLanguageControls(core).map(spec=>({id:spec.id,label:spec.label,owner:core,...(spec.fields?{fields:spec.fields}:{}),...(spec.mixedHint?{mixedHint:spec.mixedHint}:{}),
   read:()=>spec.read(),
-  enabled:(context:ActionContext<P>)=>{const kind=spec.read().kind;return Boolean(context.model.view.selection)&&context.model.view.selection?.kind!=="document"&&kind!=="unavailable"&&(spec.id==="text-language"||kind!=="unset");},
+  enabled:(context:ActionContext<P>)=>{const kind=spec.read().kind;return Boolean(context.model.view.selection)&&kind!=="unavailable"&&(spec.id==="text-language"||kind!=="unset");},
   run(context:ActionContext<P>,_value?:string,fields:Readonly<Record<string,string>>={}){bound(context,"Language");core.setTextLanguage(spec.language(fields).language,context.revision);}} satisfies SharedToolbarControl<P>)):[];
  const links=imageLinkControls(core).map(spec=>({id:spec.id,label:spec.label,owner:core,...(spec.fields?{fields:spec.fields}:{}),...(spec.mixedHint?{mixedHint:spec.mixedHint}:{}),
   read:(context:ActionContext<P>)=>spec.read(context.model as never),
