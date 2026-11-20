@@ -25,6 +25,8 @@ export interface RichUiStrings {
  readonly blockDragReadOnly:string;readonly blockDragUnknownBlock:string;readonly blockDragNotMovable:string;readonly blockDragInvalidTarget:string;
  readonly blockDragCyclic:string;readonly blockDragCrossContainer:string;readonly blockDragGrammar:string;readonly blockDragEmptiesSource:string;
  readonly blockDragItemLead:string;readonly blockDragBoundary:string;readonly blockDragNative:string;
+ // Image resize handles (image_resize.ts).
+ readonly imageResizeLabel:string;readonly imageResizeValue:string;readonly imageResizeOriginal:string;readonly imageResizePreview:string;readonly imageResizeBadge:string;
 }
 export type RichUiStringKey=keyof RichUiStrings;
 /** English defaults. Formatting these with no catalog reproduces the original output byte for byte. */
@@ -55,6 +57,9 @@ export const richUiStringsEn:Readonly<RichUiStrings>=Object.freeze({
  blockDragCrossContainer:"Blocks can only be reordered within their container.",blockDragGrammar:"That container does not accept this block.",
  blockDragEmptiesSource:"Moving the last block would leave its container empty.",blockDragItemLead:"A list or task item must start with a text line.",
  blockDragBoundary:"The block is already at the edge of its container.",blockDragNative:"The editor refused the move.",
+ // Image resize handles (image_resize.ts).
+ imageResizeLabel:"Resize image {index} of {count}",imageResizeValue:"{width} by {height} pixels",imageResizeOriginal:"{width} by {height} pixels (original size)",
+ imageResizePreview:"{width} by {height} pixels (preview)",imageResizeBadge:"{width} × {height}",
 });
 /** Placeholders each template may use. Anything else in braces is rejected. */
 const parameters:Readonly<Partial<Record<RichUiStringKey,readonly string[]>>>={
@@ -63,6 +68,8 @@ const parameters:Readonly<Partial<Record<RichUiStringKey,readonly string[]>>>={
  pasteLoss:["target","losses"],controlApply:["label"],controlPanel:["label"],slashCount:["count"],mentionCount:["count"],slashUnavailable:["label"],slashInapplicable:["label"],
  columnResizeLabel:["index","count"],columnResizeValue:["width"],columnResizePreview:["width"],columnResizeBadge:["width"],
  blockDragPickedUp:["count"],blockDragPosition:["index","count"],
+ // Image resize handles (image_resize.ts).
+ imageResizeLabel:["index","count"],imageResizeValue:["width","height"],imageResizeOriginal:["width","height"],imageResizePreview:["width","height"],imageResizeBadge:["width","height"],
 };
 /** Ids of `standardRichSlashPicks`; other provider items carry their own labels. */
 export type RichStandardSlashItemId="paragraph"|"heading-1"|"heading-2"|"heading-3"|"bullet-list"|"numbered-list"|"task-list"|"blockquote"|"code-block"|"horizontal-rule"|"table"|"details";

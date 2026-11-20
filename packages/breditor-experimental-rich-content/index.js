@@ -14,6 +14,7 @@ export {mountRichWritingTools} from "./dist/browser/writing_tools_panel.js";
 export {createRichFullscreen} from "./dist/browser/fullscreen_controller.js";
 export {mountRichFullscreenControls} from "./dist/browser/fullscreen_controls.js";
 export {mountRichTableColumnResize,richTableColumnResizeCommit,clampRichTableColumnWidth,richTableColumnResizeStyles,RICH_TABLE_COLUMN_WIDTH_MIN,RICH_TABLE_COLUMN_WIDTH_MAX} from "./dist/browser/table_column_resize.js";
+export {mountRichImageResize,richImageResizeCommit,clampRichImageDimension,scaleRichImageSize,richImageResizeStyles,RICH_IMAGE_SIZE_MIN,RICH_IMAGE_SIZE_MAX} from "./dist/browser/image_resize.js";
 export {createRichSlashCommands,filterRichSlashItems,standardRichSlashPicks} from "./dist/browser/slash_command_items.js";
 export {mountRichBlockDrag,mountRichBlockDragPort,richBlockDragStyles} from "./dist/browser/block_drag.js";
 export {resolveRichBlockMove,resolveRichBlockStep,richBlockDropTargets,richHandleBlock,richSelectionBlock,isMovableBlock} from "./dist/browser/block_move.js";
