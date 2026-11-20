@@ -6,8 +6,14 @@ const discovered=readdirSync(new URL("../experiments/shared-browser/",import.met
 test("shared matrix includes every discovered spec once in each engine with unchanged strict deadlines",()=>{
  const runs=sharedBrowserRuns(config.testMatch,discovered);assert.deepEqual(runs[0],{projects:["chromium","firefox"],specs:[],patterns:[]});
  assert.deepEqual(runs.slice(1).flatMap(run=>run.specs),config.testMatch);
- for(const run of runs.slice(1)){assert.deepEqual(run.projects,["webkit"]);assert.equal(run.patterns.length,1);assert.equal(run.specs.length,1);}
- assert.equal(config.retries,0);assert.equal(config.timeout,60_000);assert.equal(config.globalTimeout,300_000);
+ for(const run of runs.slice(1)){assert.deepEqual(run.projects,["webkit*"]);assert.equal(run.patterns.length,1);assert.equal(run.specs.length,1);}
+ // Per-test deadline is unchanged; the whole-run cap covers a plain three-engine run of every spec.
+ assert.equal(config.retries,0);assert.equal(config.timeout,60_000);assert.equal(config.globalTimeout,2_700_000);
+});
+test("WebKit browser groups hold every configured spec exactly once and at most five files each",()=>{
+ const groups=config.projects.filter(project=>project.name.startsWith("webkit"));
+ assert.deepEqual(groups.flatMap(project=>project.testMatch).map(match=>match.replace("**/","")).sort(),[...config.testMatch].sort());
+ for(const group of groups)assert.ok(group.testMatch.length<=5);
 });
 test("missing new files duplicate plans and nonliteral file names reject instead of reducing coverage",()=>{
  for(const [configured,actual]of[[[],[]],[["x.spec.mjs"],["x.spec.mjs","y.spec.mjs"]],[["x.spec.mjs","x.spec.mjs"],["x.spec.mjs"]],[["*.spec.mjs"],["x.spec.mjs"]]])assert.throws(()=>sharedBrowserRuns(configured,actual));
