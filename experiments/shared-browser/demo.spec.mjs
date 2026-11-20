@@ -9,6 +9,6 @@ test("combined demo saves both offline writers reconnects and reloads selective 
  await page.locator("#connection").click();await expect(page.locator("#state")).toHaveText("Connected · A saved · B saved");
  await expect(page.locator('#b [data-rich-text="p"]')).toHaveText("a🙂b demoA");await expect(page.locator('#a [data-rich-text="caption"]')).toHaveText("demoB xy🙂");
  await page.reload();await expect(page.locator("#state")).toHaveText("Connected · A saved · B saved");await expect(page.locator('#a [data-rich-text="p"]')).toHaveText("a🙂b demoA");
- await page.locator('#a [data-shared-action="undo"]').click();await expect(page.locator('#b [data-rich-text="p"]')).toHaveText("a🙂b demo");await expect(page.locator('#b [data-rich-text="caption"]')).toHaveText("demoB xy🙂");
- await page.locator('#a [data-shared-action="redo"]').click();await expect(page.locator('#b [data-rich-text="p"]')).toHaveText("a🙂b demoA");await expect(page.locator("#state")).toHaveText("Connected · A saved · B saved");
+ await page.locator('#a .breditor-shared-toolbar [data-shared-action="undo"]').click();await expect(page.locator('#b [data-rich-text="p"]')).toHaveText("a🙂b demo");await expect(page.locator('#b [data-rich-text="caption"]')).toHaveText("demoB xy🙂");
+ await page.locator('#a .breditor-shared-toolbar [data-shared-action="redo"]').click();await expect(page.locator('#b [data-rich-text="p"]')).toHaveText("a🙂b demoA");await expect(page.locator("#state")).toHaveText("Connected · A saved · B saved");
 });

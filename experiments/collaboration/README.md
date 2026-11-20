@@ -427,6 +427,36 @@ Rust ownership; it does not introduce a JavaScript CRDT or mutable shared AST.
 Its read-only renderer dependency is the additive `experimental-rich-content/rendering`
 subpath. The default package entry points remain unchanged.
 
+Building only the browser runtime (the steps `scripts/check-shared-browser.mjs`
+runs before its long native checks), from the repository root:
+
+1. `cargo build --manifest-path experiments/collaboration/Cargo.toml --locked --target wasm32-unknown-unknown --release`
+   with `CARGO_TARGET_DIR=target/collaboration-feasibility`, then
+   `wasm-bindgen --target web --out-dir target/collaboration-feasibility-web target/collaboration-feasibility/wasm32-unknown-unknown/release/breditor_collab_feasibility.wasm`;
+2. with `CARGO_TARGET_DIR=target/collaboration-native`: `cargo run ... --example export_vector -- target/collaboration-feasibility-web/native-vector.json`
+   and `cargo build ... --example compare_engine_exports` / `--example relay_contract_driver`;
+3. the relay specs and `serve.mjs` also need the build steps of `scripts/check-relay.mjs`
+   (`breditor-collab-relay`, `network_demo`, and `raster_fixtures` writing
+   `target/relay-raster-fixtures.json`, which `serve.mjs` reads at startup);
+4. TypeScript: `packages/breditor-browser`, `breditor-experimental-rich-content`
+   and `breditor-experimental-collaboration` (compiled from the
+   `breditor-collaboration` sources).
+
+The feasibility crate compiles the canonical `crates/breditor-collaboration`
+sources with the `research` feature, so research-only constructors must build
+`RichReplicaProbe` through `from_replica` like the application constructors;
+the November 20 drift (missing `initial_read_only`, `review`, `search_reads` in
+`join_frame`) broke only this build. `BREDITOR_SHARED_PORT` moves the host;
+a temporary config can point Playwright at the same port. A plain
+`playwright test --config experiments/shared-browser/playwright.config.mjs` run
+splits WebKit into `webkit-1`…`webkit-N` projects (one per five spec files) because
+Playwright's macOS WebKit stops opening pages after about 63 contexts per browser;
+`scripts/check-shared-browser-matrix.mjs` still runs each WebKit file in its own
+process (`--project='webkit*'` plus an anchored file filter). `slash-commands`,
+`ai-tools` and `input-rules` specs cover shared slash commands, shared AI rewrite
+review (fake in-page provider) and `markdown-v1` list shortcuts and code-block
+Enter over two real writers of a standard structural V2 room.
+
 The coordinator connects shared table/list/image controls, native input and
 selection, source-preserving selected-flow paste, semantic clipboard and file
 paste/drop to the guarded Rust actions. Remote updates have bounded queues and

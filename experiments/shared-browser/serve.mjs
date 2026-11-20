@@ -16,6 +16,7 @@ add("/raster-fixtures.json",resolve(root,"target/relay-raster-fixtures.json"),"a
 add("/network-demo.mjs",resolve(root,"experiments/shared-browser/network-demo.mjs"));
 add("/inline-presentation-fixture.mjs",resolve(root,"experiments/shared-browser/inline-presentation-fixture.mjs"));
 add("/standard-inline-fixture.mjs",resolve(root,"experiments/shared-browser/standard-inline-fixture.mjs"));
+add("/structural-fixture.mjs",resolve(root,"experiments/shared-browser/structural-fixture.mjs"));
 add("/contract-startup.mjs",resolve(root,"experiments/shared-browser/contract-startup.mjs"));
 if(process.env["BREDITOR_NETWORK_BOOTSTRAP"])add("/relay-bootstrap.json",resolve(process.env["BREDITOR_NETWORK_BOOTSTRAP"]),"application/json");
 function modules(directory,prefix){for(const file of readdirSync(directory,{withFileTypes:true})){if(file.isDirectory())modules(resolve(directory,file.name),`${prefix}/${file.name}`);else if(file.isFile()&&file.name.endsWith(".js"))add(`${prefix}/${file.name}`,resolve(directory,file.name));}}
