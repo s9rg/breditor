@@ -95,13 +95,13 @@ describe("explicit V4 Wasm factory boundary",()=>{
  function stringResult(value:string){return {status:"value",takeValue:()=>value,free:vi.fn()};}
  function local(binding:object,capability:unknown="1"){
   const observation={revision:"1",blockLayoutStateJson:vi.fn(),free:vi.fn()};
-  const editor={observe:()=>observation,blockLayoutVersion:()=>"1",listNumberingVersion:()=>capability,textLanguageVersion:()=>"1",imageLinkVersion:()=>"1",detailsVersion:()=>"1",execute:vi.fn(()=>({status:"content",takeObservation:()=>observation,free:vi.fn()})),free:vi.fn()};
+  const editor={observe:()=>observation,blockLayoutVersion:()=>"1",listNumberingVersion:()=>capability,textLanguageVersion:()=>"1",imageLinkVersion:()=>"1",detailsVersion:()=>"1",mentionVersion:()=>"1",execute:vi.fn(()=>({status:"content",takeObservation:()=>observation,free:vi.fn()})),free:vi.fn()};
   const raw={descriptorJson:()=>stringResult(JSON.stringify({kind:"rich",abiVersion:1,...binding})),createEditor:()=>({status:"editor",takeEditor:()=>editor,free:vi.fn()}),free:vi.fn()};
   const factory=vi.fn(()=>({status:"profile",takeProfile:()=>raw,free:vi.fn()}));
   const wasm={BreditorRichProfile:{fromBootstrapJson:factory,fromBootstrapJsonV4:factory,fromStandardBootstrapJsonV4:factory,fromStandardLayoutBootstrapJsonV3:factory}} as unknown as RichWasmModule;
   return {wasm,raw,editor,factory};
  }
- const v4={richLanguageVersion:4,taskStructureVersion:1,blockLayoutVersion:1,listNumberingVersion:1,textLanguageVersion:1,imageLinkVersion:1,detailsVersion:1};
+ const v4={richLanguageVersion:4,taskStructureVersion:1,blockLayoutVersion:1,listNumberingVersion:1,textLanguageVersion:1,imageLinkVersion:1,detailsVersion:1,mentionVersion:1};
  it("selects V4 only explicitly with every matching capability",()=>{
   const a=local(v4),profile=compileStandardRichProfileV4(a.wasm,"bootstrap"),core=profile.createEditor("document");
   expect(core.richLanguageVersion?.()).toBe(4);expect(core.supportsListNumbering?.()).toBe(true);expect(core.supportsBlockLayout?.()).toBe(true);

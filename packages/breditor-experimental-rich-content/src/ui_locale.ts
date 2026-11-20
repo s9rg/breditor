@@ -17,6 +17,7 @@ export interface RichUiStrings {
  readonly selectionToolbarLabel:string;readonly contextMenuLabel:string;
  readonly slashLabel:string;readonly slashLoading:string;readonly slashCountOne:string;readonly slashCount:string;readonly slashEmpty:string;
  readonly slashUnavailable:string;readonly slashInapplicable:string;
+ readonly mentionLabel:string;readonly mentionLoading:string;readonly mentionCountOne:string;readonly mentionCount:string;readonly mentionEmpty:string;
  readonly columnResizeLabel:string;readonly columnResizeValue:string;readonly columnResizePreview:string;readonly columnResizeBadge:string;
  readonly blockDragLabel:string;readonly blockDragHelp:string;readonly blockDragDragging:string;readonly blockDragMoved:string;
  readonly blockDragUnchanged:string;readonly blockDragCancelled:string;readonly blockDragNoTargets:string;
@@ -43,6 +44,7 @@ export const richUiStringsEn:Readonly<RichUiStrings>=Object.freeze({
  selectionToolbarLabel:"Selection formatting",contextMenuLabel:"Editor actions",
  slashLabel:"Commands",slashLoading:"Loading commands…",slashCountOne:"1 command available",slashCount:"{count} commands available",slashEmpty:"No matching commands",
  slashUnavailable:"{label} is not available here",slashInapplicable:"{label} is no longer applicable; only the typed trigger was removed",
+ mentionLabel:"Mentions",mentionLoading:"Loading suggestions…",mentionCountOne:"1 suggestion available",mentionCount:"{count} suggestions available",mentionEmpty:"No matching suggestions",
  columnResizeLabel:"Resize column {index} of {count}",columnResizeValue:"{width} pixels",columnResizePreview:"{width} pixels (preview)",columnResizeBadge:"{width}px",
  blockDragLabel:"Move block",
  blockDragHelp:"Drag to move. Or press Enter to pick up, arrow keys to choose a position, Enter to drop, Escape to cancel. Alt+Shift+Up or Down moves one step.",
@@ -58,7 +60,7 @@ export const richUiStringsEn:Readonly<RichUiStrings>=Object.freeze({
 const parameters:Readonly<Partial<Record<RichUiStringKey,readonly string[]>>>={
  richStatusReadOnly:["revision"],richStatusEditable:["revision"],richStatusOutcome:["outcome","revision"],richStatusReadOnlyOutcome:["outcome","revision"],
  sharedStatusReadOnly:["revision"],sharedStatus:["revision","undo","pending"],sharedStatusReadOnlyLive:["revision","undo","pending"],
- pasteLoss:["target","losses"],controlApply:["label"],controlPanel:["label"],slashCount:["count"],slashUnavailable:["label"],slashInapplicable:["label"],
+ pasteLoss:["target","losses"],controlApply:["label"],controlPanel:["label"],slashCount:["count"],mentionCount:["count"],slashUnavailable:["label"],slashInapplicable:["label"],
  columnResizeLabel:["index","count"],columnResizeValue:["width"],columnResizePreview:["width"],columnResizeBadge:["width"],
  blockDragPickedUp:["count"],blockDragPosition:["index","count"],
 };

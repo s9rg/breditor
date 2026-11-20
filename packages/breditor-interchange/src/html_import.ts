@@ -7,6 +7,9 @@ import {importTable,pixels} from "./html_table.js";
 import {Stylesheets} from "./html_stylesheet.js";
 import {canonicalLanguageTagV1} from "./language_tag.js";
 import {imageHrefProperty,imageLinkNewWindowProperty,isImageLinkHrefV1} from "./image_link_href.js";
+import {mentionFormat,mentionFromSpan} from "./mention.js";
+/** Attributes consumed by a recognized candidate V4 mention span. */
+const mentionAttributes:ReadonlySet<string>=new Set(["data-mention-kind","data-mention-id"]);
 const blocks=new Set(["p","div","h1","h2","h3","h4","h5","h6","ul","ol","li","pre","blockquote","table","figure","hr","section","article","main","header","footer"]);
 // `google-sheets-html-origin` is Google Sheets' transparent producer wrapper around its table.
 const containers=new Set(["div","section","article","main","header","footer","html","head","body","center","google-sheets-html-origin"]);
@@ -20,7 +23,7 @@ const structuralRoles=new Set(["presentation","none","list","listitem"]);
 const flatListAttributes:ReadonlySet<string>=new Set(["data-aria-level","data-aria-posinset","data-listid","aria-setsize"]);
 const wordBullets=/^[·•●○◦▪■□◆◇►➢➤✓✔\-–—*o§Øüvqnl]$/;
 /** Target-owner capabilities read once by the adapter; they select conversion, never admission. */
-export interface ImportCapabilities {readonly listNumbering:boolean;readonly textLanguage?:boolean;readonly imageLinks?:boolean;readonly details?:boolean}
+export interface ImportCapabilities {readonly listNumbering:boolean;readonly textLanguage?:boolean;readonly imageLinks?:boolean;readonly details?:boolean;readonly mentions?:boolean}
 /** Candidate rich V4 native text-language format (Rust `text_language.rs`). */
 export const textLanguageFormat="breditor/text-language",textLanguageTag="breditor/language-tag";
 const htmlSpace=/^[\t\n\f\r ]+|[\t\n\f\r ]+$/g;
@@ -132,7 +135,10 @@ export class HtmlConversion {
       for(const node of items){
         if(!isElement(node)){if(node.nodeName==="#text")this.#inlineText(output,plainText(node),parent);continue;}
         if(!this.#safe(node)||this.#markers.has(node)||this.#checkboxes.has(node)||this.#paragraphMark(node)||interchangeNewline(node))continue;
-        const next=this.style(node,parent);
+        // Candidate V4: the exact exported mention span becomes a mention over its `@label` text.
+        const mention=this.capabilities.mentions?mentionFromSpan(node.tagName,name=>attribute(node,name),plainText(node)):undefined;
+        const next=this.style(node,parent,mention?mentionAttributes:undefined);
+        if(mention)next.formats.set(mentionFormat,mention);
         if(node.tagName==="br"){if(attribute(node,"data-breditor-placeholder")!=="1")append(this.b,output,"\n",[...next.formats.values()]);continue;}
         if(node.tagName==="o:p"){walk(node.childNodes,next);continue;}
         if(node.tagName==="img"){const image=this.image(node,next);if(image)output.push(image);else this.#inlineText(output,attribute(node,"alt")??"",next);continue;}

@@ -8,6 +8,7 @@ export {mountRichSelectionToolbar as mountSelectionToolbar,mountRichContextMenu 
 export {mountRichSearchPanel as mountSearchPanel,type RichSearchHost,type RichSearchHostState,type RichSearchPanel,type RichSearchPanelOptions,type RichSearchPanelState,type RichSearchResults,type RichSearchQuery,type RichSearchReplacement,type RichSearchMetadata} from "@breditor/experimental-rich-content";
 export type {ClipboardInterchangeFactory} from "./clipboard_interchange.js";
 export {mountSlashCommands,slashCommandHost,type SlashCommandEditor} from "./slash_commands.js";
+export {mountMentions} from "./mention_suggestions.js";
 export {createRichSlashCommands as createSlashCommands,filterRichSlashItems as filterSlashItems,standardRichSlashPicks as standardSlashPicks,type RichSlashContext,type RichSlashItem,type RichSlashPick,type RichSlashCommandHost,type RichSlashCommands,type RichSlashCommandOptions,type RichSlashCommandState,type RichSlashCancelReason,type RichSlashExecution,type RichSlashProvider,type RichSlashProviderRequest} from "@breditor/experimental-rich-content";
 export type {RichRetainedAssetReferencesRead,RichRetainedAssetReference} from "@breditor/experimental-rich-content";
 export {mountRichWritingTools as mountWritingTools,type RichWritingToolsRead,type RichWritingCounts,type RichWritingHeading,type RichWritingToolsHost,type RichWritingToolsHostState,type RichWritingToolsPanel,type RichWritingToolsPanelOptions,type RichWritingToolsPanelState} from "@breditor/experimental-rich-content";

@@ -49,8 +49,16 @@ function endpoint(surface:HTMLElement,value:RichPoint):[Node,number]|null {
  const block=[...surface.querySelectorAll<HTMLElement>(blockSelector)].find(node=>node.dataset["richText"]===value.block);
  if(!block)return null;
  let remaining=Number(value.offset);const walker=surface.ownerDocument.createTreeWalker(block,4);let node=walker.nextNode();
- while(node){const length=node.textContent?.length??0;if(remaining<=length)return [node,remaining];remaining-=length;node=walker.nextNode();}
+ while(node){const length=node.textContent?.length??0;if(remaining<=length)return outsideMention(block,node,remaining);remaining-=length;node=walker.nextNode();}
  return remaining===0?[block,0]:null;
+}
+/** A candidate V4 mention chip is a non-editable island: carets rest beside it, never inside. */
+function outsideMention(block:HTMLElement,node:Node,offset:number):[Node,number]{
+ const chip=node.parentElement?.closest<HTMLElement>("[data-mention-id]");
+ if(!chip||!block.contains(chip)||!chip.parentNode)return [node,offset];
+ const before=node.ownerDocument!.createRange();before.setStart(chip,0);before.setEnd(node,offset);
+ const index=Array.prototype.indexOf.call(chip.parentNode.childNodes,chip) as number;
+ return [chip.parentNode,before.toString().length===0?index:index+1];
 }
 export function restoreNative(surface:HTMLElement,selection:RichSelection|null):void {
  const native=surface.ownerDocument.getSelection();if(!native)return;

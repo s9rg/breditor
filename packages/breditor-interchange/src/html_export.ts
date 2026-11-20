@@ -4,12 +4,16 @@ import {nodeText,property,stringProperty,type Element,type Literal,type Node} fr
 import type {InterchangeOptions} from "./types.js";
 import {isCanonicalLanguageTagV1} from "./language_tag.js";
 import {isImageLinkHrefV1} from "./image_link_href.js";
+import {mentionUnits} from "./mention.js";
 /** Export only native-admitted DTOs. Every output tag, attribute and CSS property is library-owned. */
 export class HtmlExport {
   constructor(readonly b:Budget,readonly options:InterchangeOptions){}
   #visited=0;
   #visit():void{if(++this.#visited>limits.outputNodes)fail("resource-limit");}
-  inline(nodes:readonly Node[]):string{return nodes.map(n=>{
+  inline(nodes:readonly Node[]):string{return mentionUnits(nodes).map(unit=>{
+    // Candidate V4: each whole mention is one inert entity span around its styled pieces.
+    if(unit.kind==="mention")return `<span class="breditor-mention" data-mention-kind="${a(unit.mention.kind)}" data-mention-id="${a(unit.mention.id)}">${this.inline(unit.pieces)}</span>`;
+    const n=unit.node;
     this.#visit();if(n.kind!=="text"){this.b.loss("block-structure");return t(nodeText(n));}
     let value=t(n.text);for(const f of [...n.formats].reverse())value=this.#format(value,f);return value;
   }).join("");}
