@@ -49,6 +49,7 @@ mod replace_search_one;
 mod replace_search_plan;
 mod replace_selection_plain_text;
 mod replace_selection_text;
+mod replace_trigger_then;
 mod retained_asset_references;
 mod select_document;
 mod set_pending_formats;
@@ -64,6 +65,7 @@ mod validate_observation;
 
 pub use error::RichLocalSessionError;
 pub use plan_general_range_plain_text::RichGeneralPlainRangePlan;
+pub use replace_trigger_then::RichTriggerStepError;
 pub use snapshot::RichLocalSnapshot;
 pub use state::RichLocalState;
 pub use typing_history::{

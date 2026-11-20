@@ -81,9 +81,13 @@ DOM focus stays in the editor. The surface gets `aria-controls`,
   and Escape dismisses the popup.
 - **Items.** `createRichSlashCommands(controls, picks?)` adapts existing
   toolbar controls.
-- **Running a command.** A chosen item first removes the trigger with
-  `replaceTextRange` (or `replaceGeneralRangePlainText` under `general-v1`). It
-  then publishes its existing command, so Undo takes two steps.
+- **Running a command.** When the host reports `supportsTriggerComposite()`
+  and the item's command is in `richTriggerCompositeKinds`, the session
+  publishes one native `replaceTriggerThen`. It removes the trigger and runs
+  the command as one Undo step, and publishes nothing if Rust refuses either
+  part. Otherwise it first removes the trigger with `replaceTextRange` (or
+  `replaceGeneralRangePlainText` under `general-v1`), then publishes the
+  command, so Undo takes two steps.
 - **Cancellation.** Async providers receive an `AbortSignal`, and superseded or
   late results are discarded. The trigger is identified by block id, slash
   offset and the exact text before it, and every publication re-checks it.

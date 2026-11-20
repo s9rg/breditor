@@ -12,6 +12,7 @@ pub(super) fn session(error: &RichLocalSessionError) -> BreditorError {
         RichLocalSessionError::TypingHistoryDisabled => "breditor_rich.typing_history_disabled",
         RichLocalSessionError::StaleSnapshot => "breditor_rich.stale_observation",
         RichLocalSessionError::Revision(_) => "breditor_rich.revision_overflow",
+        RichLocalSessionError::TriggerStep => "breditor_rich.trigger_step",
         _ => "breditor_rich.command_rejected",
     };
     rejected(code)
