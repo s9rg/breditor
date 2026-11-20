@@ -23,7 +23,7 @@ const structuralRoles=new Set(["presentation","none","list","listitem"]);
 const flatListAttributes:ReadonlySet<string>=new Set(["data-aria-level","data-aria-posinset","data-listid","aria-setsize"]);
 const wordBullets=/^[·•●○◦▪■□◆◇►➢➤✓✔\-–—*o§Øüvqnl]$/;
 /** Target-owner capabilities read once by the adapter; they select conversion, never admission. */
-export interface ImportCapabilities {readonly listNumbering:boolean;readonly textLanguage?:boolean;readonly imageLinks?:boolean;readonly details?:boolean;readonly mentions?:boolean}
+export interface ImportCapabilities {readonly listNumbering:boolean;readonly textLanguage?:boolean;readonly imageLinks?:boolean;readonly details?:boolean;readonly mentions?:boolean;readonly tableCaptions?:boolean}
 /** Candidate rich V4 native text-language format (Rust `text_language.rs`). */
 export const textLanguageFormat="breditor/text-language",textLanguageTag="breditor/language-tag";
 const htmlSpace=/^[\t\n\f\r ]+|[\t\n\f\r ]+$/g;
