@@ -208,10 +208,14 @@ paragraph or heading, or after whitespace.
   controls (headings, lists, table, and the structural V2 quote, code block,
   task list and divider) to menu items. Alternatively, pass a cancellable async
   provider `(query, {signal}) => items`.
-- **Running a command.** Choosing an item removes the typed `/query` with a
-  guarded native command. It then runs the item's existing typed command
-  through `execute`. Neither step edits the DOM.
-- **Undo.** Undo takes two steps: the first reverts the command, the second
+- **Running a command.** Choosing an item removes the typed `/query` and runs
+  the item's existing typed command. With a current native owner
+  (`editor.supportsTriggerComposite()`), both happen in one guarded
+  `replaceTriggerThen` command. Older owners, and commands outside its
+  structural allowlist, use two guarded commands instead. Neither path edits the
+  DOM.
+- **Undo.** With the native composite, one Undo restores the typed `/query`.
+  On the two-step fallback, the first Undo reverts the command and the second
   restores the typed `/query`.
 - **Cancellation.** Sessions cancel on Escape, composition, blur, read-only
   policy, editor disposal, or any publication that moves the caret out of the
@@ -223,7 +227,7 @@ See [the slash-command contract](../../docs/SLASH_COMMANDS.md).
 
 ## AI rewrite and language check
 
-Both tools are opt-in, local-only and provider-agnostic: you pass the provider
+Both tools are opt-in and provider-agnostic: you pass the provider
 function, and the package makes no network calls of its own.
 
 ```js
@@ -247,6 +251,13 @@ const check = mountLanguageCheck(otherHost, editor, {
   applied one at a time from a keyboard list.
 - **React.** `BreditorAiTools` and `BreditorLanguageCheck` from
   `@breditor/editor/react`.
+- **Shared sessions.** `mountSharedAiTools(asideHost, session, options)` and
+  `mountSharedLanguageCheck(...)` from `@breditor/editor/collaboration` take a
+  `SharedEditorSession` or `SharedDocumentEditorSession` (its `aiTools()` port);
+  React: `BreditorSharedAiTools` and `BreditorSharedLanguageCheck` from
+  `@breditor/editor/collaboration/react`. Plain-text output only; a review stays
+  valid while peers edit elsewhere and goes stale when its target changes. The
+  provider may see other participants' text, so get their consent first.
 
 See [the AI and language tool contract](../../docs/AI_AND_LANGUAGE_TOOLS.md).
 
@@ -533,7 +544,7 @@ for bounds, independent shared fields, history and qualification scope.
 
 `richLanguage: 4` selects the unreleased candidate V4 for local openings
 (`openLocalEditor`, `openLocalDocumentEditor` and the local React components'
-`initialOptions`). It is V3 plus bounded ordered-list numbering, text-run language, image links, collapsible sections, mention entities and table captions, and may still
+`initialOptions`). It is V3 plus bounded ordered-list numbering, text-run language, image links, collapsible sections, mention entities, table captions, page breaks and bookmarks with internal links, and may still
 change before release, so its fingerprint changes and V4 data must not be
 persisted yet. Shared openings reject `richLanguage: 4` explicitly; shared
 editing stays on languages 1–3. The standard schema is
@@ -615,6 +626,28 @@ a caption inserts a line break and table actions keep it.
 ```js
 editor.execute({kind: 'addTableCaption', data: {table: 'table-1', caption: 'caption-1'}});
 editor.execute({kind: 'removeTableCaption', data: {table: 'table-1'}});
+```
+
+V4 adds explicit page breaks, admitted only between top-level blocks. The **Page
+break** toolbar control (and slash item) inserts one after the root block holding
+the selection; a page break is selected, navigated and deleted like a horizontal
+rule. Printing is opt-in CSS from `@breditor/experimental-rich-content`
+(`richPrintStyles`, `mountRichPrintPreview`); the static renderer embeds it with
+`renderStaticDocument(doc, {print: {size: 'A4', orientation: 'portrait', margin: 'normal'}})`,
+which also emits leading header rows in `<thead>` so they repeat on every page.
+Breditor does not paginate the editor itself; see `docs/PAGINATION_AND_PRINT.md`.
+
+```js
+editor.execute({kind: 'insertPageBreak', data: {position: {parent: {kind: 'document'}, before: null}, block: 'page-break-1'}});
+```
+
+V4 adds named bookmarks on paragraphs, headings and code blocks and internal links
+(`#name`) to them. Renaming retargets every link in one Undo step; deleting or
+clearing a target leaves a reported, visibly broken link (`core.bookmarkIndex()`).
+
+```js
+editor.execute({kind: 'setBookmark', data: {block: 'heading-1', name: 'intro'}});
+editor.execute({kind: 'renameBookmark', data: {from: 'intro', to: 'overview'}});
 ```
 
 See `docs/RICH_LANGUAGE_V4.md` in the repository for domains, semantics,

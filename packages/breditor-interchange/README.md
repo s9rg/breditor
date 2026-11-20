@@ -83,6 +83,10 @@ and complete loss notices for each.
   its `list-style-type` is `decimal` and its `data-leveltext` is `%N.`/`%N)`, so
   lettered, roman and compound formats are never silently shown as decimal.
   Whitespace-only `EOP` paragraph-mark runs are dropped.
+- For owners that report `supportsListNumbering()` (candidate rich V4), both
+  Word shapes map lettered and roman numbering to the native list style instead
+  (see the V4 list numbering section below); other owners keep the conversion
+  and notices above exactly.
 - Google Docs' `<b style="font-weight:normal" id="docs-internal-guid-…">`
   wrapper bolds nothing; span `font-weight`, `font-style`, `text-decoration` and
   `vertical-align: super|sub` become marks. A `ul`/`ol` placed directly inside a
@@ -117,7 +121,30 @@ original behavior and notices are unchanged. With a V4 owner:
   style; `reversed` becomes native reversal without a notice. A reversed list
   without `start` stores the HTML default (its item count) explicitly.
 - Bullet markers on an `<ol>`, unknown `type` tokens and other counter styles
-  report `list-numbering`. Word flat-list reconstruction is unchanged.
+  report `list-numbering`.
+- Word flat lists map to the same native styles, keeping each list's start:
+
+  | Producer source | Native `breditor/list-style` | Notice |
+  | --- | --- | --- |
+  | Word desktop marker `1.` / `1)` | decimal (no property) | none |
+  | Word desktop marker `a.` / `a)` (`aa.` = 27) | lower-alpha (2) | none |
+  | Word desktop marker `A.` / `A)` | upper-alpha (3) | none |
+  | Word desktop marker `i.` / `iv)` | lower-roman (4) | none |
+  | Word desktop marker `I.` / `IV)` | upper-roman (5) | none |
+  | Word desktop `(a)`, `(iv)` | lower-alpha / lower-roman | `list-numbering` |
+  | Word desktop `(1)`, `1.2.` | decimal | `list-numbering` |
+  | Word for the web `list-style-type` `decimal`, `lower-alpha`/`lower-latin`, `upper-alpha`/`upper-latin`, `lower-roman`, `upper-roman` with `data-leveltext` `%N.`/`%N)` | 1–5 as for HTML | none |
+  | Word for the web known style, other or missing level text (`%1.%2.`, `(%1)`) | that style | `list-numbering` |
+  | Word for the web other counter style (`georgian`, `disc` on an `ol`) | decimal | `list-numbering` |
+
+  An ambiguous Word desktop letter (`i`, `v`, `x`, `c`, `d`, `l`, `m`) continues
+  the open list whose next ordinal and style it matches (`h.`, `i.` is
+  lower-alpha 8–9; `i.`, `ii.` is lower-roman 1–2); a lone `i.` opens
+  lower-roman, other letters open lower-alpha. A `)` suffix is shown as the
+  native `.` marker, exactly as decimal `1)` always has been. A change of style
+  within one level starts a new list. A Word for the web item's own
+  `list-style-type` overrides its list's and is then consumed (no styling
+  notice). Unrecognized marker text (`Step 1:`) stays a reported bullet item.
 - HTML export writes `<ol start type reversed>`; V4 HTML round trips exactly.
 - Markdown export keeps decimal lists as `N.` lists. Letter, roman and reversed
   lists are exported as safe HTML with a `markdown-feature` notice.
@@ -175,6 +202,42 @@ conversion (`<caption>` content becomes flow before the table with
 - GFM tables have no caption: a captioned table falls back to a safe HTML block with
   `markdown-feature`, which reimports as the caption.
 
+### Page breaks (candidate rich V4 owners)
+
+The adapter also reads the owner's optional `supportsPageBreaks()` once. Only a local
+candidate rich V4 owner reports `true`; every other owner keeps the original
+conversion (forced-break CSS reports `unsupported-style`, Word's `<br clear=all>`
+stays a line break, Google Docs' hidden page-break `<hr>` is removed). With a V4 owner:
+
+- HTML import maps Word's `<br clear=all style='page-break-before:always'>` (alone or
+  inside a paragraph, which is split), Google Docs'
+  `<hr style="page-break-before:always;display:none">` and an empty `<div>` with a
+  forced break to one page break each without a notice. `page-break-before/after:
+  always` or `break-before/after: page` on a content block becomes a page break
+  before/after it, dropped at the content edges and next to another break as CSS
+  would; side-specific values report `style-approximation`. Page breaks are
+  root-only: one found inside a quote, list, section or cell is removed with
+  `block-structure`.
+- HTML export writes `<div style="break-after:page;page-break-after:always"></div>`,
+  which round trips exactly.
+- Markdown has no page break: it falls back to that HTML block with
+  `markdown-feature`, which reimports as a page break.
+
+### Bookmarks and internal links (candidate rich V4 owners)
+
+The adapter reads the owner's optional `supportsBookmarks()` once (local V4 owners).
+
+- Import: an `id` on `<p>`, `<h1>`–`<h6>` or `<pre>`, or an `<a name>`/`<a id>` inside
+  one, becomes the block's bookmark; `href="#name"` becomes an internal link. A `bm-`
+  prefix is removed on both sides. Invalid, duplicate and extra anchors report
+  `unsupported-attribute`.
+- Export: `id="bm-<name>"` and `<a href="#bm-<name>">`, which round trip exactly;
+  Markdown falls back to that HTML with `markdown-feature`.
+- DOCX: `w:bookmarkStart`/`w:bookmarkEnd` and `w:hyperlink w:anchor`; a dangling link
+  keeps its text (`unsafe-link`).
+- Other owners keep the original conversion (ids dropped, `<a name>` reported,
+  `href="#…"` reported as `unsafe-link`).
+
 ### Mentions (candidate rich V4 owners)
 
 The adapter also reads the owner's optional `supportsMentions()` once. Only a
@@ -210,7 +273,7 @@ Markdown uses the explicit `interchangeContractV1` dialect: CommonMark parsing
 with table/strikethrough extensions, parsed task markers and sanitized raw HTML.
 Automatic URL linking and typography substitutions are disabled. This is not a
 claim of full GFM support: single-tilde strikethrough and bare URL/`www.`
-autolink literals stay literal text. Export uses ordinary Markdown where it
+autolink literals stay literal text by default. Export uses ordinary Markdown where it
 preserves the model, and safe HTML for layouts, captions, merged/source-partitioned
 tables or format combinations that basic Markdown cannot express. Ordinary
 Markdown output covers paragraph hard breaks (`\` line ends), uniform
@@ -225,6 +288,44 @@ and ordered list starts below 1, which become 1 (`list-numbering`; HTML
 `start` values below 1 now get the same approximation instead of rejection).
 An image that is the only content of an unstyled paragraph is a block image and
 reports no `block-structure` loss.
+
+### Opt-in GFM autolink literals
+
+`importMarkdown(source, {autolinks: true})` links bare `https://…`, `http://…`
+and `www.…` literals (`interchangeContractV1.markdownAutolinks`). It is off by
+default, so the version-one dialect's parse results never change for existing
+callers; `false` or omission is identical to the original import, any
+non-boolean value rejects with `unsupported-content`, and `importHtml` ignores
+it. Every owner profile behaves the same (it creates the standard inline link).
+
+Recognition and targets are exactly the editor's typed `autolink-v1` rule
+(`src/autolink.ts` mirrors Rust `rich_autolink_candidate`; a test compares its
+punctuation sets and unit vectors with the Rust source): a whitespace-separated
+run, after leading `(`, `[`, `{`, `<`, `"` or `'`, beginning with lowercase
+`https://`, `http://` or `www.`; trailing `.`, `,`, `:`, `;`, `!`, `?`, `'`,
+`"`, `*`, `_`, `~`, `>` and unbalanced `)`/`]`/`}` stay text after the link;
+`www.` targets `https://www.…`; an empty path becomes `/` (the only repair); and
+the target must be in the canonical `safeLinkV1` subset image links use
+(`isImageLinkHrefV1`: credential-free ASCII HTTP(S), lowercase host, no default
+port or dot segments, at most 2,048 bytes). Anything else (`javascript:`,
+`data:`, `mailto:`, `ftp:`, uppercase, IDN text, user info) stays literal
+without a notice. The link text keeps the source spelling (`www.example.org` →
+`https://www.example.org/`) and opens in the same window.
+
+Literals are never linked inside code spans or code blocks, Markdown links,
+`<…>` autolinks, image labels or raw `<a>`/`<code>` HTML. A literal may start
+after whitespace, a line start or an emphasis/strikethrough opener and end
+before whitespace, a line end or a closer. A backslash escape or entity inside
+or touching it (`https\://`, `example\.com`, `&amp;`) keeps the whole literal
+text. Each link adds three Markdown tokens to the existing token budget.
+
+Export keeps the round trip exact with or without the option: a same-window
+link whose text equals its canonical target is written as `<url>` when that
+re-parses to the same text and target (not for percent escapes or `xn--`
+hosts, which CommonMark would display decoded), other links stay
+`[text](<url>)`, and the `:` of `://` in plain text is escaped (`https\://…`;
+`.` already was) so literal URL text stays literal when reimported with
+`autolinks: true`.
 
 Notices are aggregated `{code, count, effect}` records. `effect: "loss"` means
 source content or presentation was removed/approximated.
@@ -290,3 +391,23 @@ compiled SDK/React integration with actual Wasm and synthetic clipboard events.
 offline, repeats those checks, verifies consumer types and checks production
 bundle parser separation. These functional checks do not qualify OS clipboard
 applications, broad browser reliability or release readiness.
+
+## DOCX export (`@breditor/interchange/docx`)
+
+A separate entry point exports a native rich document (an editor view's
+`documentJson`) to a deterministic Word `.docx` package. It imports no HTML or
+Markdown parser and never fetches: image bytes come from the host by native
+asset binding.
+
+```ts
+import {exportDocxWithImages,docxContentType} from "@breditor/interchange/docx";
+
+const result = await exportDocxWithImages(editor.view().documentJson, {
+  loadImage: binding => assetStore.blob(binding.asset),
+});
+if (result.ok) download(new Blob([result.value], {type: docxContentType}));
+// result.losses reports every feature Word cannot represent (for example reversed lists).
+```
+
+See [docs/DOCUMENT_CONVERSION.md](../../docs/DOCUMENT_CONVERSION.md) for the
+fidelity map, loss codes, bounds, licensing and non-goals.

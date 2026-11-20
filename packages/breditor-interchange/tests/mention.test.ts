@@ -1,7 +1,11 @@
 import {describe,it,expect} from "vitest";
 import {createRichInterchange,type InterchangeOwner} from "../src/index.js";
 import {isMentionId,isMentionKind,isMentionLabel} from "../src/mention.js";
-import * as rich from "../../breditor-experimental-rich-content/src/mention.js";
+// Loaded at runtime through a non-literal specifier so this package's test typecheck (rootDir ".") does not
+// pull the rich-content source tree into its program; the parity assertions below still run against it.
+interface RichMentionPredicates {isRichMentionKind(value:unknown):boolean;isRichMentionId(value:unknown):boolean;isRichMentionLabel(value:unknown):boolean}
+const richMentionModule:string=new URL("../../breditor-experimental-rich-content/src/mention.ts",import.meta.url).pathname;
+const rich=await import(/* @vite-ignore */ richMentionModule) as RichMentionPredicates;
 /** Parser-unit staging owner. Real native V4 admission is covered by the rich-browser Playwright spec. */
 function staging(mentions:boolean){
  const owner:InterchangeOwner={supportsClipboardInterchange:()=>true,admitClipboardRoot(kind,root){return{format:"breditor/rich-clipboard-transfer",formatVersion:1,kind,structuredJson:JSON.stringify({kind,document:{root:JSON.parse(root)}}),plainText:""};},validateClipboard(source){return{format:"breditor/rich-clipboard-transfer",formatVersion:1,kind:JSON.parse(source).kind??"flow",structuredJson:source,plainText:""};},...(mentions?{supportsMentions:()=>true}:{})};

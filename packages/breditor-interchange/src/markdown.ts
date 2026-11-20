@@ -1,11 +1,56 @@
 import MarkdownIt,{type Token} from "markdown-it";
 import {Budget,bytes,fail,limits,sourceWithinBudget} from "./budget.js";
 import {HtmlExport,imageLink} from "./html_export.js";
+import {hasInternalLink} from "./bookmark.js";
 import {property,type Element,type Node,type Text} from "./wire.js";
 import {safeUrl} from "./safe_url.js";
+import {autolinkRun} from "./autolink.js";
+import {isImageLinkHrefV1} from "./image_link_href.js";
 import type {InterchangeOptions} from "./types.js";
-/** CommonMark plus markdown-it's table/strike extensions, task markers and sanitized raw HTML. */
-export function markdownHtml(source:string,b:Budget):string {
+// Inline tokens a GFM autolink literal may start right after (`*`, `_`, `~` openers) or end right before.
+const literalStarts:ReadonlySet<string>=new Set(["softbreak","hardbreak","em_open","strong_open","s_open"]);
+const literalEnds:ReadonlySet<string>=new Set(["softbreak","hardbreak","em_close","strong_close","s_close"]);
+/** Raw inline HTML whose text content is already a link or code: `<a …>…</a>`, `<code>…</code>`.
+ * HTML ignores a self-closing slash on these, so `<a …/>` opens an element too. */
+const inertHtml=/^<(\/?)(a|code)(?=[\s/>])/i;
+/**
+ * Opt-in GFM autolink literals under the native typed `autolink-v1` policy. Runs before `text_join`,
+ * so backslash escapes and entities are still separate `text_special` tokens: a run touching one (or
+ * any other adjacent non-delimiter inline token) continues past its text token and stays literal.
+ * Text inside Markdown links, `<…>` autolinks, image labels and raw `<a>`/`<code>` HTML is never
+ * scanned; code spans and code blocks are not text tokens. A rejected candidate is plain text.
+ */
+function autolinkLiterals(tokens:readonly Token[],observe:(token:Token)=>Token):void {
+  for(const inline of tokens){
+    if(inline.type!=="inline"||!inline.children)continue;
+    const children=inline.children,out:Token[]=[];let links=0,inert=0;
+    for(let i=0;i<children.length;i++){
+      const token=children[i]!;
+      if(token.type==="link_open")links++;else if(token.type==="link_close")links=Math.max(0,links-1);
+      else if(token.type==="html_inline"){const m=inertHtml.exec(token.content.trim());if(m)inert=Math.max(0,inert+(m[1]?-1:1));}
+      if(token.type!=="text"||links||inert){out.push(token);continue;}
+      const prev=children[i-1],next=children[i+1],value=token.content;
+      const startOk=!prev||literalStarts.has(prev.type)||(prev.type==="text"||prev.type==="text_special")&&/\p{White_Space}$/u.test(prev.content);
+      const endOk=!next||literalEnds.has(next.type)||(next.type==="text"||next.type==="text_special")&&/^\p{White_Space}/u.test(next.content);
+      let cursor=0;
+      const push=(type:string,tag:string,nesting:1|0|-1,content="")=>{const t=observe(new MarkdownIt.Token(type,tag,nesting));t.content=content;t.level=token.level;out.push(t);return t;};
+      for(const run of value.matchAll(/[^\p{White_Space}]+/gu)){
+        const at=run.index;if(at===0&&!startOk||at+run[0].length===value.length&&!endOk)continue;
+        const found=autolinkRun(run[0]);if(!found)continue;
+        const from=at+found.start,to=at+found.end;
+        if(from>cursor)push("text","",0,value.slice(cursor,from));
+        const open=push("link_open","a",1);open.attrs=[["href",found.href]];open.markup="linkify";open.info="auto";
+        push("text","",0,value.slice(from,to));push("link_close","a",-1).markup="linkify";
+        cursor=to;
+      }
+      if(cursor===0)out.push(token);else if(cursor<value.length){token.content=value.slice(cursor);out.push(token);}
+    }
+    inline.children=out;
+  }
+}
+/** CommonMark plus markdown-it's table/strike extensions, task markers and sanitized raw HTML;
+ * `autolinks` adds GFM autolink literals under the native `autolink-v1` target policy. */
+export function markdownHtml(source:string,b:Budget,autolinks=false):string {
   sourceWithinBudget(source);
   const md=new MarkdownIt({html:true,linkify:false,typographer:false,breaks:false,maxNesting:limits.depth});
   // Let the single downstream HTML URL policy see link/image destinations and report removals.
@@ -18,6 +63,7 @@ export function markdownHtml(source:string,b:Budget):string {
   const tokenize=md.block.tokenize,skip=md.inline.skipToken;
   md.block.tokenize=function(state,start,end){if(state.level>=limits.depth)fail("resource-limit");tokenize.call(this,state,start,end);};
   md.inline.skipToken=function(state){if(state.level>=limits.depth)fail("resource-limit");skip.call(this,state);};
+  if(autolinks)md.core.ruler.before("text_join","breditor_autolink_literals",state=>{autolinkLiterals(state.tokens,observe);});
   const tokens=md.parse(source,{}),todo=[...tokens];
   while(todo.length){
     const token=todo.pop()!;observe(token);if(token.level>=limits.depth)fail("resource-limit");if(token.children)todo.push(...token.children);
@@ -45,8 +91,16 @@ function simpleInline(node:Element,breaks=false,align=false):boolean {
 }
 // `&` would start an entity. After a hard break a line-leading `-`/`=` could close a setext heading or start a
 // list/rule, and `:` a table delimiter row; the inline verifier cannot see block rules, so every line start is escaped.
-const escape=(value:string)=>{if(value.includes("\u0000"))fail("unsupported-content");return value.replace(/[\\`*_[\]{}()#+.!<>~|&]/g,"\\$&").replace(/^[-=:]/gm,"\\$&");};
+// The `:` of `://` is escaped too: with `.` (always escaped) this keeps literal URL text literal when it is
+// reimported with opt-in autolink literals, because an escape ends a literal candidate.
+const escape=(value:string)=>{if(value.includes("\u0000"))fail("unsupported-content");return value.replace(/[\\`*_[\]{}()#+.!<>~|&]/g,"\\$&").replace(/:(?=\/\/)/g,"\\:").replace(/^[-=:]/gm,"\\$&");};
 const verifier=new MarkdownIt({html:false,linkify:false,typographer:false,breaks:false});
+/** `<href>` must re-parse as one link to `href` with exactly that text (no percent-decoding or IDN display). */
+function autolinkForm(href:string):boolean {
+  if(!isImageLinkHrefV1(href)||safeUrl(href)!==href)return false;
+  let tokens:Token[];try{tokens=verifier.parseInline(`<${href}>`,{})[0]?.children??[];}catch{return false;}
+  return tokens.length===3&&tokens[0]?.type==="link_open"&&tokens[0].attrGet("href")===href&&tokens[1]?.type==="text"&&tokens[1].content===href&&tokens[2]?.type==="link_close";
+}
 const tokenFormats:Record<string,string>={strong:"breditor/strong",em:"breditor-inline/italic",s:"breditor-inline/strike",link:"breditor-inline/link"};
 type Segment=[text:string,formats:string];
 function pushSegment(out:Segment[],text:string,formats:string):void {
@@ -98,8 +152,12 @@ const destination=(url:string)=>`<${url.replace(/</g,"%3C").replace(/>/g,"%3E")}
 const htmlBlock=(html:string)=>html.replace(/\n(?=[ \t]*\n)/g,"&#10;");
 function inlineMarkdown(nodes:readonly Node[],b:Budget):string {
   return nodes.map(n=>{
-    if(n.kind!=="text")fail("native-admission");let value=escape(n.text).replace(/\n/g,"\\\n");
+    if(n.kind!=="text")fail("native-admission");
+    // A same-window link whose text is exactly its canonical target uses the `<url>` autolink form when that re-parses exactly.
+    const auto=n.formats.find(f=>f.type==="breditor-inline/link"&&f.properties["breditor-inline/href"]===n.text&&f.properties["breditor-inline/new-window"]!==true&&!n.formats.some(c=>c.type==="breditor-inline/code")&&autolinkForm(n.text));
+    let value=auto?`<${n.text}>`:escape(n.text).replace(/\n/g,"\\\n");
     for(const f of [...n.formats].reverse()){
+      if(f===auto)continue;
       if(f.type==="breditor/strong")value=`**${value}**`;
       else if(f.type==="breditor-inline/italic")value=`*${value}*`;
       else if(f.type==="breditor-inline/strike")value=`~~${value}~~`;
@@ -112,8 +170,8 @@ function inlineMarkdown(nodes:readonly Node[],b:Budget):string {
     return value;
   }).join("");
 }
-export function exportMarkdownRoot(nodes:Node[],b:Budget,options:InterchangeOptions):string {
-  const html=new HtmlExport(b,options);
+export function exportMarkdownRoot(nodes:Node[],b:Budget,options:InterchangeOptions,bookmarks=false):string {
+  const html=new HtmlExport(b,options,bookmarks);
   // Adjacent lists sharing a marker merge into one Markdown list, so each next one alternates `-`/`*` or `.`/`)`.
   const sequence=(items:readonly Node[],depth:number):string=>{
     let last="",flip=false;
@@ -123,6 +181,8 @@ export function exportMarkdownRoot(nodes:Node[],b:Budget,options:InterchangeOpti
     if(depth>limits.depth)fail("resource-limit");if(n.kind!=="element")fail("native-admission");
     const fallback=()=>{b.loss("markdown-feature");return htmlBlock(html.blocks([n],depth));};
     if(n.type==="breditor/paragraph"||n.type==="breditor/heading"){
+      // Candidate V4: bookmarks (a block property) and internal links have no CommonMark syntax: exact HTML.
+      if(bookmarks&&hasInternalLink(n.children))return fallback();
       if(!n.children.length||!simpleInline(n,n.type==="breditor/paragraph")||!inlineRoundTrips(n.children,inlineMarkdown(n.children,new Budget())))return fallback();
       const inline=inlineMarkdown(n.children,b);return n.type==="breditor/heading"?`${"#".repeat(Number(property(n,"level")))} ${inline}`:inline;
     }

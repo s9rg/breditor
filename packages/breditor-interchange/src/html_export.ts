@@ -5,9 +5,12 @@ import type {InterchangeOptions} from "./types.js";
 import {isCanonicalLanguageTagV1} from "./language_tag.js";
 import {isImageLinkHrefV1} from "./image_link_href.js";
 import {mentionUnits} from "./mention.js";
+import {bookmarkIdPrefix,internalLinkOf,isBookmarkName} from "./bookmark.js";
 /** Export only native-admitted DTOs. Every output tag, attribute and CSS property is library-owned. */
 export class HtmlExport {
-  constructor(readonly b:Budget,readonly options:InterchangeOptions){}
+  /** `bookmarks`: the source owner is bookmark-capable (candidate V4), so anchors and internal links are
+   * exported; otherwise output is the original one. */
+  constructor(readonly b:Budget,readonly options:InterchangeOptions,readonly bookmarks=false){}
   #visited=0;
   #visit():void{if(++this.#visited>limits.outputNodes)fail("resource-limit");}
   inline(nodes:readonly Node[]):string{return mentionUnits(nodes).map(unit=>{
@@ -21,6 +24,9 @@ export class HtmlExport {
     const simple:Readonly<Record<string,string>>={"breditor/strong":"strong","breditor-inline/italic":"em","breditor-inline/underline":"u","breditor-inline/strike":"s","breditor-inline/code":"code","breditor-inline/subscript":"sub","breditor-inline/superscript":"sup"};
     const tag=simple[f.type];if(typeof tag==="string")return `<${tag}>${value}</${tag}>`;
     const p=f.properties;
+    // Candidate V4 internal link `#name`: a fragment link to the exported anchor `bm-<name>`.
+    const internal=this.bookmarks?internalLinkOf(f):undefined;
+    if(internal!==undefined)return `<a href="#${bookmarkIdPrefix}${a(internal)}">${value}</a>`;
     if(f.type==="breditor-inline/link"){
       const source=p["breditor-inline/href"],href=typeof source==="string"?safeUrl(source):null;
       if(!href){this.b.loss("unsafe-link");return value;}
@@ -35,6 +41,11 @@ export class HtmlExport {
     if(f.type==="breditor-inline/font-family"&&typeof family==="number"&&Number.isInteger(family)&&family>=1&&family<=4)return `<span style="font-family:${["","system-ui","sans-serif","serif","monospace"][family]}">${value}</span>`;
     this.b.loss("unsupported-style");return value;
   }
+  /** Candidate V4 bookmark: `id="bm-<name>"` from an admitted name only. */
+  #anchor(node:Element):string {
+    const name=property(node,"bookmark");if(name===undefined||!this.bookmarks)return "";
+    if(!isBookmarkName(name))fail("native-admission");return ` id="${bookmarkIdPrefix}${a(name)}"`;
+  }
   #layout(node:Element):string {
     const style=["white-space:pre-wrap"],align=property(node,"block-align"),dir=property(node,"block-direction"),indent=property(node,"block-indent"),height=property(node,"line-height-percent");
     if(typeof align==="number"&&Number.isInteger(align)&&align>=1&&align<=6)style.push(`text-align:${["","start","center","end","justify","left","right"][align]}`);
@@ -48,14 +59,16 @@ export class HtmlExport {
       this.#visit();if(node.kind==="text"){this.b.loss("block-structure");return t(node.text);}
       const body=()=>this.blocks(node.children,depth+1);
       switch(node.type){
-        case "breditor/paragraph":return `<p${this.#layout(node)}>${this.inline(node.children)}</p>`;
-        case "breditor/heading":{const rank=property(node,"level");if(typeof rank!=="number"||!Number.isInteger(rank)||rank<1||rank>6)fail("native-admission");return `<h${rank}${this.#layout(node)}>${this.inline(node.children)}</h${rank}>`;}
+        case "breditor/paragraph":return `<p${this.#anchor(node)}${this.#layout(node)}>${this.inline(node.children)}</p>`;
+        case "breditor/heading":{const rank=property(node,"level");if(typeof rank!=="number"||!Number.isInteger(rank)||rank<1||rank>6)fail("native-admission");return `<h${rank}${this.#anchor(node)}${this.#layout(node)}>${this.inline(node.children)}</h${rank}>`;}
         case "breditor/blockquote":return `<blockquote>${body()}</blockquote>`;
         // Candidate V4 section: native disclosure; `open` only from the admitted `true` flag.
         case "breditor/details":{const open=property(node,"details-open");if(open!==undefined&&open!==true||node.children[0]?.kind!=="element"||node.children[0].type!=="breditor/details-summary")fail("native-admission");return `<details${open===true?" open":""}>${body()}</details>`;}
         case "breditor/details-summary":return `<summary>${this.inline(node.children)}</summary>`;
-        case "breditor/code-block":{const language=property(node,"language");return `<pre${this.#layout(node)}><code${typeof language==="string"?` class="language-${a(language)}"`:""}>${t(nodeText(node))}</code></pre>`;}
+        case "breditor/code-block":{const language=property(node,"language");return `<pre${this.#anchor(node)}${this.#layout(node)}><code${typeof language==="string"?` class="language-${a(language)}"`:""}>${t(nodeText(node))}</code></pre>`;}
         case "breditor/horizontal-rule":return"<hr>";
+        // Candidate V4 page break: an empty block forcing a page after it (modern and legacy CSS spellings).
+        case "breditor/page-break":return '<div style="break-after:page;page-break-after:always"></div>';
         case "breditor/bullet-list":return `<ul>${body()}</ul>`;
         case "breditor/ordered-list":{
           const start=property(node,"start"),style=property(node,"list-style"),reversed=property(node,"list-reversed");
@@ -114,8 +127,8 @@ export function imageLink(node:Element):{href:string;newWindow:boolean;open:stri
   if(!isImageLinkHrefV1(href)||newWindow!==undefined&&newWindow!==true||property(node,"decorative")!==false)fail("native-admission");
   return {href,newWindow:newWindow===true,open:`<a href="${a(href)}"${newWindow===true?' target="_blank" rel="noopener noreferrer"':""}>`};
 }
-export function exportHtmlRoot(nodes:Node[],b:Budget,options:InterchangeOptions,kind:"text"|"flow"|"grid"):string {
-  const writer=new HtmlExport(b,options),wrapper=nodes[0];
+export function exportHtmlRoot(nodes:Node[],b:Budget,options:InterchangeOptions,kind:"text"|"flow"|"grid",bookmarks=false):string {
+  const writer=new HtmlExport(b,options,bookmarks),wrapper=nodes[0];
   if(kind==="text"&&(nodes.length!==1||wrapper?.kind!=="element"||wrapper.type!=="breditor/paragraph"))fail("native-admission");
   if(kind==="text"&&wrapper?.kind==="element"&&Object.keys(wrapper.properties).some(k=>k!=="breditor/block-id"))b.loss("block-structure");
   const result=kind==="text"&&wrapper?.kind==="element"?`<span style="white-space:pre-wrap">${writer.inline(wrapper.children)}</span>`:writer.blocks(nodes);if(result.length>limits.outputBytes||bytes(result)>limits.outputBytes)fail("resource-limit");return result;

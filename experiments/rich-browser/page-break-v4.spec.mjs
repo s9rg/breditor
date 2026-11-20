@@ -1,0 +1,165 @@
+import {test,expect} from "@playwright/test";
+import {fileURLToPath} from "node:url";
+import {rolldown} from "rolldown";
+// Explicit candidate rich V4 (bootstrap V9) over the actual Rust/Wasm owner: page breaks and print presentation.
+let interchange="",statics="";
+const bundle=async path=>{const value=await rolldown({input:fileURLToPath(new URL(path,import.meta.url)),platform:"browser",logLevel:"silent"});const code=(await value.generate({format:"esm"})).output[0].code;await value.close();return code;};
+test.beforeAll(async()=>{
+ interchange=await bundle("../../packages/breditor-interchange/src/index.ts");
+ statics=await bundle("../../packages/breditor-editor/src/static_document.ts");
+});
+test.beforeEach(async({page})=>{
+ await page.route("**/interchange.js",route=>route.fulfill({status:200,contentType:"text/javascript; charset=utf-8",body:interchange}));
+ await page.route("**/static.js",route=>route.fulfill({status:200,contentType:"text/javascript; charset=utf-8",body:statics}));
+ await page.goto("/");await expect(page.locator("#status")).toHaveText("Ready");
+ await page.evaluate(async()=>{
+  const api=await import("/rich.js"),{createRichInterchange}=await import("/interchange.js"),{renderStaticDocument}=await import("/static.js");
+  const bootstrap=(formatVersion,version)=>JSON.stringify({format:"breditor/profile-bootstrap",formatVersion,schema:{name:"example/pages",version},extensions:[]});
+  const paragraph=(id,text)=>({kind:"element",type:"breditor/paragraph",entityId:null,properties:{"breditor/block-id":id},children:text?[{kind:"text",text,formats:[]}]:[]});
+  const pageBreak=id=>({kind:"element",type:"breditor/page-break",entityId:null,properties:{"breditor/block-id":id},children:[]});
+  const heading=(id,text)=>({kind:"element",type:"breditor/heading",entityId:null,properties:{"breditor/block-id":id,"breditor/level":2},children:[{kind:"text",text,formats:[]}]});
+  const cell=(r,c,header)=>({kind:"element",type:"breditor/table-cell",entityId:null,properties:{"breditor/block-id":`cell-${r}-${c}`,"breditor/column-id":c,"breditor/header":header},children:[paragraph(`p-${r}-${c}`,`${r}${c}`)]});
+  const row=(r,header=false)=>({kind:"element",type:"breditor/table-row",entityId:null,properties:{"breditor/block-id":`row-${r}`,"breditor/row-id":r},children:[cell(r,"a",header),cell(r,"b",header)]});
+  const table={kind:"element",type:"breditor/table",entityId:null,properties:{"breditor/block-id":"tbl","breditor/table-id":"t","breditor/columns":[{id:"a",width:160},{id:"b",width:160}],"breditor/merges":[],"breditor/retracted-merges":[]},children:[row("r1",true),row("r2"),row("r3")]};
+  const root=breaks=>({kind:"element",type:"breditor/document",entityId:null,properties:{"breditor/document-id":"room"},children:[heading("h","Chapter"),paragraph("p","Hello world"),...(breaks?[pageBreak("pb")]:[]),paragraph("q","Second"),table]});
+  const canonical=value=>Array.isArray(value)?value.map(canonical):value!==null&&typeof value==="object"?Object.fromEntries(Object.keys(value).sort().map(key=>[key,canonical(value[key])])):value;
+  const envelope=(profile,breaks)=>{const binding=profile.descriptor();return JSON.stringify({format:"breditor/document",formatVersion:2,schema:binding.schema,schemaFingerprint:binding.schemaFingerprint,root:canonical(root(breaks))});};
+  const open=(profile,breaks)=>profile.createEditor(envelope(profile,breaks));
+  const profile=api.compileStandardRichProfileV4(window.rich.wasm,bootstrap(9,4)),presentation=api.createStandardRichInlinePresentationV1(profile.inlineCatalogJson());
+  const host=document.createElement("main"),errors=[];document.body.append(host);
+  let core,editor;
+  const mount=breaks=>{editor?.dispose();host.replaceChildren();core=open(profile,breaks);editor=api.mountRichEditor(host,{core,inlinePresentation:presentation,toolbar:api.createRichToolbarV4(core,presentation),onError:error=>errors.push(String(error))});window.dt.core=core;window.dt.editor=editor;};
+  const select=(block,start,end=start)=>({kind:"setSelection",selection:{kind:"text",anchor:{block,offset:String(start),affinity:"after"},focus:{block,offset:String(end),affinity:"after"}}});
+  const kinds=()=>JSON.parse(window.dt.core.documentJson()).root.children.map(n=>n.type.slice(9));
+  const clipboardEvent=(type,source=new DataTransfer())=>{
+   const event=new ClipboardEvent(type,{bubbles:true,cancelable:true,clipboardData:source});
+   if(event.clipboardData!==source)for(const flavor of source.types)event.clipboardData.setData(flavor,source.getData(flavor));
+   window.dt.editor.surface.dispatchEvent(event);return event;
+  };
+  window.dt={api,bootstrap,open,envelope,profile,host,errors,select,kinds,mount,clipboardEvent,createRichInterchange,renderStaticDocument};
+  mount(false);
+ });
+});
+const button=page=>page.getByRole("button",{name:"Page break",exact:true});
+const at=page=>page.evaluate(()=>{const s=window.dt.core.view().selection;return s.kind==="text"?`${s.focus.block}:${s.focus.offset}`:`${s.kind}:${s.block??""}`;});
+
+test("V4 reports page breaks while V3 stays exact and refuses them",async({page})=>{
+ const result=await page.evaluate(()=>{const t=window.dt,v3p=t.api.compileStandardLayoutRichProfileV3(window.rich.wasm,t.bootstrap(8,4));
+  try{const old=t.open(v3p,false),before=old.checkpointJson();let refused=false;
+   try{old.execute({kind:"insertPageBreak",data:{position:{parent:{kind:"document"},before:null},block:"x"}});}catch{refused=true;}
+   let documentRefused=false;try{t.open(v3p,true).dispose();}catch{documentRefused=true;}
+   const out={v4:t.profile.descriptor().pageBreakVersion,v3:v3p.descriptor().pageBreakVersion??null,refused,documentRefused,unchanged:old.checkpointJson()===before,supports:[old.supportsPageBreaks(),t.core.supportsPageBreaks()]};old.dispose();return out;}finally{v3p.dispose();}});
+ expect(result).toEqual({v4:1,v3:null,refused:true,documentRefused:true,unchanged:true,supports:[false,true]});
+});
+
+test("the toolbar inserts a labelled, non-editable marker after the root block in one Undo step",async({page})=>{
+ await page.locator('[data-rich-text="p-r2-a"]').click();
+ await expect(button(page)).toBeEnabled();
+ await button(page).click();
+ // A caret in a table cell inserts after the whole table: page breaks live in the root flow only.
+ expect(await page.evaluate(()=>window.dt.kinds())).toEqual(["heading","paragraph","paragraph","table","page-break"]);
+ await page.locator('[data-rich-text="p"]').click();
+ await page.evaluate(()=>window.dt.editor.execute(window.dt.select("p",5)));
+ await button(page).click();
+ expect(await page.evaluate(()=>window.dt.kinds())).toEqual(["heading","paragraph","page-break","paragraph","table","page-break"]);
+ expect(await at(page)).toBe("p:5");
+ const marker=page.locator("[data-rich-page-break]").first();
+ // The visible label is `content: attr(aria-label)`; Firefox reports that computed value unresolved.
+ const view=await marker.evaluate(element=>{const style=getComputedStyle(element),label=getComputedStyle(element,"::after");return {editable:element.isContentEditable,role:element.getAttribute("role"),label:element.getAttribute("aria-label"),content:['"Page break"',"attr(aria-label)"].includes(label.content),height:element.getBoundingClientRect().height>10,breakAfter:style.breakAfter,previous:element.previousElementSibling?.dataset.richBlock};});
+ expect(view).toEqual({editable:false,role:"separator",label:"Page break",content:true,height:true,breakAfter:"page",previous:"p"});
+ // Typing continues in the paragraph before the break.
+ await page.keyboard.type("!");
+ expect(await page.evaluate(()=>JSON.parse(window.dt.core.documentJson()).root.children[1].children[0].text)).toBe("Hello! world");
+ const result=await page.evaluate(()=>{const t=window.dt,inserted=t.core.documentJson(),depth=t.core.view().undoDepth;
+  t.editor.execute({kind:"undo"});t.editor.execute({kind:"undo"});const one=t.kinds();t.editor.execute({kind:"redo"});
+  const restored=t.profile.restoreEditor(t.core.checkpointJson()),same=restored.documentJson()===t.core.documentJson();restored.dispose();
+  return {depth,one,redo:t.kinds(),same,inserted:inserted.includes("breditor/page-break"),errors:t.errors};});
+ expect(result).toEqual({depth:3,one:["heading","paragraph","paragraph","table","page-break"],redo:["heading","paragraph","page-break","paragraph","table","page-break"],same:true,inserted:true,errors:[]});
+});
+
+test("a page break is node-selected by click, a flow-navigation stop and deleted whole",async({page})=>{
+ await page.evaluate(()=>window.dt.mount(true));
+ await page.locator("[data-rich-page-break]").click();
+ expect(await at(page)).toBe("node:pb");
+ await expect(page.locator("[data-rich-page-break]")).toHaveAttribute("data-node-selected","");
+ await page.evaluate(()=>window.dt.editor.execute(window.dt.select("p",11)));
+ await page.locator('[data-rich-text="p"]').click();await page.evaluate(()=>window.dt.editor.execute(window.dt.select("p",11)));
+ await page.keyboard.press("Alt+PageDown");expect(await at(page)).toBe("node:pb");
+ await page.keyboard.press("Alt+PageDown");expect(await at(page)).toBe("q:0");
+ await page.keyboard.press("Alt+PageUp");expect(await at(page)).toBe("node:pb");
+ await page.keyboard.press("Delete");
+ await expect(page.locator("[data-rich-page-break]")).toHaveCount(0);
+ expect(await page.evaluate(()=>({kinds:window.dt.kinds(),undo:window.dt.core.view().undoDepth}))).toEqual({kinds:["heading","paragraph","paragraph","table"],undo:1});
+ expect(await at(page)).toBe("q:0");
+ await page.evaluate(()=>window.dt.editor.execute({kind:"undo"}));
+ await expect(page.locator("[data-rich-page-break]")).toHaveCount(1);
+ expect(await page.evaluate(()=>window.dt.errors)).toEqual([]);
+});
+
+test("copy/paste keeps page breaks; V3 refuses the record",async({page})=>{
+ await page.evaluate(()=>window.dt.mount(true));
+ const result=await page.evaluate(()=>{const t=window.dt;
+  t.editor.execute({kind:"setSelection",selection:{kind:"node",block:"pb"}});
+  const transfer=t.clipboardEvent("copy").clipboardData,record=transfer.getData("application/x-breditor-rich+json");
+  t.editor.execute(t.select("q",6));const depth=t.core.view().undoDepth;t.clipboardEvent("paste",transfer);
+  const v3p=t.api.compileStandardLayoutRichProfileV3(window.rich.wasm,t.bootstrap(8,4)),old=t.open(v3p,false);v3p.dispose();
+  let v3Refused=false;try{old.validateClipboard(record);}catch{v3Refused=true;}old.dispose();
+  const breaks=JSON.parse(t.core.documentJson()).root.children.filter(n=>n.type==="breditor/page-break");
+  return {kinds:t.kinds(),distinct:new Set(breaks.map(n=>n.properties["breditor/block-id"])).size,delta:t.core.view().undoDepth-depth,v3Refused,errors:t.errors};});
+ // Pasting flow at the end of a paragraph keeps its empty right-hand floor paragraph.
+ expect(result).toEqual({kinds:["heading","paragraph","page-break","paragraph","page-break","paragraph","table"],distinct:2,delta:1,v3Refused:true,errors:[]});
+});
+
+test("print media: forced breaks, keep-together rules and an approximate preview",async({page})=>{
+ await page.evaluate(()=>window.dt.mount(true));
+ const read=()=>page.evaluate(()=>{const host=window.dt.host,style=(selector,pseudo)=>getComputedStyle(host.querySelector(selector),pseudo);
+  return {pageBreak:style("[data-rich-page-break]").breakAfter,height:host.querySelector("[data-rich-page-break]").getBoundingClientRect().height,label:style("[data-rich-page-break]","::after").content,row:style("tr").breakInside,heading:style("h2").breakAfter,headingInside:style("h2").breakInside,toolbar:style(".breditor-rich-toolbar").display};});
+ // Without the opt-in stylesheet, print media keeps the editor chrome and only the inline forced break.
+ await page.emulateMedia({media:"print"});
+ const plain=await read();
+ expect(plain.pageBreak).toBe("page");expect(plain.toolbar).not.toBe("none");
+ const layout=await page.evaluate(()=>{const t=window.dt;window.preview=t.api.mountRichPrintPreview(t.editor.surface,{size:"Letter",orientation:"portrait",margin:"narrow"});return window.preview.layout;});
+ expect(layout).toEqual({size:"Letter",orientation:"portrait",margin:"narrow",pageWidthMm:215.9,pageHeightMm:279.4,marginMm:12.7,contentWidthMm:190.5,contentHeightMm:254});
+ expect(await read()).toEqual({pageBreak:"page",height:0,label:"none",row:"avoid",heading:"avoid",headingInside:"avoid",toolbar:"none"});
+ // Screen media shows the preview: printable width plus margin padding, with the marker visible again.
+ await page.emulateMedia({media:"screen"});
+ const screen=await page.evaluate(()=>{const surface=window.dt.editor.surface,style=getComputedStyle(surface),mm=96/25.4;
+  return {width:Math.round(parseFloat(style.width)/mm*10)/10,padding:Math.round(parseFloat(style.paddingTop)/mm*10)/10,guides:style.backgroundImage.includes("repeating-linear-gradient"),description:surface.getAttribute("aria-description"),marker:window.dt.host.querySelector("[data-rich-page-break]").getBoundingClientRect().height>10};});
+ expect(screen).toEqual({width:190.5,padding:12.7,guides:true,description:"Print preview: page boundaries are approximate",marker:true});
+ // Editing continues while the preview is mounted; disposing restores the surface.
+ await page.locator('[data-rich-text="q"]').click();await page.keyboard.type("x");
+ const after=await page.evaluate(()=>{window.preview.dispose();const surface=window.dt.editor.surface;return {typed:JSON.stringify(window.dt.core.documentJson()).includes("x"),attribute:surface.hasAttribute("data-breditor-print-preview"),style:document.querySelectorAll("style[data-breditor-print-preview]").length,errors:window.dt.errors};});
+ expect(after).toEqual({typed:true,attribute:false,style:0,errors:[]});
+});
+
+test("static export embeds print CSS and repeats header rows under print media",async({page})=>{
+ await page.emulateMedia({media:"print"});
+ const result=await page.evaluate(()=>{const t=window.dt,frame=document.createElement("section");
+  frame.innerHTML=t.renderStaticDocument(t.envelope(t.profile,true),{print:{size:"A4",orientation:"landscape"}});document.body.append(frame);
+  const style=selector=>getComputedStyle(frame.querySelector(selector));
+  const out={thead:style("thead").display,headerCells:frame.querySelectorAll("thead th").length,bodyRows:frame.querySelectorAll("tbody tr").length,pageBreak:style(".breditor-page-break").breakAfter,height:frame.querySelector(".breditor-page-break").getBoundingClientRect().height,row:style("tbody tr").breakInside,heading:style("h2").breakAfter,page:frame.querySelector("style[data-breditor-print]").textContent.startsWith("@page{size:A4 landscape;margin:25.4mm}")};
+  frame.remove();return out;});
+ expect(result).toEqual({thead:"table-header-group",headerCells:2,bodyRows:2,pageBreak:"page",height:0,row:"avoid",heading:"avoid",page:true});
+});
+
+test("interchange maps Word and Google Docs page breaks for the V4 owner only",async({page})=>{
+ const result=await page.evaluate(()=>{const t=window.dt;
+  const word="<p class=MsoNormal>One<br clear=all style='mso-special-character:line-break;page-break-before:always'>Two</p>",docs='<p>One</p><hr style="page-break-before:always;display:none;"><p>Two</p>';
+  const shape=node=>node.kind==="text"?node.text:{type:node.type.slice(9),children:node.children.map(shape)};
+  const kinds=r=>r.ok?JSON.parse(r.value.structuredJson).document.root.children.map(shape):r.error;
+  const adapter=t.createRichInterchange(t.core),fromWord=adapter.importHtml(word),fromDocs=adapter.importHtml(docs),exported=adapter.exportHtml(fromDocs.value.structuredJson),markdown=adapter.exportMarkdown(fromDocs.value.structuredJson),back=adapter.importMarkdown(markdown.ok?markdown.value:"");
+  // Native admission accepts the imported record for the V4 owner.
+  const pasted=t.core.validateClipboard(fromWord.value.structuredJson).kind;
+  const v3p=t.api.compileStandardLayoutRichProfileV3(window.rich.wasm,t.bootstrap(8,4)),old=t.open(v3p,false);v3p.dispose();
+  try{const v3=t.createRichInterchange(old),v3Word=v3.importHtml(word),v3Docs=v3.importHtml(docs);
+   return {word:kinds(fromWord),wordLosses:fromWord.losses,docs:kinds(fromDocs),docsLosses:fromDocs.losses,html:exported.ok?exported.value:exported.error,markdownLosses:markdown.losses.map(l=>l.code),back:kinds(back),pasted,v3Word:kinds(v3Word),v3Docs:kinds(v3Docs),v3DocsLosses:v3Docs.losses.map(l=>[l.code,l.count])};}finally{old.dispose();}
+ });
+ const split=[{type:"paragraph",children:["One"]},{type:"page-break",children:[]},{type:"paragraph",children:["Two"]}];
+ expect(result.word).toEqual(split);expect(result.wordLosses).toEqual([]);
+ expect(result.docs).toEqual(split);expect(result.docsLosses).toEqual([]);
+ expect(result.html).toBe('<p style="white-space:pre-wrap">One</p><div style="break-after:page;page-break-after:always"></div><p style="white-space:pre-wrap">Two</p>');
+ expect(result.markdownLosses).toEqual(["markdown-feature"]);expect(result.back).toEqual(split);
+ expect(result.v3Word).toEqual([{type:"paragraph",children:["One\nTwo"]}]);
+ expect(result.v3Docs).toEqual([{type:"paragraph",children:["One"]},{type:"paragraph",children:["Two"]}]);expect(result.v3DocsLosses).toEqual([["removed-content",1]]);
+ expect(result.pasted).toBe("flow");
+});

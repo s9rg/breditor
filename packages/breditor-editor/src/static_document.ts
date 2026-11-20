@@ -19,6 +19,8 @@ import {
  type BrowserProfileFormatDescriptor,type InlineFormatRenderRecipe,type InlineFormatRenderAttribute,
 } from "@breditor/experimental-rich-content/rendering";
 import {groupMentionRuns,mentionChipAttributes,mentionOf,richMentionFormat,richMentionIdProperty,richMentionKindProperty,richMentionLabelProperty} from "@breditor/experimental-rich-content/rendering";
+import {bookmarkAttributes,internalLinkAttributes,internalLinkOf,isBookmarkName} from "@breditor/experimental-rich-content/rendering";
+import {pageBreakAttributes,richPrintStyles,resolveRichPrintLayout,richUiStringsEn,type RichPrintOptions,type RichPrintLayout} from "@breditor/experimental-rich-content/rendering";
 
 /** Immutable image binding handed to the host resolver; mirrors the live `AssetBinding`. */
 export interface StaticAssetBinding {readonly image:string;readonly asset:string;readonly generation:string}
@@ -48,6 +50,16 @@ export interface StaticRenderOptions {
  /** Emit `data-rich-block` / `data-rich-text` / `data-rich-cell` hooks (default true). */
  blockIds?:boolean;
  limits?:StaticRenderLimits;
+ /** Accessible label of candidate V4 page-break elements (default the English catalog `pageBreakLabel`, "Page break"). */
+ pageBreakLabel?:string;
+ /**
+  * Print/export mode (default off, output unchanged). `true` or bounded `RichPrintOptions` (A4/Letter,
+  * portrait/landscape, narrow/normal/wide margins): the wrapper starts with a `<style data-breditor-print>`
+  * holding `richPrintStyles` for that layout (fragments carry no stylesheet; hosts add `richPrintStyles`
+  * themselves), and a table's leading rows whose every cell is a header cell (no row span crossing into a
+  * body row) are emitted in `<thead>` so paged media repeats them on each page.
+  */
+ print?:boolean|RichPrintOptions;
 }
 
 export type StaticImageState="ready"|"unresolved"|"rejected"|"error";
@@ -82,7 +94,8 @@ export function renderStaticDocumentWithReport(document:unknown,options:StaticRe
  const renderer=new Renderer(options);
  const root=renderer.admit(document);
  const body=renderer.children(root);
- const html=options.fragment?body:`<div class="${staticSurfaceClass}" data-breditor-rich="" data-breditor-static="">${body}</div>`;
+ const style=renderer.print&&!options.fragment?`<style data-breditor-print="">${richPrintStyles(renderer.print)}</style>`:"";
+ const html=options.fragment?body:`<div class="${staticSurfaceClass}" data-breditor-rich="" data-breditor-static="">${style}${body}</div>`;
  return {html,report:Object.freeze({skipped:Object.freeze(renderer.skipped),images:Object.freeze(renderer.images),hiddenTables:Object.freeze(renderer.hiddenTables),inactiveMerges:Object.freeze(renderer.inactiveMerges)})};
 }
 
@@ -155,8 +168,9 @@ const directions=["ltr","rtl","auto"] as const;
 const listTypes=["1","a","A","i","I"] as const;
 
 /** Rich child grammar: the union of rich languages V1–V3 plus the candidate V4 list numbering,
- * image-link properties, collapsible sections (`breditor/details`, Rust `details.rs`) and table
- * captions (one trailing `breditor/paragraph` after a table's rows, Rust `table_caption.rs`). */
+ * image-link properties, collapsible sections (`breditor/details`, Rust `details.rs`), table
+ * captions (one trailing `breditor/paragraph` after a table's rows, Rust `table_caption.rs`) and
+ * page breaks (`breditor/page-break`, document root only, Rust `page_break.rs`). */
 const flowKinds=["paragraph","heading","bullet-list","ordered-list","image","blockquote","code-block","horizontal-rule","task-list","details"].map(local=>`breditor/${local}`);
 /** Candidate V4: at most this many sections on any root-to-leaf path (Rust `RICH_DETAILS_MAX_DEPTH`). */
 const MAX_DETAILS_DEPTH=8;
@@ -164,10 +178,10 @@ const flowWithTables=[...flowKinds,"breditor/table"];
 interface Grammar {readonly children:readonly string[]|"text"|"none";readonly minimum:number;readonly maximum?:number;readonly required:readonly string[];readonly optional?:readonly string[];readonly firstTextBlock?:boolean}
 const layout=["block-align","block-direction","block-indent","line-height-percent"];
 const grammar:Readonly<Record<string,Grammar>>={
- "breditor/document":{children:flowWithTables,minimum:1,required:["document-id"]},
- "breditor/paragraph":{children:"text",minimum:0,required:["block-id"],optional:layout},
- "breditor/heading":{children:"text",minimum:0,required:["block-id","level"],optional:layout},
- "breditor/code-block":{children:"text",minimum:0,required:["block-id"],optional:["language",...layout]},
+ "breditor/document":{children:[...flowWithTables,"breditor/page-break"],minimum:1,required:["document-id"]},
+ "breditor/paragraph":{children:"text",minimum:0,required:["block-id"],optional:[...layout,"bookmark"]},
+ "breditor/heading":{children:"text",minimum:0,required:["block-id","level"],optional:[...layout,"bookmark"]},
+ "breditor/code-block":{children:"text",minimum:0,required:["block-id"],optional:["language",...layout,"bookmark"]},
  "breditor/bullet-list":{children:["breditor/list-item"],minimum:1,required:["block-id"]},
  "breditor/ordered-list":{children:["breditor/list-item"],minimum:1,required:["block-id","start"],optional:["list-style","list-reversed"]},
  "breditor/list-item":{children:flowWithTables,minimum:1,required:["block-id"],firstTextBlock:true},
@@ -175,6 +189,7 @@ const grammar:Readonly<Record<string,Grammar>>={
  "breditor/task-item":{children:flowWithTables,minimum:1,required:["block-id","checked"],firstTextBlock:true},
  "breditor/blockquote":{children:flowWithTables,minimum:1,required:["block-id"]},
  "breditor/horizontal-rule":{children:"none",minimum:0,maximum:0,required:["block-id"]},
+ "breditor/page-break":{children:"none",minimum:0,maximum:0,required:["block-id"]},
  "breditor/details":{children:["breditor/details-summary",...flowWithTables],minimum:2,required:["block-id"],optional:["details-open"]},
  "breditor/details-summary":{children:"text",minimum:0,required:["block-id"]},
  "breditor/image":{children:["breditor/paragraph"],minimum:0,maximum:1,required:["block-id","image-id","asset-id","asset-generation","alt-text","decorative"],optional:["width","height","image-href","image-link-new-window"]},
@@ -240,13 +255,22 @@ class Renderer {
  readonly hiddenTables:string[]=[];
  readonly inactiveMerges:{table:string;merge:string;reason:StaticMergeConflictReason}[]=[];
  readonly #skip:boolean;readonly #ids:boolean;readonly #resolve:StaticRenderOptions["resolveAsset"];
- readonly #maxBytes:number;readonly #maxDepth:number;readonly #maxNodes:number;
+ readonly #maxBytes:number;readonly #maxDepth:number;readonly #maxNodes:number;readonly #pageBreak:string;
+ /** Validated print layout, or undefined when print mode is off. */
+ readonly print:RichPrintLayout|undefined;
  #nodes=0;#textBytes=0;#detailsDepth=0;
+ /** Candidate V4 bookmark names seen during admission (unique per document). */
+ readonly #bookmarks=new Set<string>();
  constructor(options:StaticRenderOptions){
   if(typeof options!=="object"||options===null||Array.isArray(options))throw new TypeError("Static render options must be an object");
   if(options.unknown!==undefined&&options.unknown!=="error"&&options.unknown!=="skip")throw new TypeError("unknown must be \"error\" or \"skip\"");
   if(options.resolveAsset!==undefined&&typeof options.resolveAsset!=="function")throw new TypeError("resolveAsset must be a function");
   this.#skip=options.unknown==="skip";this.#ids=options.blockIds!==false;this.#resolve=options.resolveAsset;
+  const label=options.pageBreakLabel??richUiStringsEn.pageBreakLabel;
+  if(typeof label!=="string"||!label.trim()||label.length>512||/[\u0000-\u001F\u007F]/.test(label))throw new TypeError("pageBreakLabel must be a nonempty string of at most 512 characters without control characters");
+  this.#pageBreak=label;
+  if(options.print!==undefined&&typeof options.print!=="boolean"&&(typeof options.print!=="object"||options.print===null))throw new TypeError("print must be a Boolean or print options");
+  this.print=options.print===undefined||options.print===false?undefined:resolveRichPrintLayout(options.print===true?{}:options.print);
   const limits=options.limits??{};
   this.#maxBytes=clamp(limits.maxInputBytes,16*1024*1024,64*1024*1024);
   this.#maxDepth=clamp(limits.maxDepth,128,512);
@@ -397,6 +421,13 @@ class Renderer {
    }
    case "breditor/table":id("table-id");break;
   }
+  // Candidate V4 bookmark (Rust `bookmark.rs`): a bounded name, unique per document.
+  if(Object.hasOwn(result,"bookmark")){
+   const name=result["bookmark"];
+   if(!isBookmarkName(name))this.#fail("property","Invalid bookmark name",at("bookmark"));
+   if(this.#bookmarks.has(name))this.#fail("property","Duplicate bookmark name",at("bookmark"));
+   this.#bookmarks.add(name);
+  }
   if(Object.hasOwn(result,"block-align"))integer("block-align",1,6);
   if(Object.hasOwn(result,"block-direction"))integer("block-direction",1,3);
   if(Object.hasOwn(result,"block-indent"))integer("block-indent",0,12);
@@ -420,6 +451,11 @@ class Renderer {
   if(height!==undefined)style.push(`line-height:${height/100}`);
   return (style.length?` style="${style.join(";")}"`:"")+(direction!==undefined?` dir="${directions[direction-1]!}"`:"");
  }
+ /** Candidate V4 bookmark anchor: `id="bm-<name>" data-rich-bookmark="<name>"`, as in the live renderer. */
+ #bookmark(node:Element):string {
+  const name=node.properties["bookmark"];
+  return typeof name==="string"?bookmarkAttributes(name).map(a=>` ${a.name}="${escapeHtmlAttribute(a.value)}"`).join(""):"";
+ }
  #inline(node:Text):string {
   let html=escapeHtmlText(node.text);
   if(!node.formats.length)return html;
@@ -431,6 +467,9 @@ class Renderer {
    let open=`<${recipe.element} data-rich-format="${escapeHtmlAttribute(recipe.formatKind)}"`;
    if(recipe.classes.length)open+=` class="${escapeHtmlAttribute(recipe.classes.join(" "))}"`;
    for(const attribute of attributes)open+=` ${attribute.name}="${escapeHtmlAttribute(attribute.value)}"`;
+   // Candidate V4 internal link `#name`: `href="#bm-name"`, or a broken marker for a dangling target.
+   const internal=recipe.formatKind===K.link?internalLinkOf(literal):undefined;
+   if(internal!==undefined)for(const attribute of internalLinkAttributes(internal,this.#bookmarks.has(internal)))open+=` ${attribute.name}="${escapeHtmlAttribute(attribute.value)}"`;
    html=`${open}>${html}</${recipe.element}>`;
   }
   return html;
@@ -453,11 +492,11 @@ class Renderer {
   switch(node.type){
    case "breditor/paragraph":case "breditor/heading":{
     const tag=node.type==="breditor/paragraph"?"p":`h${String(p["level"])}`;
-    return `<${tag}${this.#blockAttributes(node,true)}${this.#layout(node)}>${node.children.length?inner():"<br>"}</${tag}>`;
+    return `<${tag}${this.#blockAttributes(node,true)}${this.#layout(node)}${this.#bookmark(node)}>${node.children.length?inner():"<br>"}</${tag}>`;
    }
    case "breditor/code-block":{
     const language=typeof p["language"]==="string"?` data-language="${escapeHtmlAttribute(p["language"])}"`:"";
-    return `<pre${this.#blockAttributes(node,true)}${this.#layout(node)}${language}><code>${node.children.length?inner():"<br>"}</code></pre>`;
+    return `<pre${this.#blockAttributes(node,true)}${this.#layout(node)}${this.#bookmark(node)}${language}><code>${node.children.length?inner():"<br>"}</code></pre>`;
    }
    case "breditor/bullet-list":return `<ul${this.#blockAttributes(node,false)}>${inner()}</ul>`;
    case "breditor/ordered-list":return `<ol${this.#blockAttributes(node,false)} start="${String(p["start"])}"${p["list-style"]!==undefined?` type="${listTypes[(p["list-style"] as number)-1]!}"`:""}${p["list-reversed"]===true?" reversed":""}>${inner()}</ol>`;
@@ -469,6 +508,8 @@ class Renderer {
    }
    case "breditor/blockquote":return `<blockquote${this.#blockAttributes(node,false)}>${inner()}</blockquote>`;
    case "breditor/horizontal-rule":return `<hr${this.#blockAttributes(node,false)}>`;
+   // Candidate V4 page break: the live marker's attributes minus editing affordances (`break-after:page`).
+   case "breditor/page-break":return `<div${this.#blockAttributes(node,false)}${this.#ids?` data-rich-page-break="${escapeHtmlAttribute(String(p["block-id"]))}"`:""}${pageBreakAttributes(this.#pageBreak).map(a=>` ${a.name}="${escapeHtmlAttribute(a.value)}"`).join("")}></div>`;
    // Native disclosure: `open` mirrors persisted state; readers may toggle the static output freely.
    case "breditor/details":return `<details${this.#blockAttributes(node,false)}${this.#ids?` data-rich-details="${escapeHtmlAttribute(String(p["block-id"]))}"`:""}${p["details-open"]===true?' open=""':""}>${inner()}</details>`;
    case "breditor/details-summary":return `<summary${this.#blockAttributes(node,true)}>${node.children.length?inner():"<br>"}</summary>`;
@@ -516,8 +557,11 @@ class Renderer {
   const block=this.#ids?` data-rich-block="${escapeHtmlAttribute(String(node.properties["block-id"]))}"`:"";
   let html=`<table${block} data-rich-table="${escapeHtmlAttribute(tableId)}">${caption}<colgroup>`;
   for(const column of geometry.columns)html+=`<col style="width:${column.width}px">`;
-  html+="</colgroup><tbody>";
-  for(const row of geometry.rows){
+  html+="</colgroup>";
+  const head=this.print?headerRows(geometry,bodies):0;
+  if(head===0)html+="<tbody>";else html+="<thead>";
+  for(const [index,row] of geometry.rows.entries()){
+   if(head>0&&index===head)html+="</thead><tbody>";
    html+="<tr>";
    for(const column of geometry.columns){
     const cell=geometry.cells.get(`${row}\u0000${column.id}`)!;
@@ -537,6 +581,25 @@ class Renderer {
 }
 
 const cellKey=(cell:Cell):string=>JSON.stringify([cell.table,cell.row,cell.column]);
+/**
+ * Print mode: the number of leading rows that form a repeatable header group: the longest run of leading
+ * rows in which the cell covering every slot is a header cell (`header: true` on the covering master) and
+ * no such cell continues below the run. At least one body row always remains. Zero means the table has
+ * no header group (all rows stay in `<tbody>`).
+ */
+function headerRows(geometry:{readonly rows:readonly string[];readonly columns:readonly Column[];readonly cells:ReadonlyMap<string,Resolved>},bodies:ReadonlyMap<string,Element>):number{
+ let count=0,reach=-1;
+ for(const [index,row] of geometry.rows.entries()){
+  if(index===geometry.rows.length-1)return count;
+  for(const column of geometry.columns){
+   const cell=geometry.cells.get(`${row}\u0000${column.id}`),master=cell&&geometry.cells.get(`${cell.master.row}\u0000${cell.master.column}`);
+   if(!master||bodies.get(cellKey(master.base))?.properties["header"]!==true)return count;
+   reach=Math.max(reach,geometry.rows.indexOf(master.base.row)+master.rowSpan-1);
+  }
+  if(reach<=index)count=index+1;
+ }
+ return count;
+}
 
 // ---------------------------------------------------------------------------------------
 // Table geometry: a direct port of Rust `TableShape::resolve` (rich_content/table_geometry.rs)

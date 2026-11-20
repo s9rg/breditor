@@ -4,7 +4,7 @@ import {compileStandardSharedProfileV1,compileStandardStructuralSharedProfileV2,
 import {createStandardRichInlinePresentationV1} from "@breditor/experimental-rich-content";
 import type {RichSearchHost} from "@breditor/experimental-rich-content";
 import type {SharedSearchResults} from "@breditor/collaboration";
-import {supportsSharedSearchHistory,restoreSharedSearchEditor} from "@breditor/collaboration";
+import {supportsSharedSearchHistory,restoreSharedSearchEditor,sharedAiToolsHost} from "@breditor/collaboration";
 import {initializeSharedRuntime,standardSharedProfileConfiguration,structuralSharedProfileConfigurationV2,layoutSharedProfileConfigurationV3} from "./shared_profile.js";
 import {checkSharedRichLanguage} from "./shared_language.js";
 import {claimHost,awaitInitialization} from "./host.js";
@@ -45,17 +45,22 @@ export interface SharedDocumentEditorSession extends SharedDocumentEditorRecover
  fullscreen():import("@breditor/experimental-rich-content").RichFullscreenHost;
  /** Borrowed port for the opt-in selection toolbar and context menu; it never publishes. */
  contextUi():import("@breditor/experimental-rich-content").RichContextUiHost;
+ /** Borrowed port for the opt-in AI rewrite and language-check tools (`mountSharedAiTools`); it never publishes by itself. */
+ aiTools():import("@breditor/experimental-rich-content").RichAiToolsHost;
  setPlaceholderLabel(label:string|null):void;
  /** The validated chrome catalog from the `ui` option (English, direction-neutral by default). */
  uiLocale():import("@breditor/experimental-rich-content").RichUiLocale;
+ /** The toolbar controls this session mounted (after the `toolbar` option). Read-only configuration, e.g. for `createSharedSlashCommands`. */
+ toolbarControls():readonly SharedToolbarControl<"document-v1">[];
  view():SharedDocumentView;state():SharedSaveState;flush():Promise<void>;retrySave():Promise<void>;
 }
 class DocumentSessionOwner implements SharedDocumentEditorSession {
  readonly surface:HTMLDivElement;readonly toolbar:HTMLDivElement;readonly status:HTMLParagraphElement;readonly recovered:boolean;readonly core:SharedRichEditor<"document-v1">;
- #session:SharedPersistentSession<"document-v1">;#dom:SharedDomEditor<"document-v1">;#release:()=>void;#options:Omit<SharedDocumentEditorSessionOptions,"initial">;
+ #session:SharedPersistentSession<"document-v1">;#dom:SharedDomEditor<"document-v1">;#release:()=>void;#options:Omit<SharedDocumentEditorSessionOptions,"initial">;#controls:readonly SharedToolbarControl<"document-v1">[];
  #phase:"active"|"closing"|"closed"="active";#closing:Promise<void>|undefined;
- constructor(session:SharedPersistentSession<"document-v1">,dom:SharedDomEditor<"document-v1">,release:()=>void,options:Omit<SharedDocumentEditorSessionOptions,"initial">){this.#session=session;this.#dom=dom;this.#release=release;this.#options=options;this.core=session.core;this.recovered=session.recovered;this.surface=dom.surface;this.toolbar=dom.toolbar;this.status=dom.status;}
+ constructor(session:SharedPersistentSession<"document-v1">,dom:SharedDomEditor<"document-v1">,release:()=>void,options:Omit<SharedDocumentEditorSessionOptions,"initial">,controls:readonly SharedToolbarControl<"document-v1">[]=[]){this.#controls=Object.freeze([...controls]);this.#session=session;this.#dom=dom;this.#release=release;this.#options=options;this.core=session.core;this.recovered=session.recovered;this.surface=dom.surface;this.toolbar=dom.toolbar;this.status=dom.status;}
  #active():void{if(this.#phase!=="active")throw Error("The shared document editor is closing or closed");}
+ toolbarControls():readonly SharedToolbarControl<"document-v1">[]{return this.#controls;}
  selectionPolicy():"document-v1"{return "document-v1";}rangePolicy():"general-v1"{return "general-v1";}
  historyPolicy():"explicit"|"typing-v1"{return this.core.view().historyGrouping==="typing-v1"?"typing-v1":"explicit";}
  searchHistoryPolicy():"search-v1"|null{return this.core.searchHistoryPolicy();}
@@ -72,6 +77,7 @@ class DocumentSessionOwner implements SharedDocumentEditorSession {
  writing():import("@breditor/experimental-rich-content").RichWritingToolsHost{this.#active();return this.#dom;}
  fullscreen():import("@breditor/experimental-rich-content").RichFullscreenHost{this.#active();return this.#dom;}
  contextUi():import("@breditor/experimental-rich-content").RichContextUiHost{this.#active();return this.#dom;}
+ aiTools():import("@breditor/experimental-rich-content").RichAiToolsHost{this.#active();return sharedAiToolsHost(this.#dom);}
  setPlaceholderLabel(label:string|null):void{this.#active();this.#dom.setPlaceholderLabel(label);}
  uiLocale():import("@breditor/experimental-rich-content").RichUiLocale{this.#active();return this.#dom.uiLocale();}
  view():SharedDocumentView{return this.core.view();}checkpointJson():string{return this.core.checkpointJson();}
@@ -132,7 +138,7 @@ async function openDocumentEditorFamily(options:SharedDocumentEditorSessionOptio
   claim.assert();if(options.readOnly!==undefined)session.core.setReadOnly(options.readOnly);
   const core=session.core,standard=language===3?createLayoutSharedToolbarV3(core,presentation):language===2?createStructuralSharedToolbarV2(core,presentation):createStandardSharedToolbarV1(core,presentation),toolbar=options.toolbar?.(core,standard)??standard;
   const {clipboardInterchange:interchangeFactory,...domOptions}=options,interchange=clipboardInterchangeOptions(interchangeFactory,core);
-  claim.assert();dom=mountSharedDocumentEditor(options.host,{...domOptions,...interchange,core,coreOwnership:"borrow",inlinePresentation:presentation,toolbar});claim.assert();return new DocumentSessionOwner(session,dom,claim.release,options);
+  claim.assert();dom=mountSharedDocumentEditor(options.host,{...domOptions,...interchange,core,coreOwnership:"borrow",inlinePresentation:presentation,toolbar});claim.assert();return new DocumentSessionOwner(session,dom,claim.release,options,toolbar);
  }catch(error){try{dom?.dispose();if(session)await session.close();}catch(closeError){throw new SharedDocumentEditorOpenError(new AggregateError([error,closeError],"Document opening and durable cleanup failed"),session!);}finally{claim.rollback();}throw error;}
  finally{profile?.free();}
 }

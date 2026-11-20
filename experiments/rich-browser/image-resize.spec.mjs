@@ -9,8 +9,11 @@ test.beforeEach(async({page})=>{await page.goto("/demo");await expect(page.locat
 const slider=page=>page.getByRole("slider",{name:"Resize image 1 of 1"});
 /** Hover the image so its handles show, then return the corner slider's centre. */
 async function corner(page){
- const image=page.locator('figure[data-rich-image="image"] img');await image.scrollIntoViewIfNeeded();const box=await image.boundingBox();
- await page.mouse.move(box.x+box.width/2,box.y+box.height/2);await expect(page.locator("[data-image-resize-group]")).toHaveAttribute("data-hover","");
+ const image=page.locator('figure[data-rich-image="image"] img'),group=page.locator("[data-image-resize-group]");await image.scrollIntoViewIfNeeded();
+ // The demo image decodes and its table relayouts after load, so a single hover can land on a stale box and,
+ // with the pointer then still, hover state never updates. Re-measure and re-hover until the handles respond.
+ await expect(async()=>{const current=await image.boundingBox();await page.mouse.move(current.x+current.width/2,current.y+current.height/2);await expect(group).toHaveAttribute("data-hover","",{timeout:500});}).toPass({timeout:15000});
+ const box=await image.boundingBox();
  const handle=await slider(page).boundingBox();return {x:handle.x+handle.width/2,y:handle.y+handle.height/2,image:box};
 }
 
@@ -51,7 +54,11 @@ test("Shift frees the corner and the edges change one axis",async({page})=>{
  const [width,height]=await imageSize(page);expect(width).toBeLessThan(340);expect(height).toBeGreaterThan(150);
  const image=await page.locator('figure[data-rich-image="image"] img').boundingBox();
  await page.mouse.move(image.x+image.width/2,image.y+image.height/2);
- const edge=page.locator("[data-image-resize-handle=block-end]"),box=await edge.boundingBox();
+ // Handles reposition asynchronously after a publication (ResizeObserver / next frame). Under load the
+ // bottom-edge handle can still sit at the old image bottom, so wait until it tracks the resized image.
+ const edge=page.locator("[data-image-resize-handle=block-end]");
+ await expect.poll(async()=>{const b=await edge.boundingBox();return b?Math.abs(b.y+b.height/2-(image.y+image.height)):Infinity;}).toBeLessThan(3);
+ const box=await edge.boundingBox();
  await page.mouse.move(box.x+box.width/2,box.y+box.height/2);await page.mouse.down();await page.mouse.move(box.x+box.width/2+80,box.y+box.height/2+30,{steps:4});await page.mouse.up();
  expect(await imageSize(page)).toEqual([width,height+30]);
 });

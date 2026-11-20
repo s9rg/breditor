@@ -8,7 +8,7 @@ import {
 import {createStandardRichInlinePresentationV1} from "@breditor/experimental-rich-content";
 import type {RichSearchHost} from "@breditor/experimental-rich-content";
 import type {SharedSearchResults} from "@breditor/collaboration";
-import {supportsSharedSearchHistory,restoreSharedSearchEditor} from "@breditor/collaboration";
+import {supportsSharedSearchHistory,restoreSharedSearchEditor,sharedAiToolsHost} from "@breditor/collaboration";
 import {initializeSharedRuntime,standardSharedProfileConfiguration,structuralSharedProfileConfigurationV2,layoutSharedProfileConfigurationV3} from "./shared_profile.js";
 import {checkSharedRichLanguage} from "./shared_language.js";
 import {claimHost,awaitInitialization} from "./host.js";
@@ -70,9 +70,13 @@ export interface SharedEditorSession extends SharedEditorRecovery {
  fullscreen():import("@breditor/experimental-rich-content").RichFullscreenHost;
  /** Borrowed port for the opt-in selection toolbar and context menu; it never publishes. */
  contextUi():import("@breditor/experimental-rich-content").RichContextUiHost;
+ /** Borrowed port for the opt-in AI rewrite and language-check tools (`mountSharedAiTools`); it never publishes by itself. */
+ aiTools():import("@breditor/experimental-rich-content").RichAiToolsHost;
  setPlaceholderLabel(label:string|null):void;
  /** The validated chrome catalog from the `ui` option (English, direction-neutral by default). */
  uiLocale():import("@breditor/experimental-rich-content").RichUiLocale;
+ /** The toolbar controls this session mounted (after the `toolbar` option). Read-only configuration, e.g. for `createSharedSlashCommands`. */
+ toolbarControls():readonly SharedToolbarControl[];
  rangePolicy():SharedRangePolicy;
  view():ReturnType<SharedRichEditor["view"]>;checkpointJson():string;state():SharedSaveState;
  flush():Promise<void>;retrySave():Promise<void>;
@@ -84,11 +88,11 @@ export interface SharedEditorSession extends SharedEditorRecovery {
 class SharedEditorSessionOwner implements SharedEditorSession {
  readonly surface:HTMLDivElement;readonly toolbar:HTMLDivElement;readonly status:HTMLParagraphElement;
  readonly recovered:boolean;readonly core:SharedRichEditor;
- #session:SharedPersistentSession;#dom:SharedDomEditor;#release:()=>void;
+ #session:SharedPersistentSession;#dom:SharedDomEditor;#release:()=>void;#controls:readonly SharedToolbarControl[];
  #phase:"active"|"closing"|"closed"="active";#closing:Promise<void>|undefined;
  #onClosing:SharedEditorSessionOptions["onClosing"];#onError:SharedEditorSessionOptions["onError"];
- constructor(session:SharedPersistentSession,dom:SharedDomEditor,release:()=>void,options:Pick<SharedEditorSessionOptions,"onClosing"|"onError">){
-  this.#session=session;this.#dom=dom;this.#release=release;this.core=session.core;this.recovered=session.recovered;
+ constructor(session:SharedPersistentSession,dom:SharedDomEditor,release:()=>void,options:Pick<SharedEditorSessionOptions,"onClosing"|"onError">,controls:readonly SharedToolbarControl[]=[]){
+  this.#session=session;this.#dom=dom;this.#release=release;this.#controls=Object.freeze([...controls]);this.core=session.core;this.recovered=session.recovered;
   this.surface=dom.surface;this.toolbar=dom.toolbar;this.status=dom.status;
   this.#onClosing=options.onClosing;this.#onError=options.onError;
  }
@@ -103,8 +107,10 @@ class SharedEditorSessionOwner implements SharedEditorSession {
  writing():import("@breditor/experimental-rich-content").RichWritingToolsHost{this.#active();return this.#dom;}
  fullscreen():import("@breditor/experimental-rich-content").RichFullscreenHost{this.#active();return this.#dom;}
  contextUi():import("@breditor/experimental-rich-content").RichContextUiHost{this.#active();return this.#dom;}
+ aiTools():import("@breditor/experimental-rich-content").RichAiToolsHost{this.#active();return sharedAiToolsHost(this.#dom);}
  setPlaceholderLabel(label:string|null):void{this.#active();this.#dom.setPlaceholderLabel(label);}
  uiLocale():import("@breditor/experimental-rich-content").RichUiLocale{this.#active();return this.#dom.uiLocale();}
+ toolbarControls():readonly SharedToolbarControl[]{return this.#controls;}
  historyPolicy():"explicit"|"typing-v1"{return this.core.view().historyGrouping==="typing-v1"?"typing-v1":"explicit";}
  rangePolicy():SharedRangePolicy{return this.core.view().rangeEditing??"original";}
  searchHistoryPolicy():"search-v1"|null{return this.core.searchHistoryPolicy();}
@@ -190,7 +196,7 @@ async function openSharedEditorFamily(options:SharedEditorSessionOptions|SharedS
   const core=session.core,standard=language===3?createLayoutSharedToolbarV3(core,presentation):language===2?createStructuralSharedToolbarV2(core,presentation):createStandardSharedToolbarV1(core,presentation),toolbar=options.toolbar?.(core,standard)??standard;
   const {clipboardInterchange:interchangeFactory,...domOptions}=options,interchange=clipboardInterchangeOptions(interchangeFactory,core);
   claim.assert();dom=mountSharedEditor(options.host,{...domOptions,...interchange,core,coreOwnership:"borrow",inlinePresentation:presentation,toolbar});claim.assert();
-  return new SharedEditorSessionOwner(session,dom,claim.release,options);
+  return new SharedEditorSessionOwner(session,dom,claim.release,options,toolbar);
  }catch(error){
   try{dom?.dispose();if(session)await session.close();}
   catch(closeError){throw new SharedEditorOpenError(new AggregateError([error,closeError],"Opening and durable cleanup failed"),session!);}

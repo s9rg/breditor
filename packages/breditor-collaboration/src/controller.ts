@@ -166,6 +166,8 @@ export class SharedDomEditor<P extends SharedSelectionPolicy="original"> {
   let outcome:RichInputRuleOutcome|undefined;
   this.#perform(c=>{outcome=publishMarkdownInput(c.core,inputRule,c.revision);},true,source.revision,false,()=>{if(outcome==="refused")this.#inputRuleRefused();});
  }
+ /** `markdown-v1` code Enter: only a collapsed code caret takes the exclusive call; Rust decides the exit. */
+ #codeEnter(c:ActionContext<P>):boolean{const s=c.model.view.selection;return !!this.#inputRuleIds?.includes("markdown-v1")&&!this.#logical&&s?.kind==="text"&&s.anchor.block===s.focus.block&&s.anchor.offset===s.focus.offset&&c.model.nodes.get(s.focus.block)?.type==="breditor/code-block";}
  #inputRuleRefused():void{if(this.#disposed)return;this.status.textContent=this.#ui.text("inputRuleRefused");try{this.#options.onInputRuleRefused?.();}catch(error){this.#report(error);}}
  #perform(run:(context:ActionContext<P>)=>void,focus=true,revision=this.#model.view.revision,boundary=false,accepted?:((display:boolean)=>void),completion?:RichSearchCompletion):void{
   this.#live();if((this.#searchEvents.notifying||this.#writingEvents.notifying))throw Error("Read notifications cannot publish reentrantly");if(this.#queue.length>=128)throw Error("Shared editor command queue is full");this.#queue.push({run,focus,revision,boundary,accepted,completion});if(this.#busy||this.#composition)return;
@@ -201,6 +203,15 @@ export class SharedDomEditor<P extends SharedSelectionPolicy="original"> {
  replaceSearchOne(results:SharedSearchResults,index:string,replacement:RichSearchReplacement,revision=this.#model.view.revision):Promise<void>{const frozen=JSON.parse(JSON.stringify(replacement)) as RichSearchReplacement;return this.#searchAction(c=>{c.core.replaceSearchOne(results,index,frozen,c.revision);},revision);}
  replaceSearchAll(results:SharedSearchResults,replacement:RichSearchReplacement,revision=this.#model.view.revision):Promise<void>{const frozen=JSON.parse(JSON.stringify(replacement)) as RichSearchReplacement;return this.#searchAction(c=>{c.core.replaceSearchAll(results,frozen,c.revision);},revision);}
  execute(request:SharedDispatch,focus=true,revision=this.#model.view.revision):void{const frozen=JSON.parse(JSON.stringify(request)) as SharedDispatch;this.#perform(c=>{c.core.dispatch(frozen,c.revision);},focus,revision);}
+ /**
+  * One guarded native plain-text replacement of an explicit text range (the AI/language tools' Accept path): native
+  * `replace_plain_text` (logical-start style, one explicit history group, never joined with typing) or, for a
+  * general-v1 owner, native general range plain input. Remote frames are held while it runs.
+  */
+ replacePlainTextRange(selection:Extract<RichSelection,{kind:"text"}>,text:string,focus=true,revision=this.#model.view.revision):void{
+  if(selection?.kind!=="text"||typeof text!=="string")throw new TypeError("Expected a text range and plain text");
+  const frozen=structuredClone(selection);this.#perform(c=>{if(c.model.view.rangeEditing==="general-v1")c.core.replaceGeneralRangePlainText(frozen,text,c.allocate("range"),c.revision);else c.core.replace(frozen,text,c.revision);},focus,revision);
+ }
  /** Asynchronous hosts can retain the publication that supplied their selection intent. */
  select(selection:RichSelection|null,focus=true,revision=this.#model.view.revision):void{const frozen=structuredClone(selection);this.#perform(c=>{c.core.select(frozen,c.revision);},focus,revision);}
  #documentOwner():SharedRichEditor<"document-v1">{this.#live();if(!this.#document)throw new SharedEditorError("selection_policy","Use an explicitly selected shared document DOM owner");return this.#document;}
@@ -315,6 +326,7 @@ export class SharedDomEditor<P extends SharedSelectionPolicy="original"> {
     if((kind==="insertText"||kind==="insertReplacementText")&&event.data)this.#replaceDocumentInput(c,event.data,kind==="insertText");return;
    }
    if((kind==="insertParagraph"||kind==="insertLineBreak")&&isStructuralRichLanguage(c.core.richLanguageVersion())&&c.core.supportsFlowNavigation()&&selectedFlowAtom(c.model)){c.core.insertParagraphAdjacent(c.allocate("p"),kind==="insertLineBreak"?"before":"after",c.revision);return;}
+   if(kind==="insertParagraph"&&this.#codeEnter(c)){paragraph=publishMarkdownInput(c.core,{text:"\n",namespace:this.#allocate("rule"),...(needsInputRuleSets(this.#inputRuleIds)?{rules:this.#inputRuleIds!}:{})},c.revision);return;}
    if(kind==="insertParagraph"){const range=event.getTargetRanges?.()[0],target=c.model.view.rangeEditing==="general-v1"&&range?readTarget(this.surface,range):null;paragraph=enter(c,target&&target.anchor.block!==target.focus.block?target:undefined,!!this.#inputRuleIds?.includes("autolink-v1")&&!this.#logical);return;}
    if(isStructuralRichLanguage(c.core.richLanguageVersion())&&c.core.supportsAtomEditing()&&selectedFlowAtom(c.model)){
     if(kind.startsWith("delete")){c.core.deleteAtom(c.allocate("p"),kind.includes("Backward")?"before":"after",c.revision);return;}

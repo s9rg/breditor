@@ -13,3 +13,8 @@ const documentReact={onInterchange} satisfies Pick<BreditorDocumentEditorProps,"
 const sharedReact={onInterchange} satisfies Pick<BreditorSharedEditorProps,"onInterchange">;
 const sharedDocumentReact={onInterchange} satisfies Pick<BreditorSharedDocumentEditorProps,"onInterchange">;
 void [local,document,shared,sharedDocument,react,documentReact,sharedReact,sharedDocumentReact];
+// Opt-in DOCX entry: installed subpath export and strict consumer types.
+import {exportDocx,docxContentType,type DocxResult,type DocxLossCode} from "@breditor/interchange/docx";
+const docx:DocxResult<Uint8Array>=exportDocx("{}",{image:binding=>binding.asset?undefined:new Uint8Array(),pageSize:"a4"});
+const docxLoss:DocxLossCode|undefined=docx.losses[0]?.code;
+void [docx,docxLoss,docxContentType satisfies string];

@@ -8,6 +8,7 @@ import {Stylesheets} from "./html_stylesheet.js";
 import {canonicalLanguageTagV1} from "./language_tag.js";
 import {imageHrefProperty,imageLinkNewWindowProperty,isImageLinkHrefV1} from "./image_link_href.js";
 import {mentionFormat,mentionFromSpan} from "./mention.js";
+import {anchorName,bookmarkProperty,internalLinkFormat} from "./bookmark.js";
 /** Attributes consumed by a recognized candidate V4 mention span. */
 const mentionAttributes:ReadonlySet<string>=new Set(["data-mention-kind","data-mention-id"]);
 const blocks=new Set(["p","div","h1","h2","h3","h4","h5","h6","ul","ol","li","pre","blockquote","table","figure","hr","section","article","main","header","footer"]);
@@ -23,7 +24,7 @@ const structuralRoles=new Set(["presentation","none","list","listitem"]);
 const flatListAttributes:ReadonlySet<string>=new Set(["data-aria-level","data-aria-posinset","data-listid","aria-setsize"]);
 const wordBullets=/^[·•●○◦▪■□◆◇►➢➤✓✔\-–—*o§Øüvqnl]$/;
 /** Target-owner capabilities read once by the adapter; they select conversion, never admission. */
-export interface ImportCapabilities {readonly listNumbering:boolean;readonly textLanguage?:boolean;readonly imageLinks?:boolean;readonly details?:boolean;readonly mentions?:boolean;readonly tableCaptions?:boolean}
+export interface ImportCapabilities {readonly listNumbering:boolean;readonly textLanguage?:boolean;readonly imageLinks?:boolean;readonly details?:boolean;readonly mentions?:boolean;readonly tableCaptions?:boolean;readonly pageBreaks?:boolean;readonly bookmarks?:boolean}
 /** Candidate rich V4 native text-language format (Rust `text_language.rs`). */
 export const textLanguageFormat="breditor/text-language",textLanguageTag="breditor/language-tag";
 const htmlSpace=/^[\t\n\f\r ]+|[\t\n\f\r ]+$/g;
@@ -36,26 +37,50 @@ const numberingAttributes:ReadonlySet<string>=new Set(["reversed"]);
 const detailsAttributes:ReadonlySet<string>=new Set(["open"]);
 /** Candidate rich V4 section nesting bound (Rust `RICH_DETAILS_MAX_DEPTH`). */
 const maxDetailsDepth=8;
-/** Flat producer list entry: Word desktop `mso-list` paragraphs or Word for the web `data-aria-level` items. */
-interface FlatItem {level:number;group:string;ordered:boolean;numbers:number[];body:(state:StyleState)=>Element[]}
+/**
+ * Candidate rich V4 page breaks. CSS forced-break properties (`page-break-before/after`, `break-before/after`)
+ * and Word's break markers are consumed only for page-break-capable owners; V1–V3 keep reporting them as
+ * `unsupported-style`. `left`/`right`/`recto`/`verso` force a page too but name a page side the native block
+ * cannot keep (`style-approximation`).
+ */
+const breakProperties=["page-break-before","page-break-after","break-before","break-after"] as const;
+const pageBreakValues:ReadonlyMap<string,boolean>=new Map([["always",true],["page",true],["left",false],["right",false],["recto",false],["verso",false]]);
+/** Declarations a recognized Word/Docs page-break carrier holds besides the break itself. */
+const carrierProperties:ReadonlySet<string>=new Set([...breakProperties,"mso-special-character","mso-break-type","display"]);
+/** `clear` is Word's `<br clear=all>` page-break carrier attribute. */
+const carrierAttributes:ReadonlySet<string>=new Set(["clear"]);
+interface PageBreaks {readonly before:boolean;readonly after:boolean}
+/**
+ * Flat producer list entry: Word desktop `mso-list` paragraphs or Word for the web `data-aria-level` items.
+ * `styles` (numbering-capable owners only) parallels `numbers` (or has one entry when `numbers` is empty) with each
+ * reading's candidate V4 marker code; undefined is decimal. Absent keeps the original decimal-only reconstruction.
+ */
+interface FlatItem {level:number;group:string;ordered:boolean;numbers:number[];styles?:(number|undefined)[];body:(state:StyleState)=>Element[]}
 const romanPattern=/^m{0,3}(?:cm|cd|d?c{0,3})(?:xc|xl|l?x{0,3})(?:ix|iv|v?i{0,3})$/;
 function roman(value:string):number|null {
   if(!value||!romanPattern.test(value))return null;const digits:Record<string,number>={i:1,v:5,x:10,l:50,c:100,d:500,m:1000};let total=0;
   for(let i=0;i<value.length;i++){const n=digits[value[i]!]!,next=digits[value[i+1]??""]??0;total+=n<next?-n:n;}return total;
 }
-/** Word marker text → candidate ordinals (preferred first), [] for a bullet glyph, null if unrecognized; `exact` = native decimal keeps it. */
-function wordMarker(raw:string):{numbers:number[];exact:boolean}|null {
+/**
+ * Word marker text → candidate ordinals (preferred first), [] for a bullet glyph, null if unrecognized.
+ * `styles[i]` is the candidate V4 marker code reading `numbers[i]` (undefined = decimal, the native default).
+ * `exact` = native decimal keeps it; `styled` = a numbering-capable (V4) owner keeps it exactly: a plain
+ * `N.`/`N)`, or a letter/roman `a.`/`a)` read as lower/upper alpha or roman with that start.
+ */
+function wordMarker(raw:string):{numbers:number[];styles:(number|undefined)[];exact:boolean;styled:boolean}|null {
   const value=raw.replace(/\s+/g,"");
-  let m=/^(\d{1,9})[.)]$/.exec(value);if(m)return{numbers:[Number(m[1])],exact:true};
-  m=/^\((\d{1,9})\)$/.exec(value)??/^(?:\d{1,9}\.){1,8}(\d{1,9})\.?$/.exec(value);if(m)return{numbers:[Number(m[1])],exact:false};
-  m=/^\(?([a-z]{1,4}|[A-Z]{1,4})[.)]$/.exec(value);
+  let m=/^(\d{1,9})[.)]$/.exec(value);if(m)return{numbers:[Number(m[1])],styles:[undefined],exact:true,styled:true};
+  m=/^\((\d{1,9})\)$/.exec(value)??/^(?:\d{1,9}\.){1,8}(\d{1,9})\.?$/.exec(value);if(m)return{numbers:[Number(m[1])],styles:[undefined],exact:false,styled:false};
+  m=/^(\(?)([a-z]{1,4}|[A-Z]{1,4})[.)]$/.exec(value);
   if(m){
-    const word=m[1]!.toLowerCase(),letters=word.split("").every(c=>c===word[0])?(word.length-1)*26+word.charCodeAt(0)-96:null,numeral=roman(word),numbers:number[]=[];
+    const upper=m[2]!!==m[2]!.toLowerCase(),word=m[2]!.toLowerCase(),letters=word.split("").every(c=>c===word[0])?(word.length-1)*26+word.charCodeAt(0)-96:null,numeral=roman(word),numbers:number[]=[],styles:(number|undefined)[]=[];
+    const alpha=upper?3:2,romanStyle=upper?5:4,add=(n:number,style:number)=>{if(!numbers.includes(n)){numbers.push(n);styles.push(style);}};
     // A lone `i` opens a roman list in Word's defaults; other ambiguous letters read alphabetically first.
-    if(word==="i"&&numeral!==null)numbers.push(numeral);if(letters!==null)numbers.push(letters);if(numeral!==null&&!numbers.includes(numeral))numbers.push(numeral);
-    if(numbers.length)return{numbers,exact:false};
+    if(word==="i"&&numeral!==null)add(numeral,romanStyle);if(letters!==null)add(letters,alpha);if(numeral!==null)add(numeral,romanStyle);
+    // `(a)` keeps both parentheses, which a native `a.` marker cannot show.
+    if(numbers.length)return{numbers,styles,exact:false,styled:!m[1]};
   }
-  if(wordBullets.test(value))return{numbers:[],exact:true};
+  if(wordBullets.test(value))return{numbers:[],styles:[],exact:true,styled:true};
   return null;
 }
 /** Conversion staging only. Native schema/clipboard admission is always required before publication. */
@@ -63,13 +88,25 @@ export class HtmlConversion {
   #css=new WeakMap<HtmlElement,Map<string,string>>();#blockDescendant=new WeakMap<HtmlElement,boolean>();#word=new WeakMap<HtmlElement,FlatItem|null>();
   #markers=new WeakSet<HtmlElement>();#checkboxes=new WeakSet<HtmlElement>();
   #preservedEnd=new WeakSet<Text>();#detailsDepth=0;
+  /** Candidate V4: nodes whose forced-break declarations were consumed, and page breaks derived from block properties. */
+  #breakConsumed=new WeakSet<HtmlElement>();#carrier=new WeakSet<HtmlElement>();#soft=new WeakSet<Element>();
+  /** Candidate V4: Word for the web items whose own `list-style-type` became their list's native style. */
+  #listStyleConsumed=new WeakSet<HtmlElement>();
+  /** Candidate V4: `<a name|id>` anchors already adopted or reported, and every adopted bookmark name. */
+  #anchors=new WeakSet<HtmlElement>();#bookmarkNames=new Set<string>();
   constructor(readonly b:Budget,readonly options:InterchangeOptions,readonly sheets:Stylesheets,readonly capabilities:ImportCapabilities={listNumbering:false}){}
   css(node:HtmlElement):Map<string,string>{let value=this.#css.get(node);if(!value){const important=new Set<string>();value=this.sheets.apply(node,declarations(node,this.b,important),important);this.#css.set(node,value);}return value;}
   /** `interpreted` names attributes that structural conversion already consumed for this node. */
   style(node:HtmlElement,parent:StyleState,interpreted?:ReadonlySet<string>):StyleState {
     if(interpreted===undefined&&node.tagName==="ol"&&this.capabilities.listNumbering)interpreted=numberingAttributes;
+    if(this.#anchors.has(node))interpreted=new Set([...(interpreted??[]),"name"]);
     for(const attr of node.attrs)if(attr.namespace!==undefined||attr.prefix!==undefined||!this.#knownAttribute(node,attr.name,attr.value,interpreted))this.b.loss("unsupported-attribute");
-    const state=styleFor(node,parent,this.b,this.css(node));
+    const css=this.css(node),consumed=this.#breakConsumed.has(node)?this.#carrier.has(node)?carrierProperties:new Set<string>(breakProperties):undefined;
+    const listStyle=this.#listStyleConsumed.has(node);
+    // Candidate V4: `href="#name"` (or `#bm-name`) is an internal link; the external link policy never sees it.
+    const internal=this.#internalHref(node),source=internal===undefined?node:{...node,attrs:node.attrs.filter(attr=>attr.name!=="href")};
+    const state=styleFor(source,parent,this.b,consumed||listStyle?new Map([...css].filter(([name])=>!consumed?.has(name)&&!(listStyle&&name==="list-style-type"))):css);
+    if(internal!==undefined){state.formats.set("breditor-inline/link",internalLinkFormat(internal));if(attribute(node,"target")?.toLowerCase()==="_blank")this.b.loss("unsupported-attribute");}
     if(this.capabilities.textLanguage)this.#language(node,state);
     return state;
   }
@@ -93,10 +130,43 @@ export class HtmlConversion {
   }
   #knownAttribute(node:HtmlElement,name:string,value:string,interpreted?:ReadonlySet<string>):boolean {
     if(knownAttributes.has(name)||interpreted?.has(name))return true;
+    if(this.#carrier.has(node)&&carrierAttributes.has(name))return true;
     // Namespace declarations (Office `xmlns:o`, Sheets `xmlns`) and `xml:lang` (same as `lang`) are syntax, not content.
     if(name==="xmlns"||name.startsWith("xmlns:")||name==="xml:lang")return true;
     // Structural ARIA that only restates the list/paragraph structure being imported.
     return name==="role"&&structuralRoles.has(value.trim().toLowerCase())||name==="aria-level"&&node.tagName==="li";
+  }
+  /** Bookmark-capable owners only: the bookmark name of an `<a href="#…">` fragment in the native grammar. */
+  #internalHref(node:HtmlElement):string|undefined {
+    if(!this.capabilities.bookmarks||node.tagName!=="a")return undefined;
+    const raw=attribute(node,"href");
+    return raw?.startsWith("#")?anchorName(raw.slice(1)):undefined;
+  }
+  /**
+   * Candidate V4 anchors of one `<p>`, `<h1>`–`<h6>` or `<pre>`: its own `id`, then every `<a name>` /
+   * `<a id>` inside it, in document order. Collected before the block converts so `name` is consumed.
+   */
+  #anchorCandidates(node:HtmlElement):string[] {
+    if(!this.capabilities.bookmarks)return [];
+    const found:string[]=[],own=attribute(node,"id");if(own!==undefined)found.push(own);
+    const walk=(items:readonly HtmlNode[])=>{for(const item of items){if(!isElement(item))continue;
+      if(item.tagName==="a"){const value=attribute(item,"name")??attribute(item,"id");if(value!==undefined){found.push(value);this.#anchors.add(item);}}
+      walk(item.childNodes);}};
+    walk(node.childNodes);return found;
+  }
+  /**
+   * The first valid, unused candidate becomes the bookmark of the block's first paragraph, heading or code
+   * block. Invalid names, names already used in this import and further anchors are reported
+   * (`unsupported-attribute`): a document has at most one bookmark per block and unique names.
+   */
+  #adoptAnchors(candidates:readonly string[],output:readonly Element[],start:number):void {
+    if(!candidates.length)return;
+    const target=output.slice(start).find(n=>["breditor/paragraph","breditor/heading","breditor/code-block"].includes(n.type));
+    for(const raw of candidates){
+      const name=anchorName(raw);
+      if(target&&name!==undefined&&!this.#bookmarkNames.has(name)&&target.properties[bookmarkProperty]===undefined){target.properties[bookmarkProperty]=name;this.#bookmarkNames.add(name);}
+      else this.b.loss("unsupported-attribute");
+    }
   }
   #metadata(node:HtmlElement):boolean {
     if(!metadata.has(node.tagName))return false;
@@ -135,6 +205,8 @@ export class HtmlConversion {
       for(const node of items){
         if(!isElement(node)){if(node.nodeName==="#text")this.#inlineText(output,plainText(node),parent);continue;}
         if(!this.#safe(node)||this.#markers.has(node)||this.#checkboxes.has(node)||this.#paragraphMark(node)||interchangeNewline(node))continue;
+        // Candidate V4: Word's `<br clear=all style='page-break-before:always'>` splits the paragraph at a page break.
+        if(node.tagName==="br"&&this.#breakCarrier(node)){this.style(node,parent);output.push(this.#pageBreak(false));continue;}
         // Candidate V4: the exact exported mention span becomes a mention over its `@label` text.
         const mention=this.capabilities.mentions?mentionFromSpan(node.tagName,name=>attribute(node,name),plainText(node)):undefined;
         const next=this.style(node,parent,mention?mentionAttributes:undefined);
@@ -165,7 +237,9 @@ export class HtmlConversion {
     const flush=()=>{if(runs.length){output.push(element(this.b,heading===undefined?"paragraph":"heading",runs,layout));runs=[];}};
     for(const piece of pieces){if(piece.kind==="element"){flush();output.push(piece);}else runs.push(piece);}flush();
     // Lifting images out of an unstyled paragraph that holds nothing else (a Markdown block image) loses nothing.
-    if(pieces.some(p=>p.kind==="element")&&!(heading===undefined&&!Object.keys(state.layout).length&&pieces.every(p=>p.kind==="element")))this.b.loss("block-structure");
+    // A candidate V4 page break splitting the paragraph loses nothing: the text either side stays in order.
+    const lifted=pieces.filter(p=>p.kind==="element"&&p.type!=="breditor/page-break");
+    if(lifted.length&&!(heading===undefined&&!Object.keys(state.layout).length&&pieces.every(p=>p.kind==="element")))this.b.loss("block-structure");
     if(!output.length)output.push(element(this.b,heading===undefined?"paragraph":"heading",[],layout));
     return output;
   }
@@ -174,7 +248,7 @@ export class HtmlConversion {
     const flush=()=>{
       // A lone <br> between blocks renders one empty line (Docs, Notes): an empty paragraph, not a hard break.
       const significant=pending.filter(n=>isElement(n)||plainText(n).trim()!=="");
-      if(state.whiteSpace!=="pre"&&significant.length===1&&isElement(significant[0]!)&&significant[0]!.tagName==="br"&&!interchangeNewline(significant[0]!)&&!this.#hidden(significant[0]!)&&attribute(significant[0]!,"data-breditor-placeholder")!=="1"){this.style(significant[0]!,state);output.push(element(this.b,"paragraph",[],{...state.layout}));}
+      if(state.whiteSpace!=="pre"&&significant.length===1&&isElement(significant[0]!)&&significant[0]!.tagName==="br"&&!interchangeNewline(significant[0]!)&&!this.#hidden(significant[0]!)&&attribute(significant[0]!,"data-breditor-placeholder")!=="1"&&!this.#breakCarrier(significant[0]!)){this.style(significant[0]!,state);output.push(element(this.b,"paragraph",[],{...state.layout}));}
       else if(significant.length||state.whiteSpace==="pre"&&pending.length)output.push(...this.prose(pending,state,undefined,false));
       pending=[];
     };
@@ -182,6 +256,9 @@ export class HtmlConversion {
     for(let i=0;i<nodes.length;i++){
       const node=nodes[i]!;
       if(!isElement(node)){pending.push(node);continue;}
+      // Candidate V4: Google Docs' hidden `<hr style="page-break-before:always;display:none">` and our own
+      // `<div style="break-after:page"></div>` are page-break carriers: each is exactly one page break.
+      if((node.tagName==="hr"||node.tagName==="div"&&!this.#hidden(node))&&this.#breakCarrier(node)){flush();this.style(node,state);output.push(this.#pageBreak(false));continue;}
       if(this.#hidden(node)&&node.tagName!=="style"){this.b.loss("removed-content");continue;}
       const word=this.#wordItem(node);
       if(word){flush();const items=[word];for(let j=i+1;j<nodes.length;j++){const n=nodes[j]!;if(blank(n)){i=j;continue;}const next=isElement(n)?this.#wordItem(n):null;if(!next||next.group!==word.group)break;items.push(next);i=j;}output.push(...this.#flatLists(items,state));continue;}
@@ -194,18 +271,71 @@ export class HtmlConversion {
       if(node.tagName==="details"&&this.capabilities.details){flush();if(this.#safe(node))output.push(...this.#details(node,state,insideTable));continue;}
       if(!blocks.has(node.tagName)&&!containers.has(node.tagName)&&!this.#containsBlock(node)){pending.push(node);continue;}
       flush();if(!this.#safe(node))continue;
+      // Candidate V4: forced breaks declared on a content block become page breaks around its output.
+      const breaks=this.#blockBreaks(node),mark=output.length;
       const next=this.style(node,state),tag=node.tagName;
       if(containers.has(tag)){if(tag==="center")next.layout["breditor/block-align"]=2;output.push(...this.flow(node.childNodes,next,insideTable));}
-      else if(tag==="p"||/^h[1-6]$/.test(tag))output.push(...this.prose(node.childNodes,next,tag==="p"?undefined:Number(tag[1])));
+      else if(tag==="p"||/^h[1-6]$/.test(tag)){const anchors=this.#anchorCandidates(node),start=output.length;output.push(...this.prose(node.childNodes,next,tag==="p"?undefined:Number(tag[1])));this.#adoptAnchors(anchors,output,start);}
       else if(tag==="ul"||tag==="ol")output.push(...this.#list(node,next,insideTable));
       else if(tag==="blockquote"){const body=this.flow(node.childNodes,next,insideTable);output.push(element(this.b,"blockquote",body.length?body:[element(this.b,"paragraph")]));}
-      else if(tag==="pre")output.push(this.#code(node,next));
+      else if(tag==="pre"){const anchors=this.#anchorCandidates(node),start=output.length;output.push(this.#code(node,next));this.#adoptAnchors(anchors,output,start);}
       else if(tag==="hr")output.push(element(this.b,"horizontal-rule"));
       else if(tag==="table"){if(insideTable)fail("unsupported-content");output.push(...importTable(this,node,next));}
       else if(tag==="figure")output.push(...this.#figure(node,next,insideTable));
       else {if(!inlineTags.has(tag))this.b.loss("unsupported-element");output.push(...this.flow(node.childNodes,next,insideTable));}
+      if(breaks?.before)output.splice(mark,0,this.#pageBreak(true));
+      if(breaks?.after)output.push(this.#pageBreak(true));
     }
     flush();return output;
+  }
+  /** Candidate V4 forced page breaks named by one element's CSS; undefined when none (or not page-break capable). */
+  #breaks(node:HtmlElement):(PageBreaks&{readonly exact:boolean})|undefined {
+    if(!this.capabilities.pageBreaks)return undefined;
+    const css=this.css(node),value=(name:string)=>{const raw=css.get(name)?.trim().toLowerCase();return raw===undefined?undefined:pageBreakValues.get(raw);};
+    const before=value("break-before")??value("page-break-before"),after=value("break-after")??value("page-break-after");
+    if(before===undefined&&after===undefined)return undefined;
+    return {before:before!==undefined,after:after!==undefined,exact:before!==false&&after!==false};
+  }
+  /** A content-free `<br>`, `<hr>` or `<div>` whose only role is a forced page break (Word, Google Docs, our export). */
+  #breakCarrier(node:HtmlElement):boolean {
+    if(this.#carrier.has(node))return true;
+    const breaks=this.#breaks(node);if(!breaks)return false;
+    if(node.tagName!=="br"&&(node.childNodes.some(n=>isElement(n)||plainText(n).trim())))return false;
+    if(!breaks.exact)this.b.loss("style-approximation");
+    this.#carrier.add(node);this.#breakConsumed.add(node);return true;
+  }
+  #blockBreaks(node:HtmlElement):PageBreaks|undefined {
+    const breaks=this.#breaks(node);if(!breaks)return undefined;
+    if(!breaks.exact)this.b.loss("style-approximation");
+    this.#breakConsumed.add(node);return breaks;
+  }
+  /** One page-break element; `soft` ones come from block properties and collapse like CSS forced breaks. */
+  #pageBreak(soft:boolean):Element {const value=element(this.b,"page-break");if(soft)this.#soft.add(value);return value;}
+  /**
+   * Candidate V4 root normalization. A page break is admitted only as a direct child of the document root, so
+   * one found inside a quote, list, section, table cell or caption is removed (`block-structure`), leaving an
+   * empty paragraph where its container would otherwise be empty. At the root, a page break derived from a
+   * block's CSS is dropped at the start or end of the content and next to another page break, as CSS
+   * fragmentation would; explicit carriers are kept exactly.
+   */
+  pageBreakRoot(children:Element[]):Element[] {
+    if(!this.capabilities.pageBreaks)return children;
+    const strip=(node:Element):void=>{
+      const before=node.children.length;
+      node.children=node.children.filter(child=>{if(child.kind==="element"&&child.type==="breditor/page-break"){this.b.loss("block-structure");return false;}return true;});
+      for(const child of node.children)if(child.kind==="element")strip(child);
+      const emptied=node.children.length!==before&&(node.children.length===0||node.type==="breditor/details"&&node.children.length===1);
+      if(emptied)node.children.push(element(this.b,"paragraph"));
+      if(node.children.length!==before&&(node.type==="breditor/list-item"||node.type==="breditor/task-item")){const first=node.children[0];if(first?.kind!=="element"||!["breditor/paragraph","breditor/heading"].includes(first.type))node.children.unshift(element(this.b,"paragraph"));}
+    };
+    for(const child of children)if(child.type!=="breditor/page-break")strip(child);
+    const isBreak=(node:Element|undefined)=>node?.type==="breditor/page-break";
+    const output:Element[]=[];
+    for(const [index,child] of children.entries()){
+      if(isBreak(child)&&this.#soft.has(child)&&(output.length===0||index===children.length-1||isBreak(output.at(-1))||isBreak(children[index+1])))continue;
+      output.push(child);
+    }
+    return output;
   }
   /**
    * Candidate V4 section: the first `<summary>` child element is the summary (as in HTML); a missing
@@ -358,8 +488,9 @@ export class HtmlConversion {
         if(marker){
           this.#markers.add(marker);const parsed=wordMarker(plainText(marker).replace(/\u00a0/g," ").trim());
           // Unrecognized marker text (custom "Step %1:" formats) keeps list structure as bullets and reports it.
-          if(!parsed||!parsed.exact)this.b.loss("list-numbering");
-          item={level,group:`${m[1]}:${m[3]}`,ordered:Boolean(parsed?.numbers.length),numbers:parsed?.numbers??[],body:state=>this.prose(node.childNodes,this.style(node,state))};
+          // Numbering-capable owners keep letter and roman markers as native list styles (`styled`).
+          const v4=this.capabilities.listNumbering;if(!parsed||!(v4?parsed.styled:parsed.exact))this.b.loss("list-numbering");
+          item={level,group:`${m[1]}:${m[3]}`,ordered:Boolean(parsed?.numbers.length),numbers:parsed?.numbers??[],...(v4&&parsed?{styles:parsed.styles}:{}),body:state=>this.prose(node.childNodes,this.style(node,state))};
         }
         else this.b.loss("list-numbering");
       }
@@ -379,15 +510,24 @@ export class HtmlConversion {
     const {wrapper,list}=this.#flatList(node)!,outer=wrapper?this.style(wrapper,state):state;
     if(!this.#safe(list))return[];
     const listState=this.style(list,outer),ordered=list.tagName==="ol",items:FlatItem[]=[];
-    {const css=this.css(list).get("list-style-type")?.trim().toLowerCase();if(ordered&&css!==undefined&&css!=="decimal"&&cssListStyles.has(css))this.b.loss("list-numbering");}
+    const v4=this.capabilities.listNumbering;
+    // Numbering-capable owners judge each item's own style below; others report the list's non-decimal style once more.
+    if(!v4){const css=this.css(list).get("list-style-type")?.trim().toLowerCase();if(ordered&&css!==undefined&&css!=="decimal"&&cssListStyles.has(css))this.b.loss("list-numbering");}
     if(attribute(list,"type")!==undefined&&attribute(list,"type")!==(ordered?"1":"disc")||attribute(list,"reversed")!==undefined)this.b.loss("list-numbering");
     for(const li of list.childNodes){
       if(!isElement(li))continue;if(this.#hidden(li))fail("unsupported-content");
-      // Native lists number in decimal only. Unless both the CSS list style and Word's level text
+      // V1–V3 lists number in decimal only. Unless both the CSS list style and Word's level text
       // (`%1.` / `%1)`) prove a plain decimal ordinal, the letter/roman/compound format is reported.
-      if(ordered){const type=(this.css(li).get("list-style-type")??this.css(list).get("list-style-type"))?.trim().toLowerCase();if(type!=="decimal"||!/^%[1-9][.)]?$/.test(attribute(li,"data-leveltext")??""))this.b.loss("list-numbering");}
+      // Numbering-capable owners keep decimal, lower/upper alpha and roman CSS styles under the same level-text proof
+      // (an unproven level text keeps the style but is reported); an item's own list-style-type is then consumed.
+      let style:number|undefined;
+      if(ordered){
+        const type=(this.css(li).get("list-style-type")??this.css(list).get("list-style-type"))?.trim().toLowerCase(),code=v4&&type!==undefined?cssListStyles.get(type):undefined;
+        style=code===1?undefined:code;if(code!==undefined&&this.css(li).has("list-style-type"))this.#listStyleConsumed.add(li);
+        if((v4?code===undefined:type!=="decimal")||!/^%[1-9][.)]?$/.test(attribute(li,"data-leveltext")??""))this.b.loss("list-numbering");
+      }
       const position=Number(attribute(li,"data-aria-posinset")),numbers=ordered&&Number.isSafeInteger(position)&&position>=1&&position<=1_000_000_000?[position]:[];
-      items.push({level:Number(attribute(li,"data-aria-level")),group:`aria:${attribute(li,"data-listid")??""}`,ordered,numbers,body:()=>{
+      items.push({level:Number(attribute(li,"data-aria-level")),group:`aria:${attribute(li,"data-listid")??""}`,ordered,numbers,...(v4&&ordered?{styles:[style]}:{}),body:()=>{
         const body=this.flow(li.childNodes,this.style(li,listState,flatListAttributes));
         if(!body.length||!['breditor/paragraph','breditor/heading'].includes(body[0]!.type))body.unshift(element(this.b,"paragraph"));return body;
       }});
@@ -396,16 +536,22 @@ export class HtmlConversion {
   }
   /** Rebuild nesting from flat (level, ordinal) entries. Skipped levels nest one deeper and are reported, never rejected. */
   #flatLists(items:FlatItem[],state:StyleState):Element[] {
-    const output:Element[]=[],stack:{level:number;list:Element;item:Element;next:number|null}[]=[];
+    const output:Element[]=[],stack:{level:number;list:Element;item:Element;next:number|null;style:number|undefined}[]=[];
     if(items[0]!.level!==1)this.b.loss("block-structure");
     for(const item of items){
       while(stack.length&&stack.at(-1)!.level>item.level)stack.pop();
       let top=stack.at(-1),list:Element;const kind=item.ordered?"ordered-list":"bullet-list",same=top?.level===item.level?top:undefined;
-      let number:number|null=null;
-      if(item.ordered){number=same&&same.list.type==="breditor/ordered-list"&&same.next!==null&&(!item.numbers.length||item.numbers.includes(same.next))?same.next:item.numbers[0]??1;if(number<1){this.b.loss("list-numbering");number=1;}}
-      const props=number===null?{}:{"breditor/start":number};
-      if(!top||top.level<item.level){if(top&&item.level!==top.level+1)this.b.loss("block-structure");list=element(this.b,kind,[],props);if(top)top.item.children.push(list);else output.push(list);top={level:item.level,list,item:list,next:number};stack.push(top);}
-      else if(top.list.type!==`breditor/${kind}`||number!==null&&number!==top.next){list=element(this.b,kind,[],props);if(stack.length>1)stack[stack.length-2]!.item.children.push(list);else output.push(list);top.list=list;}
+      let number:number|null=null,style:number|undefined;
+      if(item.ordered){
+        // Continue the open list with the reading (ordinal and, for V4 owners, marker style) it expects next.
+        const open=same&&same.list.type==="breditor/ordered-list"&&same.next!==null?same:undefined,styles=item.styles;
+        const reading=open?item.numbers.length?item.numbers.findIndex((n,i)=>n===open.next&&styles?.[i]===open.style):styles?.[0]===open.style?-2:-1:-1;
+        if(open&&reading!==-1){number=open.next;style=styles?.[Math.max(reading,0)];}else{number=item.numbers[0]??1;style=styles?.[0];}
+        if(number!==null&&number<1){this.b.loss("list-numbering");number=1;}
+      }
+      const props=number===null?{}:{"breditor/start":number,...(style===undefined?{}:{"breditor/list-style":style})};
+      if(!top||top.level<item.level){if(top&&item.level!==top.level+1)this.b.loss("block-structure");list=element(this.b,kind,[],props);if(top)top.item.children.push(list);else output.push(list);top={level:item.level,list,item:list,next:number,style};stack.push(top);}
+      else if(top.list.type!==`breditor/${kind}`||number!==null&&number!==top.next||style!==top.style){list=element(this.b,kind,[],props);if(stack.length>1)stack[stack.length-2]!.item.children.push(list);else output.push(list);top.list=list;top.style=style;}
       top.item=element(this.b,"list-item",item.body(state));top.list.children.push(top.item);top.next=number===null?null:number+1;
     }
     return output;
@@ -414,7 +560,7 @@ export class HtmlConversion {
 /** WebKit/Blink trailing-selection marker (Docs, Notes, Safari); it is not authored content. */
 function interchangeNewline(node:HtmlElement):boolean{return node.tagName==="br"&&(attribute(node,"class")??"").split(/\s+/).includes("Apple-interchange-newline");}
 export function importHtmlContent(source:string,b:Budget,options:InterchangeOptions,capabilities:ImportCapabilities={listNumbering:false}):{root:string;kind:"text"|"flow"} {
-  const sourceNodes=htmlTree(source,b),converter=new HtmlConversion(b,options,new Stylesheets(sourceNodes,b),capabilities),body=converter.flow(sourceNodes);
+  const sourceNodes=htmlTree(source,b),converter=new HtmlConversion(b,options,new Stylesheets(sourceNodes,b),capabilities),body=converter.pageBreakRoot(converter.flow(sourceNodes));
   const containsBlock=(n:HtmlNode):boolean=>isElement(n)&&(blocks.has(n.tagName)||n.childNodes.some(containsBlock));
   const inline=!sourceNodes.some(containsBlock)&&body.length===1&&body[0]!.type==="breditor/paragraph"&&Object.keys(body[0]!.properties).every(k=>k==="breditor/block-id")&&body[0]!.children.length>0&&body[0]!.children.every(n=>n.kind==="text");
   return{root:rootJson(b,body),kind:inline?"text":"flow"};

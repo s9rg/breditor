@@ -32,6 +32,8 @@ export interface RichUiStrings extends RichUiPanelStrings, RichAiUiStrings {
  readonly blockDragItemLead:string;readonly blockDragBoundary:string;readonly blockDragNative:string;
  // Image resize handles (image_resize.ts).
  readonly imageResizeLabel:string;readonly imageResizeValue:string;readonly imageResizeOriginal:string;readonly imageResizePreview:string;readonly imageResizeBadge:string;
+ // Candidate rich V4 page breaks and the opt-in print preview (page_break.ts, print.ts).
+ readonly pageBreakLabel:string;readonly printPreviewLabel:string;
 }
 export type RichUiStringKey=keyof RichUiStrings;
 /** English defaults. Formatting these with no catalog reproduces the original output byte for byte. */
@@ -67,6 +69,8 @@ export const richUiStringsEn:Readonly<RichUiStrings>=Object.freeze({
  // Image resize handles (image_resize.ts).
  imageResizeLabel:"Resize image {index} of {count}",imageResizeValue:"{width} by {height} pixels",imageResizeOriginal:"{width} by {height} pixels (original size)",
  imageResizePreview:"{width} by {height} pixels (preview)",imageResizeBadge:"{width} × {height}",
+ // Candidate rich V4 page breaks and the opt-in print preview (page_break.ts, print.ts).
+ pageBreakLabel:"Page break",printPreviewLabel:"Print preview: page boundaries are approximate",
  // AI and language tools (separate block).
  ...richAiUiStringsEn,
 });
@@ -84,8 +88,8 @@ const parameters:Readonly<Partial<Record<RichUiStringKey,readonly string[]>>>={
  ...richAiUiParameters,
 };
 /** Ids of `standardRichSlashPicks`; other provider items carry their own labels. */
-export type RichStandardSlashItemId="paragraph"|"heading-1"|"heading-2"|"heading-3"|"bullet-list"|"numbered-list"|"task-list"|"blockquote"|"code-block"|"horizontal-rule"|"table"|"details";
-const slashIds:ReadonlySet<string>=new Set(["paragraph","heading-1","heading-2","heading-3","bullet-list","numbered-list","task-list","blockquote","code-block","horizontal-rule","table","details"]);
+export type RichStandardSlashItemId="paragraph"|"heading-1"|"heading-2"|"heading-3"|"bullet-list"|"numbered-list"|"task-list"|"blockquote"|"code-block"|"horizontal-rule"|"table"|"details"|"page-break";
+const slashIds:ReadonlySet<string>=new Set(["paragraph","heading-1","heading-2","heading-3","bullet-list","numbered-list","task-list","blockquote","code-block","horizontal-rule","table","details","page-break"]);
 export interface RichUiFieldStrings {
  readonly label?:string;readonly placeholder?:string;
  /** Select option labels keyed by the option's existing value. */

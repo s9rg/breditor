@@ -4,6 +4,8 @@ import type {FlowPosition,RichCommand,RichCommandOutcome,RichCoreEditor,RichSele
 import {bold,boundaryDelete,defaultToolbarFor,deleteSelection,enter,positionAfter,type ActionContext,type ToolbarControl} from "./actions.js";
 import {id,presentationModel,sourceCell,text,type RichModel} from "./model.js";
 import {paintSelection,render,requireRenderOptions,structuralBlockStylesV2,type RenderOptions} from "./render.js";
+import {richPageBreakStyles} from "./page_break.js";
+import {richBookmarkStyles} from "./bookmark.js";
 import {readNative,readTarget,restoreDocumentNative,nativeSelectsDocument,isCurrentCaretTarget} from "./selection.js";
 import {documentSelectionStyles} from "./document_selection_presentation.js";
 import {requireDocumentBrowserCore} from "./document_core.js";
@@ -76,7 +78,7 @@ export class RichDomEditor<P extends RichSelectionPolicy="original"> {
  readonly surface:HTMLDivElement;
  readonly toolbar:HTMLDivElement;
  readonly status:HTMLParagraphElement;
- #root:HTMLElement;#options:RichEditorOptions<P>;#ui:RichUiLocale;#model:RichModel<P>;#abort=new AbortController();#queue:Work[]=[];#busy=false;#disposed=false;#composition:Composition|undefined;
+ #root:HTMLElement;#options:RichEditorOptions<P>;#bookmarks=false;#ui:RichUiLocale;#model:RichModel<P>;#abort=new AbortController();#queue:Work[]=[];#busy=false;#disposed=false;#composition:Composition|undefined;
  #namespace:string;#counter=0n;#logicalSelection=false;#controls:{control:ToolbarControl<P>;view:RichControlView<ActionContext<P>>}[]=[];
  readonly #borrowed=new Set<BorrowedControl<ToolbarControl<P>,ActionContext<P>>>();
  readonly #selectionPolicy:P;readonly #document:RichDocumentCoreEditor|undefined;
@@ -107,14 +109,15 @@ export class RichDomEditor<P extends RichSelectionPolicy="original"> {
   this.toolbar=document.createElement("div");this.toolbar.className="breditor-rich-toolbar";this.toolbar.setAttribute("role","toolbar");this.toolbar.setAttribute("aria-label",ui.text("richToolbarLabel"));ui.applyChrome(this.toolbar);
   this.status=document.createElement("p");this.status.className="breditor-rich-status";this.status.setAttribute("role","status");ui.applyChrome(this.status);
   this.#placeholder=placeholder?new RichPlaceholderPresentation(this.surface,placeholder.label):undefined;
-  const style=document.createElement("style");style.textContent=styles+standardInlineStylesV1+toolbarControlStyles+structuralBlockStylesV2+(this.#document?documentSelectionStyles:"")+(placeholder?richPlaceholderStyles:"");root.dataset["breditorRich"]="";root.replaceChildren(style,this.toolbar,this.#placeholder?.container??this.surface,this.status);
+  const style=document.createElement("style");style.textContent=styles+standardInlineStylesV1+toolbarControlStyles+structuralBlockStylesV2+richPageBreakStyles+richBookmarkStyles+(this.#document?documentSelectionStyles:"")+(placeholder?richPlaceholderStyles:"");root.dataset["breditorRich"]="";root.replaceChildren(style,this.toolbar,this.#placeholder?.container??this.surface,this.status);
   const seen=new Set<string>();
   for(const control of options.toolbar??defaultToolbarFor<P>()){
    if(seen.has(control.id))throw Error("Duplicate rich toolbar control identity");seen.add(control.id);
    const view=this.#mountControl(this.toolbar,control,this.#abort.signal);
    this.#controls.push({control,view});
   }
-  render(this.surface,this.#model,options);this.#refreshControls();
+  this.#bookmarks=options.core.supportsBookmarks?.()===true;
+  render(this.surface,this.#model,this.#renderOptions());this.#refreshControls();
   if(this.#placeholder){this.#placeholder.update(placeholder!.empty&&this.#model.view.readOnly!==true);this.#writingEvents.subscribe(()=>this.#refreshPlaceholder());}
   if(this.#model.view.readOnly===true)this.status.textContent=ui.text("richStatusReadOnly",{revision:this.#model.view.revision});
   this.surface.addEventListener("beforeinput",event=>this.#input(event as InputEvent),{signal:this.#abort.signal});
@@ -127,6 +130,7 @@ export class RichDomEditor<P extends RichSelectionPolicy="original"> {
   this.surface.addEventListener("click",event=>this.#taskCheck(event),{signal:this.#abort.signal});
   // Candidate V4 image links are inert while editing: activation never navigates the editable surface.
   for(const type of ["click","auxclick"])this.surface.addEventListener(type,event=>this.#inertImageLink(event),{capture:true,signal:this.#abort.signal});
+  if(this.#bookmarks)for(const type of ["click","auxclick"])this.surface.addEventListener(type,event=>this.#internalLink(event),{capture:true,signal:this.#abort.signal});
   // Candidate V4 sections never toggle natively while editing: a summary click only places the caret,
   // and any browser-initiated toggle (find-in-page, fragment reveal) is reverted to document state.
   this.surface.addEventListener("click",event=>this.#inertSummary(event),{capture:true,signal:this.#abort.signal});
@@ -164,7 +168,7 @@ export class RichDomEditor<P extends RichSelectionPolicy="original"> {
  #refreshControls(only?:{control:ToolbarControl<P>;view:RichControlView<ActionContext<P>>}):void {
   const context=this.#context(),stamp=JSON.stringify(this.#options.core.view());for(const {control,view} of only?[only]:[...this.#controls,...this.#borrowed])view.refresh(context,control.enabled(context)&&(this.#model.view.readOnly!==true||control.readOnlySafe===true),stamp);
  }
- #reconcile():void {if(this.#disposed||this.#composition)return;this.#model=this.#read();this.#logicalSelection=this.#logical();render(this.surface,this.#model,this.#options);restoreDocumentNative(this.surface,this.#model.view.selection);this.#refreshControls();}
+ #reconcile():void {if(this.#disposed||this.#composition)return;this.#model=this.#read();this.#logicalSelection=this.#logical();render(this.surface,this.#model,this.#renderOptions());restoreDocumentNative(this.surface,this.#model.view.selection);this.#refreshControls();}
  #sync():void {
   if(this.#composition||this.#busy||this.#logicalSelection)return;
   // Rendering while a host control owns focus can leave a collapsed browser
@@ -201,6 +205,20 @@ export class RichDomEditor<P extends RichSelectionPolicy="original"> {
   this.#live();if((this.#searchEvents.notifying||this.#writingEvents.notifying))throw Error("Read notifications cannot publish reentrantly");
   if(this.#queue.length>=128)throw Error("Rich editor command queue is full");
   this.#queue.push({paragraph:{right:command.data.right,newItem:command.data.newItem},revision:this.#model.view.revision,focus:true});this.#drain();
+  return true;
+ }
+ /**
+  * `markdown-v1` code Enter: a collapsed code caret retains one line feed through the exclusive
+  * native call, which alone decides the conventional exit. Shift+Enter and ranges stay ordinary.
+  */
+ #codeEnter(command:RichCommand,target:Extract<RichSelection,{kind:"text"}>|null):boolean {
+  if(!this.#inputRuleIds?.includes("markdown-v1")||command.kind!=="insertHardBreak"||this.#logicalSelection)return false;
+  const selection=this.#model.view.selection;
+  if(selection?.kind!=="text"||selection.anchor.block!==selection.focus.block||selection.anchor.offset!==selection.focus.offset||this.#model.nodes.get(selection.focus.block)?.type!=="breditor/code-block"||target&&!isCurrentCaretTarget(selection,target))return false;
+  this.#live();if((this.#searchEvents.notifying||this.#writingEvents.notifying))throw Error("Read notifications cannot publish reentrantly");
+  if(this.#queue.length>=128)throw Error("Rich editor command queue is full");
+  const inputRule=Object.freeze({text:"\n",namespace:this.#allocate("rule"),...(needsInputRuleSets(this.#inputRuleIds)?{rules:this.#inputRuleIds}:{})});
+  this.#queue.push({inputRule,revision:this.#model.view.revision,focus:true});this.#drain();
   return true;
  }
  #inputRuleRefused():void {
@@ -251,7 +269,7 @@ export class RichDomEditor<P extends RichSelectionPolicy="original"> {
     else if(work.search)outcome=publishRichSearchIntent(this.#options.core,work.search,work.revision);
     else if(isDocumentIntent(work.command)){if(!this.#document)throw Error("Use the explicit document-selection DOM owner");outcome=publishDocumentIntent(this.#document,work.command,work.revision);}else outcome=this.#options.core.execute(work.command,work.revision);
     published=true;first??=outcome;this.#model=this.#read();this.#logicalSelection=this.#logical();
-    if(outcome==="content"||outcome==="undo"||outcome==="redo")render(this.surface,this.#model,this.#options);else paintSelection(this.surface,this.#model);
+    if(outcome==="content"||outcome==="undo"||outcome==="redo")render(this.surface,this.#model,this.#renderOptions());else paintSelection(this.surface,this.#model);
     // An asynchronous focus:false edit must retain an already-owned caret after
     // replacing children, but must not steal focus from an outside host control.
     if(work.focus||ownedFocus){this.surface.focus({preventScroll:true});restoreDocumentNative(this.surface,this.#model.view.selection);}
@@ -288,6 +306,8 @@ export class RichDomEditor<P extends RichSelectionPolicy="original"> {
  replaceSearchOne(results:RichSearchResults,index:string,replacement:RichSearchReplacement,revision=this.#model.view.revision):Promise<void>{const frozen=JSON.parse(JSON.stringify(replacement)) as RichSearchReplacement;return this.#searchAction({kind:"replaceOne",results,index,replacement:frozen},revision);}
  replaceSearchAll(results:RichSearchResults,replacement:RichSearchReplacement,revision=this.#model.view.revision):Promise<void>{const frozen=JSON.parse(JSON.stringify(replacement)) as RichSearchReplacement;return this.#searchAction({kind:"replaceAll",results,replacement:frozen},revision);}
  view():RichEditorView<P> {this.#live();return this.#options.core.view();}
+ /** Whether the native owner runs `replaceTriggerThen` (a slash command as one Undo step). */
+ supportsTriggerComposite():boolean{this.#live();return this.#options.core.supportsTriggerComposite?.()===true;}
  checkpointJson():string {this.#live();return this.#options.core.checkpointJson();}
  /** Close native continuation without rendering, moving focus, or inventing a content outcome. */
  closeTypingGroup(revision=this.#options.core.view().revision):boolean {
@@ -330,6 +350,19 @@ export class RichDomEditor<P extends RichSelectionPolicy="original"> {
   if(this.#model.view.readOnly===true||!(details instanceof HTMLDetailsElement)||details.dataset["richDetails"]===undefined)return;
   const open=this.#model.nodes.get(details.dataset["richDetails"])?.properties["breditor/details-open"]===true;
   if(details.open!==open)details.open=open;
+ }
+ /** Candidate V4 owners render bookmarks and internal links; other owners keep their exact output. */
+ #renderOptions():RichEditorOptions<P>{return this.#bookmarks?{...this.#options,bookmarks:true}:this.#options;}
+ /** Candidate V4 internal links never navigate the host page: while editing they are inert, and in a
+  * read-only surface activation scrolls this surface's bookmarked block into view (two editors on
+  * one page never jump into each other). A dangling link does nothing. */
+ #internalLink(event:Event):void {
+  const target=event.target,link=target instanceof Element?target.closest<HTMLElement>("a[data-rich-internal-link]"):null;
+  if(!link||!this.surface.contains(link))return;
+  event.preventDefault();
+  if(this.#model.view.readOnly!==true||event.type!=="click")return;
+  const name=link.dataset["richInternalLink"]??"";
+  for(const block of this.surface.querySelectorAll<HTMLElement>("[data-rich-bookmark]"))if(block.dataset["richBookmark"]===name){block.scrollIntoView({block:"start"});return;}
  }
  #inertImageLink(event:Event):void {
   const target=event.target;
@@ -454,7 +487,7 @@ export class RichDomEditor<P extends RichSelectionPolicy="original"> {
     return;
    }
    if((type==="insertParagraph"||type==="insertLineBreak")&&isStructuralRichLanguage(this.#options.core.richLanguageVersion?.())&&this.#options.core.supportsFlowNavigation?.()===true&&selectedFlowAtom(this.#model)){this.execute({kind:"insertParagraphAdjacent",data:{paragraph:this.#context().allocate("p"),side:type==="insertLineBreak"?"before":"after"}});return;}
-   if(type==="insertParagraph"){const range=event.getTargetRanges?.()[0],target=this.#general&&range?readTarget(this.surface,range):null;const command=enter(this.#context(),this.#general,target&&target.anchor.block!==target.focus.block?target:undefined);if(command&&!this.#autolinkParagraph(command,target))this.execute(command);return;}
+   if(type==="insertParagraph"){const range=event.getTargetRanges?.()[0],target=this.#general&&range?readTarget(this.surface,range):null;const command=enter(this.#context(),this.#general,target&&target.anchor.block!==target.focus.block?target:undefined);if(command&&!this.#autolinkParagraph(command,target)&&!this.#codeEnter(command,target))this.execute(command);return;}
    const selection=this.#model.view.selection;
    if(isStructuralRichLanguage(this.#options.core.richLanguageVersion?.())&&this.#options.core.supportsAtomEditing?.()===true&&selectedFlowAtom(this.#model)){
     if(type.startsWith("delete")){this.execute({kind:"deleteAtom",data:{paragraph:this.#allocate("p"),movement:type.includes("Backward")?"before":"after"}});return;}

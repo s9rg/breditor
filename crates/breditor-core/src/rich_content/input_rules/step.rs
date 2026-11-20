@@ -23,6 +23,14 @@ pub enum RichInputRuleKind {
     Inline(StandardInlineFormatV1),
     /// Optional typed autolink: a safe canonical link over the retained URL characters.
     Link,
+    /// A list after an adjacent compatible list: one new item appended to that list.
+    ListJoin(RichListKind),
+    /// A task after an adjacent task list: one new task appended to that list.
+    TaskJoin(bool),
+    /// The first line of a top-level bullet item became one task (splitting the list).
+    ListItemTask(bool),
+    /// Enter after two empty trailing code lines: remove them and enter a fresh paragraph.
+    CodeExit,
 }
 
 /// Already planned scalar-safe edits, in dependent execution order.
@@ -75,6 +83,49 @@ pub enum RichInputRuleStep {
         end: TextOffset,
         /// One property-free standard semantic identity.
         format: StandardInlineFormatV1,
+    },
+    /// Wrap the retained source through `last` in a fresh one-task list.
+    TaskRange {
+        /// Last flow sibling retained in the task body (non-prose tail).
+        last: BlockId,
+        /// Fresh task-list identity.
+        container: BlockId,
+        /// Fresh task identity.
+        item: BlockId,
+        /// Explicit initial completion.
+        checked: bool,
+    },
+    /// Move one retained block subtree (identity and body unchanged).
+    MoveBlock {
+        /// Moved block.
+        block: BlockId,
+        /// Destination parent; `None` is the document root.
+        parent: Option<BlockId>,
+        /// Sibling before-anchor; `None` appends.
+        before: Option<BlockId>,
+    },
+    /// Promote or unlist exactly one list item, retaining its complete body.
+    OutdentListItem {
+        /// Source list.
+        container: BlockId,
+        /// The single selected item.
+        item: BlockId,
+        /// Fresh suffix list identity exactly when items remain on both sides.
+        fresh_tail: Option<BlockId>,
+    },
+    /// Promote exactly one nested task into its enclosing task list.
+    OutdentTaskItem {
+        /// Source task list.
+        container: BlockId,
+        /// The single selected task.
+        item: BlockId,
+    },
+    /// Insert one fresh empty paragraph at a proved flow position.
+    Paragraph {
+        /// Fresh paragraph identity.
+        block: BlockId,
+        /// Flow position directly after the source block.
+        position: RichFlowPosition,
     },
     /// Set one standard link (same window) over retained URL characters; no text changes.
     Link {

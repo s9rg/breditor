@@ -1,7 +1,8 @@
 # Slash-command suggestion sessions
 
-Status: opt-in browser candidate for local rich owners. This covers the slash
-command half of the `mentions-slash` readiness gap. Durable mention entities and
+Status: opt-in browser candidate for local rich owners and, through a separate
+dispatch adapter, shared (collaborative) editors ([Shared editors](#shared-editors)).
+This covers the slash command half of the `mentions-slash` readiness gap. Durable mention entities and
 the `@` menu are candidate rich V4 slice 5 ([RICH_LANGUAGE_V4.md](RICH_LANGUAGE_V4.md));
 both menus share one typed-trigger session (`suggestion_session.ts`), and slash
 behaviour, DOM and messages are unchanged.
@@ -14,9 +15,17 @@ Code:
   session controller and its accessible menu.
 - `packages/breditor-editor/src/slash_commands.ts` and `slash_commands_react.tsx`:
   the SDK host adapter and the React wrapper.
+- `crates/breditor-core/src/rich_content/local_session/replace_trigger_then.rs`
+  and `crates/breditor-wasm/src/rich_editor/command/replace_trigger_then.rs`: the
+  native one-step composite (see [Undo granularity](#undo-granularity)).
 - Tests: `packages/breditor-editor/tests/slash_commands.test.ts` (a real
-  `RichDomEditor` with a fixture owner in jsdom) and
-  `slash_commands_react.test.tsx`.
+  `RichDomEditor` with a fixture owner in jsdom),
+  `slash_commands_react.test.tsx`,
+  `packages/breditor-experimental-rich-content/tests/slash_composite.test.ts`
+  (capability probe and command boundary), `crates/breditor-core/tests/rich_trigger_composite.rs`,
+  `crates/breditor-wasm/tests/rich_trigger_composite.rs`,
+  `crates/breditor-collaboration/tests/shared_trigger_composite_contracts.rs` and
+  `experiments/rich-browser/parity-tools.spec.mjs` (real Wasm, three browsers).
 
 ## Ownership
 
@@ -107,17 +116,29 @@ surface's previous ARIA attributes. `onCancel(reason)` is called once per sessio
    current Rust view (and cancels on failure), and re-checks `item.enabled()`.
 2. Ends the session first, so the publications that follow are not treated as
    invalidations.
-3. Removes the typed `/query` with one guarded native command at the checked
-   revision. That is `replaceTextRange` over `[slash, caret]` in the trigger block,
-   or `replaceGeneralRangePlainText` when the view declares
-   `rangeEditing: "general-v1"`.
-4. Reads the new Rust view and prepares `item.command(context)` from it. It then
-   executes that existing command at the new revision.
-5. Returns and reports `{item, removal, outcome}` through `onExecute`. If the
-   command is no longer applicable after the removal (`null`), only the trigger
-   was removed. This is reported through `onError`, and `outcome` is `null`.
+3. **Native composite (one Undo step).** If the host reports
+   `supportsTriggerComposite() === true`, it prepares `item.command(context)` from
+   the checked view. If that command's kind is in the native allowlist
+   (`richTriggerCompositeKinds`), it publishes one guarded
+   `{kind:"replaceTriggerThen",data:{selection:[slash, caret],command}}` at the
+   checked revision and reports `{item, removal, outcome, composite:true}`, where
+   `removal` and `outcome` are that one outcome. If Rust refuses it (for example,
+   the command no longer applies), nothing is published, `choose()` throws, and
+   the typed `/query` stays.
+4. **Two-step fallback** (older owners without the capability, a `null`
+   command, or a command outside the allowlist). It removes the typed `/query`
+   with one guarded native command at the checked revision. That is
+   `replaceTextRange` over `[slash, caret]` in the trigger block, or
+   `replaceGeneralRangePlainText` when the view declares
+   `rangeEditing: "general-v1"`. It then reads the new Rust view, prepares
+   `item.command(context)` from it and executes that existing command at the new
+   revision.
+5. Returns and reports `{item, removal, outcome, composite}` through `onExecute`.
+   In the fallback, if the command is no longer applicable after the removal
+   (`null`), only the trigger was removed. This is reported through `onError`, and
+   `outcome` is `null`.
 
-If either publication is queued instead of published, `choose()` throws. A queued
+If a publication is queued instead of published, `choose()` throws. A queued
 removal does not run the command.
 
 `createRichSlashCommands(controls, picks?)` adapts existing toolbar controls by
@@ -144,15 +165,90 @@ Item contexts allocate ids under a per-controller `br:<uuid>` namespace. Pass
 
 ### Undo granularity
 
-The existing native history has no composite intent. A slash command is
-therefore two retained steps:
+With an owner that reports `triggerCompositeVersion() === "1"` (every current
+rich owner, V1 to V4, local and document scope), a slash command is **one**
+native history unit: one Undo restores the typed `/query` and the caret before
+the command, and one Redo replays the command. No JavaScript-side history
+merging is involved. The typing burst that typed `/query` stays its own Undo
+step (as for mentions), so a second Undo removes the typed text.
 
-1. The first Undo reverts the command.
-2. The second Undo restores the typed `/query`.
+#### Native design: `replaceTriggerThen`
 
-Making it a single step needs a native composite "replace range then apply"
-intent in Rust. That is not specified here, and no JavaScript-side history
-merging is attempted.
+`RichLocalSession::replace_trigger_then(snapshot, trigger, step)` (core) is a
+bounded history transaction:
+
+1. It checks the observation and the read-only policy, then the trigger. The
+   trigger must be a nonempty text range in one paragraph, heading or section
+   summary (as for `insertMention`). Code blocks, collapsed, cross-block and
+   non-text targets are refused.
+2. It builds a private **scratch owner** at the exact current publication
+   (document, selection, pending formats, revision) with empty history and no
+   typing partition. On it, it removes the trigger with the ordinary
+   `replace_range_plain_text(trigger, "")`. The caret is collapsed at the trigger
+   start, with the trigger's own pending style.
+3. It runs the follow-up `step` on the scratch owner with the scratch
+   observation. The step uses the command's normal implementation, so it is
+   captured against the evolving post-removal document and maps the
+   post-removal selection exactly as a separate command would.
+4. The step must publish exactly one content unit (`ContentCommitted`, two
+   scratch entries, cursor at the end). A step that fails, changes nothing, only
+   moves the selection, undoes, or publishes more than one unit is refused.
+5. Only then does it change the live owner, with one `commit_content`. The
+   entry's `before` is the observed state and its `after` is the scratch's final
+   document, selection and pending formats at the next live revision. Its
+   forward and inverse recipes are the replay-proved local branch rewrite
+   between the two documents (`LocalRewrite::between`), checked in both
+   directions before commit. This is the same recipe family that checkpoints and
+   native search replacement already use, so local and document checkpoints,
+   typing checkpoints and restore need no format change.
+
+Atomicity follows from the scratch owner: any failure drops it, and the live
+owner's token, revision, selection, history (including the redo branch) and
+typing continuation are untouched. Its earlier observation remains valid.
+Natural typing history appends the composite as a new group, which closes the
+open typing burst. The schema and fingerprint are unchanged.
+
+The Wasm command is
+`{"kind":"replaceTriggerThen","data":{"selection":<text range>,"command":<command>}}`.
+The nested command is decoded by the ordinary closed command decoder and must
+be one of this **allowlist**. Each kind addresses blocks by identity, never by
+text offsets, so a same-block trigger removal cannot retarget it:
+
+| Kind | Slash items |
+| --- | --- |
+| `setHeading` | Text, Heading 1–3 |
+| `wrapList`, `setListKind` | Bullet list, Numbered list |
+| `wrapTaskList` | Task list |
+| `wrapBlockquote` | Quote |
+| `setCodeBlock` | Code block |
+| `insertHorizontalRule` | Divider |
+| `insertTable` | Table |
+| `insertBlocks` | custom inserts |
+| `wrapDetails` | Collapsible section (V4) |
+| `insertPageBreak` | Page break (V4; a root position and a fresh block id) |
+
+Anything else, including history, selection, text, mention and nested
+`replaceTriggerThen` commands, is refused with `breditor_rich.trigger_command`.
+A refused step reports its own code, and a non-content step reports
+`breditor_rich.trigger_step`. Rust re-validates every target against the
+post-removal document.
+
+Because the allowlisted payloads carry no text offsets, the browser prepares the
+command from the checked pre-removal view. Rust is the authority that it still
+applies after the removal.
+
+#### Capability and fallback
+
+- Wasm: `BreditorRichEditor.triggerCompositeVersion()` returns `"1"`.
+- Core facade: `RichCoreEditor.supportsTriggerComposite()` checks for exactly
+  `"1"`. A module without the method reports `false`.
+- DOM and SDK: `RichDomEditor.supportsTriggerComposite()`,
+  `LocalEditor`/`LocalDocumentEditor.supportsTriggerComposite()`, and the
+  optional `RichSlashCommandHost.supportsTriggerComposite` that
+  `slashCommandHost(editor)` forwards.
+- Without the capability, or for a command outside the allowlist, the session
+  keeps the two-step path above (two Undo steps: the command, then the trigger
+  removal). This path is still tested.
 
 ## Accessibility
 
@@ -199,6 +295,101 @@ example, from `BreditorEditor`'s `onReady`), `initialOptions` and an optional
 are always used, and a parent re-render does not remount the controller.
 Unmounting disposes only the controller.
 
+## Shared editors
+
+Shared editors (`SharedDomEditor`, managed `SharedEditorSession` and
+`SharedDocumentEditorSession`) get slash commands from
+`packages/breditor-collaboration/src/slash_commands.ts`:
+
+```js
+import {mountSharedSlashCommands, createSharedSlashCommands} from '@breditor/collaboration';
+const slash = mountSharedSlashCommands(dom, {items: createSharedSlashCommands(toolbarControls, undefined, dom.uiLocale())});
+```
+
+or, with the SDK, `mountSlashCommands(session)` from
+`@breditor/editor/collaboration` (items default to the standard catalog built
+from the session's own `toolbarControls()`; pass `items` to replace it) and
+`BreditorSharedSlashCommands` from `@breditor/editor/collaboration/react`
+(same props as `BreditorSlashCommands`; `initialOptions` is optional).
+
+**Same session.** The adapter mounts the generic `RichSuggestionSession` with
+the slash spec's trigger, menu attributes, ids, messages and catalog keys.
+Arming, opening, trigger identity, every cancellation reason, async providers,
+`AbortSignal` handling, keyboard handling, ARIA and `uiLocale()` strings are the
+local behaviour above. The shared view is read under the rendering format tag
+(`breditor/rich-view` or `breditor/rich-document-view`), exactly as the shared
+presentation model does; scope, AST, selection and revision are the native
+values.
+
+**Remote edits.** Shared editors notify the read channel after every remote
+publication. Each notification re-runs the trigger check, so a peer edit before
+the slash or to the slash itself, removal of the trigger block, a remote
+read-only policy change, or a selection mapped out of the query cancels the
+session (`trigger-invalidated`, `read-only`, `selection-left`). Remote edits
+elsewhere leave it open and only re-filter a static list; a provider is not
+called again for the same query. A cancelled trigger never reopens by itself.
+
+**One history group.** Choosing an item publishes exactly one guarded
+`SharedDomEditor.execute` call at the checked revision:
+
+```json
+{"commands":[{"kind":"delete_text","data":{"block":"<trigger block>","offset":<slash>,"length":<caret - slash>}}, <item command>]}
+```
+
+Shared dispatch applies one ordered batch atomically as one writer-local history
+group, so one Undo restores the typed `/query` and the original block, one Redo
+replays both, and the typing that produced `/query` stays its own earlier group.
+Peers receive the batch without gaining a local Undo step. A refused batch
+publishes nothing and the typed `/query` stays. Offsets are UTF-16 units read from
+the Rust view. There is no shared two-step fallback and no new shared command.
+
+The item command is prepared from the checked pre-removal view, so only kinds
+that address blocks by identity are admitted after the removal
+(`sharedSlashCommandKinds`): `set_heading`, `set_code_block`, `wrap_list`,
+`set_list_kind`, `wrap_task_list`, `wrap_blockquote`, `insert_horizontal_rule`,
+`insert_blocks` (at most 16 commands, optional `selectionUpdate`). Anything else,
+including text-offset commands, is refused before publication.
+
+**Items.** `createSharedSlashCommands(controls, picks?, ui?)` adapts the shared
+toolbar controls by id. Each item captures the single dispatch its control's
+`run` would publish, against a port whose only operation is `dispatch`; a control
+that needs any other owner operation, publishes more than once, sets pending
+formats, or emits a non-allowlisted kind is not representable and is disabled.
+Items are disabled while read-only. `standardSharedSlashPicks`:
+
+| Item | Shared control | Batch follow-up |
+| --- | --- | --- |
+| Text | `paragraph` | `set_heading` (`level: null`) |
+| Heading 1, 2 and 3 | `h1`, `h2`, `h3` | `set_heading` |
+| Bullet list, Numbered list | `bullet`, `numbered` | `wrap_list`, or `set_list_kind` inside a list |
+| Task list | `tasks` (V2/V3) | `wrap_task_list` |
+| Quote | `blockquote` (V2/V3) | `wrap_blockquote` |
+| Code block | `code-block` (V2/V3), `policy: "reject_formatted"` | `set_code_block` |
+| Divider | `horizontal-rule` (V2/V3) | `insert_horizontal_rule` |
+| Table | `table` | `insert_blocks` |
+
+Omitted from the shared catalog: **Collapsible section** and **Page break**
+(candidate rich V4 only; shared owners are V1–V3), and the structural items on a
+V1 toolbar. There is no shared `@` mention menu: mentions are a V4 record and
+shared editors do not admit V4.
+
+Custom shared items implement `{id, label, keywords?, description?,
+enabled(context), prepare(context)}`, where `context` is `{model, revision,
+allocate}` and `prepare` returns `{commands, selectionUpdate?}` or `null`.
+`onExecute` receives `{item, request, revision}`: the exact batch and the checked
+revision.
+
+Tests: `packages/breditor-editor/tests/shared_slash_commands.test.ts` (a real
+`SharedDomEditor` over a fixture shared owner in jsdom: one-batch dispatch and one
+Undo, the exact batch of every standard item, remote invalidation, remote
+read-only, composition, refusal, async providers, catalog strings, SDK default
+items), `shared_slash_commands_react.test.tsx`, and
+`crates/breditor-collaboration/tests/shared_slash_batch_contracts.rs` (the same
+batches against the real shared replica under explicit, natural-typing,
+general-range and document-selection history: one group, exact Undo/Redo,
+atomic refusal, peers without a local step). A real-browser shared run is not
+yet covered (see below).
+
 ## Not covered or unverified
 
 - **Real-browser behaviour.** Verification so far is jsdom only. Not yet checked
@@ -209,10 +400,14 @@ Unmounting disposes only the controller.
   - Android and IME `beforeinput` arming when `/` comes through composition. A
     composed slash cancels and does not open.
   - the order of document-capture listeners against browser extensions.
-- **Shared editors.** `SharedDomEditor.execute` takes `SharedDispatch`, not
-  `RichCommand`, so shared owners need a separate dispatch adapter. The trigger
-  checks already handle remote edits generically.
-- **Single-step Undo.** This needs a native composite intent (see above).
+- **Shared editors in a real browser.** The shared adapter is verified in jsdom
+  with a fixture owner and its exact batches against the real Rust replica. No
+  Playwright run covers it: the shared browser harness
+  (`experiments/shared-browser`) needs the `target/collaboration-feasibility-web`
+  Wasm build, and its `experiments/collaboration` crate did not compile for
+  `wasm32-unknown-unknown` when this adapter landed (an outdated struct
+  initializer unrelated to slash commands).
 - **Mentions.** Implemented for candidate rich V4 only (native
-  `insertMention`, one Undo step); see RICH_LANGUAGE_V4.md slice 5.
+  `insertMention`, one Undo step); see RICH_LANGUAGE_V4.md slice 5. Shared
+  editors are V1–V3 and have no mention menu.
 - No default menu styling theme or hotkey to open the menu without typing `/`.

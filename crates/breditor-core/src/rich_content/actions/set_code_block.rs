@@ -58,8 +58,10 @@ impl SetCodeBlock {
             source
         };
         let draft = RichBlockDraft::code_block(block, language, &text)?;
-        let replacement =
-            super::rewrite_properties::inherit_layout(source_node, draft.into_node())?;
+        let replacement = super::rewrite_properties::inherit_bookmark(
+            source_node,
+            super::rewrite_properties::inherit_layout(source_node, draft.into_node())?,
+        )?;
         Ok(Self { patch: NodePatch::capture(document, block, replacement)? })
     }
     /// Publish one admitted conversion and preserve the exact original styled node for Undo.

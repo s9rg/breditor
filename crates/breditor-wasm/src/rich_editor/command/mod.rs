@@ -3,6 +3,7 @@
 //! Raw payloads are decoded directly from JSON, not from serde's internally
 //! tagged content buffer. Present null fields remain distinct from missing ones.
 
+mod bookmark;
 mod change_inline_formats;
 mod change_selection_formats;
 mod change_selection_layout;
@@ -51,6 +52,7 @@ mod navigate_flow;
 mod navigate_grid;
 mod outdent_list_items;
 mod outdent_task_items;
+mod page_break;
 mod paste_flow_at_text;
 mod paste_flow_clipboard;
 mod paste_general_flow_clipboard;
@@ -66,6 +68,7 @@ mod replace_general_range_text;
 mod replace_general_range_typing_text;
 mod replace_image;
 mod replace_text_range;
+mod replace_trigger_then;
 mod resize_image;
 mod resize_table_column;
 mod set_code_block;
@@ -180,6 +183,10 @@ enum CommandTag {
     InsertMention,
     AddTableCaption,
     RemoveTableCaption,
+    InsertPageBreak,
+    DeletePageBreak,
+    SetBookmark,
+    RenameBookmark,
     OutdentListItems,
     JoinTextBlocks,
     JoinListItems,
@@ -194,6 +201,7 @@ enum CommandTag {
     MergeTableCells,
     ClearTableCells,
     NavigateGrid,
+    ReplaceTriggerThen,
 }
 #[derive(Deserialize)]
 #[serde(deny_unknown_fields)]
@@ -335,6 +343,9 @@ pub(super) fn execute(
             &value::<String>(command.block)?,
             value(command.level)?,
         ),
+        CommandTag::ReplaceTriggerThen => {
+            replace_trigger_then::execute(owner, observation, command.data.ok_or(invalid())?.get())
+        }
         CommandTag::SetPendingFormats => set_pending_formats::execute(
             owner,
             observation,

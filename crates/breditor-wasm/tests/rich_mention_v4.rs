@@ -66,7 +66,7 @@ fn v4_descriptor_and_owner_report_mentions_only_for_v4() -> Result {
     assert_eq!(d["imageLinkVersion"], 1);
     assert_eq!(
         d["schemaFingerprint"],
-        "sha256:6daf61c3c5a216bb4d831c8bd6b9b776044b0a4598a346270ecf6579373959c0"
+        "sha256:40ed4c0716f9baab1ec30da8b5641623b8fbbdafc7e6f838f5b0496e01add372"
     );
     assert_eq!(owner(&p, &root())?.mention_version(), "1");
     let catalog: Value = serde_json::from_str(&read(p.inline_catalog_json())?)?;

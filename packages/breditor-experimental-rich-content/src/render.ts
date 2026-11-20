@@ -6,16 +6,46 @@ import {applyBlockLayout} from "./block_layout_presentation.js";
 import {applyListNumbering} from "./list_numbering_presentation.js";
 import {wrapImageLink} from "./image_link.js";
 import {createMentionChip,groupMentionRuns} from "./mention.js";
+import {createPageBreakElement,richPageBreakKind} from "./page_break.js";
+import {bookmarkAttributes,bookmarkNames,bookmarkOf,internalLinkAttributes,internalLinkOf} from "./bookmark.js";
+import {resolveRichUi,type RichUiLocale,type RichUiOptions} from "./ui_locale.js";
 export const structuralBlockStylesV2=`[data-breditor-rich] [data-rich-text]{white-space:pre-wrap;min-height:1em}[data-breditor-rich] blockquote{border-left:3px solid #9dbbb0;margin:12px 0;padding:1px 16px}[data-breditor-rich] pre{font-family:ui-monospace,monospace;background:#f1f5f2;padding:12px;overflow:auto}[data-breditor-rich] [data-task-list]{list-style:none;padding-left:12px}[data-breditor-rich] [data-rich-task]{display:grid;grid-template-columns:24px minmax(0,1fr);gap:8px;margin:8px 0}[data-breditor-rich] input[data-task-check]{width:18px;height:18px;margin:4px 0}[data-breditor-rich] [data-task-body]>:first-child{margin-top:0}[data-breditor-rich] hr{border:0;border-top:2px solid #9dbbb0;margin:16px 0}[data-breditor-rich] details[data-rich-details]{border:1px solid #c9d8d2;border-radius:6px;margin:12px 0;padding:4px 12px}[data-breditor-rich] summary[data-rich-text]{font-weight:600;cursor:text;padding:4px 0}[data-breditor-rich] details[data-rich-details][open]>summary[data-rich-text]{border-bottom:1px solid #e3ece8;margin-bottom:4px}`;
 export interface AssetBinding {image:string;asset:string;generation:string}
 export interface RenderOptions {
  resolveAsset?:(binding:AssetBinding)=>string|undefined|Promise<string|undefined>;
  inlineTag?:(format:FormatLiteral)=>"span"|"strong"|"em"|"code";
  inlinePresentation?:RichInlinePresentation;
+ /** Chrome catalog; only the candidate V4 page-break marker label (`pageBreakLabel`) reads it. */
+ ui?:RichUiOptions;
+ /** Candidate rich V4 bookmarks and internal links: bookmarked blocks get `id="bm-<name>"` and
+  * `data-rich-bookmark`, internal links `href="#bm-<name>"` (or `data-rich-link-broken` when no block
+  * carries the name). The controller sets it for a V4 owner; omitted keeps V1–V3 output exact. */
+ bookmarks?:boolean;
+}
+const resolvedUi=new WeakMap<object,RichUiLocale>();
+/** Resolve (and cache per options object) the catalog that labels page-break markers. */
+function pageBreakLabel(options:RenderOptions):string{
+ const ui=options.ui;if(ui===undefined)return resolveRichUi().text("pageBreakLabel");
+ let locale=resolvedUi.get(ui);if(!locale){locale=resolveRichUi(ui);resolvedUi.set(ui,locale);}
+ return locale.text("pageBreakLabel");
 }
 /** Validate opt-in presentation before publishing host DOM. Legacy callbacks stay separate. */
 export function requireRenderOptions(value:RichPresentationModel,options:RenderOptions):void {
  if(options.inlinePresentation){if(options.inlineTag)throw new TypeError("Use either inlinePresentation or inlineTag, not both");requireRichInlinePresentation(options.inlinePresentation,value.schema);}
+}
+/** A lone LF at the very end of a `pre-wrap` text block creates no line box after it, so Chromium
+ * and WebKit canonicalize a caret after it to the position before it (their `beforeinput` target
+ * ranges point before the LF, so typed text landed before the break) and no engine shows the new
+ * empty line. The live renderer appends this presentation-only `<br>` to such a block: it has no
+ * text, so Range.toString, textContent and the text-node walkers in selection.ts ignore it, and
+ * model offsets, search, composition reconcile and clipboard are unchanged. Static output omits it. */
+export const trailingBreakAttribute="data-rich-trailing-break";
+export function endsWithLineBreak(children:readonly AstNode[]):boolean {
+ const last=children[children.length-1];return last?.kind==="text"&&last.text.endsWith("\n");
+}
+function appendTrailingBreak(target:HTMLElement,node:ElementNode):void {
+ if(!endsWithLineBreak(node.children))return;
+ const anchor=target.ownerDocument.createElement("br");anchor.setAttribute(trailingBreakAttribute,"");target.append(anchor);
 }
 const assetBindings=new WeakMap<HTMLElement,{bitmap:HTMLImageElement;binding:AssetBinding;attempt:number}>();
 function resolveImage(figure:HTMLElement,options:RenderOptions):void {
@@ -49,6 +79,8 @@ export function applyEditingPolicy(surface:HTMLElement,readOnly:boolean):void {
 export function render(surface:HTMLElement,value:RichPresentationModel,options:RenderOptions):void {
  requireRenderOptions(value,options);
  const document=surface.ownerDocument;
+ const bookmarks=options.bookmarks===true?new Set(bookmarkNames(value.root)):undefined;
+ const anchor=(element:HTMLElement,node:ElementNode):void=>{const name=bookmarks?bookmarkOf(node):undefined;if(name!==undefined)for(const attribute of bookmarkAttributes(name))element.setAttribute(attribute.name,attribute.value);};
  // Candidate V4 mentions render as inert chips grouping their styled pieces (text blocks and summaries).
  const appendInline=(target:HTMLElement,node:ElementNode):void=>{for(const item of groupMentionRuns(node.children.filter((child):child is TextNode=>child.kind==="text"),(run,text,formats)=>({...run,text,formats})))target.append(item.kind==="run"?flow(item.run):createMentionChip(document,item.mention,item.pieces.map(flow)));};
  const flow=(node:AstNode):Node=>{
@@ -56,13 +88,19 @@ export function render(surface:HTMLElement,value:RichPresentationModel,options:R
    let result:Node=document.createTextNode(node.text);
    if(options.inlinePresentation){
     for(const {recipe,attributes} of [...richInlineRecipes(options.inlinePresentation,node.formats)].reverse()){
-     const wrapper=document.createElement(recipe.element);wrapper.dataset["richFormat"]=recipe.formatKind;if(recipe.classes.length)wrapper.className=recipe.classes.join(" ");for(const attribute of attributes)wrapper.setAttribute(attribute.name,attribute.value);wrapper.append(result);result=wrapper;
+     const wrapper=document.createElement(recipe.element);wrapper.dataset["richFormat"]=recipe.formatKind;if(recipe.classes.length)wrapper.className=recipe.classes.join(" ");for(const attribute of attributes)wrapper.setAttribute(attribute.name,attribute.value);
+     // Candidate V4 internal link: the external policy emits no href for `#name`; the bookmark grammar does.
+     const internal=bookmarks&&recipe.formatKind==="breditor-inline/link"?node.formats.map(internalLinkOf).find(name=>name!==undefined):undefined;
+     if(internal!==undefined)for(const attribute of internalLinkAttributes(internal,bookmarks!.has(internal)))wrapper.setAttribute(attribute.name,attribute.value);
+     wrapper.append(result);result=wrapper;
     }
    }else for(const format of node.formats){const tag=options.inlineTag?.(format)??(format.type==="breditor/strong"?"strong":"span");if(!["span","strong","em","code"].includes(tag))throw new TypeError("Unsupported legacy inline tag");const wrapper=document.createElement(tag);wrapper.dataset["richFormat"]=format.type;wrapper.append(result);result=wrapper;}
    return result;
   }
   if(node.type==="breditor/table")return table(node);
   if(node.type==="breditor/image")return image(node);
+  // Candidate V4 page break: a non-editable, node-selectable marker that forces a page break when printed.
+  if(node.type===richPageBreakKind)return createPageBreakElement(document,node,pageBreakLabel(options));
   if(node.type==="breditor/horizontal-rule"){
    const rule=document.createElement("hr");rule.contentEditable="false";rule.dataset["richBlock"]=id(node);rule.dataset["selectNode"]=id(node);return rule;
   }
@@ -80,11 +118,11 @@ export function render(surface:HTMLElement,value:RichPresentationModel,options:R
   if(node.type==="breditor/details-summary"){
    const summary=document.createElement("summary");summary.dataset["richBlock"]=id(node);summary.dataset["richText"]=id(node);
    if(node.children.length===0)summary.append(document.createElement("br"));
-   appendInline(summary,node);return summary;
+   appendInline(summary,node);appendTrailingBreak(summary,node);return summary;
   }
   if(node.type==="breditor/code-block"){
-   const pre=document.createElement("pre");pre.dataset["richBlock"]=id(node);pre.dataset["richText"]=id(node);applyBlockLayout(pre,node);const language=property(node,"language");if(typeof language==="string")pre.dataset["language"]=language;
-   const code=document.createElement("code");for(const child of node.children)code.append(flow(child));if(node.children.length===0)code.append(document.createElement("br"));pre.append(code);return pre;
+   const pre=document.createElement("pre");pre.dataset["richBlock"]=id(node);pre.dataset["richText"]=id(node);applyBlockLayout(pre,node);anchor(pre,node);const language=property(node,"language");if(typeof language==="string")pre.dataset["language"]=language;
+   const code=document.createElement("code");for(const child of node.children)code.append(flow(child));if(node.children.length===0)code.append(document.createElement("br"));appendTrailingBreak(code,node);pre.append(code);return pre;
   }
   const tag=node.type==="breditor/paragraph"?"p":node.type==="breditor/heading"?`h${String(property(node,"level"))}`:node.type==="breditor/bullet-list"||node.type==="breditor/task-list"?"ul":node.type==="breditor/ordered-list"?"ol":node.type==="breditor/list-item"?"li":node.type==="breditor/blockquote"?"blockquote":"div";
   const element=document.createElement(tag);element.dataset["richBlock"]=id(node);
@@ -92,11 +130,11 @@ export function render(surface:HTMLElement,value:RichPresentationModel,options:R
   if(node.type==="breditor/ordered-list")applyListNumbering(element,node);
   if(node.type==="breditor/paragraph"||node.type==="breditor/heading"){
    element.dataset["richText"]=id(node);
-   applyBlockLayout(element,node);
+   applyBlockLayout(element,node);anchor(element,node);
    if(node.children.length===0)element.append(document.createElement("br"));
   }
   // Candidate V4 mentions render as inert chips grouping their styled pieces.
-  if(node.type==="breditor/paragraph"||node.type==="breditor/heading")appendInline(element,node);
+  if(node.type==="breditor/paragraph"||node.type==="breditor/heading"){appendInline(element,node);appendTrailingBreak(element,node);}
   else for(const child of node.children)element.append(flow(child));
   return element;
  };

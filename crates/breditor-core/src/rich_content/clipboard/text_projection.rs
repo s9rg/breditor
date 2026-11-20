@@ -85,7 +85,10 @@ impl RichClipboardFragment {
             }
             if let Some(e) = n.as_element() {
                 table |= e.kind().as_str() == "breditor/table";
-                media |= matches!(e.kind().as_str(), "breditor/image" | "breditor/horizontal-rule");
+                media |= matches!(
+                    e.kind().as_str(),
+                    "breditor/image" | "breditor/horizontal-rule" | "breditor/page-break"
+                );
                 properties |= e.properties().iter().any(|(k, _)| {
                     !matches!(k.as_str(), "breditor/block-id" | "breditor/document-id")
                 });

@@ -13,6 +13,8 @@ export type FlowDraft = ({kind:"paragraph"}&TextDraft)|({kind:"heading";level:nu
  |{kind:"blockquote";block:string;body:readonly FlowDraft[]}
  |{kind:"codeBlock";block:string;text:string;language:string|null}
  |{kind:"horizontalRule";block:string}
+ /** Candidate rich V4 atomic page break; admitted only as a direct child of the document root. */
+ |{kind:"pageBreak";block:string}
  /** Candidate rich V4 collapsible section: summary identity and runs, persisted open state, nonempty body. */
  |{kind:"details";block:string;summary:string;text:string;formatsJson:string;open:boolean;body:readonly FlowDraft[]}
  |{kind:"taskList";block:string;items:readonly {block:string;checked:boolean;body:readonly FlowDraft[]}[]}
@@ -23,6 +25,9 @@ export interface FlowPosition {parent:{kind:"document"}|{kind:"cell";cell:RichCe
 export interface ClipboardAllocation {prefix:string;replica:string;counter:string;lamport:string}
 /** Full admitted literals are retained for removals; Rust chooses all selected targets. */
 export type RichSelectionFormatChange={kind:"set"|"remove";formatsJson:string}|{kind:"patch";formatsJson:string;properties:readonly string[]};
+/** Follow-up kinds admitted by `replaceTriggerThen`; each addresses blocks by identity, never text offsets. */
+export type RichTriggerCompositeKind="setHeading"|"setCodeBlock"|"wrapList"|"setListKind"|"wrapTaskList"|"wrapBlockquote"|"wrapDetails"|"insertHorizontalRule"|"insertTable"|"insertBlocks"|"insertPageBreak";
+export type RichTriggerCompositeCommand=Extract<RichCommand,{kind:RichTriggerCompositeKind}>;
 export type RichCommand =
  |{kind:"replaceGeneralRangeText";data:{selection:Extract<RichSelection,{kind:"text"}>;runs:readonly {text:string;formatsJson:string}[];prefix:string}}
  |{kind:"pasteGeneralInlineClipboard";data:{selection:Extract<RichSelection,{kind:"text"}>;clipboardJson:string;prefix:string}}
@@ -67,6 +72,12 @@ export type RichCommand =
  |{kind:"unwrapTaskList";data:{list:string}}
  |{kind:"insertHorizontalRule";data:{position:FlowPosition;block:string}}
  |{kind:"deleteHorizontalRule";data:{block:string;replacement:FlowDraft|null}}
+ /** Candidate rich V4: insert one page break (fresh block `block`) at a document-root position as one
+  * history group; the selection is kept. A non-root position is refused. */
+ |{kind:"insertPageBreak";data:{position:FlowPosition;block:string}}
+ /** Candidate rich V4: delete one page break as one history group. `paragraph` is a fresh floor used only
+  * when nothing else would remain; a node-selected page break recovers like `deleteAtom`. */
+ |{kind:"deletePageBreak";data:{block:string;paragraph:string}}
  |{kind:"splitTaskItem";data:{point:RichPoint;newItem:string;right:string;rightHeading:number|null}}
  |{kind:"joinTaskItems";data:{container:string;left:string;right:string}}
  |{kind:"setSelection";selection:RichSelection|null}
@@ -115,9 +126,19 @@ export type RichCommand =
  /** Candidate rich V4 only: set, replace or clear (`href:null`) one image's link in one history group.
   * The href must already be canonical (`canonicalImageLinkHref`); a decorative image cannot be linked. */
  |{kind:"setImageLink";data:import("./core.js").RichImageLinkIntent}
+ /** Candidate rich V4 only: set, replace or clear (`name:null`) one paragraph/heading/code-block
+  * bookmark in one history group. Links are not rewritten (a replaced or cleared name dangles). */
+ |{kind:"setBookmark";data:import("./bookmark.js").RichSetBookmarkIntent}
+ /** Candidate rich V4 only: rename one bookmark and retarget every internal `#from` link to `#to`,
+  * in one history group. */
+ |{kind:"renameBookmark";data:import("./bookmark.js").RichRenameBookmarkIntent}
  /** Candidate rich V4 only: replace one text range inside a paragraph or heading (normally the typed
   * `@query` trigger) by one mention plus a plain space, in one history group (one Undo step). */
  |{kind:"insertMention";data:{selection:Extract<RichSelection,{kind:"text"}>;mention:import("./mention.js").RichMention}}
+ /** Remove one typed trigger range (a nonempty same-block range in a paragraph, heading or section
+  * summary), then run one allowlisted command (`RichTriggerCompositeKind`) against the post-removal
+  * document, as ONE native history unit. Requires `supportsTriggerComposite()`. */
+ |{kind:"replaceTriggerThen";data:{selection:Extract<RichSelection,{kind:"text"}>;command:RichTriggerCompositeCommand}}
  |{kind:"indentListItems";data:{container:string;first:string;last:string;nested:{block:string;start:number|null}|null}}
  |{kind:"outdentListItems";data:{container:string;first:string;last:string;tail:string|null}}
  |{kind:"splitTextBlock";data:{point:RichPoint;right:string;rightHeading:number|null}}

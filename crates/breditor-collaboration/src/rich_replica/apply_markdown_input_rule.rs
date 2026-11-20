@@ -103,10 +103,11 @@ impl RichReplica {
             return Ok(false);
         };
         let commands = commands(&self.document, &plan)?;
-        let pending = if matches!(plan.kind(), RichInputRuleKind::Code(_)) {
-            vec![]
-        } else {
-            self.effective_formats(selection)?
+        // Code is explicitly plain; a code exit derives the fresh paragraph's styles afresh.
+        let pending = match plan.kind() {
+            RichInputRuleKind::Code(_) => Some(vec![]),
+            RichInputRuleKind::CodeExit => None,
+            _ => Some(self.effective_formats(selection)?),
         };
         let caret = TextPoint {
             block: plan.caret().block().as_str().into(),
@@ -119,7 +120,7 @@ impl RichReplica {
                 anchor: caret.clone(),
                 focus: caret,
             })),
-            PendingFormatsUpdate::Set(Some(pending)),
+            PendingFormatsUpdate::Set(pending),
             None,
             Some(plan.document()),
         )
@@ -197,6 +198,11 @@ fn commands(document: &RichDocument, plan: &RichInputRulePlan) -> Result<Vec<Com
                         enabled: true,
                     })
                 }
+                RichInputRuleStep::TaskRange { .. }
+                | RichInputRuleStep::MoveBlock { .. }
+                | RichInputRuleStep::OutdentListItem { .. }
+                | RichInputRuleStep::OutdentTaskItem { .. }
+                | RichInputRuleStep::Paragraph { .. } => list_command(document, block, step)?,
                 RichInputRuleStep::Link { start, end, href } => {
                     Command::SetFormat(actions::SetFormat {
                         block: block.into(),
@@ -213,6 +219,60 @@ fn commands(document: &RichDocument, plan: &RichInputRulePlan) -> Result<Vec<Com
             })
         })
         .collect()
+}
+/// Retained-identity list continuation and code-exit steps as original guarded commands.
+fn list_command(
+    document: &RichDocument,
+    source: &str,
+    step: &RichInputRuleStep,
+) -> Result<Command, Error> {
+    Ok(match step {
+        RichInputRuleStep::TaskRange { last, container, item, checked } => {
+            Command::WrapTaskList(actions::WrapTaskList {
+                first: source.into(),
+                last: last.as_str().into(),
+                container: container.as_str().into(),
+                items: vec![actions::NewTaskItem {
+                    block: item.as_str().into(),
+                    checked: *checked,
+                }],
+            })
+        }
+        RichInputRuleStep::MoveBlock { block, parent, before } => {
+            Command::MoveBlock(actions::MoveBlock {
+                block: block.as_str().into(),
+                parent: parent.as_ref().map(|p| p.as_str().into()),
+                before: before.as_ref().map(|b| b.as_str().into()),
+            })
+        }
+        RichInputRuleStep::OutdentListItem { container, item, fresh_tail } => {
+            Command::OutdentListItems(actions::OutdentListItems {
+                container: container.as_str().into(),
+                first: item.as_str().into(),
+                last: item.as_str().into(),
+                fresh_tail: fresh_tail.as_ref().map(|t| t.as_str().into()),
+            })
+        }
+        RichInputRuleStep::OutdentTaskItem { container, item } => {
+            Command::OutdentTaskItems(actions::OutdentTaskItems {
+                container: container.as_str().into(),
+                first: item.as_str().into(),
+                last: item.as_str().into(),
+                fresh_tail: None,
+            })
+        }
+        RichInputRuleStep::Paragraph { block, position } => {
+            Command::InsertBlocks(actions::InsertBlocks {
+                parent: parent(document, position.parent())?,
+                before: position.before().map(|b| b.as_str().into()),
+                nodes: vec![json!({
+                    "kind":"element", "type":"breditor/paragraph", "entityId":null,
+                    "properties":{"breditor/block-id":block.as_str()}, "children":[]
+                })],
+            })
+        }
+        _ => return Err(Error::Contract("input rule step lowering")),
+    })
 }
 fn parent(document: &RichDocument, parent: &RichFlowParent) -> Result<Option<String>, Error> {
     Ok(match parent {

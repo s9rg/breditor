@@ -1,10 +1,12 @@
 /**
  * Opt-in slash-command suggestion session. Browser routing and presentation only:
- * the trigger is read from admitted Rust views, and choosing an item publishes two
- * existing typed commands through the borrowed DOM coordinator. No DOM text is edited.
+ * the trigger is read from admitted Rust views, and choosing an item publishes, through the
+ * borrowed DOM coordinator, one native `replaceTriggerThen` composite (one Undo step) when the
+ * owner supports it and the item's command is allowlisted, or else two existing typed commands
+ * (trigger removal, then the command). No DOM text is edited.
  * The session itself is the shared typed-trigger session (`suggestion_session.ts`).
  */
-import type {RichCommand,RichCommandOutcome,RichCoreEditor,RichEditorView,RichSelection,RichSelectionPolicy} from "./core.js";
+import type {RichCommand,RichCommandOutcome,RichCoreEditor,RichEditorView,RichSelection,RichSelectionPolicy,RichTriggerCompositeCommand,RichTriggerCompositeKind} from "./core.js";
 import type {RichSearchHostState} from "./search_host.js";
 import type {RichUiLocale} from "./ui_locale.js";
 import {filterRichSlashItems,requireRichSlashItems,type RichSlashItem} from "./slash_command_items.js";
@@ -21,13 +23,20 @@ export interface RichSlashCommandHost {
  focus():void;
  /** Optional chrome catalog: menu strings, standard item labels and the menu's `dir`/`lang`. */
  uiLocale?():RichUiLocale;
+ /** Optional native capability probe. When true, an allowlisted item runs as one `replaceTriggerThen`. */
+ supportsTriggerComposite?():boolean;
 }
 export type RichSlashCancelReason=
  |"dismissed"|"composition"|"trigger-invalidated"|"selection-left"|"query-ended"|"blur"|"read-only"|"editor-closed"|"disposed";
 export interface RichSlashProviderRequest {readonly signal:AbortSignal;readonly revision:string;readonly session:number}
 /** Synchronous list (filtered locally) or a cancellable provider. Aborted/stale results are discarded. */
 export type RichSlashProvider=readonly RichSlashItem[]|((query:string,request:RichSlashProviderRequest)=>readonly RichSlashItem[]|Promise<readonly RichSlashItem[]>);
-export interface RichSlashExecution {readonly item:string;readonly removal:RichCommandOutcome;readonly outcome:RichCommandOutcome|null}
+/**
+ * `composite`: true when the trigger removal and the command were one native `replaceTriggerThen`
+ * publication (one Undo step; `removal` and `outcome` are then that same outcome). False for the
+ * two-step fallback (older owners, or a command outside the native allowlist).
+ */
+export interface RichSlashExecution {readonly item:string;readonly removal:RichCommandOutcome;readonly outcome:RichCommandOutcome|null;readonly composite:boolean}
 export interface RichSlashCommandOptions {
  items:RichSlashProvider;
  /** Optional owner exposed to item preparation, for controls that check owner binding. */
@@ -59,6 +68,10 @@ export interface RichSlashCommands {
  cancel(reason?:RichSlashCancelReason):void;
  dispose():void;
 }
+/** Follow-up kinds the native `replaceTriggerThen` admits (mirrors the Rust allowlist). */
+export const richTriggerCompositeKinds:readonly RichTriggerCompositeKind[]=Object.freeze(["setHeading","setCodeBlock","wrapList","setListKind","wrapTaskList","wrapBlockquote","wrapDetails","insertHorizontalRule","insertTable","insertBlocks","insertPageBreak"]);
+const compositeKinds:ReadonlySet<string>=new Set(richTriggerCompositeKinds);
+const isRichTriggerCompositeCommand=(command:RichCommand):command is RichTriggerCompositeCommand=>compositeKinds.has(command.kind);
 const surfaces=new WeakSet<HTMLElement>();
 const slashSpec:RichSuggestionSpec<RichSlashItem,RichSlashExecution>=Object.freeze({
  trigger:"/",attributes:Object.freeze({root:"breditorSlash",status:"slashStatus",index:"slashIndex",item:"slashItem"}),idPrefix:"breditor-slash",surfaces,
@@ -71,13 +84,23 @@ const slashSpec:RichSuggestionSpec<RichSlashItem,RichSlashExecution>=Object.free
  unavailable:(item:RichSlashItem,ui:RichUiLocale)=>ui.text("slashUnavailable",{label:item.label}),
  execute(item:RichSlashItem,run:RichSuggestionRun):RichSlashExecution{
   const {check,trigger,host}=run,block=trigger.block,selection:Extract<RichSelection,{kind:"text"}>={kind:"text",anchor:{block,offset:String(trigger.start),affinity:"after"},focus:{block,offset:String(check.caret),affinity:check.affinity}};
+  if(host.supportsTriggerComposite?.()===true){
+   // Allowlisted commands address blocks by identity, so the command prepared from the checked view
+   // is exactly the one the removal leaves applicable; Rust re-validates it after the removal.
+   const command=item.command(run.context(check.view));
+   if(command&&isRichTriggerCompositeCommand(command)){
+    const result=host.execute({kind:"replaceTriggerThen",data:{selection,command}},true,check.view.revision);
+    if(result==="queued")throw Error("The slash composite was queued instead of published");
+    return Object.freeze({item:item.id,removal:result,outcome:result,composite:true});
+   }
+  }
   const removal:RichCommand=check.view.rangeEditing==="general-v1"?{kind:"replaceGeneralRangePlainText",data:{selection,text:"",prefix:run.allocate("range")}}:{kind:"replaceTextRange",data:{selection,text:""}};
   const removed=host.execute(removal,true,check.view.revision);
   if(removed==="queued")throw Error("The slash trigger removal was queued; its command was not run");
   const after=host.view(),command=item.command(run.context(after));
   let outcome:RichCommandOutcome|null=null;
   if(command){const result=host.execute(command,true,after.revision);if(result==="queued")throw Error("The slash command was queued after its trigger was removed");outcome=result;}
-  return Object.freeze({item:item.id,removal:removed,outcome});
+  return Object.freeze({item:item.id,removal:removed,outcome,composite:false});
  },
  report:(item:RichSlashItem,execution:RichSlashExecution,ui:RichUiLocale)=>execution.outcome===null?Error(ui.text("slashInapplicable",{label:item.label})):undefined,
 });

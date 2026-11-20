@@ -30,6 +30,14 @@ export interface InterchangeOwner {
   /** Candidate rich V4 owners admit one trailing table caption paragraph. Absent or false keeps the
    * original conversion: `<caption>` content becomes ordinary flow before the table (`block-structure`). */
   supportsTableCaptions?():boolean;
+  /** Candidate rich V4 owners admit root-level page breaks (`breditor/page-break`). Absent or false keeps the
+   * original conversion: CSS forced-break declarations report `unsupported-style`, Word's `<br clear=all>`
+   * stays a line break and Google Docs' hidden page-break `<hr>` is removed (`removed-content`). */
+  supportsPageBreaks?():boolean;
+  /** Candidate rich V4 owners admit bookmarks (`breditor/bookmark` on paragraphs, headings and code blocks)
+   * and internal `#name` links. Absent or false keeps the original conversion: element ids are dropped
+   * silently, `<a name>` reports `unsupported-attribute` and `href="#…"` reports `unsafe-link`. */
+  supportsBookmarks?():boolean;
 }
 export type InterchangeLossCode = "html-repaired"|"removed-content"|"unsupported-element"|"unsupported-attribute"|"unsupported-style"|"style-approximation"|"unsafe-link"|"image-reference"|"image-alt"|"image-size"|"block-structure"|"table-geometry"|"table-width"|"list-numbering"|"markdown-feature";
 /** Counts are aggregated and bounded. No source text, URL, CSS, HTML or asset identifier is echoed. */
@@ -46,7 +54,13 @@ export interface InterchangeOptions {
   readonly exportImage?:(asset:ImportedAsset)=>string|undefined;
 }
 /** Explicit host target policy; native kind/shape admission still decides whether it is valid. */
-export interface InterchangeImportOptions {readonly kind?:"auto"|"flow"|"grid"}
+export interface InterchangeImportOptions {
+  readonly kind?:"auto"|"flow"|"grid";
+  /** `importMarkdown` only (`importHtml` ignores it): `true` links GFM autolink literals (`https://…`,
+   * `http://…`, `www.…`) whose target the native typed `autolink-v1` policy admits. Omitted or `false`
+   * keeps the version-one dialect, where those literals stay text. Anything but a boolean rejects. */
+  readonly autolinks?:boolean;
+}
 export interface RichInterchange {
   importHtml(source:string,options?:InterchangeImportOptions):InterchangeResult<ClipboardTransfer>;
   importMarkdown(source:string,options?:InterchangeImportOptions):InterchangeResult<ClipboardTransfer>;

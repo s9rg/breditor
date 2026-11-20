@@ -13,6 +13,7 @@ pub(crate) mod block_layout;
 mod block_layout_draft;
 mod block_layout_patch;
 mod block_layout_state;
+pub(crate) mod bookmark;
 pub(crate) mod clipboard;
 mod code_language;
 mod collapse_document_selection;
@@ -34,6 +35,7 @@ pub(crate) mod mention;
 mod native_history_usage;
 mod navigate_flow;
 mod navigate_grid;
+pub(crate) mod page_break;
 pub mod review;
 mod rich_document;
 mod rich_grid_selection;
@@ -66,6 +68,11 @@ pub use block_layout::{
 };
 pub use block_layout_patch::{RichBlockLayoutPatch, RichLayoutChange};
 pub use block_layout_state::{RichBlockLayoutState, RichLayoutFieldState, inspect_block_layout};
+pub use bookmark::{
+    RICH_BOOKMARK_NAME_MAX_BYTES, RICH_INTERNAL_LINK_PREFIX, RichBookmarkEntry, RichBookmarkError,
+    RichBookmarkIndex, RichBookmarkName, RichInternalLink, internal_link_name,
+    is_valid_name as is_valid_bookmark_name,
+};
 pub use clipboard::{
     RichClipboardError, RichClipboardFragment, RichClipboardIdAllocator, RichClipboardIdentityKind,
     RichClipboardKind, RichClipboardNamespace, RichClipboardTextProjection,
@@ -100,7 +107,7 @@ pub use list_numbering::{
 pub use local_session::{
     RICH_TYPING_GROUP_MAX_STEPS, RICH_TYPING_GROUP_WINDOW_MS, RichGeneralPlainRangePlan,
     RichLocalOutcome, RichLocalSession, RichLocalSessionError, RichLocalSnapshot, RichLocalState,
-    RichPendingFormatsUpdate, RichSelectionUpdate, RichTypingDeleteDirection,
+    RichPendingFormatsUpdate, RichSelectionUpdate, RichTriggerStepError, RichTypingDeleteDirection,
 };
 pub use mention::{
     RICH_MENTION_FORMAT, RICH_MENTION_ID_MAX_BYTES, RICH_MENTION_ID_PROPERTY,
@@ -113,6 +120,7 @@ pub use navigate_flow::{FlowMove, FlowNavigationOutcome, navigate_flow};
 pub use navigate_grid::{
     GridBoundary, GridMove, GridNavigationMode, GridNavigationOutcome, navigate_grid,
 };
+pub use page_break::{RICH_PAGE_BREAK_KIND, RichPageBreakError};
 pub use rich_document::{RichDocument, RichDocumentError};
 pub use rich_grid_selection::ResolvedRichGrid;
 pub use rich_selection::{

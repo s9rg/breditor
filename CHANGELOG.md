@@ -6,6 +6,131 @@ its durable formats and Wasm transport.
 
 ## Unreleased
 
+- Wire the opt-in AI rewrite and language-check tools to shared editors (audit
+  gap `ai-and-language-tools`): `sharedAiToolsHost`, `mountSharedAiTools` and
+  `mountSharedLanguageCheck` in `@breditor/collaboration`, `aiTools()` on the
+  SDK's `SharedEditorSession` / `SharedDocumentEditorSession`, and React
+  `BreditorSharedAiTools` / `BreditorSharedLanguageCheck`. Same provider
+  contract, scopes, bounds and cancellation as local editors; text is read from
+  the shared owner's admitted document JSON. Accept and each language suggestion
+  are one new `SharedDomEditor.replacePlainTextRange(...)` call: one guarded native
+  plain-text range replacement (`replace_plain_text`, or general range plain
+  input for general-v1 owners) with the current revision, one writer-local
+  history group never joined with typing; Undo leaves peers' edits intact. A
+  rewrite review is bound to its target region only (new host option
+  `aiStaleScope: "target"`; local editors keep whole-document binding), so peers
+  editing elsewhere never stale it, while a peer edit, format or insertion inside
+  the target does. Language issues in blocks a peer changed are dropped; others
+  stay. Formatted (Markdown/HTML) rewrite output is not offered for shared
+  editors. In shared rooms the provider may receive other participants' text;
+  hosts must obtain their consent. No new command, history family, saved setting
+  or Rust capability. See the "Shared editors" section of
+  docs/AI_AND_LANGUAGE_TOOLS.md.
+- `@breditor/interchange`: opt-in GFM autolink literals for Markdown import
+  (audit gap `markdown`). `importMarkdown(source, {autolinks: true})` links bare
+  `https://…`, `http://…` and `www.…` literals only when the editor's typed
+  `autolink-v1` rule would: the same candidate grammar and trailing punctuation
+  (mirrored from Rust `rich_autolink_candidate` and parity-tested against it)
+  and the same canonical `safeLinkV1` target subset as image links. Never inside
+  code, existing links, `<…>` autolinks, image labels or raw `<a>`/`<code>`, nor
+  across a backslash escape or entity. The version-one dialect is unchanged when
+  the option is omitted; `interchangeContractV1.markdownAutolinks` names the
+  opt-in. Markdown export now writes a link whose text is its exact target as
+  `<url>` (when that re-parses identically) and escapes `://` in plain text
+  (`https\://…`), so round trips stay exact with or without the option.
+- `@breditor/interchange`: Word desktop and Word for the web list numbering maps
+  to candidate rich V4 list styles (audit gap `office-paste`). For owners that
+  report `supportsListNumbering()`, Word desktop `a.`/`A.`/`i.`/`I.` markers and
+  Word for the web lettered/roman `list-style-type` with `%N.` level text become
+  native lower/upper alpha or roman ordered lists with their start and no
+  `list-numbering` notice; parenthesized, compound or unprovable formats keep the
+  closest style and are still reported. Other owners keep the original decimal
+  conversion and notices exactly.
+- Add opt-in slash commands to shared (collaborative) editors (audit gap
+  `mentions-slash`, shared half). `mountSharedSlashCommands(dom, {items})` in
+  `@breditor/collaboration` reuses the local typed-trigger session unchanged
+  (trigger detection, cancellation, async providers, accessible listbox, UI
+  catalog strings); remote publications re-check the trigger, so a peer edit
+  before the slash, removal of the trigger block or a remote read-only policy
+  cancels the menu. Choosing an item publishes one guarded shared dispatch,
+  `{commands:[delete_text(trigger), command]}`, at the checked revision, which
+  shared history undoes and redoes as one group; a refused batch publishes
+  nothing. `createSharedSlashCommands(controls)` maps Text, Heading 1–3, Bullet
+  and Numbered list, Table and, on V2/V3 toolbars, Task list, Quote, Code block
+  and Divider onto the shared toolbar's own controls (only block-identity
+  commands, `sharedSlashCommandKinds`, are admitted). Collapsible section, Page
+  break and the `@` mention menu stay local-only: shared editors are rich V1–V3.
+  The SDK adds `mountSlashCommands(session)` to `@breditor/editor/collaboration`
+  (default items from the new `toolbarControls()` on shared sessions) and
+  `BreditorSharedSlashCommands` to `@breditor/editor/collaboration/react`. See
+  docs/SLASH_COMMANDS.md#shared-editors.
+- Add named bookmarks and internal links to the unreleased local-only candidate
+  rich V4 (audit gap `document-utilities`). `breditor/bookmark` is an optional,
+  document-unique name (`[A-Za-z][A-Za-z0-9_-]{0,63}`) on a paragraph, heading or
+  code block (their persisted type revisions move to 2 in V4); an internal link is
+  the standard link with href `#name` (same window only), a separate bounded grammar
+  next to the unchanged external link policy. Dangling links are allowed, reported
+  by `RichBookmarkIndex` / `bookmarkIndex()` and rendered with
+  `data-rich-link-broken`; `renameBookmark` renames and retargets every link in one
+  history group, `setBookmark` sets or clears. Pasted blocks never carry a bookmark.
+  Live and static renderers emit `id="bm-<name>"` / `data-rich-bookmark` and
+  `href="#bm-<name>"`; links are inert while editing and scroll within their own
+  surface when read-only. The V4 toolbar gains **Bookmark**, **Remove bookmark** and
+  **Link to bookmark** (`RichToolbarReading.options` supplies document-dependent
+  select choices). V4-only HTML interchange maps ids, `<a name>` anchors and
+  `#fragment` links (`supportsBookmarks()`), Markdown falls back to HTML, and DOCX
+  export writes `w:bookmarkStart`/`w:bookmarkEnd` and `w:hyperlink w:anchor`. Wasm
+  descriptor `bookmarkVersion: 1`. The V4 fingerprint changes; V1–V3, their
+  fingerprints and their conversion are unchanged. Footnotes and template fields are
+  later work. See docs/RICH_LANGUAGE_V4.md.
+
+- Fix typing after a line break at the very end of a text block in rich local
+  and shared editors. In Chromium and WebKit, Shift+Enter at the end of a
+  paragraph or heading (or Enter at the end of an image or table caption)
+  followed by typing put the text before the new break, and Backspace removed
+  the character before it; no engine showed the new empty line. A lone trailing
+  LF in a `pre-wrap` block is not a native caret position, so the live renderer
+  now appends a presentation-only `<br data-rich-trailing-break>` to text blocks
+  ending in LF. It has no text: document content, model offsets, clipboard,
+  search and static rendering are unchanged. See the hard-break section of
+  docs/RICH_STRUCTURAL_V2.md.
+- Add explicit page breaks to the unreleased local-only candidate rich V4 and an
+  opt-in print presentation layer (audit gap `pagination`). Breditor stays a flow
+  editor, not a pagination engine. `breditor/page-break` is an atomic,
+  content-free block admitted only as a direct child of the document root;
+  guarded `insertPageBreak` (root positions only, caret kept) and
+  `deletePageBreak` commands are one history group each, and a page break is
+  node-selectable, a flow-navigation stop, deleted whole, moved only within the
+  root, skipped by search and kept by copy/paste (V1–V3 owners refuse the record).
+  Live and static renderers emit `<div class="breditor-page-break" role="separator"
+  aria-label="Page break" style="break-after:page;page-break-after:always">`; the
+  V4 toolbar and slash menu gain **Page break**. New `richPrintStyles` (A4/Letter,
+  portrait/landscape, three margin presets: forced breaks, rows, captions and
+  figures kept whole, headings kept with the next block, `<thead>` repeated,
+  chrome hidden), `mountRichPrintPreview` (approximate on-screen page guides) and
+  the static renderer's `print` option (embedded print CSS, leading header rows in
+  `<thead>`). V4-only HTML interchange maps Word and Google Docs page breaks and
+  forced-break CSS (`supportsPageBreaks()`), exports
+  `<div style="break-after:page;page-break-after:always"></div>`, and Markdown
+  falls back to that HTML with `markdown-feature`. New UI catalog keys
+  `pageBreakLabel` and `printPreviewLabel` (separate block). Wasm descriptor
+  `pageBreakVersion: 1`. The V4 fingerprint changes; V1–V3, their fingerprints and
+  their conversion are unchanged. See docs/PAGINATION_AND_PRINT.md.
+
+- Finish the `markdown-v1` list and code shortcuts (opt-in; no new rule-set name,
+  Wasm method, capability or saved format). Typing `[ ] `, `[x] ` or `[X] ` at the
+  start of a top-level bullet item's first line converts that one item to a task,
+  splitting the list around it (a converted first item joins a directly preceding
+  task list). A bullet, numbered or task marker typed in a paragraph directly after
+  a compatible list appends one item to that list instead of starting a second
+  adjacent list (numbered markers join only as the list's next ordinal). A third
+  Enter at the end of a code block whose text ends in two empty lines removes those
+  line feeds and enters a fresh paragraph after the code. Each conversion is one
+  isolated Undo step that restores the typed text, built only from existing
+  retained-identity actions/causal commands (wrap, move, outdent, insert); paste,
+  composition, remote updates and read-only owners never trigger them. Ordered,
+  nested and multi-paragraph items, typed markers inside an item's first line,
+  forward joins and Shift+Enter in code stay literal. See docs/RICH_INPUT_RULES.md.
 - Add opt-in, provider-agnostic AI rewrite and language-check tools for local
   editors (`mountRichAiTools` / `mountAiTools` / `BreditorAiTools` and
   `mountRichLanguageCheck` / `mountLanguageCheck` / `BreditorLanguageCheck`). The
@@ -20,8 +145,8 @@ its durable formats and Wasm transport.
   changed. Language issues are painted outside the editing DOM, reviewed from a
   keyboard list and applied one guarded replacement at a time; issues in changed
   blocks are dropped. New `ai*`/`lang*` UI catalog keys live in a separate block;
-  existing keys are unchanged. Shared editors are not wired yet. See
-  docs/AI_AND_LANGUAGE_TOOLS.md.
+  existing keys are unchanged. Shared editors: see the shared AI tools entry.
+  See docs/AI_AND_LANGUAGE_TOOLS.md.
 - Add table captions to the unreleased local-only candidate rich V4: a V4
   `breditor/table` admits, after its rows, at most one `breditor/paragraph`
   caption (rows keep their child indices; row/column/merge grammar is unchanged).

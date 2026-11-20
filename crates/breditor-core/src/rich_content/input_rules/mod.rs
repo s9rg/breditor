@@ -6,8 +6,10 @@
 
 mod autolink;
 mod block_rule;
+mod code_exit;
 mod error;
 mod inline_rule;
+mod list_rule;
 mod outcome;
 mod plan;
 mod rule_set;

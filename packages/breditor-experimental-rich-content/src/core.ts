@@ -3,7 +3,7 @@ import type {RichWritingToolsRead} from "./writing_tools_types.js";
 export type {RichWritingToolsRead,RichWritingCounts,RichWritingHeading} from "./writing_tools_types.js";
 import type {RichRetainedAssetReferencesRead} from "./retained_asset_references_types.js";
 export type {RichRetainedAssetReferencesRead,RichRetainedAssetReference} from "./retained_asset_references_types.js";
-export type {RichCommand,RichSelectionFormatChange,FormatLiteral,ImageAlt,ImageSize,TextDraft,ImageDraft,TableColumnDraft,TableCellDraft,TableRowDraft,TableDraft,FlowDraft,FlowPosition,ClipboardAllocation} from "./commands.js";
+export type {RichCommand,RichTriggerCompositeKind,RichTriggerCompositeCommand,RichSelectionFormatChange,FormatLiteral,ImageAlt,ImageSize,TextDraft,ImageDraft,TableColumnDraft,TableCellDraft,TableRowDraft,TableDraft,FlowDraft,FlowPosition,ClipboardAllocation} from "./commands.js";
 /** Initialized generated Wasm module; pass the same instance for all owners using it. */
 export interface RichWasmModule {
   readonly BreditorRichProfile: {fromBootstrapJson(input: string): unknown;fromStandardBootstrapJsonV1?(input:string):unknown;fromStructuralBootstrapJsonV2?(input:string):unknown;fromStandardStructuralBootstrapJsonV2?(input:string):unknown;fromLayoutBootstrapJsonV3?(input:string):unknown;fromStandardLayoutBootstrapJsonV3?(input:string):unknown;fromBootstrapJsonV4?(input:string):unknown;fromStandardBootstrapJsonV4?(input:string):unknown};
@@ -37,7 +37,7 @@ export interface RichSearchResults {
 /** Pure schema-admitted source content. This carries no destination allocation or edit authority. */
 export interface RichClipboardTransfer {format:"breditor/rich-clipboard-transfer";formatVersion:1;kind:"text"|"flow"|"grid";structuredJson:string;plainText:string}
 export type RichDocumentSelection=RichSelection|Readonly<{kind:"document"}>;
-export interface RichProfileDescriptor {kind: "rich"; abiVersion: 1; schema: {name: string; version: number}; schemaFingerprint: string;richLanguageVersion?:2|3|4;taskStructureVersion?:1;blockLayoutVersion?:1;listNumberingVersion?:1;textLanguageVersion?:1;imageLinkVersion?:1;detailsVersion?:1;mentionVersion?:1;tableCaptionVersion?:1}
+export interface RichProfileDescriptor {kind: "rich"; abiVersion: 1; schema: {name: string; version: number}; schemaFingerprint: string;richLanguageVersion?:2|3|4;taskStructureVersion?:1;blockLayoutVersion?:1;listNumberingVersion?:1;textLanguageVersion?:1;imageLinkVersion?:1;detailsVersion?:1;mentionVersion?:1;tableCaptionVersion?:1;pageBreakVersion?:1;bookmarkVersion?:1}
 /** Closed native intent. Omission keeps, null clears; bounds are enforced in Rust. */
 export interface RichBlockLayoutPatch {alignment?:"start"|"center"|"end"|"justify"|"left"|"right"|null;direction?:"ltr"|"rtl"|"auto"|null;indent?:number|null;lineHeightPercent?:number|null}
 /** Closed candidate rich V4 ordered-list marker families (CSS `list-style-type` keywords). */
@@ -166,8 +166,16 @@ export interface RichCoreEditor<P extends RichSelectionPolicy="original"> {
   supportsDetails?():boolean;
   /** Candidate rich V4 mention entities (`insertMention`); an older owner may omit it. */
   supportsMentions?():boolean;
+  /** Native `replaceTriggerThen` (slash commands as one Undo step); an older owner may omit it. */
+  supportsTriggerComposite?():boolean;
   /** Candidate rich V4 table captions (`addTableCaption`, `removeTableCaption`); an older owner may omit it. */
   supportsTableCaptions?():boolean;
+  /** Candidate rich V4 root-level page breaks (`insertPageBreak`, `deletePageBreak`); an older owner may omit it. */
+  supportsPageBreaks?():boolean;
+  /** Candidate rich V4 bookmarks and internal links (`setBookmark`, `renameBookmark`); an older owner may omit it. */
+  supportsBookmarks?():boolean;
+  /** Candidate rich V4: exact bookmark/internal-link inventory, including dangling links, of the current snapshot. */
+  bookmarkIndex?():import("./bookmark.js").RichBookmarkIndex;
   selectionCoverage?(scope?:"selection"|"document"):RichSelectionCoverageRead;
   selectionFormatState?(kind:string):RichSelectionFormatStateRead;
   enableTypingHistory?(expectedRevision?:string):boolean;

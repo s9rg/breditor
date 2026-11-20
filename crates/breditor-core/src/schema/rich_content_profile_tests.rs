@@ -154,6 +154,8 @@ fn explicit_candidate_v4_is_v3_grammar_plus_sections_with_its_own_rule_revision(
     assert_ne!(fingerprint(&lookalike), v4.fingerprint());
     // Collapsible sections: two new elements, and every V2 flow container admits a section.
     // Table captions: a table admits one trailing caption paragraph after its rows.
+    // Page breaks: one new atomic element admitted only by the document root.
+    // Bookmarks: paragraph, heading and code block move to revision 2 (bookmark name).
     let mut changed = vec![];
     for (name, element) in &v4.definition().elements {
         if v3.definition().elements.get(name) != Some(element) && name.as_str() != "breditor/image"
@@ -167,10 +169,14 @@ fn explicit_candidate_v4_is_v3_grammar_plus_sections_with_its_own_rule_revision(
         changed,
         [
             "breditor/blockquote",
+            "breditor/code-block",
             "breditor/details",
             "breditor/details-summary",
             "breditor/document",
+            "breditor/heading",
             "breditor/list-item",
+            "breditor/page-break",
+            "breditor/paragraph",
             "breditor/table",
             "breditor/table-cell",
             "breditor/task-item",
@@ -185,6 +191,13 @@ fn explicit_candidate_v4_is_v3_grammar_plus_sections_with_its_own_rule_revision(
     assert!(!v3.supports_rich_text_language());
     assert!(v4.supports_rich_text_language());
     assert!(!v3.supports_rich_mentions() && v4.supports_rich_mentions());
+    assert!(!v3.supports_rich_page_breaks() && v4.supports_rich_page_breaks());
+    assert!(!v3.supports_rich_bookmarks() && v4.supports_rich_bookmarks());
+    for kind in ["breditor/paragraph", "breditor/heading", "breditor/code-block"] {
+        let name = QualifiedName::try_new(kind)?;
+        assert_eq!(v3.definition().elements.get(&name).ok_or("text block")?.revision.get(), 1);
+        assert_eq!(v4.definition().elements.get(&name).ok_or("text block")?.revision.get(), 2);
+    }
     assert!(v3.supports_rich_block_layout() && v4.supports_rich_block_layout());
     Ok(())
 }

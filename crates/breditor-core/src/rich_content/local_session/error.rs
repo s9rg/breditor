@@ -21,6 +21,10 @@ pub enum RichLocalSessionError {
     /// A directional deletion must touch the actual caret in one stable text block.
     #[error("typing deletion target does not match its direction and current caret")]
     TypingDeleteTarget,
+    /// A trigger composite needs one nonempty same-block prose trigger range and
+    /// exactly one content-changing follow-up step.
+    #[error("trigger removal composite target or follow-up step is not admitted")]
+    TriggerStep,
     /// The live host policy forbids content, history or pending-format mutation.
     #[error("rich editor is read-only")]
     ReadOnly,

@@ -372,6 +372,45 @@ may be replaced without exiting; await the separately owned controller's
 `dispose()` before replacing its target/editor. Failed native cleanup retains a
 retryable retirement handle and never exits a foreign session. See [the contract](../../docs/RICH_WRITING_TOOLS.md#native-fullscreen).
 
+## AI rewrite and language check
+
+`mountSharedAiTools(asideHost, domController, {provider})` and
+`mountSharedLanguageCheck(asideHost, domController, {provider})` (or
+`sharedAiToolsHost(domController)` for the structural port) mount the same
+opt-in, provider-agnostic panels as local editors. Nothing leaves the page unless
+the host provider sends it; only the explicit scope is sent, as plain text read
+from the admitted document JSON. Accept, and each applied language suggestion, is
+one `SharedDomEditor.replacePlainTextRange(...)` call: one guarded native
+plain-text range replacement (`replace_plain_text`, or general range plain input
+for general-v1 owners) with the current revision, one writer-local history group
+that Undo removes without touching peers' edits. A rewrite review is bound only
+to its target region, so peers editing elsewhere never stale it; a peer edit in
+the target does. Language issues in blocks a peer changed are dropped. Formatted
+(`markdown`/`html`) rewrite output is not offered for shared editors. In a shared
+room the provider may receive text other participants wrote: hosts must obtain
+their consent before enabling a third-party provider. See
+[the contract](../../docs/AI_AND_LANGUAGE_TOOLS.md#shared-editors).
+## Slash commands
+
+`mountSharedSlashCommands(dom, {items})` borrows a `SharedDomEditor` (original
+or document scope) and reuses the local typed-trigger session unchanged: the
+same `/` trigger detection, cancellation reasons, async providers, accessible
+listbox and UI catalog strings. Remote publications are re-checked like local
+ones, so a peer edit before the slash, removal of the trigger block or a remote
+read-only policy cancels the menu; unrelated remote edits leave it open.
+`createSharedSlashCommands(controls, picks?, ui?)` maps the shared toolbar's own
+controls (`paragraph`, `h1`–`h3`, `bullet`, `numbered`, `tasks`, `blockquote`,
+`code-block`, `horizontal-rule`, `table`) by capturing the single dispatch each
+control would publish. Choosing an item publishes **one** guarded dispatch,
+`{commands:[delete_text(trigger), command]}`, at the checked revision; shared
+history makes that one Undo group, and a refused batch publishes nothing. Only
+block-identity commands (`sharedSlashCommandKinds`) are admitted after the
+trigger removal. Shared editors are rich V1–V3, so there is no `@` mention menu
+and no Collapsible section or Page break item. `@breditor/editor/collaboration`
+exposes `mountSlashCommands(session)` (default items from the session's
+`toolbarControls()`) and `@breditor/editor/collaboration/react` exposes
+`BreditorSharedSlashCommands`. See [the slash-command contract](../../docs/SLASH_COMMANDS.md#shared-editors).
+
 ## Chrome localization
 
 `mountSharedEditor` / `mountSharedDocumentEditor` accept the same opt-in `ui`

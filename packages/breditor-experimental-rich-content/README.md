@@ -81,9 +81,13 @@ DOM focus stays in the editor. The surface gets `aria-controls`,
   and Escape dismisses the popup.
 - **Items.** `createRichSlashCommands(controls, picks?)` adapts existing
   toolbar controls.
-- **Running a command.** A chosen item first removes the trigger with
-  `replaceTextRange` (or `replaceGeneralRangePlainText` under `general-v1`). It
-  then publishes its existing command, so Undo takes two steps.
+- **Running a command.** When the host reports `supportsTriggerComposite()`
+  and the item's command is in `richTriggerCompositeKinds`, the session
+  publishes one native `replaceTriggerThen`. It removes the trigger and runs
+  the command as one Undo step, and publishes nothing if Rust refuses either
+  part. Otherwise it first removes the trigger with `replaceTextRange` (or
+  `replaceGeneralRangePlainText` under `general-v1`), then publishes the
+  command, so Undo takes two steps.
 - **Cancellation.** Async providers receive an `AbortSignal`, and superseded or
   late results are discarded. The trigger is identified by block id, slash
   offset and the exact text before it, and every publication re-checks it.
@@ -118,6 +122,41 @@ so it is laid out below the rows and edited like any paragraph.
 **Table caption** toggle, which sends `addTableCaption {table, caption}` or
 `removeTableCaption {table}`; `tableCaptionOf`, `isTableCaption` and
 `selectedTableCaption` are read-only helpers. See `docs/RICH_LANGUAGE_V4.md` (Slice 6).
+
+## Page breaks and print (candidate rich V4)
+
+Breditor stays a flow editor. A candidate rich V4 document may hold explicit
+`breditor/page-break` blocks, admitted only as direct children of the document root
+(`supportsPageBreaks()`, descriptor `pageBreakVersion: 1`). They render as a
+non-editable, node-selectable `<div class="breditor-page-break" role="separator"
+aria-label="Page break" style="break-after:page;…">` (label from the catalog key
+`pageBreakLabel`). `pageBreakToolbarControls(core)` (included in
+`createRichToolbarV4`) provides **Page break**, which sends
+`insertPageBreak {position, block}` after the root block holding the selection;
+`deletePageBreak {block, paragraph}` and ordinary node deletion remove one. The
+standard slash menu gains **Page break** with a V4 toolbar.
+
+The opt-in print layer is CSS only: `richPrintStyles({size, orientation, margin})`
+(A4/Letter, portrait/landscape, narrow/normal/wide) returns deterministic `@page`
+and `@media print` rules (forced page breaks, rows/figures/captions kept whole,
+headings kept with the next block, `<thead>` repeated, chrome hidden), and
+`mountRichPrintPreview(editor.surface, options)` shows approximate page boundaries
+on screen (catalog key `printPreviewLabel`). See `docs/PAGINATION_AND_PRINT.md`.
+
+## Bookmarks and internal links (candidate rich V4)
+
+A candidate rich V4 paragraph, heading or code block may carry one document-unique
+bookmark name (`breditor/bookmark`, `[A-Za-z][A-Za-z0-9_-]{0,63}`), and a standard
+link whose href is `#name` is an internal link to it (`supportsBookmarks()`, descriptor
+`bookmarkVersion: 1`). `setBookmark {block, name|null}` sets or clears one;
+`renameBookmark {from, to}` renames it and retargets every link in one Undo step.
+Dangling links are allowed: `core.bookmarkIndex()` reports `brokenLinks` and the
+renderer marks them with `data-rich-link-broken` (`richBookmarkStyles`). Bookmarked
+blocks render `id="bm-<name>" data-rich-bookmark`, internal links
+`href="#bm-<name>"`; they are inert while editing and scroll within the surface when
+read-only. `bookmarkToolbarControls(core)` (included in `createRichToolbarV4`)
+provides **Bookmark**, **Remove bookmark** and **Link to bookmark**. See
+`docs/RICH_LANGUAGE_V4.md` (Slice 8).
 
 ## Chrome localization
 

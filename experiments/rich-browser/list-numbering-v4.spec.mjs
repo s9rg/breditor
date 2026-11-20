@@ -97,3 +97,21 @@ test("interchange maps HTML numbering only for the V4 owner; native V3 admission
  expect(result.v3).toEqual([{"breditor/start":1},{"breditor/start":4}]);
  expect(result.v3losses).toContain("list-numbering");
 });
+
+test("Word desktop and Word for the web lettered/roman numbering admit natively as V4 list styles; V3 keeps the notices",async({page})=>{
+ const result=await page.evaluate(()=>{const t=window.v4;
+  const word=(level,marker,body)=>`<p class=MsoListParagraphCxSpMiddle style='mso-list:l0 level${level} lfo1'><![if !supportLists]><span style='mso-list:Ignore'>${marker}<span style='font:7.0pt "Times New Roman"'>&nbsp; </span></span><![endif]>${body}<o:p></o:p></p>`;
+  const online=(style,items,level=1)=>`<div class="ListContainerWrapper"><ol role="list" style="list-style-type: ${style};">${items.map((body,i)=>`<li data-leveltext="%${level}." data-listid="9" aria-setsize="-1" data-aria-posinset="${i+1}" data-aria-level="${level}" role="listitem"><p>${body}</p></li>`).join("")}</ol></div>`;
+  const html=word(1,"1.","Scope")+word(2,"a.","Review")+word(2,"b.","Tag")+word(3,"i.","Sign")+word(1,"2.","Publish")+"<p>Gap</p>"+online("upper-roman",["One","Two"])+online("lower-alpha",["Alpha"],2);
+  const lists=r=>{if(!r.ok)return r.error;const out=[];(function walk(n){if(n.type==="breditor/ordered-list")out.push(Object.fromEntries(Object.entries(n.properties).filter(([k])=>k!=="breditor/block-id")));for(const c of n.children??[])walk(c);})(JSON.parse(r.value.structuredJson).document.root);return out;};
+  const adapter=t.createRichInterchange(t.core),v4=adapter.importHtml(html),exported=adapter.exportHtml(v4.value.structuredJson),back=adapter.importHtml(exported.value);
+  const v3p=t.api.compileStandardLayoutRichProfileV3(window.rich.wasm,t.bootstrap(8,4)),old=t.open(v3p);v3p.dispose();
+  try{const v3=t.createRichInterchange(old).importHtml(html);
+   return {v4:lists(v4),v4losses:v4.losses.map(l=>l.code),back:lists(back),v3:lists(v3),v3numbering:v3.losses.find(l=>l.code==="list-numbering")?.count};}finally{old.dispose();}
+ });
+ expect(result.v4).toEqual([{"breditor/start":1},{"breditor/list-style":2,"breditor/start":1},{"breditor/list-style":4,"breditor/start":1},{"breditor/list-style":5,"breditor/start":1},{"breditor/list-style":2,"breditor/start":1}]);
+ expect(result.v4losses).not.toContain("list-numbering");expect(result.back).toEqual(result.v4);
+ expect(result.v3).toEqual([{"breditor/start":1},{"breditor/start":1},{"breditor/start":1},{"breditor/start":1},{"breditor/start":1}]);
+ // Three Word desktop markers; Word for the web: one list notice plus one per item for each non-decimal list.
+ expect(result.v3numbering).toBe(8);
+});

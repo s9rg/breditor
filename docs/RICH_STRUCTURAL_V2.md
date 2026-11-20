@@ -181,6 +181,27 @@ is honored without first moving the visible logical caret. Installed regression
 tests cover both paths; synthetic events and automation keys are not native IME
 qualification or a repair claim for the historical intermittent WebKit fault.
 
+**Trailing break caret anchor.** A text block rendered with `white-space:
+pre-wrap` whose text *ends* in LF has no line box after that LF, so the position
+after it is not a native caret position. Chromium and WebKit then report the
+next `beforeinput` target range before the LF (and Firefox, like the others,
+showed no new empty line): text typed after a line break at the very end of a
+paragraph, heading, image caption or table caption landed before the break, and
+Backspace there removed the preceding character. Rust selection and the DOM
+selection were already correct; the faulty layer was the live projection. The
+shared live renderer (`render.ts`, used by local and shared editors) therefore
+appends one presentation-only `<br data-rich-trailing-break>` after the content
+of any paragraph, heading, section summary or code block whose last text run
+ends in LF. It carries no text, so `Range.toString`, `textContent` and the
+text-node walkers in `selection.ts` ignore it: the DOM point before or after it
+maps to the model offset after the LF, and model offsets, document content,
+clipboard text, search and composition reconcile are unchanged. The static
+renderer does not emit it (its output is unchanged). Regression:
+`experiments/rich-browser/trailing-break.spec.mjs` (Chromium, Firefox, WebKit)
+and `packages/breditor-experimental-rich-content/tests/trailing_break.test.ts`.
+The default `@breditor/browser` editor has no hard breaks (LF input splits
+paragraphs), so it is unaffected.
+
 ## Native shared structural foundation
 
 The optional Rust collaboration crate has explicit

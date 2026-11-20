@@ -5,16 +5,22 @@ const caretAtEnd=(page,block)=>page.evaluate(block=>{const view=window.demo.edit
  const point={block,offset:String(length),affinity:"after"};window.demo.editor.execute({kind:"setSelection",selection:{kind:"text",anchor:point,focus:point}});window.demo.editor.focus();},block);
 test.beforeEach(async({page})=>{await page.goto("/demo");await expect(page.locator("#ready")).toHaveText("Ready — real Rust/Wasm editor");});
 
-test("a typed slash opens the command menu and runs an existing command as two Undo steps",async({page})=>{
+test("a typed slash opens the command menu and runs an existing command as one native Undo step",async({page})=>{
  await caretAtEnd(page,"demo-footer");await page.keyboard.type(" /");
  const listbox=page.locator("[data-breditor-slash] [role=listbox]");await expect(listbox).toBeVisible();
  await page.keyboard.type("hea");await expect(listbox.getByRole("option")).toHaveText(["Heading 1","Heading 2","Heading 3"]);
  await expect(page.locator(".breditor-rich-surface")).toHaveAttribute("aria-expanded","true");
+ expect(await page.evaluate(()=>window.demo.editor.supportsTriggerComposite())).toBe(true);
+ const depth=()=>page.evaluate(()=>window.demo.editor.view().undoDepth),typed=await depth();
  await page.keyboard.press("ArrowDown");await page.keyboard.press("Enter");
  const footer=page.locator('[data-rich-block="demo-footer"]');
  await expect(footer).toHaveJSProperty("tagName","H2");await expect(footer).not.toContainText("/hea");await expect(listbox).toBeHidden();
- await page.evaluate(()=>window.demo.editor.execute({kind:"undo"}));await expect(footer).toHaveJSProperty("tagName","P");await expect(footer).not.toContainText("/hea");
- await page.evaluate(()=>window.demo.editor.execute({kind:"undo"}));await expect(footer).toContainText(" /hea");
+ expect(await depth()).toBe(typed+1);
+ // One Undo restores both the paragraph and the typed `/hea`, with the caret after it.
+ await page.evaluate(()=>window.demo.editor.execute({kind:"undo"}));await expect(footer).toHaveJSProperty("tagName","P");await expect(footer).toContainText(" /hea");
+ expect(await depth()).toBe(typed);
+ const caret=await page.evaluate(()=>window.demo.editor.view().selection);expect(caret.focus.block).toBe("demo-footer");
+ await page.evaluate(()=>window.demo.editor.execute({kind:"redo"}));await expect(footer).toHaveJSProperty("tagName","H2");await expect(footer).not.toContainText("/hea");
 });
 
 test("table column separators resize through one width command per step",async({page})=>{

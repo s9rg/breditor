@@ -11,10 +11,12 @@ export interface SlashCommandEditor {
  view():RichEditorView<RichSelectionPolicy>;
  execute(command:RichCommand,focus?:boolean,revision?:string):RichCommandOutcome|"queued";
  focus():void;
+ /** Optional: when it returns true, an allowlisted item runs as one native `replaceTriggerThen` (one Undo step). */
+ supportsTriggerComposite?():boolean;
 }
 export function slashCommandHost(editor:SlashCommandEditor):RichSlashCommandHost {
  const search=editor.search();
- return Object.freeze({surface:editor.surface,searchState:()=>search.searchState(),subscribeSearch:(listener:()=>void)=>search.subscribeSearch(listener),view:()=>editor.view(),execute:(command:RichCommand,focus?:boolean,revision?:string)=>editor.execute(command,focus,revision),focus:()=>editor.focus(),...(editor.uiLocale?{uiLocale:()=>editor.uiLocale!()}:{})});
+ return Object.freeze({surface:editor.surface,searchState:()=>search.searchState(),subscribeSearch:(listener:()=>void)=>search.subscribeSearch(listener),view:()=>editor.view(),execute:(command:RichCommand,focus?:boolean,revision?:string)=>editor.execute(command,focus,revision),focus:()=>editor.focus(),...(editor.uiLocale?{uiLocale:()=>editor.uiLocale!()}:{}),...(editor.supportsTriggerComposite?{supportsTriggerComposite:()=>editor.supportsTriggerComposite!()}:{})});
 }
 /** Mount opt-in slash commands over a local editor. Dispose before disposing the editor's host. */
 export function mountSlashCommands(editor:SlashCommandEditor,options:RichSlashCommandOptions):RichSlashCommands {

@@ -6,8 +6,8 @@ format, operation protocol or replacement for semantic toolbar commands.
 
 The Rust planner, exclusive local/shared calls and optional Wasm/SDK expose the
 first policy. Vanilla and React browser owners enable it only with
-`inputRules: "markdown-v1"`. Omission keeps ordinary literal input. Additional
-shortcut behavior and final V1 qualification remain unfinished; paste,
+`inputRules: "markdown-v1"`. Omission keeps ordinary literal input. Final V1
+qualification remains unfinished; paste,
 composition, programmatic commands and recovery never enable it implicitly.
 
 The [browser and installed-package checkpoint](qualification/2026-10-18-input-rules-browser-installed.json)
@@ -99,7 +99,10 @@ unknown packs reject before mount changes the host. Root factories reject an
 unknown policy before acquiring storage or native ownership.
 
 Only one plain local `beforeinput insertText` scalar at an admitted collapsed
-text caret invokes the exclusive call. Different, unreadable or multiple target
+text caret invokes the exclusive call; the one addition is `markdown-v1` Enter
+(`insertParagraph`) at a collapsed code-block caret, which sends `"\n"` through
+the same plain exclusive call (local and shared controllers) instead of the
+ordinary hard break. Different, unreadable or multiple target
 ranges do not trigger rules. Paste, replacement/autocorrection, remote updates,
 composition and node/grid/document/range replacement retain their ordinary
 paths. Browser eligibility checks do not recognize Markdown; native planning
@@ -162,12 +165,75 @@ not copied or replaced.
   the rule, with the same identity and a reachable caret.
 
 Quotes, tasks, code and rules need rich grammar 2 or 3. Grammar 1 still supports
-headings and ordinary lists. Captions do not accept structural shortcuts. A
-required first paragraph/heading in a list or task item may change heading rank,
-but is not replaced by a wrapper or code block. Later flow paragraphs can be
-wrapped normally. Conversion of an existing list item into a task, adjacent-list
-joining and nested automatic shortcuts are follow-up functionality; the policy
-does not flatten retained item bodies to approximate them.
+headings and ordinary lists (including list joining below). Captions do not
+accept structural shortcuts. A required first paragraph/heading in a list or
+task item may change heading rank, but is not replaced by a wrapper or code
+block; the only other item-head shortcut is the task conversion below. Later
+flow paragraphs can be wrapped normally.
+
+### List continuation and code Enter
+
+These rules complete `markdown-v1` itself rather than adding a new rule set. The
+stability promise is about saved meaning: selection is never saved, checkpoints
+record only ordinary admitted edits, and the Wasm calls, capabilities, outcomes
+and history families are unchanged. A host on an older runtime simply keeps the
+earlier literal or separate-list result. Every rule below is composed only from
+existing retained-identity actions and their original causal commands; no item
+body is flattened, copied or re-created.
+
+**Existing-list task conversion.** `[ ] `, `[x] ` or `[X] ` typed at the start of
+the first line of an item converts *that item* (not the whole list), matching
+GitHub task-list items and block-based editors. Grammar requires task items in a
+task list, so the list is split around the item: earlier items keep the original
+list identity, the item becomes a one-task list (fresh `…:rule:tasks` /
+`…:rule:task` identities, the typed completion), and later items continue in a
+fresh `…:rule:tail` list only when items remain on both sides. The head paragraph,
+its suffix text and any non-prose tail (nested lists, quotes, code, images) keep
+their identities inside the task. When the converted item was the list's first
+item and the list directly follows a task list, the task is appended to that
+task list, so converting items one by one never leaves adjacent task lists.
+Lowering: marker deletion, `OutdentListItems` (one item), `WrapTaskList` over the
+head through the item's last body block, then, when joining, `MoveBlock` +
+`OutdentTaskItems`. Literal: items of numbered lists (an unnumbered task would
+silently drop the ordinal), items of lists nested inside another list item, items
+whose body has a second paragraph/heading (each would become another task),
+existing task items and grammar 1.
+
+**Backward adjacent-list joining.** A list marker typed in a paragraph whose
+directly preceding flow sibling is a compatible list appends one new item to that
+list instead of creating a second adjacent list, as ProseMirror's wrapping rules
+and the common editors built on it do. `-`, `+` and `*` join a preceding bullet
+list. A numbered marker joins a preceding numbered list only when it is that
+list's next ordinal (its continuation start, reversed lists counting down);
+otherwise it starts a new list at the typed ordinal as before. `[ ]`/`[x]` join a
+preceding task list with the typed completion. The paragraph keeps its identity
+as the new item's head; a last item's trailing nested flow stays before the new
+item. This also applies to later paragraphs inside an item after a nested list.
+Lowering: the original wrap (`WrapList`/`WrapTaskList`), `MoveBlock` of the fresh
+one-item list to the end of the target's last item, then `OutdentListItems`/
+`OutdentTaskItems` of that item; the transient list identity disappears in the
+same group. Literal (unchanged separate list): different kinds, a non-adjacent
+list, and a following list (no forward join).
+
+**Nesting.** Typing `- ` (or another list/quote/code marker) at the start of an
+item's first line stays literal: an item head must remain prose, and the editors
+this follows nest with Tab, not with a typed marker. A marker in a later
+paragraph of an item still wraps it in a nested list (or joins a nested list
+directly before it).
+
+**Conventional code Enter.** Enter in a code block keeps inserting a line feed.
+With `markdown-v1`, a collapsed code caret's Enter goes through the exclusive
+plain call as the text `"\n"` (`RichInputRuleSet::is_trigger` and
+`plan_rich_markdown_input_rule` accept it; the typed-scalar fast path
+`is_rich_markdown_input_rule_trigger` is unchanged). When that retained line feed
+leaves the caret at the very end of the block and the text ends in three line
+feeds (two empty lines plus this Enter), one group deletes the three line feeds
+and inserts a fresh empty paragraph (`…:rule:p`) directly after the code block in
+the same flow, with freshly derived pending styles — Tiptap's
+`exitOnTripleEnter` convention. One Undo restores all three line feeds with the
+caret at the end of the code. Fewer empty lines, a caret before the end,
+Shift+Enter, ranges and prose line feeds stay literal. The explicit
+`exitCodeBlock` command (Mod+Enter) is unchanged.
 
 Inline rules recognize `**body**` or `__body__` as strong, `*body*` or `_body_` as
 emphasis, `~~body~~` as strike and single-backtick delimiters as inline code.
@@ -333,9 +399,9 @@ runtime pairs and writes its separate full-reference report. Missing references
 never select the portable scope automatically. `--reuse-runtimes` is a separately
 recorded development mode; neither candidate profile selects it.
 
-Continue existing-list task conversion, adjacent/nested automatic list behavior,
-conventional code-fence Enter and the additional shortcut cases above without
-flattening rich bodies or changing saved recipe meanings. Final input, browser,
+Existing-list task conversion, backward adjacent-list joining and conventional
+code Enter are implemented (see above) with native, causal, Wasm and real-key
+browser tests; the deliberately literal cases listed there remain literal. Final input, browser,
 performance, storage, compatibility and release qualification remain part of the
 V1 goal. Synthetic composition and DOM tests do not qualify an OS input method,
 native clipboard, screen reader or the historical intermittent WebKit fault.

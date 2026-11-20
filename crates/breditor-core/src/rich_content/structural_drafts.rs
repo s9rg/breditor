@@ -82,6 +82,18 @@ impl RichBlockDraft {
             vec![],
         )?))
     }
+    /// Candidate V4 atomic page break with an explicit stable identity and no content.
+    ///
+    /// Admission (V4 only, document root only) is deferred to the complete-tree proof.
+    /// # Errors
+    /// Rejects an internal AST construction invariant.
+    pub fn page_break(id: &BlockId) -> Result<Self, RichDraftError> {
+        Ok(Self::from_node(element(
+            "page-break",
+            vec![("block-id", PropertyValue::from_string(id.as_str()))],
+            vec![],
+        )?))
+    }
 }
 
 /// Task item with an explicit checked bit, leading prose block and retained rich tail.

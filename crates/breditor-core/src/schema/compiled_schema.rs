@@ -272,6 +272,21 @@ impl CompiledSchema {
         matches!(self.rich_content_revision(), Some(4))
     }
 
+    /// Whether this exact language admits explicit root-level page breaks (rich V4 only).
+    #[cfg(feature = "experimental-rich-content")]
+    #[must_use]
+    pub const fn supports_rich_page_breaks(&self) -> bool {
+        matches!(self.rich_content_revision(), Some(4))
+    }
+
+    /// Whether this exact language admits named bookmarks on text blocks and internal
+    /// `#name` link targets (rich V4 only).
+    #[cfg(feature = "experimental-rich-content")]
+    #[must_use]
+    pub const fn supports_rich_bookmarks(&self) -> bool {
+        matches!(self.rich_content_revision(), Some(4))
+    }
+
     /// Whether this exact language admits native mention entities (rich V4 only).
     #[cfg(feature = "experimental-rich-content")]
     #[must_use]
