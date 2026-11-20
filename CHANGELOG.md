@@ -6,6 +6,12 @@ its durable formats and Wasm transport.
 
 ## Unreleased
 
+- Test infrastructure: the rich-browser Playwright suite now runs WebKit as
+  `webkit-1`…`webkit-N` projects (one per five spec files, round-robin). Playwright's
+  macOS WebKit stops opening pages after about 63 test contexts in one browser
+  instance, so a single full run used to hang at the 64th and 128th tests. Each
+  project gets a fresh browser; select all of WebKit with `--project='webkit*'`.
+  The global timeout is now 20 minutes for the full three-engine run.
 - Wire the opt-in AI rewrite and language-check tools to shared editors (audit
   gap `ai-and-language-tools`): `sharedAiToolsHost`, `mountSharedAiTools` and
   `mountSharedLanguageCheck` in `@breditor/collaboration`, `aiTools()` on the
