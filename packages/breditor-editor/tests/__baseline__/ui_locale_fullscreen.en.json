@@ -1,0 +1,13 @@
+[
+ "<div data-breditor-fullscreen-controls=\"\"><button type=\"button\" data-fullscreen-action=\"toggle\" aria-pressed=\"false\" disabled=\"\">Enter fullscreen</button><span role=\"status\">Native fullscreen unavailable</span></div>",
+ "<div data-breditor-fullscreen-controls=\"\"><button type=\"button\" data-fullscreen-action=\"toggle\" aria-pressed=\"false\" disabled=\"\">Enter fullscreen</button><span role=\"status\">Native fullscreen is unavailable or denied by this environment</span></div>",
+ "<div data-breditor-fullscreen-controls=\"\"><button type=\"button\" data-fullscreen-action=\"toggle\" aria-pressed=\"true\">Exit fullscreen</button><span role=\"status\">Fullscreen</span></div>",
+ "<div data-breditor-fullscreen-controls=\"\"><button type=\"button\" data-fullscreen-action=\"toggle\" aria-pressed=\"false\">Enter fullscreen</button><span role=\"status\"></span></div>",
+ "<div data-breditor-fullscreen-controls=\"\"><button type=\"button\" data-fullscreen-action=\"toggle\" aria-pressed=\"false\" disabled=\"\">Enter fullscreen</button><span role=\"status\">Finish composing before fullscreen</span></div>",
+ "<div data-breditor-fullscreen-controls=\"\"><button type=\"button\" data-fullscreen-action=\"toggle\" aria-pressed=\"false\">Enter fullscreen</button><span role=\"status\">Fullscreen entry requires the exact idle editor publication outside composition</span></div>",
+ "<div data-breditor-fullscreen-controls=\"\"><button type=\"button\" data-fullscreen-action=\"toggle\" aria-pressed=\"true\" disabled=\"\">Exit fullscreen</button><span role=\"status\">Another fullscreen session or transition is active</span></div>",
+ "<div data-breditor-fullscreen-controls=\"\"><button type=\"button\" data-fullscreen-action=\"toggle\" aria-pressed=\"false\" disabled=\"\">Enter fullscreen</button><span role=\"status\">Another fullscreen session is active</span></div>",
+ "<div data-breditor-fullscreen-controls=\"\"><button type=\"button\" data-fullscreen-action=\"toggle\" aria-pressed=\"false\" disabled=\"\">Enter fullscreen</button><span role=\"status\">Cannot exit another fullscreen session</span></div>",
+ "<div data-breditor-fullscreen-controls=\"\"><button type=\"button\" data-fullscreen-action=\"toggle\" aria-pressed=\"false\" disabled=\"\">Enter fullscreen</button><span role=\"status\">Another fullscreen session or transition is active</span></div>",
+ "<div data-breditor-fullscreen-controls=\"\"><button type=\"button\" data-fullscreen-action=\"toggle\" aria-pressed=\"true\">Exit fullscreen</button><span role=\"status\">Fullscreen</span></div>"
+]
