@@ -38,7 +38,7 @@ pub(super) fn domain(value: &RichCoverageDomain) -> AffineTextDomain {
         // Shared editing is rich V1–V3, whose grammars admit no table caption; a V4-only
         // table caption therefore never reaches a shared replica. Keep its own domain apart.
         RichCoverageDomain::TableCaption(table) => {
-            AffineTextDomain::Caption { image: format!("table:{}", table.as_str()).into() }
+            AffineTextDomain::Caption { image: format!("table:{}", table.as_str()) }
         }
         RichCoverageDomain::Cell(cell) => AffineTextDomain::Cell {
             cell: crate::rich_replica::selection::CellTarget {
