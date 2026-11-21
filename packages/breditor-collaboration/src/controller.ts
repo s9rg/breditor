@@ -23,6 +23,7 @@ import type {RichInputRuleId,RichInputRuleOutcome} from "@breditor/experimental-
 import type {RichWritingToolsRead} from "@breditor/experimental-rich-content";
 import {RichWritingEvents,RichWritingReadRegistry,type RichWritingToolsHostState} from "@breditor/experimental-rich-content/rendering";
 import {prepareRichPlaceholder,RichPlaceholderPresentation,richPlaceholderStyles} from "@breditor/experimental-rich-content/rendering";
+import {richCoordinatorShortcuts,type RichShortcutEntry} from "@breditor/experimental-rich-content/rendering";
 import {mountSharedV4BlockFieldDom,sharedV4RenderOptions} from "./v4_block_fields_dom.js";
 export interface SharedDomOptions<P extends SharedSelectionPolicy="original"> extends RenderOptions {
  core:SharedRichEditor<P>;toolbar?:readonly SharedToolbarControl<P>[];label?:string;image?:{asset:string;alt:string};
@@ -123,9 +124,15 @@ export class SharedDomEditor<P extends SharedSelectionPolicy="original"> {
  #attempt(run:()=>void):void{this.#reportedError=undefined;try{run();}catch(error){if(!this.#alreadyReported(error)){this.#refresh(false);this.#report(error);}}}
  #mountControl(container:HTMLElement,control:SharedToolbarControl<P>,signal:AbortSignal):RichControlView<ActionContext<P>>{return mountToolbarControl(container,control,{prefix:"shared",ui:this.#ui,signal,sync:()=>this.#sync(),stamp:()=>JSON.stringify(this.#options.core.view()),attempt:work=>this.#attempt(work),focus:()=>this.focus(),run:(value,fields)=>this.#perform(c=>control.run(c,value,fields))});}
  /** Context UI port (see RichContextUiHost): the same admitted control, widget, gating and command path in another presentation. */
- contextUiState():{readonly revision:string;readonly closed:boolean;readonly busy:boolean;readonly composing:boolean;readonly readOnly:boolean;readonly selection:"none"|"caret"|"text"|"node"|"grid"|"document"}{
+ contextUiState():{readonly revision:string;readonly closed:boolean;readonly busy:boolean;readonly composing:boolean;readonly readOnly:boolean;readonly selection:"none"|"caret"|"text"|"node"|"grid"|"document";readonly emptyParagraph:boolean}{
   const view=this.#model.view,s=view.selection,selection=!s?"none" as const:s.kind==="text"?(s.anchor.block===s.focus.block&&s.anchor.offset===s.focus.offset?"caret" as const:"text" as const):s.kind;
-  return Object.freeze({revision:view.revision,closed:this.#disposed,busy:this.#busy,composing:!!this.#composition,readOnly:view.readOnly===true,selection});
+  const node=selection==="caret"&&s?.kind==="text"?this.#model.nodes.get(s.focus.block):undefined,emptyParagraph=node?.type==="breditor/paragraph"&&node.children.every(child=>child.kind==="text"&&!child.text);
+  return Object.freeze({revision:view.revision,closed:this.#disposed,busy:this.#busy,composing:!!this.#composition,readOnly:view.readOnly===true,selection,emptyParagraph});
+ }
+ /** Editor shell port: the chords this coordinator's keydown routing owns, from the same controls and capabilities. */
+ contextShortcuts():readonly RichShortcutEntry[]{
+  const core=this.#options.core,structural=isStructuralRichLanguage(core.richLanguageVersion());
+  return richCoordinatorShortcuts({ui:this.#ui,controls:this.#controls.map(entry=>entry.control),structural,selectionFormatting:core.supportsSelectionFormatting()&&!!this.#options.inlinePresentation,flowNavigation:core.supportsFlowNavigation(),blockLayout:core.supportsBlockLayout()});
  }
  subscribeContextUi(listener:()=>void):()=>void{this.#live();return this.#writingEvents.subscribe(listener);}
  /** The validated chrome catalog; opt-in tools read their strings and chrome direction from it. */

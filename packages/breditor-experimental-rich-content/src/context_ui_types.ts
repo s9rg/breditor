@@ -4,6 +4,9 @@ export interface RichContextUiHostState {
  readonly revision:string;readonly closed:boolean;readonly busy:boolean;readonly composing:boolean;readonly readOnly:boolean;
  /** Derived from the current Rust view; "text" is a non-collapsed text range, "caret" a collapsed one. */
  readonly selection:RichContextSelectionKind;
+ /** True when `selection` is a caret in a paragraph with no content (derived from the same Rust view). Optional for
+  * hosts that predate the editor shell; the empty-line block menu stays hidden without it. */
+ readonly emptyParagraph?:boolean;
 }
 /** One mounted borrowed widget. Refresh stays with the owning DOM coordinator. */
 export interface RichContextControlView {readonly id:string;readonly element:HTMLElement;readonly button:HTMLButtonElement;activate():void}
@@ -21,6 +24,8 @@ export interface RichContextUiHost {
   */
  mountContextControl(container:HTMLElement,id:string,signal:AbortSignal):RichContextControlView;
  focus():void;
+ /** Read-only list of the chords this coordinator's own keydown routing owns (docs/EDITOR_SHELL.md). */
+ contextShortcuts?():readonly import("./shortcut_registry.js").RichShortcutEntry[];
  /** Optional chrome catalog; the floating widgets take their labels and `dir`/`lang` from it. */
  uiLocale?():import("./ui_locale.js").RichUiLocale;
 }
