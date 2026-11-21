@@ -627,7 +627,7 @@ writers, merge tabs, persist collaboration state or acknowledge a server save.
 
 `RichDocumentSessionStore.open(name, {richLanguage, history})` stores the
 document-scope families under a separate key. Languages 1–3 write record V1. The
-frozen candidate rich language 4 requires the exact profile fingerprint,
+released, frozen rich language 4 requires the exact profile fingerprint,
 `{richLanguage: 4, schemaFingerprint: profile.descriptor().schemaFingerprint}`, and
 writes record V2 with that fingerprint; it refuses checkpoints and records bound to
 any other fingerprint, language or history, and older runtimes refuse V4 records.
