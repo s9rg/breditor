@@ -14,6 +14,7 @@ pub struct RichLocalSnapshot {
     state: RichLocalState,
     read_only: bool,
     read_only_revision: Option<crate::state::Revision>,
+    restricted: Option<Arc<crate::rich_content::RichRestrictedPolicy>>,
 }
 
 impl RichLocalSnapshot {
@@ -22,8 +23,26 @@ impl RichLocalSnapshot {
         state: RichLocalState,
         read_only: bool,
         read_only_revision: Option<crate::state::Revision>,
+        restricted: Option<Arc<crate::rich_content::RichRestrictedPolicy>>,
     ) -> Self {
-        Self { token, state, read_only, read_only_revision }
+        Self { token, state, read_only, read_only_revision, restricted }
+    }
+    /// Host restricted-editing policy at this exact publication, if any.
+    #[must_use]
+    pub fn restricted_policy(&self) -> Option<&crate::rich_content::RichRestrictedPolicy> {
+        self.restricted.as_deref()
+    }
+    /// Whether this publication's selection lies inside one editable region.
+    ///
+    /// `true` without a policy. Advisory action state; admission compares effects.
+    #[must_use]
+    pub fn selection_is_editable(&self) -> bool {
+        self.restricted.as_ref().is_none_or(|policy| {
+            policy.selection_is_editable(
+                &self.state.document,
+                self.state.selection.as_ref().map(crate::rich_content::RichSelection::kind),
+            )
+        })
     }
     /// Last live policy publication, absent until this owner changes policy.
     #[must_use]

@@ -127,6 +127,21 @@ impl RichReplicaProbe {
     ) -> Result<bool, JsValue> {
         self.inner.set_read_only_guarded(&observation.inner, read_only).map_err(error)
     }
+    /// Additive restricted-editing capability: block-region host policy and `restricted` view field.
+    #[allow(clippy::unused_self)]
+    pub fn restricted_editing_version(&self) -> String {
+        "1".to_owned()
+    }
+    /// Install, replace or clear (`null`) the local restricted-editing policy under the exact guard.
+    pub fn set_restricted_editing(
+        &mut self,
+        observation: &RichSharedObservation,
+        policy_json: &str,
+    ) -> Result<bool, JsValue> {
+        self.inner
+            .set_restricted_editing_json_guarded(&observation.inner, policy_json)
+            .map_err(error)
+    }
     /// Guarded field-only intent; only existing complete-format operations are persisted.
     pub fn patch_inline_format_properties(
         &mut self,

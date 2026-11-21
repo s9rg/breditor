@@ -73,5 +73,8 @@ fn encode_scope(
     if let Some(revision) = observation.inner.read_only_revision() {
         view["readOnlyRevision"] = json!(revision.get().to_string());
     }
+    if let Some(restricted) = super::restricted_editing::view(&observation.inner) {
+        view["restricted"] = restricted;
+    }
     Ok(view.to_string())
 }

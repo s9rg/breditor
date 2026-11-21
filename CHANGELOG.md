@@ -29,6 +29,19 @@ its durable formats and Wasm transport.
   shared toolbar that follows focus) and `restoreRichRootSet`, with a versioned
   `breditor/rich-root-set` checkpoint that re-verifies every root's history. No
   grammar change; shared multi-root is specified and deferred.
+- Add native **restricted editing** (opt-in; see `docs/RESTRICTED_EDITING.md`).
+  A live host policy names editable regions by retained block ids, and the
+  frozen V4 grammar is unchanged. Rust admits every local command, mixed request,
+  pending style and Undo/Redo step by its complete effect: anything that would
+  change protected content is refused whole with `breditor_rich.restricted`.
+  Local Wasm adds `restrictedEditingVersion`, `setRestrictedEditing`,
+  `navigateRestrictedRegion` and an additive `restricted` view field. DOM editors
+  move between regions with Tab/Shift+Tab, mark regions for presentation only
+  (`richRestrictedEditingStyles`), and disable authoring controls outside them.
+  `openLocalEditor({restrictedEditing: {policy}})` applies the policy before
+  mount. Shared owners enforce the same rule for local work and do not filter
+  incoming peer changes; relay enforcement is specified but not implemented. The
+  policy is never saved, so restored owners start unrestricted.
 - Add an opt-in **editor shell** for local, shared and SDK rich editors
   (`mountRichMenuBar`, `mountRichShortcutHelp`, `mountRichFloatingMenu`,
   `mountRichBalloonBlockLayout`; `mountMenuBar` / `mountShortcutHelp` /

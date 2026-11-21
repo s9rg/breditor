@@ -74,12 +74,16 @@ export interface RichSelectionCoverageRead {
  nodes:readonly {block:string;parent:string|null;kind:string;extent:"whole"|"partial";domain:RichCoverageDomain;hiddenTable:boolean}[];
  text:readonly {block:string;kind:string;start:string;end:string;domain:RichCoverageDomain}[];
 }
+/** Host restricted-editing policy: only these block subtrees (and their contents) are editable. */
+export interface RichRestrictedPolicy {readonly editable:readonly string[]}
 export interface RichView {
   format: "breditor/rich-view"; formatVersion: 1; revision: string; documentJson: string;
   /** Omitted means the original editable default. This live host policy is not document permission. */
   readOnly?:true;
   /** Last live host-policy publication; omitted until changed, never a durable permission. */
   readOnlyRevision?:string;
+  /** Present only under a live restricted-editing policy: current outermost editable regions in document order and whether the selection lies wholly inside one. */
+  restricted?:Readonly<{editable:readonly string[];selectionEditable:boolean}>;
   /** Explicit native grouping; omitted preserves original per-dispatch history. */
   historyGrouping?:"typing-v1";
   /** Explicit shared semantic replay family; omitted retains the original range contract. */
@@ -193,6 +197,11 @@ export interface RichCoreEditor<P extends RichSelectionPolicy="original"> {
   enableTypingHistory?(expectedRevision?:string):boolean;
   closeTypingGroup?(expectedRevision?:string):boolean;
   setReadOnly?(value:boolean,expectedRevision?:string):boolean;
+  supportsRestrictedEditing?():boolean;
+  /** Live host policy naming editable block subtrees by retained block id; `null` clears it. */
+  setRestrictedEditing?(policy:RichRestrictedPolicy|null,expectedRevision?:string):boolean;
+  /** Select the next/previous editable region; `unchanged` when none remains. */
+  navigateRestrictedRegion?(forward:boolean,expectedRevision?:string):RichCommandOutcome;
   caretFormats?():readonly import("./commands.js").FormatLiteral[];
   execute(command: string | RichCommand, expectedRevision?: string): RichCommandOutcome;
   view(): RichEditorView<P>;

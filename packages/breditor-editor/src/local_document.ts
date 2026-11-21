@@ -42,6 +42,8 @@ class DocumentOwner implements LocalDocumentEditor {
  view():RichDocumentView{return this.#dom.view();}checkpointJson():string{return this.#dom.checkpointJson();}
  focus():void{this.#dom.focus();}refreshAssets():void{this.#dom.view();refreshAssets(this.surface,this.#render);}
  setReadOnly(...args:Parameters<LocalDocumentEditor["setReadOnly"]>):boolean{return this.#dom.setReadOnly(...args);}
+ setRestrictedEditing(...args:Parameters<LocalDocumentEditor["setRestrictedEditing"]>):boolean{return this.#dom.setRestrictedEditing(...args);}
+ navigateRestrictedRegion(...args:Parameters<LocalDocumentEditor["navigateRestrictedRegion"]>):ReturnType<LocalDocumentEditor["navigateRestrictedRegion"]>{return this.#dom.navigateRestrictedRegion(...args);}
  closeTypingGroup(...args:Parameters<LocalDocumentEditor["closeTypingGroup"]>):boolean{return this.#dom.closeTypingGroup(...args);}
  search():RichSearchHost{this.#dom.view();return this.#dom;}
  writing():import("@breditor/experimental-rich-content").RichWritingToolsHost{this.#dom.view();return this.#dom;}

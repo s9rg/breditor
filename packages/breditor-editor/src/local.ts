@@ -46,6 +46,8 @@ export interface LocalEditorOptions extends Omit<RichEditorOptions,"core"|"toolb
  richLanguage?:1|2|3|4;
  /** Initial live host policy, reapplied after checkpoint restore; not serialized permission. */
  readOnly?:boolean;
+ /** Opt-in restricted mode: only the named block subtrees are editable (native admission); Tab moves between them. Live host policy, never saved. */
+ restrictedEditing?:{readonly policy:import("@breditor/experimental-rich-content").RichRestrictedPolicy};
  /** Immutable native history policy; omitted/explicit preserves existing defaults. */
  history?:"explicit"|"typing-v1";
  runtimeInput?:RuntimeInput;signal?:AbortSignal;
@@ -74,6 +76,10 @@ export interface LocalEditor {
  supportsCommandGroup():boolean;
  view():RichView;checkpointJson():string;focus():void;refreshAssets():void;
  setReadOnly(value:boolean,revision?:string):boolean;
+ /** Install, replace or clear (`null`) the live restricted-editing policy. */
+ setRestrictedEditing(policy:import("@breditor/experimental-rich-content").RichRestrictedPolicy|null,revision?:string):boolean;
+ /** Select the next/previous editable region (Tab/Shift+Tab in restricted mode). */
+ navigateRestrictedRegion(direction:"next"|"previous",revision?:string):RichCommandOutcome|"queued";
  closeTypingGroup(revision?:string):boolean;
  /** Borrow queued search/navigation UI; disposing its panel never disposes this owner. */
  search():RichSearchHost;
@@ -109,6 +115,8 @@ class LocalEditorOwner implements LocalEditor {
  view():RichView{return this.#dom.view();}checkpointJson():string{return this.#dom.checkpointJson();}focus():void{this.#dom.focus();}
  refreshAssets():void{this.#dom.view();refreshAssets(this.surface,this.#render);}
  setReadOnly(value:boolean,revision?:string):boolean{return this.#dom.setReadOnly(value,revision);}
+ setRestrictedEditing(policy:import("@breditor/experimental-rich-content").RichRestrictedPolicy|null,revision?:string):boolean{return this.#dom.setRestrictedEditing(policy,revision);}
+ navigateRestrictedRegion(direction:"next"|"previous",revision?:string):RichCommandOutcome|"queued"{return this.#dom.navigateRestrictedRegion(direction,revision);}
  closeTypingGroup(revision?:string):boolean{return this.#dom.closeTypingGroup(revision);}
  search():RichSearchHost{this.#dom.view();return this.#dom;}
  writing():import("@breditor/experimental-rich-content").RichWritingToolsHost{this.#dom.view();return this.#dom;}
@@ -126,6 +134,8 @@ export async function openLocalEditor(options:LocalEditorOptions):Promise<LocalE
  validatePlaceholderOption(options.placeholder);resolveRichUi(options.ui);
  checkLocalRichLanguage(options.richLanguage);
  if(options.readOnly!==undefined&&typeof options.readOnly!=="boolean")throw new TypeError("readOnly must be Boolean");
+ const restricted=options.restrictedEditing;
+ if(restricted!==undefined&&(typeof restricted!=="object"||restricted===null||typeof restricted.policy!=="object"||restricted.policy===null||!Array.isArray(restricted.policy.editable)||!restricted.policy.editable.every(id=>typeof id==="string")))throw new TypeError("restrictedEditing must be {policy:{editable:string[]}}");
  if(options.history!==undefined&&options.history!=="explicit"&&options.history!=="typing-v1")throw new TypeError("Expected history explicit or typing-v1");
  if(options.rangeEditing!==undefined&&options.rangeEditing!=="original"&&options.rangeEditing!=="general-v1")throw new TypeError("Expected rangeEditing original or general-v1");
  if(options.initial?.kind==="typingCheckpoint"&&options.history==="explicit")throw new TypeError("A typing checkpoint requires its declared natural history policy");
@@ -149,6 +159,7 @@ export async function openLocalEditor(options:LocalEditorOptions):Promise<LocalE
    core.enableTypingHistory();
   }
   if(options.readOnly!==undefined){if(core.supportsReadOnly?.()!==true||!core.setReadOnly)throw Error("Use a matching native owner with read-only enforcement");core.setReadOnly(options.readOnly);}
+  if(restricted!==undefined){if(core.supportsRestrictedEditing?.()!==true||!core.setRestrictedEditing)throw Error("Use a matching native owner with restricted editing");core.setRestrictedEditing({editable:[...restricted.policy.editable]});}
   const standard=localLanguageToolbar(core,presentation,language);
   const toolbar=options.toolbar?.(core,standard,presentation)??standard;
   const render:RenderOptions={inlinePresentation:presentation,...(options.resolveAsset?{resolveAsset:options.resolveAsset}:{})};

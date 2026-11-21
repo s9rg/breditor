@@ -57,6 +57,7 @@ impl RichReplica {
             writer_windows: self.writer_windows.clone(),
             read_only: self.read_only,
             read_only_revision: self.read_only_revision.clone(),
+            restricted: self.restricted.clone(),
         };
         // Fresh materialization/schema/UI/history/size admission still runs. Cold restore uses
         // the separate complete native replay path, providing an independent regression oracle.

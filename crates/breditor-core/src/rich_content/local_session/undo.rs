@@ -33,6 +33,7 @@ impl RichLocalSession {
                 return Err(RichLocalSessionError::HistoryMismatch);
             }
         }
+        self.require_restricted(&document)?;
         let entry = &self.entries[index];
         let candidate = RichLocalState::try_new(
             &self.context,

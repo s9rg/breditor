@@ -368,6 +368,24 @@ class RichCoreEditor {
     const changed=read(raw.setReadOnly(this.#observation,value));if(changed!=="true"&&changed!=="false")throw new RichCommandError("breditor_rich.boundary","Invalid policy result");
     const next=raw.observe();this.#observation.free();this.#observation=next;return changed==="true";
   }
+  supportsRestrictedEditing(){const raw=this.#live();return raw.restrictedEditingVersion?.()==="1"&&typeof raw.setRestrictedEditing==="function"&&typeof raw.navigateRestrictedRegion==="function";}
+  /** Install, replace or clear (`null`) the live block-region policy; returns whether it changed. */
+  setRestrictedEditing(policy,expectedRevision){
+    const raw=this.#live();
+    if(policy!==null&&(typeof policy!=="object"||!Array.isArray(policy.editable)||!policy.editable.every(id=>typeof id==="string")))throw new TypeError("restrictedEditing policy must be null or {editable:string[]}");
+    if(expectedRevision!==undefined&&expectedRevision!==this.#observation.revision)throw new RichCommandError("breditor_rich.stale_observation","The policy was prepared from an older rich view");
+    if(!this.supportsRestrictedEditing())throw new RichCommandError("breditor_rich.restricted_editing_unavailable","Use a matching native owner with restricted editing");
+    const input=JSON.stringify(policy===null?null:{format:"breditor/rich-restricted-policy",formatVersion:1,editable:[...policy.editable]});
+    const changed=read(raw.setRestrictedEditing(this.#observation,input));if(changed!=="true"&&changed!=="false")throw new RichCommandError("breditor_rich.boundary","Invalid policy result");
+    const next=raw.observe();this.#observation.free();this.#observation=next;return changed==="true";
+  }
+  /** Select the next/previous editable region; `unchanged` at either end. */
+  navigateRestrictedRegion(forward,expectedRevision){
+    const raw=this.#live();
+    if(expectedRevision!==undefined&&expectedRevision!==this.#observation.revision)throw new RichCommandError("breditor_rich.stale_observation","The navigation was prepared from an older rich view");
+    if(!this.supportsRestrictedEditing())throw new RichCommandError("breditor_rich.restricted_editing_unavailable","Use a matching native owner with restricted editing");
+    return this.#publish(raw.navigateRestrictedRegion(this.#observation,forward===true));
+  }
   caretFormats() { this.#live();if(typeof this.#observation.caretFormatsJson!=="function")throw new RichCommandError("breditor_rich.caret_formats_read","Use a matching Wasm module with caret-format reads");return JSON.parse(read(this.#observation.caretFormatsJson())); }
   inlineFormatState(kind) {
     this.#live();
@@ -380,3 +398,4 @@ class RichCoreEditor {
 }
 export {resolveRichUi,defaultRichUi,richUiStringsEn,richChromeIsRtl} from "./dist/browser/ui_locale.js";
 export {richUiPanelStringsEn,richUiNoticeCodes} from "./dist/browser/ui_locale.js";
+export {richRestrictedEditingStyles,applyRestrictedPresentation} from "./dist/browser/render.js";

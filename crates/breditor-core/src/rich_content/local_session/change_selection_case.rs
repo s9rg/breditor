@@ -59,10 +59,10 @@ impl RichLocalSession {
             pending_formats,
             revision: self.state.revision.successor()?,
         };
-        Ok(self.commit_content(
+        self.commit_content(
             candidate,
             HistoryRecipe::Recovered(forward),
             HistoryRecipe::Recovered(inverse),
-        ))
+        )
     }
 }
