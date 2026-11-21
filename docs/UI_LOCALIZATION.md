@@ -53,7 +53,8 @@ const ui: RichUiOptions = {
   one catalog serves the original, structural and layout toolbars; a field or
   option an admitted control does not have rejects. Single-value controls
   (`type: "text" | "number"`) take only `label`. Hosts that build their own
-  controls pass their own labels instead.
+  controls pass their own labels instead. The opt-in ruby controls are `ruby`
+  (field `annotation`) and `remove-ruby` ([RUBY_ANNOTATIONS.md](RUBY_ANNOTATIONS.md)).
 - `slashItems` relabels the standard slash items (`standardRichSlashPicks` ids)
   with `label`, `description` and `keywords`. Filtering uses the localized label
   and keywords; the stable id still matches, so `"hea"` finds the heading items in

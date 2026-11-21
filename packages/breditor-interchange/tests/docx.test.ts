@@ -243,6 +243,6 @@ describe("DOCX export (@breditor/interchange/docx)",()=>{
     const seen=new Set<string>(),visit=(path:string)=>{if(seen.has(path))return;seen.add(path);const source=readFileSync(new URL(`../src/${path}`,import.meta.url),"utf8");
       for(const m of source.matchAll(/^import\s[^;]*?from\s*"([^"]+)"/gm)){const spec=m[1]!;expect(spec.startsWith(".")).toBe(true);const dir=path.includes("/")?path.slice(0,path.lastIndexOf("/")+1):"";visit(new URL(spec.replace(/\.js$/,".ts"),`file:///${dir}`).pathname.slice(1));}};
     visit("docx.ts");
-    expect([...seen].sort()).toEqual(["bookmark.ts","budget.ts","docx.ts","docx/convert.ts","docx/image.ts","docx/parts.ts","docx/zip.ts","image_link_href.ts","language_tag.ts","mention.ts","safe_url.ts","types.ts","wire.ts"]);
+    expect([...seen].sort()).toEqual(["bookmark.ts","budget.ts","docx.ts","docx/convert.ts","docx/image.ts","docx/parts.ts","docx/zip.ts","image_link_href.ts","language_tag.ts","mention.ts","ruby.ts","safe_url.ts","types.ts","wire.ts"]);
   });
 });

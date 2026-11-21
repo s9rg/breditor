@@ -6,6 +6,9 @@ import {encodeListNumberingPatch} from "./dist/browser/list_numbering_serializat
 import {encodeTextLanguageIntent} from "./dist/browser/text_language.js";
 import {encodeImageLinkIntent} from "./dist/browser/image_link.js";
 import {encodeMentionIntent} from "./dist/browser/mention.js";
+import {isRichRubyDeclaration} from "./dist/browser/ruby.js";
+/** Owners whose profile declares the exact ruby V1 extension (interchange capability). */
+const rubyOwners=new WeakSet();
 import {encodeSetBookmarkIntent,encodeRenameBookmarkIntent} from "./dist/browser/bookmark.js";
 import {parseRichSearchMetadata} from "./dist/browser/search_metadata.js";
 import {parseRichWritingTools} from "./dist/browser/writing_tools_metadata.js";
@@ -23,6 +26,8 @@ export {mountRichSlashCommands} from "./dist/browser/slash_command_session.js";
 export {RichSuggestionSession} from "./dist/browser/suggestion_session.js";
 export {mountRichMentions,requireRichMentionSuggestions,filterRichMentionSuggestions} from "./dist/browser/mention_session.js";
 export {richMentionFormat,richMentionKindProperty,richMentionIdProperty,richMentionLabelProperty,richMentionKinds,richMentionClass,richMentionStyles,isRichMentionId,isRichMentionKind,isRichMentionLabel,mentionOf,mentionText,mentionFormat,requireRichMention} from "./dist/browser/mention.js";
+export {richRubyExtensionName,richRubyFormat,richRubyAnnotationProperty,richRubyAnnotationMaxBytes,richRubyClass,richRubyStyles,richRubyBootstrapExtensionV1,richRubySharedExtensionV1,withRichRubyBootstrapV1,withRichRubySharedConfigurationV1,isRichRubyAnnotation,isRichRubyDeclaration,rubyAnnotationOf,rubyFormat,groupRubyRuns,createRubyElement,rubyGroupAt,rubyControls,rubyCommand,rubyToolbarControls} from "./dist/browser/ruby.js";
+export {richInlinePresentationHasRuby} from "./dist/browser/inline_presentation.js";
 export {mountRichSelectionToolbar,mountRichContextMenu,richSelectionToolbarDefaults,richContextMenuDefaults,richContextUiStyles} from "./dist/browser/context_ui.js";
 export {mountRichMenuBar,mountRichShortcutHelp,mountRichFloatingMenu,mountRichBalloonBlockLayout,richMenuBarDefaults,richFloatingMenuDefaults,richEditorShellStyles} from "./dist/browser/editor_shell.js";
 export {richActiveShortcuts,richCoordinatorShortcuts,richControlShortcutChord,formatRichShortcut,detectRichShortcutPlatform,richShortcutGroups} from "./dist/browser/shortcut_registry.js";
@@ -163,36 +168,37 @@ export function compileStandardRichProfileV4(wasm,bootstrapJson){
 }
 
 class RichCoreProfile {
-  #raw; #descriptor;
-  constructor(raw, descriptor) { this.#raw = raw; this.#descriptor = JSON.stringify(descriptor); }
+  #raw; #descriptor; #ruby;
+  constructor(raw, descriptor) { this.#raw = raw; this.#descriptor = JSON.stringify(descriptor); try{this.#ruby=(JSON.parse(read(raw.inlineCatalogJson())).formats??[]).some(format=>isRichRubyDeclaration(format));}catch{this.#ruby=false;} }
+  #own(editor){if(this.#ruby)rubyOwners.add(editor);return editor;}
   #live() { if (!this.#raw) throw new RichCommandError("breditor_rich.disposed", "The rich profile is disposed"); return this.#raw; }
   descriptor() { this.#live(); return JSON.parse(this.#descriptor); }
   supportsPlaceholder(){return this.#live().placeholderVersion?.()==="1";}
   inlineCatalogJson() { return read(this.#live().inlineCatalogJson()); }
   createEditor(documentJson, historyCapacity = "100") {
     const raw = transfer(this.#live().createEditor(documentJson, historyCapacity), "editor", "takeEditor");
-    return new RichCoreEditor(raw,this.#descriptor);
+    return this.#own(new RichCoreEditor(raw,this.#descriptor));
   }
   restoreEditor(checkpointJson) {
     const raw = transfer(this.#live().restoreEditor(checkpointJson), "editor", "takeEditor");
-    return new RichCoreEditor(raw,this.#descriptor);
+    return this.#own(new RichCoreEditor(raw,this.#descriptor));
   }
   supportsTypingHistory(){return typeof this.#live().restoreTypingEditor==="function";}
   restoreTypingEditor(checkpointJson){
     const profile=this.#live();if(!this.supportsTypingHistory())throw new RichCommandError("breditor_rich.typing_history_unavailable","Use a matching native owner with typing-history recovery");
-    return new RichCoreEditor(transfer(profile.restoreTypingEditor(checkpointJson),"editor","takeEditor"),this.#descriptor);
+    return this.#own(new RichCoreEditor(transfer(profile.restoreTypingEditor(checkpointJson),"editor","takeEditor"),this.#descriptor));
   }
   supportsDocumentSelection(){const p=this.#live();return p.documentSelectionVersion?.()==="1"&&typeof p.restoreDocumentEditor==="function"&&typeof p.restoreDocumentTypingEditor==="function";}
   #documentProfile(){if(!this.supportsDocumentSelection())throw new RichCommandError("breditor_rich.document_selection_unavailable","Use matching native document-selection recovery");return this.#live();}
   createDocumentEditor(documentJson,historyCapacity="100"){
-    const p=this.#documentProfile();return new RichCoreEditor(transfer(p.createEditor(documentJson,historyCapacity),"editor","takeEditor"),this.#descriptor,"document-v1");
+    const p=this.#documentProfile();return this.#own(new RichCoreEditor(transfer(p.createEditor(documentJson,historyCapacity),"editor","takeEditor"),this.#descriptor,"document-v1"));
   }
-  restoreDocumentEditor(checkpointJson){return new RichCoreEditor(transfer(this.#documentProfile().restoreDocumentEditor(checkpointJson),"editor","takeEditor"),this.#descriptor,"document-v1");}
-  restoreDocumentTypingEditor(checkpointJson){return new RichCoreEditor(transfer(this.#documentProfile().restoreDocumentTypingEditor(checkpointJson),"editor","takeEditor"),this.#descriptor,"document-v1");}
+  restoreDocumentEditor(checkpointJson){return this.#own(new RichCoreEditor(transfer(this.#documentProfile().restoreDocumentEditor(checkpointJson),"editor","takeEditor"),this.#descriptor,"document-v1"));}
+  restoreDocumentTypingEditor(checkpointJson){return this.#own(new RichCoreEditor(transfer(this.#documentProfile().restoreDocumentTypingEditor(checkpointJson),"editor","takeEditor"),this.#descriptor,"document-v1"));}
   restoreOriginalAsDocumentEditor(checkpointJson,history="explicit"){
     const p=this.#documentProfile();if(history!=="explicit"&&history!=="typing-v1")throw new TypeError("Expected history explicit or typing-v1");
     if(history==="typing-v1"&&!this.supportsTypingHistory())throw new RichCommandError("breditor_rich.typing_history_unavailable","Use matching native original typing-history recovery");
-    return new RichCoreEditor(transfer(history==="typing-v1"?p.restoreTypingEditor(checkpointJson):p.restoreEditor(checkpointJson),"editor","takeEditor"),this.#descriptor,"document-v1");
+    return this.#own(new RichCoreEditor(transfer(history==="typing-v1"?p.restoreTypingEditor(checkpointJson):p.restoreEditor(checkpointJson),"editor","takeEditor"),this.#descriptor,"document-v1"));
   }
   dispose() { this.#raw?.free(); this.#raw = undefined; }
 }
@@ -306,6 +312,8 @@ class RichCoreEditor {
   supportsTextLanguage(){const raw=this.#live();return this.#language===4&&typeof raw.textLanguageVersion==="function"&&raw.textLanguageVersion()==="1";}
   supportsImageLinks(){const raw=this.#live();return this.#language===4&&typeof raw.imageLinkVersion==="function"&&raw.imageLinkVersion()==="1";}
   supportsDetails(){const raw=this.#live();return this.#language===4&&typeof raw.detailsVersion==="function"&&raw.detailsVersion()==="1";}
+  /** The owner's profile includes the opt-in ruby V1 extension (`breditor-ruby/ruby`). */
+  supportsRubyAnnotations(){this.#live();return rubyOwners.has(this);}
   supportsMentions(){const raw=this.#live();return this.#language===4&&typeof raw.mentionVersion==="function"&&raw.mentionVersion()==="1";}
   supportsTriggerComposite(){const raw=this.#live();return typeof raw.triggerCompositeVersion==="function"&&raw.triggerCompositeVersion()==="1";}
   supportsCommandGroup(){const raw=this.#live();return typeof raw.commandGroupVersion==="function"&&raw.commandGroupVersion()==="1";}

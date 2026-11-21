@@ -5,6 +5,7 @@ import type {InterchangeOptions} from "./types.js";
 import {isCanonicalLanguageTagV1} from "./language_tag.js";
 import {isImageLinkHrefV1} from "./image_link_href.js";
 import {mentionUnits} from "./mention.js";
+import {rubyFormat,rubyUnits} from "./ruby.js";
 import {bookmarkIdPrefix,internalLinkOf,isBookmarkName} from "./bookmark.js";
 /** Export only native-admitted DTOs. Every output tag, attribute and CSS property is library-owned. */
 export class HtmlExport {
@@ -13,7 +14,12 @@ export class HtmlExport {
   constructor(readonly b:Budget,readonly options:InterchangeOptions,readonly bookmarks=false){}
   #visited=0;
   #visit():void{if(++this.#visited>limits.outputNodes)fail("resource-limit");}
-  inline(nodes:readonly Node[]):string{return mentionUnits(nodes).map(unit=>{
+  inline(nodes:readonly Node[]):string{
+    // Opt-in ruby extension: each group of one equal annotation is one `<ruby>` around its base.
+    if(!nodes.some(n=>n.kind==="text"&&n.formats.some(f=>f.type===rubyFormat)))return this.#plain(nodes);
+    return rubyUnits(nodes).map(unit=>unit.kind==="nodes"?this.#plain(unit.nodes):`<ruby>${this.#plain(unit.runs)}<rp>(</rp><rt>${t(unit.annotation)}</rt><rp>)</rp></ruby>`).join("");
+  }
+  #plain(nodes:readonly Node[]):string{return mentionUnits(nodes).map(unit=>{
     // V4: each whole mention is one inert entity span around its styled pieces.
     if(unit.kind==="mention")return `<span class="breditor-mention" data-mention-kind="${a(unit.mention.kind)}" data-mention-id="${a(unit.mention.id)}">${this.inline(unit.pieces)}</span>`;
     const n=unit.node;
@@ -34,6 +40,8 @@ export class HtmlExport {
       return `<a href="${a(href)}"${p["breditor-inline/new-window"]===true?' target="_blank" rel="noopener noreferrer"':""}>${value}</a>`;
     }
     // V4 text language: only an admitted canonical tag becomes an inert `lang` attribute.
+    // A ruby literal reaching here is outside the annotation policy: the base is kept, the annotation dropped.
+    if(f.type===rubyFormat){this.b.loss("removed-content");return value;}
     if(f.type==="breditor/text-language"){const tag=p["breditor/language-tag"];if(isCanonicalLanguageTagV1(tag))return `<span lang="${a(tag)}">${value}</span>`;this.b.loss("unsupported-attribute");return value;}
     const rgb=p["breditor-inline/rgb24"],pixels=p["breditor-inline/pixels"],family=p["breditor-inline/family"];
     if(["breditor-inline/text-color","breditor-inline/background-color"].includes(f.type)&&typeof rgb==="number"&&Number.isInteger(rgb)&&rgb>=0&&rgb<=0xffffff)return `<span style="${f.type==="breditor-inline/text-color"?"color":"background-color"}:#${rgb.toString(16).padStart(6,"0")}">${value}</span>`;

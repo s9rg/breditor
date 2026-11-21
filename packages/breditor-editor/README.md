@@ -486,7 +486,12 @@ The other initial values are `{kind: 'document', documentJson}` and
 Rust. The default schema is `breditor-editor/standard@1`; a custom
 `profileBootstrapJson` must retain the original V6 bootstrap shape. Additional
 inline formats need explicit safe presentation recipes through
-`additionalInlinePresentation`. Ordinary set-format commands still replace complete
+`additionalInlinePresentation`. Opt-in ruby (furigana) is such an extension with
+built-in presentation: pass `profileBootstrapJson: rubyProfileBootstrapJsonV4`
+(shared: `configuration: rubySharedProfileConfigurationV4`) and append
+`rubyToolbarControls(core, presentation)` / `sharedRubyToolbarControls(core,
+presentation)` in the `toolbar` factory, whose third argument is the editor's
+inline presentation (see `docs/RUBY_ANNOTATIONS.md`). Ordinary set-format commands still replace complete
 property maps. The separate compound command also accepts an explicit property
 patch. In the Link form, leave one field blank to preserve that field on each
 existing link; enter both fields to replace or create complete links. Partial

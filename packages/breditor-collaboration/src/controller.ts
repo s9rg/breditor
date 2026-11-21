@@ -13,6 +13,7 @@ import {flowEdgeEligible,selectedFlowAtom} from "@breditor/experimental-rich-con
 import {mountToolbarControl,toolbarControlStyles,isCurrentCaretTarget,type RichControlView} from "@breditor/experimental-rich-content/rendering";
 import {resolveRichUi,type RichUiLocale,type RichUiOptions} from "@breditor/experimental-rich-content/rendering";
 import {standardSelectionInlineControls,selectionFormatChanges} from "@breditor/experimental-rich-content/rendering";
+import {richRubyStyles,richInlinePresentationHasRuby} from "@breditor/experimental-rich-content/rendering";
 import {blockLayoutShortcut} from "@breditor/experimental-rich-content/rendering";
 import {requireClipboardInterchange,readClipboardInput,exportClipboard,writeClipboard,clipboardInterchangeReport,clipboardInterchangeStatus,clipboardProjectionText,type RichClipboardInterchange,type RichClipboardInterchangeReport,type RichInterchangeFormatReport} from "@breditor/experimental-rich-content/rendering";
 import {RichSearchEvents,type RichSearchHostState,type RichSearchCompletion} from "@breditor/experimental-rich-content/rendering";
@@ -86,7 +87,7 @@ export class SharedDomEditor<P extends SharedSelectionPolicy="original"> {
   if(this.#model.view.historyGrouping==="typing-v1"&&!options.core.supportsTypingHistory())throw Error("Use matching native shared typing history");
   for(const control of options.toolbar??[...defaultSharedToolbarFor<P>(),...moveSharedToolbarFor<P>()])if(control.owner!==undefined&&control.owner!==options.core)throw Error("Toolbar control belongs to a different Rust owner");
   const ui=resolveRichUi(options.ui);ui.checkControls(options.toolbar??[...defaultSharedToolbarFor<P>(),...moveSharedToolbarFor<P>()]);this.#ui=ui;
-  const d=root.ownerDocument,style=d.createElement("style");style.textContent=styles+standardInlineStylesV1+toolbarControlStyles+(structuralBlockStylesV2+richPageBreakStyles).replaceAll("[data-breditor-rich]","[data-breditor-shared]")+(this.#document?sharedDocumentSelectionStyles:"")+(placeholder?richPlaceholderStyles:"");root.dataset["breditorShared"]="";
+  const d=root.ownerDocument,style=d.createElement("style");style.textContent=styles+standardInlineStylesV1+toolbarControlStyles+(structuralBlockStylesV2+richPageBreakStyles).replaceAll("[data-breditor-rich]","[data-breditor-shared]")+(this.#document?sharedDocumentSelectionStyles:"")+(placeholder?richPlaceholderStyles:"")+(options.inlinePresentation&&richInlinePresentationHasRuby(options.inlinePresentation)?richRubyStyles:"");root.dataset["breditorShared"]="";
   this.surface=d.createElement("div");this.surface.contentEditable="true";this.surface.className="breditor-shared-surface";this.surface.setAttribute("role","textbox");this.surface.setAttribute("aria-multiline","true");this.surface.setAttribute("aria-label",options.label??ui.text("sharedEditorLabel"));
   this.toolbar=d.createElement("div");this.toolbar.className="breditor-shared-toolbar";this.toolbar.setAttribute("role","toolbar");this.toolbar.setAttribute("aria-label",ui.text("sharedToolbarLabel"));ui.applyChrome(this.toolbar);this.status=d.createElement("p");this.status.setAttribute("role","status");ui.applyChrome(this.status);
   const seen=new Set<string>();for(const control of options.toolbar??[...defaultSharedToolbarFor<P>(),...moveSharedToolbarFor<P>()]){

@@ -8,6 +8,7 @@ import {Stylesheets} from "./html_stylesheet.js";
 import {canonicalLanguageTagV1} from "./language_tag.js";
 import {imageHrefProperty,imageLinkNewWindowProperty,isImageLinkHrefV1} from "./image_link_href.js";
 import {mentionFormat,mentionFromSpan} from "./mention.js";
+import {isRubyAnnotation,rubyFormat,rubyLiteral} from "./ruby.js";
 import {anchorName,bookmarkProperty,internalLinkFormat} from "./bookmark.js";
 /** Attributes consumed by a recognized V4 mention span. */
 const mentionAttributes:ReadonlySet<string>=new Set(["data-mention-kind","data-mention-id"]);
@@ -24,7 +25,7 @@ const structuralRoles=new Set(["presentation","none","list","listitem"]);
 const flatListAttributes:ReadonlySet<string>=new Set(["data-aria-level","data-aria-posinset","data-listid","aria-setsize"]);
 const wordBullets=/^[·•●○◦▪■□◆◇►➢➤✓✔\-–—*o§Øüvqnl]$/;
 /** Target-owner capabilities read once by the adapter; they select conversion, never admission. */
-export interface ImportCapabilities {readonly listNumbering:boolean;readonly textLanguage?:boolean;readonly imageLinks?:boolean;readonly details?:boolean;readonly mentions?:boolean;readonly tableCaptions?:boolean;readonly pageBreaks?:boolean;readonly bookmarks?:boolean}
+export interface ImportCapabilities {readonly listNumbering:boolean;readonly textLanguage?:boolean;readonly imageLinks?:boolean;readonly details?:boolean;readonly mentions?:boolean;readonly tableCaptions?:boolean;readonly pageBreaks?:boolean;readonly bookmarks?:boolean;readonly ruby?:boolean}
 /** Rich V4 native text-language format (Rust `text_language.rs`). */
 export const textLanguageFormat="breditor/text-language",textLanguageTag="breditor/language-tag";
 const htmlSpace=/^[\t\n\f\r ]+|[\t\n\f\r ]+$/g;
@@ -207,6 +208,8 @@ export class HtmlConversion {
         if(!this.#safe(node)||this.#markers.has(node)||this.#checkboxes.has(node)||this.#paragraphMark(node)||interchangeNewline(node))continue;
         // V4: Word's `<br clear=all style='page-break-before:always'>` splits the paragraph at a page break.
         if(node.tagName==="br"&&this.#breakCarrier(node)){this.style(node,parent);output.push(this.#pageBreak(false));continue;}
+        // Opt-in ruby extension: each base/`<rt>` pair becomes base text carrying the annotation.
+        if(node.tagName==="ruby"&&this.capabilities.ruby){this.#ruby(node,this.style(node,parent),walk);continue;}
         // V4: the exact exported mention span becomes a mention over its `@label` text.
         const mention=this.capabilities.mentions?mentionFromSpan(node.tagName,name=>attribute(node,name),plainText(node)):undefined;
         const next=this.style(node,parent,mention?mentionAttributes:undefined);
@@ -221,6 +224,26 @@ export class HtmlConversion {
       }
     };
     walk(nodes,state);return output;
+  }
+  /**
+   * `<ruby>`: base nodes up to each `<rt>` take that annotation (`rp` is presentation, `rb` unwraps).
+   * The reading is whitespace-collapsed and must satisfy the annotation policy; otherwise, or for
+   * a base without `<rt>`, the base stays plain text and the reading is dropped (`removed-content`).
+   * Nested annotation containers (`rtc`) are reported as `unsupported-element`.
+   */
+  #ruby(node:HtmlElement,state:StyleState,walk:(items:readonly HtmlNode[],parent:StyleState)=>void):void {
+    let base:HtmlNode[]=[];
+    const emit=(annotation?:string)=>{if(!base.length)return;walk(base,annotation===undefined?state:{...state,formats:new Map(state.formats).set(rubyFormat,rubyLiteral(annotation))});base=[];};
+    for(const child of node.childNodes){
+      if(!isElement(child)){base.push(child);continue;}
+      if(child.tagName==="rp")continue;
+      if(child.tagName==="rb"){base.push(...child.childNodes);continue;}
+      if(child.tagName==="rtc"){this.b.loss("unsupported-element");continue;}
+      if(child.tagName!=="rt"){base.push(child);continue;}
+      const reading=plainText(child).replace(/[\t\n\f\r ]+/g," ").replace(htmlSpace,"");
+      if(base.length&&isRubyAnnotation(reading))emit(reading);else{if(reading)this.b.loss("removed-content");emit();}
+    }
+    emit();
   }
   #trim(runs:Node[],state:StyleState):void {
     if(state.whiteSpace==="pre")return;

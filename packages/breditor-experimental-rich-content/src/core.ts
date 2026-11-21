@@ -174,6 +174,8 @@ export interface RichCoreEditor<P extends RichSelectionPolicy="original"> {
   supportsDetails?():boolean;
   /** Rich V4 mention entities (`insertMention`); an older owner may omit it. */
   supportsMentions?():boolean;
+  /** The owner's profile includes the opt-in ruby V1 extension (`breditor-ruby/ruby`); any rich language. */
+  supportsRubyAnnotations?():boolean;
   /** Native `replaceTriggerThen` (slash commands as one Undo step); an older owner may omit it. */
   supportsTriggerComposite?():boolean;
   /** Native `commandGroup` (several commands as one Undo step); an older owner may omit it. */

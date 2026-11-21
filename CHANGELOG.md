@@ -37,6 +37,24 @@ its durable formats and Wasm transport.
   `commandGroup` (`commandGroupVersion() === "1"`, `supportsCommandGroup()`)
   runs 1–64 allowlisted commands as one exact history unit. No model, client or
   network code is bundled. See [docs/AI_AGENT_TOOLS.md](docs/AI_AGENT_TOOLS.md).
+- Add opt-in **ruby (furigana) annotations** as a first-party typed inline
+  extension, `breditor-ruby/ruby` (one required 1–256-byte `annotation`
+  property), not a grammar change: the frozen V1–V4 grammars and fingerprints
+  are unchanged and a profile with the extension has its own fingerprint
+  (`rubyProfileBootstrapJsonV4` / `rubySchemaFingerprintV4`,
+  `rubySharedProfileConfigurationV4`; Rust `ruby_extension_v1()`). **Ruby** and
+  **Remove ruby** toolbar controls (`rubyToolbarControls`,
+  `sharedRubyToolbarControls`, localizable by control id) set, replace or remove
+  a validated reading on a selection or on the whole group around a caret, each
+  in one Undo step through the generic typed-format commands. Live and static
+  output render `<ruby>base<rp>(</rp><rt>…</rt><rp>)</rp></ruby>` (in the live
+  editor the reading is generated content, outside the editable text). Typing
+  beside or inside a base never inherits a reading, locally and in shared rooms.
+  HTML import/export maps `<ruby>` for owners that report
+  `supportsRubyAnnotations()`, Markdown falls back to exact HTML and DOCX writes
+  `w:ruby`. The SDK `toolbar` factories receive the inline presentation as a new
+  third argument. See [docs/RUBY_ANNOTATIONS.md](docs/RUBY_ANNOTATIONS.md).
+
 - Add opt-in **editing aids** for local and shared rich editors:
   `mountRichEditingAids` / `mountRichEditingAidsControls` (`mountEditingAids` /
   `mountEditingAidsControls` in `@breditor/editor` and its collaboration entry).

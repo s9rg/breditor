@@ -334,5 +334,6 @@ export type {
 export {sharedAiToolsHost,mountSharedAiTools,mountSharedLanguageCheck,type SharedAiEditorPort,type SharedAiToolsSession,type SharedAiToolsSource} from "./ai_tools.js";
 export {sharedAgentToolsHost,sharedAgentCommands,createSharedAgentTools,type SharedAgentEditorPort,type SharedAgentProposalQueue,type SharedAgentToolsHostOptions} from "./ai_agent_tools.js";
 export {mountSharedSlashCommands,createSharedSlashCommands,requireSharedSlashItems,standardSharedSlashPicks,sharedSlashCommandKinds,type SharedSlashCommandHost,type SharedSlashCommands,type SharedSlashCommandOptions,type SharedSlashContext,type SharedSlashExecution,type SharedSlashItem,type SharedSlashPick,type SharedSlashPreparation,type SharedSlashProvider} from "./slash_commands.js";
+export {sharedRubyToolbarControls} from "./ruby.js";
 export {sharedInlineControlsV4,mountSharedMentions,sharedTextLanguageInput,sharedMentionInput,sharedImageLinkInput,type SharedImageLinkIntent,type SharedMentionExecution,type SharedMentionOptions,type SharedMentions} from "./inline_v4.js";
 export {createSharedFormattingProductivityToolbar} from "./formatting_productivity.js";

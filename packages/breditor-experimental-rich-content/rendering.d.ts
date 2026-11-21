@@ -40,3 +40,5 @@ export {richMentionFormat,richMentionKindProperty,richMentionIdProperty,richMent
 export {richCoordinatorShortcuts,type RichShortcutEntry,type RichShortcutChord,type RichShortcutGroup,type RichCoordinatorShortcutFacts} from "./dist/browser/shortcut_registry.js";
 export * from "./dist/browser/formatting_productivity.js";
 export * from "./dist/browser/special_characters.js";
+export {richRubyExtensionName,richRubyFormat,richRubyAnnotationProperty,richRubyAnnotationMaxBytes,richRubyClass,richRubyStyles,richRubyBootstrapExtensionV1,richRubySharedExtensionV1,withRichRubyBootstrapV1,withRichRubySharedConfigurationV1,isRichRubyAnnotation,isRichRubyDeclaration,rubyAnnotationOf,rubyFormat,groupRubyRuns,createRubyElement,rubyGroupAt,rubyControls,rubyCommand,rubyToolbarControls,type RubyRun,type RubySegment,type RubyIntent,type RubyControl} from "./dist/browser/ruby.js";
+export {richInlinePresentationHasRuby} from "./dist/browser/inline_presentation.js";
