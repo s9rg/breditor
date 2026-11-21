@@ -1,6 +1,6 @@
 // Render only the admitted Rust AST and its derived non-destructive table geometry.
-import type {FormatLiteral,RichCell} from "./core.js";
-import {cellKey,id,property,type AstNode,type ElementNode,type RichPresentationModel,type TextNode} from "./model.js";
+import type {FormatLiteral,RichCell,RichView} from "./core.js";
+import {cellKey,id,property,sourceCell,type AstNode,type ElementNode,type RichPresentationModel,type TextNode} from "./model.js";
 import {requireRichInlinePresentation,richInlineRecipes,type RichInlinePresentation} from "./inline_presentation.js";
 import {applyBlockLayout} from "./block_layout_presentation.js";
 import {applyListNumbering} from "./list_numbering_presentation.js";
@@ -69,6 +69,21 @@ export function refreshAssets(surface:HTMLElement,options:RenderOptions):void {
  * V4 image links are inert while editing (like inline links inside the editable
  * surface): they leave the tab order and the controller cancels their activation, so a click
  * selects the image node. A read-only surface lets them behave as ordinary links. */
+/** Presentation-only marking of editable regions; never a document property or an enforcement mechanism. */
+export function applyRestrictedPresentation(surface:HTMLElement,value:RichPresentationModel):void {
+ const restricted=value.view.restricted;
+ surface.toggleAttribute("data-rich-restricted",!!restricted);
+ const editable=new Set(restricted?.editable??[]),cells=new Set<string>();
+ // Table cells and rows render without a block id: mark their base cells instead.
+ for(const block of editable){
+  const node=value.nodes.get(block),parts=node?.type==="breditor/table-row"?node.children.filter(child=>child.kind==="element").map(child=>id(child as ElementNode)):node?.type==="breditor/table-cell"?[block]:[];
+  for(const part of parts){const cell=sourceCell(value,part);if(cell)cells.add(cellKey(cell));}
+ }
+ for(const element of surface.querySelectorAll<HTMLElement>("[data-rich-block]"))element.toggleAttribute("data-rich-editable-region",editable.has(element.dataset["richBlock"]??""));
+ for(const element of surface.querySelectorAll<HTMLElement>("[data-rich-cell]"))element.toggleAttribute("data-rich-editable-region",cells.has(element.dataset["richCell"]??""));
+}
+/** Default marking for `data-rich-editable-region` under `data-rich-restricted`; hosts may restyle. */
+export const richRestrictedEditingStyles="[data-rich-restricted] [data-rich-editable-region]{outline:1px dashed color-mix(in srgb,Highlight 70%,transparent);outline-offset:2px;background:color-mix(in srgb,Highlight 8%,transparent)}";
 export function applyEditingPolicy(surface:HTMLElement,readOnly:boolean):void {
  surface.contentEditable=readOnly?"false":"true";surface.setAttribute("aria-readonly",String(readOnly));
  for(const link of surface.querySelectorAll<HTMLElement>("a[data-rich-image-link]")){if(readOnly)link.removeAttribute("tabindex");else link.tabIndex=-1;}
@@ -172,6 +187,7 @@ export function render(surface:HTMLElement,value:RichPresentationModel,options:R
  };
  surface.replaceChildren(...value.root.children.map(flow));
  applyEditingPolicy(surface,value.view.readOnly===true);
+ applyRestrictedPresentation(surface,value);
  paintSelection(surface,value);
 }
 export function paintSelection(surface:HTMLElement,value:RichPresentationModel):void {

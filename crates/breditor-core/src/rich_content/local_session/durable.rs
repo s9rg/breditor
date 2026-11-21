@@ -138,6 +138,7 @@ impl RichLocalSession {
             token: Arc::new(()),
             read_only: false,
             read_only_revision: None,
+            restricted: None,
             typing_history: None,
         })
     }

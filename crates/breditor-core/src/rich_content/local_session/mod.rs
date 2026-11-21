@@ -56,6 +56,7 @@ mod retained_asset_references;
 mod select_document;
 mod set_pending_formats;
 mod set_read_only;
+mod set_restricted_editing;
 mod set_text_language;
 mod snapshot;
 mod state;
@@ -132,6 +133,8 @@ pub struct RichLocalSession {
     // Host policy, never part of document/history/checkpoint permissions.
     read_only: bool,
     read_only_revision: Option<Revision>,
+    // Host restricted-editing policy; never document, history or checkpoint data.
+    restricted: Option<Arc<crate::rich_content::RichRestrictedPolicy>>,
     typing_history: Option<typing_history::TypingHistory>,
 }
 
@@ -168,6 +171,7 @@ impl RichLocalSession {
             token: Arc::new(()),
             read_only: false,
             read_only_revision: None,
+            restricted: None,
             typing_history: None,
         })
     }
@@ -189,6 +193,7 @@ impl RichLocalSession {
             self.state.clone(),
             self.read_only,
             self.read_only_revision,
+            self.restricted.clone(),
         )
     }
     /// Maximum retained chronological entries, including undo and redo.

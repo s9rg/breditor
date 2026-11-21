@@ -10,7 +10,8 @@ impl RichLocalSession {
         candidate: RichLocalState,
         forward: HistoryRecipe,
         inverse: HistoryRecipe,
-    ) -> RichLocalOutcome {
+    ) -> Result<RichLocalOutcome, super::RichLocalSessionError> {
+        self.require_restricted(&candidate.document)?;
         let entry = RichHistoryEntry {
             before: self.state.clone(),
             after: candidate.clone(),
@@ -32,6 +33,6 @@ impl RichLocalSession {
             self.cursor = self.entries.len();
         }
         self.publish(candidate);
-        RichLocalOutcome::ContentCommitted
+        Ok(RichLocalOutcome::ContentCommitted)
     }
 }

@@ -31,6 +31,7 @@ mod profile;
 mod replace_document_plain_text;
 mod replace_document_typing_text;
 mod restore_typing_editor;
+mod restricted_editing;
 mod result;
 mod retained_asset_references;
 mod search;

@@ -66,6 +66,15 @@ impl RichReplica {
         if self.read_only {
             view["readOnly"] = json!(true);
         }
+        // Present only under a live host policy, so default view bytes stay unchanged.
+        if let Some(policy) = &self.restricted {
+            let editable = policy
+                .regions(&self.document)
+                .into_iter()
+                .map(|region| region.block.as_str().to_owned())
+                .collect::<Vec<_>>();
+            view["restricted"] = json!({"editable":editable,"selectionEditable":self.restricted_selection_editable()?});
+        }
         if document_scope {
             view["selectionEditing"] = json!("document-v1");
         }

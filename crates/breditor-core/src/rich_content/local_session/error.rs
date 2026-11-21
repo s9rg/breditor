@@ -31,6 +31,9 @@ pub enum RichLocalSessionError {
     /// The live host policy forbids content, history or pending-format mutation.
     #[error("rich editor is read-only")]
     ReadOnly,
+    /// The live restricted-editing policy forbids this change outside editable regions.
+    #[error("rich change touches content outside the editable regions")]
+    Restricted,
     /// Code typing never retains semantic inline formatting overrides.
     #[error("code blocks require plain pending typing formats")]
     CodeFormats,

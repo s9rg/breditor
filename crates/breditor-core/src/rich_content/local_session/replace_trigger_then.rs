@@ -96,7 +96,7 @@ impl RichLocalSession {
             candidate,
             HistoryRecipe::Recovered(forward),
             HistoryRecipe::Recovered(inverse),
-        ))
+        )?)
     }
 
     fn require_trigger(&self, trigger: &RichSelectionKind) -> Result<(), RichLocalSessionError> {
@@ -133,6 +133,7 @@ impl RichLocalSession {
             token: Arc::new(()),
             read_only: false,
             read_only_revision: None,
+            restricted: None,
             typing_history: None,
         }
     }
