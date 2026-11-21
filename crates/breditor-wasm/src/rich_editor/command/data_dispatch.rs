@@ -2,6 +2,7 @@
 use super::CommandTag;
 use crate::BreditorError;
 use breditor_core::rich_content::{RichLocalOutcome, RichLocalSession, RichLocalSnapshot};
+#[allow(clippy::too_many_lines)] // One arm per command tag keeps dispatch auditable.
 pub(super) fn execute(
     tag: CommandTag,
     owner: &mut RichLocalSession,
