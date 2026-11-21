@@ -225,8 +225,10 @@ class RichCoreEditor {
     return this.#markdownInput(method,data,revision);
   }
   /** `rules` is a nonempty duplicate-free list of `markdown-v1`/`autolink-v1`; refused retains the typed text. */
-  insertPlainTextWithInputRules(text,rules,namespace,revision){return this.#ruleSetInput("insertPlainTextWithInputRules",{text,namespace,rules:[...rules]},revision);}
-  insertTypingTextWithInputRules(text,clockMs,rules,namespace,revision){return this.#ruleSetInput("insertTypingTextWithInputRules",{text,clockMs,namespace,rules:[...rules]},revision);}
+  insertPlainTextWithInputRules(text,rules,namespace,revision,typography){return this.#ruleSetInput("insertPlainTextWithInputRules",{text,namespace,rules:[...rules],...(typography!==undefined?{typography}:{})},revision);}
+  insertTypingTextWithInputRules(text,clockMs,rules,namespace,revision,typography){return this.#ruleSetInput("insertTypingTextWithInputRules",{text,clockMs,namespace,rules:[...rules],...(typography!==undefined?{typography}:{})},revision);}
+  /** Version1 `typography-v1` acceptance in the rule-set calls; older runtimes reject the selection at mount. */
+  supportsTypographyInputRules(){return this.supportsInputRuleSets()&&this.#live().typographyInputRulesVersion?.()==="1";}
   /** Enter at a collapsed caret, then `autolink-v1`; one Undo removes only the link. */
   insertParagraphWithAutolink(data,revision){return this.#ruleSetInput("insertParagraphWithAutolink",{right:data.right,newItem:data.newItem},revision);}
   supportsSearch(){const raw=this.#live();return raw.searchVersion?.()==="1"&&[raw.findText,raw.checkSearchResults,raw.selectSearchMatch,raw.replaceSearchOne,raw.replaceSearchAll].every(method=>typeof method==="function");}

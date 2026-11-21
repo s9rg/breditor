@@ -6,6 +6,24 @@ its durable formats and Wasm transport.
 
 ## Unreleased
 
+- Add the opt-in **`typography-v1`** input-rule set (automatic text
+  transformations): smart quotes with apostrophes, `...` → `…`, delimited
+  ` -- `/` --- ` → en/em dash, `(c)`/`(r)`/`(tm)`, delimited fractions and
+  arrows, `<=`/`>=`/`!=`, plus an opt-in `misc` group (`(sm)`, `+/-`, `<<`,
+  `>>`, `^2`, `^3`). Rules are selected by CKEditor-style groups and names
+  (`include`/`exclude`), quotes by preset (`english`, `german`, `french` with
+  no-break spaces, `swiss`, `polish`) or a validated custom pair. Every
+  replacement is one native Undo group that restores exactly what was typed,
+  keeps the replaced characters' formats, never fires in code, paste,
+  composition or remote updates, and behaves identically in local and shared
+  editors. Select it with `inputRules: "typography-v1"` or
+  `inputRules: {rule: "typography-v1", include, exclude, quotes}` (alone or in
+  a list with `markdown-v1`/`autolink-v1`). Rust `RichInputRuleSet::TYPOGRAPHY_V1`,
+  `typography_with`, `RichTypographyConfig`, `RichQuoteStyle`,
+  `rich_typography_replacement`; Wasm `typographyInputRulesVersion()` /
+  `typography_input_rules_version()` and an optional `typography` request
+  field; TypeScript `supportsTypographyInputRules()`. See
+  [docs/RICH_INPUT_RULES.md](docs/RICH_INPUT_RULES.md#optional-typography-typography-v1).
 - Add the **shared rich V4 inline commands**: text language, mentions and image
   links, each one native shared command and one Undo step with the local V4
   semantics. Rust `RichReplica::set_text_language_json_guarded`,

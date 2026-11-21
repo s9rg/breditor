@@ -100,6 +100,11 @@ pub use input_rules::{
     plan_rich_markdown_input_rule, plan_rich_paragraph_autolink_input_rule,
     rich_autolink_candidate,
 };
+pub use input_rules::{
+    RICH_TYPOGRAPHY_DEFAULT_GROUPS, RICH_TYPOGRAPHY_GROUPS, RichQuoteStyle, RichTypographyConfig,
+    RichTypographyConfigError, RichTypographyMatch, RichTypographyRequest, RichTypographyRule,
+    rich_typography_replacement,
+};
 pub use list_draft::{RichListDraft, RichListItemDraft, RichListKind};
 pub use list_numbering::{
     RichListNumberStyle, RichListNumbering, RichListNumberingError, RichListNumberingPatch,

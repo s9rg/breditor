@@ -21,7 +21,7 @@ export {RichRetainedAssetReferenceRegistry} from "./dist/browser/retained_asset_
 export {RichWritingEvents,RichWritingReadRegistry} from "./dist/browser/writing_tools_host.js";
 export {RichSearchEvents} from "./dist/browser/search_host.js";
 export {prepareRichPlaceholder,validatePlaceholderOption,RichPlaceholderPresentation,richPlaceholderStyles} from "./dist/browser/placeholder.js";
-export {requireMarkdownInputRules,requireInputRules,inputRuleSelection,needsInputRuleSets,validateMarkdownInputPolicy,isPlainInputScalar,captureMarkdownInputSource,checkMarkdownInputSource,publishMarkdownInput} from "./dist/browser/input_rule_intent.js";
+export {requireMarkdownInputRules,requireInputRules,inputRuleSelection,inputRuleTypography,TYPOGRAPHY_RULE_GROUPS,TYPOGRAPHY_DEFAULT_GROUPS,needsInputRuleSets,validateMarkdownInputPolicy,isPlainInputScalar,captureMarkdownInputSource,checkMarkdownInputSource,publishMarkdownInput} from "./dist/browser/input_rule_intent.js";
 export {isStructuralRichLanguage} from "./dist/browser/rich_language.js";
 export {requireClipboardInterchange,readClipboardInput,exportClipboard,writeClipboard,clipboardInterchangeReport,clipboardInterchangeStatus} from "./dist/browser/clipboard_interchange.js";
 export {mountRichBlockDragPort,richBlockDragStyles} from "./dist/browser/block_drag.js";

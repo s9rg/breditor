@@ -219,6 +219,15 @@ removes only the link and keeps the typed space or split. Selecting it requires
 read-only input are never converted. See
 [the input-rule contract](../../docs/RICH_INPUT_RULES.md#optional-autolink-autolink-v1).
 
+`inputRules: "typography-v1"` (alone or in a list) replaces typed smart quotes,
+`...`, delimited ` -- `/` --- `, `(c)`/`(r)`/`(tm)`, delimited fractions and
+arrows and `<=`/`>=`/`!=`; `{rule: "typography-v1", include, exclude, quotes}`
+selects CKEditor-style groups/rules and a quote preset (`english`, `german`,
+`french`, `swiss`, `polish`) or a custom pair. One Undo restores exactly the
+typed characters; code, paste, composition, remote and read-only input never
+convert. Selecting it requires `supportsTypographyInputRules()`. See
+[the typography contract](../../docs/RICH_INPUT_RULES.md#optional-typography-typography-v1).
+
 Initialize the bundled opt-in Wasm module once, then pass that exact module to
 the profile factory. Do not mix generated classes from different module heaps.
 Profile-bootstrap V6 contains the same closed typed extension declarations as

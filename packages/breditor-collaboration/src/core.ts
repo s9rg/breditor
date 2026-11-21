@@ -24,7 +24,7 @@ import {sharedProtocolLanguage} from "./protocol.js";
 import {sharedTextLanguageInput,sharedMentionInput,sharedImageLinkInput,type SharedImageLinkIntent} from "./inline_v4_input.js";
 import {encodeBlockLayoutPatch} from "@breditor/experimental-rich-content/rendering";
 import {sharedStructureRequestV4} from "./structure_v4.js";
-import type {RichSearchQuery,RichSearchReplacement,RichInputRuleOutcome,RichInputRuleId} from "@breditor/experimental-rich-content";
+import type {RichSearchQuery,RichSearchReplacement,RichInputRuleOutcome,RichInputRuleId,RichTypographyOptions} from "@breditor/experimental-rich-content";
 import {SharedSearchResults,nativeSearchResults} from "./search_results.js";
 import {parseSegmentedHistoryInfo,type SharedSegmentedHistoryInfo} from "./segmented_history.js";
 import {registerManagedCore} from "./managed_custody.js";
@@ -318,8 +318,10 @@ export class SharedRichEditor<P extends SharedSelectionPolicy="original"> {
   return this.#markdownInput(method,data,revision);
  }
  /** `rules` is a nonempty duplicate-free list of `markdown-v1`/`autolink-v1`; refused retains the typed text. */
- insertPlainTextWithInputRules(text:string,rules:readonly RichInputRuleId[],namespace:string,revision?:string):RichInputRuleOutcome{return this.#ruleSetInput("insert_plain_text_with_input_rules",{text,namespace,rules:[...rules]},revision);}
- insertTypingTextWithInputRules(text:string,clockMs:string,rules:readonly RichInputRuleId[],namespace:string,revision?:string):RichInputRuleOutcome{return this.#ruleSetInput("insert_typing_text_with_input_rules",{text,clockMs,namespace,rules:[...rules]},revision);}
+ insertPlainTextWithInputRules(text:string,rules:readonly RichInputRuleId[],namespace:string,revision?:string,typography?:RichTypographyOptions):RichInputRuleOutcome{return this.#ruleSetInput("insert_plain_text_with_input_rules",{text,namespace,rules:[...rules],...(typography!==undefined?{typography}:{})},revision);}
+ insertTypingTextWithInputRules(text:string,clockMs:string,rules:readonly RichInputRuleId[],namespace:string,revision?:string,typography?:RichTypographyOptions):RichInputRuleOutcome{return this.#ruleSetInput("insert_typing_text_with_input_rules",{text,clockMs,namespace,rules:[...rules],...(typography!==undefined?{typography}:{})},revision);}
+ /** Version1 `typography-v1` acceptance in the rule-set calls; older runtimes reject the selection at mount. */
+ supportsTypographyInputRules():boolean{return this.supportsInputRuleSets()&&this.#live().typography_input_rules_version?.()==="1";}
  /** One caret split, then `autolink-v1` on its retained left block; one SDK publication after both. */
  splitWithAutolink(request:SharedDispatch,revision?:string):RichInputRuleOutcome{return this.#ruleSetInput("split_with_autolink",request,revision);}
  /** Pure matching/navigation remains available without upgrading history or leaving read-only. */

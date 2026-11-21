@@ -17,7 +17,11 @@ export type RichHistoryPolicy="explicit"|"typing-v1";
 /** Refused means literal input committed; report separately and never retry it. */
 export type RichInputRuleOutcome="unchanged"|"inserted"|"applied"|"refused";
 /** Explicitly selected native input-rule policies; never a saved document setting. */
-export type RichInputRuleId="markdown-v1"|"autolink-v1";
+export type RichInputRuleId="markdown-v1"|"autolink-v1"|"typography-v1";
+/** Quote preset, or a custom pair of single non-ASCII scalars with optional inner no-break spacing. */
+export type RichTypographyQuotes="english"|"german"|"french"|"swiss"|"polish"|{readonly double:readonly [string,string];readonly single:readonly [string,string];readonly space?:"nbsp"|"narrow-nbsp"};
+/** `typography-v1` selection: `include` (groups or rule names) replaces the default groups, `exclude` removes. */
+export interface RichTypographyOptions {readonly include?:readonly string[];readonly exclude?:readonly string[];readonly quotes?:RichTypographyQuotes}
 /** Explicit native matching intent; never a persisted editor command. */
 export interface RichSearchQuery {pattern:string;mode:"literal"|"regex";caseSensitive:boolean;wholeWords:boolean}
 export interface RichSearchReplacement {text:string;mode:"literal"|"captures"}
@@ -111,8 +115,10 @@ export interface RichCoreEditor<P extends RichSelectionPolicy="original"> {
   insertTypingTextWithMarkdownRules?(text:string,clockMs:string,namespace:string,expectedRevision?:string):RichInputRuleOutcome;
   /** Version1 rule-set calls (`markdown-v1`, `autolink-v1`) and the Enter autolink split; no JS matching. */
   supportsInputRuleSets?():boolean;
-  insertPlainTextWithInputRules?(text:string,rules:readonly RichInputRuleId[],namespace:string,expectedRevision?:string):RichInputRuleOutcome;
-  insertTypingTextWithInputRules?(text:string,clockMs:string,rules:readonly RichInputRuleId[],namespace:string,expectedRevision?:string):RichInputRuleOutcome;
+  insertPlainTextWithInputRules?(text:string,rules:readonly RichInputRuleId[],namespace:string,expectedRevision?:string,typography?:RichTypographyOptions):RichInputRuleOutcome;
+  insertTypingTextWithInputRules?(text:string,clockMs:string,rules:readonly RichInputRuleId[],namespace:string,expectedRevision?:string,typography?:RichTypographyOptions):RichInputRuleOutcome;
+  /** Version1 `typography-v1` acceptance (and its optional `typography` request) in the rule-set calls. */
+  supportsTypographyInputRules?():boolean;
   /** The `insertParagraph` record at a collapsed caret, then `autolink-v1` on the retained left block. */
   insertParagraphWithAutolink?(data:{readonly right:string;readonly newItem:string|null},expectedRevision?:string):RichInputRuleOutcome;
   /** Complete optional Rust capability; absent/older runtimes never fall back to DOM matching. */

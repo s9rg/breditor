@@ -223,6 +223,8 @@ export interface SharedRustOwner extends SharedReviewRustCapability,SharedReview
  insert_typing_text_with_markdown_rules?(observation:unknown,input:string):string;
  /** Version1 rule sets (`markdown-v1`, `autolink-v1`) and the Enter autolink split. */
  input_rule_sets_version?():string;
+ /** Version1 `typography-v1` acceptance in the rule-set calls. */
+ typography_input_rules_version?():string;
  insert_plain_text_with_input_rules?(observation:unknown,input:string):string;
  insert_typing_text_with_input_rules?(observation:unknown,input:string):string;
  split_with_autolink?(observation:unknown,input:string):string;
