@@ -90,6 +90,15 @@ its durable formats and Wasm transport.
   toolbar controls may now declare an optional custom `panel` and surface `attach`.
   Default toolbars, documents and descriptors are unchanged.
 
+- **Shared V4 interchange.** A shared V4 `SharedRichEditor` now reports the same
+  eight `@breditor/interchange` capabilities as a local V4 owner (new
+  `supportsTableCaptions()` and `supportsPageBreaks()`, following the shared
+  structure commands), so HTML, Markdown, DOCX export and rich, Office and Google
+  Docs paste convert every V4 slice in shared editors exactly as locally: list
+  numbering, `lang`, image links, `<details>`, mention spans, `<caption>`, page
+  breaks, bookmark ids and `#` links. Imports publish as one ordinary guarded shared
+  paste (one Undo step, fresh identities). Shared V1–V3 owners keep the original
+  conversions byte for byte.
 - Add the **shared rich V4 inline commands**: text language, mentions and image
   links, each one native shared command and one Undo step with the local V4
   semantics. Rust `RichReplica::set_text_language_json_guarded`,

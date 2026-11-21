@@ -306,6 +306,41 @@ and `sharedSlashCommands`. The shared controller now also injects the local
 shared page break renders as the labelled dashed separator and can be clicked to
 node-select it, instead of a zero-height block.
 
+## Interchange
+
+`@breditor/interchange` reads its owner's capabilities once at creation. A shared
+V4 `SharedRichEditor` reports the same eight as a local V4 owner:
+`supportsListNumbering()`, `supportsBookmarks()` and `supportsDetails()` with the
+block-field commands, `supportsTextLanguage()`, `supportsMentions()` and
+`supportsImageLinks()` with the inline commands, and `supportsTableCaptions()` and
+`supportsPageBreaks()` with the structure commands (`structure_commands_v4_version`).
+Every V4 slice therefore imports and exports exactly as locally: HTML and Markdown
+import (ordered-list style/reversal, `lang`/`xml:lang`, linked images, `<details>`,
+mention spans, `<caption>`, CSS/Word/Google Docs page breaks, element ids and
+`#fragment` links), HTML/Markdown export (bookmark ids and internal links) and DOCX
+export of the shared `documentJson`. Shared V1–V3 owners report none of them and keep
+the original conversions byte for byte.
+
+No new shared command or Rust surface is involved: the shared owner's
+`admit_clipboard_root`/`validate_clipboard` already admit under the frozen V4 grammar
+(the same transfer bytes as the local V4 context), and the shared controller pastes
+an imported transfer through the existing guarded `paste_clipboard`: one
+`PasteBlocks` (or inline paste) dispatch, one writer-local Undo step, fresh
+identities from the clipboard namespace (asset generations rekeyed as for any
+paste), no bookmark carried (the local paste rule), and nothing for the merge
+repairs to change.
+
+Tests: `crates/breditor-collaboration/tests/shared_v4_interchange_contracts.rs`
+(research shim in `experiments/collaboration/tests/`): admission of an adapter root
+with every slice equal to the local V4 context, V3 refusal, flow and inline paste as
+one step with fresh identities, peer convergence, Undo/Redo and restart;
+`packages/breditor-editor/tests/shared_v4_interchange.test.ts`: capability parity and
+identical import/export results for local and shared owners of V4 and V3, per slice;
+`experiments/shared-browser/v4-interchange.spec.mjs`: two real Wasm writers in a V4
+room plus a real local V4 owner in the same page, pasting HTML with every slice,
+Markdown and Google Docs HTML, converging, and exporting HTML, Markdown and DOCX
+identical to the local owner (Chromium, Firefox, WebKit).
+
 ## Tests
 
 - `crates/breditor-collaboration/tests/shared_v4_contracts.rs` (also compiled by the
@@ -366,9 +401,9 @@ node-select it, instead of a zero-height block.
 - Every V4 slice now has its shared commands, Wasm/TS surface and toolbar
   controls (inline, block-field and structure sections above), qualified in all
   three engines by `v4-inline.spec.mjs`, `v4-block-fields.spec.mjs` and
-  `v4-structure.spec.mjs`. Still open: shared interchange that reports V4
-  capabilities (until then shared imports keep the V1–V3 conversions). Enter at a
-  collapsed summary now expands the section and enters its body in one guarded
-  step, like the local `enterDetailsBody`.
+  `v4-structure.spec.mjs`; shared interchange reports the V4 capabilities
+  ([Interchange](#interchange)), and Enter at a collapsed summary expands the
+  section and enters its body in one guarded step, like the local
+  `enterDetailsBody`.
 - A second concurrent caption stays hidden by the projection (decision and reasons
   under [Structure commands](#structure-commands-sections-page-breaks-table-captions)).

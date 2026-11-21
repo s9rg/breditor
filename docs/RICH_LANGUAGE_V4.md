@@ -68,14 +68,12 @@ replicates and persists exactly, works with the generic shared commands, and has
 its own shared per-slice commands and toolbar controls (list numbering,
 bookmarks/internal links, section wrap/unwrap/open state, text language, mentions
 with the shared `@` menu, image links, page breaks and table captions; see
-[SHARED_RICH_V4.md](SHARED_RICH_V4.md)). Shared
-interchange owners still do not report list numbering, text language, image
-links, sections, mentions or table captions, so imports into a shared owner keep
-the original `list-numbering` notices, keep dropping `lang` silently, keep the
-original image-link and `<details>` conversion, import mention spans as plain
-`@label` text, keep converting `<caption>` to flow before the table, keep reporting
-forced page-break CSS as `unsupported-style` and keep dropping element ids and
-`#fragment` links (no bookmarks). The selector, replica encoding, conflict
+[SHARED_RICH_V4.md](SHARED_RICH_V4.md)). Shared V4
+owners report exactly the eight interchange capabilities of a local V4 owner, so
+`@breditor/interchange` imports and exports every slice the same way in shared
+editors as locally (HTML, Markdown, DOCX export, rich and Office/Google Docs
+paste); an import publishes as one ordinary guarded shared paste (one Undo step,
+fresh identities). Shared V1–V3 owners keep the original conversions. The selector, replica encoding, conflict
 policies and merge repairs are specified in [SHARED_RICH_V4.md](SHARED_RICH_V4.md).
 
 ## Freeze and durable persistence
@@ -209,7 +207,8 @@ order (Ascending/Reversed) and Start at, and sends only changed fields.
 ### Interchange
 
 `@breditor/interchange` reads `supportsListNumbering()` from its owner once at
-creation. Local V4 owners report `true`; V1–V3 and shared owners do not.
+creation. Local and shared V4 owners report `true`; V1–V3 owners (local and
+shared) do not.
 
 - **HTML import, V4 owner:** `<ol type="1|a|A|i|I">` and `list-style-type`
   (`decimal`, `lower-alpha`/`lower-latin`, `upper-alpha`/`upper-latin`,
@@ -376,8 +375,8 @@ keys are needed.
 
 ### Interchange
 
-`@breditor/interchange` reads `supportsTextLanguage()` once at creation. Local V4
-owners report `true`; V1–V3 and shared owners do not.
+`@breditor/interchange` reads `supportsTextLanguage()` once at creation. Local and shared V4
+owners report `true`; V1–V3 owners (local and shared) do not.
 
 - **HTML import, V4 owner:** `lang` and the equivalent `xml:lang` on **any**
   element (inline or block, including `<body>`) become the language of every
@@ -551,8 +550,8 @@ before it can be linked. Localization uses the existing per-control map (ids
 
 ### Interchange
 
-`@breditor/interchange` reads `supportsImageLinks()` once at creation. Local V4
-owners report `true`; V1–V3 and shared owners do not.
+`@breditor/interchange` reads `supportsImageLinks()` once at creation. Local and shared V4
+owners report `true`; V1–V3 owners (local and shared) do not.
 
 - **HTML import, V4 owner:** an `<img>` inside `<a href>` (inline, or
   `<figure><a href><img></a><figcaption>`) takes the anchor's link; `target` and
@@ -727,8 +726,8 @@ item (`details`) that appears only with a V4 toolbar.
 
 ### Interchange
 
-`@breditor/interchange` reads `supportsDetails()` once at creation (local V4
-owners only).
+`@breditor/interchange` reads `supportsDetails()` once at creation (local and
+shared V4 owners).
 
 - **HTML import, V4 owner:** `<details>` becomes a section; the first `<summary>`
   child is its summary and `open` maps to `details-open`. Block markup inside a
@@ -915,8 +914,8 @@ error. `richMentionStyles` is an optional host CSS hook.
 
 ### Interchange
 
-`@breditor/interchange` reads `supportsMentions()` once. Local V4 owners report
-`true`; V1–V3 and shared owners do not.
+`@breditor/interchange` reads `supportsMentions()` once. Local and shared V4
+owners report `true`; V1–V3 owners (local and shared) do not.
 
 - **HTML export:** each unit is the span above around its styled pieces.
 - **HTML import, V4 owner:** only that exact shape (class `breditor-mention`,
@@ -1099,8 +1098,8 @@ per-control map; no new string keys.
 
 ### Interchange
 
-`@breditor/interchange` reads `supportsTableCaptions()` once (local V4 owners
-only).
+`@breditor/interchange` reads `supportsTableCaptions()` once (local and shared V4
+owners).
 
 - **HTML import, V4 owner:** the first `<caption>` becomes the table's caption
   paragraph (inline formats, links, language and mentions as usual). A caption
@@ -1223,7 +1222,8 @@ holding the selection) and the standard slash menu gains a **Page break** item
 
 ### Interchange
 
-`@breditor/interchange` reads `supportsPageBreaks()` once (local V4 owners only).
+`@breditor/interchange` reads `supportsPageBreaks()` once (local and shared V4
+owners).
 HTML import maps Word's `<br clear=all style='page-break-before:always'>` (also
 inside a paragraph, which is split), Google Docs'
 `<hr style="page-break-before:always;display:none">`, an empty `<div>` with a
@@ -1390,7 +1390,8 @@ is added, so the trigger-composite allowlist is unchanged.
 
 ### Interchange
 
-`@breditor/interchange` reads `supportsBookmarks()` once (local V4 owners only).
+`@breditor/interchange` reads `supportsBookmarks()` once (local and shared V4
+owners).
 
 - **HTML export (V4 owner):** `id="bm-<name>"` on the bookmarked `<p>`, `<hN>` or `<pre>`
   and `<a href="#bm-<name>">` for internal links.
