@@ -18,9 +18,9 @@ test("interactive rich demo renders owned raster assets and restores exported ex
  await page.getByRole("button",{name:"Redo",exact:true}).click();expect(await page.evaluate(()=>window.demo.editor.view().documentJson)).toBe(exact);
 });
 
-test("disconnected cell and file edits recover together from a cached shell without live resource fetches",async({page,context})=>{
+test("disconnected cell and file edits recover together from a cached shell without live resource fetches",async({page,context,baseURL})=>{
  const resources=new Map(),captures=[];
- page.on("response",response=>{if(response.url().startsWith("http://127.0.0.1:49773/"))captures.push((async()=>{resources.set(new URL(response.url()).pathname,{body:await response.body(),contentType:response.headers()["content-type"]});})());});
+ page.on("response",response=>{if(response.url().startsWith(`${baseURL}/`))captures.push((async()=>{resources.set(new URL(response.url()).pathname,{body:await response.body(),contentType:response.headers()["content-type"]});})());});
  await page.goto("/demo");await expect(page.locator("#ready")).toHaveText("Ready — real Rust/Wasm editor");
  // Block HTTP requests at the boundary, without disabling the browser's local
  // Blob/file I/O. Playwright's WebKit offline switch also rejects that local I/O.
@@ -47,7 +47,7 @@ test("disconnected cell and file edits recover together from a cached shell with
  await Promise.all(captures);
  await context.unroute("**/*",disconnected);
  await context.route("**/*",disconnected);
- await context.route("http://127.0.0.1:49773/**",async route=>{
+ await context.route(`${baseURL}/**`,async route=>{
   const path=new URL(route.request().url()).pathname;
   const response=resources.get(path);
   if(!response){await route.abort("internetdisconnected");return;}

@@ -10,6 +10,8 @@ import {defineConfig,devices} from "@playwright/test";
 // tests give 6 groups of 16-31 tests, about half the limit); new specs add groups automatically. Select all
 // of WebKit with --project='webkit*'.
 const WEBKIT_FILES_PER_GROUP=5;
+// BREDITOR_RICH_PORT moves the contract host (default 49773) so parallel checkouts do not collide.
+const port=Number(process.env.BREDITOR_RICH_PORT??49773),origin=`http://127.0.0.1:${port}`;
 const specs=readdirSync(dirname(fileURLToPath(import.meta.url))).filter(name=>name.endsWith(".spec.mjs")).sort();
 const groups=Math.max(1,Math.ceil(specs.length/WEBKIT_FILES_PER_GROUP));
 const webkit=Array.from({length:groups},(_,group)=>({
@@ -20,7 +22,7 @@ const webkit=Array.from({length:groups},(_,group)=>({
 
 export default defineConfig({
  testDir:".",testMatch:"*.spec.mjs",outputDir:"../../target/rich-browser-results",workers:1,retries:0,timeout:60_000,globalTimeout:20*60_000,forbidOnly:true,reporter:"line",
- use:{baseURL:"http://127.0.0.1:49773",trace:"retain-on-failure"},
+ use:{baseURL:origin,trace:"retain-on-failure"},
  projects:[{name:"chromium",use:{...devices["Desktop Chrome"]}},{name:"firefox",use:{...devices["Desktop Firefox"]}},...webkit],
- webServer:{command:"node experiments/rich-browser/serve.mjs",cwd:"../..",url:"http://127.0.0.1:49773/",reuseExistingServer:false,timeout:10_000},
+ webServer:{command:"node experiments/rich-browser/serve.mjs",cwd:"../..",url:`${origin}/`,reuseExistingServer:false,timeout:10_000},
 });
