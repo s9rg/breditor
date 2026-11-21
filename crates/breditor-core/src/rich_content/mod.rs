@@ -44,6 +44,7 @@ mod rich_range_mapping;
 mod rich_selection;
 mod rich_selection_mapping;
 mod rich_text_mapping;
+pub mod root_set;
 mod ruby_v1;
 mod search;
 mod selection_coverage;
@@ -118,9 +119,9 @@ pub use list_numbering::{
 };
 pub use local_session::{
     RICH_COMMAND_GROUP_MAX_STEPS, RICH_TYPING_GROUP_MAX_STEPS, RICH_TYPING_GROUP_WINDOW_MS,
-    RichCommandGroupError, RichGeneralPlainRangePlan, RichLocalOutcome, RichLocalSession,
-    RichLocalSessionError, RichLocalSnapshot, RichLocalState, RichPendingFormatsUpdate,
-    RichSelectionUpdate, RichTriggerStepError, RichTypingDeleteDirection,
+    RichCommandGroupError, RichGeneralPlainRangePlan, RichHistoryProbe, RichLocalOutcome,
+    RichLocalSession, RichLocalSessionError, RichLocalSnapshot, RichLocalState,
+    RichPendingFormatsUpdate, RichSelectionUpdate, RichTriggerStepError, RichTypingDeleteDirection,
 };
 pub use mention::{
     RICH_MENTION_FORMAT, RICH_MENTION_ID_MAX_BYTES, RICH_MENTION_ID_PROPERTY,

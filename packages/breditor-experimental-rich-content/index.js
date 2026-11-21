@@ -52,6 +52,7 @@ class OwnedRichSearchResults {
   dispose(){const entry=searchResults.get(this);if(!entry)return;searchResults.delete(this);try{entry.raw.free();}finally{this.#closed();}}
 }
 function nativeSearchResults(owner,results){const entry=searchResults.get(results);if(!entry||entry.owner!==owner)throw new RichCommandError("breditor_rich.search_owner","The search result is disposed or belongs to another editor");return entry.raw;}
+export {mountRichMultiRootEditor,restoreRichRootSet} from "./dist/browser/multi_root.js";
 export {mountRichEditor,mountDocumentRichEditor,RichDomEditor,defaultToolbar,RichAssetStore,defaultAssetLimits,insertImageFiles,RichLocalSessionStore} from "./dist/browser/index.js";
 export {RichAssetBackupError,MAX_ASSET_BACKUP_BYTES,MAX_ASSET_BACKUP_HEADER_BYTES,ASSET_BACKUP_MIME} from "./dist/browser/index.js";
 export {RichAssetArchive,readRichAssetBackup} from "./dist/browser/index.js";
@@ -203,11 +204,37 @@ class RichCoreProfile {
   dispose() { this.#raw?.free(); this.#raw = undefined; }
 }
 
+// Multi-root coordinator access to a root's native owner; never exposed to hosts.
+const rootOwners=new WeakMap();
+/** Create the native multi-root history coordinator (see docs/MULTIPLE_ROOTS.md). */
+export function createRichRootSet(wasm){
+  if(typeof wasm?.BreditorRichRootSet!=="function")throw new RichCommandError("breditor_rich.module","Use a matching Wasm module with multi-root support");
+  const raw=new wasm.BreditorRichRootSet();
+  if(raw.rootSetVersion?.()!=="1"){raw.free();throw new RichCommandError("breditor_rich.module","Use a matching Wasm module with multi-root support");}
+  return new RichRootSet(raw);
+}
+class RichRootSet {
+  #raw;
+  constructor(raw){this.#raw=raw;}
+  #live(){if(!this.#raw)throw new RichCommandError("breditor_rich.disposed","The rich root set is disposed");return this.#raw;}
+  #owner(core){const owner=rootOwners.get(core);if(!owner)throw new RichCommandError("breditor_rich.root_owner","Expected a rich core editor from this module");return owner();}
+  state(){return JSON.parse(this.#live().stateJson());}
+  addRoot(meta,core,index){return JSON.parse(read(this.#live().addRoot(JSON.stringify(meta),this.#owner(core),index)));}
+  removeRoot(id){return JSON.parse(read(this.#live().removeRoot(id)));}
+  setAttributes(id,attributes){return JSON.parse(read(this.#live().setAttributes(id,JSON.stringify(attributes))));}
+  focus(id){return JSON.parse(read(this.#live().focus(id)));}
+  reconcile(id,core){return read(this.#live().reconcile(id,this.#owner(core)))==="true";}
+  checkpointJson(parts){return read(this.#live().checkpointJson(JSON.stringify(parts)));}
+  restore(envelope){return JSON.parse(read(this.#live().restore(envelope)));}
+  attach(id,core){return JSON.parse(read(this.#live().attach(id,this.#owner(core))));}
+  dispose(){this.#raw?.free();this.#raw=undefined;}
+}
+
 class RichCoreEditor {
   #raw; #observation; #language; #selectionPolicy;
   #assetReferences=new RichRetainedAssetReferenceRegistry();
   #searches=new Set();
-  constructor(raw,descriptor,selectionPolicy="original") { this.#raw = raw;this.#selectionPolicy=selectionPolicy;try{this.#language=JSON.parse(descriptor).richLanguageVersion??1;this.#observation = raw.observe();if((this.#language===3||this.#language===4)&&!this.supportsBlockLayout())throw new RichCommandError("breditor_rich.layout_runtime","Use matching native layout V3 commands and reads");if(this.#language===4&&!this.supportsListNumbering())throw new RichCommandError("breditor_rich.list_numbering_runtime","Use matching native rich V4 list numbering commands");if(this.#language===4&&!this.supportsTextLanguage())throw new RichCommandError("breditor_rich.text_language_runtime","Use matching native rich V4 text language commands");if(this.#language===4&&!this.supportsImageLinks())throw new RichCommandError("breditor_rich.image_link_runtime","Use matching native rich V4 image link commands");if(this.#language===4&&!this.supportsDetails())throw new RichCommandError("breditor_rich.details_runtime","Use matching native rich V4 collapsible section commands");if(this.#language===4&&!this.supportsMentions())throw new RichCommandError("breditor_rich.mention_runtime","Use matching native rich V4 mention commands");if(this.#language===4&&!this.supportsTableCaptions())throw new RichCommandError("breditor_rich.table_caption_runtime","Use matching native rich V4 table caption commands");if(this.#language===4&&!this.supportsPageBreaks())throw new RichCommandError("breditor_rich.page_break_runtime","Use matching native rich V4 page break commands");if(this.#language===4&&!this.supportsBookmarks())throw new RichCommandError("breditor_rich.bookmark_runtime","Use matching native rich V4 bookmark commands");if(selectionPolicy==="document-v1"&&!this.supportsDocumentSelection())throw new RichCommandError("breditor_rich.document_selection_unavailable","Use complete matching native document-selection capabilities");}catch(error){this.#observation?.free();raw.free();this.#raw=undefined;throw error;} }
+  constructor(raw,descriptor,selectionPolicy="original") { this.#raw = raw;rootOwners.set(this,()=>this.#live());this.#selectionPolicy=selectionPolicy;try{this.#language=JSON.parse(descriptor).richLanguageVersion??1;this.#observation = raw.observe();if((this.#language===3||this.#language===4)&&!this.supportsBlockLayout())throw new RichCommandError("breditor_rich.layout_runtime","Use matching native layout V3 commands and reads");if(this.#language===4&&!this.supportsListNumbering())throw new RichCommandError("breditor_rich.list_numbering_runtime","Use matching native rich V4 list numbering commands");if(this.#language===4&&!this.supportsTextLanguage())throw new RichCommandError("breditor_rich.text_language_runtime","Use matching native rich V4 text language commands");if(this.#language===4&&!this.supportsImageLinks())throw new RichCommandError("breditor_rich.image_link_runtime","Use matching native rich V4 image link commands");if(this.#language===4&&!this.supportsDetails())throw new RichCommandError("breditor_rich.details_runtime","Use matching native rich V4 collapsible section commands");if(this.#language===4&&!this.supportsMentions())throw new RichCommandError("breditor_rich.mention_runtime","Use matching native rich V4 mention commands");if(this.#language===4&&!this.supportsTableCaptions())throw new RichCommandError("breditor_rich.table_caption_runtime","Use matching native rich V4 table caption commands");if(this.#language===4&&!this.supportsPageBreaks())throw new RichCommandError("breditor_rich.page_break_runtime","Use matching native rich V4 page break commands");if(this.#language===4&&!this.supportsBookmarks())throw new RichCommandError("breditor_rich.bookmark_runtime","Use matching native rich V4 bookmark commands");if(selectionPolicy==="document-v1"&&!this.supportsDocumentSelection())throw new RichCommandError("breditor_rich.document_selection_unavailable","Use complete matching native document-selection capabilities");}catch(error){this.#observation?.free();raw.free();this.#raw=undefined;throw error;} }
   richLanguageVersion(){this.#live();return this.#language;}
   supportsRetainedAssetReferences(){const raw=this.#live();return raw.retainedAssetReferencesVersion?.()==="1"&&typeof raw.retainedAssetReferencesJson==="function";}
   retainedAssetReferences(revision){const raw=this.#live(),current=this.#observation.revision;if(revision!==undefined&&revision!==current)throw new RichCommandError("breditor_rich.stale_observation","The asset read was prepared from an older rich publication");if(!this.supportsRetainedAssetReferences())throw new RichCommandError("breditor_rich.asset_references_unavailable","Use complete matching native retained asset reads");return this.#assetReferences.retain(read(raw.retainedAssetReferencesJson(this.#observation)),current,"local-history",this.view().documentJson);}

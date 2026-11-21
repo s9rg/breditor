@@ -42,6 +42,7 @@ impl RichLocalSession {
             self.state.revision.successor()?,
         )?;
         self.cursor = index;
+        self.probe.undos = self.probe.undos.wrapping_add(1);
         self.publish(candidate);
         Ok(RichLocalOutcome::UndoApplied)
     }
