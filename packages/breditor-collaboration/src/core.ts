@@ -634,6 +634,10 @@ export class SharedRichEditor<P extends SharedSelectionPolicy="original"> {
  bookmarkIndex():SharedBookmarkIndex{this.#requireV4BlockFields();return parseSharedBookmarkIndex(this.#live().bookmark_index_json!(this.#observation));}
  /** Explicit shared V4 structure commands (sections, page breaks, table captions): each is one guarded dispatch and one Undo step. */
  supportsSharedStructureV4():boolean{const raw=this.#live();return this.supportsRichLanguageV4()&&raw.structure_commands_v4_version?.()==="1";}
+ /** Interchange capabilities of the structure slices, reported exactly like a local V4 owner: `@breditor/interchange`
+  * then maps `<caption>` and forced page-break CSS (and Word/Google Docs page breaks) to native V4 content. */
+ supportsTableCaptions():boolean{return this.supportsSharedStructureV4();}
+ supportsPageBreaks():boolean{return this.supportsSharedStructureV4();}
  wrapDetails(first:string,last:string,wrapper:string,summary:string,revision?:string):boolean{return this.dispatch(sharedStructureRequestV4(this,{kind:"wrap_details",data:{first,last,wrapper,summary,open:true}}),revision);}
  unwrapDetails(wrapper:string,revision?:string):boolean{return this.dispatch(sharedStructureRequestV4(this,{kind:"unwrap_details",data:{wrapper}}),revision);}
  insertPageBreak(block:string,before:string|null,revision?:string):boolean{return this.dispatch(sharedStructureRequestV4(this,{kind:"insert_page_break",data:{block,before}}),revision);}
