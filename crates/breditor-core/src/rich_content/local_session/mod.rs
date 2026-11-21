@@ -9,6 +9,7 @@ mod change_selection_layout;
 mod check_observation;
 mod close_typing_group;
 mod collapse_document_selection;
+mod command_group;
 mod commit_content;
 mod delete_atom;
 mod delete_typing_range;
@@ -64,6 +65,7 @@ pub(crate) mod typing_state;
 mod undo;
 mod validate_observation;
 
+pub use command_group::{RICH_COMMAND_GROUP_MAX_STEPS, RichCommandGroupError};
 pub use error::RichLocalSessionError;
 pub use plan_general_range_plain_text::RichGeneralPlainRangePlan;
 pub use replace_trigger_then::RichTriggerStepError;

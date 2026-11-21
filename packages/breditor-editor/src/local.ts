@@ -63,6 +63,8 @@ export interface LocalEditor {
  execute(command:RichCommand,focus?:boolean,revision?:string):RichCommandOutcome|"queued";
  /** Whether the native owner runs `replaceTriggerThen` (slash commands as one Undo step). */
  supportsTriggerComposite():boolean;
+ /** Whether the native owner runs `commandGroup` (several commands as one Undo step; agent tools). */
+ supportsCommandGroup():boolean;
  view():RichView;checkpointJson():string;focus():void;refreshAssets():void;
  setReadOnly(value:boolean,revision?:string):boolean;
  closeTypingGroup(revision?:string):boolean;
@@ -93,6 +95,7 @@ class LocalEditorOwner implements LocalEditor {
  constructor(dom:RichDomEditor,release:()=>void,render:RenderOptions){this.#dom=dom;this.#release=release;this.#render=render;this.surface=dom.surface;this.toolbar=dom.toolbar;this.status=dom.status;}
  execute(command:RichCommand,focus=true,revision?:string):RichCommandOutcome|"queued"{return this.#dom.execute(command,focus,revision);}
  supportsTriggerComposite():boolean{return this.#dom.supportsTriggerComposite();}
+ supportsCommandGroup():boolean{return this.#dom.supportsCommandGroup();}
  supportsRetainedAssetReferences():boolean{return this.#dom.supportsRetainedAssetReferences();}
  retainedAssetReferences(revision?:string):import("@breditor/experimental-rich-content").RichRetainedAssetReferencesRead{return this.#dom.retainedAssetReferences(revision);}
  checkRetainedAssetReferences(read:import("@breditor/experimental-rich-content").RichRetainedAssetReferencesRead,revision?:string):void{this.#dom.checkRetainedAssetReferences(read,revision);}

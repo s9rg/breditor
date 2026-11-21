@@ -123,7 +123,7 @@ impl RichLocalSession {
     }
 
     /// A private owner at the exact current publication with empty, plain history.
-    fn scratch(&self) -> Self {
+    pub(super) fn scratch(&self) -> Self {
         Self {
             context: self.context.clone(),
             state: self.state.clone(),

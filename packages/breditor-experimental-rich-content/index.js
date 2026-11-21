@@ -30,6 +30,8 @@ export {mountRichLanguageCheck} from "./dist/browser/language_check.js";
 export {mountRichEditingAids,mountRichEditingAidsControls,richBlockLabel,richInvisibleKinds,richInvisibleGlyphs,richFocusedBlockAttribute,richEditingAidsStyles,RICH_EDITING_AIDS_MAX_MARKERS} from "./dist/browser/editing_aids.js";
 export {richEditingAidsUiStringsEn} from "./dist/browser/ui_locale_editing_aids.js";
 export {richAiToolsHost,RICH_AI_MAX_BYTES,RICH_AI_MAX_INSTRUCTION,RICH_AI_MAX_TIMEOUT_MS} from "./dist/browser/ai_tools_host.js";
+export {createRichAgentTools,richAgentToolsHost,richAgentCommands,richAgentToolDefinitions,richAgentFormats,richAgentFormatTypes,admitAgentArguments,RichAgentError,RichAgentArgumentError,RICH_AGENT_MAX_TEXT,RICH_AGENT_MAX_BLOCKS,RICH_AGENT_MAX_EDITS} from "./dist/browser/ai_agent_tools.js";
+export {mountRichAgentReview,richAgentMcpAdapter} from "./dist/browser/ai_agent_review.js";
 export {richAiUiStringsEn} from "./dist/browser/ui_locale_ai.js";
 export {RICH_DOCUMENT_SOURCE_MAX_BYTES} from "./dist/browser/source_view_types.js";
 
@@ -301,6 +303,7 @@ class RichCoreEditor {
   supportsDetails(){const raw=this.#live();return this.#language===4&&typeof raw.detailsVersion==="function"&&raw.detailsVersion()==="1";}
   supportsMentions(){const raw=this.#live();return this.#language===4&&typeof raw.mentionVersion==="function"&&raw.mentionVersion()==="1";}
   supportsTriggerComposite(){const raw=this.#live();return typeof raw.triggerCompositeVersion==="function"&&raw.triggerCompositeVersion()==="1";}
+  supportsCommandGroup(){const raw=this.#live();return typeof raw.commandGroupVersion==="function"&&raw.commandGroupVersion()==="1";}
   supportsTableCaptions(){const raw=this.#live();return this.#language===4&&typeof raw.tableCaptionVersion==="function"&&raw.tableCaptionVersion()==="1";}
   supportsBookmarks(){const raw=this.#live();return this.#language===4&&typeof raw.bookmarkVersion==="function"&&raw.bookmarkVersion()==="1";}
   bookmarkIndex(){this.#live();if(!this.supportsBookmarks()||typeof this.#observation.bookmarkIndexJson!=="function")throw new RichCommandError("breditor_rich.bookmark_unavailable","Use an explicitly selected matching rich V4 owner");return JSON.parse(read(this.#observation.bookmarkIndexJson()));}

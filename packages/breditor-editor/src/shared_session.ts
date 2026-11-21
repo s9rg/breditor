@@ -8,7 +8,7 @@ import {
 import {createStandardRichInlinePresentationV1} from "@breditor/experimental-rich-content";
 import type {RichSearchHost} from "@breditor/experimental-rich-content";
 import type {SharedSearchResults} from "@breditor/collaboration";
-import {supportsSharedSearchHistory,restoreSharedSearchEditor,sharedAiToolsHost} from "@breditor/collaboration";
+import {supportsSharedSearchHistory,restoreSharedSearchEditor,sharedAiToolsHost,sharedAgentToolsHost} from "@breditor/collaboration";
 import {initializeSharedRuntime,standardSharedProfileConfiguration,structuralSharedProfileConfigurationV2,layoutSharedProfileConfigurationV3,richSharedProfileConfigurationV4} from "./shared_profile.js";
 import {checkSharedRichLanguage} from "./shared_language.js";
 import {claimHost,awaitInitialization} from "./host.js";
@@ -73,6 +73,8 @@ export interface SharedEditorSession extends SharedEditorRecovery {
  contextUi():import("@breditor/experimental-rich-content").RichContextUiHost;
  /** Borrowed port for the opt-in AI rewrite and language-check tools (`mountSharedAiTools`); it never publishes by itself. */
  aiTools():import("@breditor/experimental-rich-content").RichAiToolsHost;
+ /** Agent tool port (docs/AI_AGENT_TOOLS.md): applied plans are one guarded shared dispatch; pass a suggestion queue to file proposals. */
+ agentTools(options?:import("@breditor/collaboration").SharedAgentToolsHostOptions):import("@breditor/experimental-rich-content").RichAgentToolsHost;
  setPlaceholderLabel(label:string|null):void;
  /** The validated chrome catalog from the `ui` option (English, direction-neutral by default). */
  uiLocale():import("@breditor/experimental-rich-content").RichUiLocale;
@@ -109,6 +111,7 @@ class SharedEditorSessionOwner implements SharedEditorSession {
  fullscreen():import("@breditor/experimental-rich-content").RichFullscreenHost{this.#active();return this.#dom;}
  contextUi():import("@breditor/experimental-rich-content").RichContextUiHost{this.#active();return this.#dom;}
  aiTools():import("@breditor/experimental-rich-content").RichAiToolsHost{this.#active();return sharedAiToolsHost(this.#dom);}
+ agentTools(options?:import("@breditor/collaboration").SharedAgentToolsHostOptions):import("@breditor/experimental-rich-content").RichAgentToolsHost{this.#active();return sharedAgentToolsHost(this.#dom,options);}
  setPlaceholderLabel(label:string|null):void{this.#active();this.#dom.setPlaceholderLabel(label);}
  uiLocale():import("@breditor/experimental-rich-content").RichUiLocale{this.#active();return this.#dom.uiLocale();}
  toolbarControls():readonly SharedToolbarControl[]{return this.#controls;}

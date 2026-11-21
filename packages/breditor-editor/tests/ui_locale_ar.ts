@@ -56,6 +56,11 @@ mentionLabel:"الإشارات",mentionLoading:"جارٍ تحميل الاقتر
  langIssue:"«{text}»: {message}",langReplace:"استبدال بـ «{suggestion}»",langIgnore:"تجاهل",langNoSuggestions:"لا توجد اقتراحات",
  langApplied:"استُبدل · المراجعة {revision}",langStale:"تغيّر النص؛ أُزيلت المشكلات القديمة: {count}.",
  langIgnoredMalformed:"تم تجاهل مشكلات تالفة من المزوّد: {count}.",langReadOnly:"للقراءة فقط: يمكن مراجعة المشكلات دون تطبيقها.",
+ agentReviewLabel:"تغييرات المساعد",agentPendingOne:"تعديل واحد مُعدّ من المساعد. لا يتغير شيء حتى تقبله.",
+ agentPending:"{count} تعديلات مُعدّة من المساعد. لا يتغير شيء حتى تقبلها؛ القبول يطبقها كتغيير واحد قابل للتراجع.",
+ agentEmpty:"لا توجد تغييرات مُعدّة.",agentAccept:"قبول الكل",agentReject:"رفض الكل",
+ agentStale:"تغيّر المستند حيث تنطبق هذه التعديلات. لا يمكن تطبيق شيء؛ ارفضها واطلب مجددًا.",
+ agentFailed:"لم تُطبَّق التعديلات: {reason}",
  // Editing aids (separate block).
  aidsLabel:"أدوات مساعدة للتحرير",aidsShowBlocks:"إظهار الكتل",aidsInvisibles:"إظهار الأحرف غير المرئية",
  aidBlockParagraph:"فقرة",aidBlockHeading:"عنوان {level}",aidBlockBulletList:"قائمة نقطية",aidBlockNumberedList:"قائمة مرقمة",

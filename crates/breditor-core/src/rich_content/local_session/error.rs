@@ -25,6 +25,10 @@ pub enum RichLocalSessionError {
     /// exactly one content-changing follow-up step.
     #[error("trigger removal composite target or follow-up step is not admitted")]
     TriggerStep,
+    /// A command group needs 1–64 steps, each publishing content or nothing, and no
+    /// selection-only, read-only or typing-history step.
+    #[error("command group size or step outcome is not admitted")]
+    CommandGroup,
     /// The live host policy forbids content, history or pending-format mutation.
     #[error("rich editor is read-only")]
     ReadOnly,
