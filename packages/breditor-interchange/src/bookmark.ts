@@ -1,5 +1,5 @@
 /**
- * Candidate rich V4 bookmarks and internal links (Rust `rich_content/bookmark.rs`). This package has
+ * Rich V4 bookmarks and internal links (Rust `rich_content/bookmark.rs`). This package has
  * no runtime dependency, so the grammar is an identical copy of `@breditor/experimental-rich-content`'s
  * `bookmark.ts` checks (a parity test compares them). Native admission stays authoritative.
  *

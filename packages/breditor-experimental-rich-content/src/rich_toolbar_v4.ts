@@ -10,7 +10,7 @@ import {detailsToolbarControls} from "./details.js";
 import {tableCaptionToolbarControls} from "./table_caption.js";
 import {pageBreakToolbarControls} from "./page_break.js";
 import {bookmarkToolbarControls} from "./bookmark.js";
-/** Owner-bound toolbar for the explicit unreleased candidate rich V4: the V3 structural and layout
+/** Owner-bound toolbar for the explicit rich V4: the V3 structural and layout
  * controls plus ordered-list numbering, text-run Language / Clear language, Image link / Remove image link
  * Collapsible section / Remove collapsible section / Expand/Collapse section, Table caption, Page break and
  * Bookmark / Remove bookmark / Link to bookmark.

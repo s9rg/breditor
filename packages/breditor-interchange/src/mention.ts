@@ -1,5 +1,5 @@
 /**
- * Candidate rich V4 mention entities (Rust `rich_content/mention.rs`). This package has no runtime
+ * Rich V4 mention entities (Rust `rich_content/mention.rs`). This package has no runtime
  * dependency, so the grammar is an identical copy of `@breditor/experimental-rich-content`'s
  * `mention.ts` checks (a parity test compares them). Native admission stays authoritative.
  *

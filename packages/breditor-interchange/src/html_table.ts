@@ -9,7 +9,7 @@ export function pixels(value:string|undefined):number|null {
 /** Reconstruct the complete bounded base-cell partition, never only rendered master cells. */
 export function importTable(c:HtmlConversion,node:HtmlElement,state:StyleState):Element[] {
   const rows:{node:HtmlElement;state:StyleState;group:number;remaining:number}[]=[],colWidths:(number|null)[]=[],captions:Element[]=[];
-  // Candidate V4 owners keep the first <caption> as the table's caption paragraph (see `tableCaption`).
+  // V4 owners keep the first <caption> as the table's caption paragraph (see `tableCaption`).
   let caption:Element|undefined,captioned=false;
   let group=0;
   const addColumns=(parent:HtmlElement)=>{for(const n of parent.childNodes){if(!isElement(n))continue;if(n.tagName!=="col")fail("malformed-table");if(c.excluded(n))fail("unsupported-content");c.style(n,state);const count=span(attribute(n,"span"),limits.columns);if(colWidths.length+count>limits.columns)fail("resource-limit");const raw=attribute(n,"width")??c.css(n).get("width"),width=pixels(raw);if(raw!==undefined&&width===null)c.b.loss("table-width");for(let i=0;i<count;i++)colWidths.push(width);}};
@@ -68,7 +68,7 @@ export function importTable(c:HtmlConversion,node:HtmlElement,state:StyleState):
   const records=merges.map((m,i)=>({id:c.b.id(),lamport:"1",writer:"1",counter:String(i+1),rows:rowIds,columns,"first-row":rowIds[m.r],"last-row":rowIds[m.r+m.rs-1],"first-column":columns[m.c],"last-column":columns[m.c+m.cs-1]})).sort((a,b)=>a.id<b.id?-1:a.id>b.id?1:0);
   return[...captions,element(c.b,"table",caption?[...nativeRows,caption]:nativeRows,{"breditor/table-id":tableId,"breditor/columns":nativeColumns,"breditor/merges":records,"breditor/retracted-merges":[]})];
 }
-/** One `<caption>` for a candidate V4 owner: its single paragraph is the caption. A leading heading
+/** One `<caption>` for a V4 owner: its single paragraph is the caption. A leading heading
  * becomes a paragraph with the same inline content; any further (or unsupported) blocks stay as flow
  * before the table. Both repairs report `block-structure`. An empty caption is an empty paragraph. */
 function tableCaption(c:HtmlConversion,blocks:Element[]):{caption:Element|undefined;before:Element[]} {

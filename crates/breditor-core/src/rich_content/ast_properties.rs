@@ -388,7 +388,7 @@ pub(crate) fn table_view(node: &ElementNode) -> PropertyResult<RichTableView> {
     let table =
         TableId::try_new(string(node, "table-id")?).map_err(|_| "invalid table identity")?;
     let column_records = array(node, "columns", 128)?;
-    // A candidate V4 caption is a trailing paragraph, not a row; the grammar admits it
+    // A V4 caption is a trailing paragraph, not a row; the grammar admits it
     // only in V4 and only last, so older languages never reach this exclusion.
     let row_nodes = super::table_caption::rows(node);
     if row_nodes.len() > 256

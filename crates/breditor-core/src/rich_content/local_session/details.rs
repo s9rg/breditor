@@ -1,4 +1,4 @@
-//! Candidate V4 collapsible sections through the exclusive local owner.
+//! V4 collapsible sections through the exclusive local owner.
 //!
 //! Open state is persisted document state. Collapsing a section never leaves the
 //! logical selection inside its hidden body: such a selection moves to the end of

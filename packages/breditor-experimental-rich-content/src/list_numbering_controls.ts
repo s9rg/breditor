@@ -26,7 +26,7 @@ export interface ListNumberingControl {
  read(model:RichPresentationModel):RichToolbarReading;
  patch(model:RichPresentationModel,fields:Readonly<Record<string,string>>):RichListNumberingPatch|null;
 }
-/** One owner-bound candidate V4 control; it reads the admitted AST and produces intent only. */
+/** One owner-bound V4 control; it reads the admitted AST and produces intent only. */
 export function listNumberingControl(core:NumberingReader):ListNumberingControl{
  if(core.richLanguageVersion?.()!==4||core.supportsListNumbering?.()!==true)throw Error("Use an explicitly selected matching rich V4 owner");
  const styleOptions=[{value:"default",label:"Default"},{value:"decimal",label:"1, 2, 3"},{value:"lower-alpha",label:"a, b, c"},{value:"upper-alpha",label:"A, B, C"},{value:"lower-roman",label:"i, ii, iii"},{value:"upper-roman",label:"I, II, III"}];

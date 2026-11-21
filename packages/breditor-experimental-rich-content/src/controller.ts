@@ -128,10 +128,10 @@ export class RichDomEditor<P extends RichSelectionPolicy="original"> {
   this.toolbar.addEventListener("pointerdown",()=>this.#boundary(),{capture:true,signal:this.#abort.signal});
   this.toolbar.addEventListener("focusin",()=>this.#boundary(),{capture:true,signal:this.#abort.signal});
   this.surface.addEventListener("click",event=>this.#taskCheck(event),{signal:this.#abort.signal});
-  // Candidate V4 image links are inert while editing: activation never navigates the editable surface.
+  // V4 image links are inert while editing: activation never navigates the editable surface.
   for(const type of ["click","auxclick"])this.surface.addEventListener(type,event=>this.#inertImageLink(event),{capture:true,signal:this.#abort.signal});
   if(this.#bookmarks)for(const type of ["click","auxclick"])this.surface.addEventListener(type,event=>this.#internalLink(event),{capture:true,signal:this.#abort.signal});
-  // Candidate V4 sections never toggle natively while editing: a summary click only places the caret,
+  // V4 sections never toggle natively while editing: a summary click only places the caret,
   // and any browser-initiated toggle (find-in-page, fragment reveal) is reverted to document state.
   this.surface.addEventListener("click",event=>this.#inertSummary(event),{capture:true,signal:this.#abort.signal});
   this.surface.addEventListener("toggle",event=>this.#restoreDetails(event),{capture:true,signal:this.#abort.signal});
@@ -351,9 +351,9 @@ export class RichDomEditor<P extends RichSelectionPolicy="original"> {
   const open=this.#model.nodes.get(details.dataset["richDetails"])?.properties["breditor/details-open"]===true;
   if(details.open!==open)details.open=open;
  }
- /** Candidate V4 owners render bookmarks and internal links; other owners keep their exact output. */
+ /** V4 owners render bookmarks and internal links; other owners keep their exact output. */
  #renderOptions():RichEditorOptions<P>{return this.#bookmarks?{...this.#options,bookmarks:true}:this.#options;}
- /** Candidate V4 internal links never navigate the host page: while editing they are inert, and in a
+ /** V4 internal links never navigate the host page: while editing they are inert, and in a
   * read-only surface activation scrolls this surface's bookmarked block into view (two editors on
   * one page never jump into each other). A dangling link does nothing. */
  #internalLink(event:Event):void {
@@ -407,7 +407,7 @@ export class RichDomEditor<P extends RichSelectionPolicy="original"> {
    if(!mod&&!event.altKey&&[...event.key].length===1){event.preventDefault();this.#attempt(()=>this.#replaceDocumentInput(event.key,true));return;}
    if(side&&event.shiftKey)this.#logicalSelection=false;
   }
-  // Candidate V4 table captions: <caption> is first in the DOM but laid out after the rows, so the
+  // V4 table captions: <caption> is first in the DOM but laid out after the rows, so the
   // editor owns the arrow keys at the four caption boundaries (see table_caption_navigation.ts).
   if(!mod&&!event.altKey&&!event.shiftKey&&["ArrowUp","ArrowDown","ArrowLeft","ArrowRight"].includes(event.key)&&this.#options.core.supportsTableCaptions?.()===true){
    this.#attempt(()=>{this.#sync();const commands=captionArrowCommands(this.surface,this.#model,event.key as "ArrowUp");if(commands){event.preventDefault();for(const command of commands)this.execute(command);}});

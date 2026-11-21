@@ -34,14 +34,14 @@ URL, RGB24 or integer-token logic. This subpath consumes read-only declarations;
 it does not mint a Rust schema proof, default compiled-profile generation or
 command authority. Existing root/advanced exports and default ABI are unchanged.
 
-The additive closed `safeLanguageTagV1` policy supports the candidate rich V4
+The additive closed `safeLanguageTagV1` policy supports the rich V4
 text-language format: it binds one required string property with the exact
 `2..=35` UTF-8 byte domain, requires the canonical `span.breditor-text-language`
 recipe and emits only `lang`, and only for a canonical bounded BCP 47 tag
 (`canonicalLanguageTagV1` / `isCanonicalLanguageTagV1` are exported from the
 same subpath). Any other value renders an inert span.
 
-Candidate rich V4 image links reuse `safeLinkV1` unchanged:
+Rich V4 image links reuse `safeLinkV1` unchanged:
 `imageLinkRenderAttributesV1(href, newWindow)` returns exactly the inline link
 attribute set, `canonicalImageLinkHrefV1` canonicalizes input with the
 `safeLinkV1` canonicalizer and then requires the native canonical subset, and

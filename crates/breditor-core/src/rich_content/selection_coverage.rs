@@ -24,7 +24,7 @@ pub enum RichCoverageDomain {
     Cell(CellId),
     /// Caption of this image block, never the image's outer flow.
     Caption(BlockId),
-    /// Candidate V4: caption of this table, never a cell or the table's outer flow.
+    /// V4: caption of this table, never a cell or the table's outer flow.
     TableCaption(TableId),
 }
 /// Whether the selection encloses a structural node, rather than only touching descendants.

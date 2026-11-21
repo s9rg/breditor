@@ -10,7 +10,7 @@ export const standardProfileBootstrapJson=JSON.stringify({format:"breditor/profi
 /** Explicit bootstrap V7; neither old schema selectors nor saved checkpoints migrate. */
 export const structuralProfileBootstrapJsonV2=JSON.stringify({format:"breditor/profile-bootstrap",formatVersion:7,schema:{name:"breditor-editor/standard",version:2},extensions:[]});
 export const layoutProfileBootstrapJsonV3=JSON.stringify({format:"breditor/profile-bootstrap",formatVersion:8,schema:{name:"breditor-editor/standard",version:3},extensions:[]});
-/** Explicit bootstrap V9 for the frozen candidate rich V4 (V3 plus its eight local slices).
+/** Explicit bootstrap V9 for the released, frozen rich V4 (V3 plus its eight slices).
  * V4's grammar and fingerprint are frozen, so V4 documents, checkpoints and histories may be
  * persisted locally, bound to the exact fingerprint (see `standardSchemaFingerprintV4`). */
 export const profileBootstrapJsonV4=JSON.stringify({format:"breditor/profile-bootstrap",formatVersion:9,schema:{name:"breditor-editor/standard",version:4},extensions:[]});
@@ -35,7 +35,7 @@ export type LocalInitial={kind:"empty";documentId?:string;blockId?:string}|{kind
 export interface LocalEditorOptions extends Omit<RichEditorOptions,"core"|"toolbar"|"inlinePresentation"|"inlineTag"|"clipboardInterchange"> {
  host:HTMLElement;initial?:LocalInitial;profileBootstrapJson?:string;additionalInlinePresentation?:unknown;
  /** Explicit native grammar; omitted/1 preserves V1, 2 selects structure, 3 adds layout and 4
-  * selects the frozen local-only candidate V4 (layout plus its eight slices; persistable locally). */
+  * selects the released, frozen rich V4 (layout plus its eight slices; persistable). Never a default. */
  richLanguage?:1|2|3|4;
  /** Initial live host policy, reapplied after checkpoint restore; not serialized permission. */
  readOnly?:boolean;
@@ -83,7 +83,7 @@ export async function createStructuralLocalProfileV2(bootstrapJson=structuralPro
 export async function createLayoutLocalProfileV3(bootstrapJson=layoutProfileBootstrapJsonV3,runtimeInput?:RuntimeInput):Promise<RichCoreProfile>{
  return compileStandardLayoutRichProfileV3(await initializeLocalRuntime(runtimeInput),bootstrapJson);
 }
-/** Explicit headless candidate rich V4 factory (bootstrap V9); local only, never shared. */
+/** Explicit headless rich V4 local profile factory (bootstrap V9); shared rooms use `createRichSharedProfileV4`. */
 export async function createLocalProfileV4(bootstrapJson=profileBootstrapJsonV4,runtimeInput?:RuntimeInput):Promise<RichCoreProfile>{
  return compileStandardRichProfileV4(await initializeLocalRuntime(runtimeInput),bootstrapJson);
 }

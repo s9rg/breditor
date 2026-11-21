@@ -18,7 +18,7 @@ impl RichBlockDraft {
             body.into_iter().map(Self::into_node).collect(),
         )?))
     }
-    /// Candidate-V4 collapsible section: one summary with canonical (possibly formatted)
+    /// V4 collapsible section: one summary with canonical (possibly formatted)
     /// text, an explicit persisted open state and a nonempty retained flow body.
     ///
     /// # Errors
@@ -82,7 +82,7 @@ impl RichBlockDraft {
             vec![],
         )?))
     }
-    /// Candidate V4 atomic page break with an explicit stable identity and no content.
+    /// V4 atomic page break with an explicit stable identity and no content.
     ///
     /// Admission (V4 only, document root only) is deferred to the complete-tree proof.
     /// # Errors

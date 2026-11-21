@@ -169,7 +169,7 @@ longer produces notices. All resource bounds are unchanged.
 Word for the web ordered items that are not provably decimal (CSS
 `list-style-type: decimal` plus `%N.`/`%N)` level text) report `list-numbering` for owners without V4 list numbering.
 
-Owners of the unreleased candidate rich V4 report `supportsListNumbering()`.
+Local rich V4 owners report `supportsListNumbering()`.
 For them, `<ol type>`, `list-style-type` and `reversed` map to native ordered-list
 numbering, HTML export emits them and Markdown export falls back to HTML for
 letter, roman or reversed lists. Word flat lists map too: Word desktop `a.`/`A.`/

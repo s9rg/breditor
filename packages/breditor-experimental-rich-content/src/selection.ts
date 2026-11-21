@@ -52,7 +52,7 @@ function endpoint(surface:HTMLElement,value:RichPoint):[Node,number]|null {
  while(node){const length=node.textContent?.length??0;if(remaining<=length)return outsideMention(block,node,remaining);remaining-=length;node=walker.nextNode();}
  return remaining===0?[block,0]:null;
 }
-/** A candidate V4 mention chip is a non-editable island: carets rest beside it, never inside. */
+/** A V4 mention chip is a non-editable island: carets rest beside it, never inside. */
 function outsideMention(block:HTMLElement,node:Node,offset:number):[Node,number]{
  const chip=node.parentElement?.closest<HTMLElement>("[data-mention-id]");
  if(!chip||!block.contains(chip)||!chip.parentNode)return [node,offset];

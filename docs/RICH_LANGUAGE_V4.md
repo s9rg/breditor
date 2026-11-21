@@ -1,28 +1,38 @@
-# Rich language V4 (frozen candidate)
+# Rich language V4
 
 Rich V4 is an explicit, opt-in rich language made of eight slices, all recorded
 here: ordered-list numbering, text-run language, image links, collapsible
 sections, mention entities, table captions, page breaks and bookmarks with
 internal links.
 
-**Status (November 20, 2026): frozen candidate, persistable locally, not
-released.**
+**Status (November 21, 2026): released and frozen.** V4 is a supported rich
+language alongside V1 (original), V2 (structural) and V3 (layout), with the same
+opt-in selection model: hosts select it explicitly, it is never a default and
+nothing migrates into or out of it.
 
 - **Frozen.** V4's grammar, sealed rich rule revision (4 under compiler contract
   6) and schema fingerprints are frozen at these eight slices. They will not
   change again: any later grammar or rule change is a new language (V5) with its
   own compiler entry, bootstrap format, selector and fingerprint. See
   [Freeze and durable persistence](#freeze-and-durable-persistence).
-- **Persistable locally.** Hosts may store V4 documents, checkpoints and
-  histories from local editors. Every saved V4 record binds the exact V4
-  fingerprint and is refused under any other profile.
-- **Not released.** V4 is still a candidate: it is not part of a released V1, and
-  whether it ships in V1 is the compatibility gate's decision
-  ([V1 release plan](V1_RELEASE_PLAN.md)). Freezing guarantees that data saved
-  now keeps restoring exactly; it does not promote the V4 API surface.
-- **Shared V4 foundation.** Collaboration supports V4 explicitly with its own
-  causal model 14 and journal 15, reusing this frozen grammar unchanged (see
-  [Shared V4](#shared-v4)); per-slice shared commands come next.
+- **Persistable, locally and shared.** Hosts may store V4 documents, checkpoints
+  and histories from local editors, and shared V4 rooms persist and replay their
+  journals. Every saved V4 record binds the exact V4 fingerprint (and, in shared
+  rooms, causal model 14 / journal 15) and is refused under any other profile.
+- **Local and shared editing.** Every slice has local commands and controls and
+  shared commands and controls with the same user-visible semantics and one Undo
+  step per action (see [Shared V4](#shared-v4) and
+  [SHARED_RICH_V4.md](SHARED_RICH_V4.md)).
+- **Same release scope as V1–V3.** Like the other rich languages, V4 ships in the
+  opt-in rich-content and collaboration packages; the repository as a whole is
+  still before its V1 release ([V1 release plan](V1_RELEASE_PLAN.md)), and the
+  package-level promises in [COMPATIBILITY.md](COMPATIBILITY.md) apply to V4
+  exactly as to V1–V3.
+- **Defaults unchanged.** An omitted `richLanguage` still selects language 1 in
+  every API. Releasing V4 does not change any default.
+- **Known gap.** Shared interchange does not yet report the V4 capabilities, so
+  HTML/Markdown imports into a shared owner keep the V1–V3 conversions (see
+  [Shared V4](#shared-v4)).
 
 ## Selection and compatibility
 
@@ -38,7 +48,7 @@ reinterprets an older document, and older profiles reject every V4 property.
 | Capability queries | `supports_rich_block_layout()` (V3 and V4), `supports_rich_list_numbering()`, `supports_rich_text_language()`, `supports_rich_image_links()`, `supports_rich_details()`, `supports_rich_mentions()`, `supports_rich_table_captions()`, `supports_rich_page_breaks()` and `supports_rich_bookmarks()` (V4 only) |
 | Wasm | explicit profile bootstrap **format 9**: `BreditorRichProfile.fromBootstrapJsonV4` / `fromStandardBootstrapJsonV4`; descriptor `richLanguageVersion: 4`, `taskStructureVersion: 1`, `blockLayoutVersion: 1`, `listNumberingVersion: 1`, `textLanguageVersion: 1`, `imageLinkVersion: 1`, `detailsVersion: 1`, `mentionVersion: 1`, `tableCaptionVersion: 1`, `pageBreakVersion: 1`, `bookmarkVersion: 1`; owner `listNumberingVersion()`, `textLanguageVersion()`, `imageLinkVersion()`, `detailsVersion()`, `mentionVersion()`, `tableCaptionVersion()`, `pageBreakVersion()` and `bookmarkVersion()` all `"1"` |
 | JavaScript factories | `compileRichProfileV4`, `compileStandardRichProfileV4` (`@breditor/experimental-rich-content`); `createLocalProfileV4`, `profileBootstrapJsonV4` (`@breditor/editor`, schema `breditor-editor/standard@4`) |
-| SDK openings | `openLocalEditor({richLanguage: 4})`, `openLocalDocumentEditor({richLanguage: 4, ...})` and both local React components' `initialOptions` |
+| SDK openings | `openLocalEditor({richLanguage: 4})`, `openLocalDocumentEditor({richLanguage: 4, ...})` and both local React components' `initialOptions`; shared: `openSharedEditor`, `openSharedSearchEditor`, `openSharedDocumentEditor`, `openSharedDocumentSearchEditor` and the shared React components with `richLanguage: 4` (see [Shared V4](#shared-v4)) |
 | Toolbar | `createRichToolbarV4(core, presentation)`: the V3 structural/layout controls plus **List numbering**, **Language**, **Clear language**, **Image link**, **Remove image link**, **Collapsible section**, **Remove collapsible section**, **Expand/Collapse section**, **Table caption**, **Page break**, **Bookmark**, **Remove bookmark** and **Link to bookmark** |
 
 Each factory checks its exact descriptor tuple. A V3 factory refuses a V9
@@ -49,7 +59,7 @@ are rejected, never mapped to an older language.
 
 ### Shared V4
 
-Shared editing now supports V4 explicitly (foundation): shared configuration
+Shared editing supports V4 explicitly: shared configuration
 format 4, causal model 14 and journal 15 reuse this frozen grammar and its
 fingerprints unchanged. `openSharedEditor`, `openSharedSearchEditor`,
 `openSharedDocumentEditor`, `openSharedDocumentSearchEditor` and the shared React

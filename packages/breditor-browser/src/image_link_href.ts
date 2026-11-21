@@ -1,5 +1,5 @@
 /**
- * Candidate rich V4 image-link targets.
+ * Rich V4 image-link targets.
  *
  * An image link uses the inline link policy (`safeLinkV1`: HTTP/HTTPS only,
  * no credentials, no whitespace, controls or backslashes, at most 2,048 UTF-8

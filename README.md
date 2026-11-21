@@ -34,10 +34,12 @@ CKEditor, package promotion and explicit release gates. Run `npm run audit:v1`
 to inspect the remaining work; `npm run check:v1` fails while it remains open.
 The [November 20 status](docs/V1_RELEASE_PLAN.md#november-20-parity-status)
 summarizes recent parity work, known defects and the recommended next order.
-A local-only [candidate rich language V4](docs/RICH_LANGUAGE_V4.md) holds the newest
-schema slices. Its grammar and fingerprint are frozen, so local V4 documents and
-histories may be persisted (bound to the exact fingerprint); V4 is not released and
-shared V4 is in progress.
+[Rich language V4](docs/RICH_LANGUAGE_V4.md) is released alongside V1–V3 and holds
+the newest schema slices (list numbering, text language, image links, collapsible
+sections, mentions, table captions, page breaks, bookmarks). Its grammar and
+fingerprint are frozen (a grammar change is a new V5), it is persisted locally and
+in [shared V4 rooms](docs/SHARED_RICH_V4.md), and, like V2 and V3, it is selected
+explicitly with `richLanguage: 4`; the default stays language 1.
 
 The opt-in [independent history delivery contract](docs/INDEPENDENT_DELIVERY.md)
 joins independently selected native document/comment histories, relay receipts

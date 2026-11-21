@@ -17,7 +17,7 @@ export type RichDocumentModel=RichModel<"document-v1">;
 export const property=(node:ElementNode,name:string):unknown=>node.properties[`breditor/${name}`];
 export const id=(node:ElementNode):string=>String(property(node,"block-id"));
 export const isProse=(node:ElementNode):boolean=>node.type==="breditor/paragraph"||node.type==="breditor/heading";
-/** Candidate rich V4 section summary: inline text like a paragraph, but never split, joined or converted. */
+/** Rich V4 section summary: inline text like a paragraph, but never split, joined or converted. */
 export const isSummary=(node:ElementNode):boolean=>node.type==="breditor/details-summary";
 /** Prose or a summary: text that admits inline formats. */
 export const isInlineText=(node:ElementNode):boolean=>isProse(node)||isSummary(node);

@@ -143,7 +143,7 @@ function inlineRoundTrips(nodes:readonly Node[],markdown:string):boolean {
   return actual.length===expected.length&&actual.every(([text,formats],i)=>text===expected[i]![0]&&formats===expected[i]![1]);
 }
 /** The image must re-parse as exactly one image with the same URL and plain alt text, wrapped
- * in exactly one link to `href` when the candidate V4 image is linked. */
+ * in exactly one link to `href` when the V4 image is linked. */
 function imageRoundTrips(markdown:string,src:string,alt:string,href?:string):boolean {
   let tokens:Token[];try{tokens=verifier.parseInline(markdown,{})[0]?.children??[];}catch{return false;}
   if(href!==undefined){
@@ -153,7 +153,7 @@ function imageRoundTrips(markdown:string,src:string,alt:string,href?:string):boo
   const image=tokens[0],label=image?.children??[];
   return tokens.length===1&&image?.type==="image"&&image.attrGet("src")===src&&label.every(t=>t.type==="text")&&label.map(t=>t.content).join("")===alt;
 }
-// A same-window candidate V4 image link is expressible as `[![alt](src)](href)`; a new-window one is not.
+// A same-window V4 image link is expressible as `[![alt](src)](href)`; a new-window one is not.
 const imageKeys=new Set(["breditor/block-id","breditor/image-id","breditor/asset-id","breditor/asset-generation","breditor/decorative","breditor/alt-text","breditor/image-href"]);
 const alignMarkers:Readonly<Record<string,string>>={none:"---",5:":---",2:":---:",6:"---:"};
 const destination=(url:string)=>`<${url.replace(/</g,"%3C").replace(/>/g,"%3E")}>`;
@@ -190,7 +190,7 @@ export function exportMarkdownRoot(nodes:Node[],b:Budget,options:InterchangeOpti
     if(depth>limits.depth)fail("resource-limit");if(n.kind!=="element")fail("native-admission");
     const fallback=()=>{b.loss("markdown-feature");return htmlBlock(html.blocks([n],depth));};
     if(n.type==="breditor/paragraph"||n.type==="breditor/heading"){
-      // Candidate V4: bookmarks (a block property) and internal links have no CommonMark syntax: exact HTML.
+      // V4: bookmarks (a block property) and internal links have no CommonMark syntax: exact HTML.
       if(bookmarks&&hasInternalLink(n.children))return fallback();
       if(!n.children.length||!simpleInline(n,n.type==="breditor/paragraph")||!inlineRoundTrips(n.children,inlineMarkdown(n.children,new Budget())))return fallback();
       const inline=inlineMarkdown(n.children,b);return n.type==="breditor/heading"?`${"#".repeat(Number(property(n,"level")))} ${inline}`:inline;
@@ -212,7 +212,7 @@ export function exportMarkdownRoot(nodes:Node[],b:Budget,options:InterchangeOpti
       return n.children.map((item,i)=>{if(item.kind!=="element")fail("native-admission");const marker=ordered?`${start+i}${flip?")":"."} `:n.type==="breditor/task-list"?`${bullet} [${property(item,"checked")===true?"x":" "}] `:`${bullet} `,indent=ordered?marker.length:2,lines=sequence(item.children,depth+1).split("\n");return `${marker}${lines[0]}${lines.slice(1).map(line=>`\n${line?" ".repeat(indent):""}${line}`).join("")}`;}).join("\n");
     }
     if(n.type==="breditor/table"){
-      // GFM tables have no caption: a candidate V4 captioned table keeps exact HTML (`markdown-feature`).
+      // GFM tables have no caption: a V4 captioned table keeps exact HTML (`markdown-feature`).
       const tail=n.children.at(-1);if(tail?.kind==="element"&&tail.type==="breditor/paragraph")return fallback();
       const rows=n.children as Element[],columns=property(n,"columns") as {id:string;width:number}[],merges=property(n,"merges") as unknown[];
       const cell=(r:Element,c:string)=>r.children.find((n):n is Element=>n.kind==="element"&&property(n,"column-id")===c)??fail("native-admission");

@@ -9,7 +9,7 @@ import {canonicalLanguageTagV1} from "./language_tag.js";
 import {imageHrefProperty,imageLinkNewWindowProperty,isImageLinkHrefV1} from "./image_link_href.js";
 import {mentionFormat,mentionFromSpan} from "./mention.js";
 import {anchorName,bookmarkProperty,internalLinkFormat} from "./bookmark.js";
-/** Attributes consumed by a recognized candidate V4 mention span. */
+/** Attributes consumed by a recognized V4 mention span. */
 const mentionAttributes:ReadonlySet<string>=new Set(["data-mention-kind","data-mention-id"]);
 const blocks=new Set(["p","div","h1","h2","h3","h4","h5","h6","ul","ol","li","pre","blockquote","table","figure","hr","section","article","main","header","footer"]);
 // `google-sheets-html-origin` is Google Sheets' transparent producer wrapper around its table.
@@ -25,20 +25,20 @@ const flatListAttributes:ReadonlySet<string>=new Set(["data-aria-level","data-ar
 const wordBullets=/^[·•●○◦▪■□◆◇►➢➤✓✔\-–—*o§Øüvqnl]$/;
 /** Target-owner capabilities read once by the adapter; they select conversion, never admission. */
 export interface ImportCapabilities {readonly listNumbering:boolean;readonly textLanguage?:boolean;readonly imageLinks?:boolean;readonly details?:boolean;readonly mentions?:boolean;readonly tableCaptions?:boolean;readonly pageBreaks?:boolean;readonly bookmarks?:boolean}
-/** Candidate rich V4 native text-language format (Rust `text_language.rs`). */
+/** Rich V4 native text-language format (Rust `text_language.rs`). */
 export const textLanguageFormat="breditor/text-language",textLanguageTag="breditor/language-tag";
 const htmlSpace=/^[\t\n\f\r ]+|[\t\n\f\r ]+$/g;
-/** Candidate rich V4 marker codes (Rust `list_numbering.rs`). Maps avoid inherited-key lookups. */
+/** Rich V4 marker codes (Rust `list_numbering.rs`). Maps avoid inherited-key lookups. */
 export const cssListStyles:ReadonlyMap<string,number>=new Map([["decimal",1],["lower-alpha",2],["lower-latin",2],["upper-alpha",3],["upper-latin",3],["lower-roman",4],["upper-roman",5]]);
 const htmlListTypes:ReadonlyMap<string,number>=new Map([["1",1],["a",2],["A",3],["i",4],["I",5]]);
 // `reversed` is interpreted (not reported as unknown) only for numbering-capable owners.
 const numberingAttributes:ReadonlySet<string>=new Set(["reversed"]);
-// `open` is persisted section state, interpreted only for section-capable (candidate V4) owners.
+// `open` is persisted section state, interpreted only for section-capable (V4) owners.
 const detailsAttributes:ReadonlySet<string>=new Set(["open"]);
-/** Candidate rich V4 section nesting bound (Rust `RICH_DETAILS_MAX_DEPTH`). */
+/** Rich V4 section nesting bound (Rust `RICH_DETAILS_MAX_DEPTH`). */
 const maxDetailsDepth=8;
 /**
- * Candidate rich V4 page breaks. CSS forced-break properties (`page-break-before/after`, `break-before/after`)
+ * Rich V4 page breaks. CSS forced-break properties (`page-break-before/after`, `break-before/after`)
  * and Word's break markers are consumed only for page-break-capable owners; V1–V3 keep reporting them as
  * `unsupported-style`. `left`/`right`/`recto`/`verso` force a page too but name a page side the native block
  * cannot keep (`style-approximation`).
@@ -53,7 +53,7 @@ interface PageBreaks {readonly before:boolean;readonly after:boolean}
 /**
  * Flat producer list entry: Word desktop `mso-list` paragraphs or Word for the web `data-aria-level` items.
  * `styles` (numbering-capable owners only) parallels `numbers` (or has one entry when `numbers` is empty) with each
- * reading's candidate V4 marker code; undefined is decimal. Absent keeps the original decimal-only reconstruction.
+ * reading's V4 marker code; undefined is decimal. Absent keeps the original decimal-only reconstruction.
  */
 interface FlatItem {level:number;group:string;ordered:boolean;numbers:number[];styles?:(number|undefined)[];body:(state:StyleState)=>Element[]}
 const romanPattern=/^m{0,3}(?:cm|cd|d?c{0,3})(?:xc|xl|l?x{0,3})(?:ix|iv|v?i{0,3})$/;
@@ -63,7 +63,7 @@ function roman(value:string):number|null {
 }
 /**
  * Word marker text → candidate ordinals (preferred first), [] for a bullet glyph, null if unrecognized.
- * `styles[i]` is the candidate V4 marker code reading `numbers[i]` (undefined = decimal, the native default).
+ * `styles[i]` is the V4 marker code reading `numbers[i]` (undefined = decimal, the native default).
  * `exact` = native decimal keeps it; `styled` = a numbering-capable (V4) owner keeps it exactly: a plain
  * `N.`/`N)`, or a letter/roman `a.`/`a)` read as lower/upper alpha or roman with that start.
  */
@@ -88,11 +88,11 @@ export class HtmlConversion {
   #css=new WeakMap<HtmlElement,Map<string,string>>();#blockDescendant=new WeakMap<HtmlElement,boolean>();#word=new WeakMap<HtmlElement,FlatItem|null>();
   #markers=new WeakSet<HtmlElement>();#checkboxes=new WeakSet<HtmlElement>();
   #preservedEnd=new WeakSet<Text>();#detailsDepth=0;
-  /** Candidate V4: nodes whose forced-break declarations were consumed, and page breaks derived from block properties. */
+  /** V4: nodes whose forced-break declarations were consumed, and page breaks derived from block properties. */
   #breakConsumed=new WeakSet<HtmlElement>();#carrier=new WeakSet<HtmlElement>();#soft=new WeakSet<Element>();
-  /** Candidate V4: Word for the web items whose own `list-style-type` became their list's native style. */
+  /** V4: Word for the web items whose own `list-style-type` became their list's native style. */
   #listStyleConsumed=new WeakSet<HtmlElement>();
-  /** Candidate V4: `<a name|id>` anchors already adopted or reported, and every adopted bookmark name. */
+  /** V4: `<a name|id>` anchors already adopted or reported, and every adopted bookmark name. */
   #anchors=new WeakSet<HtmlElement>();#bookmarkNames=new Set<string>();
   constructor(readonly b:Budget,readonly options:InterchangeOptions,readonly sheets:Stylesheets,readonly capabilities:ImportCapabilities={listNumbering:false}){}
   css(node:HtmlElement):Map<string,string>{let value=this.#css.get(node);if(!value){const important=new Set<string>();value=this.sheets.apply(node,declarations(node,this.b,important),important);this.#css.set(node,value);}return value;}
@@ -103,7 +103,7 @@ export class HtmlConversion {
     for(const attr of node.attrs)if(attr.namespace!==undefined||attr.prefix!==undefined||!this.#knownAttribute(node,attr.name,attr.value,interpreted))this.b.loss("unsupported-attribute");
     const css=this.css(node),consumed=this.#breakConsumed.has(node)?this.#carrier.has(node)?carrierProperties:new Set<string>(breakProperties):undefined;
     const listStyle=this.#listStyleConsumed.has(node);
-    // Candidate V4: `href="#name"` (or `#bm-name`) is an internal link; the external link policy never sees it.
+    // V4: `href="#name"` (or `#bm-name`) is an internal link; the external link policy never sees it.
     const internal=this.#internalHref(node),source=internal===undefined?node:{...node,attrs:node.attrs.filter(attr=>attr.name!=="href")};
     const state=styleFor(source,parent,this.b,consumed||listStyle?new Map([...css].filter(([name])=>!consumed?.has(name)&&!(listStyle&&name==="list-style-type"))):css);
     if(internal!==undefined){state.formats.set("breditor-inline/link",internalLinkFormat(internal));if(attribute(node,"target")?.toLowerCase()==="_blank")this.b.loss("unsupported-attribute");}
@@ -111,7 +111,7 @@ export class HtmlConversion {
     return state;
   }
   /**
-   * Candidate V4: `lang` (or the equivalent `xml:lang`) on any element becomes the text language
+   * V4: `lang` (or the equivalent `xml:lang`) on any element becomes the text language
    * of every text run below it, exactly as HTML inherits it; a block-level value therefore tags the
    * block's runs. A well-formed tag is stored in canonical case. `lang=""` means unknown and
    * removes an inherited language without a notice. A malformed, private-use, extension or
@@ -143,7 +143,7 @@ export class HtmlConversion {
     return raw?.startsWith("#")?anchorName(raw.slice(1)):undefined;
   }
   /**
-   * Candidate V4 anchors of one `<p>`, `<h1>`–`<h6>` or `<pre>`: its own `id`, then every `<a name>` /
+   * V4 anchors of one `<p>`, `<h1>`–`<h6>` or `<pre>`: its own `id`, then every `<a name>` /
    * `<a id>` inside it, in document order. Collected before the block converts so `name` is consumed.
    */
   #anchorCandidates(node:HtmlElement):string[] {
@@ -205,9 +205,9 @@ export class HtmlConversion {
       for(const node of items){
         if(!isElement(node)){if(node.nodeName==="#text")this.#inlineText(output,plainText(node),parent);continue;}
         if(!this.#safe(node)||this.#markers.has(node)||this.#checkboxes.has(node)||this.#paragraphMark(node)||interchangeNewline(node))continue;
-        // Candidate V4: Word's `<br clear=all style='page-break-before:always'>` splits the paragraph at a page break.
+        // V4: Word's `<br clear=all style='page-break-before:always'>` splits the paragraph at a page break.
         if(node.tagName==="br"&&this.#breakCarrier(node)){this.style(node,parent);output.push(this.#pageBreak(false));continue;}
-        // Candidate V4: the exact exported mention span becomes a mention over its `@label` text.
+        // V4: the exact exported mention span becomes a mention over its `@label` text.
         const mention=this.capabilities.mentions?mentionFromSpan(node.tagName,name=>attribute(node,name),plainText(node)):undefined;
         const next=this.style(node,parent,mention?mentionAttributes:undefined);
         if(mention)next.formats.set(mentionFormat,mention);
@@ -237,7 +237,7 @@ export class HtmlConversion {
     const flush=()=>{if(runs.length){output.push(element(this.b,heading===undefined?"paragraph":"heading",runs,layout));runs=[];}};
     for(const piece of pieces){if(piece.kind==="element"){flush();output.push(piece);}else runs.push(piece);}flush();
     // Lifting images out of an unstyled paragraph that holds nothing else (a Markdown block image) loses nothing.
-    // A candidate V4 page break splitting the paragraph loses nothing: the text either side stays in order.
+    // A V4 page break splitting the paragraph loses nothing: the text either side stays in order.
     const lifted=pieces.filter(p=>p.kind==="element"&&p.type!=="breditor/page-break");
     if(lifted.length&&!(heading===undefined&&!Object.keys(state.layout).length&&pieces.every(p=>p.kind==="element")))this.b.loss("block-structure");
     if(!output.length)output.push(element(this.b,heading===undefined?"paragraph":"heading",[],layout));
@@ -256,7 +256,7 @@ export class HtmlConversion {
     for(let i=0;i<nodes.length;i++){
       const node=nodes[i]!;
       if(!isElement(node)){pending.push(node);continue;}
-      // Candidate V4: Google Docs' hidden `<hr style="page-break-before:always;display:none">` and our own
+      // V4: Google Docs' hidden `<hr style="page-break-before:always;display:none">` and our own
       // `<div style="break-after:page"></div>` are page-break carriers: each is exactly one page break.
       if((node.tagName==="hr"||node.tagName==="div"&&!this.#hidden(node))&&this.#breakCarrier(node)){flush();this.style(node,state);output.push(this.#pageBreak(false));continue;}
       if(this.#hidden(node)&&node.tagName!=="style"){this.b.loss("removed-content");continue;}
@@ -271,7 +271,7 @@ export class HtmlConversion {
       if(node.tagName==="details"&&this.capabilities.details){flush();if(this.#safe(node))output.push(...this.#details(node,state,insideTable));continue;}
       if(!blocks.has(node.tagName)&&!containers.has(node.tagName)&&!this.#containsBlock(node)){pending.push(node);continue;}
       flush();if(!this.#safe(node))continue;
-      // Candidate V4: forced breaks declared on a content block become page breaks around its output.
+      // V4: forced breaks declared on a content block become page breaks around its output.
       const breaks=this.#blockBreaks(node),mark=output.length;
       const next=this.style(node,state),tag=node.tagName;
       if(containers.has(tag)){if(tag==="center")next.layout["breditor/block-align"]=2;output.push(...this.flow(node.childNodes,next,insideTable));}
@@ -288,7 +288,7 @@ export class HtmlConversion {
     }
     flush();return output;
   }
-  /** Candidate V4 forced page breaks named by one element's CSS; undefined when none (or not page-break capable). */
+  /** V4 forced page breaks named by one element's CSS; undefined when none (or not page-break capable). */
   #breaks(node:HtmlElement):(PageBreaks&{readonly exact:boolean})|undefined {
     if(!this.capabilities.pageBreaks)return undefined;
     const css=this.css(node),value=(name:string)=>{const raw=css.get(name)?.trim().toLowerCase();return raw===undefined?undefined:pageBreakValues.get(raw);};
@@ -312,7 +312,7 @@ export class HtmlConversion {
   /** One page-break element; `soft` ones come from block properties and collapse like CSS forced breaks. */
   #pageBreak(soft:boolean):Element {const value=element(this.b,"page-break");if(soft)this.#soft.add(value);return value;}
   /**
-   * Candidate V4 root normalization. A page break is admitted only as a direct child of the document root, so
+   * V4 root normalization. A page break is admitted only as a direct child of the document root, so
    * one found inside a quote, list, section, table cell or caption is removed (`block-structure`), leaving an
    * empty paragraph where its container would otherwise be empty. At the root, a page break derived from a
    * block's CSS is dropped at the start or end of the content and next to another page break, as CSS
@@ -338,7 +338,7 @@ export class HtmlConversion {
     return output;
   }
   /**
-   * Candidate V4 section: the first `<summary>` child element is the summary (as in HTML); a missing
+   * V4 section: the first `<summary>` child element is the summary (as in HTML); a missing
    * one becomes an empty summary and reports `block-structure`, like any block found inside a summary
    * or a heading summary. `open` maps to persisted open state. Beyond the nesting bound a section is
    * lifted (summary text as a paragraph, then its body) with `block-structure`.
@@ -378,7 +378,7 @@ export class HtmlConversion {
     return element(this.b,"image",[],props);
   }
   /**
-   * Candidate V4: an enclosing safe `<a href>` (already canonicalized by the inline-link policy,
+   * V4: an enclosing safe `<a href>` (already canonicalized by the inline-link policy,
    * unsafe hrefs reported as `unsafe-link` there) becomes the image's own link. A canonical target
    * outside the native subset reports `unsafe-link`; a decorative image (`alt=""`) cannot name a
    * link, so the link is dropped with `image-alt`.
@@ -399,7 +399,7 @@ export class HtmlConversion {
   }
   #figure(node:HtmlElement,state:StyleState,insideTable:boolean):Element[] {
     const images:HtmlElement[]=[],captions:HtmlElement[]=[];let other=false;
-    // Candidate V4: `<figure><a href><img></a><figcaption>` is a linked image with a caption.
+    // V4: `<figure><a href><img></a><figcaption>` is a linked image with a caption.
     const anchors=new Map<HtmlElement,HtmlElement>();
     for(const n of node.childNodes){if(!isElement(n)){if(plainText(n).trim())other=true;}else if(n.tagName==="img")images.push(n);else if(n.tagName==="figcaption")captions.push(n);else{const linked=this.#linkedImage(n);if(linked){images.push(linked);anchors.set(linked,n);}else other=true;}}
     if(images.length!==1||captions.length>1||other){this.b.loss("block-structure");return this.flow(node.childNodes,state,insideTable);}
@@ -428,7 +428,7 @@ export class HtmlConversion {
   #checkbox(node:HtmlElement):HtmlElement|undefined {
     for(const child of node.childNodes){if(!isElement(child)){if(plainText(child).trim())return undefined;continue;}if(child.tagName==="input"&&attribute(child,"type")?.toLowerCase()==="checkbox")return child;if(["p","span"].includes(child.tagName))return this.#checkbox(child);return undefined;}return undefined;
   }
-  /** Candidate V4 numbering of one `<ol>`: CSS `list-style-type` wins over the `type` hint, as in HTML. */
+  /** V4 numbering of one `<ol>`: CSS `list-style-type` wins over the `type` hint, as in HTML. */
   #numbering(node:HtmlElement):{props:Record<string,unknown>;reversed:boolean} {
     const props:Record<string,unknown>={},css=this.css(node).get("list-style-type")?.trim().toLowerCase(),type=attribute(node,"type");
     const style=css!==undefined?cssListStyles.get(css):type!==undefined?htmlListTypes.get(type):undefined;

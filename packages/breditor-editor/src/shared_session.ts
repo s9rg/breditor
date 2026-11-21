@@ -34,8 +34,9 @@ export type SharedSearchInitial=Extract<SharedInitial,{kind:"resume"|"empty"|"do
 
 export interface SharedEditorSessionOptions extends Omit<SharedDomOptions,"core"|"coreOwnership"|"toolbar"|"inlinePresentation"|"inlineTag"|"clipboardInterchange"> {
  host:HTMLElement;database:string;room:string;writer:string;initial?:SharedInitial;
- configuration?:SharedProfileConfiguration|SharedProfileConfigurationV2|SharedProfileConfigurationV3;additionalInlinePresentation?:unknown;
- /** Explicit native language. Omitted/1 retains original model11; 3 selects layout model13. */
+ configuration?:SharedProfileConfiguration|SharedProfileConfigurationV2|SharedProfileConfigurationV3|SharedProfileConfigurationV4;additionalInlinePresentation?:unknown;
+ /** Explicit native language. Omitted/1 retains original model11; 2 selects structural model12,
+  * 3 layout model13 and 4 the released frozen rich V4 (model14, journal15). Never a default. */
  richLanguage?:1|2|3|4;
  readOnly?:boolean;
  /** Immutable native history policy; omitted/explicit preserves existing defaults. */

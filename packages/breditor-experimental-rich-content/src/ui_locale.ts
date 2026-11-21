@@ -32,7 +32,7 @@ export interface RichUiStrings extends RichUiPanelStrings, RichAiUiStrings {
  readonly blockDragItemLead:string;readonly blockDragBoundary:string;readonly blockDragNative:string;
  // Image resize handles (image_resize.ts).
  readonly imageResizeLabel:string;readonly imageResizeValue:string;readonly imageResizeOriginal:string;readonly imageResizePreview:string;readonly imageResizeBadge:string;
- // Candidate rich V4 page breaks and the opt-in print preview (page_break.ts, print.ts).
+ // Rich V4 page breaks and the opt-in print preview (page_break.ts, print.ts).
  readonly pageBreakLabel:string;readonly printPreviewLabel:string;
 }
 export type RichUiStringKey=keyof RichUiStrings;
@@ -69,7 +69,7 @@ export const richUiStringsEn:Readonly<RichUiStrings>=Object.freeze({
  // Image resize handles (image_resize.ts).
  imageResizeLabel:"Resize image {index} of {count}",imageResizeValue:"{width} by {height} pixels",imageResizeOriginal:"{width} by {height} pixels (original size)",
  imageResizePreview:"{width} by {height} pixels (preview)",imageResizeBadge:"{width} × {height}",
- // Candidate rich V4 page breaks and the opt-in print preview (page_break.ts, print.ts).
+ // Rich V4 page breaks and the opt-in print preview (page_break.ts, print.ts).
  pageBreakLabel:"Page break",printPreviewLabel:"Print preview: page boundaries are approximate",
  // AI and language tools (separate block).
  ...richAiUiStringsEn,

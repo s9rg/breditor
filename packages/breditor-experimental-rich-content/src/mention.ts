@@ -1,5 +1,5 @@
 /**
- * Candidate rich V4 mention entities (Rust `rich_content/mention.rs`): grammar mirror, intent
+ * Rich V4 mention entities (Rust `rich_content/mention.rs`): grammar mirror, intent
  * snapshot, DOM-free run grouping shared by the live and static renderers, and the inert chip.
  *
  * A mention is the native `breditor/mention` format over the exact text `@` + label. The

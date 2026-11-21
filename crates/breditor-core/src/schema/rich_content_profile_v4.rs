@@ -1,4 +1,4 @@
-//! Explicit frozen candidate rich V4: V3 grammar plus bounded ordered-list numbering,
+//! Explicit frozen rich V4: V3 grammar plus bounded ordered-list numbering,
 //! one native text-language inline format, bounded image links, collapsible sections,
 //! mention entities, table captions, explicit page breaks and named bookmarks with
 //! internal links.
@@ -181,7 +181,7 @@ pub(super) fn specification(spec: SchemaSpec) -> SchemaSpec {
     spec
 }
 
-/// Candidate V4 mention: three required strings; their closed domains and the
+/// V4 mention: three required strings; their closed domains and the
 /// whole-label immutability law are sealed V4 rich rules checked by validation.
 fn mention_format() -> InlineFormatSpec {
     use crate::rich_content::mention;

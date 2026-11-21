@@ -3,7 +3,7 @@
 Status: opt-in browser candidate for local rich owners and, through a separate
 dispatch adapter, shared (collaborative) editors ([Shared editors](#shared-editors)).
 This covers the slash command half of the `mentions-slash` readiness gap. Durable mention entities and
-the `@` menu are candidate rich V4 slice 5 ([RICH_LANGUAGE_V4.md](RICH_LANGUAGE_V4.md));
+the `@` menu are rich V4 slice 5 ([RICH_LANGUAGE_V4.md](RICH_LANGUAGE_V4.md));
 both menus share one typed-trigger session (`suggestion_session.ts`), and slash
 behaviour, DOM and messages are unchanged.
 
@@ -369,7 +369,7 @@ Items are disabled while read-only. `standardSharedSlashPicks`:
 | Table | `table` | `insert_blocks` |
 
 Omitted from the shared catalog: **Collapsible section** and **Page break**
-(candidate rich V4 only; shared owners are V1–V3), and the structural items on a
+(rich V4 only; shared owners are V1–V3), and the structural items on a
 V1 toolbar. There is no shared `@` mention menu: mentions are a V4 record and
 shared editors do not admit V4.
 
@@ -407,7 +407,7 @@ yet covered (see below).
   Wasm build, and its `experiments/collaboration` crate did not compile for
   `wasm32-unknown-unknown` when this adapter landed (an outdated struct
   initializer unrelated to slash commands).
-- **Mentions.** Implemented for candidate rich V4 only (native
+- **Mentions.** Implemented for rich V4 only (native
   `insertMention`, one Undo step); see RICH_LANGUAGE_V4.md slice 5. Shared
   editors are V1–V3 and have no mention menu.
 - No default menu styling theme or hotkey to open the menu without typing `/`.

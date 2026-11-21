@@ -1,5 +1,5 @@
 /**
- * Shared opt-in typed-trigger suggestion session (slash commands, candidate V4 mentions).
+ * Shared opt-in typed-trigger suggestion session (slash commands, V4 mentions).
  * Browser routing and presentation only: the trigger is read from admitted Rust views, the menu
  * is an accessible listbox that never takes focus, providers may be asynchronous and are
  * cancelled through an AbortSignal (stale results are discarded), and choosing an item

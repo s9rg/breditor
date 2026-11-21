@@ -76,7 +76,7 @@ export function createRichInlinePresentation(catalogJson:string,manifest:unknown
  const formats=raw.map(item=>{const r=record(item,["kind","revision","properties"]),kind=name(r["kind"]);requireValue(kind>previous,"format catalog must be unique and lexically ordered");previous=kind;
   return Object.freeze({kind,revision:integer(r["revision"],1,0xffffffff),properties:properties(r["properties"])});
  });
- // A candidate V4 mention renders as a structural chip (`mention.ts`), not as a recipe wrapper.
+ // A V4 mention renders as a structural chip (`mention.ts`), not as a recipe wrapper.
  const recipesOuterToInner=compileInlineFormatRecipes(formats.filter(format=>format.kind!==richMentionFormat),createInlineFormatRenderManifest(manifest));
  const presentation=Object.freeze({schema,recipesOuterToInner});owned.set(presentation,{formats:new Map(formats.map(format=>[format.kind,format]))});return presentation;
 }

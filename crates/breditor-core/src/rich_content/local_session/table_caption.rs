@@ -1,4 +1,4 @@
-//! Candidate V4 table captions through the exclusive local owner.
+//! V4 table captions through the exclusive local owner.
 //!
 //! Adding a caption inserts one empty trailing paragraph and places the caret in it;
 //! removing a caption whose text holds (part of) the selection moves the selection to a

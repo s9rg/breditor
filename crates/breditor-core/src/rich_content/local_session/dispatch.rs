@@ -61,7 +61,7 @@ impl RichLocalSession {
             },
         };
         let pending_formats = match pending_update {
-            // A candidate V4 mention is never a pending typing style.
+            // A V4 mention is never a pending typing style.
             RichPendingFormatsUpdate::Set(formats) => {
                 formats.map(|formats| crate::rich_content::mention::without_mentions(&formats))
             }

@@ -1,4 +1,4 @@
-//! Candidate rich V4 table captions (`breditor/table` → trailing `breditor/paragraph`).
+//! Rich V4 table captions (`breditor/table` → trailing `breditor/paragraph`).
 //!
 //! A V4 table's children are its rows (children `0..rows`, bounds unchanged) followed
 //! by at most one paragraph: the table's caption. Rows therefore keep their child
@@ -81,13 +81,13 @@ pub(crate) fn table<'a>(
 }
 
 impl RichDocument {
-    /// Stable identity of a table's caption paragraph (candidate V4), if it has one.
+    /// Stable identity of a table's caption paragraph (V4), if it has one.
     #[must_use]
     pub fn table_caption(&self, id: &TableId) -> Option<BlockId> {
         caption_id(table(self, id).ok()?)
     }
 
-    /// The table that owns `block` when `block` is a table caption (candidate V4).
+    /// The table that owns `block` when `block` is a table caption (V4).
     #[must_use]
     pub fn caption_table(&self, block: &BlockId) -> Option<TableId> {
         owner_of_caption(self, block)

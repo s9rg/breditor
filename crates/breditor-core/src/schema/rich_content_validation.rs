@@ -113,7 +113,7 @@ impl ValidationState<'_> {
             || (schema.supports_rich_bookmarks() && bookmark::allows_property(kind, name))
     }
 
-    /// Candidate V4 sections: the open-flag value law and the nesting bound.
+    /// V4 sections: the open-flag value law and the nesting bound.
     fn validate_rich_details(&mut self, element: &ElementNode, path: &NodePathCursor) {
         if !self.schema.supports_rich_details()
             || !crate::rich_content::details::supports_kind(element.kind().as_str())
@@ -132,7 +132,7 @@ impl ValidationState<'_> {
         }
     }
 
-    /// Candidate V4 bookmarks: a bounded name, unique per document.
+    /// V4 bookmarks: a bounded name, unique per document.
     fn validate_rich_bookmark(&mut self, element: &ElementNode, path: &NodePathCursor) {
         use crate::rich_content::bookmark;
         if !self.schema.supports_rich_bookmarks()
@@ -147,7 +147,7 @@ impl ValidationState<'_> {
         }
     }
 
-    /// Candidate V4: an internal link target is `#` + a bookmark name, same window.
+    /// V4: an internal link target is `#` + a bookmark name, same window.
     pub(super) fn validate_rich_internal_link(
         &mut self,
         format: &Format,
@@ -186,7 +186,7 @@ impl ValidationState<'_> {
         self.rich_details_depth -= usize::from(details);
     }
 
-    /// Candidate V4: a text-language value must be the canonical bounded BCP 47 form.
+    /// V4: a text-language value must be the canonical bounded BCP 47 form.
     pub(super) fn validate_rich_text_language(
         &mut self,
         format: &Format,

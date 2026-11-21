@@ -1,4 +1,4 @@
-//! Candidate rich V4 collapsible-section commands: strict records, Rust-owned actions.
+//! Rich V4 collapsible-section commands: strict records, Rust-owned actions.
 //!
 //! `wrapDetails {first,last,wrapper,summary,open}`, `unwrapDetails {wrapper}`,
 //! `setDetailsOpen {block,open}` and `enterDetailsBody {paragraph}`. Every record

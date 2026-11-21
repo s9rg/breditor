@@ -1,4 +1,4 @@
-// Candidate rich V4 table captions: deterministic arrow-key boundaries around a caption.
+// Rich V4 table captions: deterministic arrow-key boundaries around a caption.
 // HTML requires <caption> as a table's first child, but the caption is laid out (and stored)
 // after the rows. Native caret movement follows DOM order differently in each engine, so the
 // four caption boundaries are owned here; every other arrow key keeps native behaviour.

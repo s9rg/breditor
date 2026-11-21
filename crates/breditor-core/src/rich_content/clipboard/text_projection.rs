@@ -36,7 +36,7 @@ impl RichClipboardTextProjection {
 }
 impl RichClipboardFragment {
     /// Select explicit text conversion only for rich flow/grid paste starting in code or a caption
-    /// (an image caption, or a candidate V4 table caption).
+    /// (an image caption, or a V4 table caption).
     /// Prose returns `None`, keeping its ordinary structured-paste route. Inline fragments retain
     /// their original rich-paste contract. No source IDs, geometry or asset credentials are inserted.
     /// # Errors

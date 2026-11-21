@@ -40,12 +40,12 @@ export type RichDocumentSelection=RichSelection|Readonly<{kind:"document"}>;
 export interface RichProfileDescriptor {kind: "rich"; abiVersion: 1; schema: {name: string; version: number}; schemaFingerprint: string;richLanguageVersion?:2|3|4;taskStructureVersion?:1;blockLayoutVersion?:1;listNumberingVersion?:1;textLanguageVersion?:1;imageLinkVersion?:1;detailsVersion?:1;mentionVersion?:1;tableCaptionVersion?:1;pageBreakVersion?:1;bookmarkVersion?:1}
 /** Closed native intent. Omission keeps, null clears; bounds are enforced in Rust. */
 export interface RichBlockLayoutPatch {alignment?:"start"|"center"|"end"|"justify"|"left"|"right"|null;direction?:"ltr"|"rtl"|"auto"|null;indent?:number|null;lineHeightPercent?:number|null}
-/** Closed candidate rich V4 ordered-list marker families (CSS `list-style-type` keywords). */
+/** Closed rich V4 ordered-list marker families (CSS `list-style-type` keywords). */
 export type RichListNumberStyle="decimal"|"lower-alpha"|"upper-alpha"|"lower-roman"|"upper-roman";
 /** One ordered list's numbering intent. Omission keeps; a null style clears it; `reversed:false`
  * removes reversal; `start` sets the explicit first ordinal. At least one change is required. */
 export interface RichListNumberingPatch {list:string;style?:RichListNumberStyle|null;reversed?:boolean;start?:number}
-/** Candidate rich V4 image link of one image. `href` is a canonical absolute HTTP(S) URL (see
+/** Rich V4 image link of one image. `href` is a canonical absolute HTTP(S) URL (see
  * `canonicalImageLinkHref`), or `null` to remove the link; `newWindow` is only allowed with an href. */
 export type RichImageLinkIntent={image:string;href:string;newWindow?:boolean}|{image:string;href:null};
 export type RichLayoutFieldState<T>={kind:"unavailable"}|{kind:"mixed"}|{kind:"uniform";value:T|null};
@@ -156,25 +156,25 @@ export interface RichCoreEditor<P extends RichSelectionPolicy="original"> {
   supportsSelectionFormatting?():boolean;
   supportsBlockLayout?():boolean;
   blockLayoutState?():RichBlockLayoutStateRead;
-  /** Candidate rich V4 ordered-list numbering; an older owner may omit it. */
+  /** Rich V4 ordered-list numbering; an older owner may omit it. */
   supportsListNumbering?():boolean;
-  /** Candidate rich V4 text-run language metadata; an older owner may omit it. */
+  /** Rich V4 text-run language metadata; an older owner may omit it. */
   supportsTextLanguage?():boolean;
-  /** Candidate rich V4 image links; an older owner may omit it. */
+  /** Rich V4 image links; an older owner may omit it. */
   supportsImageLinks?():boolean;
-  /** Candidate rich V4 collapsible sections; an older owner may omit it. */
+  /** Rich V4 collapsible sections; an older owner may omit it. */
   supportsDetails?():boolean;
-  /** Candidate rich V4 mention entities (`insertMention`); an older owner may omit it. */
+  /** Rich V4 mention entities (`insertMention`); an older owner may omit it. */
   supportsMentions?():boolean;
   /** Native `replaceTriggerThen` (slash commands as one Undo step); an older owner may omit it. */
   supportsTriggerComposite?():boolean;
-  /** Candidate rich V4 table captions (`addTableCaption`, `removeTableCaption`); an older owner may omit it. */
+  /** Rich V4 table captions (`addTableCaption`, `removeTableCaption`); an older owner may omit it. */
   supportsTableCaptions?():boolean;
-  /** Candidate rich V4 root-level page breaks (`insertPageBreak`, `deletePageBreak`); an older owner may omit it. */
+  /** Rich V4 root-level page breaks (`insertPageBreak`, `deletePageBreak`); an older owner may omit it. */
   supportsPageBreaks?():boolean;
-  /** Candidate rich V4 bookmarks and internal links (`setBookmark`, `renameBookmark`); an older owner may omit it. */
+  /** Rich V4 bookmarks and internal links (`setBookmark`, `renameBookmark`); an older owner may omit it. */
   supportsBookmarks?():boolean;
-  /** Candidate rich V4: exact bookmark/internal-link inventory, including dangling links, of the current snapshot. */
+  /** Rich V4: exact bookmark/internal-link inventory, including dangling links, of the current snapshot. */
   bookmarkIndex?():import("./bookmark.js").RichBookmarkIndex;
   selectionCoverage?(scope?:"selection"|"document"):RichSelectionCoverageRead;
   selectionFormatState?(kind:string):RichSelectionFormatStateRead;

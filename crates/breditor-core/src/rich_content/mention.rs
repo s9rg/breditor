@@ -1,4 +1,4 @@
-//! Durable mention entities of the explicit candidate rich V4.
+//! Durable mention entities of the explicit rich V4.
 //!
 //! A mention is one native valued inline format, `breditor/mention`, over the
 //! exact text `@` + label. It carries a stable host entity reference: a closed
@@ -29,7 +29,7 @@ use crate::{
 
 use super::{RichDocument, RichSelectionKind, RichTextPoint};
 
-/// Native inline format kind (candidate rich V4 only).
+/// Native inline format kind (rich V4 only).
 pub const RICH_MENTION_FORMAT: &str = "breditor/mention";
 /// Required closed entity kind token (`user`, `page` or `tag`).
 pub const RICH_MENTION_KIND_PROPERTY: &str = "breditor/mention-kind";

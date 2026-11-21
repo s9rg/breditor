@@ -1,4 +1,4 @@
-//! Strict candidate-V4 bookmark intents.
+//! Strict V4 bookmark intents.
 //!
 //! `setBookmark {block, name}` sets, replaces or (`name: null`) clears one text block's
 //! bookmark without touching links; `renameBookmark {from, to}` renames one bookmark and

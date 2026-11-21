@@ -1,4 +1,4 @@
-//! Strict candidate-V4 image-link intent on one explicit image (set, replace or clear).
+//! Strict V4 image-link intent on one explicit image (set, replace or clear).
 use super::support::{checked, dispatch};
 use crate::{BreditorError, rich_editor::error};
 use breditor_core::{

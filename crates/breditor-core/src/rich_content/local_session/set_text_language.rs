@@ -1,4 +1,4 @@
-//! Candidate V4 text-run language over the native selection, through selection formatting.
+//! V4 text-run language over the native selection, through selection formatting.
 use super::{RichLocalOutcome, RichLocalSession, RichLocalSessionError, RichLocalSnapshot};
 use crate::rich_content::{
     RichLanguageTag, RichSelectionFormatChange, RichTextLanguageError, actions::RichActionError,

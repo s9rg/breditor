@@ -34,7 +34,7 @@ impl DeleteTableColumn {
             .position(|entry| entry.id() == column)
             .ok_or(RichActionError::MissingTarget)?;
         let source = table_node(document, table)?;
-        // Rows only: a candidate V4 caption is kept by `rebuild`.
+        // Rows only: a V4 caption is kept by `rebuild`.
         let rows = crate::rich_content::table_caption::rows(
             source.as_element().ok_or(RichActionError::Rewrite)?,
         )

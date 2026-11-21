@@ -70,7 +70,7 @@ export interface InlineFormatRenderSafeIntegerTokenV1Entry {
 }
 
 /**
- * Candidate rich V4 text language: one required string property holding a
+ * Rich V4 text language: one required string property holding a
  * canonical bounded BCP 47 tag, emitted only as the inert `lang` attribute.
  */
 export interface InlineFormatRenderSafeLanguageTagV1Policy {

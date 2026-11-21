@@ -108,7 +108,7 @@ pub(super) fn execute(
         _ => candidate_v4(tag, owner, observation, input),
     }
 }
-/// Candidate rich V4 commands; each decoder refuses a non-V4 context itself.
+/// Rich V4 commands; each decoder refuses a non-V4 context itself.
 fn candidate_v4(
     tag: CommandTag,
     owner: &mut RichLocalSession,

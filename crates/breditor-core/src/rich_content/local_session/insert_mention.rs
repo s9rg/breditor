@@ -1,4 +1,4 @@
-//! Candidate V4 mention insertion: one guarded replacement of a typed trigger, one undo step.
+//! V4 mention insertion: one guarded replacement of a typed trigger, one undo step.
 use super::{
     RichLocalOutcome, RichLocalSession, RichLocalSessionError, RichLocalSnapshot, RichLocalState,
     RichPendingFormatsUpdate, RichSelectionUpdate,

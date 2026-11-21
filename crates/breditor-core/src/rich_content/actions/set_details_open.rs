@@ -1,4 +1,4 @@
-//! Guarded candidate-V4 section open/collapse change; summary, body and identities are untouched.
+//! Guarded V4 section open/collapse change; summary, body and identities are untouched.
 use super::{
     RichAction, RichActionError, RichEdit, node_patch::NodePatch,
     rewrite_properties::with_properties,

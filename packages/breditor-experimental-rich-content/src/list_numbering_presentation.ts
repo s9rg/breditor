@@ -1,5 +1,5 @@
 import {property,type ElementNode} from "./model.js";
-/** Candidate rich V4 marker styles by native code 1–5 (CSS `list-style-type` keywords). */
+/** Rich V4 marker styles by native code 1–5 (CSS `list-style-type` keywords). */
 export const listNumberStyles=["decimal","lower-alpha","upper-alpha","lower-roman","upper-roman"] as const;
 /** The exact HTML `<ol type>` token for each native code 1–5. */
 export const listNumberHtmlTypes=["1","a","A","i","I"] as const;

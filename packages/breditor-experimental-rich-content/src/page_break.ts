@@ -1,4 +1,4 @@
-// Candidate rich V4 page breaks: presentation, read-only targeting and an owner-bound toolbar control.
+// Rich V4 page breaks: presentation, read-only targeting and an owner-bound toolbar control.
 // Rust owns grammar (document root only), identities and history; this module never edits the document.
 import type {RichCoreEditor,RichSelectionPolicy} from "./core.js";
 import type {FlowPosition} from "./commands.js";
