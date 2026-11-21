@@ -249,7 +249,8 @@ Recognition does not unescape or normalize body text. Existing code blocks and
 inline code/link ranges do not autoformat. General CommonMark parsing, nested
 delimiter interpretation, smart punctuation and arbitrary host-defined patterns
 are not implied by this first native policy. URL autolinking is the separate
-opt-in `autolink-v1` set below.
+opt-in `autolink-v1` set below; smart punctuation is the separate opt-in
+`typography-v1` set.
 
 ## Optional autolink (`autolink-v1`)
 
@@ -328,6 +329,108 @@ top-level startup options and React `initialOptions`). An unknown, empty or
 duplicate selection rejects before storage or native ownership. Markdown-only
 selections keep the original native pair and runtime minimum; selecting
 `autolink-v1` additionally requires the version-1 rule-set capability.
+
+## Optional typography (`typography-v1`)
+
+`typography-v1` is a third, separately selected rule set: automatic text
+transformations in the sense of Tiptap's Typography extension and CKEditor's
+text transformation feature. It replaces a just-typed character sequence with
+its typographic form. It is off unless a host selects it, and it never runs on
+paste, import, composition, remote updates, programmatic commands or recovery.
+
+**Rules and groups.** Names and groups follow CKEditor (`oneQuarter` is
+CKEditor's `oneForth`); the `misc` group holds Tiptap-only rules and is not in
+the default selection.
+
+| Group | Rule | Typed | Result | When |
+|---|---|---|---|---|
+| `typography` | `ellipsis` | `...` | `…` | on the third `.` |
+| | `enDash` | ` -- ` | ` – ` | on the space; `--` must follow whitespace or the block start |
+| | `emDash` | ` --- ` | ` — ` | same |
+| `quotes` | `quotesPrimary` | `"` | opening/closing double quote | on `"` |
+| | `quotesSecondary` | `'` | opening/closing single quote or `’` | on `'` |
+| `symbols` | `copyright` / `registeredTrademark` / `trademark` | `(c)` `(r)` `(tm)` | `©` `®` `™` | on `)` (lowercase only) |
+| `mathematical` | `oneHalf` `oneThird` `twoThirds` `oneQuarter` `threeQuarters` | ` 1/2 ` … ` 3/4 ` | `½` `⅓` `⅔` `¼` `¾` | on the space, delimited like dashes |
+| | `lessThanOrEqual` / `greaterThanOrEqual` / `notEqual` | `<=` `>=` `!=` | `≤` `≥` `≠` | on `=` |
+| | `arrowLeft` / `arrowRight` | ` <- ` ` -> ` | `←` `→` | on the space, delimited |
+| `misc` (opt-in) | `servicemark` `plusMinus` `laquo` `raquo` `superscriptTwo` `superscriptThree` | `(sm)` `+/-` `<<` `>>` `^2` `^3` | `℠` `±` `«` `»` `²` `³` | on the last character |
+
+Delimited rules keep the typed space and never fire inside a word (`11/2 `,
+`x-> `, `a--` stay literal). Tiptap's undelimited `--` → `—`, `->` → `→` and
+`2x3` → `2×3` are deliberately not offered: they rewrite command lines, code
+spans and Markdown markers mid-word. A `--- ` that occupies a whole paragraph is
+still a horizontal rule when `markdown-v1` is also selected, because Markdown
+recognition runs first; then autolink, then typography.
+
+**Quotes.** A quote opens at the block start or after whitespace, `( [ { <`,
+a dash, `/` or another opening quote, looking through typed `*`, `_`, `~` and
+`` ` `` markers (so `*"a"*` becomes `*“a”*`); otherwise it closes. A `'` after
+a letter or digit is the apostrophe `’` (`it’s`, `l’ami`), unless the style's
+closing single quote differs from `’` and an opening single quote is still
+open in the block (German `‚so‘`). Styles:
+
+| `quotes` | Double | Single |
+|---|---|---|
+| `english` (default) | “ ” | ‘ ’ |
+| `german` | „ “ | ‚ ‘ |
+| `french` | « » with U+00A0 inside | ‹ › with U+00A0 inside |
+| `swiss` | « » | ‹ › |
+| `polish` | „ ” | ‚ ’ |
+| custom | `{"double":[o,c],"single":[o,c],"space"?:"nbsp"\|"narrow-nbsp"}` | |
+
+Custom quote characters must each be one non-ASCII, non-whitespace, non-control
+scalar. Known limitations: a leading elision (`'90s`) gets an opening quote
+(as in Tiptap and CKEditor); a closing quote typed after a space is treated as
+opening; there is no RTL quote swap (Tiptap's `rtl` option) — configure a
+custom pair instead.
+
+**Selection.** `include` (groups or rule names) replaces the default groups
+`typography`, `quotes`, `symbols` and `mathematical`; `exclude` then removes
+groups or rules. Unknown names, a name repeated in one list, more than 64
+names, an empty result, an unknown preset or an unsafe custom quote reject the
+whole selection before the editor mounts (browser) or before any input commits
+(Wasm). CKEditor's `extra` custom from/to rules are not supported.
+
+**History, formats and exclusions.** The typed trigger is retained first
+through the ordinary typing path. The replacement is then one isolated native
+group, `Delete` of the recognized characters plus `Insert` of the result:
+one Undo restores exactly the typed characters (with the caret after them),
+Redo reapplies it, and the following input is ordinary. The inserted text
+carries exactly the formats of the last replaced character, and the pending
+formats at the caret are unchanged, so bold typing stays bold. No conversion
+inside code blocks or when any inline-code run touches the replaced range or
+trigger, at a non-collapsed selection, in read-only owners, or when the
+recognition window floor (see below) would hide the context a rule needs.
+
+**Local and shared.** `RichLocalSession` dispatches the captured
+`DeleteText` + `InsertText` actions. `RichReplica` lowers the same native plan
+to original guarded commands — `delete_text`, `insert_text` and `set_format`
+annotations over the inserted range (removing every block format kind that is
+not wanted and setting each wanted one, exactly like ordinary shared typing) —
+and adopts the result only when it equals the native preview. Peers receive
+ordinary edits; checkpoints, recovery families and saved formats are
+unchanged, and no recognition is replayed.
+
+**API.** Rust: `RichInputRuleSet::TYPOGRAPHY_V1` (defaults),
+`RichInputRuleSet::typography_with(RichTypographyConfig)`,
+`RichTypographyConfig::try_new(include, exclude, RichQuoteStyle)`,
+`RichQuoteStyle::{ENGLISH, GERMAN, FRENCH, SWISS, POLISH, preset, try_new}`,
+`RichTypographyRequest` (the strict JSON shape) and the pure
+`rich_typography_replacement`. Wasm: `typographyInputRulesVersion()` /
+`typography_input_rules_version()` string `1`; the existing rule-set calls
+accept `"typography-v1"` in `rules` (now up to three ids) and an optional
+`typography` object (`include`, `exclude`, `quotes`), which is rejected
+without `typography-v1`. SDKs: `supportsTypographyInputRules()` and an
+optional trailing `typography` argument on `insertPlainTextWithInputRules` /
+`insertTypingTextWithInputRules`.
+
+Browser owners select it with `inputRules: "typography-v1"` (defaults) or a
+configured entry `inputRules: {rule: "typography-v1", include?, exclude?,
+quotes?}`, alone or in a list with `markdown-v1`/`autolink-v1` (local and
+shared DOM options, SDK openers and React `initialOptions`). The browser
+validates the same names and quote rules at mount (`TYPOGRAPHY_RULE_GROUPS`
+mirrors the native table) and requires the typography capability; native code
+validates again.
 
 ## Planning and admission
 

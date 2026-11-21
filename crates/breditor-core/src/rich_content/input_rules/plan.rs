@@ -154,7 +154,8 @@ fn structural_step(
         | RichInputRuleKind::ListJoin(_)
         | RichInputRuleKind::TaskJoin(_)
         | RichInputRuleKind::ListItemTask(_)
-        | RichInputRuleKind::CodeExit => {
+        | RichInputRuleKind::CodeExit
+        | RichInputRuleKind::Typography(_) => {
             unreachable!("block recognizer returns only base structural rules")
         }
     })
@@ -287,8 +288,14 @@ pub fn plan_rich_input_rule(
     {
         return Ok(Some(plan));
     }
-    if rules.autolink() && trigger == " " {
-        return super::autolink::plan(context, document, selection, None);
+    if rules.autolink()
+        && trigger == " "
+        && let Some(plan) = super::autolink::plan(context, document, selection, None)?
+    {
+        return Ok(Some(plan));
+    }
+    if let Some(config) = rules.typography() {
+        return super::typography::plan(context, document, selection, trigger, &config);
     }
     Ok(None)
 }
@@ -314,7 +321,7 @@ fn capture(
 ) -> Result<RichAction, actions::RichActionError> {
     use crate::{document::TextFragment, rich_content::RichBlockDraft};
     use actions::{
-        CodeFormatPolicy, DeleteText, InsertBlocks, InsertHorizontalRule, MoveBlock,
+        CodeFormatPolicy, DeleteText, InsertBlocks, InsertHorizontalRule, InsertText, MoveBlock,
         OutdentListItems, OutdentTaskItems, RichFormatChange, SetCodeBlock, SetHeading,
         SetInlineFormat, WrapBlockquote, WrapList, WrapTaskList,
     };
@@ -397,6 +404,18 @@ fn capture(
                 *start,
                 *end,
                 &RichFormatChange::Set(link_format(href)?),
+            )?)
+        }
+        RichInputRuleStep::Insert { at, text, formats } => {
+            let fragment = TextFragment::try_from_runs(vec![
+                crate::document::TextRun::try_new(text.clone(), formats.clone())
+                    .map_err(|_| actions::RichActionError::FormatChanges)?,
+            ])
+            .map_err(|_| actions::RichActionError::FormatChanges)?;
+            RichAction::InsertText(InsertText::capture(
+                document,
+                &crate::rich_content::RichTextPoint::new(block.clone(), *at, Affinity::After),
+                &fragment,
             )?)
         }
     })

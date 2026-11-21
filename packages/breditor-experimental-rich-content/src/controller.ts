@@ -25,8 +25,8 @@ import {requireClipboardInterchange,readClipboardInput,exportClipboard,writeClip
 import type {RichSearchQuery,RichSearchReplacement,RichSearchResults} from "./core.js";
 import {RichSearchEvents,type RichSearchHostState,type RichSearchCompletion} from "./search_host.js";
 import {publishRichSearchIntent,type RichSearchIntent} from "./search_intent.js";
-import {requireInputRules,needsInputRuleSets,isPlainInputScalar,captureMarkdownInputSource,checkMarkdownInputSource,publishMarkdownInput,type MarkdownInputIntent,type MarkdownInputSource,type RichInputRulesOption} from "./input_rule_intent.js";
-import type {RichInputRuleId,RichInputRuleOutcome} from "./core.js";
+import {requireInputRules,inputRuleTypography,needsInputRuleSets,isPlainInputScalar,captureMarkdownInputSource,checkMarkdownInputSource,publishMarkdownInput,type MarkdownInputIntent,type MarkdownInputSource,type RichInputRulesOption} from "./input_rule_intent.js";
+import type {RichInputRuleId,RichInputRuleOutcome,RichTypographyOptions} from "./core.js";
 import type {RichWritingToolsRead} from "./writing_tools_types.js";
 import {RichWritingEvents,RichWritingReadRegistry,type RichWritingToolsHostState} from "./writing_tools_host.js";
 import {prepareRichPlaceholder,RichPlaceholderPresentation,richPlaceholderStyles} from "./placeholder.js";
@@ -41,7 +41,7 @@ export interface RichEditorOptions<P extends RichSelectionPolicy="original"> ext
  selectionEditing?:P;
  /** Immutable explicit native general-range routing; default keeps original input contracts. */
  rangeEditing?:"original"|"general-v1";
- /** Immutable explicit browser policy (`markdown-v1`, `autolink-v1` or both); omitted keeps literal ordinary input. */
+ /** Immutable explicit browser policy (`markdown-v1`, `autolink-v1`, `typography-v1` or a configured typography entry, alone or listed); omitted keeps literal ordinary input. */
  inputRules?:RichInputRulesOption;
  /** Literal input committed, but native shortcut conversion was refused; never retry input. */
  onInputRuleRefused?:()=>void;
@@ -84,7 +84,7 @@ export class RichDomEditor<P extends RichSelectionPolicy="original"> {
  readonly #selectionPolicy:P;readonly #document:RichDocumentCoreEditor|undefined;
  #general=false;
  readonly #interchange:RichClipboardInterchange|undefined;
- readonly #inputRules:boolean;readonly #inputRuleIds:readonly RichInputRuleId[]|null;
+ readonly #inputRules:boolean;readonly #inputRuleIds:readonly RichInputRuleId[]|null;readonly #typography:RichTypographyOptions|null;
  readonly #searchEvents=new RichSearchEvents();
  readonly #writingEvents=new RichWritingEvents();readonly #writingReads=new RichWritingReadRegistry();
  readonly #placeholder:RichPlaceholderPresentation|undefined;
@@ -94,7 +94,7 @@ export class RichDomEditor<P extends RichSelectionPolicy="original"> {
   if((options.core.selectionPolicy?.()??"original")!==policy)throw Error("DOM selection policy must match its explicitly selected native owner");
   this.#selectionPolicy=policy as P;this.#document=policy==="document-v1"?requireDocumentBrowserCore(options.core):undefined;
   this.#interchange=requireClipboardInterchange(options.clipboardInterchange,options.core);
-  this.#inputRuleIds=requireInputRules(options.inputRules,options.core);this.#inputRules=this.#inputRuleIds!==null;
+  this.#inputRuleIds=requireInputRules(options.inputRules,options.core);this.#typography=inputRuleTypography(options.inputRules);this.#inputRules=this.#inputRuleIds!==null;
   const placeholder=prepareRichPlaceholder(options.placeholder,options.core);
   if(options.rangeEditing!==undefined&&options.rangeEditing!=="original"&&options.rangeEditing!=="general-v1")throw new TypeError("Expected rangeEditing original or general-v1");
   if(this.#document&&options.rangeEditing==="original")throw Error("Document selection requires native general-range browser routing");
@@ -194,7 +194,7 @@ export class RichDomEditor<P extends RichSelectionPolicy="original"> {
   this.#live();if((this.#searchEvents.notifying||this.#writingEvents.notifying))throw Error("Read notifications cannot publish reentrantly");
   const view=this.#options.core.view();checkMarkdownInputSource(view,source);
   if(this.#queue.length>=128)throw Error("Rich editor command queue is full");
-  const inputRule=Object.freeze({text,namespace:this.#allocate("rule"),...(view.historyGrouping==="typing-v1"?{clockMs:this.#clock()}:{} ),...(needsInputRuleSets(this.#inputRuleIds)?{rules:this.#inputRuleIds!}:{})});
+  const inputRule=Object.freeze({text,namespace:this.#allocate("rule"),...(view.historyGrouping==="typing-v1"?{clockMs:this.#clock()}:{} ),...(needsInputRuleSets(this.#inputRuleIds)?{rules:this.#inputRuleIds!,...(this.#typography?{typography:this.#typography}:{})}:{})});
   this.#queue.push({inputRule,revision:source.revision,focus:true});this.#drain();
  }
  /** `autolink-v1` Enter: only a plain caret split takes the exclusive native split-and-link call. */
@@ -217,7 +217,7 @@ export class RichDomEditor<P extends RichSelectionPolicy="original"> {
   if(selection?.kind!=="text"||selection.anchor.block!==selection.focus.block||selection.anchor.offset!==selection.focus.offset||this.#model.nodes.get(selection.focus.block)?.type!=="breditor/code-block"||target&&!isCurrentCaretTarget(selection,target))return false;
   this.#live();if((this.#searchEvents.notifying||this.#writingEvents.notifying))throw Error("Read notifications cannot publish reentrantly");
   if(this.#queue.length>=128)throw Error("Rich editor command queue is full");
-  const inputRule=Object.freeze({text:"\n",namespace:this.#allocate("rule"),...(needsInputRuleSets(this.#inputRuleIds)?{rules:this.#inputRuleIds}:{})});
+  const inputRule=Object.freeze({text:"\n",namespace:this.#allocate("rule"),...(needsInputRuleSets(this.#inputRuleIds)?{rules:this.#inputRuleIds!,...(this.#typography?{typography:this.#typography}:{})}:{})});
   this.#queue.push({inputRule,revision:this.#model.view.revision,focus:true});this.#drain();
   return true;
  }

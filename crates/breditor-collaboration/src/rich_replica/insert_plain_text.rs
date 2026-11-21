@@ -120,7 +120,7 @@ impl RichReplica {
             &codec.encode(node.formats()).map_err(|_| Error::Contract("shared typing formats"))?,
         )?)
     }
-    fn block_formats(&self, block: &str) -> Result<BTreeMap<String, Value>, Error> {
+    pub(super) fn block_formats(&self, block: &str) -> Result<BTreeMap<String, Value>, Error> {
         let node = self
             .document
             .document()

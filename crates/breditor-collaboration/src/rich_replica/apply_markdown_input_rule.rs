@@ -102,7 +102,7 @@ impl RichReplica {
         let Some(plan) = plan else {
             return Ok(false);
         };
-        let commands = commands(&self.document, &plan)?;
+        let commands = commands(self, &plan)?;
         // Code is explicitly plain; a code exit derives the fresh paragraph's styles afresh.
         let pending = match plan.kind() {
             RichInputRuleKind::Code(_) => Some(vec![]),
@@ -126,12 +126,17 @@ impl RichReplica {
         )
     }
 }
-fn commands(document: &RichDocument, plan: &RichInputRulePlan) -> Result<Vec<Command>, Error> {
+fn commands(replica: &RichReplica, plan: &RichInputRulePlan) -> Result<Vec<Command>, Error> {
+    let document = &replica.document;
     let block = plan.block().as_str();
-    plan.steps()
-        .iter()
-        .map(|step| {
-            Ok(match step {
+    let mut lowered = vec![];
+    for step in plan.steps() {
+        if let RichInputRuleStep::Insert { at, text, formats } = step {
+            lowered.extend(insert_commands(replica, block, *at, text, formats)?);
+            continue;
+        }
+        lowered.push({
+            match step {
                 RichInputRuleStep::Delete { start, end } => {
                     Command::DeleteText(actions::DeleteText {
                         block: block.into(),
@@ -216,9 +221,56 @@ fn commands(document: &RichDocument, plan: &RichInputRulePlan) -> Result<Vec<Com
                         enabled: true,
                     })
                 }
-            })
+                RichInputRuleStep::Insert { .. } => unreachable!("lowered above"),
+            }
+        });
+    }
+    Ok(lowered)
+}
+/// `typography-v1` replacement text: one original insertion, then exact formats over it.
+///
+/// Like ordinary shared typing, every format kind used in the block but not wanted
+/// is removed from the inserted range and every wanted format is set, so the
+/// causal result equals the native preview regardless of mark expansion.
+fn insert_commands(
+    replica: &RichReplica,
+    block: &str,
+    at: TextOffset,
+    text: &str,
+    formats: &breditor_core::document::FormatSet,
+) -> Result<Vec<Command>, Error> {
+    use breditor_core::{codec::RichFormatsJsonCodec, state::EditorContext};
+    let offset = u32::try_from(at.get()).map_err(|_| Error::Offset)?;
+    let length = u32::try_from(text.encode_utf16().count()).map_err(|_| Error::Offset)?;
+    let codec = RichFormatsJsonCodec::new(EditorContext::new(
+        replica.codec.schema().clone(),
+        replica.codec.limits().clone(),
+    ));
+    let desired: Vec<serde_json::Value> = serde_json::from_str(
+        &codec.encode(formats).map_err(|_| Error::Contract("input rule formats"))?,
+    )?;
+    let kinds: Vec<&str> = desired.iter().filter_map(|f| f["type"].as_str()).collect();
+    let mark = |format: serde_json::Value, enabled: bool| {
+        Command::SetFormat(actions::SetFormat {
+            block: block.into(),
+            offset,
+            length,
+            format,
+            enabled,
         })
-        .collect()
+    };
+    let mut commands = vec![Command::InsertText(actions::InsertText {
+        block: block.into(),
+        offset,
+        text: text.into(),
+    })];
+    for (kind, format) in replica.block_formats(block)? {
+        if !kinds.contains(&kind.as_str()) {
+            commands.push(mark(format, false));
+        }
+    }
+    commands.extend(desired.into_iter().map(|format| mark(format, true)));
+    Ok(commands)
 }
 /// Retained-identity list continuation and code-exit steps as original guarded commands.
 fn list_command(
