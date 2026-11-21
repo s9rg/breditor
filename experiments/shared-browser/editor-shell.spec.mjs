@@ -23,7 +23,11 @@ test("a menu bar command is one guarded shared dispatch: one publication, one Un
  await page.keyboard.press("f");expect(await page.evaluate(()=>window.shellTest.active())).toBe("menubar:Format");
  await page.keyboard.press("ArrowDown");
  const format=page.getByRole("menu",{name:"Format"});await expect(format).toBeVisible();
- await page.keyboard.press("b");await expect(format.getByRole("menuitemcheckbox",{name:"Bold"})).toBeFocused();
+ const bold=format.getByRole("menuitemcheckbox",{name:"Bold"});await expect(bold).toBeFocused();
+ // Typeahead moves to the NEXT item starting with the typed letter (other "B" items, such as Background color,
+ // depend on the admitted controls), and Home returns to the first item.
+ await page.keyboard.press("b");expect(await page.evaluate(()=>{const e=document.activeElement;return e?.closest?.('[role=menu]')!==null&&/^b/i.test(e?.textContent??"");})).toBe(true);
+ await page.keyboard.press("Home");await expect(bold).toBeFocused();
  await page.keyboard.press("Enter");await expect(format).toBeHidden();
  const after=await page.evaluate(async()=>{const t=window.shellTest;await t.synchronize();const intro=JSON.parse(t.b.documentJson()).root.children[0].children;
   return {publications:t.publications,depth:t.a.view().undoDepth,active:t.active(),peer:intro.map(c=>[c.text,c.formats.length]),same:t.a.documentJson()===t.b.documentJson(),errors:t.errors};});
