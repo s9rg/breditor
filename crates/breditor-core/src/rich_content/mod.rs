@@ -14,6 +14,7 @@ mod block_layout_draft;
 mod block_layout_patch;
 mod block_layout_state;
 pub(crate) mod bookmark;
+mod case_change;
 pub(crate) mod clipboard;
 mod code_language;
 mod collapse_document_selection;
@@ -72,6 +73,11 @@ pub use bookmark::{
     RICH_BOOKMARK_NAME_MAX_BYTES, RICH_INTERNAL_LINK_PREFIX, RichBookmarkEntry, RichBookmarkError,
     RichBookmarkIndex, RichBookmarkName, RichInternalLink, internal_link_name,
     is_valid_name as is_valid_bookmark_name,
+};
+pub use case_change::{
+    RICH_CASE_MAX_MINOR_WORD_BYTES, RICH_CASE_MAX_MINOR_WORDS, RichCaseChange, RichCaseChangeError,
+    RichCaseChangePlan, RichCaseOptions, RichCaseRequest, default_title_minor_words,
+    plan_rich_case_change,
 };
 pub use clipboard::{
     RichClipboardError, RichClipboardFragment, RichClipboardIdAllocator, RichClipboardIdentityKind,

@@ -38,3 +38,5 @@ export {richPageBreakKind,richPageBreakClass,richPageBreakStyle,pageBreakAttribu
 export {richPrintStyles,resolveRichPrintLayout,richPrintPageSizes,richPrintOrientations,richPrintMargins,type RichPrintOptions,type RichPrintLayout,type RichPrintPageSize,type RichPrintOrientation,type RichPrintMargin} from "./dist/browser/print.js";
 export {richMentionFormat,richMentionKindProperty,richMentionIdProperty,richMentionLabelProperty,richMentionKinds,richMentionClass,richMentionStyles,isRichMentionId,isRichMentionKind,isRichMentionLabel,mentionOf,mentionText,mentionFormat,groupMentionRuns,mentionChipAttributes,createMentionChip,type RichMention,type RichMentionKind,type MentionRun,type MentionInlineItem} from "./dist/browser/mention.js";
 export {richCoordinatorShortcuts,type RichShortcutEntry,type RichShortcutChord,type RichShortcutGroup,type RichCoordinatorShortcutFacts} from "./dist/browser/shortcut_registry.js";
+export * from "./dist/browser/formatting_productivity.js";
+export * from "./dist/browser/special_characters.js";

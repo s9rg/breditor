@@ -400,6 +400,29 @@ they do not consume this manifest. Their read-only registry
 (`contextShortcuts()` / `richActiveShortcuts`) and the opt-in Alt+0 help dialog
 are described in [EDITOR_SHELL.md](EDITOR_SHELL.md).
 
+## Rich editor formatting-productivity chords
+
+The declarative manifest above belongs to the base-text browser runtime and admits
+only Primary+letter chords. The rich (local and shared) coordinators register
+the opt-in formatting-productivity chords through their toolbar controls'
+surface attachment (`RichControlPresentation.attach`), so a chord exists only when
+the host mounts the control, and every chord runs the same control command path
+(selection sync, native command, one Undo step) as the toolbar button. See
+[Formatting productivity](FORMATTING_PRODUCTIVITY.md).
+
+| Chord | Control | Action |
+| --- | --- | --- |
+| Shift+F3 | `case-upper`/`case-lower`/`case-title` | native `changeSelectionCase` with `cycle` (UPPER → lower → Title) |
+| Primary+Alt+S | `special-characters` | open the picker and focus its search field |
+| Primary+Alt+C | `format-painter` | copy the formatting at the selection (twice quickly: repeated mode) |
+| Primary+Alt+V | `format-painter` | apply the copied formatting to the selection or caret |
+| Escape | `format-painter` | turn an armed painter off (no document change) |
+
+Primary is Control or Meta. Alt chords match `KeyboardEvent.code` (`KeyS`,
+`KeyC`, `KeyV`) and are ignored while AltGraph is active or during composition,
+so AltGr text input is unaffected. Hosts drop them with `caseChange.shortcut:false`
+or `formatPainter.shortcuts:false`, or by omitting the control.
+
 ## Research lineage
 
 Tiptap demonstrates the usefulness of extension-local declarative shortcut

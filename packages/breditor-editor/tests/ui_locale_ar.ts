@@ -77,6 +77,10 @@ mentionLabel:"الإشارات",mentionLoading:"جارٍ تحميل الاقتر
  shortcutFocusToolbar:"نقل التركيز إلى شريط الأدوات العائم",shortcutFocusBlockMenu:"نقل التركيز إلى قائمة الكتل في السطر الفارغ",shortcutContextMenu:"فتح قائمة السياق",shortcutFocusMenuBar:"نقل التركيز إلى شريط القوائم",
  shortcutOpenHelp:"عرض اختصارات لوحة المفاتيح",shortcutLeaveUi:"إغلاق قائمة أو مربع حوار والعودة إلى النص",shortcutMoveBlockUp:"نقل الكتلة لأعلى",shortcutMoveBlockDown:"نقل الكتلة لأسفل",
  keyControl:"Ctrl",keyCommand:"Command",keyAlt:"Alt",keyOption:"Option",keyShift:"Shift",
+ specialCharactersSearch:"البحث عن الرموز",specialCharactersCategory:"الفئة",specialCharactersAll:"كل الفئات",specialCharactersGrid:"رموز خاصة",
+ specialCharactersCountOne:"رمز واحد",specialCharactersCount:"{count} رموز",specialCharactersEmpty:"لا توجد رموز مطابقة",specialCharacterItem:"{name} ({code})",
+ formatPainterCopied:"تم نسخ التنسيق. حدّد نصًا لتطبيقه مرة واحدة؛ Escape للإلغاء.",formatPainterSticky:"تم نسخ التنسيق للاستخدام المتكرر. حدّد نصًا لتطبيقه؛ Escape أو الزر للإيقاف.",
+ formatPainterApplied:"تم تطبيق التنسيق.",formatPainterCancelled:"تم إيقاف ناسخ التنسيق.",formatPainterNothing:"التحديد يحمل هذا التنسيق بالفعل.",
 };
 export const arabicUi:RichUiOptions={
  lang:"ar",direction:"rtl",strings:arabicStrings,notices:arabicNotices,refusals:arabicRefusals,

@@ -40,3 +40,5 @@ export {richPrintStyles,resolveRichPrintLayout,richPrintPageSizes,richPrintOrien
 export {richMentionFormat,richMentionKindProperty,richMentionIdProperty,richMentionLabelProperty,richMentionKinds,richMentionClass,richMentionStyles,isRichMentionId,isRichMentionKind,isRichMentionLabel,mentionOf,mentionText,mentionFormat,groupMentionRuns,mentionChipAttributes,createMentionChip} from "./dist/browser/mention.js";
 // Editor shell registry: coordinators describe the chords their own keydown routing owns.
 export {richCoordinatorShortcuts} from "./dist/browser/shortcut_registry.js";
+export * from "./dist/browser/formatting_productivity.js";
+export * from "./dist/browser/special_characters.js";

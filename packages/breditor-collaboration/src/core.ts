@@ -23,6 +23,7 @@ import type {SharedReviewedHistoryIdentity,SharedOwnedSuggestionAcceptance,Share
 import {sharedProtocolLanguage} from "./protocol.js";
 import {sharedTextLanguageInput,sharedMentionInput,sharedImageLinkInput,type SharedImageLinkIntent} from "./inline_v4_input.js";
 import {encodeBlockLayoutPatch} from "@breditor/experimental-rich-content/rendering";
+import {encodeCaseChangeIntent} from "@breditor/experimental-rich-content/rendering";
 import {sharedStructureRequestV4} from "./structure_v4.js";
 import type {RichSearchQuery,RichSearchReplacement,RichInputRuleOutcome,RichInputRuleId,RichTypographyOptions} from "@breditor/experimental-rich-content";
 import {SharedSearchResults,nativeSearchResults} from "./search_results.js";
@@ -653,6 +654,10 @@ export class SharedRichEditor<P extends SharedSelectionPolicy="original"> {
  replaceAtomTypingText(paragraph:string,text:string,clockMs:string,revision?:string):boolean{return this.#run("local",(raw,o)=>{if(!this.supportsAtomEditing())throw new SharedEditorError("atom_edit_unavailable","Use a matching native atom-edit owner");return raw.replace_atom_typing_text!(o,paragraph,text,clockMs);},revision);}
  /** Shared V4 inline commands (text language, mentions, image links): one native command and Undo step each. */
  supportsInlineCommandsV4():boolean{const raw=this.#live();return this.supportsRichLanguageV4()&&raw.inline_commands_v4_version?.()==="1"&&typeof raw.set_text_language==="function"&&typeof raw.insert_mention==="function"&&typeof raw.set_image_link==="function";}
+ /** Native `change_selection_case` (UPPER, lower, Title Case, cycle); every shared rich language. */
+ supportsCaseChange():boolean{const raw=this.#live();return typeof raw.case_change_version==="function"&&raw.case_change_version()==="1"&&typeof raw.change_selection_case==="function";}
+ /** Change the letter case of the selection (a caret changes its whole block) in one Undo step. False when nothing changes. */
+ changeSelectionCase(intent:import("@breditor/experimental-rich-content/rendering").RichCaseChangeIntent,revision?:string):boolean{const input=JSON.stringify(encodeCaseChangeIntent(intent));return this.#run("local",(raw,o)=>{if(!this.supportsCaseChange())throw new SharedEditorError("case_change_unavailable","Use a matching native shared owner with case change");return raw.change_selection_case!(o,input);},revision);}
  supportsTextLanguage():boolean{return this.supportsInlineCommandsV4()&&this.supportsSelectionFormatting();}
  supportsMentions():boolean{return this.supportsInlineCommandsV4();}
  supportsImageLinks():boolean{return this.supportsInlineCommandsV4();}

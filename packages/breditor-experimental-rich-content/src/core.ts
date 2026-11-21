@@ -166,6 +166,8 @@ export interface RichCoreEditor<P extends RichSelectionPolicy="original"> {
   supportsListNumbering?():boolean;
   /** Rich V4 text-run language metadata; an older owner may omit it. */
   supportsTextLanguage?():boolean;
+  /** Native `changeSelectionCase` (UPPER, lower, Title Case, cycle) in every rich language. */
+  supportsCaseChange?():boolean;
   /** Rich V4 image links; an older owner may omit it. */
   supportsImageLinks?():boolean;
   /** Rich V4 collapsible sections; an older owner may omit it. */

@@ -151,4 +151,7 @@ export type RichCommand =
  |{kind:"changeInlineFormats";data:{changes:readonly ({kind:"set";formatsJson:string}|{kind:"remove";format:string}|{kind:"patch";formatsJson:string;properties:readonly string[]})[];targets:readonly {block:string;start:string;end:string}[]}}
  |{kind:"pasteInlineClipboard";data:{clipboardJson:string}}
  |{kind:"pasteFlowClipboard";data:{clipboardJson:string;position:FlowPosition;allocation:ClipboardAllocation}}
- |{kind:"pasteGridClipboard";data:{clipboardJson:string;allocation:ClipboardAllocation}};
+ |{kind:"pasteGridClipboard";data:{clipboardJson:string;allocation:ClipboardAllocation}}
+ /** Native letter case of the selection (a caret changes its whole block), one history group.
+  * Requires `supportsCaseChange()`. See docs/FORMATTING_PRODUCTIVITY.md. */
+ |{kind:"changeSelectionCase";data:import("./formatting_productivity.js").RichCaseChangeIntent};

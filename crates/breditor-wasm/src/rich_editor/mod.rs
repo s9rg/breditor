@@ -6,6 +6,7 @@
 mod atom_edit;
 mod block_layout;
 mod bookmark;
+mod case_change;
 mod clipboard;
 mod clipboard_interchange;
 mod clipboard_text_projection;
