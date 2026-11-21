@@ -9,8 +9,11 @@ export {richUiPanelStringsEn,richUiNoticeCodes,type RichUiPanelStrings,type Rich
 // AI and language-tool chrome strings live in a separate block (ui_locale_ai.ts) merged below.
 import {richAiUiStringsEn,richAiUiParameters,type RichAiUiStrings} from "./ui_locale_ai.js";
 export type {RichAiUiStrings} from "./ui_locale_ai.js";
+// Editing-aid chrome strings (show blocks, invisible characters) live in ui_locale_editing_aids.ts.
+import {richEditingAidsUiStringsEn,richEditingAidsUiParameters,type RichEditingAidsUiStrings} from "./ui_locale_editing_aids.js";
+export type {RichEditingAidsUiStrings} from "./ui_locale_editing_aids.js";
 /** Every built-in chrome string. Templates use `{name}` placeholders only; there are no plural or select forms. */
-export interface RichUiStrings extends RichUiPanelStrings, RichAiUiStrings {
+export interface RichUiStrings extends RichUiPanelStrings, RichAiUiStrings, RichEditingAidsUiStrings {
  readonly richEditorLabel:string;readonly richToolbarLabel:string;
  readonly richStatusReadOnly:string;readonly richStatusEditable:string;readonly richStatusOutcome:string;readonly richStatusReadOnlyOutcome:string;
  readonly richOperationFailed:string;
@@ -73,6 +76,8 @@ export const richUiStringsEn:Readonly<RichUiStrings>=Object.freeze({
  pageBreakLabel:"Page break",printPreviewLabel:"Print preview: page boundaries are approximate",
  // AI and language tools (separate block).
  ...richAiUiStringsEn,
+ // Editing aids (separate block).
+ ...richEditingAidsUiStringsEn,
 });
 /** Placeholders each template may use. Anything else in braces is rejected. */
 const parameters:Readonly<Partial<Record<RichUiStringKey,readonly string[]>>>={
@@ -86,6 +91,8 @@ const parameters:Readonly<Partial<Record<RichUiStringKey,readonly string[]>>>={
  imageResizeLabel:["index","count"],imageResizeValue:["width","height"],imageResizeOriginal:["width","height"],imageResizePreview:["width","height"],imageResizeBadge:["width","height"],
  // AI and language tools (separate block).
  ...richAiUiParameters,
+ // Editing aids (separate block).
+ ...richEditingAidsUiParameters,
 };
 /** Ids of `standardRichSlashPicks`; other provider items carry their own labels. */
 export type RichStandardSlashItemId="paragraph"|"heading-1"|"heading-2"|"heading-3"|"bullet-list"|"numbered-list"|"task-list"|"blockquote"|"code-block"|"horizontal-rule"|"table"|"details"|"page-break";

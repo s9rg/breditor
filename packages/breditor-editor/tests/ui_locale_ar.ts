@@ -56,6 +56,13 @@ mentionLabel:"الإشارات",mentionLoading:"جارٍ تحميل الاقتر
  langIssue:"«{text}»: {message}",langReplace:"استبدال بـ «{suggestion}»",langIgnore:"تجاهل",langNoSuggestions:"لا توجد اقتراحات",
  langApplied:"استُبدل · المراجعة {revision}",langStale:"تغيّر النص؛ أُزيلت المشكلات القديمة: {count}.",
  langIgnoredMalformed:"تم تجاهل مشكلات تالفة من المزوّد: {count}.",langReadOnly:"للقراءة فقط: يمكن مراجعة المشكلات دون تطبيقها.",
+ // Editing aids (separate block).
+ aidsLabel:"أدوات مساعدة للتحرير",aidsShowBlocks:"إظهار الكتل",aidsInvisibles:"إظهار الأحرف غير المرئية",
+ aidBlockParagraph:"فقرة",aidBlockHeading:"عنوان {level}",aidBlockBulletList:"قائمة نقطية",aidBlockNumberedList:"قائمة مرقمة",
+ aidBlockTaskList:"قائمة مهام",aidBlockListItem:"عنصر قائمة",aidBlockTaskItem:"مهمة",aidBlockQuote:"اقتباس",
+ aidBlockCode:"كتلة برمجية",aidBlockTable:"جدول",aidBlockCaption:"تسمية توضيحية",aidBlockImage:"صورة",
+ aidBlockRule:"خط أفقي",aidBlockDetails:"قسم قابل للطي",aidBlockSummary:"ملخص القسم",aidBlockPageBreak:"فاصل صفحة",
+ aidBlockOther:"كتلة",
 };
 export const arabicUi:RichUiOptions={
  lang:"ar",direction:"rtl",strings:arabicStrings,notices:arabicNotices,refusals:arabicRefusals,

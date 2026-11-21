@@ -248,6 +248,13 @@ selections and recovery. A separate native Chromium production page qualifies
 activation/viewport/events, typing/history and browser storage in 12 configurations,
 not physical Escape or the final V1 platform/release requirements.
 
+## Editing aids
+
+Show blocks, invisible characters and a focused-block attribute are separate
+opt-in presentation aids for local and shared editors (`mountEditingAids`,
+`mountEditingAidsControls`). They paint outside the editable DOM and never
+reach the Rust owner. See [EDITING_AIDS.md](EDITING_AIDS.md).
+
 ## Resource policy and qualification
 
 The first implementation shares native Find's bounded presentation traversal:

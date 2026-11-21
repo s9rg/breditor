@@ -27,6 +27,8 @@ export {mountRichSelectionToolbar,mountRichContextMenu,richSelectionToolbarDefau
 export {mountRichSourceView} from "./dist/browser/source_view.js";
 export {mountRichAiTools} from "./dist/browser/ai_rewrite.js";
 export {mountRichLanguageCheck} from "./dist/browser/language_check.js";
+export {mountRichEditingAids,mountRichEditingAidsControls,richBlockLabel,richInvisibleKinds,richInvisibleGlyphs,richFocusedBlockAttribute,richEditingAidsStyles,RICH_EDITING_AIDS_MAX_MARKERS} from "./dist/browser/editing_aids.js";
+export {richEditingAidsUiStringsEn} from "./dist/browser/ui_locale_editing_aids.js";
 export {richAiToolsHost,RICH_AI_MAX_BYTES,RICH_AI_MAX_INSTRUCTION,RICH_AI_MAX_TIMEOUT_MS} from "./dist/browser/ai_tools_host.js";
 export {richAiUiStringsEn} from "./dist/browser/ui_locale_ai.js";
 export {RICH_DOCUMENT_SOURCE_MAX_BYTES} from "./dist/browser/source_view_types.js";
