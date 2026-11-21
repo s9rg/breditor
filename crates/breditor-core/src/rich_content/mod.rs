@@ -43,6 +43,7 @@ mod rich_range_mapping;
 mod rich_selection;
 mod rich_selection_mapping;
 mod rich_text_mapping;
+mod ruby_v1;
 mod search;
 mod selection_coverage;
 mod selection_format_change;
@@ -128,6 +129,10 @@ pub use rich_selection::{
 };
 pub use rich_selection_mapping::{
     RichSelectionLoss, RichSelectionMapping, RichSelectionMappingOutcome, rebase_rich_selection,
+};
+pub use ruby_v1::{
+    RICH_RUBY_ANNOTATION_MAX_BYTES, RICH_RUBY_ANNOTATION_V1, RICH_RUBY_EXTENSION_V1_NAME,
+    RICH_RUBY_FORMAT_V1, RichRubyAnnotation, RichRubyError, ruby_extension_v1,
 };
 pub use search::{
     RICH_SEARCH_MAX_ENGINE_BYTES, RICH_SEARCH_MAX_INSERTED_BYTES, RICH_SEARCH_MAX_MATCHES,

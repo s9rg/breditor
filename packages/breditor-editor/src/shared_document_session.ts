@@ -22,7 +22,7 @@ export interface SharedDocumentEditorSessionOptions extends Omit<SharedDocumentD
  initial?:SharedDocumentInitial;rangeEditing?:"general-v1";
  coreOptions?:Omit<SharedEditorOptions<"document-v1">,"selectionEditing"|"onError"|"searchHistory">;
  onClosing?:(editor:SharedDocumentEditorSession)=>void;
- toolbar?:(core:SharedRichEditor<"document-v1">,standard:readonly SharedToolbarControl<"document-v1">[])=>readonly SharedToolbarControl<"document-v1">[];
+ toolbar?:(core:SharedRichEditor<"document-v1">,standard:readonly SharedToolbarControl<"document-v1">[],presentation:import("@breditor/experimental-rich-content").RichInlinePresentation)=>readonly SharedToolbarControl<"document-v1">[];
  clipboardInterchange?:ClipboardInterchangeFactory<SharedRichEditor<"document-v1">>;
 }
 export interface SharedDocumentSearchEditorSessionOptions extends Omit<SharedDocumentEditorSessionOptions,"initial"|"history"|"richLanguage"> {
@@ -136,7 +136,7 @@ async function openDocumentEditorFamily(options:SharedDocumentEditorSessionOptio
   };
   session=search?await SharedPersistentSession.openSearch({...persistence,rangeEditing:"general-v1",selectionEditing:"document-v1",restoreSearch:checkpoint=>{claim.assert();return restoreSharedSearchEditor(factory,options.room,checkpoint);}}):await SharedPersistentSession.openDocument({...persistence,restore:(checkpoint,storedHistory,storedRanges="original")=>{claim.assert();return storedRanges==="general-v1"?restoreSharedGeneralEditor(factory,options.room,checkpoint,storedHistory):storedHistory==="typing-v1"?restoreSharedTypingEditor(factory,options.room,checkpoint):factory.restore(options.room,checkpoint);},restoreDocument:(checkpoint,storedHistory)=>{claim.assert();return restoreSharedDocumentEditor(factory,options.room,checkpoint,storedHistory);}});
   claim.assert();if(options.readOnly!==undefined)session.core.setReadOnly(options.readOnly);
-  const core=session.core,standard=language===4?createRichSharedToolbarV4(core,presentation):language===3?createLayoutSharedToolbarV3(core,presentation):language===2?createStructuralSharedToolbarV2(core,presentation):createStandardSharedToolbarV1(core,presentation),toolbar=options.toolbar?.(core,standard)??standard;
+  const core=session.core,standard=language===4?createRichSharedToolbarV4(core,presentation):language===3?createLayoutSharedToolbarV3(core,presentation):language===2?createStructuralSharedToolbarV2(core,presentation):createStandardSharedToolbarV1(core,presentation),toolbar=options.toolbar?.(core,standard,presentation)??standard;
   const {clipboardInterchange:interchangeFactory,...domOptions}=options,interchange=clipboardInterchangeOptions(interchangeFactory,core);
   claim.assert();dom=mountSharedDocumentEditor(options.host,{...domOptions,...interchange,core,coreOwnership:"borrow",inlinePresentation:presentation,toolbar});claim.assert();return new DocumentSessionOwner(session,dom,claim.release,options,toolbar);
  }catch(error){try{dom?.dispose();if(session)await session.close();}catch(closeError){throw new SharedDocumentEditorOpenError(new AggregateError([error,closeError],"Document opening and durable cleanup failed"),session!);}finally{claim.rollback();}throw error;}

@@ -24,7 +24,7 @@ pub(crate) fn resolved_caret_formats(
 ) -> Result<FormatSet, RichLocalSessionError> {
     // Typing never inherits a V4 mention: it is an atomic entity, not a style.
     if let Some(formats) = pending {
-        return Ok(crate::rich_content::mention::without_mentions(formats));
+        return Ok(crate::rich_content::mention::without_uninherited(formats));
     }
     match focus {
         crate::position::Point::Text { text_path, .. } => document
@@ -32,7 +32,7 @@ pub(crate) fn resolved_caret_formats(
             .node_at(text_path)
             .ok()
             .and_then(crate::document::NodeRef::as_text)
-            .map(|text| crate::rich_content::mention::without_mentions(text.formats()))
+            .map(|text| crate::rich_content::mention::without_uninherited(text.formats()))
             .ok_or(RichLocalSessionError::HistoryMismatch),
         crate::position::Point::Children { .. } => Ok(FormatSet::default()),
     }

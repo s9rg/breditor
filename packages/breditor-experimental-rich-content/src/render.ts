@@ -1,7 +1,8 @@
 // Render only the admitted Rust AST and its derived non-destructive table geometry.
 import type {FormatLiteral,RichCell} from "./core.js";
 import {cellKey,id,property,type AstNode,type ElementNode,type RichPresentationModel,type TextNode} from "./model.js";
-import {requireRichInlinePresentation,richInlineRecipes,type RichInlinePresentation} from "./inline_presentation.js";
+import {requireRichInlinePresentation,richInlineRecipes,richInlinePresentationHasRuby,type RichInlinePresentation} from "./inline_presentation.js";
+import {createRubyElement,groupRubyRuns} from "./ruby.js";
 import {applyBlockLayout} from "./block_layout_presentation.js";
 import {applyListNumbering} from "./list_numbering_presentation.js";
 import {wrapImageLink} from "./image_link.js";
@@ -82,7 +83,14 @@ export function render(surface:HTMLElement,value:RichPresentationModel,options:R
  const bookmarks=options.bookmarks===true?new Set(bookmarkNames(value.root)):undefined;
  const anchor=(element:HTMLElement,node:ElementNode):void=>{const name=bookmarks?bookmarkOf(node):undefined;if(name!==undefined)for(const attribute of bookmarkAttributes(name))element.setAttribute(attribute.name,attribute.value);};
  // V4 mentions render as inert chips grouping their styled pieces (text blocks and summaries).
- const appendInline=(target:HTMLElement,node:ElementNode):void=>{for(const item of groupMentionRuns(node.children.filter((child):child is TextNode=>child.kind==="text"),(run,text,formats)=>({...run,text,formats})))target.append(item.kind==="run"?flow(item.run):createMentionChip(document,item.mention,item.pieces.map(flow)));};
+ const mentions=(runs:readonly TextNode[]):Node[]=>groupMentionRuns(runs,(run,text,formats)=>({...run,text,formats})).map(item=>item.kind==="run"?flow(item.run):createMentionChip(document,item.mention,item.pieces.map(flow)));
+ // Opt-in ruby extension: each group of equal annotations is one `<ruby>` around its base pieces.
+ const ruby=options.inlinePresentation!==undefined&&richInlinePresentationHasRuby(options.inlinePresentation);
+ const appendInline=(target:HTMLElement,node:ElementNode):void=>{
+  const runs=node.children.filter((child):child is TextNode=>child.kind==="text");
+  if(!ruby){target.append(...mentions(runs));return;}
+  for(const segment of groupRubyRuns(runs,(run,formats)=>({...run,formats})))target.append(...(segment.kind==="plain"?mentions(segment.runs):[createRubyElement(document,segment.annotation,mentions(segment.runs))]));
+ };
  const flow=(node:AstNode):Node=>{
   if(node.kind==="text"){
    let result:Node=document.createTextNode(node.text);

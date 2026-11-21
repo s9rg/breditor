@@ -9,6 +9,7 @@ import {safeUrl} from "../safe_url.js";
 import {isCanonicalLanguageTagV1} from "../language_tag.js";
 import {isImageLinkHrefV1} from "../image_link_href.js";
 import {mentionUnits,mentionFormat} from "../mention.js";
+import {rubyAnnotationOf,rubyFormat} from "../ruby.js";
 import {bookmarkProperty,internalLinkOf,isBookmarkName} from "../bookmark.js";
 import {sniffImage,type SniffedImage} from "./image.js";
 import {relType,type AbstractKind,type NumInstance} from "./parts.js";
@@ -188,11 +189,27 @@ export class DocxWriter {
       if(n.type==="breditor/page-break"){pieces.push({text:"",formats:[],pageBreak:true});continue;}
       this.losses.add("block-structure");pieces.push({text:textOf(n),formats:[]});
     }
+    // Opt-in ruby extension: the annotation leaves the run formats and becomes a `w:ruby` around the base runs.
+    const ruby=pieces.map(piece=>{
+      const literal=piece.formats.find(f=>f.type===rubyFormat);if(!literal)return undefined;
+      piece.formats=piece.formats.filter(f=>f.type!==rubyFormat);const value=rubyAnnotationOf(literal);if(value===undefined)this.losses.add("removed-content");return value;
+    });
     let out="",group:{key:string;href:string|null;anchor?:string;newWindow:boolean;runs:string}|null=null;
     const flush=()=>{if(!group)return;out+=group.anchor!==undefined?`<w:hyperlink w:anchor="${escAttr(group.anchor)}" w:history="1">${group.runs}</w:hyperlink>`:group.href!==null?`<w:hyperlink r:id="${this.#linkRel(group.href)}"${group.newWindow?' w:tgtFrame="_blank"':""} w:history="1">${group.runs}</w:hyperlink>`:group.runs;group=null;};
-    for(const piece of pieces){
+    for(let index=0;index<pieces.length;index++){
+      const piece=pieces[index]!;
       if(piece.pageBreak){flush();out+='<w:r><w:br w:type="page"/></w:r>';continue;}
       if(!piece.text)continue;
+      const annotation=ruby[index],linkKey=(p:typeof piece)=>{const l=p.formats.find(f=>f.type==="breditor-inline/link");return l?JSON.stringify(l):"";};
+      // One `w:ruby` per contiguous base of one annotation inside one link group.
+      let last=index;if(annotation!==undefined)while(last+1<pieces.length&&ruby[last+1]===annotation&&!pieces[last+1]!.pageBreak&&linkKey(pieces[last+1]!)===linkKey(piece))last++;
+      const runs=(linked:boolean)=>{
+        const base=pieces.slice(index,last+1).filter(p=>p.text).map(p=>`<w:r>${this.#rPr(p.formats,linked)}${this.#runContent(p.text)}</w:r>`).join("");
+        if(annotation===undefined)return base;
+        const tag=piece.formats.find(f=>f.type==="breditor/text-language")?.properties["breditor/language-tag"],lid=isCanonicalLanguageTagV1(tag)?tag:"ja-JP";
+        return `<w:r><w:ruby><w:rubyPr><w:rubyAlign w:val="distributeSpace"/><w:hps w:val="10"/><w:hpsRaise w:val="20"/><w:hpsBaseText w:val="21"/><w:lid w:val="${escAttr(lid)}"/></w:rubyPr><w:rt><w:r><w:rPr><w:sz w:val="10"/><w:szCs w:val="10"/></w:rPr>${this.#runContent(annotation)}</w:r></w:rt><w:rubyBase>${base}</w:rubyBase></w:ruby></w:r>`;
+      };
+      const consumed=last;
       const link=piece.formats.find(f=>f.type==="breditor-inline/link"),key=link?JSON.stringify(link):"";
       let href:string|null=null,newWindow=false;
       // V4 internal link `#name`: a document-internal `w:hyperlink w:anchor` to the bookmark.
@@ -201,14 +218,14 @@ export class DocxWriter {
       if(internal!==undefined){
         const anchor=this.#bookmarks.has(internal)?internal:undefined;if(anchor===undefined)this.losses.add("unsafe-link");
         if(!group||group.key!==key){flush();group={key,href:null,...(anchor!==undefined?{anchor}:{}),newWindow:false,runs:""};}
-        group.runs+=`<w:r>${this.#rPr(piece.formats,anchor!==undefined)}${this.#runContent(piece.text)}</w:r>`;continue;
+        group.runs+=runs(anchor!==undefined);index=consumed;continue;
       }
       if(link){
         const source=link.properties["breditor-inline/href"];href=typeof source==="string"?safeUrl(source):null;
         if(href===null)this.losses.add("unsafe-link");newWindow=link.properties["breditor-inline/new-window"]===true;
       }
       if(!group||group.key!==key){flush();group={key,href,newWindow,runs:""};}
-      group.runs+=`<w:r>${this.#rPr(piece.formats,href!==null)}${this.#runContent(piece.text)}</w:r>`;
+      group.runs+=runs(href!==null);index=consumed;
     }
     flush();return out;
   }

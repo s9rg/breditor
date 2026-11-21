@@ -1,5 +1,5 @@
 /** Local-rich package root. Optional React and shared runtimes have separate module graphs. */
-export {openLocalEditor,createLocalProfile,createStructuralLocalProfileV2,createLayoutLocalProfileV3,createLocalProfileV4,standardProfileBootstrapJson,structuralProfileBootstrapJsonV2,layoutProfileBootstrapJsonV3,profileBootstrapJsonV4,standardSchemaFingerprintV4,type LocalEditor,type LocalEditorOptions,type LocalInitial} from "./local.js";
+export {openLocalEditor,createLocalProfile,createStructuralLocalProfileV2,createLayoutLocalProfileV3,createLocalProfileV4,standardProfileBootstrapJson,structuralProfileBootstrapJsonV2,layoutProfileBootstrapJsonV3,profileBootstrapJsonV4,standardSchemaFingerprintV4,rubyProfileBootstrapJsonV4,rubySchemaFingerprintV4,type LocalEditor,type LocalEditorOptions,type LocalInitial} from "./local.js";
 export {initializeLocalRuntime,type RuntimeInput} from "./runtime.js";
 export {openLocalDocumentEditor,type LocalDocumentEditor,type LocalDocumentEditorOptions,type LocalDocumentInitial} from "./local_document.js";
 export {emptyDocumentJson} from "./empty_document.js";

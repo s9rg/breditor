@@ -51,7 +51,9 @@ with one leading `breditor/details-summary`, at most 8 nested, `details-open: tr
 native `<details data-rich-details [open]><summary data-rich-text>…</summary>…</details>` so readers
 can toggle static output, and V4 mentions (`breditor/mention` over whole `@label` text),
 emitted as one `<span class="breditor-mention" data-mention-kind="…" data-mention-id="…">` chip per
-mention around its styled pieces (no link; partial mention text is a `grammar` error), and V4
+mention around its styled pieces (no link; partial mention text is a `grammar` error), the opt-in
+ruby extension (`breditor-ruby/ruby`, any rich language, [RUBY_ANNOTATIONS.md](RUBY_ANNOTATIONS.md)) emitted as one
+`<ruby class="breditor-ruby" data-rich-ruby="">base<rp>(</rp><rt>reading</rt><rp>)</rp></ruby>` per group of equal readings, and V4
 table captions (one trailing `breditor/paragraph` after a table's rows), emitted as the table's first child
 `<caption data-rich-table-caption="…" style="caption-side:bottom">` so it is laid out after the rows
 (a hidden table still renders nothing), and V4 page breaks (`breditor/page-break`, document root

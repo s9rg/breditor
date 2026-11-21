@@ -2,6 +2,7 @@ import {compileStandardRichProfileV1,compileStandardStructuralRichProfileV2,comp
 import {validatePlaceholderOption,resolveRichUi} from "@breditor/experimental-rich-content/rendering";
 import {refreshAssets,validateMarkdownInputPolicy} from "@breditor/experimental-rich-content/rendering";
 import type {RichSearchHost} from "@breditor/experimental-rich-content";
+import {withRichRubyBootstrapV1} from "@breditor/experimental-rich-content/rendering";
 import {initializeLocalRuntime,type RuntimeInput} from "./runtime.js";
 import {claimHost,awaitInitialization} from "./host.js";
 import {emptyDocumentJson} from "./empty_document.js";
@@ -19,6 +20,12 @@ export const profileBootstrapJsonV4=JSON.stringify({format:"breditor/profile-boo
  * schemaFingerprint:standardSchemaFingerprintV4})`; a custom bootstrap binds its own
  * `profile.descriptor().schemaFingerprint`. It never changes: a grammar change is a new language. */
 export const standardSchemaFingerprintV4="sha256:7ac98189f850119abd83956f49b82fdbdcc91a77033781fbde090ba931fccc77";
+/** Opt-in ruby (furigana): the stock V4 bootstrap plus the `breditor-ruby/ruby` typed inline extension
+ * (docs/RUBY_ANNOTATIONS.md). Not a grammar change: it compiles to its own fingerprint (`rubySchemaFingerprintV4`),
+ * and the frozen stock V4 profile is unchanged. Pass it as `profileBootstrapJson` with `richLanguage: 4`. */
+export const rubyProfileBootstrapJsonV4=withRichRubyBootstrapV1(profileBootstrapJsonV4);
+/** Fingerprint of `rubyProfileBootstrapJsonV4`; saved ruby V4 records bind it. */
+export const rubySchemaFingerprintV4="sha256:59b7d3c1fcbe2e85e23e526198312400e5732579d957a244d622c60a61194833";
 /** Select the exact standard profile for one explicit local rich language. */
 export function compileLocalLanguageProfile(runtime:Parameters<typeof compileStandardRichProfileV1>[0],language:1|2|3|4,bootstrapJson?:string):RichCoreProfile{
  return language===4?compileStandardRichProfileV4(runtime,bootstrapJson??profileBootstrapJsonV4):language===3?compileStandardLayoutRichProfileV3(runtime,bootstrapJson??layoutProfileBootstrapJsonV3):language===2?compileStandardStructuralRichProfileV2(runtime,bootstrapJson??structuralProfileBootstrapJsonV2):compileStandardRichProfileV1(runtime,bootstrapJson??standardProfileBootstrapJson);
@@ -43,7 +50,7 @@ export interface LocalEditorOptions extends Omit<RichEditorOptions,"core"|"toolb
  history?:"explicit"|"typing-v1";
  runtimeInput?:RuntimeInput;signal?:AbortSignal;
  /** Created for this exact owner, after native compilation and before host mutation. */
- toolbar?:(core:RichCoreEditor,standard:readonly ToolbarControl[])=>readonly ToolbarControl[];
+ toolbar?:(core:RichCoreEditor,standard:readonly ToolbarControl[],presentation:import("@breditor/experimental-rich-content").RichInlinePresentation)=>readonly ToolbarControl[];
  /** Explicit opt-in, configured for this owner before mount. Do not publish edits in the factory. */
  clipboardInterchange?:ClipboardInterchangeFactory<RichCoreEditor>;
 }
@@ -140,7 +147,7 @@ export async function openLocalEditor(options:LocalEditorOptions):Promise<LocalE
   }
   if(options.readOnly!==undefined){if(core.supportsReadOnly?.()!==true||!core.setReadOnly)throw Error("Use a matching native owner with read-only enforcement");core.setReadOnly(options.readOnly);}
   const standard=localLanguageToolbar(core,presentation,language);
-  const toolbar=options.toolbar?.(core,standard)??standard;
+  const toolbar=options.toolbar?.(core,standard,presentation)??standard;
   const render:RenderOptions={inlinePresentation:presentation,...(options.resolveAsset?{resolveAsset:options.resolveAsset}:{})};
   const {clipboardInterchange:factory,...domOptions}=options,interchange=clipboardInterchangeOptions(factory,core);
   claim.assert();dom=mountRichEditor(options.host,{...domOptions,...interchange,core,...render,toolbar});claim.assert();

@@ -15,7 +15,7 @@ export type LocalDocumentInitial=Extract<LocalInitial,{kind:"empty"|"document"}>
 export interface LocalDocumentEditorOptions extends Omit<RichDocumentEditorOptions,"core"|"toolbar"|"inlinePresentation"|"inlineTag"|"clipboardInterchange">,Pick<LocalEditorOptions,"host"|"profileBootstrapJson"|"additionalInlinePresentation"|"richLanguage"|"readOnly"|"history"|"runtimeInput"|"signal"> {
  initial?:LocalDocumentInitial;
  /** Runs against the actual typed native document owner before host mutation. */
- toolbar?:(core:RichDocumentCoreEditor,standard:readonly ToolbarControl<"document-v1">[])=>readonly ToolbarControl<"document-v1">[];
+ toolbar?:(core:RichDocumentCoreEditor,standard:readonly ToolbarControl<"document-v1">[],presentation:import("@breditor/experimental-rich-content").RichInlinePresentation)=>readonly ToolbarControl<"document-v1">[];
  clipboardInterchange?:ClipboardInterchangeFactory<RichDocumentCoreEditor>;
 }
 export interface LocalDocumentEditor extends Omit<LocalEditor,"view"|"insertImageFiles"> {
@@ -81,7 +81,7 @@ export async function openLocalDocumentEditor(options:LocalDocumentEditorOptions
   if(history==="typing-v1"){if(core.supportsTypingHistory?.()!==true||!core.enableTypingHistory)throw Error("Use matching native document typing history");core.enableTypingHistory();}
   else if(core.view().historyGrouping!==undefined)throw Error("Explicit history cannot flatten a document typing checkpoint");
   if(options.readOnly!==undefined){if(core.supportsReadOnly?.()!==true||!core.setReadOnly)throw Error("Use matching native read-only enforcement");core.setReadOnly(options.readOnly);}
-  const standard=localLanguageToolbar(core,presentation,language),toolbar=options.toolbar?.(core,standard)??standard;
+  const standard=localLanguageToolbar(core,presentation,language),toolbar=options.toolbar?.(core,standard,presentation)??standard;
   const render:RenderOptions={inlinePresentation:presentation,...(options.resolveAsset?{resolveAsset:options.resolveAsset}:{})};
   const {clipboardInterchange:factory,...domOptions}=options,interchange=clipboardInterchangeOptions(factory,core);
   claim.assert();dom=mountDocumentRichEditor(options.host,{...domOptions,...interchange,core,...render,toolbar});claim.assert();return new DocumentOwner(dom,claim.release,render);

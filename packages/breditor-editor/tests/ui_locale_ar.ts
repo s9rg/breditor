@@ -66,6 +66,6 @@ mentionLabel:"الإشارات",mentionLoading:"جارٍ تحميل الاقتر
 };
 export const arabicUi:RichUiOptions={
  lang:"ar",direction:"rtl",strings:arabicStrings,notices:arabicNotices,refusals:arabicRefusals,
- controls:{bold:{label:"عريض"},italic:{label:"مائل"},undo:{label:"تراجع"},link:{label:"رابط",fields:{href:{label:"عنوان الرابط"}}},table:{label:"إدراج جدول"}},
+ controls:{bold:{label:"عريض"},italic:{label:"مائل"},undo:{label:"تراجع"},link:{label:"رابط",fields:{href:{label:"عنوان الرابط"}}},table:{label:"إدراج جدول"},ruby:{label:"روبي",fields:{annotation:{label:"نص روبي"}}},"remove-ruby":{label:"إزالة روبي"}},
  slashItems:{paragraph:{label:"نص",keywords:["فقرة"]},"heading-1":{label:"عنوان 1"},"heading-2":{label:"عنوان 2"},"heading-3":{label:"عنوان 3"},"bullet-list":{label:"قائمة نقطية"},"numbered-list":{label:"قائمة مرقمة"},table:{label:"جدول"},"page-break":{label:"فاصل صفحة"}},
 };

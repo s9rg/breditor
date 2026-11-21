@@ -250,13 +250,20 @@ pub(crate) fn is_mention(format: &Format) -> bool {
     format.kind().as_str() == RICH_MENTION_FORMAT
 }
 
-/// The same set without any mention format; typing never inherits a mention.
-pub(crate) fn without_mentions(formats: &FormatSet) -> FormatSet {
-    if !formats.iter().any(is_mention) {
+/// Formats a typing caret never inherits: a V4 mention (an atomic entity) and the opt-in ruby
+/// extension's annotation (`breditor-ruby/ruby`; a reading belongs to its exact base, so text typed
+/// beside or inside a base is plain). Only profiles that admit those kinds can contain them, so
+/// every other profile is unchanged. Stored operations carry their formats explicitly, so replay
+/// never re-derives this choice.
+pub(crate) fn without_uninherited(formats: &FormatSet) -> FormatSet {
+    let excluded = |format: &Format| {
+        is_mention(format) || format.kind().as_str() == crate::rich_content::RICH_RUBY_FORMAT_V1
+    };
+    if !formats.iter().any(excluded) {
         return formats.clone();
     }
     FormatSet::try_from_formats(
-        formats.iter().filter(|format| !is_mention(format)).cloned().collect(),
+        formats.iter().filter(|format| !excluded(format)).cloned().collect(),
     )
     .unwrap_or_else(|_| unreachable!("a subsequence of a canonical set stays canonical"))
 }

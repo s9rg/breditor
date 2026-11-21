@@ -20,6 +20,7 @@ import {
 } from "@breditor/experimental-rich-content/rendering";
 import {groupMentionRuns,mentionChipAttributes,mentionOf,richMentionFormat,richMentionIdProperty,richMentionKindProperty,richMentionLabelProperty} from "@breditor/experimental-rich-content/rendering";
 import {bookmarkAttributes,internalLinkAttributes,internalLinkOf,isBookmarkName} from "@breditor/experimental-rich-content/rendering";
+import {groupRubyRuns,richRubyAnnotationMaxBytes,richRubyAnnotationProperty,richRubyClass,richRubyFormat} from "@breditor/experimental-rich-content/rendering";
 import {pageBreakAttributes,richPrintStyles,resolveRichPrintLayout,richUiStringsEn,type RichPrintOptions,type RichPrintLayout} from "@breditor/experimental-rich-content/rendering";
 
 /** Immutable image binding handed to the host resolver; mirrors the live `AssetBinding`. */
@@ -157,7 +158,15 @@ export const staticMentionFormatV4:BrowserProfileFormatDescriptor=Object.freeze(
  {name:richMentionKindProperty,presence:"required",valueType:{kind:"string",minimumUtf8Bytes:3,maximumUtf8Bytes:4}},
  {name:richMentionLabelProperty,presence:"required",valueType:{kind:"string",minimumUtf8Bytes:1,maximumUtf8Bytes:256}},
 ])} as BrowserProfileFormatDescriptor);
-const catalogByKind=new Map([...staticInlineCatalogV4,staticMentionFormatV4].map(format=>[format.kind,format]));
+/**
+ * @internal The opt-in ruby V1 extension format (`breditor-ruby/ruby`, docs/RUBY_ANNOTATIONS.md). It has
+ * no recipe: each group of equal annotations renders as `<ruby class="breditor-ruby" data-rich-ruby="">base
+ * <rp>(</rp><rt>annotation</rt><rp>)</rp></ruby>`. An annotation outside the authoring policy renders as plain base.
+ */
+export const staticRubyFormatV1:BrowserProfileFormatDescriptor=Object.freeze({kind:richRubyFormat,revision:1,properties:Object.freeze([
+ {name:richRubyAnnotationProperty,presence:"required",valueType:{kind:"string",minimumUtf8Bytes:1,maximumUtf8Bytes:richRubyAnnotationMaxBytes}},
+])} as BrowserProfileFormatDescriptor);
+const catalogByKind=new Map([...staticInlineCatalogV4,staticMentionFormatV4,staticRubyFormatV1].map(format=>[format.kind,format]));
 const linkPolicy=staticInlineRecipesV1.find(recipe=>recipe.formatKind===K.link)!.attributes!;
 
 /** Block layout codes, identical to `applyBlockLayout` and Rust `block_layout.rs`. */
@@ -477,13 +486,20 @@ class Renderer {
  /** V4 mentions: whole `@label` units become chips around their styled pieces. */
  #inlineChildren(node:Element):string {
   const runs=node.children.filter((child):child is Text=>child.kind==="text");
+  const rebuild=(run:Text,text:string,formats:readonly Text["formats"][number][])=>Object.freeze({kind:"text" as const,text,formats});
   let items;
-  try{items=groupMentionRuns(runs,(run,text,formats)=>Object.freeze({kind:"text" as const,text,formats}),true);}
+  try{items=groupMentionRuns(runs,rebuild,true);}
   catch{return this.#fail("grammar","Mention text must be whole copies of @ plus its label",node.path);}
-  return items.map(item=>{
+  const mentions=(list:ReturnType<typeof groupMentionRuns<Text>>)=>list.map(item=>{
    if(item.kind==="run")return this.#inline(item.run);
    const open=mentionChipAttributes(item.mention).map(({name,value})=>` ${name}="${escapeHtmlAttribute(value)}"`).join("");
    return `<span${open}>${item.pieces.map(piece=>this.#inline(piece)).join("")}</span>`;
+  }).join("");
+  // Opt-in ruby extension: group equal annotations; mentions are grouped within each segment.
+  if(!runs.some(run=>run.formats.some(format=>format.type===richRubyFormat)))return mentions(items);
+  return groupRubyRuns(runs,(run,formats)=>rebuild(run,run.text,formats)).map(segment=>{
+   const body=mentions(groupMentionRuns(segment.runs,rebuild));
+   return segment.kind==="plain"?body:`<ruby class="${richRubyClass}" data-rich-ruby="">${body}<rp>(</rp><rt>${escapeHtmlText(segment.annotation)}</rt><rp>)</rp></ruby>`;
   }).join("");
  }
  #flow(node:Node):string {

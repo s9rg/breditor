@@ -38,6 +38,10 @@ export interface InterchangeOwner {
    * and internal `#name` links. Absent or false keeps the original conversion: element ids are dropped
    * silently, `<a name>` reports `unsupported-attribute` and `href="#…"` reports `unsafe-link`. */
   supportsBookmarks?():boolean;
+  /** Owners whose profile includes the opt-in ruby V1 extension (`breditor-ruby/ruby`, any rich language)
+   * admit `<ruby>` base/`<rt>` pairs as annotated base text. Absent or false keeps the original conversion:
+   * `<ruby>`, `<rt>` and `<rp>` report `unsupported-element` and their text flows inline. */
+  supportsRubyAnnotations?():boolean;
 }
 export type InterchangeLossCode = "html-repaired"|"removed-content"|"unsupported-element"|"unsupported-attribute"|"unsupported-style"|"style-approximation"|"unsafe-link"|"image-reference"|"image-alt"|"image-size"|"block-structure"|"table-geometry"|"table-width"|"list-numbering"|"markdown-feature";
 /** Counts are aggregated and bounded. No source text, URL, CSS, HTML or asset identifier is echoed. */

@@ -48,7 +48,7 @@ export interface SharedEditorSessionOptions extends Omit<SharedDomOptions,"core"
  /** Stop borrowed relay/presence/asset adapters before the native writer retires. Reporting errors cannot cancel close. */
  onClosing?:(editor:SharedEditorSession)=>void;
  /** Configuration only: do not publish edits from a toolbar factory. */
- toolbar?:(core:SharedRichEditor,standard:readonly SharedToolbarControl[])=>readonly SharedToolbarControl[];
+ toolbar?:(core:SharedRichEditor,standard:readonly SharedToolbarControl[],presentation:import("@breditor/experimental-rich-content").RichInlinePresentation)=>readonly SharedToolbarControl[];
  /** Configuration only, against this durable native owner before mounting. */
  clipboardInterchange?:ClipboardInterchangeFactory<SharedRichEditor>;
 }
@@ -194,7 +194,7 @@ async function openSharedEditorFamily(options:SharedEditorSessionOptions|SharedS
   session=search?await SharedPersistentSession.openSearch({...persistence,rangeEditing:ranges,selectionEditing:"original",restoreSearch:checkpoint=>{claim.assert();return restoreSharedSearchEditor(factory,options.room,checkpoint);}}):await SharedPersistentSession.open({...persistence,...(ranges==="general-v1"?{rangeEditing:ranges}:{}),restore:(checkpoint,storedHistory,storedRanges="original")=>{claim.assert();return storedRanges==="general-v1"?restoreSharedGeneralEditor(factory,options.room,checkpoint,storedHistory):storedHistory==="typing-v1"?restoreSharedTypingEditor(factory,options.room,checkpoint):factory.restore(options.room,checkpoint);}});
   claim.assert();
   if(options.readOnly!==undefined)session.core.setReadOnly(options.readOnly);
-  const core=session.core,standard=language===4?createRichSharedToolbarV4(core,presentation):language===3?createLayoutSharedToolbarV3(core,presentation):language===2?createStructuralSharedToolbarV2(core,presentation):createStandardSharedToolbarV1(core,presentation),toolbar=options.toolbar?.(core,standard)??standard;
+  const core=session.core,standard=language===4?createRichSharedToolbarV4(core,presentation):language===3?createLayoutSharedToolbarV3(core,presentation):language===2?createStructuralSharedToolbarV2(core,presentation):createStandardSharedToolbarV1(core,presentation),toolbar=options.toolbar?.(core,standard,presentation)??standard;
   const {clipboardInterchange:interchangeFactory,...domOptions}=options,interchange=clipboardInterchangeOptions(interchangeFactory,core);
   claim.assert();dom=mountSharedEditor(options.host,{...domOptions,...interchange,core,coreOwnership:"borrow",inlinePresentation:presentation,toolbar});claim.assert();
   return new SharedEditorSessionOwner(session,dom,claim.release,options,toolbar);
