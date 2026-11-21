@@ -31,6 +31,7 @@ impl RichLocalSession {
             }
             self.cursor = self.entries.len();
         }
+        self.probe.commits = self.probe.commits.wrapping_add(1);
         self.publish(candidate);
         RichLocalOutcome::ContentCommitted
     }

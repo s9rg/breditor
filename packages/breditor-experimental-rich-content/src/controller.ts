@@ -342,6 +342,8 @@ export class RichDomEditor<P extends RichSelectionPolicy="original"> {
   const changed=core.setReadOnly(value,revision);if(changed){this.#composition=undefined;this.#cancelQueue(Error("Editing policy cancelled queued search work"));this.#reconcile();this.status.textContent=this.#ui.text(value?"richStatusReadOnly":"richStatusEditable",{revision:this.#model.view.revision});this.#notifySearch();}return changed;
  }
  focus():void {this.#live();this.surface.focus();restoreDocumentNative(this.surface,this.#model.view.selection);}
+ /** Re-read native state and refresh controls only (no re-render), e.g. after a multi-root set changed shared history. */
+ refreshControls():void {this.#live();if(this.#busy||this.#composition)return;this.#model=this.#read();this.#logicalSelection=this.#logical();this.#refreshControls();}
  #pick(event:PointerEvent):void {
   this.#boundary();
   const target=event.target as Element,button=target.closest<HTMLElement>("[data-select-cell]"),figure=target.closest<HTMLElement>("[data-rich-image]"),node=target.closest<HTMLElement>("[data-select-node]");

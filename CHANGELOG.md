@@ -6,6 +6,15 @@ its durable formats and Wasm transport.
 
 ## Unreleased
 
+- Add opt-in **multiple editable roots** for local rich editors
+  (`docs/MULTIPLE_ROOTS.md`): a root set of ordinary V1–V4 documents with stable
+  root ids, labels, attributes and order, one active root (no cross-root
+  selections) and ONE global Undo/Redo order across roots. Native
+  `RichRootSet`/`RichMultiRootSession` (core), `BreditorRichRootSet` (Wasm),
+  `createRichRootSet`, `mountRichMultiRootEditor` (one surface per root, one
+  shared toolbar that follows focus) and `restoreRichRootSet`, with a versioned
+  `breditor/rich-root-set` checkpoint that re-verifies every root's history. No
+  grammar change; shared multi-root is specified and deferred.
 - Add an opt-in **editor shell** for local, shared and SDK rich editors
   (`mountRichMenuBar`, `mountRichShortcutHelp`, `mountRichFloatingMenu`,
   `mountRichBalloonBlockLayout`; `mountMenuBar` / `mountShortcutHelp` /

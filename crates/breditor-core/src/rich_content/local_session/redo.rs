@@ -42,6 +42,7 @@ impl RichLocalSession {
             self.state.revision.successor()?,
         )?;
         self.cursor = end;
+        self.probe.redos = self.probe.redos.wrapping_add(1);
         self.publish(candidate);
         Ok(RichLocalOutcome::RedoApplied)
     }

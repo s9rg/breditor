@@ -20,6 +20,7 @@ mod enable_typing_history;
 mod error;
 mod exit_code_block;
 mod history_entry;
+mod history_probe;
 mod history_recipe;
 mod insert_general_paragraph;
 mod insert_hard_break;
@@ -66,6 +67,7 @@ mod undo;
 mod validate_observation;
 
 pub use error::RichLocalSessionError;
+pub use history_probe::RichHistoryProbe;
 pub use plan_general_range_plain_text::RichGeneralPlainRangePlan;
 pub use replace_trigger_then::RichTriggerStepError;
 pub use snapshot::RichLocalSnapshot;
@@ -133,6 +135,8 @@ pub struct RichLocalSession {
     read_only: bool,
     read_only_revision: Option<Revision>,
     typing_history: Option<typing_history::TypingHistory>,
+    // Process-local monotonic history event counters; never persisted or compared.
+    probe: history_probe::RichHistoryProbe,
 }
 
 impl std::fmt::Debug for RichLocalSession {
@@ -169,6 +173,7 @@ impl RichLocalSession {
             read_only: false,
             read_only_revision: None,
             typing_history: None,
+            probe: history_probe::RichHistoryProbe::default(),
         })
     }
     /// Current admitted immutable document, selection and publication revision.

@@ -174,7 +174,11 @@ impl RichLocalSession {
             .flatten()
             .map(|caret| Continuation { kind, clock, caret, formats });
         if let Some(history) = &mut self.typing_history {
+            let units = history.groups.len();
             history.finish(join && !isolated, continuation);
+            if history.groups.len() < units {
+                self.probe.joins = self.probe.joins.wrapping_add(1);
+            }
         }
     }
     pub(super) fn undo_group_start(&self) -> Result<usize, RichLocalSessionError> {

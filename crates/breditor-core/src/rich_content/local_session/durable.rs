@@ -139,6 +139,7 @@ impl RichLocalSession {
             read_only: false,
             read_only_revision: None,
             typing_history: None,
+            probe: super::history_probe::RichHistoryProbe::default(),
         })
     }
 }

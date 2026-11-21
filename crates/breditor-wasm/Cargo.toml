@@ -49,5 +49,10 @@ name = "rich_editor"
 path = "tests/rich_editor.rs"
 required-features = ["experimental-rich-content"]
 
+[[test]]
+name = "rich_root_set"
+path = "tests/rich_root_set.rs"
+required-features = ["experimental-rich-content"]
+
 [lints]
 workspace = true
