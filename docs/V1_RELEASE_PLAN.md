@@ -1,5 +1,60 @@
 # Breditor V1 release preparation
 
+## November 21 parity round
+
+**Status: not release ready.** This round closed the last shared V4 gaps,
+released V4, and worked through the capability groups the catalog review listed
+as missing. The [capability audit](v1-readiness.json) now records 13 implemented
+slices, 42 partial and 2 missing groups (from 10 / 36 / 11 this morning). All 13
+qualification gates are still open.
+
+### What landed
+
+- **V4 released.** Rich language V4 is a supported, explicitly selected language
+  alongside V1–V3; the freeze guarantees are unchanged and the default stays
+  language 1. Shared V4 owners report every V4 interchange capability, so HTML,
+  Markdown, DOCX export and Office/Google Docs paste behave identically in local and
+  shared V4 editors, and Enter at a collapsed shared summary expands the section.
+- **Now implemented:** typographic replacements (`typography-v1`), special
+  characters / case change / format painter, and ruby annotations (an opt-in typed
+  inline extension, no grammar change).
+- **Now partial (were missing):**
+  - editing aids: show blocks, invisible characters and a focused-block attribute
+    (the minimap and a title field remain);
+  - the editor shell: menu bar, Alt+0 shortcut help, empty-line block menu and a
+    balloon-block preset (screen readers not qualified);
+  - advanced lists: multi-block items with CKEditor-style keys, and a
+    presentation-only legal numbering mode;
+  - the AI agent tool contract and the reference relay's opt-in document server
+    API with server-side injection and signed webhooks;
+  - multiple editable roots for local editors, with one global Undo order;
+  - native block-region restricted editing, enforced in Rust for local editors
+    and in the shared owner.
+- **Still missing:** code syntax highlighting and an in-document table of
+  contents (not part of this round).
+
+### Decisions for the user
+
+1. **V5.** Skip-level list items, stored legal numbering and inline
+   restricted-editing exceptions all need a grammar change. Each is specified
+   ([LIST_STRUCTURE.md](LIST_STRUCTURE.md), [RESTRICTED_EDITING.md](RESTRICTED_EDITING.md));
+   none was started.
+2. **Default rich language.** It stays language 1; nothing in the repo says the
+   newest language becomes the default.
+3. **Qualification matrices.** About 40 qualification scripts still cover
+   languages 1–3; extending them to V4 needs V4 fixtures.
+4. **Exclusions** listed in the November 21 catalog review still need approval.
+
+### Known limits
+
+- Shared multi-root, shared restricted-editing DOM wiring, relay enforcement of
+  restricted editing, and relay-backed agent proposals are specified, not built.
+- The relay's `clippy --all-targets --features server` reports about 90
+  pre-existing lints in test and example targets, so `scripts/check-relay.mjs`
+  stops at its clippy step; this predates the round.
+- Parallel agents sharing one Cargo target directory occasionally compiled
+  against another checkout's sources; isolated target directories avoid it.
+
 ## November 21 catalog review
 
 **Status: not release ready.** The Tiptap and CKEditor catalogs were re-reviewed

@@ -2,7 +2,7 @@
   "format": "breditor/v1-readiness",
   "formatVersion": 1,
   "reviewedAt": "2026-11-21",
-  "baselineCommit": "5a0b68f4af52c3336d2a912fc946d8ec7b10e997",
+  "baselineCommit": "6df283839d9ec7502a85fd6515a339534a007764",
   "coverage": "grouped-audit-not-exhaustive",
   "target": "Feature parity is the requested target. No smaller V1 scope has been approved.",
   "sources": [
@@ -269,11 +269,11 @@
       "sources":["ckeditor-digest"]
     },
     {
-      "id":"restricted-editing","area":"Integration","status":"missing",
+      "id":"restricted-editing","area":"Integration","status":"partial",
       "summary":"Editable region restrictions",
-      "current":"Live whole-editor read-only policy does not authorize individual regions. A separate native range/identity policy is defined as required work; nested contenteditable islands are not an implementation.",
+      "current":"Native block-region restricted editing (docs/RESTRICTED_EDITING.md): a live host policy outside the frozen V4 grammar names editable subtrees by retained block ids. Rust admits every local command, mixed request, pending style and Undo/Redo by its complete effect, and anything that would change protected content is refused whole (`breditor_rich.restricted`). Cross-region selections are refused, not clamped; leaf regions refuse Enter and boundary merges while container regions allow new blocks; Undo of protected history is refused. Local Wasm, DOM and SDK provide `restrictedEditing:{policy}`, Tab/Shift+Tab region navigation, presentation-only region marking and Rust-derived toolbar disabling, qualified in Chromium, Firefox and WebKit. Shared owners enforce the same rule natively for local work while incoming peer changes stay unfiltered; the policy is a host input, never persisted. Missing: inline exceptions (a V5 delta), shared DOM/SDK wiring and relay or server enforcement.",
       "acceptance":"Define and enforce protected/editable identities through cross-region selections, moves, atomic mixed requests, pending styles, history authorization and remote changes; qualify persistence and host/server authority separately.",
-      "evidence":["docs/RICH_READ_ONLY.md"],
+      "evidence":["docs/RICH_READ_ONLY.md","docs/RESTRICTED_EDITING.md","crates/breditor-core/src/rich_content/restricted_editing.rs","crates/breditor-core/tests/rich_restricted_editing.rs","crates/breditor-wasm/tests/rich_restricted_editing.rs","crates/breditor-collaboration/tests/restricted_editing_contracts.rs","experiments/rich-browser/restricted-editing.spec.mjs"],
       "sources":["ckeditor-digest","ckeditor-restricted-editing","tiptap-content-protection"]
     },
     {
