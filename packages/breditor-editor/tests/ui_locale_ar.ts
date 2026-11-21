@@ -63,6 +63,20 @@ mentionLabel:"الإشارات",mentionLoading:"جارٍ تحميل الاقتر
  aidBlockCode:"كتلة برمجية",aidBlockTable:"جدول",aidBlockCaption:"تسمية توضيحية",aidBlockImage:"صورة",
  aidBlockRule:"خط أفقي",aidBlockDetails:"قسم قابل للطي",aidBlockSummary:"ملخص القسم",aidBlockPageBreak:"فاصل صفحة",
  aidBlockOther:"كتلة",
+ // Editor shell (separate block).
+ menuBarLabel:"قائمة المحرر",menuEdit:"تحرير",menuInsert:"إدراج",menuFormat:"تنسيق",menuTable:"جدول",
+ menuTools:"أدوات",menuHelp:"مساعدة",menuKeyboardShortcuts:"اختصارات لوحة المفاتيح",
+ floatingMenuLabel:"إدراج كتلة",
+ shortcutHelpTitle:"اختصارات لوحة المفاتيح",shortcutHelpIntro:"الاختصارات النشطة في هذا المحرر.",shortcutHelpClose:"إغلاق",shortcutHelpOr:"أو",shortcutHelpEmpty:"لا توجد اختصارات نشطة.",
+ shortcutGroupHistory:"السجل",shortcutGroupFormatting:"تنسيق النص",shortcutGroupBlocks:"الكتل",
+ shortcutGroupNavigation:"التنقل والتحديد",shortcutGroupCommands:"الأوامر",shortcutGroupInterface:"واجهة المحرر",
+ shortcutUndo:"تراجع",shortcutRedo:"إعادة",shortcutBold:"عريض",shortcutItalic:"مائل",shortcutUnderline:"تسطير",shortcutStrike:"يتوسطه خط",
+ shortcutSelectAll:"تحديد الكل",shortcutHardBreak:"سطر جديد داخل الكتلة",shortcutExitCode:"الخروج من الكتلة البرمجية",
+ shortcutAlignLeft:"محاذاة لليسار",shortcutAlignCenter:"توسيط",shortcutAlignRight:"محاذاة لليمين",shortcutAlignJustify:"ضبط",
+ shortcutFlowBefore:"الانتقال قبل الكائن المجاور",shortcutFlowAfter:"الانتقال بعد الكائن المجاور",
+ shortcutFocusToolbar:"نقل التركيز إلى شريط الأدوات العائم",shortcutFocusBlockMenu:"نقل التركيز إلى قائمة الكتل في السطر الفارغ",shortcutContextMenu:"فتح قائمة السياق",shortcutFocusMenuBar:"نقل التركيز إلى شريط القوائم",
+ shortcutOpenHelp:"عرض اختصارات لوحة المفاتيح",shortcutLeaveUi:"إغلاق قائمة أو مربع حوار والعودة إلى النص",shortcutMoveBlockUp:"نقل الكتلة لأعلى",shortcutMoveBlockDown:"نقل الكتلة لأسفل",
+ keyControl:"Ctrl",keyCommand:"Command",keyAlt:"Alt",keyOption:"Option",keyShift:"Shift",
 };
 export const arabicUi:RichUiOptions={
  lang:"ar",direction:"rtl",strings:arabicStrings,notices:arabicNotices,refusals:arabicRefusals,

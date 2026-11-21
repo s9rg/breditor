@@ -1,7 +1,7 @@
 import {defineConfig,devices} from "@playwright/test";
 // The canonical runner gives every WebKit file a fresh process, as the legacy matrix does.
 // A coverage guard rejects a new spec missing from this explicit list. No retries or timeouts change.
-const specs=["ai-tools.spec.mjs","captions.spec.mjs","demo.spec.mjs","editing-aids.spec.mjs","grammar.spec.mjs","inline-presentation.spec.mjs","input-rules.spec.mjs","standard-profile.spec.mjs","standard-toolbar.spec.mjs","network-demo.spec.mjs","persistence.spec.mjs","placements.spec.mjs","presence.spec.mjs","profile.spec.mjs","relay-assets.spec.mjs","relay-presence.spec.mjs","relay-sync.spec.mjs","relay.spec.mjs","shared.spec.mjs","slash-commands.spec.mjs","writer-transport.spec.mjs","v4-block-fields.spec.mjs","v4-inline.spec.mjs","v4-structure.spec.mjs"];
+const specs=["ai-tools.spec.mjs","captions.spec.mjs","demo.spec.mjs","editing-aids.spec.mjs","editor-shell.spec.mjs","grammar.spec.mjs","inline-presentation.spec.mjs","input-rules.spec.mjs","standard-profile.spec.mjs","standard-toolbar.spec.mjs","network-demo.spec.mjs","persistence.spec.mjs","placements.spec.mjs","presence.spec.mjs","profile.spec.mjs","relay-assets.spec.mjs","relay-presence.spec.mjs","relay-sync.spec.mjs","relay.spec.mjs","shared.spec.mjs","slash-commands.spec.mjs","writer-transport.spec.mjs","v4-block-fields.spec.mjs","v4-inline.spec.mjs","v4-structure.spec.mjs"];
 // A plain `playwright test --config` run (outside the per-file matrix) would otherwise put every WebKit test in
 // one browser instance; Playwright's macOS WebKit stops opening pages after roughly 63 test contexts there (the
 // 64th page.goto never issues a request). Playwright launches a fresh browser per project, so WebKit is split into

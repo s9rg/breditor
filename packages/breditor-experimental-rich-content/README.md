@@ -182,6 +182,11 @@ const editor = mountRichEditor(root, {core, ui: {
 mountRichContextMenu(editor);  // label, dir and lang come from editor.uiLocale()
 ```
 
+The opt-in editor shell builds on the same port: `mountRichMenuBar` (Alt+F9),
+`mountRichShortcutHelp` (Alt+0), `mountRichFloatingMenu` (empty-line block
+menu) and the `mountRichBalloonBlockLayout` preset. See
+[the editor shell contract](../../docs/EDITOR_SHELL.md).
+
 `mountRichSearchPanel`, `mountRichWritingTools` and
 `mountRichFullscreenControls` read the same catalog from their host's
 `uiLocale()`. Status lines show end-user text through `ui.describe(error)`:

@@ -4,6 +4,7 @@
 // validates the complete group, and one dispatch is one native Undo step. Rejected or stale
 // targets publish nothing.
 import {id,presentationModel,type ElementNode,type RichPresentationModel} from "./model.js";
+import {registerRichPresentationShortcut} from "./shortcut_registry.js";
 import {defaultRichUi,type RichUiLocale,type RichUiStringKey} from "./ui_locale.js";
 import type {RichDomEditor} from "./controller.js";
 import type {RichSelectionPolicy} from "./core.js";
@@ -201,6 +202,8 @@ export function mountRichBlockDragPort(port:RichBlockDragPort,options:RichBlockD
   plan(block,value=>resolveRichBlockStep(value,block,event.key==="ArrowUp"?-1:1),"keyboard",true);setActive(block);
  },{signal,capture:true});
 
+ const releaseShortcut=options.editorShortcut===false?()=>{}:registerRichPresentationShortcut(surface,{id:"ui:block-move-up",group:"blocks",label:ui.text("shortcutMoveBlockUp"),keys:[{key:"ArrowUp",alt:true,shift:true}]}),
+  releaseShortcutDown=options.editorShortcut===false?()=>{}:registerRichPresentationShortcut(surface,{id:"ui:block-move-down",group:"blocks",label:ui.text("shortcutMoveBlockDown"),keys:[{key:"ArrowDown",alt:true,shift:true}]});
  const observer=new win.MutationObserver(()=>place());observer.observe(surface,{childList:true,subtree:true,characterData:true});
  win.addEventListener("scroll",()=>place(),{signal,capture:true,passive:true});win.addEventListener("resize",()=>place(),{signal});
 
@@ -208,7 +211,7 @@ export function mountRichBlockDragPort(port:RichBlockDragPort,options:RichBlockD
   activeBlock:()=>active,
   move:(block,target)=>plan(block,value=>resolveRichBlockMove(value,block,target,policy),"keyboard",false),
   step:(block,direction)=>plan(block,value=>resolveRichBlockStep(value,block,direction),"keyboard",false),
-  dispose(){if(disposed)return;disposed=true;drag=undefined;mode=undefined;abort.abort();observer.disconnect();layer.remove();},
+  dispose(){if(disposed)return;disposed=true;drag=undefined;mode=undefined;abort.abort();observer.disconnect();layer.remove();releaseShortcut();releaseShortcutDown();},
  };
 }
 

@@ -6,6 +6,22 @@ its durable formats and Wasm transport.
 
 ## Unreleased
 
+- Add an opt-in **editor shell** for local, shared and SDK rich editors
+  (`mountRichMenuBar`, `mountRichShortcutHelp`, `mountRichFloatingMenu`,
+  `mountRichBalloonBlockLayout`; `mountMenuBar` / `mountShortcutHelp` /
+  `mountFloatingMenu` / `mountBalloonBlockLayout` in `@breditor/editor` and its
+  collaboration entry, `mountShared*` in `@breditor/collaboration`, React
+  `BreditorMenuBar` / `BreditorShortcutHelp` / `BreditorFloatingMenu`). A
+  WAI-ARIA **menu bar** (Alt+F9, arrows, typeahead, Escape back to the text) and
+  an **empty-line block menu** (Tiptap FloatingMenu equivalent, Alt+F10) borrow
+  admitted toolbar controls, so every item is the same Rust-derived state and one
+  command / one Undo step (one guarded dispatch when shared). An accessible
+  **keyboard shortcut help** dialog (Alt+0, focus trap, ⌘ or Ctrl display) lists
+  the new read-only shortcut registry: `contextShortcuts()` on the coordinators
+  plus the chords mounted presentations install (`richActiveShortcuts`). The
+  host state gains `emptyParagraph`; new UI catalog block `richShellUiStringsEn`.
+  Editors that mount none of it are unchanged. See
+  [docs/EDITOR_SHELL.md](docs/EDITOR_SHELL.md).
 - Add opt-in **editing aids** for local and shared rich editors:
   `mountRichEditingAids` / `mountRichEditingAidsControls` (`mountEditingAids` /
   `mountEditingAidsControls` in `@breditor/editor` and its collaboration entry).

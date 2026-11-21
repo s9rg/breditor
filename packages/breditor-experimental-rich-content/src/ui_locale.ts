@@ -12,8 +12,11 @@ export type {RichAiUiStrings} from "./ui_locale_ai.js";
 // Editing-aid chrome strings (show blocks, invisible characters) live in ui_locale_editing_aids.ts.
 import {richEditingAidsUiStringsEn,richEditingAidsUiParameters,type RichEditingAidsUiStrings} from "./ui_locale_editing_aids.js";
 export type {RichEditingAidsUiStrings} from "./ui_locale_editing_aids.js";
+// Editor shell chrome (menu bar, shortcut help, empty-line block menu) lives in ui_locale_shell.ts.
+import {richShellUiStringsEn,richShellUiParameters,type RichShellUiStrings} from "./ui_locale_shell.js";
+export type {RichShellUiStrings} from "./ui_locale_shell.js";
 /** Every built-in chrome string. Templates use `{name}` placeholders only; there are no plural or select forms. */
-export interface RichUiStrings extends RichUiPanelStrings, RichAiUiStrings, RichEditingAidsUiStrings {
+export interface RichUiStrings extends RichUiPanelStrings, RichAiUiStrings, RichEditingAidsUiStrings, RichShellUiStrings {
  readonly richEditorLabel:string;readonly richToolbarLabel:string;
  readonly richStatusReadOnly:string;readonly richStatusEditable:string;readonly richStatusOutcome:string;readonly richStatusReadOnlyOutcome:string;
  readonly richOperationFailed:string;
@@ -78,6 +81,7 @@ export const richUiStringsEn:Readonly<RichUiStrings>=Object.freeze({
  ...richAiUiStringsEn,
  // Editing aids (separate block).
  ...richEditingAidsUiStringsEn,
+ ...richShellUiStringsEn,
 });
 /** Placeholders each template may use. Anything else in braces is rejected. */
 const parameters:Readonly<Partial<Record<RichUiStringKey,readonly string[]>>>={
@@ -93,6 +97,7 @@ const parameters:Readonly<Partial<Record<RichUiStringKey,readonly string[]>>>={
  ...richAiUiParameters,
  // Editing aids (separate block).
  ...richEditingAidsUiParameters,
+ ...richShellUiParameters,
 };
 /** Ids of `standardRichSlashPicks`; other provider items carry their own labels. */
 export type RichStandardSlashItemId="paragraph"|"heading-1"|"heading-2"|"heading-3"|"bullet-list"|"numbered-list"|"task-list"|"blockquote"|"code-block"|"horizontal-rule"|"table"|"details"|"page-break";

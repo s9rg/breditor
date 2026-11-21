@@ -33,6 +33,7 @@ import {prepareRichPlaceholder,RichPlaceholderPresentation,richPlaceholderStyles
 import {borrowContextControl,contextSelectionKind,type BorrowedControl} from "./context_ui_host.js";
 import type {RichContextControlView,RichContextUiHostState} from "./context_ui_types.js";
 import {createDocumentSourceHost} from "./source_view_host.js";
+import {richCoordinatorShortcuts,type RichShortcutEntry} from "./shortcut_registry.js";
 import type {RichDocumentSourceHost} from "./source_view_types.js";
 
 export interface RichEditorOptions<P extends RichSelectionPolicy="original"> extends RenderOptions {
@@ -73,6 +74,8 @@ function sameSelection(a:RichDocumentSelection|null,b:RichDocumentSelection|null
  return false;
 }
 type Work={revision:string;focus:boolean;accepted?:((display:boolean)=>void)|undefined;completion?:RichSearchCompletion}&({command:RichCommand|DocumentIntent;search?:never;inputRule?:never;paragraph?:never}|{command?:never;search:RichSearchIntent;inputRule?:never;paragraph?:never}|{command?:never;search?:never;inputRule:MarkdownInputIntent;paragraph?:never}|{command?:never;search?:never;inputRule?:never;paragraph:{right:string;newItem:string|null}});
+/** A paragraph with no text and no inline atoms: where the empty-line block menu may appear. */
+const emptyParagraph=(node:{type:string;children:readonly {kind:string;text?:string}[]}|undefined):boolean=>node?.type==="breditor/paragraph"&&node.children.every(child=>child.kind==="text"&&!child.text);
 type Composition={block:string;original:string;revision:string;finishing:boolean;target?:Extract<RichSelection,{kind:"text"}>}|{document:true;revision:string;finishing:boolean};
 export class RichDomEditor<P extends RichSelectionPolicy="original"> {
  readonly surface:HTMLDivElement;
@@ -156,7 +159,12 @@ export class RichDomEditor<P extends RichSelectionPolicy="original"> {
   return mountToolbarControl(container,control,{prefix:"rich",ui:this.#ui,signal,sync:()=>this.#sync(),stamp:()=>JSON.stringify(this.#options.core.view()),attempt:work=>this.#attempt(work),focus:()=>this.focus(),run:(value,fields)=>{const command=control.command(this.#context(),value,fields);if(command)this.execute(command);}});
  }
  /** Context UI port: the same admitted control, widget, gating and command path, in another presentation. */
- contextUiState():RichContextUiHostState{const view=this.#model.view;return Object.freeze({revision:view.revision,closed:this.#disposed,busy:this.#busy,composing:!!this.#composition,readOnly:view.readOnly===true,selection:contextSelectionKind(view.selection)});}
+ contextUiState():RichContextUiHostState{const view=this.#model.view,selection=contextSelectionKind(view.selection);return Object.freeze({revision:view.revision,closed:this.#disposed,busy:this.#busy,composing:!!this.#composition,readOnly:view.readOnly===true,selection,emptyParagraph:selection==="caret"&&emptyParagraph(this.#model.nodes.get((view.selection as Extract<RichSelection,{kind:"text"}>).focus.block))});}
+ /** Editor shell port: the chords this coordinator's keydown routing owns, from the same controls and capabilities. */
+ contextShortcuts():readonly RichShortcutEntry[]{
+  const core=this.#options.core,structural=isStructuralRichLanguage(core.richLanguageVersion?.());
+  return richCoordinatorShortcuts({ui:this.#ui,controls:this.#controls.map(entry=>entry.control),structural,selectionFormatting:core.supportsSelectionFormatting?.()===true&&!!this.#options.inlinePresentation,flowNavigation:core.supportsFlowNavigation?.()===true,blockLayout:core.supportsBlockLayout?.()===true});
+ }
  subscribeContextUi(listener:()=>void):()=>void{this.#live();return this.#writingEvents.subscribe(listener);}
  /** The validated chrome catalog; opt-in tools read their strings and chrome direction from it. */
  uiLocale():RichUiLocale{return this.#ui;}

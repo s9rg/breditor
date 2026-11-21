@@ -392,6 +392,14 @@ The checkpoint is incomplete until tests demonstrate:
   and both Redo aliases in Chromium, Firefox, and WebKit; and
 - unchanged Wasm ABI 5, schema fingerprints, and durable-format generations.
 
+## Rich editors and the shortcut help dialog
+
+The rich DOM coordinators (`RichDomEditor`, `SharedDomEditor`) route their own
+chords from admitted toolbar controls' `shortcut` fields and fixed built-ins;
+they do not consume this manifest. Their read-only registry
+(`contextShortcuts()` / `richActiveShortcuts`) and the opt-in Alt+0 help dialog
+are described in [EDITOR_SHELL.md](EDITOR_SHELL.md).
+
 ## Research lineage
 
 Tiptap demonstrates the usefulness of extension-local declarative shortcut
