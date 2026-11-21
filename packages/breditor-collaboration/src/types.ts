@@ -77,7 +77,8 @@ export type SharedCommand=
  |Op<"indent_list_items",{container:string;first:string;last:string;new_nested:{block:string;style:ListStyle}|null}>
  |Op<"outdent_list_items",{container:string;first:string;last:string;fresh_tail:string|null}>
  |Op<"split_list_item",{block:string;offset:number;new_item:string;right:string;right_heading:number|null}>
- |Op<"join_list_items",{container:string;left:string;right:string}>
+ |Op<"join_list_items",{container:string;left:string;right:string;blocks?:true}>
+ |Op<"split_list_item_block",{block:string;new_item:string}>
  |Op<"replace_image",{block:string;asset:string;generation:string}>
  |Op<"set_image_alt",{block:string;text:string;decorative:boolean}>
  |Op<"set_image_caption",{block:string;caption:SharedParagraph|null}>

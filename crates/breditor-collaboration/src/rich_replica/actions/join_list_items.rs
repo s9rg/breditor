@@ -17,6 +17,11 @@ pub struct JoinListItems {
     pub left: String,
     /// Adjacent right item identity.
     pub right: String,
+    /// Multi-block merge: every right block (including its head) keeps its identity and
+    /// follows the left item's flow; text is never joined. Omitted when false, so existing
+    /// command JSON and suggestion records are byte-identical.
+    #[serde(default, skip_serializing_if = "std::ops::Not::not")]
+    pub blocks: bool,
 }
 impl JoinListItems {
     pub(super) fn prepare(&self, doc: &LoroDoc) -> Result<(), Error> {
@@ -35,9 +40,9 @@ impl JoinListItems {
         stamp: Stamp,
     ) -> Result<(), Error> {
         let id = super::super::paragraphs::id;
-        let action =
-            CoreJoin::capture(document, &id(&self.container)?, &id(&self.left)?, &id(&self.right)?)
-                .map_err(|_| Error::Contract("shared list join capture"))?;
+        let capture = if self.blocks { CoreJoin::capture_blocks } else { CoreJoin::capture };
+        let action = capture(document, &id(&self.container)?, &id(&self.left)?, &id(&self.right)?)
+            .map_err(|_| Error::Contract("shared list join capture"))?;
         let Some(edit) = action
             .apply(&super::super::paragraphs::context(codec), document)
             .map_err(|_| Error::Contract("shared list join admission"))?

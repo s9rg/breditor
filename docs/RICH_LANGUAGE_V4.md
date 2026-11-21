@@ -163,9 +163,12 @@ name or an arbitrary string.
   the same rule (a reversed copy whose first ordinal would be below 1 is an
   unsupported range). A numbered-to-numbered `setListKind` start change keeps
   style and reversal; converting to bullets removes them.
-- **Not in V4:** legal multilevel counters (`1.2.3`), per-item `value`
-  overrides, custom counter styles, marker suffix/prefix text and per-item
-  marker styles. A nested list is numbered independently.
+- **Not in V4:** legal multilevel counters (`1.2.3`) as a stored property,
+  per-item `value` overrides, custom counter styles, marker suffix/prefix text
+  and per-item marker styles. A nested list is numbered independently. Legal
+  counters are available as an opt-in, presentation-only `legalListNumbering`
+  render option derived from these admitted values; a stored form is a V5
+  candidate ([LIST_STRUCTURE.md](LIST_STRUCTURE.md)).
 
 ### Native action and commands
 

@@ -4,7 +4,7 @@ use super::{
     JoinListItems, RichAction, RichActionError, RichEdit,
     branch_patch::BranchPatch,
     list_boundary_patch::ListBoundaryPatch,
-    list_helpers::{children, id, list_node, with_children},
+    list_helpers::{children, id, is_text, list_node, with_children},
     node_patch::NodePatch,
     text_patch::{block_node, fragment, text_node},
 };
@@ -93,6 +93,58 @@ impl SplitListItem {
                 }),
             },
         })
+    }
+    /// Split a multi-block item before one of its later text blocks.
+    ///
+    /// `block` must be a paragraph or heading that is a direct, non-leading child of a list
+    /// item. It and every following block of that item move, with their identities, into one
+    /// fresh sibling item `new_item` inserted directly after it; `block` becomes that item's
+    /// leading block. No text is split or copied. This is the exact inverse of
+    /// [`JoinListItems::capture_blocks`] (Enter in an empty later paragraph of an item).
+    ///
+    /// # Errors
+    /// Rejects a leading or non-text block, a block outside a list item, or a reused identity.
+    pub fn capture_block(
+        document: &RichDocument,
+        block: &BlockId,
+        new_item: &BlockId,
+    ) -> Result<Self, RichActionError> {
+        let path = document.block_path(block).ok_or(RichActionError::MissingTarget)?;
+        let index = path.last_index().ok_or(RichActionError::ListShape)?;
+        if index == 0 {
+            return Err(RichActionError::ListShape);
+        }
+        let index = usize::try_from(index).map_err(|_| RichActionError::ListShape)?;
+        let item_path = path.parent().ok_or(RichActionError::ListShape)?;
+        let list_path = item_path.parent().ok_or(RichActionError::ListShape)?;
+        let item =
+            document.document().node_at(&item_path).map_err(|_| RichActionError::ListShape)?;
+        if item.as_element().is_none_or(|item| item.kind().as_str() != "breditor/list-item") {
+            return Err(RichActionError::ListShape);
+        }
+        let body = children(item)?;
+        if !body.get(index).is_some_and(is_text) {
+            return Err(RichActionError::ListShape);
+        }
+        let list =
+            document.document().node_at(&list_path).map_err(|_| RichActionError::ListShape)?;
+        list_node(document, &id(list)?)?;
+        let left_item = with_children(item, body[..index].to_vec())?;
+        let right_item = element(
+            "list-item",
+            vec![("block-id", PropertyValue::from_string(new_item.as_str()))],
+            body[index..].to_vec(),
+        )?;
+        let position = usize::try_from(item_path.last_index().ok_or(RichActionError::ListShape)?)
+            .map_err(|_| RichActionError::ListShape)?;
+        let mut items = children(list)?.to_vec();
+        items.splice(position..=position, [left_item, right_item]);
+        let branch = BranchPatch::Node(NodePatch::capture(
+            document,
+            &id(list)?,
+            with_children(list, items)?,
+        )?);
+        Ok(Self { patch: ListBoundaryPatch { branch, map: None } })
     }
     pub(super) fn from_inverse(patch: ListBoundaryPatch) -> Self {
         Self { patch }

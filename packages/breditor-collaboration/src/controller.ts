@@ -1,8 +1,8 @@
 import {isStructuralRichLanguage} from "@breditor/experimental-rich-content/rendering";
-import {id,text,sourceCell,render,requireRenderOptions,paintSelection,refreshAssets,readNative,readTarget,restoreDocumentNative,nativeSelectsDocument,standardInlineStylesV1,structuralBlockStylesV2,richPageBreakStyles,type RichModel,type RenderOptions} from "@breditor/experimental-rich-content/rendering";
+import {id,text,sourceCell,render,requireRenderOptions,paintSelection,refreshAssets,readNative,readTarget,restoreDocumentNative,nativeSelectsDocument,standardInlineStylesV1,structuralBlockStylesV2,richPageBreakStyles,richLegalListStyles,type RichModel,type RenderOptions} from "@breditor/experimental-rich-content/rendering";
 import {SharedRichEditor,SharedEditorError} from "./core.js";
 import {bold,boundaryDelete,caret,cellBlock,enter,positionAfter,removeSelection,type ActionContext,type SharedToolbarControl} from "./actions.js";
-import {defaultSharedToolbarFor,moveSharedToolbarFor} from "./toolbar.js";
+import {defaultSharedToolbarFor,moveSharedToolbarFor,sharedListTab,sharedListTabApplies} from "./toolbar.js";
 import type {SharedDispatch,SharedPublication,RichSelection,Navigation,SharedSelectionPolicy,SharedEditorView,SharedDocumentSelection} from "./types.js";
 import {sharedPresentationModel} from "./document_presentation.js";
 import {requireSharedDocumentBrowserCore} from "./document_core.js";
@@ -87,7 +87,7 @@ export class SharedDomEditor<P extends SharedSelectionPolicy="original"> {
   if(this.#model.view.historyGrouping==="typing-v1"&&!options.core.supportsTypingHistory())throw Error("Use matching native shared typing history");
   for(const control of options.toolbar??[...defaultSharedToolbarFor<P>(),...moveSharedToolbarFor<P>()])if(control.owner!==undefined&&control.owner!==options.core)throw Error("Toolbar control belongs to a different Rust owner");
   const ui=resolveRichUi(options.ui);ui.checkControls(options.toolbar??[...defaultSharedToolbarFor<P>(),...moveSharedToolbarFor<P>()]);this.#ui=ui;
-  const d=root.ownerDocument,style=d.createElement("style");style.textContent=styles+standardInlineStylesV1+toolbarControlStyles+(structuralBlockStylesV2+richPageBreakStyles).replaceAll("[data-breditor-rich]","[data-breditor-shared]")+(this.#document?sharedDocumentSelectionStyles:"")+(placeholder?richPlaceholderStyles:"")+(options.inlinePresentation&&richInlinePresentationHasRuby(options.inlinePresentation)?richRubyStyles:"");root.dataset["breditorShared"]="";
+  const d=root.ownerDocument,style=d.createElement("style");style.textContent=styles+standardInlineStylesV1+toolbarControlStyles+(structuralBlockStylesV2+richPageBreakStyles+richLegalListStyles).replaceAll("[data-breditor-rich]","[data-breditor-shared]")+(this.#document?sharedDocumentSelectionStyles:"")+(placeholder?richPlaceholderStyles:"")+(options.inlinePresentation&&richInlinePresentationHasRuby(options.inlinePresentation)?richRubyStyles:"");root.dataset["breditorShared"]="";
   this.surface=d.createElement("div");this.surface.contentEditable="true";this.surface.className="breditor-shared-surface";this.surface.setAttribute("role","textbox");this.surface.setAttribute("aria-multiline","true");this.surface.setAttribute("aria-label",options.label??ui.text("sharedEditorLabel"));
   this.toolbar=d.createElement("div");this.toolbar.className="breditor-shared-toolbar";this.toolbar.setAttribute("role","toolbar");this.toolbar.setAttribute("aria-label",ui.text("sharedToolbarLabel"));ui.applyChrome(this.toolbar);this.status=d.createElement("p");this.status.setAttribute("role","status");ui.applyChrome(this.status);
   const seen=new Set<string>();for(const control of options.toolbar??[...defaultSharedToolbarFor<P>(),...moveSharedToolbarFor<P>()]){
@@ -316,7 +316,7 @@ export class SharedDomEditor<P extends SharedSelectionPolicy="original"> {
   // WebKit can report insertParagraph for Shift+Enter. Resolve the keyboard
   // contract here without changing composition, grid Enter or beforeinput targets.
   if(event.key==="Enter"&&event.shiftKey&&!mod&&!event.altKey){this.#attempt(()=>{this.#sync();if(this.#model.view.selection?.kind==="text"){event.preventDefault();this.#perform(c=>{const s=c.model.view.selection;if(c.model.view.rangeEditing==="general-v1"&&s?.kind==="text")c.core.replaceGeneralRangePlainText(s,"\n",c.allocate("range"),c.revision);else c.core.hardBreak(c.revision);});}});if(event.defaultPrevented)return;}
-  if(this.#model.view.readOnly!==true&&event.key==="Tab"&&!mod&&!event.altKey){this.#attempt(()=>{this.#sync();const command=sharedTaskTab(this.#context(),event.shiftKey);if(command){event.preventDefault();this.#perform(c=>{c.core.dispatch({commands:[command]},c.revision);});}});if(event.defaultPrevented)return;}
+  if(this.#model.view.readOnly!==true&&event.key==="Tab"&&!mod&&!event.altKey){this.#attempt(()=>{this.#sync();const command=sharedTaskTab(this.#context(),event.shiftKey);if(command){event.preventDefault();this.#perform(c=>{c.core.dispatch({commands:[command]},c.revision);});}else if(sharedListTabApplies(this.#context(),event.shiftKey)){event.preventDefault();const backward=event.shiftKey;this.#perform(c=>sharedListTab(c,backward));}});if(event.defaultPrevented)return;}
   const s=this.#model.view.selection;if(s?.kind==="grid"){
    const moves:Record<string,Navigation>={ArrowLeft:"left",ArrowRight:"right",ArrowUp:"up",ArrowDown:"down",Tab:event.shiftKey?"previous":"next",Home:mod?"tableStart":"rowStart",End:mod?"tableEnd":"rowEnd"},move=moves[event.key];
    if(move){this.#attempt(()=>this.#perform(c=>{const result=c.core.navigate(move,event.key!=="Tab"&&event.shiftKey,c.revision);if(event.key!=="Tab"||result.kind!=="boundary")event.preventDefault();}));return;}

@@ -50,6 +50,7 @@ mod set_list_kind;
 mod set_task_checked;
 mod split_cell;
 mod split_list_item;
+mod split_list_item_block;
 mod split_task_item;
 mod split_text_block;
 mod unwrap_blockquote;
@@ -122,6 +123,7 @@ pub use set_list_kind::SetListKind;
 pub use set_task_checked::SetTaskChecked;
 pub use split_cell::SplitCell;
 pub use split_list_item::SplitListItem;
+pub use split_list_item_block::SplitListItemBlock;
 pub use split_task_item::SplitTaskItem;
 pub use split_text_block::SplitTextBlock;
 pub use table_caption_v4::{AddTableCaption, RemoveTableCaption};
@@ -275,6 +277,8 @@ pub enum Command {
     AddTableCaption(AddTableCaption),
     /// V4: remove a table's caption; an absent caption is a no-op.
     RemoveTableCaption(RemoveTableCaption),
+    /// Move a later item paragraph/heading and its following flow into a fresh sibling item.
+    SplitListItemBlock(SplitListItemBlock),
 }
 impl Command {
     pub(super) fn requires_structural_v2(&self) -> bool {
@@ -336,6 +340,7 @@ impl Command {
             Self::IndentListItems(value) => value.prepare(doc)?,
             Self::OutdentListItems(value) => value.prepare(doc)?,
             Self::SplitListItem(value) => value.prepare(doc)?,
+            Self::SplitListItemBlock(value) => value.prepare(doc)?,
             Self::JoinListItems(value) => value.prepare(doc)?,
             Self::ReplaceTextRange(value) => value.prepare(doc)?,
             Self::SetHeading(value) => value.prepare(doc)?,
@@ -456,6 +461,7 @@ impl Command {
             Self::IndentListItems(value) => value.apply(doc, codec, document, stamp),
             Self::OutdentListItems(value) => value.apply(doc, codec, document, stamp),
             Self::SplitListItem(value) => value.apply(doc, codec, document, stamp),
+            Self::SplitListItemBlock(value) => value.apply(doc, codec, document, stamp),
             Self::JoinListItems(value) => value.apply(doc, codec, document, stamp),
             Self::ReplaceTextRange(value) => value.apply(doc, codec, document, stamp),
             Self::SetHeading(value) => value.apply(doc, codec, document, stamp),

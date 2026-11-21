@@ -123,6 +123,11 @@ the root only; sections are valid insertion parents), `MoveBlock`, `DeleteBlock`
 rich clipboard copy/paste (fresh identities), checkpoints of every history family,
 exact restore and relay frames.
 
+Multi-block list items (every shared rich language, not only V4) add
+`join_list_items` with `blocks: true` and `split_list_item_block`, plus list
+Tab/Shift+Tab and the opt-in `legalListNumbering` render option; see
+[LIST_STRUCTURE.md](LIST_STRUCTURE.md). They change no V4 field or protocol.
+
 ## Shared inline commands: text language, mentions, image links
 
 The first per-slice shared commands cover the three inline V4 features. Each is

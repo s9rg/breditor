@@ -33,6 +33,32 @@ impl JoinListItems {
         left: &BlockId,
         right: &BlockId,
     ) -> Result<Self, RichActionError> {
+        Self::capture_with(document, container, left, right, true)
+    }
+    /// Merge the right item into the left one as later blocks of a multi-block item.
+    ///
+    /// Unlike [`Self::capture`], text is never concatenated: every right block, including its
+    /// leading paragraph or heading, keeps its identity and follows the left item's flow. This
+    /// is the "remove the item marker" half of multi-block item editing (Backspace at the start
+    /// of an empty item); [`SplitListItem::capture_block`] is its exact inverse.
+    ///
+    /// # Errors
+    /// Rejects missing/reversed/nonadjacent items or inconsistent list shapes.
+    pub fn capture_blocks(
+        document: &RichDocument,
+        container: &BlockId,
+        left: &BlockId,
+        right: &BlockId,
+    ) -> Result<Self, RichActionError> {
+        Self::capture_with(document, container, left, right, false)
+    }
+    fn capture_with(
+        document: &RichDocument,
+        container: &BlockId,
+        left: &BlockId,
+        right: &BlockId,
+        concatenate: bool,
+    ) -> Result<Self, RichActionError> {
         let source = list_node(document, container)?;
         let (first, last) = interval(source, left, right)?;
         if last != first + 1 {
@@ -43,7 +69,7 @@ impl JoinListItems {
         let right_item = &items[last];
         let left_body = children(left_item)?;
         let right_body = children(right_item)?;
-        let (body, map) = if left_body.len() == 1 {
+        let (body, map) = if concatenate && left_body.len() == 1 {
             let left_node = &left_body[0];
             let right_node = &right_body[0];
             let head = fragment(left_node)?;

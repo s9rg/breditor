@@ -13,6 +13,7 @@ export {applyBlockLayout} from "./dist/browser/block_layout_presentation.js";
 export {blockLayoutControls,blockLayoutShortcut} from "./dist/browser/block_layout_controls.js";
 export {encodeBlockLayoutPatch} from "./dist/browser/block_layout_serialization.js";
 export {applyListNumbering,listNumberingOf,listNumberStyles,listNumberHtmlTypes} from "./dist/browser/list_numbering_presentation.js";
+export {legalListMarkers,legalListMarkersWith,legalListAttribute,legalListMarkerAttribute,richLegalListStyles,multiBlockListEnter,multiBlockListBackspace} from "./dist/browser/list_structure.js";
 export {encodeListNumberingPatch} from "./dist/browser/list_numbering_serialization.js";
 export {parseRichSearchMetadata} from "./dist/browser/search_metadata.js";
 export {parseRichWritingTools} from "./dist/browser/writing_tools_metadata.js";

@@ -13,6 +13,10 @@ struct Record {
     container: String,
     left: String,
     right: String,
+    /// Multi-block merge: keep every right block (no text concatenation). Absent means the
+    /// original text join, so existing command JSON is unchanged.
+    #[serde(default)]
+    blocks: bool,
 }
 pub(super) fn execute(
     owner: &mut RichLocalSession,
@@ -20,7 +24,9 @@ pub(super) fn execute(
     input: &str,
 ) -> Result<RichLocalOutcome, BreditorError> {
     let record: Record = decode(input)?;
-    let action = checked(JoinListItems::capture(
+    let capture =
+        if record.blocks { JoinListItems::capture_blocks } else { JoinListItems::capture };
+    let action = checked(capture(
         owner.state().document(),
         &checked(BlockId::try_new(record.container))?,
         &checked(BlockId::try_new(record.left))?,
