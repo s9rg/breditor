@@ -26,7 +26,7 @@ const section=()=>el("details","sec",[el("details-summary","sum",[{kind:"text",t
 type Command=SharedDispatch["commands"][number];
 const slices=["listNumberingVersion","textLanguageVersion","imageLinkVersion","detailsVersion","mentionVersion","tableCaptionVersion","pageBreakVersion","bookmarkVersion"];
 /** Minimal stand-in for a shared V4 native owner: one snapshot Undo group per dispatch. */
-function fakeOwner(initial:N[],{structure=true}={}){
+function fakeOwner(initial:N[],{structure=true,blockFields=false}={}){
  let root:N={kind:"element",type:"breditor/document",entityId:null,properties:{"breditor/document-id":"room"},children:initial},revision=0,selection:RichSelection|null=caret(idOf(initial[0]!),0);
  const undo:{root:string;selection:RichSelection|null}[]=[],dispatched:SharedDispatch[]=[];
  const view=()=>({format:"breditor/shared-rich-view",formatVersion:1,revision:String(revision),documentJson:JSON.stringify({schema:{name:"test/shared-v4",version:1},schemaFingerprint:"fixture",root}),selection,pendingFormatsJson:null,undoDepth:undo.length,redoDepth:0,historyCapacity:1000,grid:null,tables:[]});
@@ -41,6 +41,7 @@ function fakeOwner(initial:N[],{structure=true}={}){
    case "delete_page_break":{const {parent,index}=need(d.block);parent.children.splice(index,1,...(d.paragraph?[p(d.paragraph,"")]:[]));return;}
    case "add_table_caption":{const {node}=need(d.block);if(node.children.at(-1)?.kind==="element"&&(node.children.at(-1) as N).type==="breditor/paragraph")throw Error("exists");node.children.push(p(d.caption,""));return;}
    case "remove_table_caption":{const {node}=need(d.block);if((node.children.at(-1) as N).type==="breditor/paragraph")node.children.pop();return;}
+   case "set_details_open":{const {node}=need(d.block);if(d.open)node.properties["breditor/details-open"]=true;else delete node.properties["breditor/details-open"];return;}
    case "insert_blocks":{const parent=d.parent===null?root:need(d.parent).node,index=d.before===null?parent.children.length:need(d.before).index;parent.children.splice(index,0,...(d.nodes as N[]));return;}
    default:throw Error(`fixture does not implement ${command.kind}`);
   }
@@ -50,6 +51,7 @@ function fakeOwner(initial:N[],{structure=true}={}){
   block_layout_version:()=>"1",block_layout_state_json:()=>JSON.stringify({kind:"unavailable"}),change_selection_layout:vi.fn(),rich_language_version:()=>"4",
   list_numbering_version:()=>"1",text_language_version:()=>"1",image_link_version:()=>"1",details_version:()=>"1",mention_version:()=>"1",table_caption_version:()=>"1",page_break_version:()=>"1",bookmark_version:()=>"1",
   ...(structure?{structure_commands_v4_version:()=>"1"}:{}),
+  ...(blockFields?{v4_block_fields_version:()=>"1",set_details_open:vi.fn(()=>true),bookmark_index_json:()=>JSON.stringify({bookmarks:[],links:[],brokenLinks:[]})}:{}),
   dispatch:vi.fn((_o:unknown,input:string)=>{
    const request=JSON.parse(input) as SharedDispatch;dispatched.push(request);const saved={root:JSON.stringify(root),selection};
    try{for(const command of request.commands)apply(command);}catch(error){root=JSON.parse(saved.root) as N;selection=saved.selection;throw error;}
@@ -65,7 +67,7 @@ function fakeOwner(initial:N[],{structure=true}={}){
 }
 const mounted:(()=>void)[]=[];
 afterEach(()=>{for(const release of mounted.splice(0))release();document.body.replaceChildren();vi.restoreAllMocks();});
-function setup(children:N[],options:{structure?:boolean}={}){
+function setup(children:N[],options:{structure?:boolean;blockFields?:boolean}={}){
  const owner=fakeOwner(children,options),core=new SharedRichEditor(owner.raw as unknown as SharedRustOwner);
  mounted.push(()=>core.dispose());
  let next=0;const allocate=(kind:string)=>`${kind}-${++next}`;
@@ -160,5 +162,28 @@ describe("shared V4 structure commands",()=>{
   expect(t.dispatched.length).toBe(count);expect(t.core.view().selection).toMatchObject({kind:"text",focus:{block:"sum",offset:"4"}});
   t.select(caret("sum",0));input("deleteContentBackward");expect(t.dispatched.at(-1)!.commands).toEqual([{kind:"unwrap_details",data:{wrapper:"sec"}}]);
   expect(find(t.root(),"sum")!.node.type).toBe("breditor/paragraph");
+ });
+ it("expands a collapsed section and enters its body on summary Enter in one guarded batch, like enterDetailsBody",()=>{
+  const collapsed=()=>{const node=section();delete node.properties["breditor/details-open"];return node;};
+  const t=setup([p("a","One"),collapsed(),p("z","End")],{blockFields:true}),host=document.createElement("div");document.body.append(host);
+  const dom=mountSharedEditor(host,{core:t.core,coreOwnership:"borrow",toolbar:[]} as never);mounted.push(()=>{dom.dispose();host.remove();});
+  const input=(inputType:string)=>dom.surface.dispatchEvent(new InputEvent("beforeinput",{inputType,bubbles:true,cancelable:true}));
+  // A range in a summary does nothing.
+  t.select({kind:"text",anchor:{block:"sum",offset:"0",affinity:"after"},focus:{block:"sum",offset:"2",affinity:"after"}});
+  let count=t.dispatched.length;input("insertParagraph");expect(t.dispatched.length).toBe(count);
+  const depth=t.undoDepth();t.select(caret("sum",2));input("insertParagraph");
+  const enter=t.dispatched.at(-1)!,fresh=idOf((enter.commands[0]!.data as {nodes:N[]}).nodes[0]!);
+  expect(enter).toEqual({commands:[{kind:"insert_blocks",data:{parent:"sec",before:"body",nodes:[p(fresh,"")]}},{kind:"set_details_open",data:{block:"sec",open:true}}],
+   selectionUpdate:{kind:"set",value:caret(fresh,0)},pendingFormatsUpdate:{kind:"set",value:null}});
+  expect(t.undoDepth()).toBe(depth+1);
+  const sec=find(t.root(),"sec")!.node;expect(sec.properties["breditor/details-open"]).toBe(true);expect(sec.children.map(idOf)).toEqual(["sum",fresh,"body"]);
+  expect(textOf(find(t.root(),"sum")!.node)).toBe("More");expect(t.core.view().selection).toEqual(caret(fresh,0));
+  // One Undo restores the collapsed section with the caret back in the summary.
+  t.core.undo();expect(find(t.root(),"sec")!.node.properties["breditor/details-open"]).toBeUndefined();expect(t.core.view().selection).toEqual(caret("sum",2));
+  // Without the open-state command (no V4 block fields) a collapsed summary Enter stays a no-op.
+  const old=setup([collapsed(),p("z","End")]),oldHost=document.createElement("div");document.body.append(oldHost);
+  const oldDom=mountSharedEditor(oldHost,{core:old.core,coreOwnership:"borrow",toolbar:[]} as never);mounted.push(()=>{oldDom.dispose();oldHost.remove();});
+  old.select(caret("sum",1));count=old.dispatched.length;oldDom.surface.dispatchEvent(new InputEvent("beforeinput",{inputType:"insertParagraph",bubbles:true,cancelable:true}));
+  expect(old.dispatched.length).toBe(count);
  });
 });

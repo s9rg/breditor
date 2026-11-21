@@ -1,11 +1,11 @@
-# Shared rich language V4 (foundation)
+# Shared rich language V4
 
 Shared V4 lets a collaboration room hold, replicate, persist and replay documents
 that use any of the eight frozen V4 slices ([RICH_LANGUAGE_V4.md](RICH_LANGUAGE_V4.md)):
 ordered-list numbering, text-run language, image links, collapsible sections,
 mentions, table captions, page breaks and bookmarks with internal links.
 
-**Status (November 21, 2026): complete candidate.** The shared language, its
+**Status (November 21, 2026): released.** The shared language, its
 causal model, journal, persistence, Wasm/SDK selection and relay rooms exist and
 converge exactly, and every V4 slice has its own shared commands, Wasm/TS surface
 and toolbar controls: the [inline commands](#shared-inline-commands-text-language-mentions-image-links),
@@ -14,7 +14,9 @@ and the [structure commands](#structure-commands-sections-page-breaks-table-capt
 qualified in Chromium, Firefox and WebKit by the shared-browser harness. Generic
 shared editing (typing, inline formats, structure commands, clipboard, history,
 checkpoints, relay frames) also works on V4 documents. What is still open is in
-[Remaining work](#remaining-work); V4 itself remains an unreleased candidate.
+[Remaining work](#remaining-work). V4 is a released, frozen rich language
+([RICH_LANGUAGE_V4.md](RICH_LANGUAGE_V4.md)); shared V4 is selected explicitly
+and never by default.
 
 ## Selector
 
@@ -292,8 +294,12 @@ removal and the command are one Undo step. Keyboard: Backspace at a summary star
 unwraps the section, Delete at a summary end enters an open body, Backspace at the
 first body start moves to the summary end, Backspace in an empty caption removes
 it (other caption boundaries do nothing), Enter in a caption inserts a line break
-and Enter at an open summary caret inserts one empty first body paragraph (a
-collapsed summary is left unchanged until the open-state command exists). The
+and Enter at any summary caret is the local `enterDetailsBody`: one guarded batch
+inserts one empty first body paragraph, expands a collapsed section in the same
+batch (`insert_blocks` then `set_details_open {open:true}`), places the caret in
+the new paragraph and clears pending formats, so it is one writer-local Undo step
+that restores the collapsed section (an owner without the block-field commands
+leaves a collapsed summary unchanged; Enter with a range in a summary does nothing). The
 `@breditor/editor` shared V4 sessions get all of this through their stock toolbar
 and `sharedSlashCommands`. The shared controller now also injects the local
 `richPageBreakStyles` (re-exported additively from the `rendering` subpath), so a
@@ -361,8 +367,8 @@ node-select it, instead of a zero-height block.
   controls (inline, block-field and structure sections above), qualified in all
   three engines by `v4-inline.spec.mjs`, `v4-block-fields.spec.mjs` and
   `v4-structure.spec.mjs`. Still open: shared interchange that reports V4
-  capabilities (until then shared imports keep the V1–V3 conversions), and Enter
-  at a collapsed summary expanding the section (the structure keyboard handling
-  predates the open-state command and leaves a collapsed summary unchanged).
+  capabilities (until then shared imports keep the V1–V3 conversions). Enter at a
+  collapsed summary now expands the section and enters its body in one guarded
+  step, like the local `enterDetailsBody`.
 - A second concurrent caption stays hidden by the projection (decision and reasons
   under [Structure commands](#structure-commands-sections-page-breaks-table-captions)).

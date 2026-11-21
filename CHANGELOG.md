@@ -6,6 +6,28 @@ its durable formats and Wasm transport.
 
 ## Unreleased
 
+- **Rich language V4 is released.** V4 is no longer a "frozen candidate": it is a
+  supported, explicitly selected rich language alongside V1–V3, locally and in
+  shared rooms, with the same release scope as V1–V3. The freeze guarantees are
+  unchanged (any grammar change is a new V5; the lock and golden checkpoint stay
+  as they are). Defaults are unchanged: an omitted `richLanguage` still selects
+  language 1 in every API. No public identifier was renamed (none carried a
+  "candidate" name). Docs, READMEs and TSDoc drop the "candidate", "unreleased"
+  and "local-only" wording; `docs/COMPATIBILITY.md` adds a "Rich language
+  releases" policy and the V4 model 14 / journal 15 binding. Additive: the
+  shared session `configuration` option type now also accepts
+  `SharedProfileConfigurationV4` (it already worked at runtime), and
+  `scripts/check-collaboration-runtime-surface.mjs` now also requires the shared
+  V4 block-field and structure exports (`v4_block_fields_version`,
+  `set_details_open`, `bookmark_index_json`, `structure_commands_v4_version`).
+- **Shared V4 Enter at a collapsed section summary** now behaves like the local
+  `enterDetailsBody`: one guarded dispatch inserts an empty first body paragraph,
+  expands the section (`set_details_open`) in the same batch, moves the caret
+  there and clears pending formats, as one writer-local Undo step (previously a
+  collapsed summary ignored Enter). Owners without the V4 block-field commands
+  keep the old no-op. Covered by a Rust contract, a vitest case and
+  `experiments/shared-browser/v4-structure.spec.mjs` in Chromium, Firefox and
+  WebKit.
 - Add the **shared rich V4 inline commands**: text language, mentions and image
   links, each one native shared command and one Undo step with the local V4
   semantics. Rust `RichReplica::set_text_language_json_guarded`,

@@ -7,9 +7,9 @@ use breditor_collaboration::{
     rich_replica::{
         Command, PendingFormatsUpdate, RichReplica, SelectionUpdate, SharedRichProfile,
         actions::{
-            AddTableCaption, DeleteBlock, DeletePageBreak, DeleteText, InsertPageBreak, InsertRow,
-            InsertText, MoveBlock, RemoveTableCaption, SetBlockLayout, SetHeading, UnwrapDetails,
-            WrapDetails,
+            AddTableCaption, DeleteBlock, DeletePageBreak, DeleteText, InsertBlocks,
+            InsertPageBreak, InsertRow, InsertText, MoveBlock, RemoveTableCaption, SetBlockLayout,
+            SetDetailsOpen, SetHeading, UnwrapDetails, WrapDetails,
         },
         selection::{Selection, TextPoint},
     },
@@ -507,6 +507,83 @@ fn caption_removal_racing_typing_in_it_converges_and_undo_restores_the_typing() 
         future(&p, peer)?;
     }
     Ok(())
+}
+
+/// Enter at a collapsed summary caret (the local `enterDetailsBody`): one guarded batch
+/// inserts a fresh first body paragraph and expands the section, places the caret there,
+/// and is exactly one writer-local Undo step that restores the collapsed section.
+#[test]
+fn enter_at_a_collapsed_summary_expands_and_enters_the_body_in_one_undo_step() -> Result {
+    let (p, mut all) = peers(2)?;
+    let open =
+        |value: bool| Command::SetDetailsOpen(SetDetailsOpen { block: "sec".into(), open: value });
+    let enter = |open_too: bool| {
+        let mut commands = vec![Command::InsertBlocks(InsertBlocks {
+            parent: Some("sec".into()),
+            before: Some("body-1".into()),
+            nodes: vec![para("n", "")],
+        })];
+        if open_too {
+            commands.push(open(true));
+        }
+        commands
+    };
+    {
+        let a = &mut all[0];
+        assert!(a.apply(vec![open(false)])?);
+        a.set_selection(Some(&caret("sum", 2)))?;
+        let collapsed = ast(a)?;
+        let count = a.undo_count();
+        assert!(a.apply_guarded(
+            &a.observe()?,
+            enter(true),
+            SelectionUpdate::Set(Some(caret("n", 0))),
+            PendingFormatsUpdate::Set(None),
+        )?);
+        assert_eq!(a.undo_count(), count + 1, "one Undo step, as locally");
+        let section = node(a, "sec")?;
+        assert_eq!(section["properties"]["breditor/details-open"], json!(true));
+        assert_eq!(ids(&section), ["sum", "n", "body-1", "body-2"]);
+        assert_eq!(plain(&node(a, "sum")?), "More", "the summary is never split");
+        assert_eq!(a.selection()?, Some(caret("n", 0)));
+        assert!(a.undo()?);
+        assert_eq!(ast(a)?, collapsed);
+        assert!(a.redo()?);
+        assert_eq!(node(a, "sec")?["properties"]["breditor/details-open"], json!(true));
+    }
+    // A concurrent collapse by another writer and typing into the new paragraph converge.
+    sync(&mut all)?;
+    assert!(all[1].apply(vec![open(false)])?);
+    assert!(all[0].apply(vec![insert("n", 0, "typed")])?);
+    sync(&mut all)?;
+    assert_eq!(plain(&node(&all[1], "n")?), "typed");
+    assert_eq!(node(&all[1], "sec")?["properties"]["breditor/details-open"], Value::Null);
+    // An open section takes the same batch without the open-state command.
+    {
+        let b = &mut all[1];
+        assert!(b.undo()?);
+        b.set_selection(Some(&caret("sum", 4)))?;
+        let count = b.undo_count();
+        let mut commands = enter(false);
+        if let Command::InsertBlocks(insert) = &mut commands[0] {
+            insert.nodes = vec![para("m", "")];
+            insert.before = Some("n".into());
+        }
+        assert!(b.apply_guarded(
+            &b.observe()?,
+            commands,
+            SelectionUpdate::Set(Some(caret("m", 0))),
+            PendingFormatsUpdate::Set(None),
+        )?);
+        assert_eq!(b.undo_count(), count + 1);
+        assert_eq!(ids(&node(b, "sec")?)[..3], ["sum".to_owned(), "m".to_owned(), "n".to_owned()]);
+    }
+    sync(&mut all)?;
+    for peer in &mut all {
+        future(&p, peer)?;
+    }
+    sync(&mut all)?;
+    undo_all(&mut all)
 }
 
 #[test]

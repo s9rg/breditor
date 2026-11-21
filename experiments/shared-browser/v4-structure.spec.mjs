@@ -98,3 +98,24 @@ test("table captions add with a caret, type, converge with a concurrent add and 
  await expect(page.locator("#a caption[data-rich-table-caption]")).toHaveCount(0);
  expect(await page.evaluate(async()=>{const t=window.v4;await t.synchronize();return {selection:t.a.view().selection,b:JSON.parse(t.b.documentJson()).root.children.find(node=>node.type==="breditor/table").children.length,errors:t.errors};})).toEqual({selection:{kind:"node",block:"tbl"},b:2,errors:[]});
 });
+
+test("Enter at a collapsed summary expands the section and enters its body in one guarded step, like enterDetailsBody",async({page})=>{
+ // Collapse the seeded section through the shared open-state command, then press Enter mid-summary.
+ const seeded=await page.evaluate(async()=>{const t=window.v4;t.a.setDetailsOpen("sec",false);await t.synchronize();t.da.select(t.caret("sec-sum",2));return {depth:t.a.view().undoDepth,b:t.outline(t.b)};});
+ expect(seeded.b).toContain("details#sec[details-summary#sec-sum['More'],paragraph#inside['Inside']]");
+ await expect(page.locator('#b details[data-rich-details]:not([open]) > summary[data-rich-text="sec-sum"]')).toHaveText("More");
+ await page.keyboard.press("Enter");
+ const entered=await page.evaluate(async depth=>{const t=window.v4;await t.synchronize();const sec=JSON.parse(t.b.documentJson()).root.children[2],fresh=sec.children[1].properties["breditor/block-id"];
+  return {open:sec.properties["breditor/details-open"]??null,summary:sec.children[0].children.map(r=>r.text).join(""),body:sec.children.slice(1).map(n=>n.children.map(r=>r.text).join("")),
+   caret:t.a.view().selection?.focus?.block===fresh,fresh,steps:t.a.view().undoDepth-depth,same:t.a.documentJson()===t.b.documentJson(),errors:t.errors};},seeded.depth);
+ expect(entered).toMatchObject({open:true,summary:"More",body:["","Inside"],caret:true,steps:1,same:true,errors:[]});
+ // The caret is in the fresh first body paragraph: typing lands there and renders in both panes.
+ await page.keyboard.type("Body");
+ await expect(page.locator(`#a details[data-rich-details][open] > p[data-rich-text="${entered.fresh}"]`)).toHaveText("Body");
+ await page.evaluate(()=>window.v4.synchronize());
+ await expect(page.locator(`#b details[data-rich-details][open] > p[data-rich-text="${entered.fresh}"]`)).toHaveText("Body");
+ // Undo back to the seeded depth: the section is collapsed again on both writers with its original body.
+ const undone=await page.evaluate(async depth=>{const t=window.v4;while(t.a.view().undoDepth>depth)t.a.undo();await t.synchronize();return {b:t.outline(t.b),open:JSON.parse(t.b.documentJson()).root.children[2].properties["breditor/details-open"]??null,errors:t.errors};},seeded.depth);
+ expect(undone).toEqual({b:seeded.b,open:null,errors:[]});
+ await expect(page.locator('#a details[data-rich-details]:not([open]) > summary[data-rich-text="sec-sum"]')).toHaveText("More");
+});
