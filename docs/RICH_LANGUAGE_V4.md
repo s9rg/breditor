@@ -54,11 +54,11 @@ format 4, causal model 14 and journal 15 reuse this frozen grammar and its
 fingerprints unchanged. `openSharedEditor`, `openSharedSearchEditor`,
 `openSharedDocumentEditor`, `openSharedDocumentSearchEditor` and the shared React
 components accept `richLanguage: 4`; the relay has explicit V4 rooms. Every slice
-replicates and persists exactly and is edited with the generic shared commands;
-shared per-slice commands and toolbar controls exist for list numbering,
-bookmarks/internal links, section open state, text language, mentions (with the
-shared `@` menu) and image links; section wrap/unwrap, page breaks and table
-captions still use only the generic shared commands. Shared
+replicates and persists exactly, works with the generic shared commands, and has
+its own shared per-slice commands and toolbar controls (list numbering,
+bookmarks/internal links, section wrap/unwrap/open state, text language, mentions
+with the shared `@` menu, image links, page breaks and table captions; see
+[SHARED_RICH_V4.md](SHARED_RICH_V4.md)). Shared
 interchange owners still do not report list numbering, text language, image
 links, sections, mentions or table captions, so imports into a shared owner keep
 the original `list-numbering` notices, keep dropping `lang` silently, keep the
@@ -747,8 +747,8 @@ V1–V3 locks are unchanged.
 ### Not included
 
 Section anchors for fragment links, `name`-grouped exclusive accordions, custom
-disclosure markers, an in-surface toggle button and the slice's shared command (shared V4 replicates the slice's
-content; see [SHARED_RICH_V4.md](SHARED_RICH_V4.md)).
+disclosure markers and an in-surface toggle button. (The shared commands are in
+[SHARED_RICH_V4.md](SHARED_RICH_V4.md).)
 
 ### Tests
 
@@ -1122,9 +1122,8 @@ are unchanged.
 
 Caption position choice (top), `<caption>`-level summaries or long descriptions,
 table titles in the accessibility tree beyond native `<caption>` semantics, caption
-drafts in `insertTable`, table/cell presentation, accessible resize handles and
-the slice's shared command (shared V4 replicates
-the slice's content; see [SHARED_RICH_V4.md](SHARED_RICH_V4.md)).
+drafts in `insertTable`, table/cell presentation and accessible resize handles.
+(The shared commands are in [SHARED_RICH_V4.md](SHARED_RICH_V4.md).)
 
 ### Tests
 
@@ -1233,9 +1232,8 @@ bookmark slice moved it again (see [Slice 8](#fingerprint-current)).
 ### Not included
 
 Page numbers, running headers/footers, breaks inside containers, column breaks,
-keep-with-next or avoid-break document properties, section-specific page setup and
-the slice's shared command (shared V4 replicates
-the slice's content; see [SHARED_RICH_V4.md](SHARED_RICH_V4.md)).
+keep-with-next or avoid-break document properties and section-specific page setup.
+(The shared commands are in [SHARED_RICH_V4.md](SHARED_RICH_V4.md).)
 
 ### Tests
 

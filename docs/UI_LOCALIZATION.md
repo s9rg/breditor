@@ -224,10 +224,11 @@ with panels from another.
 ## Not covered
 
 - Text-part language in rich V1–V3: those languages have no inline `lang`
-  format. The unreleased local-only candidate rich V4 adds the native
+  format. The unreleased candidate rich V4 adds the native
   `breditor/text-language` format (`lang` on spans, a **Language** toolbar
-  control and HTML `lang` interchange); see
-  [RICH_LANGUAGE_V4.md](RICH_LANGUAGE_V4.md). Shared editing stays on V3.
+  control and HTML `lang` interchange), locally and in shared V4; see
+  [RICH_LANGUAGE_V4.md](RICH_LANGUAGE_V4.md) and
+  [SHARED_RICH_V4.md](SHARED_RICH_V4.md).
 - Translations: only English ships. The Arabic catalog in
   `packages/breditor-editor/tests/ui_locale_ar.ts` is test-only.
 - Thrown `Error.message` text stays English by design (see above). Native

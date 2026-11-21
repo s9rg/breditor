@@ -5,24 +5,16 @@ that use any of the eight frozen V4 slices ([RICH_LANGUAGE_V4.md](RICH_LANGUAGE_
 ordered-list numbering, text-run language, image links, collapsible sections,
 mentions, table captions, page breaks and bookmarks with internal links.
 
-**Status (November 20, 2026): foundation.** The shared language, its causal model,
-journal, persistence, Wasm/SDK selection and relay rooms exist and converge
-exactly. Generic shared editing (typing, inline formats, structure commands,
-clipboard, history, checkpoints, relay frames) works on V4 documents. The
-structure commands (wrap/unwrap sections, page breaks, table captions) are
-[below](#structure-commands-sections-page-breaks-table-captions); the other
-per-slice shared commands and toolbar controls (set list numbering, set text
-language, image link, open sections, insert mention, bookmark/rename/link) are
-the next round. Until then V4 slice values arrive only by seeding,
-restore, rich clipboard and generic block insertion, and are then edited with
-the generic commands below. The browser harness qualification of shared V4 is
-also still open (see [Remaining work](#remaining-work)). The inline slice commands
-(text language, mentions with the `@` menu, image links) have since landed; see
-[Shared inline commands](#shared-inline-commands-text-language-mentions-image-links).
-
-**Block fields (same day).** List numbering, bookmarks with internal links and
-section open state now have shared commands and toolbar controls; see
-[Block-field commands](#block-field-commands-list-numbering-bookmarks-sections).
+**Status (November 21, 2026): complete candidate.** The shared language, its
+causal model, journal, persistence, Wasm/SDK selection and relay rooms exist and
+converge exactly, and every V4 slice has its own shared commands, Wasm/TS surface
+and toolbar controls: the [inline commands](#shared-inline-commands-text-language-mentions-image-links),
+the [block-field commands](#block-field-commands-list-numbering-bookmarks-sections)
+and the [structure commands](#structure-commands-sections-page-breaks-table-captions),
+qualified in Chromium, Firefox and WebKit by the shared-browser harness. Generic
+shared editing (typing, inline formats, structure commands, clipboard, history,
+checkpoints, relay frames) also works on V4 documents. What is still open is in
+[Remaining work](#remaining-work); V4 itself remains an unreleased candidate.
 
 ## Selector
 

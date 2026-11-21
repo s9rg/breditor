@@ -1,5 +1,93 @@
 # Breditor V1 release preparation
 
+## November 21 catalog review
+
+**Status: not release ready.** The Tiptap and CKEditor catalogs were re-reviewed
+against the [capability audit](v1-readiness.json), which now sits at baseline
+`5a0b68f` with 57 groups: 10 implemented slices, 36 partial and 11 missing. The
+new count is not a regression. Eleven rows were added for capabilities the
+catalogs have and the audit did not cover; nothing was removed. All 13
+qualification gates are still open.
+
+### Since November 20 (s9rg/breditor PRs 12–14)
+
+- **Shared browser qualification restored.** The research feasibility crate
+  builds for wasm32 again, shared-browser WebKit runs in bounded groups, and the
+  suite passes 369 / 369 across Chromium, Firefox and WebKit, including new
+  two-writer specs for slash commands, AI rewrite, input rules and every V4 slice.
+- **Markdown export.** Formatted runs, code spans and links next to single spaces
+  now export as Markdown instead of an HTML block.
+- **V4 frozen and saveable.** The V4 grammar and stock fingerprint are locked,
+  and the durable local store writes V4 records bound to that fingerprint.
+- **Shared V4.** Shared rooms select V4 explicitly (model 14, journal 15) with
+  deterministic merge repairs, and every slice has shared commands, Wasm/TS
+  surface and toolbar controls (see [SHARED_RICH_V4.md](SHARED_RICH_V4.md)).
+  Along the way, list start changes on seeded lists and splits of styled lists,
+  both previously refused in shared editors, now work, and shared editors render
+  bookmarks, internal links and page breaks.
+
+### What the review found
+
+Catalogs reviewed: Tiptap 3.35 (96 entries in the docs catalog, plus Pages,
+Conversion, AI Toolkit, Compare and Composable Docs) and CKEditor 5 v49.1 (the
+feature index, digest and about 90 feature pages).
+
+- **No row moves to `implemented`.** Shared import and export still use the
+  V1–V3 conversions (V4 features are not reported by shared interchange), V4 is
+  an unreleased candidate, and each V4 row still bundles missing capabilities.
+- **Eight V4 rows were rewritten** (list-properties, mentions-slash,
+  widgets-and-embeds, pagination, document-utilities, localization-and-bidi,
+  advanced-images, advanced-tables): their text still said V4 was local-only.
+  The ai-and-language-tools, drag-and-drop and toolbar-and-context-ui rows had
+  self-contradictory sentences, now fixed.
+- **New rows:** list-structure-advanced, code-syntax-highlighting,
+  text-transformations, formatting-productivity (special characters, case change,
+  format painter, named styles), table-of-contents, editing-aids (show blocks,
+  invisible characters, minimap, title, focus styling), ruby-annotations,
+  autosave (partial), editor-shell-and-help (menu bar, layouts, shortcut help),
+  ai-agents-and-server-api, and security-and-crash-recovery (partial).
+- **Upstream moves worth knowing.** Tiptap 3.x made Details, Mathematics,
+  Emoji, Drag handle, Find and replace, Table of contents, Unique ID and File
+  handler open source, so the open-source baseline is broader. CKEditor now
+  marks many formerly open-source features as premium (bookmarks, find and
+  replace, list properties, line height, page break, image resize, column resize,
+  word count, special characters), which matters for the licensing comparison.
+- **Measured differences to record.** Breditor bookmarks attach to blocks while
+  CKEditor's are inline anchors; table captions sit after the rows while CKEditor
+  defaults to the top; text language emits `lang` only, while CKEditor also sets
+  `dir`.
+
+### Exclusions awaiting approval
+
+The catalog-coverage gate needs each intentional difference approved. Proposed:
+
+- **Never store executable or arbitrary markup:** General HTML Support, HTML
+  embed, full-page HTML and generic `<span style>` text styles.
+- **No implicit remote fetches or inlined uploads:** insert image by URL without
+  a policy, Base64 upload, and vendor file managers (CKBox, CKFinder, Uploadcare,
+  image optimizer).
+- **Different data formats and parsing:** XML data output, and automatic
+  Markdown detection on plain-text paste.
+- **Out of scope:** email layouts and export with inline styles, whiteboard, and
+  nested tables.
+- **Flow editor, not paginated:** measured pagination is not done; see
+  [PAGINATION_AND_PRINT.md](PAGINATION_AND_PRINT.md).
+
+### Recommended next order
+
+1. **Shared V4 interchange** so shared import and export report the V4 features,
+   plus Enter on a collapsed shared summary. These are the last shared V4 gaps.
+2. **Approve or reject the exclusions above**, then write per-capability
+   acceptance cases (catalog-coverage gate).
+3. **Automate release CI** over every distributed feature, now that shared
+   qualification runs again.
+4. **Qualification gates** as before: physical input, assistive technology and
+   touch, measured budgets, dependency and license review, SDK documentation and
+   a real application pilot.
+5. **Remaining parity**, highest-visibility first: restricted editing, multiple
+   roots, table and cell styling, DOCX import, emoji and math, footnotes, then the
+   new rows.
+
 ## November 20 parity status
 
 **Status: not release ready.** Feature parity work advanced substantially; no
@@ -47,6 +135,8 @@ native-contract designs, not UI additions. The largest partial gaps are:
 - **Shared rich V4.** Every V4 slice is local-only. Shared editing stays on V3 and
   refuses V4, so collaborative users get none of the eight slices until a shared
   V4 model, journal and replay contract exists.
+  *(Superseded November 21: shared V4 and all its slice commands landed in PRs
+  13–14.)*
 - **Advanced tables and images.** Captions and resize handles exist; table and
   cell presentation panels, inline or wrapped images, responsive variants and
   safe remote ingestion do not.
@@ -66,6 +156,8 @@ native-contract designs, not UI additions. The largest partial gaps are:
   `review` and `search_reads`), so the `experiments/shared-browser` harness cannot
   build its runtime. Shared slash commands, shared AI tools and shared code Enter
   are covered only by Rust contracts and fake-owner tests.
+  *(Superseded November 21: fixed in PR 13; the shared-browser suite runs
+  again.)*
 - **WebKit context limit.** Playwright's macOS WebKit stops opening pages after
   about 63 contexts in one browser instance. The rich-browser config works around
   it by grouping; the underlying cause is environmental and unexplained.
