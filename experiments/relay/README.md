@@ -110,6 +110,7 @@ breditor-collab-relay init LOG PROFILE_JSON DOCUMENT_JSON OWNER
 breditor-collab-relay init-v2 LOG PROFILE_JSON DOCUMENT_JSON OWNER
 breditor-collab-relay init-standard-v2 LOG PROFILE_JSON DOCUMENT_JSON OWNER
 breditor-collab-relay serve LOG AUTH_JSON 127.0.0.1:PORT
+breditor-collab-relay serve-documents ROOMS_DIR AUTH_JSON DOCUMENT_API_JSON 127.0.0.1:PORT
 ```
 
 `token` issues a new account bearer token and its digest. Give only the secret to
@@ -250,6 +251,26 @@ engine), including 81 real-process relay/asset/presence cases; 229 native editor
 and 20 unique native relay contracts; strict native/Wasm lints; generated and
 installed TypeScript; and real-Wasm installed archive runtime checks. All WebKit
 files run once in fresh processes, with no retries or altered assertions/deadlines.
+
+## Opt-in document server API, injection and webhooks
+
+`breditor-collab-relay serve-documents ROOMS_DIR AUTH_JSON DOCUMENT_API_JSON 127.0.0.1:PORT`
+(or `server::DocumentServer`) serves a directory of rooms with their original
+per-room WebSocket/asset protocol under `/rooms/{room}/…` plus an authenticated
+`/documents/v1` REST API: list readable rooms, canonical JSON snapshots with an
+exact causal `revision`, owner-only archival into `archive/` (no bytes deleted,
+refused while sockets are live), materialized comment threads, and room
+creation through the explicit `Room::create*` constructors. Server-side content
+injection applies an allowlisted batch of native shared `Command`s at an exact
+`baseRevision` (stale requests get `409`) as a configured service principal
+that owns an ordinary registered writer: one native history group, admitted by
+`Room::admit` and delivered to connected editors as a normal remote change.
+HMAC-SHA256-signed webhooks (timestamped, replay window, debounced document
+changes, comment created/resolved, room created/deleted) use bounded queues,
+retries with backoff and an administrator-only delivery log, off the hot path.
+Every capability is off unless the `breditor/relay-document-api` V1 file names
+it; the existing `serve`, `router*` constructors and log formats are unchanged.
+See [DOCUMENT_SERVER_API.md](../../docs/DOCUMENT_SERVER_API.md).
 
 ## Room and account authority
 

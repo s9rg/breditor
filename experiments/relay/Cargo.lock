@@ -188,6 +188,7 @@ dependencies = [
  "base64",
  "breditor-collab-feasibility",
  "flate2",
+ "futures-util",
  "getrandom 0.4.3",
  "image",
  "serde",
@@ -195,6 +196,7 @@ dependencies = [
  "sha2",
  "thiserror 2.0.20",
  "tokio",
+ "tokio-tungstenite",
 ]
 
 [[package]]

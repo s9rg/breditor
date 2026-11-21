@@ -26,6 +26,11 @@ image = { version = "=0.25.10", default-features = false, features = ["png", "jp
 axum = { version = "=0.8.9", default-features = false, features = ["http1", "ws", "tokio"], optional = true }
 tokio = { version = "=1.53.3", features = ["rt-multi-thread", "macros", "net", "sync", "time", "signal"], optional = true }
 
+[dev-dependencies]
+# Already locked through axum's WebSocket support; used only by the document-server test client.
+tokio-tungstenite = "=0.29.0"
+futures-util = { version = "=0.3.34", default-features = false, features = ["sink"] }
+
 [features]
 server = ["dep:axum", "dep:tokio", "dep:base64"]
 

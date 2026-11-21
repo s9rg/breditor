@@ -14,6 +14,8 @@ mod asset_references;
 mod atomic_transport_v2;
 mod backup;
 mod deployment_binding;
+mod document_api;
+pub use document_api::DocumentSnapshot;
 mod document_presence;
 mod language_v4;
 mod layout_v3;

@@ -66,6 +66,9 @@ impl Authentication {
         }
         Ok(Self { accounts, origins })
     }
+    pub(super) fn has_account(&self, principal: &str) -> bool {
+        self.accounts.contains_key(principal)
+    }
     pub(super) fn origin(&self, origin: &str) -> bool {
         self.origins.contains(origin)
     }

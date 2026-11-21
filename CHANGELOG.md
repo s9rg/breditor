@@ -6,6 +6,20 @@ its durable formats and Wasm transport.
 
 ## Unreleased
 
+- Add an opt-in **document server API** to the reference relay
+  (`serve-documents`, `server::DocumentServer`, configuration
+  `breditor/relay-document-api` V1, everything off by default): authenticated
+  REST listing, canonical JSON snapshots with an exact causal revision, room
+  creation and retained archival, comment-thread reads; **server-side content
+  injection** of allowlisted native shared commands at an exact base revision
+  (stale requests refused) by a service principal's ordinary writer, admitted
+  through the same durable writer-group path and seen by connected editors as a
+  remote change; and **HMAC-SHA256-signed webhooks** (timestamp + replay window,
+  debounced `document.changed`, `comment.created`/`comment.resolved`,
+  `room.created`/`room.deleted`) with bounded queues, retries with backoff and a
+  delivery log. Existing relay routers, CLI commands and log formats are
+  unchanged. See [docs/DOCUMENT_SERVER_API.md](docs/DOCUMENT_SERVER_API.md).
+
 - Add an opt-in **editor shell** for local, shared and SDK rich editors
   (`mountRichMenuBar`, `mountRichShortcutHelp`, `mountRichFloatingMenu`,
   `mountRichBalloonBlockLayout`; `mountMenuBar` / `mountShortcutHelp` /

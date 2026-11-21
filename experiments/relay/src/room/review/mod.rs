@@ -14,6 +14,7 @@ mod resume;
 mod resume_observer;
 #[cfg(test)]
 mod tests;
+mod threads;
 mod types;
 use super::Room;
 use crate::{Error, Result, access};
