@@ -83,7 +83,14 @@ export type SharedCommand=
  |Op<"set_image_caption",{block:string;caption:SharedParagraph|null}>
  |Op<"resize_image",{block:string;size:readonly[number,number]|null}>
  |Op<"insert_mention",{anchor:RichPoint;focus:RichPoint;mention:{kind:"user"|"page"|"tag";id:string;label:string}}>
- |Op<"set_image_link",{block:string;href:string|null;new_window?:boolean}>;
+ |Op<"set_image_link",{block:string;href:string|null;new_window?:boolean}>
+ /** Explicit V4 structure commands (model 14 only; see `SharedRichEditor.supportsSharedStructureV4`). */
+ |Op<"wrap_details",{first:string;last:string;wrapper:string;summary:string;open:boolean}>
+ |Op<"unwrap_details",{wrapper:string}>
+ |Op<"insert_page_break",{block:string;before:string|null}>
+ |Op<"delete_page_break",{block:string;paragraph:string|null}>
+ |Op<"add_table_caption",{block:string;caption:string}>
+ |Op<"remove_table_caption",{block:string}>;
 export interface SharedDispatch {commands:readonly SharedCommand[];selectionUpdate?:{kind:"map"}|{kind:"set";value:RichSelection|null};pendingFormatsUpdate?:{kind:"map"}|{kind:"set";value:readonly FormatLiteral[]|null}}
 export type PasteTarget={kind:"text"}|{kind:"grid"}|({kind:"flow"}&Position);
 export type Navigation="next"|"previous"|"left"|"right"|"up"|"down"|"rowStart"|"rowEnd"|"tableStart"|"tableEnd";
@@ -194,6 +201,8 @@ export interface SharedRustOwner extends SharedReviewRustCapability,SharedReview
  text_language_version?():string;
  image_link_version?():string;
  details_version?():string;
+ /** "1" when dispatch admits the shared V4 structure commands (sections, page breaks, table captions). */
+ structure_commands_v4_version?():string;
  mention_version?():string;
  table_caption_version?():string;
  page_break_version?():string;

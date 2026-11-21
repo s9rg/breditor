@@ -18,6 +18,7 @@ add("/inline-presentation-fixture.mjs",resolve(root,"experiments/shared-browser/
 add("/standard-inline-fixture.mjs",resolve(root,"experiments/shared-browser/standard-inline-fixture.mjs"));
 add("/structural-fixture.mjs",resolve(root,"experiments/shared-browser/structural-fixture.mjs"));
 add("/v4-fixture-block-fields.mjs",resolve(root,"experiments/shared-browser/v4-fixture-block-fields.mjs"));
+add("/v4-fixture-structure.mjs",resolve(root,"experiments/shared-browser/v4-fixture-structure.mjs"));
 add("/contract-startup.mjs",resolve(root,"experiments/shared-browser/contract-startup.mjs"));
 add("/v4-fixture-inline.mjs",resolve(root,"experiments/shared-browser/v4-fixture-inline.mjs"));
 if(process.env["BREDITOR_NETWORK_BOOTSTRAP"])add("/relay-bootstrap.json",resolve(process.env["BREDITOR_NETWORK_BOOTSTRAP"]),"application/json");

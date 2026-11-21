@@ -97,6 +97,17 @@ impl TargetKinds {
                     },
                 )?;
             }
+            Command::WrapDetails(value) => {
+                self.insert(&value.wrapper, "breditor/details")?;
+                self.insert(&value.summary, "breditor/details-summary")?;
+            }
+            Command::InsertPageBreak(value) => self.insert(&value.block, "breditor/page-break")?,
+            Command::DeletePageBreak(value) => {
+                if let Some(paragraph) = &value.paragraph {
+                    self.insert(paragraph, "breditor/paragraph")?;
+                }
+            }
+            Command::AddTableCaption(value) => self.insert(&value.caption, "breditor/paragraph")?,
             _ => return Ok(false),
         }
         Ok(true)

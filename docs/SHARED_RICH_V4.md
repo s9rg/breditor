@@ -9,10 +9,11 @@ mentions, table captions, page breaks and bookmarks with internal links.
 journal, persistence, Wasm/SDK selection and relay rooms exist and converge
 exactly. Generic shared editing (typing, inline formats, structure commands,
 clipboard, history, checkpoints, relay frames) works on V4 documents. The
+structure commands (wrap/unwrap sections, page breaks, table captions) are
+[below](#structure-commands-sections-page-breaks-table-captions); the other
 per-slice shared commands and toolbar controls (set list numbering, set text
-language, image link, wrap/unwrap/open sections, insert mention, table caption,
-insert page break, bookmark/rename/link) are **not** part of this foundation;
-they are the next round. Until then V4 slice values arrive only by seeding,
+language, image link, open sections, insert mention, bookmark/rename/link) are
+the next round. Until then V4 slice values arrive only by seeding,
 restore, rich clipboard and generic block insertion, and are then edited with
 the generic commands below. The browser harness qualification of shared V4 is
 also still open (see [Remaining work](#remaining-work)). The inline slice commands
@@ -231,6 +232,82 @@ that splits an ordered list) writes its `list-style` and `list-reversed` fields 
 the native result, so the tail keeps the source list's style and counting order, as
 the local V4 owner does. These fields are prepared with the reserved list.
 
+## Structure commands: sections, page breaks, table captions
+
+Six shared commands give collapsible sections, page breaks and table captions the
+user-visible semantics of the local slice commands. Each is admitted only by an
+explicit model-14 owner (`shared V4 structure command requires model 14`
+otherwise), is one guarded dispatch and one writer-local Undo step, captures the
+frozen core action on the current projection and publishes only after the
+replica's projection equals the core result exactly. None may rely on a merge
+repair (the `require_no_new_v4_repairs` check applies), so a wrap that would put a
+page break in a section, an insertion anchored below the root or a second local
+caption are refused atomically.
+
+| Command (`Command::…`, TS `kind`) | Replica effect | Local equivalent |
+| --- | --- | --- |
+| `WrapDetails` (`wrap_details` `{first,last,wrapper,summary,open}`) | Births one section (root origin; `details-open: true` is an immutable creation default) and one empty summary text block whose immutable origin is **inside** its section; owned placements move the section to the range's slot and the summary and every wrapped block into it. Wrapped blocks keep identity, text and descendants. | `wrapDetails` |
+| `UnwrapDetails` (`unwrap_details` `{wrapper}`) | An owned `text-kind` contribution makes the summary a `breditor/paragraph` (same identity, runs and formats), owned placements lift summary and body to the section's slot, and the section is hidden (`deletions`). A derived (repair) summary is refused. | `unwrapDetails` |
+| `InsertPageBreak` (`insert_page_break` `{block,before}`) | Births one page break with an owned root occurrence before `before` (or appended). There is no parent field: a non-root anchor is refused by the core capture. | `insertPageBreak` |
+| `DeletePageBreak` (`delete_page_break` `{block,paragraph}`) | Hides the page break; `paragraph` is the fresh empty floor required only when it is the sole root child. A node-selected break is also deleted by the generic native atom deletion (Backspace/Delete). | `deletePageBreak` |
+| `AddTableCaption` (`add_table_caption` `{block,caption}`) | Births one empty caption paragraph whose origin is in the table's child order (rows are always projected first). A table that already shows a caption is refused, never replaced. | `addTableCaption` |
+| `RemoveTableCaption` (`remove_table_caption` `{block}`) | Hides the caption **and** every other live paragraph placed below the table (a concurrently added candidate the projection hides), so removal never surfaces a hidden caption. An absent caption is an admitted no-op. | `removeTableCaption` |
+
+**Layout of a lifted summary.** A summary owns no layout fields. After an unwrap it
+is a paragraph and may take layout (the layout audit admits fields on an owner
+born as a summary); if a later Undo makes it a summary again, those values stay
+causal but are not projected (like `list-style` on a bullet list). No repair is
+counted for this.
+
+**Concurrency.** Placement and register ordering decide every race; tests cover:
+a wrap racing typing inside and a heading conversion of a wrapped block (the edits
+land inside the section); an unwrap racing a move of a body block out and a move
+of another block into the section (the section disappears, the lifted blocks and
+the moved block converge on one root slot chosen by causal stamp; a block moved
+into the removed section is hidden with it and returns with selective Undo, as
+for blockquote unwraps); a page-break insertion racing a peer wrapping its anchor
+(the break stays at the root, the anchor moves into the section); concurrent
+caption additions plus a concurrent row insertion (rows first, exactly one caption
+shown); caption removal racing typing in it (Undo of the removal restores the
+caption with the concurrent text). Every peer converges, restarts exactly from its
+checkpoint and replays identical Undo/Redo; selective Undo of every writer returns
+to the exact seed.
+
+**Second concurrent caption.** The projection still hides a second concurrent
+caption candidate rather than placement suspending the losing move. Shared
+captions are born inside their table, so the only earlier occurrence placement
+could fall back to is the paragraph's root escape: suspension would surface the
+losing caption as a stray paragraph at the end of the document. It would also
+change the projection of already persisted model-14 states, and the placement
+grammar deliberately ignores child order and multiplicity. The repair stays;
+`remove_table_caption` removes hidden candidates so they cannot reappear.
+
+**Wasm and TypeScript.** The commands travel in the ordinary dispatch batch. The
+owner reports `structure_commands_v4_version()` (`"1"` on V4 owners).
+`SharedRichEditor.supportsSharedStructureV4()` reads it (with
+`supportsRichLanguageV4()`); `wrapDetails`, `unwrapDetails`, `insertPageBreak`,
+`deletePageBreak`, `addTableCaption` and `removeTableCaption` dispatch one request
+each with the local selection policy (a new caption gets the caret and cleared
+pending formats; removing a caption that holds the selection selects the table).
+`createSharedStructureControlsV4` (module `structure_v4.ts`, composed by
+`createRichSharedToolbarV4`) adds **Collapsible section** (`details`), **Remove
+collapsible section** (`undetails`), **Page break** (`page-break`) and **Table
+caption** (`table-caption`, pressed when the table has one); expanding/collapsing
+a section is a separate control. The standard shared slash menu adds
+**Collapsible section** and **Page break** (V4 toolbars only); `wrap_details` and
+`insert_page_break` are appended to `sharedSlashCommandKinds`, so the trigger
+removal and the command are one Undo step. Keyboard: Backspace at a summary start
+unwraps the section, Delete at a summary end enters an open body, Backspace at the
+first body start moves to the summary end, Backspace in an empty caption removes
+it (other caption boundaries do nothing), Enter in a caption inserts a line break
+and Enter at an open summary caret inserts one empty first body paragraph (a
+collapsed summary is left unchanged until the open-state command exists). The
+`@breditor/editor` shared V4 sessions get all of this through their stock toolbar
+and `sharedSlashCommands`. The shared controller now also injects the local
+`richPageBreakStyles` (re-exported additively from the `rendering` subpath), so a
+shared page break renders as the labelled dashed separator and can be clicked to
+node-select it, instead of a zero-height block.
+
 ## Tests
 
 - `crates/breditor-collaboration/tests/shared_v4_contracts.rs` (also compiled by the
@@ -272,20 +349,28 @@ the local V4 owner does. These fields are prepared with the reserved list.
   rule; V3 refusal; exact checkpoint replay of every writer.
 - `packages/breditor-editor/tests/shared_v4_block_fields.test.ts` and
   `experiments/shared-browser/v4-block-fields.spec.mjs` (two real Wasm writers).
+- `crates/breditor-collaboration/tests/shared_v4_structure_contracts.rs` (research
+  shim `experiments/collaboration/tests/shared_v4_structure_contracts.rs`): each
+  structure command as one Undo step, identity retention, root-only and
+  existing-caption refusals, the slash batch, two- and three-peer races listed
+  above, checkpoint restart with identical Undo/Redo, V3 refusal.
+- `packages/breditor-editor/tests/shared_structure_v4.test.ts`: capability,
+  `SharedRichEditor` requests, toolbar controls, slash items and keyboard
+  boundaries; `experiments/shared-browser/v4-structure.spec.mjs`: two real Wasm
+  writers in a V4 room (Chromium, Firefox, WebKit) rendering and editing sections,
+  page breaks and captions.
 - `packages/breditor-editor/tests`: explicit V4 selection for `openSharedEditor`
   and `openSharedDocumentEditor`, unknown languages refused, durable records
   accepting language 4 and refusing 5.
 
 ## Remaining work
 
-- Per-slice shared commands, their Wasm/TS commands and toolbar controls for the
-  structural slices: wrap/unwrap of sections, table captions and page breaks. The
-  inline slices (text language, mentions, image links) and the block-field slices
-  (list numbering, bookmarks/internal links, section open state) are done (see
-  above). Shared interchange that reports V4 capabilities (until then shared
-  imports keep the V1–V3 conversions).
-- Shared-browser (Playwright) qualification of the structural V4 slices;
-  `v4-inline.spec.mjs` and `v4-block-fields.spec.mjs` cover the others in all
-  three engines.
-- A second concurrent caption is currently hidden by the projection; a later
-  round may instead suspend the losing move in the placement resolver.
+- Every V4 slice now has its shared commands, Wasm/TS surface and toolbar
+  controls (inline, block-field and structure sections above), qualified in all
+  three engines by `v4-inline.spec.mjs`, `v4-block-fields.spec.mjs` and
+  `v4-structure.spec.mjs`. Still open: shared interchange that reports V4
+  capabilities (until then shared imports keep the V1–V3 conversions), and Enter
+  at a collapsed summary expanding the section (the structure keyboard handling
+  predates the open-state command and leaves a collapsed summary unchanged).
+- A second concurrent caption stays hidden by the projection (decision and reasons
+  under [Structure commands](#structure-commands-sections-page-breaks-table-captions)).

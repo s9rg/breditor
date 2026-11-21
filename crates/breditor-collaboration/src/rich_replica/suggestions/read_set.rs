@@ -475,6 +475,12 @@ impl<'a> ReadSet<'a> {
             Command::SetDetailsOpen(value) => {
                 self.property(&value.block, "breditor/details-open")?;
             }
+            Command::WrapDetails(value) => self.siblings(&value.first, &value.last)?,
+            Command::UnwrapDetails(value) => self.placed(&value.wrapper)?,
+            Command::InsertPageBreak(_) => self.children(None)?,
+            Command::DeletePageBreak(value) => self.placed(&value.block)?,
+            Command::AddTableCaption(value) => self.table_shape(&value.block)?,
+            Command::RemoveTableCaption(value) => self.table_shape(&value.block)?,
         }
         Ok(())
     }

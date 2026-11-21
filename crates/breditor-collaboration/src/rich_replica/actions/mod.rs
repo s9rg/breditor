@@ -59,6 +59,12 @@ mod v4_block_fields;
 mod wrap_blockquote;
 mod wrap_list;
 mod wrap_task_list;
+// Shared rich language V4 structure (sections, page breaks, table captions).
+mod delete_page_break;
+mod insert_page_break;
+mod table_caption_v4;
+mod unwrap_details;
+mod wrap_details;
 
 use crate::{Error, register::Stamp};
 pub use change_document_formats_v1::ChangeDocumentFormatsV1;
@@ -67,6 +73,7 @@ pub use clear_table_cells::ClearTableCells;
 pub use delete_block::DeleteBlock;
 pub use delete_column::DeleteColumn;
 pub use delete_horizontal_rule::DeleteHorizontalRule;
+pub use delete_page_break::DeletePageBreak;
 pub use delete_text::DeleteText;
 pub use exit_task_item::ExitTaskItem;
 pub use indent_list_items::IndentListItems;
@@ -76,6 +83,7 @@ pub use insert_column::InsertColumn;
 pub use insert_general_paragraph_v1::InsertGeneralParagraphV1;
 pub use insert_horizontal_rule::InsertHorizontalRule;
 pub use insert_mention::{InsertMention, MentionEntity};
+pub use insert_page_break::InsertPageBreak;
 pub use insert_row::InsertRow;
 pub use insert_text::InsertText;
 pub use join_list_items::JoinListItems;
@@ -116,13 +124,16 @@ pub use split_cell::SplitCell;
 pub use split_list_item::SplitListItem;
 pub use split_task_item::SplitTaskItem;
 pub use split_text_block::SplitTextBlock;
+pub use table_caption_v4::{AddTableCaption, RemoveTableCaption};
 pub use unwrap_blockquote::UnwrapBlockquote;
+pub use unwrap_details::UnwrapDetails;
 pub use unwrap_list::UnwrapList;
 pub use unwrap_task_list::UnwrapTaskList;
 pub use v4_block_fields::{
     ListStyleChange, RenameBookmark, SetBookmark, SetDetailsOpen, SetListNumbering,
 };
 pub use wrap_blockquote::WrapBlockquote;
+pub use wrap_details::WrapDetails;
 pub use wrap_list::WrapList;
 pub use wrap_task_list::{NewTaskItem, WrapTaskList};
 
@@ -252,6 +263,18 @@ pub enum Command {
     RenameBookmark(RenameBookmark),
     /// V4: expand or collapse one section (owned persisted open state).
     SetDetailsOpen(SetDetailsOpen),
+    /// V4: wrap retained sibling flow in a fresh section with an empty summary.
+    WrapDetails(WrapDetails),
+    /// V4: remove one section; its summary becomes a paragraph with the same identity.
+    UnwrapDetails(UnwrapDetails),
+    /// V4: insert one page break directly below the document root.
+    InsertPageBreak(InsertPageBreak),
+    /// V4: delete one page break with an explicit optional fresh floor paragraph.
+    DeletePageBreak(DeletePageBreak),
+    /// V4: add one fresh empty caption paragraph to a table without a caption.
+    AddTableCaption(AddTableCaption),
+    /// V4: remove a table's caption; an absent caption is a no-op.
+    RemoveTableCaption(RemoveTableCaption),
 }
 impl Command {
     pub(super) fn requires_structural_v2(&self) -> bool {
@@ -381,6 +404,12 @@ impl Command {
             Self::SetBookmark(value) => value.prepare(doc)?,
             Self::RenameBookmark(value) => value.prepare(doc, codec, document)?,
             Self::SetDetailsOpen(value) => value.prepare(doc)?,
+            Self::WrapDetails(value) => value.prepare(doc)?,
+            Self::UnwrapDetails(value) => value.prepare(doc)?,
+            Self::InsertPageBreak(value) => value.prepare(doc)?,
+            Self::DeletePageBreak(value) => value.prepare(doc)?,
+            Self::AddTableCaption(value) => value.prepare(doc)?,
+            Self::RemoveTableCaption(value) => value.prepare(doc)?,
         }
         Ok(())
     }
@@ -456,6 +485,12 @@ impl Command {
             Self::SetBookmark(value) => value.apply(doc, codec, document, stamp),
             Self::RenameBookmark(value) => value.apply(doc, codec, document, stamp, ordinal),
             Self::SetDetailsOpen(value) => value.apply(doc, codec, document, stamp),
+            Self::WrapDetails(value) => value.apply(doc, codec, document, stamp),
+            Self::UnwrapDetails(value) => value.apply(doc, codec, document, stamp),
+            Self::InsertPageBreak(value) => value.apply(doc, codec, document, stamp, ordinal),
+            Self::DeletePageBreak(value) => value.apply(doc, codec, document, stamp, ordinal),
+            Self::AddTableCaption(value) => value.apply(doc, codec, document, stamp, ordinal),
+            Self::RemoveTableCaption(value) => value.apply(doc, codec, document, stamp),
         }
     }
 }

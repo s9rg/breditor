@@ -184,6 +184,13 @@ pub(super) fn apply(
                             | "breditor/horizontal-rule"
                     )
                 );
+            // V4 sections are born by the shared section wrap (summary included).
+            let structural = structural
+                || (super::protocol::Protocol::from_codec(codec)?.v4()
+                    && matches!(
+                        node.value["type"].as_str(),
+                        Some("breditor/details" | "breditor/details-summary")
+                    ));
             if !original && !structural {
                 return Err(Error::Contract("shared list introduced foreign kind"));
             }
