@@ -23,6 +23,7 @@ import type {SharedReviewedHistoryIdentity,SharedOwnedSuggestionAcceptance,Share
 import {sharedProtocolLanguage} from "./protocol.js";
 import {sharedTextLanguageInput,sharedMentionInput,sharedImageLinkInput,type SharedImageLinkIntent} from "./inline_v4_input.js";
 import {encodeBlockLayoutPatch} from "@breditor/experimental-rich-content/rendering";
+import {isRichRubyDeclaration} from "@breditor/experimental-rich-content/rendering";
 import {encodeCaseChangeIntent} from "@breditor/experimental-rich-content/rendering";
 import {sharedStructureRequestV4} from "./structure_v4.js";
 import type {RichSearchQuery,RichSearchReplacement,RichInputRuleOutcome,RichInputRuleId,RichTypographyOptions} from "@breditor/experimental-rich-content";
@@ -66,6 +67,7 @@ export class SharedRichEditor<P extends SharedSelectionPolicy="original"> {
  readonly #packetAssetReferences=new SharedPacketAssetReferenceRegistry();
  #raw:SharedRustOwner|undefined;#observation:ReturnType<SharedRustOwner["observe"]>|undefined;#view="";#descriptor="";
  #readState:CoreReadState|undefined;
+ #ruby:boolean|undefined;
  #disposedRevisions:{documentRevision:string;reviewRevision:string}|undefined;
  #documentReadStamp:object=Object.freeze({});#reviewReadStamp:object=Object.freeze({});
  #listeners=new Set<(event:SharedPublication<P>)=>void>();#queue:Pending[]=[];#bytes=0;#holds=0;#publishing=false;#draining=false;#retired=false;
@@ -664,6 +666,9 @@ export class SharedRichEditor<P extends SharedSelectionPolicy="original"> {
  changeSelectionCase(intent:import("@breditor/experimental-rich-content/rendering").RichCaseChangeIntent,revision?:string):boolean{const input=JSON.stringify(encodeCaseChangeIntent(intent));return this.#run("local",(raw,o)=>{if(!this.supportsCaseChange())throw new SharedEditorError("case_change_unavailable","Use a matching native shared owner with case change");return raw.change_selection_case!(o,input);},revision);}
  supportsTextLanguage():boolean{return this.supportsInlineCommandsV4()&&this.supportsSelectionFormatting();}
  supportsMentions():boolean{return this.supportsInlineCommandsV4();}
+ /** The owner's schema includes the opt-in ruby V1 extension (`breditor-ruby/ruby`), the same rule as local owners;
+  * interchange then maps `<ruby>`. Owners without the additive catalog read report false. */
+ supportsRubyAnnotations():boolean{const raw=this.#live();if(this.#ruby===undefined){try{this.#ruby=typeof raw.inline_catalog_json==="function"&&((JSON.parse(raw.inline_catalog_json()) as {formats?:unknown[]}).formats??[]).some(format=>isRichRubyDeclaration(format as never));}catch{this.#ruby=false;}}return this.#ruby;}
  supportsImageLinks():boolean{return this.supportsInlineCommandsV4();}
  /** Set (any letter case) or clear (`null`) the selection's language; a caret changes pending formats only. */
  setTextLanguage(language:string|null,revision?:string):boolean{const input=sharedTextLanguageInput(language);return this.#run("local",(raw,o)=>{if(!this.supportsTextLanguage())throw new SharedEditorError("text_language_unavailable","Use an explicitly selected native shared V4 owner");return raw.set_text_language!(o,input);},revision);}

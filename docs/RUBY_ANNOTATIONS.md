@@ -158,11 +158,13 @@ ruby renders exactly as before.
 | Markdown export | CommonMark has no ruby: a paragraph with ruby falls back to exact HTML (`markdown-feature`), which a ruby-capable owner reimports exactly. (`base(reading)` text was rejected: it is lossy and ambiguous with real parentheses.) |
 | DOCX export | `w:ruby` with `w:rubyPr` (distributed alignment, 5 pt reading, 10.5 pt base, `w:lid` from the base's text language or `ja-JP`), the reading in `w:rt` and the styled base runs in `w:rubyBase`. |
 
-`supportsRubyAnnotations()` is true for local owners whose profile declares the
-exact extension. Shared interchange owners do not report it yet (the same known
-gap as the other V4 interchange capabilities, see
-[SHARED_RICH_V4.md](SHARED_RICH_V4.md)), so imports into a shared owner keep the
-original conversion.
+`supportsRubyAnnotations()` is true for local and shared owners whose schema
+declares the exact extension (one rule: the owner's inline catalog contains the
+exact ruby V1 declaration). Shared owners read their catalog through the additive
+native `inline_catalog_json()` owner read; an older shared runtime without it
+reports false and keeps the original conversion. Pasting `<ruby>` HTML into a
+shared ruby room is one guarded native paste (one Undo step) that converges on
+every peer, and local and shared owners import and export identically.
 
 ## Not included
 
@@ -171,7 +173,6 @@ original conversion.
   separate groups, no positioning options (over/under, alignment).
 - No inline editing of the reading in the surface (by design) and no keyboard
   shortcut.
-- Shared interchange capability (above).
 
 ## Tests
 
@@ -179,10 +180,13 @@ original conversion.
   frozen V4 unchanged, policy, set/replace/remove history and checkpoint replay,
   over-bound refusal, typing inheritance);
   `crates/breditor-collaboration/tests/shared_ruby_contracts.rs` (shared
-  fingerprint equality, convergence, Undo, typing, checkpoint, atomic refusal).
+  fingerprint equality, owner catalog read, convergence, Undo, typing,
+  checkpoint, atomic refusal).
 - Vitest: `packages/breditor-editor/tests/ruby.test.ts` (composition, presentation,
   live/static rendering, controls, shared adapters, localization),
   `packages/breditor-interchange/tests/ruby.test.ts` (policy parity, HTML,
-  Markdown, DOCX).
-- Browser: `experiments/rich-browser/ruby.spec.mjs` (real Wasm owner in
-  Chromium, Firefox and WebKit).
+  Markdown, DOCX), `packages/breditor-editor/tests/shared_ruby_interchange.test.ts`
+  (local vs shared capability and import/export parity).
+- Browser: `experiments/rich-browser/ruby.spec.mjs` (real Wasm owner) and
+  `experiments/shared-browser/ruby.spec.mjs` (two shared writers: controls,
+  typing, `<ruby>` paste converging on the peer), in Chromium, Firefox and WebKit.

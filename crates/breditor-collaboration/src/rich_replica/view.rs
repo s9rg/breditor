@@ -16,6 +16,12 @@ impl RichReplica {
         self.protocol.describe(&mut descriptor);
         descriptor.to_string()
     }
+    /// Exact typed inline declarations of this owner's schema (the profile's catalog), so a
+    /// browser owner can report optional extension capabilities such as ruby. Grants no authority.
+    #[must_use]
+    pub fn inline_catalog_json(&self) -> String {
+        breditor_core::codec::encode_inline_format_catalog(self.codec.schema())
+    }
     /// Read content, causal/version strings, selection, pending formats and original core geometry.
     /// # Errors
     /// Read admission/serialization failure has no shared or local mutation.

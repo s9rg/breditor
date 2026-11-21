@@ -177,6 +177,10 @@ impl RichReplicaProbe {
     pub fn descriptor_json(&self) -> String {
         self.inner.descriptor_json()
     }
+    /// Additive: the owner schema's typed inline catalog (as `SharedRichProfile.inline_catalog_json`).
+    pub fn inline_catalog_json(&self) -> String {
+        self.inner.inline_catalog_json()
+    }
     /// Replace selected text with rich flow in one original-source-preserving Undo group.
     pub fn paste_flow_at_text_namespace(
         &mut self,
