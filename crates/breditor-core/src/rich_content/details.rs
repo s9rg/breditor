@@ -1,4 +1,4 @@
-//! Collapsible sections (`breditor/details`) of the explicit candidate rich V4.
+//! Collapsible sections (`breditor/details`) of the explicit rich V4.
 //!
 //! A section is one leading `breditor/details-summary` text block followed by one
 //! or more flow blocks (its body). The optional `breditor/details-open` flag is

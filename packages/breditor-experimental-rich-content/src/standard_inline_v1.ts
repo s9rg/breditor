@@ -15,7 +15,7 @@ export const standardInlineStylesV1=`.breditor-inline-font-family[data-breditor-
  * Rust remains the schema source; names, revisions and exact property domains are
  * checked before any DOM is mounted. Additional recipes use the existing inert
  * manifest boundary, including its accessor/callback and complete-coverage guards.
- * A candidate rich V4 catalog also declares the native `breditor/text-language` format; its
+ * A rich V4 catalog also declares the native `breditor/text-language` format; its
  * fixed `lang` recipe is added automatically unless an additional recipe already covers it.
  */
 /** Bounded structural peek; the presentation compiler below still validates the complete catalog. */

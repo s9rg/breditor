@@ -1,4 +1,4 @@
-//! Strict candidate-V4 text-language intent over the native selection (set or clear).
+//! Strict V4 text-language intent over the native selection (set or clear).
 use crate::{BreditorError, rich_editor::error};
 use breditor_core::{
     codec::decode_rich_text_language_command,

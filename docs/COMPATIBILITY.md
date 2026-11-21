@@ -8,9 +8,24 @@ work before any broader compatibility promise. The private rich-content and
 collaboration packages implement additional functionality without widening
 the default package promises below. Their matching shared factory still uses
 an isolated generated module with private ABI 1. Rich language 1 uses model 11 /
-journal 12, structural language 2 uses model 12 / journal 13, and layout language
-3 uses model 13 / journal 14. These explicit bindings must not be confused with
+journal 12, structural language 2 uses model 12 / journal 13, layout language
+3 uses model 13 / journal 14, and the released, frozen rich language 4 uses
+model 14 / journal 15 (local bootstrap format 9, shared configuration format 4).
+These explicit bindings must not be confused with
 the default ABI 5 or the older document/session wire families.
+
+### Rich language releases
+
+Rich languages 1–4 are all supported, explicitly selected languages. Each is
+frozen once released: its grammar, sealed rule revision and schema fingerprints
+never change, so its saved documents, checkpoints and journals keep restoring
+exactly; any grammar change is a new language with its own selector,
+bootstrap/configuration format, causal model and fingerprint (the next is V5).
+No language migrates another's data, and an unknown language number is refused,
+never mapped to an older one. Releasing a language does not change defaults: an
+omitted `richLanguage` selects language 1 in every local and shared API. V4's
+freeze is enforced by `crates/breditor-core/tests/support/rich_v4_frozen.rs` and
+its golden checkpoint ([RICH_LANGUAGE_V4.md](RICH_LANGUAGE_V4.md#freeze-and-durable-persistence)).
 No automatic migration or stable arbitrary-node plugin contract is implied.
 
 ### Opt-in rich and shared recovery

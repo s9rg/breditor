@@ -1,4 +1,4 @@
-/** Candidate rich V4 text-run language: presentation recipe, intent encoding and toolbar controls. */
+/** Rich V4 text-run language: presentation recipe, intent encoding and toolbar controls. */
 import {canonicalLanguageTagV1,isCanonicalLanguageTagV1} from "@breditor/browser/presentation";
 import type {FormatLiteral,RichInlineFormatState,RichInlineFormatStateRead,RichSelectionFormatStateRead,RichSelectionPolicy} from "./core.js";
 import type {ActionContext} from "./actions.js";

@@ -27,7 +27,7 @@ impl RichLocalSession {
         }
         let selection = self.state.selection.as_ref().ok_or(RichActionError::SelectionKind)?;
         let coverage = RichSelectionCoverage::capture(&self.state.document, selection)?;
-        // A candidate V4 section summary carries no block layout and is skipped.
+        // A V4 section summary carries no block layout and is skipped.
         let spans: Vec<_> = coverage
             .text()
             .iter()

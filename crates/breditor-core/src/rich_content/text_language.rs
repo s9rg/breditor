@@ -1,4 +1,4 @@
-//! Bounded text-run language metadata of the explicit candidate rich V4.
+//! Bounded text-run language metadata of the explicit rich V4.
 //!
 //! One native inline format, `breditor/text-language`, tags a run with one
 //! canonical BCP 47 language tag so assistive technology, spell checking and
@@ -28,7 +28,7 @@ use crate::{
     identity::QualifiedName,
 };
 
-/// Native inline format kind (candidate rich V4 only).
+/// Native inline format kind (rich V4 only).
 pub const RICH_TEXT_LANGUAGE_FORMAT: &str = "breditor/text-language";
 /// Its single required string property holding the canonical tag.
 pub const RICH_TEXT_LANGUAGE_TAG_PROPERTY: &str = "breditor/language-tag";

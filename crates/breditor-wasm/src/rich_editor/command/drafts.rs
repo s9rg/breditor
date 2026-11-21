@@ -33,7 +33,7 @@ pub(super) enum FlowRecord {
     HorizontalRule(RuleRecord),
     TaskList(TaskListRecord),
     Details(DetailsRecord),
-    /// Candidate V4 page break `{kind:"pageBreak",block}`; root-only placement is proved
+    /// V4 page break `{kind:"pageBreak",block}`; root-only placement is proved
     /// by the complete-tree grammar on publication.
     PageBreak(RuleRecord),
 }
@@ -124,7 +124,7 @@ impl FlowRecord {
         }
     }
 }
-/// Candidate-V4 section draft: summary identity and canonical runs, open state, body.
+/// V4 section draft: summary identity and canonical runs, open state, body.
 #[derive(Deserialize)]
 #[serde(deny_unknown_fields, rename_all = "camelCase")]
 pub(super) struct DetailsRecord {

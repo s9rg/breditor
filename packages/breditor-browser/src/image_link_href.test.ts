@@ -78,7 +78,7 @@ const imageLinkHrefParityTable = {
   ],
 } as const;
 
-describe("candidate V4 image-link targets", () => {
+describe("V4 image-link targets", () => {
   it("admits exactly the native canonical subset (Rust parity table)", () => {
     for (const value of imageLinkHrefParityTable.good) expect(isImageLinkHrefV1(value), value).toBe(true);
     for (const value of imageLinkHrefParityTable.bad) expect(isImageLinkHrefV1(value), value).toBe(false);

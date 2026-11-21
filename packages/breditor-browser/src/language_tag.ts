@@ -1,5 +1,5 @@
 /**
- * Bounded BCP 47 language-tag grammar of candidate rich V4 text language.
+ * Bounded BCP 47 language-tag grammar of rich V4 text language.
  *
  * Mirrors Rust `rich_content/text_language.rs` exactly (the Rust owner remains
  * authoritative):

@@ -53,7 +53,7 @@ pub fn find_rich_text(
             return Err(RichSearchError::DocumentLimit);
         }
         let boundaries = query.whole_words().then(|| word_boundaries(&text));
-        // Candidate V4 mentions are atomic entities: no match may touch one.
+        // V4 mentions are atomic entities: no match may touch one.
         let protected = crate::rich_content::mention::byte_units(document, &block);
         let mut cursor = Coordinates::default();
         if let Some(regex) = &compiled {

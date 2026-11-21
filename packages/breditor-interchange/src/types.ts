@@ -11,30 +11,30 @@ export interface InterchangeOwner {
   supportsClipboardInterchange?():boolean;
   admitClipboardRoot?(kind:"text"|"flow"|"grid",rootJson:string):ClipboardTransfer;
   validateClipboard?(clipboardJson:string):ClipboardTransfer;
-  /** Candidate rich V4 owners admit ordered-list marker style and reversal. Absent or false keeps
+  /** Rich V4 owners admit ordered-list marker style and reversal. Absent or false keeps
    * the original conversion: those HTML features are reported as `list-numbering` losses. */
   supportsListNumbering?():boolean;
-  /** Candidate rich V4 owners admit the native `breditor/text-language` inline format. Absent or
+  /** Rich V4 owners admit the native `breditor/text-language` inline format. Absent or
    * false keeps the original conversion: `lang`/`xml:lang` are accepted and silently dropped. */
   supportsTextLanguage?():boolean;
-  /** Candidate rich V4 owners admit image links (`breditor/image-href`). Absent or false keeps the
+  /** Rich V4 owners admit image links (`breditor/image-href`). Absent or false keeps the
    * original conversion: an `<a href>` around an `<img>` is dropped (an unsafe href still reports
    * `unsafe-link`), and `<figure><a><img></a></figure>` falls back with `block-structure`. */
   supportsImageLinks?():boolean;
-  /** Candidate rich V4 owners admit collapsible sections (`breditor/details`). Absent or false keeps
+  /** Rich V4 owners admit collapsible sections (`breditor/details`). Absent or false keeps
    * the original conversion: `<details>`/`<summary>` are unwrapped into ordinary flow. */
   supportsDetails?():boolean;
-  /** Candidate rich V4 owners admit native mention entities (`breditor/mention`). Absent or false keeps
+  /** Rich V4 owners admit native mention entities (`breditor/mention`). Absent or false keeps
    * the original conversion: a `<span class="breditor-mention" …>` imports as its plain `@label` text. */
   supportsMentions?():boolean;
-  /** Candidate rich V4 owners admit one trailing table caption paragraph. Absent or false keeps the
+  /** Rich V4 owners admit one trailing table caption paragraph. Absent or false keeps the
    * original conversion: `<caption>` content becomes ordinary flow before the table (`block-structure`). */
   supportsTableCaptions?():boolean;
-  /** Candidate rich V4 owners admit root-level page breaks (`breditor/page-break`). Absent or false keeps the
+  /** Rich V4 owners admit root-level page breaks (`breditor/page-break`). Absent or false keeps the
    * original conversion: CSS forced-break declarations report `unsupported-style`, Word's `<br clear=all>`
    * stays a line break and Google Docs' hidden page-break `<hr>` is removed (`removed-content`). */
   supportsPageBreaks?():boolean;
-  /** Candidate rich V4 owners admit bookmarks (`breditor/bookmark` on paragraphs, headings and code blocks)
+  /** Rich V4 owners admit bookmarks (`breditor/bookmark` on paragraphs, headings and code blocks)
    * and internal `#name` links. Absent or false keeps the original conversion: element ids are dropped
    * silently, `<a name>` reports `unsupported-attribute` and `href="#…"` reports `unsafe-link`. */
   supportsBookmarks?():boolean;

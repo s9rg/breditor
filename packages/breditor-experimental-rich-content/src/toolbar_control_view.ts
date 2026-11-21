@@ -12,7 +12,7 @@ export interface RichToolbarReading {
  readonly values?:Readonly<Record<string,string>>;
  readonly pressed?:boolean|"mixed";
  /** Optional current choices for `select` fields whose options depend on the document (for example
-  * the candidate V4 bookmark list). Applied while no draft is open; the blank choice stays first. */
+  * the V4 bookmark list). Applied while no draft is open; the blank choice stays first. */
  readonly options?:Readonly<Record<string,readonly {readonly value:string;readonly label:string}[]>>;
 }
 export interface RichControlPresentation<C> {

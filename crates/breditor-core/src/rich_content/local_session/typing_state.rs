@@ -22,7 +22,7 @@ pub(crate) fn resolved_caret_formats(
     focus: &crate::position::Point,
     pending: Option<&FormatSet>,
 ) -> Result<FormatSet, RichLocalSessionError> {
-    // Typing never inherits a candidate V4 mention: it is an atomic entity, not a style.
+    // Typing never inherits a V4 mention: it is an atomic entity, not a style.
     if let Some(formats) = pending {
         return Ok(crate::rich_content::mention::without_mentions(formats));
     }

@@ -1,4 +1,4 @@
-//! Guarded candidate-V4 bookmark set/clear and link-preserving rename.
+//! Guarded V4 bookmark set/clear and link-preserving rename.
 //!
 //! One action is one ordered list of guarded node patches applied as a single
 //! admitted edit with one exact inverse, so a rename that also rewrites every

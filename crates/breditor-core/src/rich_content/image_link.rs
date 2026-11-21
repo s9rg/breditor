@@ -1,4 +1,4 @@
-//! Bounded image links of the explicit candidate rich V4.
+//! Bounded image links of the explicit rich V4.
 //!
 //! A link wraps one image only (never its caption). Its target is one absolute
 //! HTTP(S) URL in the exact canonical spelling a WHATWG URL parser serializes,

@@ -115,7 +115,7 @@ export class DocxWriter {
   readonly nums:NumInstance[]=[];
   #links=new Map<string,string>();#images=new Map<string,Media|null>();#imageBytes=0;
   #visited=0;#drawings=0;#chars=0;
-  /** Candidate V4 bookmark names present in the document, and the next `w:bookmarkStart` id. */
+  /** V4 bookmark names present in the document, and the next `w:bookmarkStart` id. */
   #bookmarks=new Set<string>();#bookmarkId=0;
   constructor(readonly options:ConvertOptions){}
 
@@ -195,7 +195,7 @@ export class DocxWriter {
       if(!piece.text)continue;
       const link=piece.formats.find(f=>f.type==="breditor-inline/link"),key=link?JSON.stringify(link):"";
       let href:string|null=null,newWindow=false;
-      // Candidate V4 internal link `#name`: a document-internal `w:hyperlink w:anchor` to the bookmark.
+      // V4 internal link `#name`: a document-internal `w:hyperlink w:anchor` to the bookmark.
       // A dangling target (no block carries the name) keeps its text without a link (`unsafe-link`).
       const internal=link?internalLinkOf(link):undefined;
       if(internal!==undefined){
@@ -234,7 +234,7 @@ export class DocxWriter {
     p+=spacing;
     if(explicitInd&&left>0)p+=`<w:ind w:left="${left}"${num?' w:hanging="360"':""}/>`;
     if(jc)p+=`<w:jc w:val="${jc}"/>`;
-    // Candidate V4 bookmark: `w:bookmarkStart`/`w:bookmarkEnd` around the whole paragraph content. Word's
+    // V4 bookmark: `w:bookmarkStart`/`w:bookmarkEnd` around the whole paragraph content. Word's
     // own UI limits names to 40 letters, digits and underscores; other admitted names are kept verbatim.
     const name=node?prop(node,"bookmark"):undefined;
     if(name!==undefined){

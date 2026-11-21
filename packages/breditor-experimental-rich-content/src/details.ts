@@ -1,4 +1,4 @@
-// Candidate rich V4 collapsible sections: read-only targeting and owner-bound toolbar controls.
+// Rich V4 collapsible sections: read-only targeting and owner-bound toolbar controls.
 // Rust owns grammar, identities, open state and history; this module never edits DOM.
 import type {RichCoreEditor,RichSelectionPolicy} from "./core.js";
 import type {ActionContext,ToolbarControl} from "./actions.js";

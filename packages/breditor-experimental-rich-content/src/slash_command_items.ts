@@ -40,7 +40,7 @@ export const standardRichSlashPicks:readonly RichSlashPick[]=Object.freeze([
  {id:"code-block",control:"code-block",label:"Code block",keywords:["code","pre","snippet"],fields:{language:"",policy:"rejectFormatted"}},
  {id:"horizontal-rule",control:"horizontal-rule",label:"Divider",keywords:["hr","rule","separator","line"]},
  {id:"table",control:"table",label:"Table",keywords:["grid","cells"]},
- // Candidate rich V4 only: picks whose control is absent (V1–V3 toolbars) are omitted.
+ // Rich V4 only: picks whose control is absent (V1–V3 toolbars) are omitted.
  {id:"details",control:"details",label:"Collapsible section",keywords:["details","summary","toggle","collapse","disclosure"]},
  {id:"page-break",control:"page-break",label:"Page break",keywords:["page","break","print","new page"]},
 ].map(pick=>Object.freeze(pick)));

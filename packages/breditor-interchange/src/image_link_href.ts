@@ -1,5 +1,5 @@
 /**
- * Candidate rich V4 image-link target subset. This package has no runtime dependency on
+ * Rich V4 image-link target subset. This package has no runtime dependency on
  * `@breditor/browser`, so it keeps an identical copy of `isImageLinkHrefV1` from
  * `packages/breditor-browser/src/image_link_href.ts`; a parity test compares both. It mirrors
  * Rust `rich_content/image_link.rs` exactly (the Rust owner remains authoritative): a canonical

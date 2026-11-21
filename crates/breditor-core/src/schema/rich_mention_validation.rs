@@ -1,4 +1,4 @@
-//! Candidate rich V4 mention laws: closed property domains and whole-label immutability.
+//! Rich V4 mention laws: closed property domains and whole-label immutability.
 
 use crate::{document::Format, identity::QualifiedName, position::NodePathCursor};
 

@@ -15,7 +15,7 @@ function reading<T>(state:RichLayoutFieldState<T>,numbers=false):RichToolbarRead
 }
 /** Definitions read native state and produce intent only; no AST targets, changes or conflict resolution. */
 export function blockLayoutControls(core:LayoutReader):readonly BlockLayoutControl[]{
- const language=core.richLanguageVersion?.();if((language!==3&&language!==4)||core.supportsBlockLayout?.()!==true||!core.blockLayoutState)throw Error("Use an explicitly selected matching layout V3 or candidate V4 owner");
+ const language=core.richLanguageVersion?.();if((language!==3&&language!==4)||core.supportsBlockLayout?.()!==true||!core.blockLayoutState)throw Error("Use an explicitly selected matching layout V3 or V4 owner");
  const current=()=>core.blockLayoutState!();
  const choose=(id:string,label:string,key:"alignment"|"direction",options:readonly {value:string;label:string}[]):BlockLayoutControl=>({id,label,fields:[{id:"value",label,type:"select",options:[{value:"inherit",label:"Inherit"},...options]}],mixedHint:"Mixed values: choose one explicit value or Inherit for all covered blocks.",read:()=>reading(current()[key]),patch:fields=>{
   const value=fields["value"];if(!value)return null;if(value!=="inherit"&&!options.some(option=>option.value===value))throw new TypeError("Unknown layout choice");return {[key]:value==="inherit"?null:value} as RichBlockLayoutPatch;

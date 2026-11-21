@@ -1,4 +1,4 @@
-//! Guarded candidate-V4 image link change; asset, alt, size, caption and identities are untouched.
+//! Guarded V4 image link change; asset, alt, size, caption and identities are untouched.
 use super::{
     RichAction, RichActionError, RichEdit, node_patch::NodePatch,
     rewrite_properties::with_properties,

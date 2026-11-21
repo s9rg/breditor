@@ -1,4 +1,4 @@
-//! Wrap whole rich siblings in one candidate-V4 collapsible section with an empty summary.
+//! Wrap whole rich siblings in one V4 collapsible section with an empty summary.
 
 use super::{
     RichAction, RichActionError, RichEdit, UnwrapDetails, flow_patch::FlowPatch,

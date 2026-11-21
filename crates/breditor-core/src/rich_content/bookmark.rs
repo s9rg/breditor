@@ -1,4 +1,4 @@
-//! Named bookmarks and internal links of the explicit candidate rich V4.
+//! Named bookmarks and internal links of the explicit rich V4.
 //!
 //! A bookmark is one optional, user-visible name on a text block (paragraph,
 //! heading or code block), stored as the block property `breditor/bookmark`. The

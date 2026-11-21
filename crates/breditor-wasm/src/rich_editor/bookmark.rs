@@ -1,4 +1,4 @@
-//! Candidate V4 bookmarks and internal links: capability, exact inventory read and
+//! V4 bookmarks and internal links: capability, exact inventory read and
 //! the `setBookmark` / `renameBookmark` commands (see `command::bookmark`).
 use super::{BreditorRichEditor, BreditorRichObservation, error};
 use crate::BreditorStringResult;
@@ -7,7 +7,7 @@ use wasm_bindgen::prelude::*;
 
 #[wasm_bindgen]
 impl BreditorRichEditor {
-    /// String1 selects candidate V4 bookmarks and internal `#name` links (`setBookmark`,
+    /// String1 selects V4 bookmarks and internal `#name` links (`setBookmark`,
     /// `renameBookmark`, `bookmarkIndexJson`); String0 means unsupported.
     #[must_use]
     #[wasm_bindgen(js_name=bookmarkVersion)]

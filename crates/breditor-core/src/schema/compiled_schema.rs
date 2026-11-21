@@ -215,7 +215,7 @@ impl CompiledSchema {
         super::compiler::compile_rich_content_profile_v3(schema_id, extensions)
     }
 
-    /// Compile the explicit frozen candidate rich V4: V3 plus its eight local slices.
+    /// Compile the explicit frozen rich V4: V3 plus its eight local slices.
     ///
     /// V4's grammar, sealed rule revision and fingerprint are frozen (locked by
     /// `tests/rich_language_v4_frozen.rs`), so hosts may persist V4 data bound to the

@@ -1,4 +1,4 @@
-//! Explicit page breaks (`breditor/page-break`) of the candidate rich V4.
+//! Explicit page breaks (`breditor/page-break`) of the rich V4.
 //!
 //! Breditor is a flow editor, not a pagination engine. A page break is an explicit,
 //! atomic, content-free flow block that asks print and paged export to start a new

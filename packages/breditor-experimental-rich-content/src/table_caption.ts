@@ -1,4 +1,4 @@
-// Candidate rich V4 table captions: read-only targeting and an owner-bound toolbar control.
+// Rich V4 table captions: read-only targeting and an owner-bound toolbar control.
 // Rust owns grammar, identities, the caret placement and history; this module never edits DOM.
 import type {RichCoreEditor,RichSelectionPolicy} from "./core.js";
 import type {ActionContext,ToolbarControl} from "./actions.js";

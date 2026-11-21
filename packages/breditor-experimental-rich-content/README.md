@@ -96,10 +96,10 @@ DOM focus stays in the editor. The surface gets `aria-controls`,
 
 See [the contract](../../docs/SLASH_COMMANDS.md).
 
-## Mentions (candidate rich V4)
+## Mentions (rich V4)
 
 `mountRichMentions(dom, {items, core?})` mounts the same kind of session for a
-typed `@` on a candidate rich V4 owner (`supportsMentions()`; pass `core` to
+typed `@` on a rich V4 owner (`supportsMentions()`; pass `core` to
 refuse other owners). The slash and mention menus share one typed-trigger
 session (`RichSuggestionSession`) and may both be mounted on one surface.
 `items` is a static list of `{kind: "user"|"page"|"tag", id, label,
@@ -112,9 +112,9 @@ Mentions render as inert `span.breditor-mention` chips
 `mentionLabel`, `mentionLoading`, `mentionCountOne`, `mentionCount`,
 `mentionEmpty`. See `docs/RICH_LANGUAGE_V4.md` (Slice 5).
 
-## Table captions (candidate rich V4)
+## Table captions (rich V4)
 
-A candidate rich V4 table may end with one caption paragraph after its rows
+A rich V4 table may end with one caption paragraph after its rows
 (`supportsTableCaptions()`, descriptor `tableCaptionVersion: 1`). It renders as the
 table's first DOM child, `<caption data-rich-table-caption style="caption-side: bottom">`,
 so it is laid out below the rows and edited like any paragraph.
@@ -123,9 +123,9 @@ so it is laid out below the rows and edited like any paragraph.
 `removeTableCaption {table}`; `tableCaptionOf`, `isTableCaption` and
 `selectedTableCaption` are read-only helpers. See `docs/RICH_LANGUAGE_V4.md` (Slice 6).
 
-## Page breaks and print (candidate rich V4)
+## Page breaks and print (rich V4)
 
-Breditor stays a flow editor. A candidate rich V4 document may hold explicit
+Breditor stays a flow editor. A rich V4 document may hold explicit
 `breditor/page-break` blocks, admitted only as direct children of the document root
 (`supportsPageBreaks()`, descriptor `pageBreakVersion: 1`). They render as a
 non-editable, node-selectable `<div class="breditor-page-break" role="separator"
@@ -151,9 +151,9 @@ blocks and marks spaces, no-break spaces, tabs, hard breaks and paragraph ends i
 adds two toggle buttons (Ctrl/Cmd+Alt+Shift+B and +P). Presentation only: never a
 command, publication or Undo step, for local and shared editors. See `docs/EDITING_AIDS.md`.
 
-## Bookmarks and internal links (candidate rich V4)
+## Bookmarks and internal links (rich V4)
 
-A candidate rich V4 paragraph, heading or code block may carry one document-unique
+A rich V4 paragraph, heading or code block may carry one document-unique
 bookmark name (`breditor/bookmark`, `[A-Za-z][A-Za-z0-9_-]{0,63}`), and a standard
 link whose href is `#name` is an internal link to it (`supportsBookmarks()`, descriptor
 `bookmarkVersion: 1`). `setBookmark {block, name|null}` sets or clears one;

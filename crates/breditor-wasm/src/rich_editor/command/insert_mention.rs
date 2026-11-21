@@ -1,4 +1,4 @@
-//! Strict candidate-V4 mention insertion replacing one explicit text range (the typed trigger).
+//! Strict V4 mention insertion replacing one explicit text range (the typed trigger).
 use super::support::decode;
 use crate::{
     BreditorError,

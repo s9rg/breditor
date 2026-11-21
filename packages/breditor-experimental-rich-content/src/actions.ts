@@ -81,10 +81,10 @@ export function enter(context:IntentContext,general=false,target?:Extract<RichSe
  const value=context.model,a=value.textBlocks.findIndex(node=>id(node)===selection.anchor.block),f=value.textBlocks.findIndex(node=>id(node)===selection.focus.block);
  const point=a<f||(a===f&&BigInt(selection.anchor.offset)<=BigInt(selection.focus.offset))?selection.anchor:selection.focus;
  const parent=value.parents.get(point.block),summary=value.nodes.get(point.block);
- // Candidate V4: Enter in a summary never splits it. A caret opens a fresh first body paragraph
+ // V4: Enter in a summary never splits it. A caret opens a fresh first body paragraph
  // (expanding a collapsed section); a range inside a summary is left unchanged.
  if(summary&&isSummary(summary)&&!cross)return selection.anchor.offset===selection.focus.offset?{kind:"enterDetailsBody",data:{paragraph:context.allocate("p")}}:null;
- // Image and (candidate V4) table captions keep one paragraph: Enter inserts a line break.
+ // Image and (V4) table captions keep one paragraph: Enter inserts a line break.
  if(parent?.type==="breditor/image"||parent?.type==="breditor/table"||value.nodes.get(point.block)?.type==="breditor/code-block")return general&&cross?{kind:"replaceGeneralRangePlainText",data:{selection,text:"\n",prefix:context.allocate("range")}}:{kind:"insertHardBreak"};
  if(general&&cross){if(context.core?.supportsGeneralParagraph?.()!==true)throw Error("Use matching native general paragraph editing");return {kind:"insertGeneralParagraph",data:{selection,prefix:context.allocate("range")}};}
  const right=context.allocate("p");
@@ -102,11 +102,11 @@ export function boundaryDelete(context:IntentContext,backward:boolean):RichComma
   const a=list.items[Math.min(current,other)],b=list.items[Math.max(current,other)];
   return a&&b?{kind:list.list.type==="breditor/task-list"?"joinTaskItems":"joinListItems",data:{container:id(list.list),left:id(a),right:id(b)}}:null;
  }
- // A candidate V4 table caption never merges with a cell or the next block. Backspace at the start
+ // A V4 table caption never merges with a cell or the next block. Backspace at the start
  // of an empty caption removes it; other caption boundaries do nothing.
  if(parent.type==="breditor/table")return backward&&text(node)===""?{kind:"removeTableCaption",data:{table:String(property(parent,"table-id"))}}:null;
  const position=parent.children.indexOf(node),other=parent.children[position+(backward?-1:1)];
- // Candidate V4 section boundaries never merge summary and body text. Backspace at a summary start
+ // V4 section boundaries never merge summary and body text. Backspace at a summary start
  // removes the section (its summary becomes a paragraph); the other boundaries only move the caret.
  if(isSummary(node)){
   if(backward)return {kind:"unwrapDetails",data:{wrapper:id(parent)}};

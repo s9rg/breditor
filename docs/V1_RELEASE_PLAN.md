@@ -22,6 +22,11 @@ qualification gates are still open.
 - **Shared V4.** Shared rooms select V4 explicitly (model 14, journal 15) with
   deterministic merge repairs, and every slice has shared commands, Wasm/TS
   surface and toolbar controls (see [SHARED_RICH_V4.md](SHARED_RICH_V4.md)).
+- **V4 released.** Rich language V4 is no longer a candidate: it is a supported,
+  frozen, explicitly selected language alongside V1–V3 (local and shared), with
+  the same release scope as V1–V3 (see [COMPATIBILITY.md](COMPATIBILITY.md#rich-language-releases)).
+  Defaults are unchanged (an omitted `richLanguage` is still language 1). Shared
+  Enter at a collapsed section summary now expands it like the local editor.
   Along the way, list start changes on seeded lists and splits of styled lists,
   both previously refused in shared editors, now work, and shared editors render
   bookmarks, internal links and page breaks.
@@ -35,6 +40,7 @@ feature index, digest and about 90 feature pages).
 - **No row moves to `implemented`.** Shared import and export still use the
   V1–V3 conversions (V4 features are not reported by shared interchange), V4 is
   an unreleased candidate, and each V4 row still bundles missing capabilities.
+  *(V4 has since been released; the other two reasons still hold.)*
 - **Eight V4 rows were rewritten** (list-properties, mentions-slash,
   widgets-and-embeds, pagination, document-utilities, localization-and-bidi,
   advanced-images, advanced-tables): their text still said V4 was local-only.
@@ -75,8 +81,8 @@ The catalog-coverage gate needs each intentional difference approved. Proposed:
 
 ### Recommended next order
 
-1. **Shared V4 interchange** so shared import and export report the V4 features,
-   plus Enter on a collapsed shared summary. These are the last shared V4 gaps.
+1. **Shared V4 interchange** so shared import and export report the V4 features.
+   This is the last shared V4 gap (Enter on a collapsed shared summary is done).
 2. **Approve or reject the exclusions above**, then write per-capability
    acceptance cases (catalog-coverage gate).
 3. **Automate release CI** over every distributed feature, now that shared
@@ -184,7 +190,8 @@ native-contract designs, not UI additions. The largest partial gaps are:
    and the durable local store persists it (see
    [Rich language V4](RICH_LANGUAGE_V4.md#freeze-and-durable-persistence)). Open:
    shared V4 is in progress; whether V4 ships in V1 remains the compatibility
-   gate's decision.
+   gate's decision. *(Superseded November 21: shared V4 landed and V4 is
+   released with the same scope as V1–V3.)*
 3. **Automate release CI.** The repository workflows are manual-only. Run the Rust
    suites, the package vitest suites and the grouped rich-browser suite on every
    change before attempting the release-ci gate.

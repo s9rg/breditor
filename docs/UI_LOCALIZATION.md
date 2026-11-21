@@ -224,7 +224,7 @@ with panels from another.
 ## Not covered
 
 - Text-part language in rich V1–V3: those languages have no inline `lang`
-  format. The unreleased candidate rich V4 adds the native
+  format. Rich V4 adds the native
   `breditor/text-language` format (`lang` on spans, a **Language** toolbar
   control and HTML `lang` interchange), locally and in shared V4; see
   [RICH_LANGUAGE_V4.md](RICH_LANGUAGE_V4.md) and

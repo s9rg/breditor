@@ -1,4 +1,4 @@
-//! Strict bounded candidate-V4 list numbering intent on one explicit ordered list.
+//! Strict bounded V4 list numbering intent on one explicit ordered list.
 use super::support::{checked, dispatch};
 use crate::{BreditorError, rich_editor::error};
 use breditor_core::{
