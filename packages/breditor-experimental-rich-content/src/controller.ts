@@ -316,6 +316,8 @@ export class RichDomEditor<P extends RichSelectionPolicy="original"> {
  view():RichEditorView<P> {this.#live();return this.#options.core.view();}
  /** Whether the native owner runs `replaceTriggerThen` (a slash command as one Undo step). */
  supportsTriggerComposite():boolean{this.#live();return this.#options.core.supportsTriggerComposite?.()===true;}
+ /** Whether the native owner runs `commandGroup` (several commands as one Undo step). */
+ supportsCommandGroup():boolean{this.#live();return this.#options.core.supportsCommandGroup?.()===true;}
  checkpointJson():string {this.#live();return this.#options.core.checkpointJson();}
  /** Close native continuation without rendering, moving focus, or inventing a content outcome. */
  closeTypingGroup(revision=this.#options.core.view().revision):boolean {

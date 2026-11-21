@@ -16,6 +16,10 @@ Two tool kinds share one contract:
   with suggestions; they are highlighted outside the editing DOM, listed for
   keyboard review and applied one at a time.
 
+An LLM **agent** that reads and edits the document through typed tools (schema
+validation, reviewable staged changes or proposals, revision-bound stale checks,
+local and shared) is a separate opt-in contract: [AI_AGENT_TOOLS.md](AI_AGENT_TOOLS.md).
+
 ## Privacy boundary
 
 - **Nothing leaves the page unless the host provider sends it.** The tools call

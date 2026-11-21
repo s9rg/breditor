@@ -28,6 +28,9 @@ export type RichSelectionFormatChange={kind:"set"|"remove";formatsJson:string}|{
 /** Follow-up kinds admitted by `replaceTriggerThen`; each addresses blocks by identity, never text offsets. */
 export type RichTriggerCompositeKind="setHeading"|"setCodeBlock"|"wrapList"|"setListKind"|"wrapTaskList"|"wrapBlockquote"|"wrapDetails"|"insertHorizontalRule"|"insertTable"|"insertBlocks"|"insertPageBreak";
 export type RichTriggerCompositeCommand=Extract<RichCommand,{kind:RichTriggerCompositeKind}>;
+/** Step kinds admitted by `commandGroup` (text range, inline format and block-identity flow commands). */
+export type RichCommandGroupKind="replaceTextRange"|"replaceGeneralRangePlainText"|"setInlineFormat"|"changeInlineFormats"|"setHeading"|"insertBlocks"|"replaceBlocks"|"moveBlock";
+export type RichCommandGroupStep=Extract<RichCommand,{kind:RichCommandGroupKind}>;
 export type RichCommand =
  |{kind:"replaceGeneralRangeText";data:{selection:Extract<RichSelection,{kind:"text"}>;runs:readonly {text:string;formatsJson:string}[];prefix:string}}
  |{kind:"pasteGeneralInlineClipboard";data:{selection:Extract<RichSelection,{kind:"text"}>;clipboardJson:string;prefix:string}}
@@ -139,6 +142,9 @@ export type RichCommand =
   * summary), then run one allowlisted command (`RichTriggerCompositeKind`) against the post-removal
   * document, as ONE native history unit. Requires `supportsTriggerComposite()`. */
  |{kind:"replaceTriggerThen";data:{selection:Extract<RichSelection,{kind:"text"}>;command:RichTriggerCompositeCommand}}
+ /** Run 1–64 allowlisted commands (`RichCommandGroupKind`) in order, each against the publication left by the
+  * previous ones, as ONE native history unit; any failure publishes nothing. Requires `supportsCommandGroup()`. */
+ |{kind:"commandGroup";data:{commands:readonly RichCommandGroupStep[]}}
  |{kind:"indentListItems";data:{container:string;first:string;last:string;nested:{block:string;start:number|null}|null}}
  |{kind:"outdentListItems";data:{container:string;first:string;last:string;tail:string|null}}
  |{kind:"splitTextBlock";data:{point:RichPoint;right:string;rightHeading:number|null}}

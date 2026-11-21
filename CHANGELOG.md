@@ -22,6 +22,21 @@ its durable formats and Wasm transport.
   host state gains `emptyParagraph`; new UI catalog block `richShellUiStringsEn`.
   Editors that mount none of it are unchanged. See
   [docs/EDITOR_SHELL.md](docs/EDITOR_SHELL.md).
+- Add an opt-in, provider-agnostic **AI agent tool contract** for local and
+  shared rich editors (`createRichAgentTools`, `richAgentToolsHost`,
+  `mountRichAgentReview`, `richAgentMcpAdapter`; SDK `createAgentTools` /
+  `agentToolsHost`, collaboration `createSharedAgentTools` /
+  `sharedAgentToolsHost`, shared sessions' `agentTools()`). Nine tools with
+  closed JSON Schemas (`get_document`, `get_selection`, `find_text`,
+  `replace_range`, `set_format`, `insert_blocks`, `delete_blocks`,
+  `set_block_type`, `propose_changes`) validate every call as untrusted input,
+  bind edits to the revision the agent read (re-based only when every target
+  region is unchanged) and are reviewable by default: staged edits are accepted
+  as ONE native publication and Undo step (or filed as shared suggestion
+  proposals); direct application is opt-in. New native Wasm command
+  `commandGroup` (`commandGroupVersion() === "1"`, `supportsCommandGroup()`)
+  runs 1–64 allowlisted commands as one exact history unit. No model, client or
+  network code is bundled. See [docs/AI_AGENT_TOOLS.md](docs/AI_AGENT_TOOLS.md).
 - Add opt-in **editing aids** for local and shared rich editors:
   `mountRichEditingAids` / `mountRichEditingAidsControls` (`mountEditingAids` /
   `mountEditingAidsControls` in `@breditor/editor` and its collaboration entry).

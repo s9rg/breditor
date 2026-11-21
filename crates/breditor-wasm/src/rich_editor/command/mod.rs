@@ -10,6 +10,7 @@ mod change_selection_formats;
 mod change_selection_layout;
 mod clear_table_cells;
 mod clipboard_ids;
+mod command_group;
 mod data_dispatch;
 mod delete_atom;
 mod delete_horizontal_rule;
@@ -204,6 +205,7 @@ enum CommandTag {
     NavigateGrid,
     ReplaceTriggerThen,
     ChangeSelectionCase,
+    CommandGroup,
 }
 #[derive(Deserialize)]
 #[serde(deny_unknown_fields)]
@@ -347,6 +349,9 @@ pub(super) fn execute(
         ),
         CommandTag::ReplaceTriggerThen => {
             replace_trigger_then::execute(owner, observation, command.data.ok_or(invalid())?.get())
+        }
+        CommandTag::CommandGroup => {
+            command_group::execute(owner, observation, command.data.ok_or(invalid())?.get())
         }
         CommandTag::SetPendingFormats => set_pending_formats::execute(
             owner,

@@ -18,6 +18,9 @@ export interface RichAiUiStrings {
  readonly langCountNone:string;readonly langCountOne:string;readonly langCount:string;
  readonly langIssue:string;readonly langReplace:string;readonly langIgnore:string;readonly langNoSuggestions:string;
  readonly langApplied:string;readonly langStale:string;readonly langIgnoredMalformed:string;readonly langReadOnly:string;
+ // Agent tool review (ai_agent_review.ts).
+ readonly agentReviewLabel:string;readonly agentPendingOne:string;readonly agentPending:string;readonly agentEmpty:string;
+ readonly agentAccept:string;readonly agentReject:string;readonly agentStale:string;readonly agentFailed:string;
 }
 /** English defaults of the AI and language-tool chrome. */
 export const richAiUiStringsEn:Readonly<RichAiUiStrings>=Object.freeze({
@@ -48,9 +51,16 @@ export const richAiUiStringsEn:Readonly<RichAiUiStrings>=Object.freeze({
  langStale:"The text changed; outdated issues removed: {count}.",
  langIgnoredMalformed:"Malformed provider issues ignored: {count}.",
  langReadOnly:"Read-only: issues can be reviewed but not applied.",
+ agentReviewLabel:"Assistant changes",
+ agentPendingOne:"1 staged edit from the assistant. Nothing changes until you accept.",
+ agentPending:"{count} staged edits from the assistant. Nothing changes until you accept; Accept applies them as one undoable change.",
+ agentEmpty:"No staged changes.",agentAccept:"Accept all",agentReject:"Reject all",
+ agentStale:"The document changed where these edits apply. Nothing can be applied; reject them and ask again.",
+ agentFailed:"The edits were not applied: {reason}",
 });
 /** Placeholders each AI/language template may use. */
 export const richAiUiParameters:Readonly<Partial<Record<keyof RichAiUiStrings,readonly string[]>>>=Object.freeze({
  aiApplied:["revision"],aiFailed:["reason"],aiInputTooLarge:["limit"],aiOutputTooLarge:["limit"],aiLosses:["losses"],aiImportRefused:["reason"],
+ agentPending:["count"],agentFailed:["reason"],
  langCount:["count"],langIssue:["text","message"],langReplace:["suggestion"],langApplied:["revision"],langStale:["count"],langIgnoredMalformed:["count"],
 });

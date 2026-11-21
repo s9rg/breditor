@@ -13,6 +13,7 @@ pub(super) fn session(error: &RichLocalSessionError) -> BreditorError {
         RichLocalSessionError::StaleSnapshot => "breditor_rich.stale_observation",
         RichLocalSessionError::Revision(_) => "breditor_rich.revision_overflow",
         RichLocalSessionError::TriggerStep => "breditor_rich.trigger_step",
+        RichLocalSessionError::CommandGroup => "breditor_rich.command_group",
         _ => "breditor_rich.command_rejected",
     };
     rejected(code)

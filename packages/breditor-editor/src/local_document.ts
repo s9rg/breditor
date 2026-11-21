@@ -38,6 +38,7 @@ class DocumentOwner implements LocalDocumentEditor {
  checkRetainedAssetReferences(read:import("@breditor/experimental-rich-content").RichRetainedAssetReferencesRead,revision?:string):void{this.#dom.checkRetainedAssetReferences(read,revision);}
  execute(...args:Parameters<LocalDocumentEditor["execute"]>):ReturnType<LocalDocumentEditor["execute"]>{return this.#dom.execute(...args);}
  supportsTriggerComposite():boolean{return this.#dom.supportsTriggerComposite();}
+ supportsCommandGroup():boolean{return this.#dom.supportsCommandGroup();}
  view():RichDocumentView{return this.#dom.view();}checkpointJson():string{return this.#dom.checkpointJson();}
  focus():void{this.#dom.focus();}refreshAssets():void{this.#dom.view();refreshAssets(this.surface,this.#render);}
  setReadOnly(...args:Parameters<LocalDocumentEditor["setReadOnly"]>):boolean{return this.#dom.setReadOnly(...args);}
