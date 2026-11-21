@@ -73,13 +73,14 @@ export interface SharedSlashCommands {
  * identity, never by text offsets, so removing the trigger text first cannot retarget it (mirrors the
  * local `replaceTriggerThen` allowlist).
  */
-export const sharedSlashCommandKinds:readonly SharedCommand["kind"][]=Object.freeze(["set_heading","set_code_block","wrap_list","set_list_kind","wrap_task_list","wrap_blockquote","insert_horizontal_rule","insert_blocks"]);
+export const sharedSlashCommandKinds:readonly SharedCommand["kind"][]=Object.freeze(["set_heading","set_code_block","wrap_list","set_list_kind","wrap_task_list","wrap_blockquote","insert_horizontal_rule","insert_blocks","wrap_details","insert_page_break"]);
 const allowed:ReadonlySet<string>=new Set(sharedSlashCommandKinds);
 const maxCommands=16;
 /**
- * Default shared menu: the local standard picks mapped onto shared toolbar control ids. Candidate
- * rich V4 items (Collapsible section, Page break) are absent: shared editors are rich V1–V3. Picks
- * whose control is absent from the supplied toolbar (structural items on a V1 toolbar) are omitted.
+ * Default shared menu: the local standard picks mapped onto shared toolbar control ids. The rich V4
+ * items (Collapsible section, Page break) map onto the shared V4 structure controls, so they appear
+ * only with a V4 toolbar. Picks whose control is absent from the supplied toolbar (structural items
+ * on a V1 toolbar, V4 items on V1–V3 toolbars) are omitted.
  */
 export const standardSharedSlashPicks:readonly SharedSlashPick[]=Object.freeze([
  {id:"paragraph",control:"paragraph",label:"Text",keywords:["paragraph","plain","body"]},
@@ -93,6 +94,8 @@ export const standardSharedSlashPicks:readonly SharedSlashPick[]=Object.freeze([
  {id:"code-block",control:"code-block",label:"Code block",keywords:["code","pre","snippet"],fields:{language:"",policy:"reject_formatted"}},
  {id:"horizontal-rule",control:"horizontal-rule",label:"Divider",keywords:["hr","rule","separator","line"]},
  {id:"table",control:"table",label:"Table",keywords:["grid","cells"]},
+ {id:"details",control:"details",label:"Collapsible section",keywords:["details","summary","toggle","collapse","disclosure"]},
+ {id:"page-break",control:"page-break",label:"Page break",keywords:["page","break","print","new page"]},
 ].map(pick=>Object.freeze(pick)));
 
 const identity=/^[A-Za-z0-9][A-Za-z0-9._:-]{0,63}$/;

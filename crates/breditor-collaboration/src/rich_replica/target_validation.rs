@@ -42,6 +42,7 @@ pub(super) fn validate(owner: &RichReplica, commands: &[Command]) -> Result<(), 
         commands,
     )
 }
+#[allow(clippy::too_many_lines)] // One arm per command kind keeps target validation auditable.
 pub(super) fn validate_context(owner: &Context<'_>, commands: &[Command]) -> Result<(), Error> {
     let formats = RichFormatsJsonCodec::new(EditorContext::new(
         owner.codec.schema().clone(),
@@ -79,6 +80,11 @@ pub(super) fn validate_context(owner: &Context<'_>, commands: &[Command]) -> Res
         {
             return Err(Error::Contract("shared layout requires model 13 or 14"));
         }
+        if super::v4_block_fields::handles(command) {
+            super::v4_block_fields::validate(owner.protocol, owner.document, &declared, command)?;
+            declared.record(command)?;
+            continue;
+        }
         if command.requires_structural_v2() && !owner.protocol.structural() {
             return Err(Error::Contract("shared structural V2 command requires model 12"));
         }
@@ -90,6 +96,12 @@ pub(super) fn validate_context(owner: &Context<'_>, commands: &[Command]) -> Res
                 owner.canonical,
                 command,
             )?;
+        } else if super::structure_v4_targets::validate(
+            owner.protocol,
+            command,
+            owner.document,
+            &declared,
+        )? {
         } else if !super::list_targets::validate(command, owner.document, &declared)? {
             let block = BlockId::try_new(primary(command)?).map_err(contract)?;
             let kind = declared.kind(owner.document, &block)?;
@@ -119,11 +131,19 @@ pub(super) fn validate_context(owner: &Context<'_>, commands: &[Command]) -> Res
                 Command::SetImageAlt(_)
                 | Command::SetImageCaption(_)
                 | Command::ReplaceImage(_)
-                | Command::ResizeImage(_) => kind == "breditor/image",
+                | Command::ResizeImage(_)
+                | Command::SetImageLink(_) => kind == "breditor/image",
                 Command::ResizeColumn(_) | Command::MoveColumn(_) | Command::DeleteColumn(_) => {
                     kind == "breditor/table"
                 }
                 Command::MoveBlock(_) | Command::DeleteBlock(_) => true,
+                Command::InsertMention(value) => {
+                    value.anchor.block == value.focus.block
+                        && matches!(
+                            kind.as_str(),
+                            "breditor/paragraph" | "breditor/heading" | "breditor/details-summary"
+                        )
+                }
                 _ => return Err(Error::Contract("unhandled shared target kind")),
             };
             if !expected {
@@ -157,6 +177,8 @@ fn primary(command: &Command) -> Result<&str, Error> {
         Command::DeleteBlock(value) => &value.block,
         Command::MoveColumn(value) => &value.block,
         Command::DeleteColumn(value) => &value.block,
+        Command::InsertMention(value) => &value.anchor.block,
+        Command::SetImageLink(value) => &value.block,
         _ => return Err(Error::Contract("unhandled shared primary target")),
     })
 }

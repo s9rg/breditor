@@ -53,6 +53,11 @@ export type SharedCommand=
  |Op<"set_code_block",{block:string;language:string|null;format_policy:"reject_formatted"|"remove_formats"}>
  |Op<"set_code_language",{block:string;language:string|null}>
  |Op<"set_task_checked",{block:string;checked:boolean}>
+ /** Shared V4 block fields (model 14): owned list numbering, bookmark and section open fields. */
+ |Op<"set_list_numbering",{list:string;style:"keep"|"clear"|{set:"decimal"|"lower-alpha"|"upper-alpha"|"lower-roman"|"upper-roman"};reversed:boolean|null}>
+ |Op<"set_bookmark",{block:string;name:string|null}>
+ |Op<"rename_bookmark",{from:string;to:string}>
+ |Op<"set_details_open",{block:string;open:boolean}>
  |Op<"wrap_blockquote",{first:string;last:string;wrapper:string}>
  |Op<"unwrap_blockquote",{wrapper:string}>
  |Op<"wrap_task_list",{first:string;last:string;container:string;items:readonly {block:string;checked:boolean}[]}>
@@ -76,7 +81,16 @@ export type SharedCommand=
  |Op<"replace_image",{block:string;asset:string;generation:string}>
  |Op<"set_image_alt",{block:string;text:string;decorative:boolean}>
  |Op<"set_image_caption",{block:string;caption:SharedParagraph|null}>
- |Op<"resize_image",{block:string;size:readonly[number,number]|null}>;
+ |Op<"resize_image",{block:string;size:readonly[number,number]|null}>
+ |Op<"insert_mention",{anchor:RichPoint;focus:RichPoint;mention:{kind:"user"|"page"|"tag";id:string;label:string}}>
+ |Op<"set_image_link",{block:string;href:string|null;new_window?:boolean}>
+ /** Explicit V4 structure commands (model 14 only; see `SharedRichEditor.supportsSharedStructureV4`). */
+ |Op<"wrap_details",{first:string;last:string;wrapper:string;summary:string;open:boolean}>
+ |Op<"unwrap_details",{wrapper:string}>
+ |Op<"insert_page_break",{block:string;before:string|null}>
+ |Op<"delete_page_break",{block:string;paragraph:string|null}>
+ |Op<"add_table_caption",{block:string;caption:string}>
+ |Op<"remove_table_caption",{block:string}>;
 export interface SharedDispatch {commands:readonly SharedCommand[];selectionUpdate?:{kind:"map"}|{kind:"set";value:RichSelection|null};pendingFormatsUpdate?:{kind:"map"}|{kind:"set";value:readonly FormatLiteral[]|null}}
 export type PasteTarget={kind:"text"}|{kind:"grid"}|({kind:"flow"}&Position);
 export type Navigation="next"|"previous"|"left"|"right"|"up"|"down"|"rowStart"|"rowEnd"|"tableStart"|"tableEnd";
@@ -187,10 +201,18 @@ export interface SharedRustOwner extends SharedReviewRustCapability,SharedReview
  text_language_version?():string;
  image_link_version?():string;
  details_version?():string;
+ /** "1" when dispatch admits the shared V4 structure commands (sections, page breaks, table captions). */
+ structure_commands_v4_version?():string;
  mention_version?():string;
  table_caption_version?():string;
  page_break_version?():string;
  bookmark_version?():string;
+ /** Shared V4 inline commands (text language, mentions, image links); local slice JSON inputs. */
+ inline_commands_v4_version?():string;
+ set_text_language?(observation:unknown,input:string):boolean;
+ insert_mention?(observation:unknown,input:string):boolean;
+ set_image_link?(observation:unknown,input:string):boolean;
+ v4_block_fields_version?():string;set_details_open?(observation:unknown,block:string,open:boolean):boolean;bookmark_index_json?(observation:unknown):string;
  block_layout_state_json?(observation:unknown):string;
  change_selection_layout?(observation:unknown,input:string):boolean;
  typing_history_version?():string;

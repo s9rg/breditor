@@ -142,6 +142,8 @@ export {createSelectionSharedToolbarV1} from "./selection_toolbar.js";
 export {createStructuralSharedToolbarV2} from "./structural_controls_v2.js";
 export {createLayoutSharedToolbarV3} from "./layout_toolbar_v3.js";
 export {createRichSharedToolbarV4} from "./rich_toolbar_v4.js";
+export {sharedV4BlockFieldControls,sharedListNumberingCommands,encodeSharedSetBookmark,encodeSharedRenameBookmark,parseSharedBookmarkIndex,sharedSelectedOrderedList,sharedBookmarkTarget,sharedSelectedDetails,type SharedListNumberingIntent,type SharedSetBookmarkIntent,type SharedRenameBookmarkIntent,type SharedBookmarkIndex,type SharedListNumberStyle} from "./v4_block_fields.js";
+export {createSharedStructureControlsV4,sharedStructureRequestV4,sharedStructureCommandKindsV4,sharedDetailsInterval,sharedRootBlockOfSelection,sharedPageBreakBefore,sharedTableCaptionOf} from "./structure_v4.js";
 export {isSharedRichLanguage,sharedModelVersion,sharedJournalVersion,sharedV4SliceVersions,type SharedRichLanguage,type SharedV4SliceVersion} from "./protocol.js";
 export {createSharedFlowNavigationControls} from "./flow_controls.js";
 export {paragraph,imageNode,caret,type SharedToolbarControl,type ActionContext} from "./actions.js";
@@ -330,3 +332,4 @@ export type {
 } from './independent_delivery_branch_archive/contract.js';
 export {sharedAiToolsHost,mountSharedAiTools,mountSharedLanguageCheck,type SharedAiEditorPort,type SharedAiToolsSession,type SharedAiToolsSource} from "./ai_tools.js";
 export {mountSharedSlashCommands,createSharedSlashCommands,requireSharedSlashItems,standardSharedSlashPicks,sharedSlashCommandKinds,type SharedSlashCommandHost,type SharedSlashCommands,type SharedSlashCommandOptions,type SharedSlashContext,type SharedSlashExecution,type SharedSlashItem,type SharedSlashPick,type SharedSlashPreparation,type SharedSlashProvider} from "./slash_commands.js";
+export {sharedInlineControlsV4,mountSharedMentions,sharedTextLanguageInput,sharedMentionInput,sharedImageLinkInput,type SharedImageLinkIntent,type SharedMentionExecution,type SharedMentionOptions,type SharedMentions} from "./inline_v4.js";

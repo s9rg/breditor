@@ -36,7 +36,14 @@ pub(in crate::rich_replica) fn validate(doc: &LoroDoc) -> Result<(), Error> {
             if field.is_some()
                 && !matches!(
                     owner.get("type").and_then(Value::as_str),
-                    Some("breditor/paragraph" | "breditor/heading" | "breditor/code-block")
+                    Some(
+                        "breditor/paragraph"
+                            | "breditor/heading"
+                            | "breditor/code-block"
+                            // A V4 summary becomes a paragraph when its section is unwrapped;
+                            // its layout is causal but never projected while it is a summary.
+                            | "breditor/details-summary"
+                    )
                 )
             {
                 return Err(Error::Contract("shared layout field owner"));

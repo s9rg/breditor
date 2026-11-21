@@ -11,6 +11,7 @@ mod flow_navigation;
 mod general_history;
 mod general_range;
 mod initial_read_only;
+mod inline_v4;
 mod input_rules;
 mod insert_general_paragraph;
 mod language_v4;
@@ -30,10 +31,13 @@ mod segmented_history;
 mod selection_formatting;
 mod suggestions;
 mod typing;
+mod v4_block_fields;
 mod verify_retained_native_branch;
 mod writer_clock_at;
 mod writer_transport_v2;
 mod writing_tools;
+// Shared rich language V4 structure commands (sections, page breaks, table captions).
+mod structure_v4;
 use crate::{
     Error,
     rich_replica::{

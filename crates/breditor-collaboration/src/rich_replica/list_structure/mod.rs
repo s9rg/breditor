@@ -24,8 +24,19 @@ pub(super) fn reserve(
     if let Some(level) = level {
         node["properties"]["breditor/level"] = json!(level);
     }
-    creation::prepare(doc, &node, None, None)
+    creation::prepare(doc, &node, None, None)?;
+    if kind == "breditor/bullet-list" && super::protocol::Protocol::read(doc)?.v4() {
+        let effects = model::metadata(doc, block)?.ensure_mergeable_map("effects")?;
+        for property in NUMBERING {
+            effects.ensure_mergeable_map(&format!("property:{property}"))?;
+        }
+    }
+    Ok(())
 }
+
+/// V4 ordered-list numbering fields a fresh list inherits from the core result (a split
+/// tail keeps its source list's style and counting order, as the local V4 owner does).
+const NUMBERING: [&str; 2] = ["breditor/list-style", "breditor/list-reversed"];
 
 /// A task birth's immutable defaults include its explicit initial completion.
 pub(super) fn reserve_task(doc: &LoroDoc, block: &str, checked: bool) -> Result<(), Error> {
@@ -126,6 +137,21 @@ fn style(node: &Value) -> Result<model::Patch, Error> {
     Ok(model::Patch { sets, removes })
 }
 
+/// A list loaded with a start keeps it in its own seeded `property:breditor/start` field,
+/// which projects after `list-kind` (field-name order). A later kind/start choice writes
+/// that field too, with the same stamp, so the newest choice wins in both fields.
+fn seeded_start(doc: &LoroDoc, id: &str, node: &Value, stamp: Stamp) -> Result<(), Error> {
+    const FIELD: &str = "property:breditor/start";
+    if model::metadata(doc, id)?.ensure_mergeable_map("effects")?.get(FIELD).is_none() {
+        return Ok(());
+    }
+    let patch = node["properties"].get("breditor/start").map_or_else(
+        || model::Patch { sets: BTreeMap::new(), removes: vec!["breditor/start".into()] },
+        |start| model::Patch::set("breditor/start", start.clone()),
+    );
+    model::write_patch(doc, id, FIELD, &patch, stamp)
+}
+
 /// Apply only the list/placement consequences of a schema-admitted core edit.
 pub(super) fn apply(
     doc: &LoroDoc,
@@ -158,12 +184,25 @@ pub(super) fn apply(
                             | "breditor/horizontal-rule"
                     )
                 );
+            // V4 sections are born by the shared section wrap (summary included).
+            let structural = structural
+                || (super::protocol::Protocol::from_codec(codec)?.v4()
+                    && matches!(
+                        node.value["type"].as_str(),
+                        Some("breditor/details" | "breditor/details-summary")
+                    ));
             if !original && !structural {
                 return Err(Error::Contract("shared list introduced foreign kind"));
             }
             let mut empty = node.value.clone();
             empty["children"] = json!([]);
             creation::publish(doc, &empty, stamp, 0)?;
+            for property in NUMBERING {
+                if let Some(value) = node.value["properties"].get(property) {
+                    let patch = model::Patch::set(property, value.clone());
+                    model::write_patch(doc, id, &format!("property:{property}"), &patch, stamp)?;
+                }
+            }
         }
         if is_list(&node.value) {
             let patch = style(&node.value)?;
@@ -171,6 +210,7 @@ pub(super) fn apply(
                 != Some(&patch)
             {
                 model::write_patch(doc, id, "list-kind", &patch, stamp)?;
+                seeded_start(doc, id, &node.value, stamp)?;
             }
         }
     }

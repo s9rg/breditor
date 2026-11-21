@@ -6,6 +6,63 @@ its durable formats and Wasm transport.
 
 ## Unreleased
 
+- Add the **shared rich V4 inline commands**: text language, mentions and image
+  links, each one native shared command and one Undo step with the local V4
+  semantics. Rust `RichReplica::set_text_language_json_guarded`,
+  `insert_mention_json_guarded` and `set_image_link_json_guarded` (new shared
+  commands `insert_mention` and `set_image_link`; the image link is one paired
+  replicated field so peers never see half a change); Wasm owner
+  `inline_commands_v4_version`, `set_text_language`, `insert_mention`,
+  `set_image_link`; TypeScript `SharedRichEditor.setTextLanguage`,
+  `insertMention`, `setImageLink` and `supportsInlineCommandsV4`/
+  `supportsTextLanguage`/`supportsMentions`/`supportsImageLinks`; the shared `@`
+  menu `mountSharedMentions` (and `mountMentions` in
+  `@breditor/editor/collaboration`), whose choice replaces the typed trigger in
+  one guarded dispatch; and **Language**, **Clear language**, **Image link** and
+  **Remove image link** in `createRichSharedToolbarV4` (`sharedInlineControlsV4`).
+  Linking a decorative image is refused with a clear error. See
+  [docs/SHARED_RICH_V4.md](docs/SHARED_RICH_V4.md#shared-inline-commands-text-language-mentions-image-links).
+- Add **shared V4 block-field commands** (list numbering, bookmarks with internal
+  links, section open state) for shared rich language V4 rooms. New shared commands
+  `set_list_numbering` (owned fields `list-style` and `list-reversed`; a start change
+  rides along as `set_list_kind` in the same group), `set_bookmark`, `rename_bookmark`
+  (moves the anchor and retargets every same-window `#name` link in one group) and
+  `set_details_open`; a guarded `set_details_open` owner call that moves a selection
+  out of a collapsed body; and the `bookmark_index_json` read (Wasm capability
+  `v4_block_fields_version()` `"1"`). Each is one Undo step with the local V4
+  semantics: duplicate bookmark names are refused locally with a clear error, and
+  concurrent same-field edits resolve by the existing register order. TypeScript:
+  `SharedRichEditor.supportsListNumbering()`, `supportsBookmarks()`,
+  `supportsDetails()`, `setListNumbering()`, `setBookmark()`, `renameBookmark()`,
+  `setDetailsOpen()` and `bookmarkIndex()`; `createRichSharedToolbarV4` adds **List
+  numbering**, **Bookmark**, **Remove bookmark**, **Link to bookmark** and
+  **Expand/Collapse section**. The shared surface now renders bookmarks and internal
+  links for V4 owners and keeps sections and internal links inert while editing.
+  A `set_list_kind` start change on a seeded ordered list now also rewrites the seeded
+  start field, so it is no longer refused, and splitting a styled or reversed shared
+  ordered list keeps the style and counting order on the new tail list (both were
+  previously refused).
+- Add the **shared V4 structure commands** for collapsible sections, page breaks
+  and table captions (explicit model-14 owners only; V1–V3 owners refuse them).
+  New shared commands `wrap_details` / `unwrap_details`, `insert_page_break` /
+  `delete_page_break` and `add_table_caption` / `remove_table_caption` are each one
+  guarded dispatch and one writer-local Undo step, converge across concurrent
+  writers, replay exactly from checkpoints and never rely on a V4 merge repair.
+  Wasm reports `structure_commands_v4_version()`; TypeScript adds
+  `SharedRichEditor.supportsSharedStructureV4()`, `wrapDetails`, `unwrapDetails`,
+  `insertPageBreak`, `deletePageBreak`, `addTableCaption`, `removeTableCaption` and
+  `createSharedStructureControlsV4`. `createRichSharedToolbarV4` (and therefore the
+  `@breditor/editor` shared V4 sessions) gains **Collapsible section**, **Remove
+  collapsible section**, **Page break** and **Table caption**; the standard shared
+  slash menu gains **Collapsible section** and **Page break** (V4 toolbars only, one
+  Undo step with the trigger removal). Backspace at a summary start unwraps the
+  section, Backspace in an empty caption removes it, Enter in a caption inserts a
+  line break and Enter in an open summary opens a first body paragraph, as locally.
+  Removing a caption also removes a concurrently added caption candidate that the
+  projection hid, so no hidden caption surfaces in its place. Shared editors now
+  render page breaks with the local page-break styles (`richPageBreakStyles`, also
+  exported from `@breditor/experimental-rich-content/rendering`), so a shared page
+  break is visible and node-selectable by click.
 - Add explicit **shared rich language V4** (foundation). A shared room can now
   hold, replicate, persist and replay documents using any of the eight frozen V4
   slices with exact convergence. Selection follows the V2/V3 precedent: shared

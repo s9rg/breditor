@@ -3,6 +3,7 @@ export {model,documentModel,presentationModel,id,property,isText,isProse,text,ce
 export {render,requireRenderOptions,paintSelection,refreshAssets,applyEditingPolicy,structuralBlockStylesV2} from "./dist/browser/render.js";
 export {readNative,readTarget,restoreNative,restoreDocumentNative,nativeSelectsDocument,isCurrentCaretTarget} from "./dist/browser/selection.js";
 export {standardInlineStylesV1} from "./dist/browser/standard_inline_v1.js";
+export {richPageBreakStyles} from "./dist/browser/page_break.js";
 export {mountToolbarControl,toolbarControlStyles} from "./dist/browser/toolbar_control_view.js";
 export {standardInlineControls,standardSelectionInlineControls,selectionFormatChanges,pendingStandardFormats,standardRemovalLiteral} from "./dist/browser/standard_inline_controls.js";
 export {taskContext} from "./dist/browser/task_actions_v2.js";
