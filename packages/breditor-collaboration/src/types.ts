@@ -210,6 +210,8 @@ export interface SharedRustOwner extends SharedReviewRustCapability,SharedReview
  /** Shared V4 inline commands (text language, mentions, image links); local slice JSON inputs. */
  inline_commands_v4_version?():string;
  set_text_language?(observation:unknown,input:string):boolean;
+ case_change_version?():string;
+ change_selection_case?(observation:unknown,input:string):boolean;
  insert_mention?(observation:unknown,input:string):boolean;
  set_image_link?(observation:unknown,input:string):boolean;
  v4_block_fields_version?():string;set_details_open?(observation:unknown,block:string,open:boolean):boolean;bookmark_index_json?(observation:unknown):string;

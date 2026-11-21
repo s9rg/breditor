@@ -19,6 +19,9 @@ export interface ToolbarControl<P extends RichSelectionPolicy="original"> {
  enabled:(context:ActionContext<P>)=>boolean;
  value?:(context:ActionContext<P>)=>string;
  command:(context:ActionContext<P>,value?:string,fields?:Readonly<Record<string,string>>)=>RichCommand|null;
+ /** Optional custom panel body and surface attachment (see `RichControlPresentation`). */
+ panel?:NonNullable<import("./toolbar_control_view.js").RichControlPresentation<ActionContext<P>>["panel"]>;
+ attach?:NonNullable<import("./toolbar_control_view.js").RichControlPresentation<ActionContext<P>>["attach"]>;
 }
 export function positionAfter(context:IntentContext):FlowPosition {
  if(context.model.view.selection?.kind==="document")throw Error("Whole-document insertion requires an explicit replacement intent");

@@ -153,7 +153,7 @@ export class RichDomEditor<P extends RichSelectionPolicy="original"> {
  #attempt(work:()=>void):void {try{work();}catch(error){this.#report(error);this.#reconcile();}}
  #report(error:unknown):void {this.status.textContent=this.#ui.describe(error,this.#ui.text("richOperationFailed"));try{this.#options.onError?.(error);}catch{/* A host callback cannot rewind committed content. */}}
  #mountControl(container:HTMLElement,control:ToolbarControl<P>,signal:AbortSignal):RichControlView<ActionContext<P>>{
-  return mountToolbarControl(container,control,{prefix:"rich",ui:this.#ui,signal,sync:()=>this.#sync(),stamp:()=>JSON.stringify(this.#options.core.view()),attempt:work=>this.#attempt(work),focus:()=>this.focus(),run:(value,fields)=>{const command=control.command(this.#context(),value,fields);if(command)this.execute(command);}});
+  return mountToolbarControl(container,control,{prefix:"rich",ui:this.#ui,surface:this.surface,signal,sync:()=>this.#sync(),stamp:()=>JSON.stringify(this.#options.core.view()),attempt:work=>this.#attempt(work),focus:()=>this.focus(),run:(value,fields)=>{const command=control.command(this.#context(),value,fields);if(command)this.execute(command);}});
  }
  /** Context UI port: the same admitted control, widget, gating and command path, in another presentation. */
  contextUiState():RichContextUiHostState{const view=this.#model.view;return Object.freeze({revision:view.revision,closed:this.#disposed,busy:this.#busy,composing:!!this.#composition,readOnly:view.readOnly===true,selection:contextSelectionKind(view.selection)});}

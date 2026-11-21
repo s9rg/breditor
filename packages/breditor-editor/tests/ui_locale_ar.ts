@@ -56,6 +56,10 @@ mentionLabel:"الإشارات",mentionLoading:"جارٍ تحميل الاقتر
  langIssue:"«{text}»: {message}",langReplace:"استبدال بـ «{suggestion}»",langIgnore:"تجاهل",langNoSuggestions:"لا توجد اقتراحات",
  langApplied:"استُبدل · المراجعة {revision}",langStale:"تغيّر النص؛ أُزيلت المشكلات القديمة: {count}.",
  langIgnoredMalformed:"تم تجاهل مشكلات تالفة من المزوّد: {count}.",langReadOnly:"للقراءة فقط: يمكن مراجعة المشكلات دون تطبيقها.",
+ specialCharactersSearch:"البحث عن الرموز",specialCharactersCategory:"الفئة",specialCharactersAll:"كل الفئات",specialCharactersGrid:"رموز خاصة",
+ specialCharactersCountOne:"رمز واحد",specialCharactersCount:"{count} رموز",specialCharactersEmpty:"لا توجد رموز مطابقة",specialCharacterItem:"{name} ({code})",
+ formatPainterCopied:"تم نسخ التنسيق. حدّد نصًا لتطبيقه مرة واحدة؛ Escape للإلغاء.",formatPainterSticky:"تم نسخ التنسيق للاستخدام المتكرر. حدّد نصًا لتطبيقه؛ Escape أو الزر للإيقاف.",
+ formatPainterApplied:"تم تطبيق التنسيق.",formatPainterCancelled:"تم إيقاف ناسخ التنسيق.",formatPainterNothing:"التحديد يحمل هذا التنسيق بالفعل.",
 };
 export const arabicUi:RichUiOptions={
  lang:"ar",direction:"rtl",strings:arabicStrings,notices:arabicNotices,refusals:arabicRefusals,

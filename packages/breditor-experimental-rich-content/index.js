@@ -61,6 +61,7 @@ export {pageBreakToolbarControls,pageBreakPosition,rootBlockOfSelection,isPageBr
 export {richPrintStyles,resolveRichPrintLayout,richPrintPreviewStyles,mountRichPrintPreview,richPrintPageSizes,richPrintOrientations,richPrintMargins} from "./dist/browser/index.js";
 export {textLanguageControls,canonicalTextLanguage,textLanguageOf,richTextLanguageFormat,richTextLanguageTagProperty,richTextLanguageRecipeV4} from "./dist/browser/index.js";
 export {createFlowNavigationControls} from "./dist/browser/index.js";
+export {createFormattingProductivityToolbar,formattingProductivityControls,encodeCaseChangeIntent,createSpecialCharacterCatalog,filterSpecialCharacters,specialCharacterCode,mountSpecialCharacterPicker,richSpecialCharacterCategories,richSpecialCharacterStyles,RICH_SPECIAL_CHARACTER_MAX_CATEGORIES,RICH_SPECIAL_CHARACTER_MAX_CHARACTERS,richProductivityUiStringsEn} from "./dist/browser/index.js";
 export {createSelectionRichToolbarV1} from "./dist/browser/index.js";
 export {RichDocumentSessionStore} from "./dist/browser/index.js";
 
@@ -292,6 +293,7 @@ class RichCoreEditor {
   supportsSelectionFormatting(){const raw=this.#live();return typeof raw.selectionFormattingVersion==="function"&&raw.selectionFormattingVersion()==="1"&&typeof this.#observation.selectionCoverageJson==="function"&&typeof this.#observation.selectionFormatStateJson==="function";}
   supportsBlockLayout(){const raw=this.#live();return (this.#language===3||this.#language===4)&&typeof raw.blockLayoutVersion==="function"&&raw.blockLayoutVersion()==="1"&&typeof this.#observation.blockLayoutStateJson==="function";}
   supportsListNumbering(){const raw=this.#live();return this.#language===4&&typeof raw.listNumberingVersion==="function"&&raw.listNumberingVersion()==="1";}
+  supportsCaseChange(){const raw=this.#live();return typeof raw.caseChangeVersion==="function"&&raw.caseChangeVersion()==="1";}
   supportsTextLanguage(){const raw=this.#live();return this.#language===4&&typeof raw.textLanguageVersion==="function"&&raw.textLanguageVersion()==="1";}
   supportsImageLinks(){const raw=this.#live();return this.#language===4&&typeof raw.imageLinkVersion==="function"&&raw.imageLinkVersion()==="1";}
   supportsDetails(){const raw=this.#live();return this.#language===4&&typeof raw.detailsVersion==="function"&&raw.detailsVersion()==="1";}

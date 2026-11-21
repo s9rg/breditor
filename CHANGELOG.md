@@ -6,6 +6,23 @@ its durable formats and Wasm transport.
 
 ## Unreleased
 
+- Add opt-in **formatting-productivity tools** for local and shared rich editors
+  (see `docs/FORMATTING_PRODUCTIVITY.md`): a searchable, keyboard-navigable
+  **special-character picker** (five built-in categories, validated host
+  categories and order, names through `RichUiOptions.specialCharacters`) that
+  inserts through native text input; native **case change**
+  (`RichLocalSession::change_selection_case`, Wasm command `changeSelectionCase`
+  and `caseChangeVersion()`, shared `RichReplica::change_selection_case_json_guarded`)
+  with UPPER/lower/Title Case, Shift+F3 cycling, full Unicode mapping (`ß`→`SS`,
+  final sigma, titlecase digraphs), Turkic i only for an explicit `tr`/`az`
+  locale and a configurable English minor-word list, preserving format runs,
+  identities and mentions in one Undo step; and a **format painter** (single-use,
+  double-click sticky, Escape cancels, Mod+Alt+C/V) applying copied inline
+  formatting as one native selection-format change. Toolbar factories:
+  `createFormattingProductivityToolbar` and `createSharedFormattingProductivityToolbar`;
+  toolbar controls may now declare an optional custom `panel` and surface `attach`.
+  Default toolbars, documents and descriptors are unchanged.
+
 - Add the **shared rich V4 inline commands**: text language, mentions and image
   links, each one native shared command and one Undo step with the local V4
   semantics. Rust `RichReplica::set_text_language_json_guarded`,

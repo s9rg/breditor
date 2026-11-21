@@ -251,3 +251,24 @@ and status messages from the editor catalog through separate `ai*` and `lang*` k
 `dir`/`lang`. Provider and document text are never translated; the "Editor
 closed" notice and API-misuse errors stay English, as elsewhere. See
 [AI_AND_LANGUAGE_TOOLS.md](AI_AND_LANGUAGE_TOOLS.md).
+
+## Formatting-productivity tools
+
+The opt-in special-character picker and format painter
+([Formatting productivity](FORMATTING_PRODUCTIVITY.md)) add a separate string
+block (`ui_locale_productivity.ts`): `specialCharactersSearch`,
+`specialCharactersCategory`, `specialCharactersAll`, `specialCharactersGrid`,
+`specialCharactersCountOne`, `specialCharactersCount` (`{count}`),
+`specialCharactersEmpty`, `specialCharacterItem` (`{name}`, `{code}`) and the
+painter announcements `formatPainterCopied`, `formatPainterSticky`,
+`formatPainterApplied`, `formatPainterCancelled` and `formatPainterNothing`. Their
+English defaults are new keys; existing keys and defaults are unchanged.
+
+Character and category names use the optional `specialCharacters` entry:
+`{categories:{currency:"Währung"},characters:{"€":"Eurozeichen"}}`. Category keys
+are category ids (`[a-z][a-z0-9-]{0,31}`, at most 64 entries); character keys are
+the characters themselves (1–16 UTF-16 units without control characters, at most
+4,096 entries); values follow the ordinary string rules. Entries for characters a
+picker does not show are inert. The picker searches localized and English names.
+Toolbar labels (`special-characters`, `case-upper`, `case-lower`, `case-title`,
+`format-painter`) use the ordinary `controls` catalog.

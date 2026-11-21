@@ -38,3 +38,5 @@ export {bookmarkOf,bookmarkNames,isBookmarkName,internalLinkName,internalLinkOf,
 export {richPageBreakKind,richPageBreakClass,richPageBreakStyle,pageBreakAttributes,isPageBreak} from "./dist/browser/page_break.js";
 export {richPrintStyles,resolveRichPrintLayout,richPrintPageSizes,richPrintOrientations,richPrintMargins} from "./dist/browser/print.js";
 export {richMentionFormat,richMentionKindProperty,richMentionIdProperty,richMentionLabelProperty,richMentionKinds,richMentionClass,richMentionStyles,isRichMentionId,isRichMentionKind,isRichMentionLabel,mentionOf,mentionText,mentionFormat,groupMentionRuns,mentionChipAttributes,createMentionChip} from "./dist/browser/mention.js";
+export * from "./dist/browser/formatting_productivity.js";
+export * from "./dist/browser/special_characters.js";
