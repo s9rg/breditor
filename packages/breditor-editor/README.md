@@ -261,6 +261,18 @@ const check = mountLanguageCheck(otherHost, editor, {
 
 See [the AI and language tool contract](../../docs/AI_AND_LANGUAGE_TOOLS.md).
 
+## Editing aids
+
+```js
+import {mountEditingAids, mountEditingAidsControls} from '@breditor/editor';
+const aids = mountEditingAids(editor, {focus: true});   // a shared session works the same way
+mountEditingAidsControls(editor.toolbar, aids);          // Show blocks / Show invisible characters
+```
+
+Show blocks, invisible characters and a focused-block attribute are painted
+outside the editable DOM; toggling is never an edit, frame or Undo step. See
+[the editing-aid contract](../../docs/EDITING_AIDS.md).
+
 ## General range editing
 
 Pass `rangeEditing: 'general-v1'` to local or shared openings, or to React

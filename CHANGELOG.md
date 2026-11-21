@@ -6,6 +6,17 @@ its durable formats and Wasm transport.
 
 ## Unreleased
 
+- Add opt-in **editing aids** for local and shared rich editors:
+  `mountRichEditingAids` / `mountRichEditingAidsControls` (`mountEditingAids` /
+  `mountEditingAidsControls` in `@breditor/editor` and its collaboration entry).
+  **Show blocks** outlines every block and labels its type from the UI catalog
+  (new `aid*` keys); **invisible characters** marks spaces, no-break spaces,
+  tabs, hard breaks and paragraph ends with configurable glyphs; an optional
+  `data-breditor-focused` attribute follows the caret's block. Everything is
+  painted in an `aria-hidden`, pointer-transparent layer outside the editable
+  DOM: toggling (buttons or Ctrl/Cmd+Alt+Shift+B / +P) is never a command,
+  publication, shared frame or Undo step, and caret, IME, Copy and static output
+  are unchanged. See [docs/EDITING_AIDS.md](docs/EDITING_AIDS.md).
 - Add the **shared rich V4 inline commands**: text language, mentions and image
   links, each one native shared command and one Undo step with the local V4
   semantics. Rust `RichReplica::set_text_language_json_guarded`,

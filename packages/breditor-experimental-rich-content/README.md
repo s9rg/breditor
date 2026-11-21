@@ -143,6 +143,14 @@ headings kept with the next block, `<thead>` repeated, chrome hidden), and
 `mountRichPrintPreview(editor.surface, options)` shows approximate page boundaries
 on screen (catalog key `printPreviewLabel`). See `docs/PAGINATION_AND_PRINT.md`.
 
+## Editing aids
+
+`mountRichEditingAids(editor, {showBlocks, invisibles, focus})` outlines and labels
+blocks and marks spaces, no-break spaces, tabs, hard breaks and paragraph ends in an
+`aria-hidden` layer outside the editable surface; `mountRichEditingAidsControls(editor.toolbar, aids)`
+adds two toggle buttons (Ctrl/Cmd+Alt+Shift+B and +P). Presentation only: never a
+command, publication or Undo step, for local and shared editors. See `docs/EDITING_AIDS.md`.
+
 ## Bookmarks and internal links (candidate rich V4)
 
 A candidate rich V4 paragraph, heading or code block may carry one document-unique

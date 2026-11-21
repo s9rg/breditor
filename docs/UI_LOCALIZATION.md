@@ -251,3 +251,11 @@ and status messages from the editor catalog through separate `ai*` and `lang*` k
 `dir`/`lang`. Provider and document text are never translated; the "Editor
 closed" notice and API-misuse errors stay English, as elsewhere. See
 [AI_AND_LANGUAGE_TOOLS.md](AI_AND_LANGUAGE_TOOLS.md).
+
+## Editing aids
+
+The show-blocks labels and the two editing-aid toggle buttons read `aid*` keys
+(`aidBlockHeading` takes `{level}`) plus `aidsLabel`, `aidsShowBlocks` and
+`aidsInvisibles`, kept in `ui_locale_editing_aids.ts` and merged into
+`RichUiStrings`. The aids default to the editor's `uiLocale()`. See
+[EDITING_AIDS.md](EDITING_AIDS.md).
