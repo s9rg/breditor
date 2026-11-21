@@ -237,6 +237,8 @@ export interface SharedRustOwner extends SharedReviewRustCapability,SharedReview
  delete_typing_range?(observation:unknown,input:string):boolean;
  typing_checkpoint?():string;
  descriptor_json():string;
+ /** Additive: the owner schema's typed inline catalog; older owners omit it. */
+ inline_catalog_json?():string;
  observe():{view_json():string;free():void};
  dispatch(observation:unknown,input:string):boolean;
  set_selection(observation:unknown,input:string):boolean;

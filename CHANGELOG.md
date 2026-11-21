@@ -65,7 +65,9 @@ its durable formats and Wasm transport.
   editor the reading is generated content, outside the editable text). Typing
   beside or inside a base never inherits a reading, locally and in shared rooms.
   HTML import/export maps `<ruby>` for owners that report
-  `supportsRubyAnnotations()`, Markdown falls back to exact HTML and DOCX writes
+  `supportsRubyAnnotations()` (local and shared owners alike; shared owners read
+  their schema catalog through a new additive `inline_catalog_json()` owner
+  read), Markdown falls back to exact HTML and DOCX writes
   `w:ruby`. The SDK `toolbar` factories receive the inline presentation as a new
   third argument. See [docs/RUBY_ANNOTATIONS.md](docs/RUBY_ANNOTATIONS.md).
 

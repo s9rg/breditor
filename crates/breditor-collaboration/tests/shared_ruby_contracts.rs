@@ -59,7 +59,10 @@ fn the_shared_ruby_profile_is_the_local_ruby_profile_and_others_refuse_its_docum
     assert_eq!(with.schema().fingerprint().to_string(), RUBY_STANDARD_FINGERPRINT);
     assert_ne!(without.schema().fingerprint(), with.schema().fingerprint());
     let content = json!([{"kind":"text","text":"漢字","formats":[ruby("かんじ")]}]);
-    with.create(&source(&with, &content), "101".into())?;
+    let owner = with.create(&source(&with, &content), "101".into())?;
+    // The owner exposes the same exact catalog, so browser owners report the ruby capability.
+    assert_eq!(owner.inline_catalog_json(), with.inline_catalog_json());
+    assert!(owner.inline_catalog_json().contains("breditor-ruby/annotation"));
     assert!(without.create(&source(&without, &content), "101".into()).is_err());
     Ok(())
 }
