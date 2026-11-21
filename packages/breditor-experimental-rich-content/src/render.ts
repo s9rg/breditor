@@ -4,6 +4,7 @@ import {cellKey,id,property,type AstNode,type ElementNode,type RichPresentationM
 import {requireRichInlinePresentation,richInlineRecipes,type RichInlinePresentation} from "./inline_presentation.js";
 import {applyBlockLayout} from "./block_layout_presentation.js";
 import {applyListNumbering} from "./list_numbering_presentation.js";
+import {legalListAttribute,legalListMarkerAttribute,legalListMarkers} from "./list_structure.js";
 import {wrapImageLink} from "./image_link.js";
 import {createMentionChip,groupMentionRuns} from "./mention.js";
 import {createPageBreakElement,richPageBreakKind} from "./page_break.js";
@@ -21,6 +22,10 @@ export interface RenderOptions {
   * `data-rich-bookmark`, internal links `href="#bm-<name>"` (or `data-rich-link-broken` when no block
   * carries the name). The controller sets it for a V4 owner; omitted keeps V1–V3 output exact. */
  bookmarks?:boolean;
+ /** Opt-in legal multi-level numbering (`1.`, `1.2.`, `1.2.3.`) for nested ordered lists, derived
+  * at render time from admitted structure and starts (see `legalListMarkers`); presentation only,
+  * never stored. Omitted keeps the existing output exact. */
+ legalListNumbering?:boolean;
 }
 const resolvedUi=new WeakMap<object,RichUiLocale>();
 /** Resolve (and cache per options object) the catalog that labels page-break markers. */
@@ -31,6 +36,7 @@ function pageBreakLabel(options:RenderOptions):string{
 }
 /** Validate opt-in presentation before publishing host DOM. Legacy callbacks stay separate. */
 export function requireRenderOptions(value:RichPresentationModel,options:RenderOptions):void {
+ if(options.legalListNumbering!==undefined&&typeof options.legalListNumbering!=="boolean")throw new TypeError("legalListNumbering must be a boolean");
  if(options.inlinePresentation){if(options.inlineTag)throw new TypeError("Use either inlinePresentation or inlineTag, not both");requireRichInlinePresentation(options.inlinePresentation,value.schema);}
 }
 /** A lone LF at the very end of a `pre-wrap` text block creates no line box after it, so Chromium
@@ -80,6 +86,7 @@ export function render(surface:HTMLElement,value:RichPresentationModel,options:R
  requireRenderOptions(value,options);
  const document=surface.ownerDocument;
  const bookmarks=options.bookmarks===true?new Set(bookmarkNames(value.root)):undefined;
+ const legal=options.legalListNumbering===true?legalListMarkers(value.root):undefined;
  const anchor=(element:HTMLElement,node:ElementNode):void=>{const name=bookmarks?bookmarkOf(node):undefined;if(name!==undefined)for(const attribute of bookmarkAttributes(name))element.setAttribute(attribute.name,attribute.value);};
  // Candidate V4 mentions render as inert chips grouping their styled pieces (text blocks and summaries).
  const appendInline=(target:HTMLElement,node:ElementNode):void=>{for(const item of groupMentionRuns(node.children.filter((child):child is TextNode=>child.kind==="text"),(run,text,formats)=>({...run,text,formats})))target.append(item.kind==="run"?flow(item.run):createMentionChip(document,item.mention,item.pieces.map(flow)));};
@@ -128,6 +135,8 @@ export function render(surface:HTMLElement,value:RichPresentationModel,options:R
   const element=document.createElement(tag);element.dataset["richBlock"]=id(node);
   if(node.type==="breditor/task-list"){element.dataset["taskList"]="";element.setAttribute("role","list");}
   if(node.type==="breditor/ordered-list")applyListNumbering(element,node);
+ if(legal&&node.type==="breditor/ordered-list"){element.setAttribute(legalListAttribute,"");element.setAttribute("role","list");}
+ const marker=legal&&node.type==="breditor/list-item"?legal.get(node):undefined;if(marker!==undefined)element.setAttribute(legalListMarkerAttribute,marker);
   if(node.type==="breditor/paragraph"||node.type==="breditor/heading"){
    element.dataset["richText"]=id(node);
    applyBlockLayout(element,node);anchor(element,node);

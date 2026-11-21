@@ -6,6 +6,22 @@ its durable formats and Wasm transport.
 
 ## Unreleased
 
+- Add **multi-block list item editing** and an opt-in **legal multi-level
+  numbering** presentation, without changing any rich language (V4 stays
+  frozen). Rich V1–V4 items already admit `paragraph block*`; new native edits
+  create and dissolve such items: Rust `JoinListItems::capture_blocks` and
+  `SplitListItem::capture_block` (exact inverses, one Undo step each), local
+  commands `joinListItems` `blocks: true` and `splitListItemBlock`, shared
+  `join_list_items` `blocks` and `split_list_item_block`. Keys, local and
+  shared: Backspace in an empty item's leading block keeps it as a later block
+  of the previous item, Enter in an empty later block splits it out into a new
+  item, and Tab/Shift+Tab indent/outdent ordinary list items from any of their
+  blocks (Tab on a first item and top-level Shift+Tab keep focus navigation).
+  `legalListNumbering: true` (live, shared and `renderStaticDocument`) draws
+  `1.`, `1.2.`, `1.2.3.` markers derived from each ordered list's start and
+  reversal; nothing is stored and default output is unchanged. Skip-level items
+  and stored legal numbering are specified as a V5 candidate. See
+  [docs/LIST_STRUCTURE.md](docs/LIST_STRUCTURE.md).
 - Add opt-in **editing aids** for local and shared rich editors:
   `mountRichEditingAids` / `mountRichEditingAidsControls` (`mountEditingAids` /
   `mountEditingAidsControls` in `@breditor/editor` and its collaboration entry).

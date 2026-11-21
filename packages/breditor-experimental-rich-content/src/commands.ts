@@ -144,7 +144,10 @@ export type RichCommand =
  |{kind:"splitTextBlock";data:{point:RichPoint;right:string;rightHeading:number|null}}
  |{kind:"splitListItem";data:{point:RichPoint;newItem:string;right:string;rightHeading:number|null}}
  |{kind:"joinTextBlocks";data:{left:string;right:string}}
- |{kind:"joinListItems";data:{container:string;left:string;right:string}}
+ /** `blocks: true` merges the right item as later blocks of the left (multi-block item); text is never joined. */
+ |{kind:"joinListItems";data:{container:string;left:string;right:string;blocks?:true}}
+ /** Move a later paragraph/heading of an item (and its following flow) into a fresh sibling item. */
+ |{kind:"splitListItemBlock";data:{block:string;newItem:string}}
  |{kind:"insertFormattedText";data:{text:string;formatsJson:string}}
  |{kind:"setInlineFormat";data:{change:{kind:"set";formatsJson:string}|{kind:"remove";format:string};targets:readonly {block:string;start:string;end:string}[]}}
  /** Simultaneous changes to unique kinds; one guarded publication/history unit. */

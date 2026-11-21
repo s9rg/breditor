@@ -85,6 +85,7 @@ mod set_table_header;
 mod set_task_checked;
 mod set_text_language;
 mod split_list_item;
+mod split_list_item_block;
 mod split_support;
 mod split_table_cell;
 mod split_task_item;
@@ -202,6 +203,7 @@ enum CommandTag {
     ClearTableCells,
     NavigateGrid,
     ReplaceTriggerThen,
+    SplitListItemBlock,
 }
 #[derive(Deserialize)]
 #[serde(deny_unknown_fields)]

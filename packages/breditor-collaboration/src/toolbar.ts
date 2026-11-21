@@ -47,6 +47,16 @@ const commonToolbar:readonly SharedCommonToolbarControl[]=[
  {id:"remove-node",label:"Remove node",enabled:c=>c.model.view.selection?.kind==="node",run:c=>removeSelection(c)},
 ];
 export const defaultSharedToolbar:readonly SharedToolbarControl[]=commonToolbar;
+/** Shared twin of the local `listTab`: Tab indents (not the first item), Shift+Tab outdents only a
+ * nested list; otherwise false so focus navigation is kept. Runs the Indent/Outdent control intent. */
+export function sharedListTabApplies(ctx:SharedIntentContext,backward:boolean):boolean{
+ const list=listContext(ctx.model);if(!list)return false;
+ return backward?ctx.model.parents.get(id(list.list))?.type==="breditor/list-item":list.first>0;
+}
+export function sharedListTab(ctx:SharedIntentContext,backward:boolean):void{
+ if(!sharedListTabApplies(ctx,backward))return;
+ commonToolbar.find(control=>control.id===(backward?"outdent":"indent"))!.run(ctx);
+}
 export function defaultSharedToolbarFor<P extends SharedSelectionPolicy>():readonly SharedToolbarControl<P>[]{return commonToolbar;}
 /** Reorder the selected row/column without rebuilding retained cell bodies. */
 export function axisMove(ctx:SharedIntentContext,axis:"row"|"column",direction:-1|1):SharedCommand|undefined{

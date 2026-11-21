@@ -65,6 +65,11 @@ historical WebKit fault. Those gates remain open; this is not a release approval
 
 ## Document shape
 
+(This is the older experimental nested-list profile. The rich languages V1–V4
+already admit multi-block items — a leading paragraph or heading followed by any
+flow, including paragraphs after a child list; see
+[LIST_STRUCTURE.md](LIST_STRUCTURE.md).)
+
 A list contains one or more items. Each item contains exactly one leading
 paragraph or heading, followed by zero or more child lists. Child lists may use
 different marker families and explicit ordered starts. Empty lists, items without

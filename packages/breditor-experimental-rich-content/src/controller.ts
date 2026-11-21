@@ -1,11 +1,12 @@
 import {isStructuralRichLanguage} from "./rich_language.js";
 // One DOM coordinator around the exclusive Rust owner. Rendering and callbacks cannot publish reentrantly.
 import type {FlowPosition,RichCommand,RichCommandOutcome,RichCoreEditor,RichSelection,RichDocumentSelection,RichSelectionPolicy,RichEditorView,RichDocumentCoreEditor} from "./core.js";
-import {bold,boundaryDelete,defaultToolbarFor,deleteSelection,enter,positionAfter,type ActionContext,type ToolbarControl} from "./actions.js";
+import {bold,boundaryDelete,defaultToolbarFor,deleteSelection,enter,listTab,positionAfter,type ActionContext,type ToolbarControl} from "./actions.js";
 import {id,presentationModel,sourceCell,text,type RichModel} from "./model.js";
 import {paintSelection,render,requireRenderOptions,structuralBlockStylesV2,type RenderOptions} from "./render.js";
 import {richPageBreakStyles} from "./page_break.js";
 import {richBookmarkStyles} from "./bookmark.js";
+import {richLegalListStyles} from "./list_structure.js";
 import {readNative,readTarget,restoreDocumentNative,nativeSelectsDocument,isCurrentCaretTarget} from "./selection.js";
 import {documentSelectionStyles} from "./document_selection_presentation.js";
 import {requireDocumentBrowserCore} from "./document_core.js";
@@ -109,7 +110,7 @@ export class RichDomEditor<P extends RichSelectionPolicy="original"> {
   this.toolbar=document.createElement("div");this.toolbar.className="breditor-rich-toolbar";this.toolbar.setAttribute("role","toolbar");this.toolbar.setAttribute("aria-label",ui.text("richToolbarLabel"));ui.applyChrome(this.toolbar);
   this.status=document.createElement("p");this.status.className="breditor-rich-status";this.status.setAttribute("role","status");ui.applyChrome(this.status);
   this.#placeholder=placeholder?new RichPlaceholderPresentation(this.surface,placeholder.label):undefined;
-  const style=document.createElement("style");style.textContent=styles+standardInlineStylesV1+toolbarControlStyles+structuralBlockStylesV2+richPageBreakStyles+richBookmarkStyles+(this.#document?documentSelectionStyles:"")+(placeholder?richPlaceholderStyles:"");root.dataset["breditorRich"]="";root.replaceChildren(style,this.toolbar,this.#placeholder?.container??this.surface,this.status);
+  const style=document.createElement("style");style.textContent=styles+standardInlineStylesV1+toolbarControlStyles+structuralBlockStylesV2+richPageBreakStyles+richBookmarkStyles+richLegalListStyles+(this.#document?documentSelectionStyles:"")+(placeholder?richPlaceholderStyles:"");root.dataset["breditorRich"]="";root.replaceChildren(style,this.toolbar,this.#placeholder?.container??this.surface,this.status);
   const seen=new Set<string>();
   for(const control of options.toolbar??defaultToolbarFor<P>()){
    if(seen.has(control.id))throw Error("Duplicate rich toolbar control identity");seen.add(control.id);
@@ -457,7 +458,7 @@ export class RichDomEditor<P extends RichSelectionPolicy="original"> {
   }
   const selection=this.#model.view.selection;
   if(this.#model.view.readOnly!==true&&event.key==="Tab"&&!mod&&!event.altKey){
-   this.#attempt(()=>{this.#sync();const command=taskTab(this.#context(),event.shiftKey);if(command){event.preventDefault();this.execute(command);}});
+   this.#attempt(()=>{this.#sync();const command=taskTab(this.#context(),event.shiftKey)??listTab(this.#context(),event.shiftKey);if(command){event.preventDefault();this.execute(command);}});
    if(event.defaultPrevented)return;
   }
   if(selection?.kind==="grid"){

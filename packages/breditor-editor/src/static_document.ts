@@ -20,6 +20,7 @@ import {
 } from "@breditor/experimental-rich-content/rendering";
 import {groupMentionRuns,mentionChipAttributes,mentionOf,richMentionFormat,richMentionIdProperty,richMentionKindProperty,richMentionLabelProperty} from "@breditor/experimental-rich-content/rendering";
 import {bookmarkAttributes,internalLinkAttributes,internalLinkOf,isBookmarkName} from "@breditor/experimental-rich-content/rendering";
+import {legalListMarkersWith,richLegalListStyles} from "@breditor/experimental-rich-content/rendering";
 import {pageBreakAttributes,richPrintStyles,resolveRichPrintLayout,richUiStringsEn,type RichPrintOptions,type RichPrintLayout} from "@breditor/experimental-rich-content/rendering";
 
 /** Immutable image binding handed to the host resolver; mirrors the live `AssetBinding`. */
@@ -60,6 +61,13 @@ export interface StaticRenderOptions {
   * body row) are emitted in `<thead>` so paged media repeats them on each page.
   */
  print?:boolean|RichPrintOptions;
+ /**
+  * Legal multi-level numbering presentation (default off, output unchanged), with the same derived
+  * markers as the live `legalListNumbering` option: ordered lists get `data-rich-legal` and
+  * `role="list"`, their items `data-rich-legal-marker="1.2."`. The wrapper carries a
+  * `<style data-breditor-legal-lists>` with `richLegalListStyles`; fragments carry no stylesheet.
+  */
+ legalListNumbering?:boolean;
 }
 
 export type StaticImageState="ready"|"unresolved"|"rejected"|"error";
@@ -93,8 +101,9 @@ export function renderStaticDocument(document:unknown,options:StaticRenderOption
 export function renderStaticDocumentWithReport(document:unknown,options:StaticRenderOptions={}):StaticRenderResult {
  const renderer=new Renderer(options);
  const root=renderer.admit(document);
+ renderer.legal(root);
  const body=renderer.children(root);
- const style=renderer.print&&!options.fragment?`<style data-breditor-print="">${richPrintStyles(renderer.print)}</style>`:"";
+ const style=(renderer.print&&!options.fragment?`<style data-breditor-print="">${richPrintStyles(renderer.print)}</style>`:"")+(options.legalListNumbering===true&&!options.fragment?`<style data-breditor-legal-lists="">${richLegalListStyles}</style>`:"");
  const html=options.fragment?body:`<div class="${staticSurfaceClass}" data-breditor-rich="" data-breditor-static="">${style}${body}</div>`;
  return {html,report:Object.freeze({skipped:Object.freeze(renderer.skipped),images:Object.freeze(renderer.images),hiddenTables:Object.freeze(renderer.hiddenTables),inactiveMerges:Object.freeze(renderer.inactiveMerges)})};
 }
@@ -261,6 +270,7 @@ class Renderer {
  #nodes=0;#textBytes=0;#detailsDepth=0;
  /** Candidate V4 bookmark names seen during admission (unique per document). */
  readonly #bookmarks=new Set<string>();
+ readonly #legal:boolean;#markers:ReadonlyMap<Element,string>=new Map();
  constructor(options:StaticRenderOptions){
   if(typeof options!=="object"||options===null||Array.isArray(options))throw new TypeError("Static render options must be an object");
   if(options.unknown!==undefined&&options.unknown!=="error"&&options.unknown!=="skip")throw new TypeError("unknown must be \"error\" or \"skip\"");
@@ -269,6 +279,8 @@ class Renderer {
   const label=options.pageBreakLabel??richUiStringsEn.pageBreakLabel;
   if(typeof label!=="string"||!label.trim()||label.length>512||/[\u0000-\u001F\u007F]/.test(label))throw new TypeError("pageBreakLabel must be a nonempty string of at most 512 characters without control characters");
   this.#pageBreak=label;
+  if(options.legalListNumbering!==undefined&&typeof options.legalListNumbering!=="boolean")throw new TypeError("legalListNumbering must be a Boolean");
+  this.#legal=options.legalListNumbering===true;
   if(options.print!==undefined&&typeof options.print!=="boolean"&&(typeof options.print!=="object"||options.print===null))throw new TypeError("print must be a Boolean or print options");
   this.print=options.print===undefined||options.print===false?undefined:resolveRichPrintLayout(options.print===true?{}:options.print);
   const limits=options.limits??{};
@@ -437,6 +449,12 @@ class Renderer {
 
  // ---- output -----------------------------------------------------------------------
  children(element:Element):string {return element.children.map(child=>this.#flow(child)).join("");}
+ /** Derive legal markers once from the admitted tree (opt-in). */
+ legal(root:Element):void {
+  if(!this.#legal)return;
+  const elements=(node:Element):Element[]=>node.children.filter((child):child is Element=>child.kind==="element");
+  this.#markers=legalListMarkersWith<Element>(root,{type:node=>node.type,children:elements,start:node=>node.properties["start"],reversed:node=>node.properties["list-reversed"]===true});
+ }
  #blockAttributes(node:Element,text:boolean):string {
   if(!this.#ids)return "";
   const id=escapeHtmlAttribute(String(node.properties["block-id"]));
@@ -499,8 +517,8 @@ class Renderer {
     return `<pre${this.#blockAttributes(node,true)}${this.#layout(node)}${this.#bookmark(node)}${language}><code>${node.children.length?inner():"<br>"}</code></pre>`;
    }
    case "breditor/bullet-list":return `<ul${this.#blockAttributes(node,false)}>${inner()}</ul>`;
-   case "breditor/ordered-list":return `<ol${this.#blockAttributes(node,false)} start="${String(p["start"])}"${p["list-style"]!==undefined?` type="${listTypes[(p["list-style"] as number)-1]!}"`:""}${p["list-reversed"]===true?" reversed":""}>${inner()}</ol>`;
-   case "breditor/list-item":return `<li${this.#blockAttributes(node,false)}>${inner()}</li>`;
+   case "breditor/ordered-list":return `<ol${this.#blockAttributes(node,false)} start="${String(p["start"])}"${p["list-style"]!==undefined?` type="${listTypes[(p["list-style"] as number)-1]!}"`:""}${p["list-reversed"]===true?" reversed":""}${this.#legal?' data-rich-legal="" role="list"':""}>${inner()}</ol>`;
+   case "breditor/list-item":{const marker=this.#markers.get(node);return `<li${this.#blockAttributes(node,false)}${marker!==undefined?` data-rich-legal-marker="${escapeHtmlAttribute(marker)}"`:""}>${inner()}</li>`;}
    case "breditor/task-list":return `<ul${this.#blockAttributes(node,false)} data-task-list="" role="list">${inner()}</ul>`;
    case "breditor/task-item":{
     const value=this.#ids?escapeHtmlAttribute(String(p["block-id"])):"",id=this.#ids?` data-rich-task="${value}"`:"";

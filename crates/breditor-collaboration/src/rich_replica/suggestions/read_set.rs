@@ -398,6 +398,7 @@ impl<'a> ReadSet<'a> {
                 self.placed(&value.right)?;
             }
             Command::SplitListItem(value) => self.placed(&value.block)?,
+            Command::SplitListItemBlock(value) => self.placed(&value.block)?,
             Command::SplitTaskItem(value) => self.placed(&value.block)?,
             Command::WrapList(value) => self.siblings(&value.first, &value.last)?,
             Command::WrapTaskList(value) => self.siblings(&value.first, &value.last)?,

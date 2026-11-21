@@ -2,6 +2,7 @@ import {isStructuralRichLanguage} from "@breditor/experimental-rich-content/rend
 // Read-only UI preparation. Rust owns final semantic admission and all replicated state.
 import {id,isText,property,sourceCell,text,formatsAt,textTargets,taskContext,selectedFlowAtom,type RichModel,type RichPresentationModel,type ElementNode} from "@breditor/experimental-rich-content/rendering";
 import {exitEmptySharedTask} from "./task_actions_v2.js";
+import {multiBlockListBackspace,multiBlockListEnter} from "@breditor/experimental-rich-content/rendering";
 import {sharedStructureBoundaryV4,sharedStructureEnterV4} from "./structure_v4.js";
 import type {SharedRichEditor} from "./core.js";
 import type {RichInputRuleOutcome} from "@breditor/experimental-rich-content";
@@ -69,6 +70,8 @@ export function enter(ctx:SharedIntentContext,target?:Extract<RichSelection,{kin
  if(!cross&&!target&&sharedStructureEnterV4(ctx)!==undefined)return;
  if(node.type==="breditor/code-block"||parent?.type==="breditor/image"){if(cross)ctx.core.replaceGeneralRangePlainText(s,"\n",ctx.allocate("range"),ctx.revision);else ctx.core.hardBreak(ctx.revision);return;}
  if(cross){ctx.core.insertGeneralParagraph(s,ctx.allocate("range"),ctx.revision);return;}
+ // Multi-block item: Enter in an empty later paragraph moves it (and what follows) to a new item.
+ const lift=target?undefined:multiBlockListEnter(ctx.model);if(lift){publish(ctx,[{kind:"split_list_item_block",data:{block:lift.block,new_item:ctx.allocate("item")}}],caret(lift.block));return;}
  if(parent?.type==="breditor/task-item"&&parent.children[0]===node){const exit=exitEmptySharedTask(ctx);if(exit){publish(ctx,[exit],caret(start.block));return;}}
  const list=listContext(ctx.model);
  if(list&&parent?.type==="breditor/list-item"&&parent.children[0]===node&&!text(node)&&start.block===end.block&&start.offset===end.offset){const outside=ctx.model.parents.get(id(list.list)),tail=outside?.type!=="breditor/list-item"&&list.last<list.items.length-1?ctx.allocate("list-tail"):null;publish(ctx,[{kind:"outdent_list_items",data:{container:id(list.list),first:id(parent),last:id(parent),fresh_tail:tail}}],caret(start.block));return;}
@@ -87,6 +90,8 @@ export function boundaryDelete(ctx:SharedIntentContext,backward:boolean):boolean
  if(node.type==="breditor/code-block")return false;
  const v4=sharedStructureBoundaryV4(ctx,backward,node,parent);if(v4!==undefined)return v4;
  const task=taskContext(ctx.model);if(task&&parent.type==="breditor/task-item"&&parent.children[0]===node){const index=task.first,other=index+(backward?-1:1),left=task.items[Math.min(index,other)],right=task.items[Math.max(index,other)];if(left&&right){publish(ctx,[{kind:"join_task_items",data:{container:id(task.container),left:id(left),right:id(right)}}]);return true;}return false;}
+ // Multi-block item: Backspace in an empty leading block keeps it as a later block of the previous item.
+ const merge=backward?multiBlockListBackspace(ctx.model):undefined;if(merge){publish(ctx,[{kind:"join_list_items",data:{...merge,blocks:true}}],caret(id(node)));return true;}
  const list=listContext(ctx.model);if(list&&parent.type==="breditor/list-item"&&parent.children[0]===node){const index=list.first,other=index+(backward?-1:1),left=list.items[Math.min(index,other)],right=list.items[Math.max(index,other)];if(left&&right){publish(ctx,[{kind:"join_list_items",data:{container:id(list.list),left:id(left),right:id(right)}}]);return true;}return false;}
  const index=parent.children.indexOf(node),other=parent.children[index+(backward?-1:1)];if(other?.kind!=="element")return false;
  if(other.type==="breditor/code-block")return false;

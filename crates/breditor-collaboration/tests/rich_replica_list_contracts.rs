@@ -5,8 +5,8 @@ use breditor_collaboration::{
         Command, PendingFormatsUpdate, RichReplica, SelectionUpdate,
         actions::{
             DeleteBlock, IndentListItems, InsertBlocks, InsertColumn, InsertText, JoinListItems,
-            ListStyle, NestedList, OutdentListItems, SetListKind, SplitListItem, UnwrapList,
-            WrapList,
+            ListStyle, NestedList, OutdentListItems, SetListKind, SplitListItem,
+            SplitListItemBlock, UnwrapList, WrapList,
         },
         selection::{Selection, TextPoint},
     },
@@ -243,6 +243,7 @@ fn list_enter_and_join_retain_original_sources_offline_typing_and_media_tails() 
         container: "list".into(),
         left: "item-1".into(),
         right: "right-item".into(),
+        blocks: false,
     })])?;
     assert_eq!(text(&a, "p"), "a🙂Rb");
     assert_eq!(children(&a, "item-1"), ["p", "image-block"]);
@@ -268,6 +269,7 @@ fn join_with_a_left_media_tail_keeps_the_right_head_as_a_later_body_block() -> T
         container: "list".into(),
         left: "item-1".into(),
         right: "item-2".into(),
+        blocks: false,
     })])?;
     assert_eq!(children(&a, "item-1"), ["p", "image-block", "end"]);
     assert_eq!(text(&a, "p"), "a🙂b");
@@ -517,6 +519,7 @@ fn empty_item_enter_and_join_keep_two_empty_sources_and_one_saved_caret() -> Tes
         container: "list".into(),
         left: "item-2".into(),
         right: "empty-right-item".into(),
+        blocks: false,
     })])?;
     a.undo()?;
     a.undo()?;
@@ -579,5 +582,87 @@ fn a_fresh_split_item_can_synthesize_its_head_and_unwrap_in_one_atomic_group() -
     a.undo()?;
     assert_eq!(a.document_json(), before);
     a.redo()?;
+    Ok(())
+}
+#[test]
+fn multi_block_join_and_block_split_keep_identities_remote_text_and_exact_history() -> TestResult {
+    let (mut a, mut b) = peers()?;
+    add(&mut a, 3)?;
+    a.apply(vec![wrap(3)])?;
+    b.receive(a.updates()?)?;
+    let original = a.document_json().to_owned();
+    // A head is never a block-split target, and a refused command leaves state untouched.
+    assert!(
+        a.apply(vec![Command::SplitListItemBlock(SplitListItemBlock {
+            block: "end".into(),
+            new_item: "fresh".into(),
+        })])
+        .is_err()
+    );
+    assert_eq!(a.document_json(), original);
+    a.apply(vec![Command::JoinListItems(JoinListItems {
+        container: "list".into(),
+        left: "item-2".into(),
+        right: "item-3".into(),
+        blocks: true,
+    })])?;
+    assert_eq!(children(&a, "list"), ["item-1", "item-2"]);
+    assert_eq!(children(&a, "item-2"), ["end", "third"]);
+    assert_eq!(text(&a, "end"), "Tail🙂");
+    b.apply(vec![typing("third", 0, "R")])?;
+    sync(&mut a, &mut b)?;
+    assert_eq!(text(&a, "third"), "RLast");
+    let joined = a.document_json().to_owned();
+    a.apply(vec![Command::SplitListItemBlock(SplitListItemBlock {
+        block: "third".into(),
+        new_item: "item-4".into(),
+    })])?;
+    assert_eq!(children(&a, "list"), ["item-1", "item-2", "item-4"]);
+    assert_eq!(children(&a, "item-2"), ["end"]);
+    assert_eq!(children(&a, "item-4"), ["third"]);
+    sync(&mut a, &mut b)?;
+    let split = a.document_json().to_owned();
+    let mut restored = RichReplica::restore(codec()?, "room", &a.checkpoint()?)?;
+    a.undo()?;
+    restored.undo()?;
+    assert_eq!(a.document_json(), joined);
+    assert_eq!(a.checkpoint()?, restored.checkpoint()?);
+    a.redo()?;
+    assert_eq!(a.document_json(), split);
+    a.undo()?;
+    a.undo()?;
+    sync(&mut a, &mut b)?;
+    // Undo restores the three original items; the remote typing in `third` survives.
+    assert_eq!(children(&a, "list"), ["item-1", "item-2", "item-3"]);
+    assert_eq!(children(&a, "item-3"), ["third"]);
+    assert_eq!(text(&a, "third"), "RLast");
+    Ok(())
+}
+#[test]
+fn block_join_and_split_commands_keep_existing_join_json_exact() -> TestResult {
+    let join = Command::JoinListItems(JoinListItems {
+        container: "list".into(),
+        left: "a".into(),
+        right: "b".into(),
+        blocks: false,
+    });
+    assert_eq!(
+        serde_json::to_value(&join)?,
+        json!({"kind":"join_list_items","data":{"container":"list","left":"a","right":"b"}})
+    );
+    let blocks: Command = serde_json::from_value(
+        json!({"kind":"join_list_items","data":{"container":"list","left":"a","right":"b","blocks":true}}),
+    )?;
+    assert!(matches!(blocks, Command::JoinListItems(JoinListItems { blocks: true, .. })));
+    let split: Command = serde_json::from_value(
+        json!({"kind":"split_list_item_block","data":{"block":"p","new_item":"i"}}),
+    )?;
+    assert!(matches!(split, Command::SplitListItemBlock(_)));
+    assert!(
+        serde_json::from_value::<Command>(
+            json!({"kind":"split_list_item_block","data":{"block":"p","new_item":"i","x":1}})
+        )
+        .is_err()
+    );
     Ok(())
 }

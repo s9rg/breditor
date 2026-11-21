@@ -733,3 +733,107 @@ fn rich_fragment_insert_replace_and_remove_keep_explicit_identities_and_exact_in
             .ok_or("remove")?;
     check_inverse(&context, &original, &removed)
 }
+
+#[test]
+fn multi_block_join_keeps_the_right_head_and_block_split_is_its_exact_inverse() -> TestResult {
+    let context = context()?;
+    let original = wrapped(&context)?;
+    let selected = RichSelection::try_new(&original, caret("z", 2, Affinity::After)?)?;
+    let join =
+        JoinListItems::capture_blocks(&original, &block("list")?, &block("i1")?, &block("i2")?)?
+            .apply(&context, &original)?
+            .ok_or("join")?;
+    let mut root = value(&context, join.document())?;
+    let items = body_mut(&mut root)?[0]["children"].as_array().ok_or("items")?.clone();
+    assert_eq!(items.len(), 2);
+    assert_eq!(items[1]["children"][0]["properties"]["breditor/block-id"], "q");
+    assert_eq!(items[1]["children"][0]["children"][0]["text"], "second");
+    assert_eq!(items[1]["children"][1]["properties"]["breditor/block-id"], "z");
+    assert_eq!(items[1]["children"][1]["children"][0]["text"], "third");
+    assert_eq!(location(join.map_selection(&selected)?.selection().ok_or("map")?)?, ("z", 2));
+    assert_eq!(reading_order(&root), reading_order(&value(&context, &original)?));
+    check_inverse(&context, &original, &join)?;
+
+    let split = SplitListItem::capture_block(join.document(), &block("z")?, &block("i3")?)?
+        .apply(&context, join.document())?
+        .ok_or("split")?;
+    let mut root = value(&context, split.document())?;
+    let items = body_mut(&mut root)?[0]["children"].as_array().ok_or("items")?.clone();
+    assert_eq!(items.len(), 3);
+    assert_eq!(items[1]["children"].as_array().ok_or("left")?.len(), 1);
+    assert_eq!(items[2]["properties"]["breditor/block-id"], "i3");
+    assert_eq!(items[2]["children"][0]["properties"]["breditor/block-id"], "z");
+    // The ordered list keeps its explicit start; ordinals follow item order.
+    assert_eq!(body_mut(&mut root)?[0]["properties"]["breditor/start"], 3);
+    check_inverse(&context, join.document(), &split)
+}
+
+#[test]
+fn block_split_moves_following_flow_and_refuses_heads_media_and_reused_ids() -> TestResult {
+    let context = context()?;
+    let original = wrapped(&context)?;
+    // i0 = [p, image] gains q as a later text block: i0 = [p, image, q].
+    let joined =
+        JoinListItems::capture_blocks(&original, &block("list")?, &block("i0")?, &block("i1")?)?
+            .apply(&context, &original)?
+            .ok_or("join")?;
+    let document = joined.document();
+    let mut root = value(&context, document)?;
+    let image =
+        body_mut(&mut root)?[0]["children"][0]["children"][1]["properties"]["breditor/block-id"]
+            .as_str()
+            .ok_or("image block")?
+            .to_owned();
+    // A leading block, a non-text block and a missing block are refused.
+    assert!(SplitListItem::capture_block(document, &block("p")?, &block("n")?).is_err());
+    assert!(SplitListItem::capture_block(document, &block(&image)?, &block("n")?).is_err());
+    assert!(SplitListItem::capture_block(document, &block("missing")?, &block("n")?).is_err());
+    // A reused identity is refused at admission.
+    let reused = SplitListItem::capture_block(document, &block("q")?, &block("i2")?)?;
+    assert!(reused.apply(&context, document).is_err());
+    let split = SplitListItem::capture_block(document, &block("q")?, &block("n")?)?
+        .apply(&context, document)?
+        .ok_or("split")?;
+    let mut root = value(&context, split.document())?;
+    let items = body_mut(&mut root)?[0]["children"].as_array().ok_or("items")?.clone();
+    assert_eq!(items.len(), 3);
+    assert_eq!(items[0]["children"].as_array().ok_or("i0")?.len(), 2);
+    assert_eq!(items[1]["children"][0]["properties"]["breditor/block-id"], "q");
+    check_inverse(&context, document, &split)
+}
+
+#[test]
+fn local_owner_history_makes_each_multi_block_edit_one_exact_step() -> TestResult {
+    let context = context()?;
+    let original = wrapped(&context)?;
+    let mut owner = RichLocalSession::try_new(
+        context.clone(),
+        original.clone(),
+        Some(caret("z", 0, Affinity::After)?),
+        HistoryCapacity::default(),
+    )?;
+    let join = RichAction::JoinListItems(JoinListItems::capture_blocks(
+        owner.state().document(),
+        &block("list")?,
+        &block("i1")?,
+        &block("i2")?,
+    )?);
+    owner.dispatch(&owner.snapshot(), &[join], RichSelectionUpdate::Map)?;
+    let joined = bytes(&context, owner.state().document())?;
+    assert_eq!(location(owner.state().selection().ok_or("selection")?)?, ("z", 0));
+    let split = RichAction::SplitListItem(SplitListItem::capture_block(
+        owner.state().document(),
+        &block("z")?,
+        &block("i2")?,
+    )?);
+    owner.dispatch(&owner.snapshot(), &[split], RichSelectionUpdate::Map)?;
+    assert_eq!(bytes(&context, owner.state().document())?, bytes(&context, &original)?);
+    owner.undo(&owner.snapshot())?;
+    assert_eq!(bytes(&context, owner.state().document())?, joined);
+    owner.undo(&owner.snapshot())?;
+    assert_eq!(bytes(&context, owner.state().document())?, bytes(&context, &original)?);
+    assert_eq!(location(owner.state().selection().ok_or("selection")?)?, ("z", 0));
+    owner.redo(&owner.snapshot())?;
+    assert_eq!(bytes(&context, owner.state().document())?, joined);
+    Ok(())
+}

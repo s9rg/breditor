@@ -93,6 +93,7 @@ pub(super) fn validate(
             require(&value.last, false)?;
         }
         Command::SplitListItem(value) => declared.require_text(document, &value.block)?,
+        Command::SplitListItemBlock(value) => declared.require_text(document, &value.block)?,
         Command::JoinListItems(value) => {
             require(&value.container, true)?;
             require(&value.left, false)?;
