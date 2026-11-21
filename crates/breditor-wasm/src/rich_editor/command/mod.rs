@@ -5,6 +5,7 @@
 
 mod bookmark;
 mod change_inline_formats;
+mod change_selection_case;
 mod change_selection_formats;
 mod change_selection_layout;
 mod clear_table_cells;
@@ -202,6 +203,7 @@ enum CommandTag {
     ClearTableCells,
     NavigateGrid,
     ReplaceTriggerThen,
+    ChangeSelectionCase,
 }
 #[derive(Deserialize)]
 #[serde(deny_unknown_fields)]

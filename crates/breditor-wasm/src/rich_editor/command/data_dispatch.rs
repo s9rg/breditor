@@ -105,6 +105,9 @@ pub(super) fn execute(
         }
         CommandTag::SplitTextBlock => super::split_text_block::execute(owner, observation, input),
         CommandTag::SplitListItem => super::split_list_item::execute(owner, observation, input),
+        CommandTag::ChangeSelectionCase => {
+            super::change_selection_case::execute(owner, observation, input)
+        }
         _ => candidate_v4(tag, owner, observation, input),
     }
 }

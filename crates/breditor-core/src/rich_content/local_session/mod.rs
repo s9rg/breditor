@@ -4,6 +4,7 @@
 //! is separately enabled and persisted; original checkpoints/defaults stay exact.
 
 mod apply_markdown_input_rule;
+mod change_selection_case;
 mod change_selection_formats;
 mod change_selection_layout;
 mod check_observation;

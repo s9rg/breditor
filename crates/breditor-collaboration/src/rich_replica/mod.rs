@@ -11,6 +11,7 @@ mod atom_edit;
 mod block_layout_state;
 mod captions;
 mod caret_formats;
+mod case_change;
 mod cell_bodies;
 mod change_document_formats;
 mod change_document_layout;
