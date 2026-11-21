@@ -101,6 +101,6 @@ impl RichLocalSession {
             candidate,
             HistoryRecipe::Recovered(forward),
             HistoryRecipe::Recovered(inverse),
-        ))
+        )?)
     }
 }
