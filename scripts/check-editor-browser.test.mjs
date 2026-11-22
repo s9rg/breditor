@@ -51,3 +51,18 @@ test("V3 visual and structure matrices have separate budgets without hiding any 
 test("durable general range editing retains a dedicated complete three-engine process",()=>{
  assert.deepEqual(editorBrowserRuns(["general-range.spec.mjs","a.spec.mjs","shared-structural-network.spec.mjs"]),[["a.spec.mjs"],["general-range.spec.mjs"],["shared-structural-network.spec.mjs"]]);
 });
+
+test("installed browser filters match each spec once, including shared structural suffixes",()=>{
+ const names=readdirSync(new URL("../experiments/editor-browser",import.meta.url)).filter(name=>name.endsWith(".spec.mjs"));
+ const filters=editorBrowserPlan().runs.flatMap(([,args])=>args.slice(3).map(filter=>new RegExp(filter)));
+ assert.equal(filters.length,names.length);
+ for(const name of names){
+  for(const path of [`/checkout/specs/${name}`,`C:\\checkout\\specs\\${name}`]){
+   assert.equal(filters.filter(filter=>filter.test(path)).length,1,path);
+  }
+ }
+ const structural=filters.find(filter=>filter.test("/checkout/structural-v2.spec.mjs"));
+ assert.ok(structural);
+ assert.equal(structural.test("/checkout/shared-structural-v2.spec.mjs"),false);
+ assert.equal(structural.test("/checkout/structural-v2_spec.mjs"),false);
+});
