@@ -12,6 +12,8 @@ import { projectionFailure, projectionSuccess, type BrowserProjectionResult } fr
 import { browserCompiledProfileDescriptorMatchesGeneration, wasmProfileGenerationIsLive,
   type BrowserCompiledProfileDescriptor, type WasmProfileGenerationView } from "./wasm_profile_descriptor.js";
 
+const EXPERIMENTAL_BLOCK_PROFILES = import.meta.breditorExperimentalBlockProfiles !== false;
+
 /** Root text block or flat list; list items contain exactly one text block. */
 export type FlatListRootProjection =
   | Readonly<{ kind: "textBlock"; block: BaseParagraphProjection }>
@@ -102,35 +104,41 @@ export class FlatListDocumentProjection {
 
 /** @internal */
 export function isOwnedFlatListProjection(value: unknown): value is FlatListDocumentProjection {
+  if (!EXPERIMENTAL_BLOCK_PROFILES) return false;
   return typeof value === "object" && value !== null && OWNED.has(value as FlatListDocumentProjection);
 }
 
 /** Shares exact-owner presentation admission without exposing the internal proof. @internal */
 export function bindFlatListProjectionPresentation(projection: FlatListDocumentProjection, presentation: BrowserCompiledPresentation): boolean {
+  if (!EXPERIMENTAL_BLOCK_PROFILES) throw new TypeError("Experimental block profiles are unavailable in this build");
   const text = TEXT_PROOFS.get(projection);
   return text !== undefined && bindProjectionPresentation(text, presentation);
 }
 
 /** Exact bound presentation for strict DOM reconciliation; no text proof escapes. @internal */
 export function flatListProjectionPresentation(projection: FlatListDocumentProjection): BrowserCompiledPresentation | undefined {
+  if (!EXPERIMENTAL_BLOCK_PROFILES) throw new TypeError("Experimental block profiles are unavailable in this build");
   const text = TEXT_PROOFS.get(projection);
   return text === undefined ? undefined : projectionPresentation(text);
 }
 
 /** Exact owner correlation for consuming generated selection/update handles. @internal */
 export function flatListProjectionMatchesProfileGeneration(projection: FlatListDocumentProjection, generation: WasmProfileGenerationView): boolean {
+  if (!EXPERIMENTAL_BLOCK_PROFILES) throw new TypeError("Experimental block profiles are unavailable in this build");
   const text = TEXT_PROOFS.get(projection);
   return text !== undefined && projectionMatchesProfileGeneration(text, generation);
 }
 
 /** @internal */
 export function flatListProjectionsShareProfile(left: FlatListDocumentProjection, right: FlatListDocumentProjection): boolean {
+  if (!EXPERIMENTAL_BLOCK_PROFILES) throw new TypeError("Experimental block profiles are unavailable in this build");
   const a = TEXT_PROOFS.get(left), b = TEXT_PROOFS.get(right);
   return a !== undefined && b !== undefined && projectionsShareProfileBinding(a, b);
 }
 
 /** @internal */
 export function flatListProjectionDescriptor(projection: FlatListDocumentProjection): BrowserCompiledProfileDescriptor | undefined {
+  if (!EXPERIMENTAL_BLOCK_PROFILES) throw new TypeError("Experimental block profiles are unavailable in this build");
   const text = TEXT_PROOFS.get(projection);
   return text === undefined ? undefined : projectionProfileDescriptor(text);
 }
@@ -138,6 +146,7 @@ export function flatListProjectionDescriptor(projection: FlatListDocumentProject
 /** Internal adapter bridge; the temporary flat text proof is never a renderer result. @internal */
 export function createFlatListTextProjection(input: unknown, generation: WasmProfileGenerationView,
   descriptor: BrowserCompiledProfileDescriptor): BrowserProjectionResult<BaseDocumentProjection> {
+  if (!EXPERIMENTAL_BLOCK_PROFILES) throw new TypeError("Experimental block profiles are unavailable in this build");
   try {
     const record = exactDataRecord(input, ["schema", "snapshot", "blocks"]);
     if (record === null || !browserCompiledProfileDescriptorMatchesGeneration(descriptor, generation)) return projectionFailure("projection.invalid_shape");

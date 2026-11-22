@@ -32,6 +32,8 @@ import {
 
 import { FlatListProjectionUpdate } from "./flat_list_projection_update.js";
 import { NestedListProjectionUpdate } from "./nested_list_projection_update.js";
+
+const EXPERIMENTAL_BLOCK_PROFILES = import.meta.breditorExperimentalBlockProfiles !== false;
 type UpdateBase = BaseDocumentProjection | FlatListDocumentProjection | NestedListDocumentProjection | undefined;
 type ProjectionUpdate = BaseProjectionUpdate | FlatListProjectionUpdate | NestedListProjectionUpdate;
 
@@ -244,6 +246,7 @@ export function consumeTextBlockSemanticProjection(
   generation: WasmProfileGenerationView,
   expectedProfile: BrowserCompiledProfileDescriptor,
 ): BrowserProjectionResult<BaseDocumentProjection> {
+  if (!EXPERIMENTAL_BLOCK_PROFILES) throw new TypeError("Experimental block profiles are unavailable in this build");
   return consumeProjection(view, generation, expectedProfile, createTextBlockDocumentProjection);
 }
 
@@ -253,6 +256,7 @@ export function consumeFlatListSemanticProjection(
   generation: WasmProfileGenerationView,
   expectedProfile: BrowserCompiledProfileDescriptor,
 ): BrowserProjectionResult<FlatListDocumentProjection> {
+  if (!EXPERIMENTAL_BLOCK_PROFILES) throw new TypeError("Experimental block profiles are unavailable in this build");
   const text = consumeProjection(view, generation, expectedProfile, createFlatListTextProjection);
   return text.ok ? FlatListDocumentProjection.fromValidatedText(text.value) : text;
 }
@@ -263,6 +267,7 @@ export function consumeNestedListSemanticProjection(
   generation: WasmProfileGenerationView,
   expectedProfile: BrowserCompiledProfileDescriptor,
 ): BrowserProjectionResult<NestedListDocumentProjection> {
+  if (!EXPERIMENTAL_BLOCK_PROFILES) throw new TypeError("Experimental block profiles are unavailable in this build");
   const text = consumeProjection(view, generation, expectedProfile, createNestedListTextProjection);
   return text.ok ? NestedListDocumentProjection.fromValidatedText(text.value) : text;
 }
@@ -342,6 +347,7 @@ export function consumeSemanticProjectionUpdate(
 export function consumeFlatListSemanticProjectionUpdateWithCleanup(base: FlatListDocumentProjection,
   view: SemanticProjectionUpdateView, cleanup: () => unknown, generation: WasmProfileGenerationView,
   expectedProfile: BrowserCompiledProfileDescriptor, protectedHandles: readonly unknown[] = []): BrowserProjectionResult<FlatListProjectionUpdate> {
+  if (!EXPERIMENTAL_BLOCK_PROFILES) throw new TypeError("Experimental block profiles are unavailable in this build");
   return consumeProjectionUpdateWithCleanup(isOwnedFlatListProjection(base) ? base : undefined, view, cleanup,
     generation, expectedProfile, protectedHandles) as BrowserProjectionResult<FlatListProjectionUpdate>;
 }
@@ -349,12 +355,14 @@ export function consumeFlatListSemanticProjectionUpdateWithCleanup(base: FlatLis
 /** Consumes an exact list update, including its owned result projection. @internal */
 export function consumeFlatListSemanticProjectionUpdate(base: FlatListDocumentProjection, view: SemanticProjectionUpdateView,
   generation: WasmProfileGenerationView, expectedProfile: BrowserCompiledProfileDescriptor, protectedHandles: readonly unknown[] = []): BrowserProjectionResult<FlatListProjectionUpdate> {
+  if (!EXPERIMENTAL_BLOCK_PROFILES) throw new TypeError("Experimental block profiles are unavailable in this build");
   return consumeProjectionUpdate(isOwnedFlatListProjection(base) ? base : undefined, view, generation, expectedProfile, protectedHandles) as BrowserProjectionResult<FlatListProjectionUpdate>;
 }
 
 /** Consumes an exact recursive-list update and proves all retained root subtrees. @internal */
 export function consumeNestedListSemanticProjectionUpdate(base: NestedListDocumentProjection, view: SemanticProjectionUpdateView,
   generation: WasmProfileGenerationView, expectedProfile: BrowserCompiledProfileDescriptor, protectedHandles: readonly unknown[] = []): BrowserProjectionResult<NestedListProjectionUpdate> {
+  if (!EXPERIMENTAL_BLOCK_PROFILES) throw new TypeError("Experimental block profiles are unavailable in this build");
   return consumeProjectionUpdate(isOwnedNestedListProjection(base) ? base : undefined, view, generation, expectedProfile, protectedHandles) as BrowserProjectionResult<NestedListProjectionUpdate>;
 }
 
@@ -362,6 +370,7 @@ export function consumeNestedListSemanticProjectionUpdate(base: NestedListDocume
 export function consumeNestedListSemanticProjectionUpdateWithCleanup(base: NestedListDocumentProjection,
   view: SemanticProjectionUpdateView, cleanup: () => unknown, generation: WasmProfileGenerationView,
   expectedProfile: BrowserCompiledProfileDescriptor, protectedHandles: readonly unknown[] = []): BrowserProjectionResult<NestedListProjectionUpdate> {
+  if (!EXPERIMENTAL_BLOCK_PROFILES) throw new TypeError("Experimental block profiles are unavailable in this build");
   return consumeProjectionUpdateWithCleanup(isOwnedNestedListProjection(base) ? base : undefined, view, cleanup,
     generation, expectedProfile, protectedHandles) as BrowserProjectionResult<NestedListProjectionUpdate>;
 }
@@ -978,6 +987,7 @@ function readFlatListLayout(
   shapes: readonly FlatListRootShape[];
   textBlocks: readonly Readonly<{ index: number; runs: number }>[];
 }> | null {
+  if (!EXPERIMENTAL_BLOCK_PROFILES) throw new TypeError("Experimental block profiles are unavailable in this build");
   if (methods.listKind === undefined || methods.orderedListStart === undefined) return null;
   const shapes: FlatListRootShape[] = [];
   const textBlocks: Array<{index: number; runs: number}> = [];
@@ -1039,6 +1049,7 @@ function readNestedListLayout(view: SemanticProjectionView, methods: SemanticPro
     shapes: readonly NestedListRootShape[];
     textBlocks: readonly Readonly<{index: number; runs: number}>[];
   }> | null {
+  if (!EXPERIMENTAL_BLOCK_PROFILES) throw new TypeError("Experimental block profiles are unavailable in this build");
   if (methods.listKind === undefined || methods.orderedListStart === undefined) return null;
   type ListShape = Exclude<NestedListRootShape, Readonly<{kind: "textBlock"}>>;
   const textBlocks: Array<{index: number; runs: number}> = [];
@@ -1222,12 +1233,12 @@ function readProfiledSemanticProjectionUpdate(
   protectedHandles: ReadonlySet<object>,
 ): BrowserProjectionResult<ProjectionUpdate> {
   if (base === undefined) return projectionFailure("projection.invalid_update");
-  const flat = isOwnedFlatListProjection(base);
-  const nested = isOwnedNestedListProjection(base);
-  const descriptor = nested ? nestedListProjectionDescriptor(base) : flat ? flatListProjectionDescriptor(base) : projectionProfileDescriptor(base);
+  const flat = (EXPERIMENTAL_BLOCK_PROFILES && isOwnedFlatListProjection(base));
+  const nested = (EXPERIMENTAL_BLOCK_PROFILES && isOwnedNestedListProjection(base));
+  const descriptor = nested ? nestedListProjectionDescriptor(base) : flat ? flatListProjectionDescriptor(base) : isOwnedProjection(base) ? projectionProfileDescriptor(base) : undefined;
   if (
     !wasmProfileGenerationIsLive(generation) ||
-    !(nested ? nestedListProjectionMatchesProfileGeneration(base, generation) : flat ? flatListProjectionMatchesProfileGeneration(base, generation) : projectionMatchesProfileGeneration(base, generation)) ||
+    !(nested ? nestedListProjectionMatchesProfileGeneration(base, generation) : flat ? flatListProjectionMatchesProfileGeneration(base, generation) : isOwnedProjection(base) && projectionMatchesProfileGeneration(base, generation)) ||
     (typeof expectedProfile === "string"
       ? nested || flat || descriptor !== undefined
       : descriptor !== expectedProfile ||
@@ -1277,7 +1288,7 @@ function readProfiledSemanticProjectionUpdate(
     resultView,
     generation,
     expectedProfile,
-    nested ? createNestedListTextProjection : flat ? createFlatListTextProjection : TEXT_BLOCK_FACTORIES.get(base),
+    nested ? createNestedListTextProjection : flat ? createFlatListTextProjection : isOwnedProjection(base) ? TEXT_BLOCK_FACTORIES.get(base) : undefined,
   );
   if (!projectionResult.ok) {
     return projectionFailure("projection.invalid_update");
@@ -1445,9 +1456,9 @@ function snapshotSemanticProjection(
   try {
     const headingLevel = textBlocks ? readGeneratedScalar(view, "headingLevel") : undefined;
     if (textBlocks && typeof headingLevel !== "function") return null;
-    const listKind = flatLists ? readGeneratedScalar(view, "listKind") : undefined;
-    const orderedListStart = flatLists ? readGeneratedScalar(view, "orderedListStart") : undefined;
-    if (flatLists && (typeof listKind !== "function" || typeof orderedListStart !== "function")) return null;
+    const listKind = (EXPERIMENTAL_BLOCK_PROFILES && flatLists) ? readGeneratedScalar(view, "listKind") : undefined;
+    const orderedListStart = (EXPERIMENTAL_BLOCK_PROFILES && flatLists) ? readGeneratedScalar(view, "orderedListStart") : undefined;
+    if ((EXPERIMENTAL_BLOCK_PROFILES && flatLists) && (typeof listKind !== "function" || typeof orderedListStart !== "function")) return null;
     const names = [
       "nodeKind", "elementType", "childCount", "childAt", "text", "formatCount",
       "formatType", "formatPropertyCount", "formatPropertyName", "formatPropertyValueKind",
@@ -1468,7 +1479,7 @@ function snapshotSemanticProjection(
     // Legacy requires the complete capability to be absent, not just markers.
     // Share startup/restore admission so partial/unknown word ABIs always fail.
     // Never mutate generated prototypes or retry a scalar getter after failure.
-    if (nestedLists) {
+    if (EXPERIMENTAL_BLOCK_PROFILES && nestedLists) {
       const wordFacade = snapshotNestedProjectionWordFacade(view, containGeneratedThenable);
       if (wordFacade === null) return null;
       const version = wordFacade["projectionScalarWordsVersion"];

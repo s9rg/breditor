@@ -54,6 +54,7 @@ import { isOwnedFlatListProjection, flatListProjectionDescriptor, flatListProjec
 import { isOwnedNestedListProjection, nestedListProjectionDescriptor, nestedListProjectionMatchesProfileGeneration, type NestedListDocumentProjection } from "./nested_list_projection.js";
 import { isOwnedFlatListRangeSelection, type FlatListRangeSelection } from "./flat_list_selection.js";
 import { isOwnedNestedListRangeSelection, type NestedListRangeSelection } from "./nested_list_selection.js";
+import { isOwnedProjectionUpdate } from "./projection_update.js";
 import { isOwnedFlatListProjectionUpdate } from "./flat_list_projection_update.js";
 import { isOwnedNestedListProjectionUpdate } from "./nested_list_projection_update.js";
 import {
@@ -136,6 +137,8 @@ import {
   type WasmProfileCorrelatedView,
   type WasmProfileGenerationView,
 } from "./wasm_profile_descriptor.js";
+
+const EXPERIMENTAL_BLOCK_PROFILES = import.meta.breditorExperimentalBlockProfiles !== false;
 
 /** Structural subset of the generated opaque observation owned by this adapter. */
 export interface WasmCommandObservationView extends WasmProfileCorrelatedView {
@@ -631,7 +634,7 @@ class WasmCommandAdapterCore<R extends CommandRequest> {
       throw new TypeError("Wasm command engine is invalid");
     }
     const snapshot = readObservationSnapshot(observation);
-    const dependencies = snapshotAdapterOptions(options, flatLists);
+    const dependencies = snapshotAdapterOptions(options, (EXPERIMENTAL_BLOCK_PROFILES && flatLists));
     if (
       snapshot === null ||
       dependencies === null ||
@@ -642,9 +645,9 @@ class WasmCommandAdapterCore<R extends CommandRequest> {
       throw new TypeError("Wasm command adapter dependencies are invalid");
     }
     const initialProjection = dependencies.rendered.projection;
-    const boundProjectionDescriptor = isOwnedNestedListProjection(initialProjection)
-      ? nestedListProjectionDescriptor(initialProjection) : isOwnedFlatListProjection(initialProjection)
-      ? flatListProjectionDescriptor(initialProjection) : projectionProfileDescriptor(initialProjection);
+    const boundProjectionDescriptor = (EXPERIMENTAL_BLOCK_PROFILES && isOwnedNestedListProjection(initialProjection))
+      ? nestedListProjectionDescriptor(initialProjection) : (EXPERIMENTAL_BLOCK_PROFILES && isOwnedFlatListProjection(initialProjection))
+      ? flatListProjectionDescriptor(initialProjection) : projectionProfileDescriptor(requireBaseCommandProjection(initialProjection));
     const projectionProfile = boundProjectionDescriptor === dependencies.profileDescriptor
       ? dependencies.profileDescriptor
       : boundProjectionDescriptor === undefined && dependencies.durableMode === "v1"
@@ -652,7 +655,7 @@ class WasmCommandAdapterCore<R extends CommandRequest> {
         : undefined;
     if (
       projectionProfile === undefined ||
-      !(flatLists === "nested" ? dependencies.renderer.ownsNestedList(dependencies.rendered) : flatLists ? dependencies.renderer.ownsFlatList(dependencies.rendered) : dependencies.renderer.owns(dependencies.rendered)) ||
+      !(EXPERIMENTAL_BLOCK_PROFILES && flatLists === "nested" ? dependencies.renderer.ownsNestedList(dependencies.rendered) : (EXPERIMENTAL_BLOCK_PROFILES && flatLists) ? dependencies.renderer.ownsFlatList(dependencies.rendered) : dependencies.renderer.owns(dependencies.rendered)) ||
       !commandProjectionMatchesGeneration(
         dependencies.rendered.projection,
         profileGeneration,
@@ -800,10 +803,10 @@ class WasmCommandAdapterCore<R extends CommandRequest> {
         "current render must be restored before token issuance",
       );
     }
-    if (isOwnedNestedListProjection(this.#projection) && isOwnedNestedListRenderedProjection(this.#rendered)) {
+    if ((EXPERIMENTAL_BLOCK_PROFILES && isOwnedNestedListProjection(this.#projection)) && (EXPERIMENTAL_BLOCK_PROFILES && isOwnedNestedListRenderedProjection(this.#rendered))) {
       return issueNestedListEditorDeliveryToken(this.#projection, this.#rendered, this.#deliveryEpoch, this.#authority);
     }
-    if (isOwnedFlatListProjection(this.#projection) && isOwnedFlatListRenderedProjection(this.#rendered)) {
+    if ((EXPERIMENTAL_BLOCK_PROFILES && isOwnedFlatListProjection(this.#projection)) && (EXPERIMENTAL_BLOCK_PROFILES && isOwnedFlatListRenderedProjection(this.#rendered))) {
       return issueFlatListEditorDeliveryToken(this.#projection, this.#rendered, this.#deliveryEpoch, this.#authority);
     }
     const {projection, rendered} = this.#baseCompositionDependencies();
@@ -943,11 +946,11 @@ class WasmCommandAdapterCore<R extends CommandRequest> {
         this.#profileGeneration,
       ], this.#durableContract);
       return consumed.ok &&
-        !(isOwnedNestedListProjection(this.#projection)
+        !((EXPERIMENTAL_BLOCK_PROFILES && isOwnedNestedListProjection(this.#projection))
           ? documentJsonMatchesNestedListProjection(consumed.document.documentJson, this.#projection, this.#durableContract)
-          : isOwnedFlatListProjection(this.#projection)
+          : (EXPERIMENTAL_BLOCK_PROFILES && isOwnedFlatListProjection(this.#projection))
           ? documentJsonMatchesFlatListProjection(consumed.document.documentJson, this.#projection, this.#durableContract)
-          : documentJsonMatchesProjection(consumed.document.documentJson, this.#projection, this.#durableContract))
+          : documentJsonMatchesProjection(consumed.document.documentJson, requireBaseCommandProjection(this.#projection), this.#durableContract))
         ? invalidWasmDocumentJsonReadResult()
         : consumed;
     } catch {
@@ -983,9 +986,9 @@ class WasmCommandAdapterCore<R extends CommandRequest> {
     const resumeState = this.#state;
     this.#state = "readingContent";
     try {
-      return isOwnedNestedListProjection(this.#projection)
-        ? projectNestedListPlainText(this.#projection) : isOwnedFlatListProjection(this.#projection)
-        ? projectFlatListPlainText(this.#projection) : projectPlainText(this.#projection);
+      return (EXPERIMENTAL_BLOCK_PROFILES && isOwnedNestedListProjection(this.#projection))
+        ? projectNestedListPlainText(this.#projection) : (EXPERIMENTAL_BLOCK_PROFILES && isOwnedFlatListProjection(this.#projection))
+        ? projectFlatListPlainText(this.#projection) : projectPlainText(requireBaseCommandProjection(this.#projection));
     } catch {
       return invalidProjectionPlainTextResult();
     } finally {
@@ -1012,7 +1015,7 @@ class WasmCommandAdapterCore<R extends CommandRequest> {
     this.#requireState("live");
     this.#requireObservation();
     if (
-      !(this.#flatLists === "nested" ? isOwnedNestedListRangeSelection(selection) : this.#flatLists ? isOwnedFlatListRangeSelection(selection) : isOwnedBaseRangeSelection(selection)) ||
+      !(EXPERIMENTAL_BLOCK_PROFILES && this.#flatLists === "nested" ? (EXPERIMENTAL_BLOCK_PROFILES && isOwnedNestedListRangeSelection(selection)) : (EXPERIMENTAL_BLOCK_PROFILES && this.#flatLists) ? (EXPERIMENTAL_BLOCK_PROFILES && isOwnedFlatListRangeSelection(selection)) : isOwnedBaseRangeSelection(selection)) ||
       selection.projection !== this.#projection ||
       !isNonzeroU64(sessionId) ||
       !hostIsConnected(this.#host) ||
@@ -1050,9 +1053,9 @@ class WasmCommandAdapterCore<R extends CommandRequest> {
     const lease = this.#requireCompositionLease(token);
     if (
       lease.refined ||
-      !(this.#flatLists === "nested" ? isOwnedNestedListRangeSelection(selection) : this.#flatLists ? isOwnedFlatListRangeSelection(selection) : isOwnedBaseRangeSelection(selection)) ||
+      !(EXPERIMENTAL_BLOCK_PROFILES && this.#flatLists === "nested" ? (EXPERIMENTAL_BLOCK_PROFILES && isOwnedNestedListRangeSelection(selection)) : (EXPERIMENTAL_BLOCK_PROFILES && this.#flatLists) ? (EXPERIMENTAL_BLOCK_PROFILES && isOwnedFlatListRangeSelection(selection)) : isOwnedBaseRangeSelection(selection)) ||
       selection.projection !== this.#projection ||
-      !(this.#flatLists === "nested" ? nestedListCompositionDeliveryTokenMatchesOpeningBase : this.#flatLists ? flatListCompositionDeliveryTokenMatchesOpeningBase : compositionDeliveryTokenMatchesOpeningBase)(
+      !(EXPERIMENTAL_BLOCK_PROFILES && this.#flatLists === "nested" ? nestedListCompositionDeliveryTokenMatchesOpeningBase : (EXPERIMENTAL_BLOCK_PROFILES && this.#flatLists) ? flatListCompositionDeliveryTokenMatchesOpeningBase : compositionDeliveryTokenMatchesOpeningBase)(
         token,
         this.#projection,
         this.#rendered,
@@ -1090,7 +1093,7 @@ class WasmCommandAdapterCore<R extends CommandRequest> {
     const lease = this.#requireCompositionLease(token);
     if (
       lease.domLease !== undefined ||
-      !(this.#flatLists === "nested" ? nestedListCompositionDeliveryTokenMatchesOpeningBase : this.#flatLists ? flatListCompositionDeliveryTokenMatchesOpeningBase : compositionDeliveryTokenMatchesOpeningBase)(
+      !(EXPERIMENTAL_BLOCK_PROFILES && this.#flatLists === "nested" ? nestedListCompositionDeliveryTokenMatchesOpeningBase : (EXPERIMENTAL_BLOCK_PROFILES && this.#flatLists) ? flatListCompositionDeliveryTokenMatchesOpeningBase : compositionDeliveryTokenMatchesOpeningBase)(
         token,
         this.#projection,
         this.#rendered,
@@ -1106,8 +1109,8 @@ class WasmCommandAdapterCore<R extends CommandRequest> {
     let domLease: AnyDomCompositionLease | null = null;
     let ownsDomLease = false;
     try {
-      domLease = isOwnedNestedListRenderedProjection(rendered)
-        ? this.#renderer.beginNestedListCompositionDomLease(rendered) : isOwnedFlatListRenderedProjection(rendered)
+      domLease = (EXPERIMENTAL_BLOCK_PROFILES && isOwnedNestedListRenderedProjection(rendered))
+        ? this.#renderer.beginNestedListCompositionDomLease(rendered) : (EXPERIMENTAL_BLOCK_PROFILES && isOwnedFlatListRenderedProjection(rendered))
         ? this.#renderer.beginFlatListCompositionDomLease(rendered)
         : isOwnedRenderedProjection(rendered) ? this.#renderer.beginCompositionDomLease(rendered) : null;
       ownsDomLease =
@@ -1155,7 +1158,7 @@ class WasmCommandAdapterCore<R extends CommandRequest> {
     this.#requireState("composition");
     const lease = this.#requireCompositionLease(token);
     if (
-      !(this.#flatLists === "nested" ? nestedListCompositionDeliveryTokenMatchesSettlement : this.#flatLists ? flatListCompositionDeliveryTokenMatchesSettlement : compositionDeliveryTokenMatchesSettlement)(
+      !(EXPERIMENTAL_BLOCK_PROFILES && this.#flatLists === "nested" ? nestedListCompositionDeliveryTokenMatchesSettlement : (EXPERIMENTAL_BLOCK_PROFILES && this.#flatLists) ? flatListCompositionDeliveryTokenMatchesSettlement : compositionDeliveryTokenMatchesSettlement)(
         token,
         this.#projection,
         this.#rendered,
@@ -1165,7 +1168,7 @@ class WasmCommandAdapterCore<R extends CommandRequest> {
         this.#authority,
       ) ||
       (lease.domLease === undefined
-        ? !(this.#flatLists === "nested" ? nestedListCompositionDeliveryTokenMatchesOpeningBase : this.#flatLists ? flatListCompositionDeliveryTokenMatchesOpeningBase : compositionDeliveryTokenMatchesOpeningBase)(
+        ? !(EXPERIMENTAL_BLOCK_PROFILES && this.#flatLists === "nested" ? nestedListCompositionDeliveryTokenMatchesOpeningBase : (EXPERIMENTAL_BLOCK_PROFILES && this.#flatLists) ? flatListCompositionDeliveryTokenMatchesOpeningBase : compositionDeliveryTokenMatchesOpeningBase)(
             token,
             this.#projection,
             this.#rendered,
@@ -1208,9 +1211,9 @@ class WasmCommandAdapterCore<R extends CommandRequest> {
     if (
       !isNonzeroU64(lease.sessionId) ||
       token.sessionId !== lease.sessionId ||
-      !(this.#flatLists === "nested" ? isOwnedNestedListProjection(this.#projection) : this.#flatLists ? isOwnedFlatListProjection(this.#projection) : isOwnedProjection(this.#projection)) ||
+      !(EXPERIMENTAL_BLOCK_PROFILES && this.#flatLists === "nested" ? (EXPERIMENTAL_BLOCK_PROFILES && isOwnedNestedListProjection(this.#projection)) : (EXPERIMENTAL_BLOCK_PROFILES && this.#flatLists) ? (EXPERIMENTAL_BLOCK_PROFILES && isOwnedFlatListProjection(this.#projection)) : isOwnedProjection(this.#projection)) ||
       token.projection !== this.#projection ||
-      !(this.#flatLists === "nested" ? isOwnedNestedListRangeSelection(lease.selection) : this.#flatLists ? isOwnedFlatListRangeSelection(lease.selection) : isOwnedBaseRangeSelection(lease.selection)) ||
+      !(EXPERIMENTAL_BLOCK_PROFILES && this.#flatLists === "nested" ? (EXPERIMENTAL_BLOCK_PROFILES && isOwnedNestedListRangeSelection(lease.selection)) : (EXPERIMENTAL_BLOCK_PROFILES && this.#flatLists) ? (EXPERIMENTAL_BLOCK_PROFILES && isOwnedFlatListRangeSelection(lease.selection)) : isOwnedBaseRangeSelection(lease.selection)) ||
       lease.selection.projection !== this.#projection ||
       token.selection !== lease.selection
     ) {
@@ -1236,18 +1239,18 @@ class WasmCommandAdapterCore<R extends CommandRequest> {
       if (strategy === "recoveryFull") {
         this.#discardCompositionDomLease(lease);
       }
-      if (isOwnedNestedListProjection(projection)) {
+      if (EXPERIMENTAL_BLOCK_PROFILES && isOwnedNestedListProjection(projection)) {
         rendered = strategy === "rendererLease" && lease.domLease !== undefined
           ? this.#renderer.restoreNestedListCompositionDomLease(lease.domLease as NestedListDomCompositionLease, projection)
           : this.#renderer.renderNestedList(this.#host, projection);
-      } else if (isOwnedFlatListProjection(projection)) {
+      } else if (EXPERIMENTAL_BLOCK_PROFILES && isOwnedFlatListProjection(projection)) {
         rendered = strategy === "rendererLease" && lease.domLease !== undefined
           ? this.#renderer.restoreFlatListCompositionDomLease(lease.domLease as FlatListDomCompositionLease, projection)
           : this.#renderer.renderFlatList(this.#host, projection);
       } else {
         rendered = strategy === "rendererLease" && lease.domLease !== undefined
-          ? this.#renderer.restoreCompositionDomLease(lease.domLease as DomCompositionLease, projection)
-          : this.#renderer.render(this.#host, projection);
+          ? this.#renderer.restoreCompositionDomLease(lease.domLease as DomCompositionLease, requireBaseCommandProjection(projection))
+          : this.#renderer.render(this.#host, requireBaseCommandProjection(projection));
       }
     } catch {
       this.#discardCompositionDomLease(lease);
@@ -1301,7 +1304,7 @@ class WasmCommandAdapterCore<R extends CommandRequest> {
 
   #execute(request: CommandRequest): WasmCommandSequenceOutcome<CommandProjection> {
     this.#requireState("live");
-    const canonical = this.#flatLists === "nested" ? canonicalNestedListEditorCommandRequest(request) : this.#flatLists ? canonicalFlatListEditorCommandRequest(request) : canonicalEditorCommandRequest(request);
+    const canonical = EXPERIMENTAL_BLOCK_PROFILES && this.#flatLists === "nested" ? canonicalNestedListEditorCommandRequest(request) : (EXPERIMENTAL_BLOCK_PROFILES && this.#flatLists) ? canonicalFlatListEditorCommandRequest(request) : canonicalEditorCommandRequest(request);
     if (canonical === null || !isEngineCommand(canonical.command)) {
       throw new TypeError("request is not an exact executable engine command");
     }
@@ -1438,10 +1441,10 @@ class WasmCommandAdapterCore<R extends CommandRequest> {
     const observation = this.#requireObservation();
     this.#state = "executing";
     try {
-      const rendered = isOwnedNestedListProjection(this.#projection)
-        ? this.#renderer.renderNestedList(this.#host, this.#projection) : isOwnedFlatListProjection(this.#projection)
+      const rendered = (EXPERIMENTAL_BLOCK_PROFILES && isOwnedNestedListProjection(this.#projection))
+        ? this.#renderer.renderNestedList(this.#host, this.#projection) : (EXPERIMENTAL_BLOCK_PROFILES && isOwnedFlatListProjection(this.#projection))
         ? this.#renderer.renderFlatList(this.#host, this.#projection)
-        : this.#renderer.render(this.#host, this.#projection);
+        : this.#renderer.render(this.#host, requireBaseCommandProjection(this.#projection));
       if (!rendered.ok) {
         this.#state = "reconcile";
         return Object.freeze({ ok: false, reason: "renderFailed" });
@@ -2257,14 +2260,14 @@ class WasmCommandAdapterCore<R extends CommandRequest> {
     nextSnapshot: WasmCommandSnapshot,
     protectedHandles: readonly unknown[],
   ): AppliedTransition {
-    const converted = isOwnedNestedListProjection(this.#projection)
+    const converted = (EXPERIMENTAL_BLOCK_PROFILES && isOwnedNestedListProjection(this.#projection))
       ? consumeNestedListSemanticProjectionUpdateWithCleanup(this.#projection, updateView, updateCleanup,
           this.#profileGeneration, this.#profileDescriptor, protectedHandles)
-      : isOwnedFlatListProjection(this.#projection)
+      : (EXPERIMENTAL_BLOCK_PROFILES && isOwnedFlatListProjection(this.#projection))
       ? consumeFlatListSemanticProjectionUpdateWithCleanup(this.#projection, updateView, updateCleanup,
           this.#profileGeneration, this.#profileDescriptor, protectedHandles)
       : consumeSemanticProjectionUpdateWithCleanup(
-      this.#projection,
+      requireBaseCommandProjection(this.#projection),
       updateView,
       updateCleanup,
       this.#profileGeneration,
@@ -2285,14 +2288,16 @@ class WasmCommandAdapterCore<R extends CommandRequest> {
     }
     let rendered: ReturnType<BreditorDomRenderer["update"] | BreditorDomRenderer["updateFlatList"] | BreditorDomRenderer["updateNestedList"]>;
     try {
-      if (isOwnedNestedListProjectionUpdate(update)) {
-        if (!isOwnedNestedListRenderedProjection(this.#rendered)) throw new TypeError("nested update requires nested render");
+      if (EXPERIMENTAL_BLOCK_PROFILES && isOwnedNestedListProjectionUpdate(update)) {
+        if (!(EXPERIMENTAL_BLOCK_PROFILES && isOwnedNestedListRenderedProjection(this.#rendered))) throw new TypeError("nested update requires nested render");
         rendered = this.#renderer.updateNestedList(this.#rendered, update);
-      } else if (isOwnedFlatListProjectionUpdate(update)) {
-        if (!isOwnedFlatListRenderedProjection(this.#rendered)) throw new TypeError("list update requires list render");
+      } else if (EXPERIMENTAL_BLOCK_PROFILES && isOwnedFlatListProjectionUpdate(update)) {
+        if (!(EXPERIMENTAL_BLOCK_PROFILES && isOwnedFlatListRenderedProjection(this.#rendered))) throw new TypeError("list update requires list render");
         rendered = this.#renderer.updateFlatList(this.#rendered, update);
       } else {
-        if (!isOwnedRenderedProjection(this.#rendered)) throw new TypeError("base update requires base render");
+        if (!isOwnedRenderedProjection(this.#rendered) || !isOwnedProjectionUpdate(update)) {
+          throw new TypeError("base update requires base render");
+        }
         rendered = this.#renderer.update(this.#rendered, update);
       }
     } catch {
@@ -2423,12 +2428,12 @@ class WasmCommandAdapterCore<R extends CommandRequest> {
         throw new TypeError("Wasm semantic selection ownership is unavailable");
       }
       selectionView = undefined;
-      const consumed = isOwnedNestedListProjection(projection)
+      const consumed = (EXPERIMENTAL_BLOCK_PROFILES && isOwnedNestedListProjection(projection))
         ? consumeNestedListSemanticSelectionWithCleanup(projection, ownedSelection, selectionCleanup, this.#profileGeneration)
-        : isOwnedFlatListProjection(projection)
+        : (EXPERIMENTAL_BLOCK_PROFILES && isOwnedFlatListProjection(projection))
         ? consumeFlatListSemanticSelectionWithCleanup(projection, ownedSelection, selectionCleanup, this.#profileGeneration)
         : consumeSemanticSelectionWithCleanup(
-        projection,
+        requireBaseCommandProjection(projection),
         ownedSelection,
         selectionCleanup,
         this.#profileGeneration,
@@ -2507,21 +2512,21 @@ class WasmCommandAdapterCore<R extends CommandRequest> {
   }
 
   #discardDomLease(lease: AnyDomCompositionLease): void {
-    if (this.#flatLists === "nested") this.#renderer.discardNestedListCompositionDomLease(lease as NestedListDomCompositionLease);
-    else if (this.#flatLists) this.#renderer.discardFlatListCompositionDomLease(lease as FlatListDomCompositionLease);
+    if (EXPERIMENTAL_BLOCK_PROFILES && this.#flatLists === "nested") this.#renderer.discardNestedListCompositionDomLease(lease as NestedListDomCompositionLease);
+    else if (EXPERIMENTAL_BLOCK_PROFILES && this.#flatLists) this.#renderer.discardFlatListCompositionDomLease(lease as FlatListDomCompositionLease);
     else this.#renderer.discardCompositionDomLease(lease as DomCompositionLease);
   }
 
   #issueCompositionToken(selection: NonNullable<CommandSelection>, epoch: bigint, session: bigint): AnyCompositionToken {
-    if (this.#flatLists === "nested" && isOwnedNestedListProjection(this.#projection) &&
-      isOwnedNestedListRenderedProjection(this.#rendered) && isOwnedNestedListRangeSelection(selection)) {
+    if (EXPERIMENTAL_BLOCK_PROFILES && this.#flatLists === "nested" && (EXPERIMENTAL_BLOCK_PROFILES && isOwnedNestedListProjection(this.#projection)) &&
+      (EXPERIMENTAL_BLOCK_PROFILES && isOwnedNestedListRenderedProjection(this.#rendered)) && (EXPERIMENTAL_BLOCK_PROFILES && isOwnedNestedListRangeSelection(selection))) {
       return issueNestedListCompositionDeliveryToken(this.#projection, this.#rendered, selection, epoch, session, this.#authority);
     }
-    if (this.#flatLists === true && isOwnedFlatListProjection(this.#projection) &&
-      isOwnedFlatListRenderedProjection(this.#rendered) && isOwnedFlatListRangeSelection(selection)) {
+    if (EXPERIMENTAL_BLOCK_PROFILES && this.#flatLists === true && (EXPERIMENTAL_BLOCK_PROFILES && isOwnedFlatListProjection(this.#projection)) &&
+      (EXPERIMENTAL_BLOCK_PROFILES && isOwnedFlatListRenderedProjection(this.#rendered)) && (EXPERIMENTAL_BLOCK_PROFILES && isOwnedFlatListRangeSelection(selection))) {
       return issueFlatListCompositionDeliveryToken(this.#projection, this.#rendered, selection, epoch, session, this.#authority);
     }
-    if (!this.#flatLists && isOwnedProjection(this.#projection) && isOwnedRenderedProjection(this.#rendered) &&
+    if (!(EXPERIMENTAL_BLOCK_PROFILES && this.#flatLists) && isOwnedProjection(this.#projection) && isOwnedRenderedProjection(this.#rendered) &&
       isOwnedBaseRangeSelection(selection)) {
       return issueCompositionDeliveryToken(this.#projection, this.#rendered, selection, epoch, session, this.#authority);
     }
@@ -2530,9 +2535,9 @@ class WasmCommandAdapterCore<R extends CommandRequest> {
 
   #ownsCompositionDomLease(lease: AnyDomCompositionLease): boolean {
     try {
-      return isOwnedNestedListRenderedProjection(this.#rendered)
+      return (EXPERIMENTAL_BLOCK_PROFILES && isOwnedNestedListRenderedProjection(this.#rendered))
         ? this.#renderer.ownsNestedListCompositionDomLease(lease, this.#rendered)
-        : isOwnedFlatListRenderedProjection(this.#rendered)
+        : (EXPERIMENTAL_BLOCK_PROFILES && isOwnedFlatListRenderedProjection(this.#rendered))
         ? this.#renderer.ownsFlatListCompositionDomLease(lease, this.#rendered)
         : isOwnedRenderedProjection(this.#rendered) && this.#renderer.ownsCompositionDomLease(lease, this.#rendered);
     } catch {
@@ -2547,35 +2552,35 @@ class WasmCommandAdapterCore<R extends CommandRequest> {
   }
 
   #ownsRender(rendered: CommandRender): boolean {
-    return this.#flatLists === "nested" ? this.#renderer.ownsNestedList(rendered) : this.#flatLists ? this.#renderer.ownsFlatList(rendered) : this.#renderer.owns(rendered);
+    return EXPERIMENTAL_BLOCK_PROFILES && this.#flatLists === "nested" ? this.#renderer.ownsNestedList(rendered) : (EXPERIMENTAL_BLOCK_PROFILES && this.#flatLists) ? this.#renderer.ownsFlatList(rendered) : this.#renderer.owns(rendered);
   }
 
   #tokenMatchesCurrentRender(token: unknown): token is CommandToken {
-    if (isOwnedNestedListRenderedProjection(this.#rendered)) {
-      return this.#flatLists === "nested" && nestedListEditorDeliveryTokenMatches(token, this.#rendered, this.#deliveryEpoch, this.#authority);
+    if (EXPERIMENTAL_BLOCK_PROFILES && isOwnedNestedListRenderedProjection(this.#rendered)) {
+      return EXPERIMENTAL_BLOCK_PROFILES && this.#flatLists === "nested" && nestedListEditorDeliveryTokenMatches(token, this.#rendered, this.#deliveryEpoch, this.#authority);
     }
-    if (isOwnedFlatListRenderedProjection(this.#rendered)) {
-      return this.#flatLists === true && flatListEditorDeliveryTokenMatches(token, this.#rendered, this.#deliveryEpoch, this.#authority);
+    if (EXPERIMENTAL_BLOCK_PROFILES && isOwnedFlatListRenderedProjection(this.#rendered)) {
+      return EXPERIMENTAL_BLOCK_PROFILES && this.#flatLists === true && flatListEditorDeliveryTokenMatches(token, this.#rendered, this.#deliveryEpoch, this.#authority);
     }
-    return !this.#flatLists && isOwnedRenderedProjection(this.#rendered) &&
+    return !(EXPERIMENTAL_BLOCK_PROFILES && this.#flatLists) && isOwnedRenderedProjection(this.#rendered) &&
       editorDeliveryTokenMatches(token, this.#rendered, this.#deliveryEpoch, this.#authority);
   }
 
   #releaseRender(rendered: CommandRender): boolean {
-    return isOwnedNestedListRenderedProjection(rendered)
-      ? this.#renderer.releaseNestedList(rendered) : isOwnedFlatListRenderedProjection(rendered)
+    return (EXPERIMENTAL_BLOCK_PROFILES && isOwnedNestedListRenderedProjection(rendered))
+      ? this.#renderer.releaseNestedList(rendered) : (EXPERIMENTAL_BLOCK_PROFILES && isOwnedFlatListRenderedProjection(rendered))
       ? this.#renderer.releaseFlatList(rendered) : isOwnedRenderedProjection(rendered) && this.#renderer.release(rendered);
   }
 
   #writeSelection(rendered: CommandRender, selection: CommandSelection): boolean {
-    if (isOwnedNestedListRenderedProjection(rendered)) {
+    if (EXPERIMENTAL_BLOCK_PROFILES && isOwnedNestedListRenderedProjection(rendered)) {
       return this.#selectionBridge instanceof BreditorNestedListDomSelectionBridge &&
-        (selection === null || isOwnedNestedListRangeSelection(selection)) &&
+        (selection === null || (EXPERIMENTAL_BLOCK_PROFILES && isOwnedNestedListRangeSelection(selection))) &&
         this.#selectionBridge.write(rendered, selection).ok;
     }
-    if (isOwnedFlatListRenderedProjection(rendered)) {
+    if (EXPERIMENTAL_BLOCK_PROFILES && isOwnedFlatListRenderedProjection(rendered)) {
       return this.#selectionBridge instanceof BreditorFlatListDomSelectionBridge &&
-        (selection === null || isOwnedFlatListRangeSelection(selection)) &&
+        (selection === null || (EXPERIMENTAL_BLOCK_PROFILES && isOwnedFlatListRangeSelection(selection))) &&
         this.#selectionBridge.write(rendered, selection).ok;
     }
     return isOwnedRenderedProjection(rendered) && this.#selectionBridge instanceof BreditorDomSelectionBridge &&
@@ -2585,7 +2590,7 @@ class WasmCommandAdapterCore<R extends CommandRequest> {
 
   /** Narrows the legacy normal-delivery token construction path. */
   #baseCompositionDependencies(): {projection: BaseDocumentProjection; rendered: RenderedProjection; bridge: BreditorDomSelectionBridge} {
-    if (this.#flatLists || !isOwnedProjection(this.#projection) || !isOwnedRenderedProjection(this.#rendered) ||
+    if ((EXPERIMENTAL_BLOCK_PROFILES && this.#flatLists) || !isOwnedProjection(this.#projection) || !isOwnedRenderedProjection(this.#rendered) ||
         !(this.#selectionBridge instanceof BreditorDomSelectionBridge)) {
       throw new TypeError("legacy dependencies cannot use flat-list mode");
     }
@@ -2697,10 +2702,15 @@ Object.freeze(BreditorNestedListWasmCommandAdapter.prototype);
 Object.freeze(BreditorWasmCommandAdapter.prototype);
 Object.freeze(BreditorFlatListWasmCommandAdapter.prototype);
 
+function requireBaseCommandProjection(projection: CommandProjection): BaseDocumentProjection {
+  if (!isOwnedProjection(projection)) throw new TypeError("Expected a base browser projection");
+  return projection;
+}
+
 function commandProjectionMatchesGeneration(projection: CommandProjection, generation: WasmProfileGenerationView): boolean {
-  return isOwnedNestedListProjection(projection) ? nestedListProjectionMatchesProfileGeneration(projection, generation)
-    : isOwnedFlatListProjection(projection) ? flatListProjectionMatchesProfileGeneration(projection, generation)
-    : projectionMatchesProfileGeneration(projection, generation);
+  return (EXPERIMENTAL_BLOCK_PROFILES && isOwnedNestedListProjection(projection)) ? nestedListProjectionMatchesProfileGeneration(projection, generation)
+    : (EXPERIMENTAL_BLOCK_PROFILES && isOwnedFlatListProjection(projection)) ? flatListProjectionMatchesProfileGeneration(projection, generation)
+    : isOwnedProjection(projection) && projectionMatchesProfileGeneration(projection, generation);
 }
 
 /**
@@ -2722,10 +2732,10 @@ function prepareSelection(
   if (selection.kind === "preserve") {
     return Object.freeze({ kind: "preserve" });
   }
-  const scalars = isOwnedNestedListRangeSelection(selection.selection)
-    ? nestedListSemanticRangeSelectionScalars(selection.selection) : isOwnedFlatListRangeSelection(selection.selection)
-    ? flatListSemanticRangeSelectionScalars(selection.selection) : semanticRangeSelectionScalars(selection.selection);
-  return scalars.ok
+  const scalars = (EXPERIMENTAL_BLOCK_PROFILES && isOwnedNestedListRangeSelection(selection.selection))
+    ? nestedListSemanticRangeSelectionScalars(selection.selection) : (EXPERIMENTAL_BLOCK_PROFILES && isOwnedFlatListRangeSelection(selection.selection))
+    ? flatListSemanticRangeSelectionScalars(selection.selection) : isOwnedBaseRangeSelection(selection.selection) ? semanticRangeSelectionScalars(selection.selection) : null;
+  return scalars?.ok
     ? Object.freeze({ kind: "range", scalars: scalars.value })
     : null;
 }
@@ -2843,8 +2853,8 @@ function snapshotAdapterOptions(
     record["durableMode"] === "v2" ||
     record["durableMode"] === "v3" ||
     record["durableMode"] === "v5" ||
-    (flatLists === true && record["durableMode"] === "v6") ||
-    (flatLists === "nested" && record["durableMode"] === "v7")
+    (EXPERIMENTAL_BLOCK_PROFILES && flatLists === true && record["durableMode"] === "v6") ||
+    (EXPERIMENTAL_BLOCK_PROFILES && flatLists === "nested" && record["durableMode"] === "v7")
   ) {
     durableMode = record["durableMode"];
   } else {
@@ -2852,8 +2862,8 @@ function snapshotAdapterOptions(
   }
   if (
     record === null ||
-    (flatLists === true && durableMode !== "v6") ||
-    (flatLists === "nested" && durableMode !== "v7") ||
+    (EXPERIMENTAL_BLOCK_PROFILES && flatLists === true && (!EXPERIMENTAL_BLOCK_PROFILES || durableMode !== "v6")) ||
+    (EXPERIMENTAL_BLOCK_PROFILES && flatLists === "nested" && (!EXPERIMENTAL_BLOCK_PROFILES || durableMode !== "v7")) ||
     !wasmProfileGenerationIsLive(record["profileGeneration"]) ||
     !isAdapterProfileDescriptor(record["profileDescriptor"]) ||
     !browserCompiledProfileDescriptorMatchesGeneration(
@@ -2861,7 +2871,7 @@ function snapshotAdapterOptions(
       record["profileGeneration"],
     ) ||
     !(record["renderer"] instanceof BreditorDomRenderer) ||
-    !(flatLists === "nested" ? record["selectionBridge"] instanceof BreditorNestedListDomSelectionBridge : flatLists ? record["selectionBridge"] instanceof BreditorFlatListDomSelectionBridge : record["selectionBridge"] instanceof BreditorDomSelectionBridge)
+    !(EXPERIMENTAL_BLOCK_PROFILES && flatLists === "nested" ? record["selectionBridge"] instanceof BreditorNestedListDomSelectionBridge : (EXPERIMENTAL_BLOCK_PROFILES && flatLists) ? record["selectionBridge"] instanceof BreditorFlatListDomSelectionBridge : record["selectionBridge"] instanceof BreditorDomSelectionBridge)
   ) {
     return null;
   }
