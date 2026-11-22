@@ -30,6 +30,8 @@ import { NestedListTargetRange } from "./nested_list_target_range.js";
 import type { NestedListDocumentProjection } from "./nested_list_projection.js";
 import { mapDomPointToNestedListSelectionPoint } from "./nested_list_dom_point_mapping.js";
 
+const EXPERIMENTAL_BLOCK_PROFILES = import.meta.breditorExperimentalBlockProfiles !== false;
+
 type TargetRender = RenderedProjection | RenderedProjection<FlatListDocumentProjection> | RenderedProjection<NestedListDocumentProjection>;
 
 interface DomRangeSnapshot {
@@ -65,17 +67,19 @@ export function mapDomTargetRange(
 /** Same native ordering/host checks, retaining full list-item AST paths. @internal */
 export function mapDomFlatListTargetRange(rendered: RenderedProjection<FlatListDocumentProjection>,
   range: AbstractRange): BrowserSelectionResult<FlatListTargetRange> {
+  if (!EXPERIMENTAL_BLOCK_PROFILES) throw new TypeError("Experimental block profiles are unavailable in this build");
   return mapTargetRange(rendered, range, true) as BrowserSelectionResult<FlatListTargetRange>;
 }
 
 /** Native target range with exact recursive AST coordinates and render ownership. @internal */
 export function mapDomNestedListTargetRange(rendered: RenderedProjection<NestedListDocumentProjection>,
   range: AbstractRange): BrowserSelectionResult<NestedListTargetRange> {
+  if (!EXPERIMENTAL_BLOCK_PROFILES) throw new TypeError("Experimental block profiles are unavailable in this build");
   return mapTargetRange(rendered, range, "nested") as BrowserSelectionResult<NestedListTargetRange>;
 }
 
 function mapTargetRange(rendered: TargetRender, range: AbstractRange, flatLists: boolean | "nested"): BrowserSelectionResult<BaseTargetRange | FlatListTargetRange | NestedListTargetRange> {
-  const preflight = validateRenderedForTargetRange(rendered, flatLists);
+  const preflight = validateRenderedForTargetRange(rendered, (EXPERIMENTAL_BLOCK_PROFILES && flatLists));
   if (!preflight.ok) {
     return selectionFailure(preflight.code);
   }
@@ -121,7 +125,7 @@ function mapTargetRange(rendered: TargetRender, range: AbstractRange, flatLists:
       start: start.value,
       end: end.value,
     };
-    return isOwnedNestedListRenderedProjection(rendered) ? NestedListTargetRange.create(rendered, input) : isOwnedFlatListRenderedProjection(rendered) ? FlatListTargetRange.create(rendered, input)
+    return (EXPERIMENTAL_BLOCK_PROFILES && isOwnedNestedListRenderedProjection(rendered)) ? NestedListTargetRange.create(rendered, input) : (EXPERIMENTAL_BLOCK_PROFILES && isOwnedFlatListRenderedProjection(rendered)) ? FlatListTargetRange.create(rendered, input)
       : BaseTargetRange.create(rendered as RenderedProjection, input);
   } catch {
     return selectionFailure("selection.dom_read_failed");
@@ -129,11 +133,11 @@ function mapTargetRange(rendered: TargetRender, range: AbstractRange, flatLists:
 }
 
 function mapPoint(rendered: TargetRender, node: Node, offset: number) {
-  if (isOwnedNestedListRenderedProjection(rendered)) {
+  if (EXPERIMENTAL_BLOCK_PROFILES && isOwnedNestedListRenderedProjection(rendered)) {
     const result = mapDomPointToNestedListSelectionPoint(rendered, node, offset);
     return result.ok ? result : {ok: false as const, code: result.error.code};
   }
-  if (isOwnedFlatListRenderedProjection(rendered)) {
+  if (EXPERIMENTAL_BLOCK_PROFILES && isOwnedFlatListRenderedProjection(rendered)) {
     const result = mapDomPointToFlatListSelectionPoint(rendered, node, offset);
     return result.ok ? result : {ok: false as const, code: result.error.code};
   }
@@ -141,7 +145,7 @@ function mapPoint(rendered: TargetRender, node: Node, offset: number) {
 }
 
 function validateRenderedForTargetRange(rendered: TargetRender, flatLists: boolean | "nested"): DomRangePreflight {
-  if (!(flatLists === "nested" ? isOwnedNestedListRenderedProjection(rendered) : flatLists ? isOwnedFlatListRenderedProjection(rendered) : isOwnedRenderedProjection(rendered)) || !rendered.current) {
+  if (!(EXPERIMENTAL_BLOCK_PROFILES && flatLists === "nested" ? (EXPERIMENTAL_BLOCK_PROFILES && isOwnedNestedListRenderedProjection(rendered)) : (EXPERIMENTAL_BLOCK_PROFILES && flatLists) ? (EXPERIMENTAL_BLOCK_PROFILES && isOwnedFlatListRenderedProjection(rendered)) : isOwnedRenderedProjection(rendered)) || !rendered.current) {
     return { ok: false, code: "selection.foreign_or_stale_render" };
   }
   return rendered.validateCanonicalDom()
