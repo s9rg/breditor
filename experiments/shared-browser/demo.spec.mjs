@@ -1,3 +1,4 @@
+import AxeBuilder from "@axe-core/playwright";
 import {test,expect} from "@playwright/test";
 async function caret(page,side,block,end){
  const surface=page.locator(`#${side} .breditor-shared-surface`);await surface.focus();await surface.locator(`[data-rich-text="${block}"]`).evaluate((element,end)=>{const range=document.createRange();range.selectNodeContents(element);range.collapse(!end);const selection=document.getSelection();selection.removeAllRanges();selection.addRange(range);},end);
@@ -7,7 +8,7 @@ test("both demo contents lists follow an edited heading and the writer's Undo", 
  await page.goto("/demo");
  await page.getByRole("link", {name: "Try the table of contents"}).click();
  await expect(page.locator("#contents-ready")).toHaveText("Ready");
- const contents = writer => page.locator(`#${writer}`).getByRole("navigation", {name: "On this page"});
+ const contents = writer => page.locator(`#${writer}`).getByRole("navigation", {name: `Writer ${writer.toUpperCase()} contents`});
  await contents("a").getByRole("button", {name: "Recovery", exact: true}).click();
  await page.keyboard.insertText("Offline ");
  for (const writer of ["a", "b"]) {
@@ -67,4 +68,27 @@ test("a shared wide table retains its scroll offset when a peer edits a cell", a
  }, false));
  await expect(region.locator("[data-rich-text='p']")).toHaveText("Wide a🙂b");
  await expect.poll(() => region.evaluate(element => element.scrollLeft)).toBe(offset);
+});
+
+test("the demo has accessible landmarks and skips to editing with the keyboard", async ({page, browserName}) => {
+ await page.goto("/demo");
+ await expect(page.locator("#state")).toContainText("Connected");
+ const skip = page.getByRole("link", {name: "Skip to editors"});
+ // The default macOS WebKit keyboard setting reaches links with Option+Tab.
+ await page.keyboard.press(browserName === "webkit" && process.platform === "darwin" ? "Alt+Tab" : "Tab");
+ await expect(skip).toBeFocused();
+ await expect(skip).toBeInViewport();
+ await page.keyboard.press("Enter");
+ await expect(page.getByRole("main")).toBeFocused();
+ const audit = await new AxeBuilder({page}).analyze();
+ expect(audit.violations).toEqual([]);
+});
+
+test("the contents and code demos expose accessible landmarks", async ({page}) => {
+ for (const [path, ready] of [["contents", "#contents-ready"], ["code", "#code-ready"]]) {
+  await page.goto(`/${path}`);
+  await expect(page.locator(ready)).toHaveText("Ready");
+  const audit = await new AxeBuilder({page}).analyze();
+  expect(audit.violations).toEqual([]);
+ }
 });

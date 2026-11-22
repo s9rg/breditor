@@ -568,3 +568,12 @@ dictation, autocorrect, and hardware/software keyboard behavior—especially on
 iOS/iPadOS Safari and Android browsers—require manual testing on real devices.
 Breditor's support claim remains the documented paragraph-local composition
 subset, not blanket mobile-IME support.
+
+### Rich and shared demos
+
+The local and two-writer demos expose one main landmark and a keyboard skip
+link. In the shared demo the writer sections, contents navigation and
+scrollable tables have distinct names. The demo specs test skip-link focus
+and activation and run axe on the rich, contents and code pages in Chromium,
+Firefox and WebKit. Physical IME, spoken screen-reader output and touch
+qualification still require the final integrated candidate.
