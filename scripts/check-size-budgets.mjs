@@ -4,6 +4,10 @@ import { fileURLToPath } from "node:url";
 import { gzipSync } from "node:zlib";
 
 const repository = dirname(dirname(fileURLToPath(import.meta.url)));
+const args = process.argv.slice(2);
+if (args.length > 1 || args.some(arg => arg !== "--json")) {
+  throw new Error("Usage: node scripts/check-size-budgets.mjs [--json]");
+}
 
 const budgets = Object.freeze([
   Object.freeze({
@@ -70,23 +74,24 @@ const budgets = Object.freeze([
   ),
 ]);
 
-let failed = false;
-for (const budget of budgets) {
-  const verdict = budget.actual <= budget.maximum ? "PASS" : "FAIL";
-  console.log(
-    `${verdict} ${budget.label}: ${budget.actual.toLocaleString("en-US")} / ${budget.maximum.toLocaleString("en-US")} bytes`,
-  );
-  if (verdict === "FAIL") failed = true;
-}
-
-if (failed) {
-  console.error(
-    "check-size-budgets: one or more release budgets were exceeded",
-  );
-  process.exitCode = 1;
+const rows = budgets.map(budget => ({
+  ...budget,
+  remaining: budget.maximum - budget.actual,
+  passed: budget.actual <= budget.maximum,
+}));
+const passed = rows.every(row => row.passed);
+if (args.includes("--json")) {
+  console.log(JSON.stringify({format: "breditor/default-size-budgets", formatVersion: 1, passed, budgets: rows}, null, 2));
 } else {
-  console.log("check-size-budgets: all release budgets passed");
+  for (const {label, actual, maximum, passed} of rows) {
+    console.log(
+      `${passed ? "PASS" : "FAIL"} ${label}: ${actual.toLocaleString("en-US")} / ${maximum.toLocaleString("en-US")} bytes`,
+    );
+  }
+  if (passed) console.log("check-size-budgets: all release budgets passed");
+  else console.error("check-size-budgets: one or more release budgets were exceeded");
 }
+if (!passed) process.exitCode = 1;
 
 function sumFiles(directory, accepts) {
   const absolute = join(repository, directory);
