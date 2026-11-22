@@ -57,6 +57,16 @@ test("complete feature labels cannot hide an open qualification gate", () => {
   assert.ok(result.openGates.length > 0);
 });
 
+test("reviewed readiness refuses removed or renamed required release gates", () => {
+  const audit = load();
+  for (const row of audit.features) row.status = "implemented";
+  for (const row of audit.gates) row.status = "passed";
+  const remaining = audit.gates.filter(row => row.id !== "public-relay-hardening");
+  assert.throws(() => summarizeAudit({...audit, gates: remaining}), /missing required release gate public-relay-hardening$/);
+  const renamed = audit.gates.map(row => row.id === "pilot" ? {...row, id: "pilot-draft"} : row);
+  assert.throws(() => summarizeAudit({...audit, gates: renamed}), /missing required release gate pilot$/);
+});
+
 test("passed gates cannot hide missing feature groups", () => {
   const audit = load();
   for (const row of audit.gates) row.status = "passed";

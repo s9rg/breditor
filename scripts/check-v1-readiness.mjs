@@ -7,6 +7,21 @@ export const repository = resolve(dirname(fileURLToPath(import.meta.url)), "..")
 export const auditPath = resolve(repository, "docs/v1-readiness.json");
 const featureStates = new Set(["implemented", "partial", "missing"]);
 const gateStates = new Set(["open", "passed"]);
+const requiredReleaseGates = [
+  "catalog-coverage",
+  "distribution",
+  "compatibility",
+  "release-ci",
+  "browser-reliability",
+  "accessibility-input-mobile",
+  "performance-and-size",
+  "public-relay-hardening",
+  "storage-lifecycle",
+  "dependency-and-license-review",
+  "integration-docs-and-support",
+  "pilot",
+  "final-rc",
+];
 const identifier = /^[a-z][a-z0-9]*(?:-[a-z0-9]+)*$/;
 const object = value => value !== null && typeof value === "object" && !Array.isArray(value);
 const text = value => typeof value === "string" && value.trim().length > 0;
@@ -55,7 +70,10 @@ export function validateAudit(audit) {
     requireValue(url.protocol === "https:" && !url.username && !url.password && text(source.note), `${source.id} needs HTTPS and a source note`);
   }
   uniqueRows(audit.features, "features");
-  uniqueRows(audit.gates, "gates");
+  const gates = uniqueRows(audit.gates, "gates");
+  for (const id of requiredReleaseGates) {
+    requireValue(gates.has(id), `missing required release gate ${id}`);
+  }
   for (const row of audit.features) {
     requireValue(text(row.area) && text(row.summary) && text(row.current) && text(row.acceptance), `${row.id} needs a current boundary and acceptance condition`);
     requireValue(featureStates.has(row.status), `${row.id} has an unknown feature status`);
