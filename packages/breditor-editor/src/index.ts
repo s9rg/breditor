@@ -27,4 +27,4 @@ export {resolveRichUi as resolveUiLocale,richUiStringsEn as uiStringsEn,type Ric
 export {richUiNoticeCodes as uiNoticeCodes,type RichUiNoticeCode as UiNoticeCode,type RichUiPanelStrings as UiPanelStrings} from "@breditor/experimental-rich-content";
 export {createFormattingProductivityToolbar,createSpecialCharacterCatalog,filterSpecialCharacters,richSpecialCharacterCategories,type RichFormattingProductivityOptions,type RichSpecialCharacterOptions,type RichSpecialCharacterCategory,type RichCaseChangeIntent} from "@breditor/experimental-rich-content";
 export {mountRichCodeHighlighting as mountCodeHighlighting,type RichCodeHighlighting as CodeHighlighting,type RichCodeHighlightingOptions as CodeHighlightingOptions} from "@breditor/experimental-rich-content";
-export type {StaticTableOfContentsOptions} from "./static_document.js";
+export {staticCodeHighlightingStyles,type StaticTableOfContentsOptions} from "./static_document.js";

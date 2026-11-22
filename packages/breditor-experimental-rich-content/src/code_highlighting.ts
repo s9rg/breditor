@@ -1,4 +1,4 @@
-import {codeLanguageForHighlighting, tokenizeCode, type CodeTokenKind} from "./code_syntax.js";
+import {CodeSyntaxBudget,codeSyntaxPalette,type CodeTokenKind} from "./code_syntax.js";
 
 export interface RichCodeHighlightingOptions {
  /** Content Security Policy nonce for the palette stylesheet. */
@@ -10,19 +10,7 @@ export interface RichCodeHighlighting {
  dispose(): void;
 }
 
-const palette = {
- comment: "#55696a",
- keyword: "#743eb0",
- literal: "#a13e13",
- number: "#a13e13",
- operator: "#255884",
- string: "#08734c",
-} satisfies Record<CodeTokenKind, string>;
-const kinds = Object.keys(palette) as CodeTokenKind[];
-const maxBlocks = 128;
-const maxBlockUnits = 16_384;
-const maxSurfaceUnits = 65_536;
-const maxRanges = 4_096;
+const kinds = Object.keys(codeSyntaxPalette) as CodeTokenKind[];
 const mounted = new WeakSet<HTMLElement>();
 // Highlight names are page-global. `crypto.randomUUID` exists only in secure contexts, so a plain-HTTP host
 // would throw; a per-module counter plus a random suffix stays unique per mount and across module copies.
@@ -59,28 +47,22 @@ export function mountRichCodeHighlighting(
  const style = document.createElement("style");
  if (options.nonce !== undefined) style.nonce = options.nonce;
  style.textContent = names.map(([kind, name]) =>
-  `::highlight(${name}){color:var(--breditor-code-${kind},${palette[kind]})}`
+  `::highlight(${name}){color:var(--breditor-code-${kind},${codeSyntaxPalette[kind]})}`
  ).join("\n");
  const root = surface.getRootNode();
  (root instanceof window.ShadowRoot ? root : document.head).append(style);
 
  function paint(): void {
   const ranges = new Map<CodeTokenKind, Range[]>();
-  let remainingUnits = maxSurfaceUnits;
-  let remainingRanges = maxRanges;
-  let blocks = 0;
+  const budget = new CodeSyntaxBudget();
   for (const code of surface.querySelectorAll<HTMLElement>("pre[data-rich-text][data-language] > code")) {
-   if (remainingUnits === 0 || remainingRanges === 0 || blocks === maxBlocks) break;
-   const language = codeLanguageForHighlighting(code.parentElement?.dataset["language"] ?? "");
+   if (budget.exhausted) break;
+   const language = budget.acceptLanguage(code.parentElement?.dataset["language"] ?? "");
    if (!language) continue;
-   blocks++;
-   const rendered = renderedCode(code, Math.min(maxBlockUnits, remainingUnits));
+   const rendered = renderedCode(code, budget.maxBlockUnits);
    if (!rendered || rendered.source.length === 0) continue;
    const {source, nodes} = rendered;
-   remainingUnits -= source.length;
-   const tokens = tokenizeCode(source, language, remainingRanges + 1);
-   if (tokens.length > remainingRanges) break;
-   remainingRanges -= tokens.length;
+   const tokens = budget.tokens(source, language);
 
    // Tokens are ordered and non-overlapping. Advance through adjacent text nodes once.
    let index = 0;

@@ -24,6 +24,7 @@ import {groupRubyRuns,richRubyAnnotationMaxBytes,richRubyAnnotationProperty,rich
 import {legalListMarkersWith,richLegalListStyles} from "@breditor/experimental-rich-content/rendering";
 import {pageBreakAttributes,richPrintStyles,resolveRichPrintLayout,richUiStringsEn,type RichPrintOptions,type RichPrintLayout} from "@breditor/experimental-rich-content/rendering";
 import {headingHierarchy,type HeadingBranch} from "@breditor/experimental-rich-content/rendering";
+import {CodeSyntaxBudget,codeSyntaxPalette} from "@breditor/experimental-rich-content/rendering";
 
 /** Immutable image binding handed to the host resolver; mirrors the live `AssetBinding`. */
 export interface StaticAssetBinding {readonly image:string;readonly asset:string;readonly generation:string}
@@ -79,6 +80,8 @@ export interface StaticRenderOptions {
  legalListNumbering?:boolean;
  /** Prepend a linked table of contents to the rendered document, including fragment output. */
  tableOfContents?:boolean|StaticTableOfContentsOptions;
+ /** Color syntax in labeled code blocks using the bounded live editor language set. */
+ codeHighlighting?:boolean;
 }
 
 export type StaticImageState="ready"|"unresolved"|"rejected"|"error";
@@ -102,6 +105,10 @@ export class StaticDocumentError extends Error {
 
 /** Wrapper attributes shared by the vanilla string and the React component. */
 export const staticSurfaceClass="breditor-rich-surface";
+/** Include this stylesheet with fragment output or apply an equivalent host theme. */
+export const staticCodeHighlightingStyles=Object.entries(codeSyntaxPalette).map(([kind,color])=>
+ `[data-breditor-code-token="${kind}"]{color:var(--breditor-code-${kind},${color})}`
+).join("");
 
 /** Render inert HTML for one canonical document; throws {@link StaticDocumentError} on invalid input. */
 export function renderStaticDocument(document:unknown,options:StaticRenderOptions={}):string {
@@ -115,7 +122,8 @@ export function renderStaticDocumentWithReport(document:unknown,options:StaticRe
  renderer.legal(root);
  const body=renderer.render(root);
  const style=(renderer.print&&!options.fragment?`<style data-breditor-print="">${richPrintStyles(renderer.print)}</style>`:"")+(options.legalListNumbering===true&&!options.fragment?`<style data-breditor-legal-lists="">${richLegalListStyles}</style>`:"");
- const html=options.fragment?body:`<div class="${staticSurfaceClass}" data-breditor-rich="" data-breditor-static="">${style}${body}</div>`;
+ const codeStyle=renderer.hasCodeColors?`<style data-breditor-code-highlighting="">${staticCodeHighlightingStyles}</style>`:"";
+ const html=options.fragment?body:`<div class="${staticSurfaceClass}" data-breditor-rich="" data-breditor-static="">${style}${codeStyle}${body}</div>`;
  return {html,report:Object.freeze({skipped:Object.freeze(renderer.skipped),images:Object.freeze(renderer.images),hiddenTables:Object.freeze(renderer.hiddenTables),inactiveMerges:Object.freeze(renderer.inactiveMerges)})};
 }
 
@@ -330,6 +338,9 @@ class Renderer {
  readonly #contentsOptions:Readonly<StaticTableOfContentsOptions>|undefined;
  readonly #contentsHeadings=new Map<string,ContentsHeading>();
  #contentsScope:string|undefined;
+ readonly #codeBudget:CodeSyntaxBudget|undefined;
+ #hasCodeColors=false;
+ get hasCodeColors():boolean{return this.#hasCodeColors;}
  constructor(options:StaticRenderOptions){
   if(typeof options!=="object"||options===null||Array.isArray(options))throw new TypeError("Static render options must be an object");
   if(options.unknown!==undefined&&options.unknown!=="error"&&options.unknown!=="skip")throw new TypeError("unknown must be \"error\" or \"skip\"");
@@ -341,6 +352,8 @@ class Renderer {
   if(options.legalListNumbering!==undefined&&typeof options.legalListNumbering!=="boolean")throw new TypeError("legalListNumbering must be a Boolean");
   this.#legal=options.legalListNumbering===true;
   this.#contentsOptions=contentsOptions(options.tableOfContents);
+  if(options.codeHighlighting!==undefined&&typeof options.codeHighlighting!=="boolean")throw new TypeError("codeHighlighting must be a Boolean");
+  this.#codeBudget=options.codeHighlighting?new CodeSyntaxBudget():undefined;
   if(options.print!==undefined&&typeof options.print!=="boolean"&&(typeof options.print!=="object"||options.print===null))throw new TypeError("print must be a Boolean or print options");
   this.print=options.print===undefined||options.print===false?undefined:resolveRichPrintLayout(options.print===true?{}:options.print);
   const limits=options.limits??{};
@@ -526,6 +539,28 @@ class Renderer {
   this.#contentsHeadings.set(block,{id,label:headingLabel(node),level:Number(node.properties["level"])});
   return ` id="${escapeHtmlAttribute(id)}"`;
  }
+ #highlightCode(node:Element,language:string):string|undefined {
+  const budget=this.#codeBudget,grammar=budget?.acceptLanguage(language);
+  if(!budget||!grammar)return undefined;
+  const pieces:string[]=[];
+  let length=0;
+  for(const child of node.children){
+   if(child.kind!=="text")continue;
+   length+=child.text.length;
+   if(length>budget.maxBlockUnits)return undefined;
+   pieces.push(child.text);
+  }
+  const source=pieces.join(""),tokens=budget.tokens(source,grammar);
+  if(!tokens.length)return undefined;
+  this.#hasCodeColors=true;
+  let offset=0,html="";
+  for(const token of tokens){
+   html+=escapeHtmlText(source.slice(offset,token.start));
+   html+=`<span data-breditor-code-token="${token.kind}">${escapeHtmlText(source.slice(token.start,token.end))}</span>`;
+   offset=token.end;
+  }
+  return html+escapeHtmlText(source.slice(offset));
+ }
  /** Derive legal markers once from the admitted tree (opt-in). */
  legal(root:Element):void {
   if(!this.#legal)return;
@@ -599,8 +634,10 @@ class Renderer {
     return `<${tag}${this.#blockAttributes(node,true)}${this.#layout(node)}${bookmark||contents}>${target}${node.children.length?inner():"<br>"}</${tag}>`;
    }
    case "breditor/code-block":{
-    const language=typeof p["language"]==="string"?` data-language="${escapeHtmlAttribute(p["language"])}"`:"";
-    return `<pre${this.#blockAttributes(node,true)}${this.#layout(node)}${this.#bookmark(node)}${language}><code>${node.children.length?inner():"<br>"}</code></pre>`;
+    const label=typeof p["language"]==="string"?p["language"]:undefined;
+    const language=label?` data-language="${escapeHtmlAttribute(label)}"`:"";
+    const code=label?this.#highlightCode(node,label):undefined;
+    return `<pre${this.#blockAttributes(node,true)}${this.#layout(node)}${this.#bookmark(node)}${language}><code>${code??(node.children.length?inner():"<br>")}</code></pre>`;
    }
    case "breditor/bullet-list":return `<ul${this.#blockAttributes(node,false)}>${inner()}</ul>`;
    case "breditor/ordered-list":return `<ol${this.#blockAttributes(node,false)} start="${String(p["start"])}"${p["list-style"]!==undefined?` type="${listTypes[(p["list-style"] as number)-1]!}"`:""}${p["list-reversed"]===true?" reversed":""}${this.#legal?' data-rich-legal="" role="list"':""}>${inner()}</ol>`;

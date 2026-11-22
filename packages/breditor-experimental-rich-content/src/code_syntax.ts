@@ -6,7 +6,42 @@ export interface CodeToken {
  readonly kind: CodeTokenKind;
 }
 
+export const codeSyntaxPalette = Object.freeze({
+ comment: "#55696a",
+ keyword: "#743eb0",
+ literal: "#a13e13",
+ number: "#a13e13",
+ operator: "#255884",
+ string: "#08734c",
+} satisfies Record<CodeTokenKind, string>);
+
 type Language = "javascript" | "typescript" | "json" | "python" | "rust";
+
+/** One work budget for a live surface paint or published document render. */
+export class CodeSyntaxBudget {
+ #blocks = 128;
+ #units = 65_536;
+ #ranges = 4_096;
+
+ get exhausted():boolean {return this.#blocks===0||this.#units===0||this.#ranges===0;}
+ get maxBlockUnits():number {return Math.min(16_384,this.#units);}
+
+ acceptLanguage(label:string):Language|undefined {
+  if(this.exhausted)return undefined;
+  const language=codeLanguageForHighlighting(label);
+  if(language)this.#blocks--;
+  return language;
+ }
+
+ tokens(source:string,language:Language):readonly CodeToken[] {
+  if(source.length>this.maxBlockUnits||this.#ranges===0)return [];
+  this.#units-=source.length;
+  const tokens=tokenizeCode(source,language,this.#ranges+1);
+  if(tokens.length>this.#ranges){this.#ranges=0;return [];}
+  this.#ranges-=tokens.length;
+  return tokens;
+ }
+}
 
 const languages = new Map<string, Language>([
  ["js", "javascript"], ["javascript", "javascript"], ["mjs", "javascript"], ["cjs", "javascript"],
