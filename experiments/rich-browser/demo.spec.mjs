@@ -1,5 +1,23 @@
 import {test,expect} from "@playwright/test";
 import {readFile} from "node:fs/promises";
+
+test("the local code example toggles colors while keeping its source", async ({page}) => {
+ await page.goto("/demo");
+ await page.getByRole("link", {name: "Try code highlighting"}).click();
+ await expect(page.locator("#code-ready")).toHaveText("Ready");
+ const code = page.locator("pre[data-language] > code");
+ await expect(code).toHaveCount(2);
+ const text = await code.allTextContents();
+ const highlightCount = () => page.evaluate(() => [...CSS.highlights.keys()]
+  .filter(name => name.startsWith("breditor-syntax-")).length);
+ await expect.poll(highlightCount).toBeGreaterThan(0);
+ await page.getByRole("checkbox", {name: "Syntax colors"}).uncheck();
+ await expect.poll(highlightCount).toBe(0);
+ expect(await code.allTextContents()).toEqual(text);
+ await page.getByRole("checkbox", {name: "Syntax colors"}).check();
+ await expect.poll(highlightCount).toBeGreaterThan(0);
+});
+
 test("interactive rich demo renders owned raster assets and restores exported exact history",async({page})=>{
  await page.goto("/demo");await expect(page.locator("#ready")).toHaveText("Ready — real Rust/Wasm editor");
  await expect(page.locator("[data-rich-cell]")).toHaveCount(4);await expect(page.locator("figure img")).toBeVisible();

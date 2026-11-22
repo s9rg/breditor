@@ -1,0 +1,78 @@
+* { box-sizing: border-box; }
+body {
+ margin: 0 auto;
+ max-width: 78rem;
+ padding: clamp(1rem, 4vw, 3rem);
+ background: #f3f7f5;
+ color: #203a38;
+ font: 1rem/1.5 system-ui, sans-serif;
+}
+body[data-code-demo="local"] { max-width: 54rem; }
+header { margin-bottom: 2rem; }
+nav a {
+ color: #235e53;
+ text-underline-offset: .25em;
+ font-size: .875rem;
+}
+h1 {
+ margin: 1.25rem 0 .25rem;
+ color: #142e2c;
+ font-size: clamp(2rem, 5vw, 3rem);
+ line-height: 1.1;
+ letter-spacing: -.04em;
+}
+header p { margin: 0 0 1rem; color: #41615c; }
+.demo-controls {
+ display: flex;
+ align-items: center;
+ flex-wrap: wrap;
+ gap: .5rem 1rem;
+ font-size: .875rem;
+}
+.demo-controls label { display: flex; align-items: center; gap: .4rem; }
+.demo-controls input { accent-color: #207460; }
+#code-ready { color: #41615c; }
+.editors { display: grid; gap: 1.25rem; }
+[data-code-demo="shared"] .editors { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+.editor-pane {
+ min-width: 0;
+ padding: 1rem;
+ border: 1px solid #ccdad4;
+ border-radius: .75rem;
+ background: #fff;
+}
+.editor-pane h2 { margin: 0 0 .65rem; font-size: .95rem; font-weight: 650; }
+[data-code-demo] [data-demo-editor] :is(.breditor-rich-toolbar, .breditor-shared-toolbar) {
+ display: flex;
+ gap: .5rem;
+ padding: .45rem .6rem;
+ border: 1px solid #d7e4df;
+ border-radius: .45rem .45rem 0 0;
+ background: #eef5f2;
+}
+[data-code-demo] [data-demo-editor] :is(.breditor-rich-surface, .breditor-shared-surface) {
+ min-height: 0;
+ padding: .9rem 1rem .65rem;
+ border: 1px solid #d7e4df;
+ border-top: 0;
+ border-radius: 0 0 .45rem .45rem;
+}
+[data-code-demo] [data-demo-editor] h3 { margin: 0 0 .5rem; font-size: 1rem; }
+[data-code-demo] [data-demo-editor] pre[data-language] {
+ --breditor-code-comment: #a8bac5;
+ --breditor-code-keyword: #eab7ff;
+ --breditor-code-literal: #ffba8f;
+ --breditor-code-number: #ffce8f;
+ --breditor-code-operator: #a9d7ff;
+ --breditor-code-string: #a3edbb;
+ margin: 0 0 .85rem;
+ padding: .85rem 1rem;
+ border-radius: .4rem;
+ background: #182c37;
+ color: #edf4f8;
+ overflow-wrap: anywhere;
+ font: .88rem/1.7 ui-monospace, monospace;
+}
+@media (max-width: 760px) {
+ [data-code-demo="shared"] .editors { grid-template-columns: minmax(0, 1fr); }
+}
