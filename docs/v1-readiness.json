@@ -463,8 +463,8 @@
     {
       "id":"table-of-contents","area":"Productivity","status":"partial",
       "summary":"In-document table of contents",
-      "current":"The local and shared editor contents presentation nests native heading reads and navigates with revision-guarded selection. Static HTML can prepend a linked contents list using stable heading IDs and existing bookmark anchors. Placement is host-controlled.",
-      "acceptance":"Define or explicitly scope the movable, saved contents block, scroll tracking and non-HTML export behavior. Qualify the selected workflow on exact release artifacts.",
+      "current":"The local and shared editor contents presentation nests native heading reads, navigates with revision-guarded selection and marks the current section as the viewport or host scroll container moves. Static HTML can prepend a linked contents list using stable heading IDs and existing bookmark anchors. Placement is host-controlled.",
+      "acceptance":"Define or explicitly scope the movable, saved contents block and non-HTML export behavior. Qualify the selected workflow on exact release artifacts.",
       "evidence":["docs/RICH_WRITING_TOOLS.md","packages/breditor-editor/tests/static_document_contents.test.ts","experiments/rich-browser/document-contents.spec.mjs","experiments/shared-browser/document-contents.spec.mjs"],
       "sources":["ckeditor-table-of-contents","tiptap-catalog"]
     },

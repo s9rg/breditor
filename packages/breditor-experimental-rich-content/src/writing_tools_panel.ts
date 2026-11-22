@@ -9,6 +9,8 @@ export interface RichWritingToolsPanelOptions {
  label?:string;pageSize?:number;debounceMs?:number;onError?:(error:unknown)=>void;
  /** Show a navigation landmark with a nested heading list in place of the statistics panel. */
  presentation?:"contents";
+ /** Contents scrollport. Defaults to the browser viewport. */
+ scrollContainer?:HTMLElement;
 }
 export interface RichWritingToolsPanelState {readonly disposed:boolean;readonly busy:boolean;readonly metadata:RichWritingToolsRead|null;readonly page:number;readonly pageSize:number;readonly error:string|null}
 export interface RichWritingToolsPanel {refresh():void;selectHeading(index:number,revision?:string):Promise<void>;setPage(page:number):void;state():RichWritingToolsPanelState;dispose():void}
@@ -29,6 +31,8 @@ class WritingPanel implements RichWritingToolsPanel {
  readonly #element:HTMLElement;readonly #counts:HTMLDListElement;readonly #list:HTMLOListElement;readonly #status:HTMLParagraphElement;readonly #pages:HTMLParagraphElement;readonly #previous:HTMLButtonElement;readonly #next:HTMLButtonElement;readonly #refresh:HTMLButtonElement;readonly #abort:AbortController;readonly #unsubscribe:()=>void;
  readonly #pageSize:number;readonly #delay:number;readonly #ui:RichUiLocale;#page=0;#read:RichWritingToolsRead|undefined;#display:RichWritingToolsRead|undefined;#pending=false;#disposed=false;#error:string|null=null;#shown:string|null=null;#timer:ReturnType<typeof setTimeout>|undefined;
  readonly #contents:boolean;readonly #actions:HTMLDivElement;#visibleIndexes:readonly number[]|undefined;
+ readonly #scrollContainer:HTMLElement|undefined;#headings:ReadonlyMap<string,HTMLElement>=new Map();
+ #scrollFrame:number|undefined;
  constructor(root:HTMLElement,host:RichWritingToolsHost,options:RichWritingToolsPanelOptions){
   if(hosts.has(root)||root===host.surface||root.contains(host.surface)||host.surface.contains(root)||root.ownerDocument!==host.surface.ownerDocument)throw Error("Writing controls require an unused separate host outside the editing surface");
   const state=host.writingState();if(state.closed||!state.available)throw Error("Use an open editor with complete native writing capabilities");
@@ -36,6 +40,9 @@ class WritingPanel implements RichWritingToolsPanel {
   if(!Number.isSafeInteger(size)||size<1||size>100||!Number.isSafeInteger(delay)||delay<0||delay>1000||options.label!==undefined&&(typeof options.label!=="string"||!options.label||options.label.length>256))throw new TypeError("Expected bounded writing-control presentation options");
   if(options.presentation!==undefined&&options.presentation!=="contents")throw new TypeError("Expected contents presentation");
   this.#contents=options.presentation==="contents";
+  const scroll=options.scrollContainer,window=root.ownerDocument.defaultView!;
+  if(scroll!==undefined&&(!this.#contents||!(scroll instanceof window.HTMLElement)||!scroll.contains(host.surface)))throw new TypeError("The contents scroll container must contain the editing surface");
+  this.#scrollContainer=scroll;
   this.#root=root;this.#host=host;this.#options={...options};this.#pageSize=size;this.#delay=delay;const ui=this.#ui=host.uiLocale?.()??defaultRichUi;
   const d=root.ownerDocument,realm=d.defaultView as unknown as {AbortController:typeof AbortController};this.#abort=new realm.AbortController();
   const label=options.label??ui.text(this.#contents?"writingOutlineLabel":"writingLabel");
@@ -51,6 +58,11 @@ class WritingPanel implements RichWritingToolsPanel {
   if(!this.#contents)this.#element.append(this.#counts);
   this.#element.append(this.#list,this.#pages,actions,this.#status);
   const unsubscribe=host.subscribeWriting(()=>this.#schedule());this.#unsubscribe=unsubscribe;
+  if(this.#contents){
+   window.addEventListener("scroll",()=>this.#scheduleCurrentHeading(),{passive:true,signal:this.#abort.signal});
+   window.addEventListener("resize",()=>this.#scheduleCurrentHeading(),{passive:true,signal:this.#abort.signal});
+   scroll?.addEventListener("scroll",()=>this.#scheduleCurrentHeading(),{passive:true,signal:this.#abort.signal});
+  }
   try{hosts.add(root);root.replaceChildren(this.#element);this.refresh();}catch(error){unsubscribe();hosts.delete(root);this.#abort.abort();throw error;}
  }
  #report(error:unknown):void{this.#error=error instanceof Error?error.message:String(error);this.#shown=this.#ui.describe(error,this.#error);try{this.#options.onError?.(error);}catch{/* A reporting callback cannot undo native publication. */}}
@@ -61,6 +73,46 @@ class WritingPanel implements RichWritingToolsPanel {
  }
  #schedule():void{if(this.#disposed)return;this.#read=undefined;this.#error=this.#shown=null;if(this.#timer!==undefined)clearTimeout(this.#timer);this.#render(false);this.#timer=setTimeout(()=>{this.#timer=undefined;this.refresh();},this.#delay);}
  #total():number{return this.#visibleIndexes?.length??this.#display?.outline.length??0;}
+ #scheduleCurrentHeading():void{
+  if(!this.#contents||this.#disposed||this.#scrollFrame!==undefined)return;
+  const window=this.#root.ownerDocument.defaultView!;
+  this.#scrollFrame=window.requestAnimationFrame(()=>{
+   this.#scrollFrame=undefined;
+   const current=this.#currentHeading();
+   for(const button of this.#list.querySelectorAll<HTMLButtonElement>("button[data-writing-block]")){
+    if(button.dataset["writingBlock"]===current)button.setAttribute("aria-current","location");
+    else button.removeAttribute("aria-current");
+   }
+  });
+ }
+ #currentHeading():string|undefined{
+  const read=this.#read,indexes=this.#visibleIndexes;
+  if(!read||!indexes?.length)return undefined;
+  const document=this.#root.ownerDocument,window=document.defaultView!;
+  const scroll=this.#scrollContainer,frame=scroll?.getBoundingClientRect();
+  const top=frame?Math.max(0,frame.top+scroll!.clientTop):0;
+  const bottom=frame?Math.min(window.innerHeight,frame.top+scroll!.clientTop+scroll!.clientHeight):window.innerHeight;
+  const surface=this.#host.surface.getBoundingClientRect();
+  if(top>=bottom||surface.bottom<=top||surface.top>=bottom)return undefined;
+  const padding=Math.min(40,(bottom-top)/8),scroller=scroll??document.scrollingElement;
+  const atEnd=!!scroller&&scroller.scrollHeight>scroller.clientHeight&&
+   scroller.scrollHeight-scroller.clientHeight-scroller.scrollTop<=1;
+  let preceding:string|undefined,firstVisible:string|undefined,lastVisible:string|undefined;
+  let precedingTop=-Infinity,firstTop=Infinity,lastTop=-Infinity;
+  const first=this.#page*this.#pageSize;
+  // One neighbor on either side lets a different contents page own the active position.
+  for(let offset=Math.max(0,first-1);offset<Math.min(indexes.length,first+this.#pageSize+1);offset++){
+   const entry=read.outline[indexes[offset]!]!,element=this.#headings.get(entry.block);
+   if(!element?.isConnected)continue;
+   const rect=element.getBoundingClientRect();
+   if(rect.height<=0)continue;
+   if(rect.top<=top+padding&&rect.top>=precedingTop){precedingTop=rect.top;preceding=entry.block;}
+   if(rect.bottom<=top||rect.top>=bottom)continue;
+   if(rect.top<firstTop){firstTop=rect.top;firstVisible=entry.block;}
+   if(rect.top>=lastTop){lastTop=rect.top;lastVisible=entry.block;}
+  }
+  return (atEnd?lastVisible:preceding)??preceding??firstVisible;
+ }
  #headingItem(read:RichWritingToolsRead,entry:IndexedHeading):HTMLLIElement {
   const d=this.#root.ownerDocument,item=d.createElement("li"),button=d.createElement("button");
   button.type="button";button.dataset["writingBlock"]=entry.block;button.dataset["writingIndex"]=String(entry.index);
@@ -101,6 +153,7 @@ class WritingPanel implements RichWritingToolsPanel {
    this.#counts.replaceChildren();const counts=this.#display?.counts;
    if(counts&&!this.#contents)for(const [key,label]of [["words","writingCountWords"],["graphemes","writingCountGraphemes"],["unicodeScalars","writingCountScalars"],["utf16Units","writingCountUtf16"],["utf8Bytes","writingCountUtf8"],["textBlocks","writingCountBlocks"]] as const){const term=d.createElement("dt"),value=d.createElement("dd");term.textContent=this.#ui.text(label);value.textContent=counts[key];value.dataset["writingCount"]=key;this.#counts.append(term,value);}
    this.#renderOutline();
+   this.#scheduleCurrentHeading();
    if(focused){const replacement=[...this.#list.querySelectorAll<HTMLButtonElement>("button")].find(node=>node.dataset["writingBlock"]===focused);replacement?.focus({preventScroll:true});}
   }
   for(const button of this.#list.querySelectorAll<HTMLButtonElement>("button"))button.disabled=blocked;
@@ -117,15 +170,15 @@ class WritingPanel implements RichWritingToolsPanel {
  }
  refresh():void {
   if(this.#disposed)return;if(this.#timer!==undefined){clearTimeout(this.#timer);this.#timer=undefined;}
-  const state=this.#host.writingState();if(state.closed){this.#read=this.#display=this.#visibleIndexes=undefined;this.#error=this.#shown=null;this.#render(true);return;}
+  const state=this.#host.writingState();if(state.closed){this.#read=this.#display=this.#visibleIndexes=undefined;this.#headings=new Map();this.#error=this.#shown=null;this.#render(true);return;}
   if(state.busy||state.composing||this.#pending){this.#read=undefined;this.#render(false);return;}
   this.#read=undefined;this.#error=this.#shown=null;
   try{
    const read=this.#host.readWritingTools(state.revision),now=this.#host.writingState();
    if(now.closed||now.busy||now.composing||now.revision!==read.revision)throw richUiError("writingErrorChanged");
    if(this.#contents){
-    const visible=visibleHeadings(this.#host.surface);
-    this.#visibleIndexes=read.outline.flatMap((heading,index)=>visible.has(heading.block)?[index]:[]);
+    this.#headings=visibleHeadings(this.#host.surface);
+    this.#visibleIndexes=read.outline.flatMap((heading,index)=>this.#headings.has(heading.block)?[index]:[]);
    }
    this.#read=this.#display=read;this.#page=Math.min(this.#page,Math.max(0,Math.ceil(this.#total()/this.#pageSize)-1));
   }
@@ -152,8 +205,8 @@ class WritingPanel implements RichWritingToolsPanel {
  setPage(page:number):void{if(this.#disposed)throw Error("Writing controls are disposed");if(!this.#read||this.#pending)throw richUiError("writingErrorStale");if(!Number.isSafeInteger(page)||page<0||page>=Math.max(1,Math.ceil(this.#total()/this.#pageSize)))throw RangeError("Writing outline page is outside this read");this.#page=page;this.#render(true);}
  state():RichWritingToolsPanelState{return Object.freeze({disposed:this.#disposed,busy:this.#pending,metadata:this.#read??null,page:this.#page,pageSize:this.#pageSize,error:this.#error});}
  /** Releases only borrowed UI and notifications; never the editor, native owner or durable writer. */
- dispose():void{if(this.#disposed)return;this.#disposed=true;this.#read=this.#display=undefined;if(this.#timer!==undefined)clearTimeout(this.#timer);this.#abort.abort();this.#unsubscribe();this.#element.remove();hosts.delete(this.#root);}
+ dispose():void{if(this.#disposed)return;this.#disposed=true;this.#read=this.#display=this.#visibleIndexes=undefined;this.#headings=new Map();if(this.#timer!==undefined)clearTimeout(this.#timer);if(this.#scrollFrame!==undefined)this.#root.ownerDocument.defaultView!.cancelAnimationFrame(this.#scrollFrame);this.#abort.abort();this.#unsubscribe();this.#element.remove();hosts.delete(this.#root);}
 }
 export function mountRichWritingTools(root:HTMLElement,host:RichWritingToolsHost,options:RichWritingToolsPanelOptions={}):RichWritingToolsPanel{return new WritingPanel(root,host,options);}
 const styles=`[data-breditor-writing]{padding:12px;border:1px solid #bdcdc5;border-radius:8px;color:#173d37;background:#f4f7f4;font:14px system-ui,sans-serif}[data-breditor-writing] h2{font-size:16px;margin:0 0 8px}[data-breditor-writing] dl{display:grid;grid-template-columns:minmax(150px,1fr) auto;gap:4px 12px;margin:8px 0}[data-breditor-writing] dd{margin:0;font-variant-numeric:tabular-nums}[data-breditor-writing] ol{list-style:none;padding:0;margin:12px 0}[data-breditor-writing] li button{display:block;width:100%;text-align:start;white-space:pre-wrap;overflow-wrap:anywhere}[data-breditor-writing] button{padding:6px 8px;margin:2px;border:1px solid #aabbb3;border-radius:4px;background:white;color:inherit}[data-breditor-writing] button:disabled{opacity:.5}[data-breditor-writing] p{font-size:12px;margin:8px 0 0}`;
-const contentsStyles=`[data-breditor-writing][data-breditor-contents] ol{list-style:decimal;padding-inline-start:1.5em;margin-block:4px}[data-breditor-writing][data-breditor-contents] li button{display:inline;width:auto;padding:3px 2px;margin:0;border:0;background:transparent;text-decoration:underline;text-underline-offset:.18em}`;
+const contentsStyles=`[data-breditor-writing][data-breditor-contents] ol{list-style:decimal;padding-inline-start:1.5em;margin-block:4px}[data-breditor-writing][data-breditor-contents] li button{display:inline;width:auto;padding:3px 2px;margin:0;border:0;background:transparent;text-decoration:underline;text-underline-offset:.18em}[data-breditor-writing][data-breditor-contents] li button[aria-current="location"]{background:#dcece4;font-weight:650;text-decoration-thickness:2px}`;

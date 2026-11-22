@@ -69,7 +69,9 @@ try {
  const panels = editors.map(editor => {
   const host = document.createElement("div");
   editor.surface.before(host);
-  return mountRichWritingTools(host, editor, {presentation: "contents", label: "On this page", onError: report});
+  return mountRichWritingTools(host, editor, {
+   presentation: "contents", label: "On this page", scrollContainer: editor.surface, onError: report,
+  });
  });
  status.textContent = "Ready";
  window.addEventListener("pagehide", event => {
