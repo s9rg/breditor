@@ -1,9 +1,9 @@
 import test from "node:test";
 import assert from "node:assert/strict";
-import {readdirSync,readFileSync} from "node:fs";
+import {readdirSync,readFileSync,realpathSync} from "node:fs";
 import config from "../experiments/editor-browser/playwright.config.mjs";
 import {editorBrowserPort} from "../experiments/editor-browser/port.mjs";
-import {editorBrowserRuns,editorBrowserPlan} from "./check-editor-browser.mjs";
+import {editorBrowserRuns,editorBrowserPlan,installedBrowserEnvironment} from "./check-editor-browser.mjs";
 test("the installed consumer and Playwright use the same configurable loopback port",async()=>{
  const previous=process.env.BREDITOR_EDITOR_PORT;
  try{
@@ -26,7 +26,7 @@ test("installed SDK matrices include every discovered spec once without project 
  assert.ok(runs.slice(0,-1).every(run=>run.length<=4));
  assert.deepEqual(config.projects.map(project=>project.name),["chromium","firefox","webkit"]);assert.equal(config.retries,0);assert.equal(config.timeout,60_000);assert.equal(config.globalTimeout,300_000);
  for(const [_command,args]of editorBrowserPlan().runs){assert.equal(args.includes("--project"),false);assert.equal(args.includes("--timeout"),false);assert.equal(args.includes("--retries"),false);}
- const source=readFileSync(new URL("./check-editor-browser.mjs",import.meta.url),"utf8");assert.ok(source.includes("[plan.build,...plan.runs]"));assert.ok(source.includes("shell:false"));
+ const source=readFileSync(new URL("./check-editor-browser.mjs",import.meta.url),"utf8");assert.ok(source.includes("execFileSync(...plan.build,options)"));assert.ok(source.includes("shell:false"));
 });
 test("editing partition is deterministic and complete beyond one bounded batch",()=>{
  const names=["z.spec.mjs","a.spec.mjs","d.spec.mjs","b.spec.mjs","c.spec.mjs","shared-structural-network.spec.mjs"];
@@ -82,4 +82,14 @@ test("installed browser filters match each spec once, including shared structura
  assert.ok(structural);
  assert.equal(structural.test("/checkout/shared-structural-v2.spec.mjs"),false);
  assert.equal(structural.test("/checkout/structural-v2_spec.mjs"),false);
+});
+
+test("qualification binds the fresh installation even with an inherited consumer override",()=>{
+ const fixture=realpathSync(new URL("../experiments/editor-browser/",import.meta.url));
+ const env={BREDITOR_EDITOR_CONSUMER:"/stale-install",BREDITOR_EDITOR_PORT:"50852"};
+ const result=installedBrowserEnvironment({consumer:fixture},env);
+ assert.equal(result.BREDITOR_EDITOR_CONSUMER,fixture);
+ assert.equal(result.BREDITOR_EDITOR_PORT,"50852");
+ assert.equal(env.BREDITOR_EDITOR_CONSUMER,"/stale-install");
+ assert.throws(()=>installedBrowserEnvironment({}),/Missing freshly installed editor consumer/);
 });
