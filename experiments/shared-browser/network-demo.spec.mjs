@@ -1,3 +1,4 @@
+import AxeBuilder from "@axe-core/playwright";
 import {test,expect} from "@playwright/test";
 import {createRelay} from "./relay-fixture.mjs";
 import {readFileSync} from "node:fs";
@@ -18,6 +19,26 @@ test.afterEach(async({page},info)=>{
   await info.attach("application-network-native-state",{body:JSON.stringify(state),contentType:"application/json"});
  }
  await otherContext?.close();otherContext=undefined;await relay?.dispose();relay=undefined;
+});
+
+test("the network demo has separate writer statuses and a keyboard skip link",async({page,browserName})=>{
+ await page.goto("/network-demo");await ready(page);
+ const skip=page.getByRole("link",{name:"Skip to network editors"});
+ // macOS WebKit reaches links with Option+Tab under its default keyboard setting.
+ await page.keyboard.press(browserName==="webkit"&&process.platform==="darwin"?"Alt+Tab":"Tab");
+ await expect(skip).toBeFocused();
+ await expect(skip).toBeInViewport();
+ await page.keyboard.press("Enter");
+ const main=page.getByRole("main");
+ await expect(main).toHaveCount(1);
+ await expect(main).toBeFocused();
+ for(const writer of ["alice","bob"]){
+  const region=main.getByRole("region",{name:writer,exact:true});
+  await expect(region.getByRole("status",{name:`${writer} synchronization`})).toContainText("server saved");
+  await expect(region.getByRole("status",{name:`${writer} peer selection`})).toBeVisible();
+ }
+ const audit=await new AxeBuilder({page}).analyze();
+ expect(audit.violations).toEqual([]);
 });
 
 test("network demo combines offline table image text history and restart with distinct saved states",async({page})=>{

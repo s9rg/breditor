@@ -12,13 +12,14 @@ async function credentials(key,value){
  try{return await new Promise((resolve,reject)=>{const tx=db.transaction("identities",value?"readwrite":"readonly"),s=tx.objectStore("identities"),r=value?s.put(value,key):s.get(key);let result;r.onsuccess=()=>{result=r.result;};tx.oncomplete=()=>resolve(result);tx.onabort=()=>reject(tx.error);});}finally{db.close();}
 }
 const placeholder="data:image/svg+xml,"+encodeURIComponent('<svg xmlns="http://www.w3.org/2000/svg" width="240" height="120"><rect width="240" height="120" rx="10" fill="#d9eee2"/><text x="22" y="70" font-size="25" fill="#175c48">breditor image</text></svg>');
+function setStatusText(element,text){if(element.textContent!==text)element.textContent=text;}
 async function show(peer){
  if(!peer.session||!peer.cache||!peer.sync||app.closed||peer.closing)return;const generation=++peer.paint,assets=await peer.cache.list();if(generation!==peer.paint||app.closed||peer.closing)return;
  const state=peer.sync.state(),saved=state.serverThrough===null?"unknown":state.pending?"pending":"saved";
- if(app.ready&&Object.values(app.peers).every(p=>p.sync?.state().status==="ready"))status.textContent="Editors ready";
- document.querySelector(`#state-${peer.key}`).textContent=`Local ${peer.session.state().status} · server ${saved} · ${state.status} · images ${assets.filter(a=>a.status==="uploaded").length}/${assets.length}`;
+ if(app.ready&&Object.values(app.peers).every(p=>p.sync?.state().status==="ready"))setStatusText(status,"Editors ready");
+ setStatusText(document.querySelector(`#state-${peer.key}`),`Local ${peer.session.state().status} · server ${saved} · ${state.status} · images ${assets.filter(a=>a.status==="uploaded").length}/${assets.length}`);
  document.querySelector(`#connect-${peer.key}`).textContent=peer.offline?"Reconnect":"Go offline";
- document.querySelector(`#presence-${peer.key}`).textContent=peer.presence.view().map(p=>{const r=p.resolution;if(r?.kind!=="resolved"||!r.selection)return`${p.label}: ${r?.kind??"waiting"}`;const s=r.selection;return s.kind==="text"?`${p.label}: caret ${s.focus.block}@${s.focus.offset}`:s.kind==="node"?`${p.label}: node ${s.block}`:`${p.label}: cells ${s.anchor.table}`;}).join(" · ")||"No peer selection";
+ setStatusText(document.querySelector(`#presence-${peer.key}`),peer.presence.view().map(p=>{const r=p.resolution;if(r?.kind!=="resolved"||!r.selection)return`${p.label}: ${r?.kind??"waiting"}`;const s=r.selection;return s.kind==="text"?`${p.label}: caret ${s.focus.block}@${s.focus.offset}`:s.kind==="node"?`${p.label}: node ${s.block}`:`${p.label}: cells ${s.anchor.table}`;}).join(" · ")||"No peer selection");
 }
 const update=peer=>{void show(peer).catch(report);};
 try{
