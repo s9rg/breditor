@@ -46,7 +46,8 @@ test("CI installs the exact paired Rust and bindgen versions before offline chec
  const bindgen=/name = "wasm-bindgen"\nversion = "([^"]+)"/.exec(lock)?.[1];assert.equal(bindgen,"0.2.127");
  assert.equal(named("Install the paired Rust/Wasm toolchain").run,
   `rustup toolchain install ${release} --profile minimal --component clippy --component rustfmt --target wasm32-unknown-unknown\ncargo install wasm-bindgen-cli --version ${bindgen} --locked`);
- assert.equal(named("Install locked workspace dependencies").run,"npm ci --ignore-scripts --no-audit --no-fund");
+ assert.equal(named("Install workspace dependencies and prepare the offline fixture cache").run,
+  "npm ci --ignore-scripts --no-audit --no-fund\nnode scripts/prepare-candidate-npm-cache.mjs");
  assert.equal(named("Fetch locked Cargo graphs before offline qualification").run,
   "cargo fetch --locked --manifest-path Cargo.toml\ncargo fetch --locked --manifest-path crates/breditor-collaboration/Cargo.toml\ncargo fetch --locked --manifest-path experiments/relay/Cargo.toml");
 });
