@@ -20,7 +20,11 @@ test("missing new files duplicate plans and nonliteral file names reject instead
 });
 test("overlapping spec names have exact anchored CLI filters rather than duplicated suffix matches",()=>{
  const names=["profile.spec.mjs","custom-profile.spec.mjs"],runs=sharedBrowserRuns(names,names).slice(1);
- for(const name of names)assert.equal(runs.filter(run=>new RegExp(run.patterns[0]).test(`/test/${name}`)).length,1);
+ for(const name of names){
+  for(const path of [`/test/${name}`,`C:\\test\\${name}`]){
+   assert.equal(runs.filter(run=>new RegExp(run.patterns[0]).test(path)).length,1,path);
+  }
+ }
 });
 
 
