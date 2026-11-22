@@ -19,6 +19,8 @@ import {
 import { isOwnedFlatListProjection, type FlatListDocumentProjection } from "./flat_list_projection.js";
 import { isOwnedFlatListRangeSelection, type FlatListRangeSelection } from "./flat_list_selection.js";
 
+const EXPERIMENTAL_BLOCK_PROFILES = import.meta.breditorExperimentalBlockProfiles !== false;
+
 type CompositionProjection = BaseDocumentProjection | FlatListDocumentProjection | NestedListDocumentProjection;
 type CompositionSelection<P extends CompositionProjection> = P extends NestedListDocumentProjection ? NestedListRangeSelection : P extends FlatListDocumentProjection ? FlatListRangeSelection : BaseRangeSelection;
 /** Explicit list composition capability; legacy matchers reject it. @internal */
@@ -97,7 +99,7 @@ class OwnedCompositionDeliveryToken<P extends CompositionProjection> implements 
     this.rendererGeneration = rendered.rendererGeneration;
     this.observationEpoch = observationEpoch;
     this.sessionId = sessionId;
-    COMPOSITION_DELIVERY_TOKENS.set(this, flatLists);
+    COMPOSITION_DELIVERY_TOKENS.set(this, (EXPERIMENTAL_BLOCK_PROFILES && flatLists));
     COMPOSITION_DELIVERY_AUTHORITIES.set(this, authority);
     Object.freeze(this);
   }
@@ -125,6 +127,7 @@ export function issueCompositionDeliveryToken(
 export function issueFlatListCompositionDeliveryToken(projection: FlatListDocumentProjection,
   rendered: RenderedProjection<FlatListDocumentProjection>, selection: FlatListRangeSelection,
   observationEpoch: bigint, sessionId: bigint, authority: symbol): FlatListCompositionDeliveryToken {
+  if (!EXPERIMENTAL_BLOCK_PROFILES) throw new TypeError("Experimental block profiles are unavailable in this build");
   return issueToken(projection, rendered, selection, observationEpoch, sessionId, authority, true);
 }
 
@@ -132,6 +135,7 @@ export function issueFlatListCompositionDeliveryToken(projection: FlatListDocume
 export function issueNestedListCompositionDeliveryToken(projection: NestedListDocumentProjection,
   rendered: RenderedProjection<NestedListDocumentProjection>, selection: NestedListRangeSelection,
   observationEpoch: bigint, sessionId: bigint, authority: symbol): NestedListCompositionDeliveryToken {
+  if (!EXPERIMENTAL_BLOCK_PROFILES) throw new TypeError("Experimental block profiles are unavailable in this build");
   return issueToken(projection, rendered, selection, observationEpoch, sessionId, authority, "nested");
 }
 
@@ -139,10 +143,10 @@ function issueToken<P extends CompositionProjection>(projection: P, rendered: Re
   selection: CompositionSelection<P>, observationEpoch: bigint, sessionId: bigint, authority: symbol,
   flatLists: boolean | "nested"): CompositionDeliveryToken<P> {
   if (
-    !(flatLists === "nested" ? isOwnedNestedListProjection(projection) : flatLists ? isOwnedFlatListProjection(projection) : isOwnedProjection(projection)) ||
-    !(flatLists === "nested" ? isOwnedNestedListRenderedProjection(rendered) : flatLists ? isOwnedFlatListRenderedProjection(rendered) : isOwnedRenderedProjection(rendered)) ||
+    !(EXPERIMENTAL_BLOCK_PROFILES && flatLists === "nested" ? (EXPERIMENTAL_BLOCK_PROFILES && isOwnedNestedListProjection(projection)) : (EXPERIMENTAL_BLOCK_PROFILES && flatLists) ? (EXPERIMENTAL_BLOCK_PROFILES && isOwnedFlatListProjection(projection)) : isOwnedProjection(projection)) ||
+    !(EXPERIMENTAL_BLOCK_PROFILES && flatLists === "nested" ? (EXPERIMENTAL_BLOCK_PROFILES && isOwnedNestedListRenderedProjection(rendered)) : (EXPERIMENTAL_BLOCK_PROFILES && flatLists) ? (EXPERIMENTAL_BLOCK_PROFILES && isOwnedFlatListRenderedProjection(rendered)) : isOwnedRenderedProjection(rendered)) ||
     rendered.projection !== projection ||
-    !(flatLists === "nested" ? isOwnedNestedListRangeSelection(selection) : flatLists ? isOwnedFlatListRangeSelection(selection) : isOwnedBaseRangeSelection(selection)) ||
+    !(EXPERIMENTAL_BLOCK_PROFILES && flatLists === "nested" ? (EXPERIMENTAL_BLOCK_PROFILES && isOwnedNestedListRangeSelection(selection)) : (EXPERIMENTAL_BLOCK_PROFILES && flatLists) ? (EXPERIMENTAL_BLOCK_PROFILES && isOwnedFlatListRangeSelection(selection)) : isOwnedBaseRangeSelection(selection)) ||
     selection.projection !== projection ||
     typeof observationEpoch !== "bigint" ||
     observationEpoch < 0n ||
@@ -160,7 +164,7 @@ function issueToken<P extends CompositionProjection>(projection: P, rendered: Re
     sessionId,
     authority,
     CONSTRUCTION_PERMIT,
-    flatLists,
+    (EXPERIMENTAL_BLOCK_PROFILES && flatLists),
   );
 }
 
@@ -233,6 +237,7 @@ export function compositionDeliveryTokenMatchesSettlement(
 export function flatListCompositionDeliveryTokenMatchesOpeningBase(token: unknown, projection: unknown,
   rendered: unknown, selection: unknown, observationEpoch: unknown, sessionId: unknown, authority: unknown
 ): token is FlatListCompositionDeliveryToken {
+  if (!EXPERIMENTAL_BLOCK_PROFILES) throw new TypeError("Experimental block profiles are unavailable in this build");
   return compositionDeliveryTokenMatchesExactBase(token, projection, rendered, selection, observationEpoch,
     sessionId, authority, true) && renderIsLiveAndCanonical(rendered);
 }
@@ -241,6 +246,7 @@ export function flatListCompositionDeliveryTokenMatchesOpeningBase(token: unknow
 export function flatListCompositionDeliveryTokenMatchesSettlement(token: unknown, projection: unknown,
   rendered: unknown, selection: unknown, observationEpoch: unknown, sessionId: unknown, authority: unknown
 ): token is FlatListCompositionDeliveryToken {
+  if (!EXPERIMENTAL_BLOCK_PROFILES) throw new TypeError("Experimental block profiles are unavailable in this build");
   return compositionDeliveryTokenMatchesExactBase(token, projection, rendered, selection, observationEpoch,
     sessionId, authority, true) && renderHostIsConnected(rendered);
 }
@@ -249,6 +255,7 @@ export function flatListCompositionDeliveryTokenMatchesSettlement(token: unknown
 export function nestedListCompositionDeliveryTokenMatchesOpeningBase(token: unknown, projection: unknown,
   rendered: unknown, selection: unknown, observationEpoch: unknown, sessionId: unknown, authority: unknown
 ): token is NestedListCompositionDeliveryToken {
+  if (!EXPERIMENTAL_BLOCK_PROFILES) throw new TypeError("Experimental block profiles are unavailable in this build");
   return compositionDeliveryTokenMatchesExactBase(token, projection, rendered, selection, observationEpoch,
     sessionId, authority, "nested") && renderIsLiveAndCanonical(rendered);
 }
@@ -257,6 +264,7 @@ export function nestedListCompositionDeliveryTokenMatchesOpeningBase(token: unkn
 export function nestedListCompositionDeliveryTokenMatchesSettlement(token: unknown, projection: unknown,
   rendered: unknown, selection: unknown, observationEpoch: unknown, sessionId: unknown, authority: unknown
 ): token is NestedListCompositionDeliveryToken {
+  if (!EXPERIMENTAL_BLOCK_PROFILES) throw new TypeError("Experimental block profiles are unavailable in this build");
   return compositionDeliveryTokenMatchesExactBase(token, projection, rendered, selection, observationEpoch,
     sessionId, authority, "nested") && renderHostIsConnected(rendered);
 }
@@ -273,10 +281,10 @@ function compositionDeliveryTokenMatchesExactBase(
 ): token is CompositionDeliveryToken<CompositionProjection> {
   try {
     return (
-      isIssuedCompositionDeliveryToken(token, flatLists) &&
-      (isOwnedNestedListProjection(projection) || isOwnedFlatListProjection(projection) || isOwnedProjection(projection)) &&
-      (isOwnedNestedListRenderedProjection(rendered) || isOwnedFlatListRenderedProjection(rendered) || isOwnedRenderedProjection(rendered)) &&
-      (isOwnedNestedListRangeSelection(selection) || isOwnedFlatListRangeSelection(selection) || isOwnedBaseRangeSelection(selection)) &&
+      isIssuedCompositionDeliveryToken(token, (EXPERIMENTAL_BLOCK_PROFILES && flatLists)) &&
+      ((EXPERIMENTAL_BLOCK_PROFILES && isOwnedNestedListProjection(projection)) || (EXPERIMENTAL_BLOCK_PROFILES && isOwnedFlatListProjection(projection)) || isOwnedProjection(projection)) &&
+      ((EXPERIMENTAL_BLOCK_PROFILES && isOwnedNestedListRenderedProjection(rendered)) || (EXPERIMENTAL_BLOCK_PROFILES && isOwnedFlatListRenderedProjection(rendered)) || isOwnedRenderedProjection(rendered)) &&
+      ((EXPERIMENTAL_BLOCK_PROFILES && isOwnedNestedListRangeSelection(selection)) || (EXPERIMENTAL_BLOCK_PROFILES && isOwnedFlatListRangeSelection(selection)) || isOwnedBaseRangeSelection(selection)) &&
       typeof observationEpoch === "bigint" &&
       observationEpoch >= 0n &&
       isNonzeroU64(sessionId) &&
@@ -306,14 +314,14 @@ function isIssuedCompositionDeliveryToken(
   return (
     typeof value === "object" &&
     value !== null &&
-    COMPOSITION_DELIVERY_TOKENS.get(value) === flatLists
+    COMPOSITION_DELIVERY_TOKENS.get(value) === (EXPERIMENTAL_BLOCK_PROFILES && flatLists)
   );
 }
 
 function renderIsLiveAndCanonical(rendered: unknown): rendered is RenderedProjection<CompositionProjection> {
   try {
     return (
-      (isOwnedNestedListRenderedProjection(rendered) || isOwnedRenderedProjection(rendered) || isOwnedFlatListRenderedProjection(rendered)) &&
+      ((EXPERIMENTAL_BLOCK_PROFILES && isOwnedNestedListRenderedProjection(rendered)) || isOwnedRenderedProjection(rendered) || (EXPERIMENTAL_BLOCK_PROFILES && isOwnedFlatListRenderedProjection(rendered))) &&
       rendered.current &&
       nativeHtmlHostFacts(rendered.host)?.isConnected === true &&
       rendered.validateCanonicalDom() === true &&
@@ -328,7 +336,7 @@ function renderIsLiveAndCanonical(rendered: unknown): rendered is RenderedProjec
 function renderHostIsConnected(rendered: unknown): rendered is RenderedProjection<CompositionProjection> {
   try {
     return (
-      (isOwnedNestedListRenderedProjection(rendered) || isOwnedRenderedProjection(rendered) || isOwnedFlatListRenderedProjection(rendered)) &&
+      ((EXPERIMENTAL_BLOCK_PROFILES && isOwnedNestedListRenderedProjection(rendered)) || isOwnedRenderedProjection(rendered) || (EXPERIMENTAL_BLOCK_PROFILES && isOwnedFlatListRenderedProjection(rendered))) &&
       nativeHtmlHostFacts(rendered.host)?.isConnected === true
     );
   } catch {

@@ -80,6 +80,8 @@ import type {
 } from "./wasm_command_adapter.js";
 import { snapshotOwnDataArray } from "./protected_handle_snapshot.js";
 
+const EXPERIMENTAL_BLOCK_PROFILES = import.meta.breditorExperimentalBlockProfiles !== false;
+
 /** Native clipboard operation owned by this controller. */
 export type ClipboardControllerOperation = "copy" | "cut" | "paste";
 
@@ -288,7 +290,7 @@ class ClipboardControllerCore {
     flatLists: boolean | "nested",
   ) {
     this.#flatLists = flatLists;
-    if (!(flatLists === "nested" ? queue instanceof BreditorNestedListCommandQueue : flatLists ? queue instanceof BreditorFlatListCommandQueue : queue instanceof BreditorCommandQueue)) {
+    if (!(EXPERIMENTAL_BLOCK_PROFILES && flatLists === "nested" ? queue instanceof BreditorNestedListCommandQueue : (EXPERIMENTAL_BLOCK_PROFILES && flatLists) ? queue instanceof BreditorFlatListCommandQueue : queue instanceof BreditorCommandQueue)) {
       throw new TypeError("clipboard queue is invalid");
     }
     const surface = adapter as unknown as AdapterSurface;
@@ -299,7 +301,7 @@ class ClipboardControllerCore {
       valid =
         typeof executor === "function" &&
         surface.commandExecutor === executor &&
-        (flatLists === "nested" ? surface.selectionBridge instanceof BreditorNestedListDomSelectionBridge : flatLists ? surface.selectionBridge instanceof BreditorFlatListDomSelectionBridge : surface.selectionBridge instanceof BreditorDomSelectionBridge) &&
+        (EXPERIMENTAL_BLOCK_PROFILES && flatLists === "nested" ? surface.selectionBridge instanceof BreditorNestedListDomSelectionBridge : (EXPERIMENTAL_BLOCK_PROFILES && flatLists) ? surface.selectionBridge instanceof BreditorFlatListDomSelectionBridge : surface.selectionBridge instanceof BreditorDomSelectionBridge) &&
         typeof surface.deliveryToken === "function" &&
         typeof surface.acceptsDeliveryToken === "function";
     } catch {
@@ -308,11 +310,11 @@ class ClipboardControllerCore {
     if (!valid || executor === undefined) {
       throw new TypeError("clipboard adapter is invalid");
     }
-    const queuePort = (flatLists === "nested" && queue instanceof BreditorNestedListCommandQueue
+    const queuePort = (EXPERIMENTAL_BLOCK_PROFILES && flatLists === "nested" && queue instanceof BreditorNestedListCommandQueue
       ? openNestedListCommandQueueLeasePort(queue, executor)
-      : flatLists === true && queue instanceof BreditorFlatListCommandQueue
+      : EXPERIMENTAL_BLOCK_PROFILES && flatLists === true && queue instanceof BreditorFlatListCommandQueue
       ? openFlatListCommandQueueLeasePort(queue, executor)
-      : !flatLists && queue instanceof BreditorCommandQueue
+      : !(EXPERIMENTAL_BLOCK_PROFILES && flatLists) && queue instanceof BreditorCommandQueue
         ? openCommandQueueLeasePort(queue, executor) : undefined
     ) as CommandQueueLeasePort<ClipboardOutcome, ClipboardRequest> | undefined;
     if (queuePort === undefined) {
@@ -570,7 +572,7 @@ class ClipboardControllerCore {
       );
     }
 
-    const serialized = (this.#flatLists === "nested" ? serializeNestedListClipboardSelection : this.#flatLists ? serializeFlatListClipboardSelection : serializeClipboardSelection)(
+    const serialized = (EXPERIMENTAL_BLOCK_PROFILES && this.#flatLists === "nested" ? serializeNestedListClipboardSelection : (EXPERIMENTAL_BLOCK_PROFILES && this.#flatLists) ? serializeFlatListClipboardSelection : serializeClipboardSelection)(
       selection,
       base.presentation,
     );
@@ -632,9 +634,9 @@ class ClipboardControllerCore {
 
     let request;
     try {
-      request = this.#flatLists === "nested"
+      request = EXPERIMENTAL_BLOCK_PROFILES && this.#flatLists === "nested"
         ? nestedListCutDeleteRequest(base.delivery as NestedListEditorDeliveryToken, selectionSync as NestedListEditorSelectionSync)
-        : this.#flatLists
+        : (EXPERIMENTAL_BLOCK_PROFILES && this.#flatLists)
         ? flatListCutDeleteRequest(base.delivery as FlatListEditorDeliveryToken, selectionSync as FlatListEditorSelectionSync)
         : cutDeleteRequest(base.delivery as EditorDeliveryToken, selectionSync as EditorSelectionSync);
     } catch {
@@ -677,9 +679,9 @@ class ClipboardControllerCore {
     }
     let request;
     try {
-      request = this.#flatLists === "nested"
+      request = EXPERIMENTAL_BLOCK_PROFILES && this.#flatLists === "nested"
         ? nestedListPasteInsertRequest(base.delivery as NestedListEditorDeliveryToken, selection as NestedListEditorSelectionSync, payload.text)
-        : this.#flatLists
+        : (EXPERIMENTAL_BLOCK_PROFILES && this.#flatLists)
         ? flatListPasteInsertRequest(base.delivery as FlatListEditorDeliveryToken, selection as FlatListEditorSelectionSync, payload.text)
         : pasteInsertRequest(base.delivery as EditorDeliveryToken, selection as EditorSelectionSync, payload.text);
     } catch {
@@ -1136,20 +1138,20 @@ class ClipboardControllerCore {
       if (this.#disposed || this.#adapter.state !== "live") return null;
       const rendered = this.#adapter.rendered;
       if (
-        !(this.#flatLists === "nested" ? isOwnedNestedListRenderedProjection(rendered) : this.#flatLists ? isOwnedFlatListRenderedProjection(rendered) : isOwnedRenderedProjection(rendered)) ||
+        !(EXPERIMENTAL_BLOCK_PROFILES && this.#flatLists === "nested" ? (EXPERIMENTAL_BLOCK_PROFILES && isOwnedNestedListRenderedProjection(rendered)) : (EXPERIMENTAL_BLOCK_PROFILES && this.#flatLists) ? (EXPERIMENTAL_BLOCK_PROFILES && isOwnedFlatListRenderedProjection(rendered)) : isOwnedRenderedProjection(rendered)) ||
         !hostIsNativelyConnected(rendered.host) ||
         !rendered.current ||
         !rendered.validateCanonicalDom()
       ) {
         return null;
       }
-      const presentation = this.#flatLists === "nested"
+      const presentation = EXPERIMENTAL_BLOCK_PROFILES && this.#flatLists === "nested"
         ? nestedListProjectionPresentation(rendered.projection as NestedListDocumentProjection)
-        : this.#flatLists
+        : (EXPERIMENTAL_BLOCK_PROFILES && this.#flatLists)
         ? flatListProjectionPresentation(rendered.projection as FlatListDocumentProjection)
         : projectionPresentation(rendered.projection as BaseDocumentProjection);
       if (
-        (this.#flatLists || projectionProfileDescriptor(rendered.projection as BaseDocumentProjection) !== undefined) &&
+        ((EXPERIMENTAL_BLOCK_PROFILES && this.#flatLists) || projectionProfileDescriptor(rendered.projection as BaseDocumentProjection) !== undefined) &&
         presentation === undefined
       ) {
         return null;
@@ -1170,23 +1172,23 @@ class ClipboardControllerCore {
     selectionSync: ClipboardSelectionSync;
   }> | null {
     try {
-      const observed = this.#flatLists === "nested"
+      const observed = EXPERIMENTAL_BLOCK_PROFILES && this.#flatLists === "nested"
         ? (this.#adapter.selectionBridge as BreditorNestedListDomSelectionBridge).read(base.rendered as RenderedProjection<NestedListDocumentProjection>)
-        : this.#flatLists
+        : (EXPERIMENTAL_BLOCK_PROFILES && this.#flatLists)
         ? (this.#adapter.selectionBridge as BreditorFlatListDomSelectionBridge).read(base.rendered as RenderedProjection<FlatListDocumentProjection>)
         : (this.#adapter.selectionBridge as BreditorDomSelectionBridge).read(base.rendered as RenderedProjection);
       if (
         !observed.ok ||
         observed.value.kind !== "range" ||
-        !(this.#flatLists === "nested" ? isOwnedNestedListRangeSelection(observed.value.selection) : this.#flatLists ? isOwnedFlatListRangeSelection(observed.value.selection) : isOwnedBaseRangeSelection(observed.value.selection)) ||
+        !(EXPERIMENTAL_BLOCK_PROFILES && this.#flatLists === "nested" ? (EXPERIMENTAL_BLOCK_PROFILES && isOwnedNestedListRangeSelection(observed.value.selection)) : (EXPERIMENTAL_BLOCK_PROFILES && this.#flatLists) ? (EXPERIMENTAL_BLOCK_PROFILES && isOwnedFlatListRangeSelection(observed.value.selection)) : isOwnedBaseRangeSelection(observed.value.selection)) ||
         observed.value.selection.projection !== base.rendered.projection
       ) {
         return null;
       }
       const selection = observed.value.selection;
-      const selectionSync = this.#flatLists === "nested"
+      const selectionSync = EXPERIMENTAL_BLOCK_PROFILES && this.#flatLists === "nested"
         ? nestedListRangeSelectionSync(selection as NestedListRangeSelection)
-        : this.#flatLists
+        : (EXPERIMENTAL_BLOCK_PROFILES && this.#flatLists)
         ? flatListRangeSelectionSync(selection as FlatListRangeSelection)
         : rangeSelectionSync(selection as BaseRangeSelection);
       return this.#baseIsCurrent(base)
@@ -1215,9 +1217,9 @@ class ClipboardControllerCore {
   }
 
   #basePresentationIsCurrent(base: CanonicalBase): boolean {
-    if (this.#flatLists === "nested") return base.presentation !== undefined &&
+    if (EXPERIMENTAL_BLOCK_PROFILES && this.#flatLists === "nested") return base.presentation !== undefined &&
       nestedListProjectionPresentation(base.rendered.projection as NestedListDocumentProjection) === base.presentation;
-    if (this.#flatLists) return base.presentation !== undefined &&
+    if (EXPERIMENTAL_BLOCK_PROFILES && this.#flatLists) return base.presentation !== undefined &&
       flatListProjectionPresentation(base.rendered.projection as FlatListDocumentProjection) === base.presentation;
     const projection = base.rendered.projection as BaseDocumentProjection;
     return base.presentation === undefined
@@ -1234,7 +1236,7 @@ class ClipboardControllerCore {
       const rendered = this.#adapter.rendered;
       if (
         result.rendered !== rendered ||
-        !(this.#flatLists === "nested" ? isOwnedNestedListRenderedProjection(rendered) : this.#flatLists ? isOwnedFlatListRenderedProjection(rendered) : isOwnedRenderedProjection(rendered)) ||
+        !(EXPERIMENTAL_BLOCK_PROFILES && this.#flatLists === "nested" ? (EXPERIMENTAL_BLOCK_PROFILES && isOwnedNestedListRenderedProjection(rendered)) : (EXPERIMENTAL_BLOCK_PROFILES && this.#flatLists) ? (EXPERIMENTAL_BLOCK_PROFILES && isOwnedFlatListRenderedProjection(rendered)) : isOwnedRenderedProjection(rendered)) ||
         !hostIsNativelyConnected(rendered.host) ||
         !rendered.current ||
         !rendered.validateCanonicalDom()
