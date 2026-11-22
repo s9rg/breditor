@@ -1,9 +1,10 @@
 import assert from "node:assert/strict";
 import {spawnSync} from "node:child_process";
-import {mkdtempSync,readFileSync,rmSync} from "node:fs";
+import {copyFileSync,mkdirSync,mkdtempSync,readFileSync,rmSync,writeFileSync} from "node:fs";
 import test from "node:test";
 import {tmpdir} from "node:os";
 import {join} from "node:path";
+import {fileURLToPath} from "node:url";
 
 const workflow=JSON.parse(readFileSync(new URL("../.github/workflows/candidate-qualification.yml",import.meta.url),"utf8"));
 const job=workflow.jobs.qualify,steps=job.steps;
@@ -110,8 +111,12 @@ test("a setup failure still has a retained commit and runner outcome report",()=
  const cwd=mkdtempSync(join(tmpdir(),"breditor-ci-setup-report-"));
  try{
   const sha="1".repeat(40);
+  mkdirSync(join(cwd,"scripts"));
+  copyFileSync(new URL("./summarize-candidate-run.mjs",import.meta.url),join(cwd,"scripts/summarize-candidate-run.mjs"));
+  const summary=join(cwd,"summary.md");
   const result=spawnSync("bash",["-ec",row.run],{
    cwd,encoding:"utf8",env:{...process.env,GITHUB_SHA:sha,CANDIDATE_PROFILE:"full",RUNNER_OS:"Linux",RUNNER_ARCH:"X64",
+    GITHUB_STEP_SUMMARY:summary,
     CHECKOUT_OUTCOME:"success",NODE_OUTCOME:"success",RUST_OUTCOME:"failure",
     NPM_OUTCOME:"skipped",CARGO_OUTCOME:"skipped",BROWSERS_OUTCOME:"skipped",CANDIDATE_OUTCOME:"skipped"},
   });
@@ -121,5 +126,29 @@ test("a setup failure still has a retained commit and runner outcome report",()=
    revision:sha,profile:"full",os:"Linux",arch:"X64",checkout:"success",node:"success",rust:"failure",
    npm:"skipped",cargo:"skipped",browsers:"skipped",candidate:"skipped",
   });
+  assert.match(readFileSync(summary,"utf8"),/Runner step `rust` reported `failure`/);
+  assert.match(readFileSync(summary,"utf8"),/The verifier did not record a candidate result/);
  }finally{rmSync(cwd,{recursive:true,force:true});}
+});
+
+test("candidate summary points to the failed stage log in a downloaded artifact",()=>{
+ const directory=mkdtempSync(join(tmpdir(),"breditor-candidate-summary-"));
+ try{
+  const run=join(directory,"run-ABC123");mkdirSync(run);
+  const revision="2".repeat(40);
+  writeFileSync(join(directory,"runner-context.tsv"),`revision\t${revision}\nprofile\tfull\ncandidate\tfailure\n`);
+  writeFileSync(join(run,"result.json"),JSON.stringify({
+   format:"breditor/candidate-qualification",formatVersion:1,profile:"full",status:"failed",source:{commit:revision},
+   stages:[{id:"workspace-native",status:"passed"},{id:"relay-native",status:"failed",exitCode:101}],
+  }));
+  writeFileSync(join(run,"02-relay-native.log"),"redacted test log");
+  const executable=fileURLToPath(new URL("./summarize-candidate-run.mjs",import.meta.url));
+  const result=spawnSync(process.execPath,[executable,directory],{encoding:"utf8"});
+  assert.equal(result.status,0,result.stderr);
+  assert.match(result.stdout,new RegExp(revision));
+  assert.match(result.stdout,/Candidate result `failed` with 1 passed stage/);
+  assert.match(result.stdout,/Last stage `relay-native` recorded `failed` and exit code 101/);
+  assert.match(result.stdout,/`run-ABC123\/02-relay-native\.log`/);
+  assert.match(result.stdout,/V1 release approval is reviewed separately/);
+ }finally{rmSync(directory,{recursive:true,force:true});}
 });
