@@ -1,5 +1,6 @@
 import type {RichWasmModule,RichCoreProfile} from "./dist/browser/core.js";
 export type * from "./dist/browser/core.js";
+export {mountRichCodeHighlighting,type RichCodeHighlighting,type RichCodeHighlightingOptions} from "./dist/browser/code_highlighting.js";
 export type {RichSearchHost,RichSearchHostState} from "./dist/browser/search_host.js";
 export {mountRichSearchPanel,type RichSearchPanel,type RichSearchPanelOptions,type RichSearchPanelState} from "./dist/browser/search_panel.js";
 export type {RichWritingToolsHost,RichWritingToolsHostState} from "./dist/browser/writing_tools_host.js";
