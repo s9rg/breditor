@@ -50,7 +50,7 @@ test("single account demo pages exchange real image bytes and visible peer caret
  const cache=await peer.evaluate(()=>window.breditorNetworkDemo.peers.b.cache.list());expect(cache[0]).toMatchObject({status:"uploaded",attempts:0,asset:fixture.asset});
 });
 
-test("independent offline writers keep exact journals across a relay and page restart",async({page,browser})=>{
+test("independent offline writers keep exact journals across a relay and page restart, including downloaded backups",async({page,browser})=>{
  await page.goto("/network-demo?peer=alice");
  await ready(page);
  otherContext=await browser.newContext();
@@ -112,4 +112,35 @@ test("independent offline writers keep exact journals across a relay and page re
  await expect(bob.locator('#b [data-rich-text="caption"]')).toHaveText("Bob offline. xy🙂");
  await page.getByRole("button",{name:"Redo",exact:true}).click();
  await expect.poll(()=>documentJson(writers[1])).toBe(merged);
+
+ // Verify the operator-facing downloaded backups while the relay is no longer reachable.
+ const downloaded=[];
+ for(const [writer,key] of writers){
+  const checkpoint=await writer.evaluate(async key=>{
+   const {session}=window.breditorNetworkDemo.peers[key];
+   await session.flush();
+   return session.core.checkpointJson();
+  },key);
+  const pending=writer.waitForEvent("download");
+  await writer.locator(`#save-${key}`).click();
+  const download=await pending;
+  expect(download.suggestedFilename()).toBe(`breditor-network-${key==="a"?"alice":"bob"}.json`);
+  const contents=readFileSync(await download.path(),"utf8");
+  expect(contents).toBe(checkpoint);
+  downloaded.push(contents);
+ }
+ await Promise.all(writers.map(([writer])=>writer.evaluate(()=>window.breditorNetworkDemo.close())));
+ await relay.offline();
+ const restored=await page.evaluate(async({configuration,downloaded})=>{
+  const [api,wasm]=await Promise.all([import("/shared.js"),import("/probe.js")]);
+  const profile=api.compileSharedProfile(wasm,configuration);
+  try{
+   return downloaded.map(checkpoint=>{
+    const owner=new api.SharedRichEditor(profile.restore("room",checkpoint));
+    try{return {checkpoint:owner.checkpointJson(),document:owner.documentJson()};}
+    finally{owner.dispose();}
+   });
+  }finally{profile.free();}
+ },{configuration:bootstrap.configuration,downloaded});
+ expect(restored).toEqual(downloaded.map(checkpoint=>({checkpoint,document:merged})));
 });
