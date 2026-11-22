@@ -3,6 +3,21 @@ async function caret(page,side,block,end){
  const surface=page.locator(`#${side} .breditor-shared-surface`);await surface.focus();await surface.locator(`[data-rich-text="${block}"]`).evaluate((element,end)=>{const range=document.createRange();range.selectNodeContents(element);range.collapse(!end);const selection=document.getSelection();selection.removeAllRanges();selection.addRange(range);},end);
 }
 
+test("both demo contents lists follow an edited heading and the writer's Undo", async ({page}) => {
+ await page.goto("/demo");
+ await page.getByRole("link", {name: "Try the table of contents"}).click();
+ await expect(page.locator("#contents-ready")).toHaveText("Ready");
+ const contents = writer => page.locator(`#${writer}`).getByRole("navigation", {name: "On this page"});
+ await contents("a").getByRole("button", {name: "Recovery", exact: true}).click();
+ await page.keyboard.insertText("Offline ");
+ for (const writer of ["a", "b"]) {
+  await expect(contents(writer).getByRole("button", {name: "Offline Recovery"})).toBeEnabled();
+ }
+ await page.locator("#a").getByRole("button", {name: "Undo", exact: true}).click();
+ await expect(contents("b").getByRole("button", {name: "Recovery", exact: true})).toBeEnabled();
+ await expect(contents("a").getByRole("button", {name: "Offline Recovery"})).toHaveCount(0);
+});
+
 test("the shared code example colors a typed change for both writers", async ({page}) => {
  await page.goto("/demo");
  await page.getByRole("link", {name: "Try code highlighting"}).click();

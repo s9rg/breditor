@@ -1,6 +1,19 @@
 import {test,expect} from "@playwright/test";
 import {readFile} from "node:fs/promises";
 
+test("the contents demo jumps to an editable heading and follows a rename", async ({page}) => {
+ await page.goto("/demo");
+ await page.getByRole("link", {name: "Try the table of contents"}).click();
+ await expect(page.locator("#contents-ready")).toHaveText("Ready");
+ const contents = page.getByRole("navigation", {name: "On this page"});
+ const surface = page.locator(".breditor-rich-surface");
+ await contents.getByRole("button", {name: "Restore a checkpoint"}).click();
+ await expect.poll(() => surface.evaluate(element => element.scrollTop)).toBeGreaterThan(0);
+ await page.keyboard.insertText("Safely ");
+ await expect(contents.getByRole("button", {name: "Safely Restore a checkpoint"})).toBeEnabled();
+ await expect(surface.getByRole("heading", {name: "Safely Restore a checkpoint"})).toBeVisible();
+});
+
 test("the local code example toggles colors while keeping its source", async ({page}) => {
  await page.goto("/demo");
  await page.getByRole("link", {name: "Try code highlighting"}).click();
