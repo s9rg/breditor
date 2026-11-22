@@ -21,7 +21,7 @@ try{
  ]};
  const inlinePresentation=createStandardRichInlinePresentationV1(profile.inlineCatalogJson());
  const core=profile.createEditor(JSON.stringify({format:"breditor/document",formatVersion:2,schema,schemaFingerprint,root}));
- const controls=new Set(["undo","redo","wrap-details"]);
+ const controls=new Set(["undo","redo","details","details-open"]);
  const editor=mountRichEditor(document.querySelector("#section-editor"),{
   core,inlinePresentation,toolbar:createRichToolbarV4(core,inlinePresentation).filter(item=>controls.has(item.id)),onError:report,
  });

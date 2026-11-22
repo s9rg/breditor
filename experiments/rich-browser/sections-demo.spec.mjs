@@ -6,7 +6,8 @@ test("the V4 sections demo edits real section state with Undo and Redo",async({p
  const body=page.getByText("Open an exact checkpoint",{exact:false});
  await expect(body).toBeHidden();
  const section=page.locator("[data-rich-block='second']");
- await section.getByRole("button",{name:"Expand/Collapse section",exact:true}).click();
+ await section.locator("summary").click();
+ await page.getByRole("button",{name:"Expand/Collapse section",exact:true}).click();
  await expect(body).toBeVisible();
  await page.getByRole("button",{name:"Undo",exact:true}).click();
  await expect(body).toBeHidden();
