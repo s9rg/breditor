@@ -103,10 +103,10 @@ export function applyEditingPolicy(surface:HTMLElement,readOnly:boolean):void {
  for(const caption of surface.querySelectorAll<HTMLElement>("figcaption"))caption.contentEditable=readOnly?"false":"true";
  for(const check of surface.querySelectorAll<HTMLInputElement>("input[data-task-check]"))check.disabled=readOnly;
 }
-const tableScrollObservers=new WeakMap<HTMLElement,ResizeObserver>();
+const tableScrollCleanup=new WeakMap<HTMLElement,()=>void>();
 export function releaseRichTableScroll(surface:HTMLElement):void{
- tableScrollObservers.get(surface)?.disconnect();
- tableScrollObservers.delete(surface);
+ tableScrollCleanup.get(surface)?.();
+ tableScrollCleanup.delete(surface);
 }
 function refreshTableScroll(viewport:HTMLElement,controls:HTMLElement):void {
  const distance=viewport.scrollWidth-viewport.clientWidth;
@@ -276,12 +276,15 @@ export function render(surface:HTMLElement,value:RichPresentationModel,options:R
    }
   }
   refresh();
-  const Observer=document.defaultView?.ResizeObserver;
-  if(Observer){
-   const observer=new Observer(refresh);
-   for(const {viewport,table} of tableViewports){observer.observe(viewport);observer.observe(table);}
-   tableScrollObservers.set(surface,observer);
+  const Resize=document.defaultView?.ResizeObserver,Mutation=document.defaultView?.MutationObserver;
+  const resize=Resize?new Resize(refresh):null;
+  for(const {viewport,table} of tableViewports){resize?.observe(viewport);resize?.observe(table);}
+  // Direction can change when a host switches its document language, without resizing the table.
+  const direction=Mutation?new Mutation(refresh):null;
+  if(direction){
+   for(let target:HTMLElement|null=surface;target;target=target.parentElement)direction.observe(target,{attributes:true,attributeFilter:["dir"]});
   }
+  tableScrollCleanup.set(surface,()=>{resize?.disconnect();direction?.disconnect();});
  }
 }
 export function paintSelection(surface:HTMLElement,value:RichPresentationModel):void {
