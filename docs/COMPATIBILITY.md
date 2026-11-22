@@ -26,6 +26,8 @@ never mapped to an older one. Releasing a language does not change defaults: an
 omitted `richLanguage` selects language 1 in every local and shared API. V4's
 freeze is enforced by `crates/breditor-core/tests/support/rich_v4_frozen.rs` and
 its golden checkpoint ([RICH_LANGUAGE_V4.md](RICH_LANGUAGE_V4.md#freeze-and-durable-persistence)).
+The [pre-V4 checkpoint fixtures](../crates/breditor-core/tests/fixtures/pre-v4/README.md)
+exercise exact local history replay and cross-language refusal for languages 1–3.
 No automatic migration or stable arbitrary-node plugin contract is implied.
 
 ### Opt-in rich and shared recovery
