@@ -1,0 +1,181 @@
+{
+  "format": "breditor/v1-dependency-notice-verification",
+  "formatVersion": 1,
+  "reviewedOn": "2026-11-22",
+  "baselineCommit": "d3968c2a3c0cf7f5a4f388fa935019033e264631",
+  "host": "aarch64-apple-darwin",
+  "rust": "1.98.0",
+  "resolvedNotice": {
+    "package": "generic-btree@0.10.7",
+    "license": "MIT",
+    "packageVcsRevision": "f88a9f7ff4e442fc4f6aebfaa30496652b92decd",
+    "releaseTag": "v0.10.7",
+    "verifiedTagCommit": "0ae02fad39fbaf6b4836e1e578e3da7759e321ed",
+    "sourceFileCount": 14,
+    "sourceTreeSha256": "f5694c50d54ee9a90d7ef1a786fee2e743b4a69f3625151d6708345596134cf7",
+    "method": "Compared every packaged nongenerated file byte for byte with the signed release tag. Cargo.toml.orig was compared with the tag's Cargo.toml. Generated Cargo manifests, lockfiles and extraction metadata were excluded from the source comparison.",
+    "upstreamNoticeUrl": "https://raw.githubusercontent.com/loro-dev/generic-btree/0ae02fad39fbaf6b4836e1e578e3da7759e321ed/LICENSE",
+    "noticeSha256": "732d8393fd664a8126a46f0b7a4c23c577fdfc9658e9ad1620d5354050fb9f51"
+  },
+  "runtimeInventories": [
+    {
+      "name": "rich",
+      "packages": 34,
+      "artifactType": "Wasm runtime",
+      "artifactSha256": "f100599f39805586d465961161bf751e0bd51e8d524ad2ab653001946347200e",
+      "hashes": [
+        {
+          "path": "target/rich-browser-web/breditor_dependency_inventory.json",
+          "sha256": "f86b674f60c0afd2866947058cce941922de4a985fdbfb19b8911d8859a55892"
+        },
+        {
+          "path": "target/rich-browser-web/THIRD_PARTY_NOTICES.txt",
+          "sha256": "424bb63bb67db590ca047c3ba17fa1e24431a42f06c172b2528881a74cb5b543"
+        },
+        {
+          "path": "target/rich-browser-web/RUST_COPYRIGHT-library.html",
+          "sha256": "68129500b616d5838629e68f55ff3aed5e096dacf60ce9eb41bbe599a563afa6"
+        }
+      ],
+      "coveredPackages": [],
+      "missingNoticeTexts": [],
+      "reproducedNoticeBytes": true
+    },
+    {
+      "name": "shared",
+      "packages": 142,
+      "artifactType": "Wasm runtime",
+      "artifactSha256": "4f2602a9c133e8b5e3eaaa4342fe9804ab0a991954b544dff5cd53d0dd1a3d63",
+      "hashes": [
+        {
+          "path": "target/promoted-shared-web/breditor_dependency_inventory.json",
+          "sha256": "970d413a1a86d5238584b140990b39334ee272ca5964a84e35c94983f6de2474"
+        },
+        {
+          "path": "target/promoted-shared-web/THIRD_PARTY_NOTICES.txt",
+          "sha256": "e950068686ae3b27a25f028e086200430169769bf0b2e6d94bbdc46eda3046e6"
+        },
+        {
+          "path": "target/promoted-shared-web/RUST_COPYRIGHT-library.html",
+          "sha256": "68129500b616d5838629e68f55ff3aed5e096dacf60ce9eb41bbe599a563afa6"
+        }
+      ],
+      "coveredPackages": [
+        {
+          "key": "generic-btree@0.10.7",
+          "source": "crates.io",
+          "license": "MIT"
+        },
+        {
+          "key": "loro-internal@1.16.2",
+          "source": "vendored",
+          "license": "MIT"
+        },
+        {
+          "key": "loro@1.16.2",
+          "source": "vendored",
+          "license": "MIT"
+        }
+      ],
+      "missingNoticeTexts": [],
+      "reproducedNoticeBytes": true
+    },
+    {
+      "name": "relay",
+      "packages": 195,
+      "artifactType": "native relay binary",
+      "artifactSha256": "912bdad8cec1e400cbc50a52551b8011e56c1b99291be90b2f435c7fcc20f74c",
+      "hashes": [
+        {
+          "path": "target/relay-native-notices/breditor_dependency_inventory.json",
+          "sha256": "d116809d2d5539a09cc0ff184dbff758318504e331803d901c2ebbff663db6c0"
+        },
+        {
+          "path": "target/relay-native-notices/THIRD_PARTY_NOTICES.txt",
+          "sha256": "2aa335856374fc949e9d0a3d41b5c9ae6bd9ecf9a1ba780d4f50853c632c0a1f"
+        },
+        {
+          "path": "target/relay-native-notices/RUST_COPYRIGHT-library.html",
+          "sha256": "68129500b616d5838629e68f55ff3aed5e096dacf60ce9eb41bbe599a563afa6"
+        }
+      ],
+      "coveredPackages": [
+        {
+          "key": "generic-btree@0.10.7",
+          "source": "crates.io",
+          "license": "MIT"
+        },
+        {
+          "key": "image-webp@0.2.4",
+          "source": "crates.io",
+          "license": "MIT OR Apache-2.0"
+        },
+        {
+          "key": "image@0.25.10",
+          "source": "crates.io",
+          "license": "MIT OR Apache-2.0"
+        },
+        {
+          "key": "loro-internal@1.16.2",
+          "source": "vendored",
+          "license": "MIT"
+        },
+        {
+          "key": "loro@1.16.2",
+          "source": "vendored",
+          "license": "MIT"
+        },
+        {
+          "key": "png@0.18.1",
+          "source": "crates.io",
+          "license": "MIT OR Apache-2.0"
+        },
+        {
+          "key": "zune-jpeg@0.5.15",
+          "source": "crates.io",
+          "license": "MIT OR Apache-2.0 OR Zlib"
+        }
+      ],
+      "missingNoticeTexts": [],
+      "reproducedNoticeBytes": true
+    }
+  ],
+  "mplSourceArchives": [
+    {
+      "name": "bitmaps",
+      "version": "2.1.0",
+      "sourceUrl": "https://static.crates.io/crates/bitmaps/bitmaps-2.1.0.crate",
+      "crateSha256": "031043d04099746d8db04daf1fa424b2bc8bd69d92b25962dcde24da39ab64a2",
+      "bytes": 16717
+    },
+    {
+      "name": "im",
+      "version": "15.1.0",
+      "sourceUrl": "https://static.crates.io/crates/im/im-15.1.0.crate",
+      "crateSha256": "d0acd33ff0285af998aaf9b57342af478078f53492322fafc47450e09397e0e9",
+      "bytes": 117169
+    },
+    {
+      "name": "sized-chunks",
+      "version": "0.6.5",
+      "sourceUrl": "https://static.crates.io/crates/sized-chunks/sized-chunks-0.6.5.crate",
+      "crateSha256": "16d69225bde7a69b235da73377861095455d298f2b970996eec25ddbb42b3d1e",
+      "bytes": 43628
+    }
+  ],
+  "browserEvidence": "docs/qualification/2026-11-22-v1-archive-and-support.json",
+  "securityResponse": "SECURITY.md",
+  "remaining": [
+    "License and source-availability review for the final distribution channel",
+    "Cross-host reproducibility on the candidate build hosts"
+  ],
+  "repackedSharedArchive": {
+    "name": "@breditor/collaboration",
+    "version": "0.3.0-alpha.22",
+    "filename": "breditor-collaboration-0.3.0-alpha.22.tgz",
+    "bytes": 5626868,
+    "sha256": "2d29ace4a63afa0a7bf5298411ed98a14c629be21933a37a12bf5456cb90990a",
+    "integrity": "sha512-ue9erPkmeXD8Nvxdwe2myTttPGHCXPkXrvXz4MIhnZrwWeXkpbl2dZNovx/3aCHC7kagVWsUhE/Y8Ddn+uNNnA=="
+  },
+  "repackedSdkOfflineInstallPassed": true
+}
