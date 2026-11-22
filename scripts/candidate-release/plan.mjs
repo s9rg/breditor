@@ -8,6 +8,7 @@ import {candidateRuntimePaths} from "../candidate-runtime-paths.mjs";
 import {metadataRecoveryArtifacts} from '../metadata-recovery-artifacts.mjs';
 import {sharedRuntimeBuildReport} from "./shared-runtime-evidence.mjs";
 import {nativeSuggestionBuildReport, nativeSuggestionExample, nativeSuggestionExecutable} from "./native-suggestion-build-evidence.mjs";
+import {defaultSizeBudgetReport} from "../record-default-size-budgets.mjs";
 import {richDemoLatencyReport} from "../record-rich-demo-latency.mjs";
 import {candidateRuntimeSizeReport} from "../measure-candidate-runtime-size.mjs";
 export const repository=resolve(dirname(fileURLToPath(import.meta.url)),"../..");
@@ -113,6 +114,7 @@ export function candidateReleasePlan({profile="full",environment=process.env}={}
   stage("relay-docs",cargo,["doc","--manifest-path","experiments/relay/Cargo.toml","--features","server","--no-deps","--locked","--offline","--release"],{CARGO_TARGET_DIR:relay,RUSTDOCFLAGS:"-D warnings"}),
   script("independent-native-consumer","check-collaboration-native-consumer.mjs",[],[{path:"target/collaboration-native-consumer.json",fresh:true}]),
   stage("default-typescript-build",npm,["run","build"]),
+  script("capture-default-size-budgets","record-default-size-budgets.mjs",[],[{path:defaultSizeBudgetReport,fresh:true,retain:true}]),
   script("paired-local-runtime","build-rich-runtime.mjs",[],["packages/breditor-experimental-rich-content/dist/breditor_wasm.js","packages/breditor-experimental-rich-content/dist/breditor_wasm_bg.wasm","packages/breditor-experimental-rich-content/dist/breditor_wasm.d.ts","packages/breditor-experimental-rich-content/dist/breditor_dependency_inventory.json","packages/breditor-experimental-rich-content/dist/THIRD_PARTY_NOTICES.txt","packages/breditor-experimental-rich-content/dist/RUST_COPYRIGHT-library.html"]),
   script("paired-shared-runtime","build-collaboration-runtime.mjs",["--candidate-receipt"],[{path:sharedRuntimeBuildReport,fresh:true,retain:true},"packages/breditor-collaboration/dist/runtime/breditor_shared.js","packages/breditor-collaboration/dist/runtime/breditor_shared_bg.wasm","packages/breditor-collaboration/dist/runtime/breditor_shared.d.ts","packages/breditor-collaboration/dist/runtime/breditor_dependency_inventory.json","packages/breditor-collaboration/dist/runtime/THIRD_PARTY_NOTICES.txt","packages/breditor-collaboration/dist/runtime/RUST_COPYRIGHT-library.html"]),
   script("paired-runtime-download-size","measure-candidate-runtime-size.mjs",[],[{path:candidateRuntimeSizeReport,fresh:true,retain:true}]),
