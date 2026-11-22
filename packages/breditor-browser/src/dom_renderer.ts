@@ -52,6 +52,8 @@ import {
 import type { BrowserProjectionResult } from "./result.js";
 import { projectionFailure, projectionSuccess } from "./result.js";
 
+const EXPERIMENTAL_BLOCK_PROFILES = import.meta.breditorExperimentalBlockProfiles !== false;
+
 /** How a successful renderer call installed its result. */
 export type ProjectionRenderMode = "full" | "incremental";
 
@@ -122,7 +124,7 @@ export interface NestedListDomCompositionLease {
 }
 
 function projectionMode(projection: RenderableProjection): boolean | "nested" {
-  return isOwnedNestedListProjection(projection) ? "nested" : isOwnedFlatListProjection(projection);
+  return (EXPERIMENTAL_BLOCK_PROFILES && isOwnedNestedListProjection(projection)) ? "nested" : (EXPERIMENTAL_BLOCK_PROFILES && isOwnedFlatListProjection(projection));
 }
 
 interface ProjectionMaps {
@@ -227,7 +229,7 @@ class RenderedProjectionHandle<P extends RenderableProjection = RenderableProjec
       return null;
     }
     try {
-      const key = astPathKey(path, isOwnedNestedListProjection(this.projection) ? 64 : isOwnedFlatListProjection(this.projection) ? 4 : 2);
+      const key = astPathKey(path, (EXPERIMENTAL_BLOCK_PROFILES && isOwnedNestedListProjection(this.projection)) ? 64 : (EXPERIMENTAL_BLOCK_PROFILES && isOwnedFlatListProjection(this.projection)) ? 4 : 2);
       return key === null ? null : (this.#astToDom.get(key) ?? null);
     } catch {
       return null;
@@ -282,10 +284,10 @@ class RenderedProjectionHandle<P extends RenderableProjection = RenderableProjec
   }
 
   #canonicalDomAndMapsMatch(): boolean {
-    if (isOwnedNestedListProjection(this.projection)) {
+    if (EXPERIMENTAL_BLOCK_PROFILES && isOwnedNestedListProjection(this.projection)) {
       return nestedListDomAndMapsMatch(this.host, this.projection, {astToDom: this.#astToDom, domToAst: this.#domToAst}, this.#presentation);
     }
-    if (isOwnedFlatListProjection(this.projection)) {
+    if (EXPERIMENTAL_BLOCK_PROFILES && isOwnedFlatListProjection(this.projection)) {
       return flatListDomAndMapsMatch(this.host, this.projection, {astToDom: this.#astToDom, domToAst: this.#domToAst}, this.#presentation);
     }
     if (!isOwnedProjection(this.projection)) return false;
@@ -450,6 +452,7 @@ export class BreditorDomRenderer {
 
   /** Explicit list ownership; legacy selection/update consumers stay closed. @internal */
   ownsFlatList(rendered: unknown): rendered is RenderedProjection<FlatListDocumentProjection> {
+    if (!EXPERIMENTAL_BLOCK_PROFILES) return false;
     if (!isOwnedFlatListRenderedProjection(rendered)) return false;
     const ownership = HOST_OWNERS.get(rendered.host);
     return ownership?.rendererToken === this.#rendererToken && ownership.handle === rendered && rendered.validateCanonicalDom();
@@ -457,6 +460,7 @@ export class BreditorDomRenderer {
 
   /** Exact canonical ownership of a recursive-list generation. @internal */
   ownsNestedList(rendered: unknown): rendered is RenderedProjection<NestedListDocumentProjection> {
+    if (!EXPERIMENTAL_BLOCK_PROFILES) return false;
     if (!isOwnedNestedListRenderedProjection(rendered)) return false;
     const ownership = HOST_OWNERS.get(rendered.host);
     return ownership?.rendererToken === this.#rendererToken && ownership.handle === rendered && rendered.validateCanonicalDom();
@@ -477,20 +481,22 @@ export class BreditorDomRenderer {
 
   /** Yields one exact hierarchical host to native composition. @internal */
   beginFlatListCompositionDomLease(rendered: RenderedProjection<FlatListDocumentProjection>): FlatListDomCompositionLease | null {
+    if (!EXPERIMENTAL_BLOCK_PROFILES) throw new TypeError("Experimental block profiles are unavailable in this build");
     return this.#beginCompositionDomLease(rendered, true) as FlatListDomCompositionLease | null;
   }
 
   /** Yields recursive DOM while withholding stale canonical path maps. @internal */
   beginNestedListCompositionDomLease(rendered: RenderedProjection<NestedListDocumentProjection>): NestedListDomCompositionLease | null {
+    if (!EXPERIMENTAL_BLOCK_PROFILES) throw new TypeError("Experimental block profiles are unavailable in this build");
     return this.#beginCompositionDomLease(rendered, "nested") as NestedListDomCompositionLease | null;
   }
 
   #beginCompositionDomLease(rendered: RenderedProjection<RenderableProjection>, flatLists: boolean | "nested"): object | null {
     if (
-      !(isOwnedNestedListRenderedProjection(rendered) || isOwnedFlatListRenderedProjection(rendered) || isOwnedRenderedProjection(rendered)) ||
-      projectionMode(rendered.projection) !== flatLists ||
+      !((EXPERIMENTAL_BLOCK_PROFILES && isOwnedNestedListRenderedProjection(rendered)) || (EXPERIMENTAL_BLOCK_PROFILES && isOwnedFlatListRenderedProjection(rendered)) || isOwnedRenderedProjection(rendered)) ||
+      projectionMode(rendered.projection) !== (EXPERIMENTAL_BLOCK_PROFILES && flatLists) ||
       ACTIVE_HOST_OPERATIONS.has(rendered.host) ||
-      !(flatLists === "nested" ? this.ownsNestedList(rendered) : flatLists ? this.ownsFlatList(rendered) : this.owns(rendered))
+      !(EXPERIMENTAL_BLOCK_PROFILES && flatLists === "nested" ? this.ownsNestedList(rendered) : (EXPERIMENTAL_BLOCK_PROFILES && flatLists) ? this.ownsFlatList(rendered) : this.owns(rendered))
     ) {
       return null;
     }
@@ -525,11 +531,13 @@ export class BreditorDomRenderer {
   /** Exact list-mode lease proof, without consulting deliberately mutable DOM. @internal */
   ownsFlatListCompositionDomLease(lease: unknown,
     rendered: RenderedProjection<FlatListDocumentProjection>): lease is FlatListDomCompositionLease {
+    if (!EXPERIMENTAL_BLOCK_PROFILES) return false;
     return isOwnedFlatListRenderedProjection(rendered) && this.#ownsCompositionDomLease(lease, rendered);
   }
 
   /** Proves an uninterrupted recursive-list lease without inspecting provisional DOM. @internal */
   ownsNestedListCompositionDomLease(lease: unknown, rendered: RenderedProjection<NestedListDocumentProjection>): lease is NestedListDomCompositionLease {
+    if (!EXPERIMENTAL_BLOCK_PROFILES) return false;
     return isOwnedNestedListRenderedProjection(rendered) && this.#ownsCompositionDomLease(lease, rendered);
   }
 
@@ -537,7 +545,7 @@ export class BreditorDomRenderer {
     if (
       typeof lease !== "object" ||
       lease === null ||
-      !(isOwnedNestedListRenderedProjection(rendered) || isOwnedRenderedProjection(rendered) || isOwnedFlatListRenderedProjection(rendered))
+      !((EXPERIMENTAL_BLOCK_PROFILES && isOwnedNestedListRenderedProjection(rendered)) || isOwnedRenderedProjection(rendered) || (EXPERIMENTAL_BLOCK_PROFILES && isOwnedFlatListRenderedProjection(rendered)))
     ) {
       return false;
     }
@@ -573,18 +581,20 @@ export class BreditorDomRenderer {
   /** Spends a list lease and restores canonical hierarchical DOM. @internal */
   restoreFlatListCompositionDomLease(lease: FlatListDomCompositionLease,
     projection: FlatListDocumentProjection): BrowserProjectionResult<ProjectionRenderOutcome<FlatListDocumentProjection>> {
+    if (!EXPERIMENTAL_BLOCK_PROFILES) throw new TypeError("Experimental block profiles are unavailable in this build");
     return this.#restoreCompositionDomLease(lease, projection, true);
   }
 
   /** Restores recursive DOM; detached construction failure leaves the lease retryable. @internal */
   restoreNestedListCompositionDomLease(lease: NestedListDomCompositionLease, projection: NestedListDocumentProjection): BrowserProjectionResult<ProjectionRenderOutcome<NestedListDocumentProjection>> {
+    if (!EXPERIMENTAL_BLOCK_PROFILES) throw new TypeError("Experimental block profiles are unavailable in this build");
     return this.#restoreCompositionDomLease(lease, projection, "nested");
   }
 
   #restoreCompositionDomLease<P extends RenderableProjection>(lease: object, projection: P,
     flatLists: boolean | "nested"): BrowserProjectionResult<ProjectionRenderOutcome<P>> {
     const record = this.#liveCompositionLeaseRecord(lease);
-    if (record === null || projectionMode(record.handle.projection) !== flatLists) {
+    if (record === null || projectionMode(record.handle.projection) !== (EXPERIMENTAL_BLOCK_PROFILES && flatLists)) {
       return projectionFailure("renderer.foreign_or_stale_render");
     }
     const host = record.handle.host;
@@ -596,7 +606,7 @@ export class BreditorDomRenderer {
       if (installGuard === null) {
         return projectionFailure("renderer.dom_write_failed");
       }
-      if (flatLists === "nested" ? !isOwnedNestedListProjection(projection) : flatLists ? !isOwnedFlatListProjection(projection) : !isOwnedProjection(projection)) {
+      if (EXPERIMENTAL_BLOCK_PROFILES && flatLists === "nested" ? !(EXPERIMENTAL_BLOCK_PROFILES && isOwnedNestedListProjection(projection)) : (EXPERIMENTAL_BLOCK_PROFILES && flatLists) ? !(EXPERIMENTAL_BLOCK_PROFILES && isOwnedFlatListProjection(projection)) : !isOwnedProjection(projection)) {
         return projectionFailure("projection.invalid_shape");
       }
       if (!this.#bindProjectionPresentation(projection)) {
@@ -663,17 +673,19 @@ export class BreditorDomRenderer {
 
   /** Invalidates a list lease without interpreting provisional native DOM. @internal */
   discardFlatListCompositionDomLease(lease: FlatListDomCompositionLease): boolean {
+    if (!EXPERIMENTAL_BLOCK_PROFILES) throw new TypeError("Experimental block profiles are unavailable in this build");
     return this.#discardCompositionDomLease(lease, true);
   }
 
   /** Discards the recursive lease without interpreting provisional input. @internal */
   discardNestedListCompositionDomLease(lease: NestedListDomCompositionLease): boolean {
+    if (!EXPERIMENTAL_BLOCK_PROFILES) throw new TypeError("Experimental block profiles are unavailable in this build");
     return this.#discardCompositionDomLease(lease, "nested");
   }
 
   #discardCompositionDomLease(lease: object, flatLists: boolean | "nested"): boolean {
     const record = this.#liveCompositionLeaseRecord(lease);
-    if (record === null || projectionMode(record.handle.projection) !== flatLists ||
+    if (record === null || projectionMode(record.handle.projection) !== (EXPERIMENTAL_BLOCK_PROFILES && flatLists) ||
       ACTIVE_HOST_OPERATIONS.has(record.handle.host)) {
       return false;
     }
@@ -699,11 +711,13 @@ export class BreditorDomRenderer {
 
   /** Full hierarchical list render with the same host/rollback/ownership guards. @internal */
   renderFlatList(host: HTMLElement, projection: FlatListDocumentProjection): BrowserProjectionResult<ProjectionRenderOutcome<FlatListDocumentProjection>> {
+    if (!EXPERIMENTAL_BLOCK_PROFILES) throw new TypeError("Experimental block profiles are unavailable in this build");
     return this.#render(host, projection, true);
   }
 
   /** Recursive rendering is opt-in and never widens the base or flat admission gates. @internal */
   renderNestedList(host: HTMLElement, projection: NestedListDocumentProjection): BrowserProjectionResult<ProjectionRenderOutcome<NestedListDocumentProjection>> {
+    if (!EXPERIMENTAL_BLOCK_PROFILES) throw new TypeError("Experimental block profiles are unavailable in this build");
     return this.#render(host, projection, "nested");
   }
 
@@ -722,7 +736,7 @@ export class BreditorDomRenderer {
       if (!isUsableHost(host)) {
         return projectionFailure("renderer.invalid_host");
       }
-      if (flatLists === "nested" ? !isOwnedNestedListProjection(projection) : flatLists ? !isOwnedFlatListProjection(projection) : !isOwnedProjection(projection)) {
+      if (EXPERIMENTAL_BLOCK_PROFILES && flatLists === "nested" ? !(EXPERIMENTAL_BLOCK_PROFILES && isOwnedNestedListProjection(projection)) : (EXPERIMENTAL_BLOCK_PROFILES && flatLists) ? !(EXPERIMENTAL_BLOCK_PROFILES && isOwnedFlatListProjection(projection)) : !isOwnedProjection(projection)) {
         return projectionFailure("projection.invalid_shape");
       }
       if (!this.#bindProjectionPresentation(projection)) {
@@ -855,6 +869,7 @@ export class BreditorDomRenderer {
 
   /** Installs an exact list transition, retaining only proved unchanged root subtrees. @internal */
   updateFlatList(rendered: RenderedProjection<FlatListDocumentProjection>, update: FlatListProjectionUpdate): BrowserProjectionResult<ProjectionRenderOutcome<FlatListDocumentProjection>> {
+    if (!EXPERIMENTAL_BLOCK_PROFILES) throw new TypeError("Experimental block profiles are unavailable in this build");
     if (!isOwnedFlatListProjectionUpdate(update)) return projectionFailure("projection.invalid_update");
     if (!isOwnedFlatListRenderedProjection(rendered)) return projectionFailure("renderer.foreign_or_stale_render");
     const host = rendered.host;
@@ -889,6 +904,7 @@ export class BreditorDomRenderer {
 
   /** Reuses proved subtrees; stable topology permits rollback-backed text refreshes. @internal */
   updateNestedList(rendered: RenderedProjection<NestedListDocumentProjection>, update: NestedListProjectionUpdate): BrowserProjectionResult<ProjectionRenderOutcome<NestedListDocumentProjection>> {
+    if (!EXPERIMENTAL_BLOCK_PROFILES) throw new TypeError("Experimental block profiles are unavailable in this build");
     if (!isOwnedNestedListProjectionUpdate(update)) return projectionFailure("projection.invalid_update");
     if (!isOwnedNestedListRenderedProjection(rendered)) return projectionFailure("renderer.foreign_or_stale_render");
     const host = rendered.host;
@@ -942,11 +958,13 @@ export class BreditorDomRenderer {
 
   /** Releases a list generation without widening legacy handle admission. @internal */
   releaseFlatList(rendered: RenderedProjection<FlatListDocumentProjection>): boolean {
+    if (!EXPERIMENTAL_BLOCK_PROFILES) throw new TypeError("Experimental block profiles are unavailable in this build");
     return isOwnedFlatListRenderedProjection(rendered) && this.#release(rendered);
   }
 
   /** Releases only an owned recursive-list generation. @internal */
   releaseNestedList(rendered: RenderedProjection<NestedListDocumentProjection>): boolean {
+    if (!EXPERIMENTAL_BLOCK_PROFILES) throw new TypeError("Experimental block profiles are unavailable in this build");
     return isOwnedNestedListRenderedProjection(rendered) && this.#release(rendered);
   }
 
@@ -968,12 +986,13 @@ export class BreditorDomRenderer {
   }
 
   #bindProjectionPresentation(projection: RenderableProjection): boolean {
-    if (isOwnedNestedListProjection(projection)) {
+    if (EXPERIMENTAL_BLOCK_PROFILES && isOwnedNestedListProjection(projection)) {
       return this.#presentation !== undefined && bindNestedListProjectionPresentation(projection, this.#presentation);
     }
-    if (isOwnedFlatListProjection(projection)) {
+    if (EXPERIMENTAL_BLOCK_PROFILES && isOwnedFlatListProjection(projection)) {
       return this.#presentation !== undefined && bindFlatListProjectionPresentation(projection, this.#presentation);
     }
+    if (!isOwnedProjection(projection)) return false;
     const associated = projectionPresentation(projection);
     if (this.#presentation === undefined) {
       return associated === undefined && projection.schema.fingerprint === undefined;
@@ -1158,6 +1177,7 @@ export function isOwnedRenderedProjection(
 
 /** @internal */
 export function isOwnedFlatListRenderedProjection(rendered: unknown): rendered is RenderedProjectionHandle<FlatListDocumentProjection> {
+  if (!EXPERIMENTAL_BLOCK_PROFILES) return false;
   return typeof rendered === "object" && rendered !== null &&
     RENDERED_HANDLES.has(rendered as RenderedProjectionHandle) &&
     isOwnedFlatListProjection((rendered as RenderedProjectionHandle).projection);
@@ -1165,6 +1185,7 @@ export function isOwnedFlatListRenderedProjection(rendered: unknown): rendered i
 
 /** @internal */
 export function isOwnedNestedListRenderedProjection(rendered: unknown): rendered is RenderedProjectionHandle<NestedListDocumentProjection> {
+  if (!EXPERIMENTAL_BLOCK_PROFILES) return false;
   return typeof rendered === "object" && rendered !== null &&
     RENDERED_HANDLES.has(rendered as RenderedProjectionHandle) &&
     isOwnedNestedListProjection((rendered as RenderedProjectionHandle).projection);
@@ -1204,10 +1225,11 @@ function buildFullProjection(
     throw new TypeError("The render host has no owner document.");
   }
   const maps = createMaps(host);
-  if (isOwnedNestedListProjection(projection)) return {...maps,
+  if (EXPERIMENTAL_BLOCK_PROFILES && isOwnedNestedListProjection(projection)) return {...maps,
     paragraphs: Object.freeze(projection.blocks.map((root, index) => buildNestedListRoot(ownerDocument, root, Object.freeze([index]), maps, presentation))),
     refreshes: Object.freeze([])};
-  if (isOwnedFlatListProjection(projection)) return buildFlatListProjection(ownerDocument, projection, maps, presentation);
+  if (EXPERIMENTAL_BLOCK_PROFILES && isOwnedFlatListProjection(projection)) return buildFlatListProjection(ownerDocument, projection, maps, presentation);
+  if (!isOwnedProjection(projection)) throw new TypeError("Unknown browser projection");
   const paragraphs = projection.paragraphs.map((paragraph, paragraphIndex) =>
     buildParagraph(ownerDocument, paragraph, paragraphIndex, maps, presentation),
   );
@@ -1265,6 +1287,7 @@ function prepareNestedTextRefresh(document: Document, node: Node, before: Nested
 /** Builds list sections at their real item-child indices (zero is the leading block). */
 function buildNestedListRoot(document: Document, root: NestedListRootProjection, path: AstPath, maps: ProjectionMaps,
   presentation: BrowserCompiledPresentation | undefined): HTMLElement {
+  if (!EXPERIMENTAL_BLOCK_PROFILES) throw new TypeError("Experimental block profiles are unavailable in this build");
   if (root.kind === "textBlock") return buildParagraph(document, root.block, path, maps, presentation);
   const tag = root.kind === "bulletList" ? "ul" : "ol";
   const list = createHtmlElement(document, tag, tag);
@@ -1283,6 +1306,7 @@ function buildNestedListRoot(document: Document, root: NestedListRootProjection,
 /** Proves canonical recursive DOM while constructing fresh snapshot-local maps. */
 function mapExistingNestedListRoot(node: Node | undefined, root: NestedListRootProjection, path: AstPath, maps: ProjectionMaps,
   presentation: BrowserCompiledPresentation | undefined): boolean {
+  if (!EXPERIMENTAL_BLOCK_PROFILES) throw new TypeError("Experimental block profiles are unavailable in this build");
   if (root.kind === "textBlock") return isHtmlElementNamed(node, textBlockTag(root.block)) && mapExistingParagraph(node, root.block, path, maps, presentation);
   if (!isHtmlElementNamed(node, root.kind === "bulletList" ? "ul" : "ol")) return false;
   const attrs = nativeAttributeNames(node), items = nativeChildNodes(node);
@@ -1305,6 +1329,7 @@ function mapExistingNestedListRoot(node: Node | undefined, root: NestedListRootP
 
 function nestedListDomAndMapsMatch(host: HTMLElement, projection: NestedListDocumentProjection, maps: ProjectionMaps,
   presentation: BrowserCompiledPresentation | undefined): boolean {
+  if (!EXPERIMENTAL_BLOCK_PROFILES) throw new TypeError("Experimental block profiles are unavailable in this build");
   // This traversal-local cursor never escapes into a retained map. Prove
   // canonical shape and both ownership directions together, rather than build
   // temporary maps and then traverse every DOM node a second time.
@@ -1371,12 +1396,14 @@ function buildFlatListProjection(
   maps: ProjectionMaps,
   presentation: BrowserCompiledPresentation | undefined,
 ): PreparedDom {
+  if (!EXPERIMENTAL_BLOCK_PROFILES) throw new TypeError("Experimental block profiles are unavailable in this build");
   const roots = projection.blocks.map((root, rootIndex) => buildFlatListRoot(document, root, rootIndex, maps, presentation));
   return {...maps, paragraphs: Object.freeze(roots), refreshes: Object.freeze([])};
 }
 
 function buildFlatListRoot(document: Document, root: FlatListRootProjection, rootIndex: number, maps: ProjectionMaps,
   presentation: BrowserCompiledPresentation | undefined): HTMLElement {
+  if (!EXPERIMENTAL_BLOCK_PROFILES) throw new TypeError("Experimental block profiles are unavailable in this build");
   if (root.kind === "textBlock") return buildParagraph(document, root.block, rootIndex, maps, presentation);
   const tag = root.kind === "bulletList" ? "ul" : "ol";
   const list = createHtmlElement(document, tag, tag);
@@ -1394,6 +1421,7 @@ function buildFlatListRoot(document: Document, root: FlatListRootProjection, roo
 /** Rebinds every descendant path when a proved root subtree moves. */
 function mapExistingFlatListRoot(node: Node, root: FlatListRootProjection, rootIndex: number, maps: ProjectionMaps,
   presentation: BrowserCompiledPresentation | undefined): boolean {
+  if (!EXPERIMENTAL_BLOCK_PROFILES) throw new TypeError("Experimental block profiles are unavailable in this build");
   if (root.kind === "textBlock") return isHtmlElementNamed(node, textBlockTag(root.block)) && mapExistingParagraph(node, root.block, rootIndex, maps, presentation);
   if (!isHtmlElementNamed(node, root.kind === "bulletList" ? "ul" : "ol")) return false;
   const attrs = nativeAttributeNames(node);
@@ -1419,6 +1447,7 @@ function flatListDomAndMapsMatch(
   maps: ProjectionMaps,
   presentation: BrowserCompiledPresentation | undefined,
 ): boolean {
+  if (!EXPERIMENTAL_BLOCK_PROFILES) throw new TypeError("Experimental block profiles are unavailable in this build");
   // One traversal-local cursor avoids allocating an expected path for every
   // node. It never escapes this synchronous proof or enters either map.
   // Keep astPathKey's depth/index validation at every comparison.
@@ -1845,9 +1874,11 @@ function wrappersAreUnmapped(
 }
 
 function renderFitsDomBudget(projection: RenderableProjection): boolean {
-  const flat = isOwnedFlatListProjection(projection);
-  const nested = isOwnedNestedListProjection(projection);
-  const paragraphs = nested || flat ? projection.textBlocks.map(entry => entry.block) : projection.paragraphs;
+  const flat = (EXPERIMENTAL_BLOCK_PROFILES && isOwnedFlatListProjection(projection));
+  const nested = (EXPERIMENTAL_BLOCK_PROFILES && isOwnedNestedListProjection(projection));
+  const paragraphs = nested || flat ? projection.textBlocks.map(entry => entry.block)
+    : isOwnedProjection(projection) ? projection.paragraphs : null;
+  if (paragraphs === null) return false;
   const wrappers = (root: NestedListRootProjection): number => root.kind === "textBlock" ? 0 :
     1 + root.items.length + root.items.reduce((count, item) => count + item.lists.reduce((sum, list) => sum + wrappers(list), 0), 0);
   let nodes = 1 + paragraphs.length + (nested ? projection.blocks.reduce((count, root) => count + wrappers(root), 0) : flat ? projection.blocks.reduce((count, root) => count + (root.kind === "textBlock" ? 0 : 1 + root.items.length), 0) : 0);

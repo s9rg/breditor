@@ -52,6 +52,8 @@ import type { FlatListDocumentProjection } from "./flat_list_projection.js";
 import { FlatListRangeSelection, isOwnedFlatListRangeSelection } from "./flat_list_selection.js";
 import { mapDomPointToFlatListSelectionPoint, mapFlatListSelectionPointToDomPoint } from "./flat_list_dom_point_mapping.js";
 
+const EXPERIMENTAL_BLOCK_PROFILES = import.meta.breditorExperimentalBlockProfiles !== false;
+
 type AnyRangeSelection = BaseRangeSelection | FlatListRangeSelection | NestedListRangeSelection;
 type AnyRenderedProjection = RenderedProjection | RenderedProjection<FlatListDocumentProjection> | RenderedProjection<NestedListDocumentProjection>;
 
@@ -173,7 +175,7 @@ class DomSelectionBridgeCore {
   read(
     rendered: AnyRenderedProjection,
   ): BrowserSelectionResult<DomSelectionObservation<AnyRangeSelection>> {
-    const preflight = validateRenderedForSelection(rendered, this.flatLists);
+    const preflight = validateRenderedForSelection(rendered, (EXPERIMENTAL_BLOCK_PROFILES && this.flatLists));
     if (!preflight.ok) {
       this.#receipt = undefined;
       return selectionFailure(preflight.code);
@@ -303,14 +305,14 @@ class DomSelectionBridgeCore {
     rendered: AnyRenderedProjection,
     selection: AnyRangeSelection | null,
   ): BrowserSelectionResult<DomSelectionWriteOutcome> {
-    const preflight = validateRenderedForSelection(rendered, this.flatLists);
+    const preflight = validateRenderedForSelection(rendered, (EXPERIMENTAL_BLOCK_PROFILES && this.flatLists));
     if (!preflight.ok) {
       this.#receipt = undefined;
       return selectionFailure(preflight.code);
     }
     if (
       selection !== null &&
-      (!(this.flatLists === "nested" ? isOwnedNestedListRangeSelection(selection) : this.flatLists ? isOwnedFlatListRangeSelection(selection) : isOwnedBaseRangeSelection(selection)) || selection.projection !== rendered.projection)
+      (!(EXPERIMENTAL_BLOCK_PROFILES && this.flatLists === "nested" ? (EXPERIMENTAL_BLOCK_PROFILES && isOwnedNestedListRangeSelection(selection)) : (EXPERIMENTAL_BLOCK_PROFILES && this.flatLists) ? (EXPERIMENTAL_BLOCK_PROFILES && isOwnedFlatListRangeSelection(selection)) : isOwnedBaseRangeSelection(selection)) || selection.projection !== rendered.projection)
     ) {
       this.#receipt = undefined;
       return selectionFailure("selection.snapshot_mismatch");
@@ -517,7 +519,7 @@ class DomSelectionBridgeCore {
       this.#receipt = undefined;
       return selectionFailure("selection.dom_read_failed");
     }
-    const preflight = validateRenderedForSelection(rendered, this.flatLists);
+    const preflight = validateRenderedForSelection(rendered, (EXPERIMENTAL_BLOCK_PROFILES && this.flatLists));
     if (!preflight.ok) {
       this.#receipt = undefined;
       return selectionFailure(preflight.code);
@@ -630,18 +632,18 @@ export class BreditorNestedListDomSelectionBridge {
 }
 
 function createRange(rendered: AnyRenderedProjection, input: unknown): BrowserSelectionResult<AnyRangeSelection> {
-  if (isOwnedNestedListRenderedProjection(rendered)) return NestedListRangeSelection.create(rendered.projection, input);
-  if (isOwnedFlatListRenderedProjection(rendered)) return FlatListRangeSelection.create(rendered.projection, input);
+  if (EXPERIMENTAL_BLOCK_PROFILES && isOwnedNestedListRenderedProjection(rendered)) return NestedListRangeSelection.create(rendered.projection, input);
+  if (EXPERIMENTAL_BLOCK_PROFILES && isOwnedFlatListRenderedProjection(rendered)) return FlatListRangeSelection.create(rendered.projection, input);
   return isOwnedRenderedProjection(rendered) ? BaseRangeSelection.create(rendered.projection, input) : selectionFailure("selection.foreign_or_stale_render");
 }
 
 function mapDomPoint(rendered: AnyRenderedProjection, node: Node, offset: number):
   {readonly ok: true; readonly value: BaseSelectionPoint} | {readonly ok: false; readonly code: BrowserSelectionErrorCode} {
-  if (isOwnedNestedListRenderedProjection(rendered)) {
+  if (EXPERIMENTAL_BLOCK_PROFILES && isOwnedNestedListRenderedProjection(rendered)) {
     const result = mapDomPointToNestedListSelectionPoint(rendered, node, offset);
     return result.ok ? result : {ok: false, code: result.error.code};
   }
-  if (isOwnedFlatListRenderedProjection(rendered)) {
+  if (EXPERIMENTAL_BLOCK_PROFILES && isOwnedFlatListRenderedProjection(rendered)) {
     const result = mapDomPointToFlatListSelectionPoint(rendered, node, offset);
     return result.ok ? result : {ok: false, code: result.error.code};
   }
@@ -673,7 +675,7 @@ function flatListDomContainerDescriptor(rendered: RenderedProjection<FlatListDoc
 }
 
 function validateRenderedForSelection(rendered: AnyRenderedProjection, flatLists: boolean | "nested"): RenderPreflight {
-  if (!(flatLists === "nested" ? isOwnedNestedListRenderedProjection(rendered) : flatLists ? isOwnedFlatListRenderedProjection(rendered) : isOwnedRenderedProjection(rendered)) || !rendered.current) {
+  if (!(EXPERIMENTAL_BLOCK_PROFILES && flatLists === "nested" ? (EXPERIMENTAL_BLOCK_PROFILES && isOwnedNestedListRenderedProjection(rendered)) : (EXPERIMENTAL_BLOCK_PROFILES && flatLists) ? (EXPERIMENTAL_BLOCK_PROFILES && isOwnedFlatListRenderedProjection(rendered)) : isOwnedRenderedProjection(rendered)) || !rendered.current) {
     return { ok: false, code: "selection.foreign_or_stale_render" };
   }
   try {
@@ -846,7 +848,7 @@ function installedSemanticSelectionSignature(
     captured.value.focusOffset,
   );
   if (!actualAnchor.ok || !actualFocus.ok) return null;
-  if (isOwnedNestedListRenderedProjection(rendered) || isOwnedFlatListRenderedProjection(rendered)) {
+  if ((EXPERIMENTAL_BLOCK_PROFILES && isOwnedNestedListRenderedProjection(rendered)) || (EXPERIMENTAL_BLOCK_PROFILES && isOwnedFlatListRenderedProjection(rendered))) {
     const sameAnchor = createRange(rendered, {kind: "range", anchor: expected.anchor, focus: actualAnchor.value});
     const sameFocus = createRange(rendered, {kind: "range", anchor: expected.focus, focus: actualFocus.value});
     return sameAnchor.ok && sameFocus.ok && sameAnchor.value.order === "collapsed" && sameFocus.value.order === "collapsed"
@@ -996,11 +998,11 @@ function domPointForSemantic(
   rendered: AnyRenderedProjection,
   point: BaseSelectionPoint,
 ): DomPoint | null {
-  if (isOwnedNestedListRenderedProjection(rendered)) {
+  if (EXPERIMENTAL_BLOCK_PROFILES && isOwnedNestedListRenderedProjection(rendered)) {
     const mapped = mapNestedListSelectionPointToDomPoint(rendered, point);
     return mapped.ok ? mapped.value : null;
   }
-  if (isOwnedFlatListRenderedProjection(rendered)) {
+  if (EXPERIMENTAL_BLOCK_PROFILES && isOwnedFlatListRenderedProjection(rendered)) {
     const mapped = mapFlatListSelectionPointToDomPoint(rendered, point);
     return mapped.ok ? mapped.value : null;
   }
@@ -1059,7 +1061,7 @@ function domRangeSignature(
 }
 
 function domContainerDescriptor(rendered: AnyRenderedProjection, node: Node): string | null {
-  if (isOwnedNestedListRenderedProjection(rendered) || isOwnedFlatListRenderedProjection(rendered)) return flatListDomContainerDescriptor(rendered, node);
+  if ((EXPERIMENTAL_BLOCK_PROFILES && isOwnedNestedListRenderedProjection(rendered)) || (EXPERIMENTAL_BLOCK_PROFILES && isOwnedFlatListRenderedProjection(rendered))) return flatListDomContainerDescriptor(rendered, node);
   if (!isOwnedRenderedProjection(rendered)) return null;
   if (node === rendered.host) {
     return "host";

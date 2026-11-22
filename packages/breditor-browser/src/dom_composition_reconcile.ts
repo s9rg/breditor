@@ -40,6 +40,8 @@ import {
   spatialPositionForPoint,
 } from "./selection.js";
 
+const EXPERIMENTAL_BLOCK_PROFILES = import.meta.breditorExperimentalBlockProfiles !== false;
+
 /** Maximum nodes inspected during strict leased-DOM reconciliation. */
 export const MAX_COMPOSITION_DOM_NODES = 265_536;
 
@@ -114,12 +116,14 @@ export function reconcileCompositionDom(
 /** Validates every list wrapper/item and non-target block before recovering text. @internal */
 export function reconcileFlatListCompositionDom(host: unknown, projection: unknown, selection: unknown):
   CompositionResult<FlatListDomCompositionReconciliation> {
+  if (!EXPERIMENTAL_BLOCK_PROFILES) throw new TypeError("Experimental block profiles are unavailable in this build");
   return reconcileDom(host, projection, selection, true);
 }
 
 /** Recovers a single-block replacement only after checking every recursive section. @internal */
 export function reconcileNestedListCompositionDom(host: unknown, projection: unknown, selection: unknown):
   CompositionResult<FlatListDomCompositionReconciliation> {
+  if (!EXPERIMENTAL_BLOCK_PROFILES) throw new TypeError("Experimental block profiles are unavailable in this build");
   return reconcileDom(host, projection, selection, "nested");
 }
 
@@ -132,8 +136,8 @@ function reconcileDom(host: unknown, projection: unknown, selection: unknown, fl
     let baseParagraph: BaseParagraphProjection | undefined;
     let roots: readonly NestedListRootProjection[];
     let presentation: BrowserCompiledPresentation | undefined;
-    if (flatLists === "nested") {
-      if (!isOwnedNestedListProjection(projection) || !isOwnedNestedListRangeSelection(selection) ||
+    if (EXPERIMENTAL_BLOCK_PROFILES && flatLists === "nested") {
+      if (!(EXPERIMENTAL_BLOCK_PROFILES && isOwnedNestedListProjection(projection)) || !(EXPERIMENTAL_BLOCK_PROFILES && isOwnedNestedListRangeSelection(selection)) ||
         selection.projection !== projection) return compositionFailure("composition.dom.invalid_input");
       const a = nestedListSpatialPositionForPoint(projection, selection.anchor);
       const f = nestedListSpatialPositionForPoint(projection, selection.focus);
@@ -143,8 +147,8 @@ function reconcileDom(host: unknown, projection: unknown, selection: unknown, fl
       roots = projection.blocks;
       presentation = nestedListProjectionPresentation(projection);
       if (presentation === undefined) return compositionFailure("composition.dom.invalid_input");
-    } else if (flatLists) {
-      if (!isOwnedFlatListProjection(projection) || !isOwnedFlatListRangeSelection(selection) ||
+    } else if (EXPERIMENTAL_BLOCK_PROFILES && flatLists) {
+      if (!(EXPERIMENTAL_BLOCK_PROFILES && isOwnedFlatListProjection(projection)) || !(EXPERIMENTAL_BLOCK_PROFILES && isOwnedFlatListRangeSelection(selection)) ||
         selection.projection !== projection) return compositionFailure("composition.dom.invalid_input");
       const a = flatListSpatialPositionForPoint(projection, selection.anchor);
       const f = flatListSpatialPositionForPoint(projection, selection.focus);
