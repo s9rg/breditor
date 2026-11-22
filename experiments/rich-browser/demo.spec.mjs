@@ -153,3 +153,16 @@ test("the contents and code demos expose accessible landmarks", async ({page}) =
   expect(audit.violations).toEqual([]);
  }
 });
+
+test("the code demo offers a keyboard skip link and a named editor region", async ({page, browserName}) => {
+ await page.goto("/code");
+ await expect(page.locator("#code-ready")).toHaveText("Ready");
+ const skip=page.getByRole("link",{name:"Skip to code editors"});
+ await page.keyboard.press(browserName==="webkit"&&process.platform==="darwin"?"Alt+Tab":"Tab");
+ await expect(skip).toBeFocused();
+ await expect(skip).toBeInViewport();
+ await page.keyboard.press("Enter");
+ const main=page.getByRole("main");
+ await expect(main).toBeFocused();
+ await expect(main.getByRole("region",{name:"Local editor"})).toBeVisible();
+});
