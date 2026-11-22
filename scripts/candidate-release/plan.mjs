@@ -754,7 +754,7 @@ export function candidateReleasePlan({profile="full",environment=process.env}={}
   stage("rich-browser-types",node,["node_modules/typescript/bin/tsc","-p","packages/breditor-experimental-rich-content/tsconfig.json","--noEmit"]),
   stage("collaboration-types",npm,["run","typecheck:candidate","--workspace","@breditor/collaboration"]),
   stage("editor-types",npm,["run","typecheck:candidate","--workspace","@breditor/editor"]),
-  script("installed-editor-pairing","check-editor-package.mjs",[],[{path:"target/editor-installed-consumer.json",fresh:true}]),
+  script("installed-editor-pairing","check-editor-package.mjs",[],[{path:"target/editor-installed-consumer.json",fresh:true,retain:true}]),
   script("installed-search-workflows","check-search-installed.mjs",[],[{path:"target/search-installed-consumer.json",fresh:true}]),
   script("installed-input-rule-workflows","check-input-rules-installed.mjs",["--current-runtime-only"],[{path:"target/input-rules-current-installed-consumer.json",fresh:true}]),
   script("installed-writing-tools-workflows","check-writing-tools-installed.mjs",[],[{path:"target/writing-tools-installed-consumer.json",fresh:true}]),
@@ -793,7 +793,7 @@ export function candidateReleasePlan({profile="full",environment=process.env}={}
   script("installed-room-recovery-catalog-v2","check-room-recovery-catalog-v2-installed.mjs",[],[{path:"target/room-recovery-catalog-v2-installed-consumer.json",fresh:true}]),
   script("installed-room-operational-recovery-v2","check-room-operational-recovery-v2-installed.mjs",[],[{path:"target/room-operational-recovery-v2-installed-consumer.json",fresh:true}]),
   script("installed-asset-backups","check-asset-backups-installed.mjs",[],[{path:"target/asset-backups-installed-consumer.json",fresh:true}]),
-  script("installed-rich-interchange","check-interchange-package.mjs",[],[{path:"target/interchange-installed-consumer.json",fresh:true}]),
+  script("installed-rich-interchange","check-interchange-package.mjs",[],[{path:"target/interchange-installed-consumer.json",fresh:true,retain:true}]),
   relayCargo("functional-native-fixtures",["build","--features","server","--locked","--offline","--release","--example","transport_v2_functional","--example","suggestions_functional","--example","suggestion_revisions_functional","--example","review_assets_functional","--example","relay_segment_functional"],["transport_v2_functional","suggestions_functional","suggestion_revisions_functional","review_assets_functional","relay_segment_functional"].map(executablePath)),
   withSharedRuntime(stage("portable-relay-relocation",node,[
    "scripts/check-writable-relay-segment.mjs",executable("relay_segment_functional"),"--participant-portable-seal",
