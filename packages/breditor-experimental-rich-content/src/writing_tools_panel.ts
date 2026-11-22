@@ -68,7 +68,7 @@ class WritingPanel implements RichWritingToolsPanel {
  #report(error:unknown):void{this.#error=error instanceof Error?error.message:String(error);this.#shown=this.#ui.describe(error,this.#error);try{this.#options.onError?.(error);}catch{/* A reporting callback cannot undo native publication. */}}
  #rove(event:KeyboardEvent):void{
   if(event.isComposing||event.altKey||event.ctrlKey||event.metaKey||!["ArrowDown","ArrowUp","Home","End"].includes(event.key))return;
-  const buttons=[...this.#list.querySelectorAll<HTMLButtonElement>("button")].filter(node=>!node.disabled),index=buttons.indexOf(event.target as HTMLButtonElement);if(index<0||!buttons.length)return;
+  const buttons=[...this.#list.querySelectorAll<HTMLButtonElement>("button")].filter(node=>!node.disabled&&node.getAttribute("aria-disabled")!=="true"),index=buttons.indexOf(event.target as HTMLButtonElement);if(index<0||!buttons.length)return;
   event.preventDefault();const next=event.key==="Home"?0:event.key==="End"?buttons.length-1:Math.min(buttons.length-1,Math.max(0,index+(event.key==="ArrowDown"?1:-1)));buttons[next]!.focus();
  }
  #schedule():void{if(this.#disposed)return;this.#read=undefined;this.#error=this.#shown=null;if(this.#timer!==undefined)clearTimeout(this.#timer);this.#render(false);this.#timer=setTimeout(()=>{this.#timer=undefined;this.refresh();},this.#delay);}
@@ -121,7 +121,10 @@ class WritingPanel implements RichWritingToolsPanel {
    const label=d.createElement("bdi");label.textContent=entry.label+(entry.labelTruncated?" …":"");button.append(label);
   }else setRichChromeText(button,this.#ui,entry.label?(entry.labelTruncated?"writingHeadingTruncated":"writingHeading"):entry.labelTruncated?"writingHeadingOverBudget":"writingHeadingEmpty",{level:entry.level,label:entry.label},["label"]);
   button.addEventListener("pointerdown",event=>event.preventDefault(),{signal:this.#abort.signal});
-  button.addEventListener("click",()=>{void this.#select(read,entry.index).catch(()=>{/* The action reports the source failure once. */});},{signal:this.#abort.signal});
+  button.addEventListener("click",()=>{
+   if(button.getAttribute("aria-disabled")==="true")return;
+   void this.#select(read,entry.index).catch(()=>{/* The action reports the source failure once. */});
+  },{signal:this.#abort.signal});
   item.append(button);return item;
  }
  #appendContents(read:RichWritingToolsRead,branches:readonly HeadingBranch<IndexedHeading>[],list:HTMLOListElement):void{
@@ -156,7 +159,11 @@ class WritingPanel implements RichWritingToolsPanel {
    this.#scheduleCurrentHeading();
    if(focused){const replacement=[...this.#list.querySelectorAll<HTMLButtonElement>("button")].find(node=>node.dataset["writingBlock"]===focused);replacement?.focus({preventScroll:true});}
   }
-  for(const button of this.#list.querySelectorAll<HTMLButtonElement>("button"))button.disabled=blocked;
+  for(const button of this.#list.querySelectorAll<HTMLButtonElement>("button")){
+   // Keep a contents entry focusable while a peer edit briefly invalidates its navigation target.
+   if(this.#contents)button.setAttribute("aria-disabled",String(blocked));
+   else button.disabled=blocked;
+  }
   const total=this.#total(),start=this.#page*this.#pageSize;
   if(this.#contents){
    this.#actions.hidden=total<=this.#pageSize&&!this.#error;
@@ -209,4 +216,4 @@ class WritingPanel implements RichWritingToolsPanel {
 }
 export function mountRichWritingTools(root:HTMLElement,host:RichWritingToolsHost,options:RichWritingToolsPanelOptions={}):RichWritingToolsPanel{return new WritingPanel(root,host,options);}
 const styles=`[data-breditor-writing]{padding:12px;border:1px solid #bdcdc5;border-radius:8px;color:#173d37;background:#f4f7f4;font:14px system-ui,sans-serif}[data-breditor-writing] h2{font-size:16px;margin:0 0 8px}[data-breditor-writing] dl{display:grid;grid-template-columns:minmax(150px,1fr) auto;gap:4px 12px;margin:8px 0}[data-breditor-writing] dd{margin:0;font-variant-numeric:tabular-nums}[data-breditor-writing] ol{list-style:none;padding:0;margin:12px 0}[data-breditor-writing] li button{display:block;width:100%;text-align:start;white-space:pre-wrap;overflow-wrap:anywhere}[data-breditor-writing] button{padding:6px 8px;margin:2px;border:1px solid #aabbb3;border-radius:4px;background:white;color:inherit}[data-breditor-writing] button:disabled{opacity:.5}[data-breditor-writing] p{font-size:12px;margin:8px 0 0}`;
-const contentsStyles=`[data-breditor-writing][data-breditor-contents] ol{list-style:decimal;padding-inline-start:1.5em;margin-block:4px}[data-breditor-writing][data-breditor-contents] li button{display:inline;width:auto;padding:3px 2px;margin:0;border:0;background:transparent;text-decoration:underline;text-underline-offset:.18em}[data-breditor-writing][data-breditor-contents] li button[aria-current="location"]{background:#dcece4;font-weight:650;text-decoration-thickness:2px}`;
+const contentsStyles=`[data-breditor-writing][data-breditor-contents] ol{list-style:decimal;padding-inline-start:1.5em;margin-block:4px}[data-breditor-writing][data-breditor-contents] li button{display:inline;width:auto;padding:3px 2px;margin:0;border:0;background:transparent;text-decoration:underline;text-underline-offset:.18em}[data-breditor-writing][data-breditor-contents] li button[aria-current="location"]{background:#dcece4;font-weight:650;text-decoration-thickness:2px}[data-breditor-writing][data-breditor-contents] li button[aria-disabled=true]{opacity:.5}`;

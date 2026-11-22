@@ -21,6 +21,9 @@ test("a remote heading edit refreshes both contents views and keeps exact headin
  });
  const navB = page.getByRole("navigation", {name: "Writer B contents"});
  await expect(navB.locator("ol > li > ol")).toContainText("Steps");
+ const entry = navB.getByRole("button", {name: "Steps"});
+ await entry.focus();
+ await expect(entry).toBeFocused();
  await page.evaluate(async () => {
   const {a, synchronize} = window.contentsTest;
   a.dispatch({commands: [{kind: "insert_text", data: {block: "step", offset: 0, text: "First "}}]});
@@ -31,7 +34,8 @@ test("a remote heading edit refreshes both contents views and keeps exact headin
   await expect(nav.getByRole("button", {name: "First Steps"})).toBeEnabled();
  }
  const depth = await page.evaluate(() => window.contentsTest.b.view().undoDepth);
- await navB.getByRole("button", {name: "First Steps"}).click();
+ await expect(navB.getByRole("button", {name: "First Steps"})).toBeFocused();
+ await page.keyboard.press("Enter");
  await expect.poll(() => page.evaluate(() => window.contentsTest.b.view().selection?.focus.block)).toBe("step");
  expect(await page.evaluate(() => window.contentsTest.b.view().undoDepth)).toBe(depth);
  expect(await page.evaluate(() => window.contentsTest.errors)).toEqual([]);
