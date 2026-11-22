@@ -225,6 +225,8 @@ readonly minified_javascript="${generated_directory}/breditor_wasm.js"
 [[ -f "${generated_javascript}" ]] ||
   fail "wasm-bindgen did not produce breditor_wasm.js"
 
+"${node_executable}" "${repository_root}/scripts/compact-wasm-glue.mjs" "${generated_javascript}"
+
 printf 'build-wasm-package: minifying JavaScript glue with %s\n' "${required_rolldown_version}"
 "${rolldown_executable}" "${generated_javascript}" \
   --file "${minified_javascript}" \

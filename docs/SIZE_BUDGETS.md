@@ -493,8 +493,10 @@ without LTO. Shipped Wasm instead uses the dedicated `wasm-release` profile:
 maximum size optimization (`opt-level = "z"`), fat LTO, one code-generation unit, aborting panics, and
 stripped symbols. The pinned package pipeline also removes Wasm name and
 producer sections and uses exact `rolldown 1.2.7` to deterministically minify
-generated JavaScript glue while retaining its declaration link. Package checks
-rebuild twice and compare complete hashes. On supported POSIX build hosts,
+generated JavaScript glue while retaining its declaration link. The build
+shares the generated string-result and handle lifecycle implementations before
+minification. Wasm export signatures and the checked-in declarations stay
+identical. Package checks rebuild twice and compare complete hashes. On supported POSIX build hosts,
 canonical source-path remapping plus exact logical/physical build-root checks
 and common user-home pattern checks prevent host-specific workspace,
 Cargo-home, or target prefixes from entering the module. Canonical relative
