@@ -27,16 +27,20 @@ export function renderRuntimeNotices({inventory,noticeTexts}){
  for(const notice of noticeTexts)lines.push("","=".repeat(72),`${notice.package} / ${notice.path}`,`SHA-256: ${notice.sha256}`,...(notice.origin?[`Source: ${notice.origin.url}`]:[]),"",notice.text);
  return lines.join("\n")+"\n";
 }
+export function pinnedRustNotices(rustc,run){
+ assert.equal(run(rustc,["--version","--verbose"]).split("\n").find(line=>line.startsWith("release: ")),`release: ${rustRelease}`,"Runtime notices require the pinned Rust toolchain");
+ const copyright=readFileSync(join(run(rustc,["--print","sysroot"]).trim(),"share/doc/rust/COPYRIGHT-library.html"));assert.equal(sha256(copyright),rustNoticeSha256,"Standard-library notice differs from the reviewed pinned toolchain");
+ return {copyright,rust:{release:rustRelease,libraryNoticeSha256:rustNoticeSha256}};
+}
 /** No staged output is written until graph, text and pinned standard-library admission finish. */
 export function buildRuntimeNotices(kind,environment=process.env){
  const plan=runtimeNoticePlan(kind,environment),run=(command,args)=>execFileSync(command,args,{cwd:repository,env:environment,encoding:"utf8",maxBuffer:16*1024*1024,shell:false});
  const metadata=JSON.parse(run(plan.cargo,plan.args)),firstPartyPaths={"breditor-core":resolve(repository,"crates/breditor-core"),[plan.rootName]:resolve(repository,kind==="shared"?"crates/breditor-collaboration":"crates/breditor-wasm")};
  const upstream=JSON.parse(readFileSync(resolve(repository,"scripts/candidate-dependencies/upstream-notices.json"),"utf8"));assert.equal(upstream.format,"breditor/pinned-upstream-notices");assert.equal(upstream.formatVersion,1);
  const result=candidateDependencyInventory(metadata,plan.rootName,{firstPartyPaths,upstreamNotices:upstream.entries,vendoredPaths:{loro:resolve(repository,"crates/breditor-collaboration/vendor/loro-1.16.2"),"loro-internal":resolve(repository,"crates/breditor-collaboration/vendor/loro-internal-1.16.2")}});
- assert.equal(run(plan.rustc,["--version","--verbose"]).split("\n").find(line=>line.startsWith("release: ")),`release: ${rustRelease}`,"Runtime notices require the pinned Rust toolchain");
- const copyright=readFileSync(join(run(plan.rustc,["--print","sysroot"]).trim(),"share/doc/rust/COPYRIGHT-library.html"));assert.equal(sha256(copyright),rustNoticeSha256,"Standard-library notice differs from the reviewed pinned toolchain");
+ const {copyright,rust}=pinnedRustNotices(plan.rustc,run);
  const text=renderRuntimeNotices(result),binary=readFileSync(join(plan.output,kind==="shared"?"breditor_shared_bg.wasm":"breditor_wasm_bg.wasm"));
- const manifest={...result.inventory,runtime:plan.kind,runtimeWasmSha256:sha256(binary),noticeBundleSha256:sha256(text),cargoLockSha256:sha256(readFileSync(resolve(repository,plan.lock))),rust:{release:rustRelease,libraryNoticeSha256:rustNoticeSha256}};
+ const manifest={...result.inventory,runtime:plan.kind,runtimeWasmSha256:sha256(binary),noticeBundleSha256:sha256(text),cargoLockSha256:sha256(readFileSync(resolve(repository,plan.lock))),rust};
  mkdirSync(plan.output,{recursive:true});
  writeFileSync(join(plan.output,runtimeNoticeFiles[0]),JSON.stringify(manifest,null,2)+"\n");writeFileSync(join(plan.output,runtimeNoticeFiles[1]),text);writeFileSync(join(plan.output,runtimeNoticeFiles[2]),copyright);
  return {kind:plan.kind,packages:manifest.packages.length,edges:manifest.edges.length,noticeTexts:result.noticeTexts.length,missingNoticeTexts:manifest.gaps,inventorySha256:manifest.sha256,licenseReview:manifest.licenseReview,publicationApproved:false};

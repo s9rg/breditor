@@ -3,6 +3,7 @@ import {existsSync} from "node:fs";
 import {homedir} from "node:os";
 import {resolve,dirname} from "node:path";
 import {fileURLToPath} from "node:url";
+import {relayNoticePaths} from "../build-relay-notices.mjs";
 import {candidateRuntimePaths} from "../candidate-runtime-paths.mjs";
 import {metadataRecoveryArtifacts} from '../metadata-recovery-artifacts.mjs';
 import {sharedRuntimeBuildReport} from "./shared-runtime-evidence.mjs";
@@ -50,6 +51,8 @@ export function candidateReleasePlan({profile="full",environment=process.env}={}
   stage("relay-lint",cargo,["clippy","--manifest-path","experiments/relay/Cargo.toml","--features","server","--all-targets","--locked","--offline","--release","--","-D","warnings"],{CARGO_TARGET_DIR:relay}),
   relayCargo("relay-no-server-lint",["clippy","--no-default-features","--all-targets","--locked","--offline","--release","--","-D","warnings"]),
   relayCargo("relay-native",["test","--features","server","--locked","--offline","--release"]),
+  stage("relay-native-dependency-notices",node,["scripts/build-relay-notices.mjs"],{CARGO_TARGET_DIR:relay},
+   relayNoticePaths.map(path=>({path,fresh:true}))),
   stage('sealed-room-cli-plan-contracts',node,['--test','scripts/sealed-room-cli-candidate-plan.test.mjs']),
   stage('sealed-room-cli-source',node,['scripts/check-sealed-room-cli.mjs','--source'],{CARGO_TARGET_DIR:relay},[{path:'target/sealed-room-cli-source.json',fresh:true}]),
   script('installed-sealed-room-cli','check-sealed-room-cli.mjs',['--installed'],[{path:'target/sealed-room-cli-installed.json',fresh:true}]),
