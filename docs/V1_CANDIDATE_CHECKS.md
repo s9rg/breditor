@@ -8,6 +8,14 @@ for package archives, consumer installs, and fixture logs. The checks resolve
 the directory before creating the fixture so the installation, custody checks,
 and reported paths agree when the directory is reached through a symlink.
 
+## Hosted setup evidence
+
+The manual candidate workflow uploads a runner context report even when a
+toolchain or dependency setup step fails before the verifier starts. It records
+the selected commit and profile, the runner platform, and each step's outcome.
+When the verifier starts, the same artifact includes its existing stage logs
+and candidate result.
+
 ## Whole-room activation jobs
 
 Both candidate profiles build the real relay fixture and run the

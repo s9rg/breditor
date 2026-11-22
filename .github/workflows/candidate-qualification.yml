@@ -33,7 +33,8 @@
           "with": {
             "persist-credentials": false,
             "fetch-depth": 1
-          }
+          },
+          "id": "checkout"
         },
         {
           "name": "Install the baseline Node toolchain",
@@ -41,24 +42,29 @@
           "with": {
             "node-version": "22.14.0",
             "package-manager-cache": false
-          }
+          },
+          "id": "node"
         },
         {
           "name": "Install the paired Rust/Wasm toolchain",
-          "run": "rustup toolchain install 1.98.0 --profile minimal --component clippy --component rustfmt --target wasm32-unknown-unknown\ncargo install wasm-bindgen-cli --version 0.2.127 --locked"
+          "run": "rustup toolchain install 1.98.0 --profile minimal --component clippy --component rustfmt --target wasm32-unknown-unknown\ncargo install wasm-bindgen-cli --version 0.2.127 --locked",
+          "id": "rust"
         },
         {
           "name": "Install locked workspace dependencies",
-          "run": "npm ci --ignore-scripts --no-audit --no-fund"
+          "run": "npm ci --ignore-scripts --no-audit --no-fund",
+          "id": "npm"
         },
         {
           "name": "Fetch locked Cargo graphs before offline qualification",
-          "run": "cargo fetch --locked --manifest-path Cargo.toml\ncargo fetch --locked --manifest-path crates/breditor-collaboration/Cargo.toml\ncargo fetch --locked --manifest-path experiments/relay/Cargo.toml"
+          "run": "cargo fetch --locked --manifest-path Cargo.toml\ncargo fetch --locked --manifest-path crates/breditor-collaboration/Cargo.toml\ncargo fetch --locked --manifest-path experiments/relay/Cargo.toml",
+          "id": "cargo"
         },
         {
           "name": "Install all three test engines for the full profile",
           "if": "${{ inputs.profile == 'full' }}",
-          "run": "node node_modules/@playwright/test/cli.js install --with-deps chromium firefox webkit"
+          "run": "node node_modules/@playwright/test/cli.js install --with-deps chromium firefox webkit",
+          "id": "browsers"
         },
         {
           "name": "Qualify the selected candidate profile",
@@ -66,7 +72,23 @@
             "CANDIDATE_PROFILE": "${{ inputs.profile }}",
             "CARGO_NET_OFFLINE": "true"
           },
-          "run": "case \"$CANDIDATE_PROFILE\" in\n  full) node scripts/verify-candidate.mjs ;;\n  functional) node scripts/verify-candidate.mjs --functional ;;\n  *) echo \"Unsupported candidate qualification profile\" >&2; exit 2 ;;\nesac"
+          "run": "case \"$CANDIDATE_PROFILE\" in\n  full) node scripts/verify-candidate.mjs ;;\n  functional) node scripts/verify-candidate.mjs --functional ;;\n  *) echo \"Unsupported candidate qualification profile\" >&2; exit 2 ;;\nesac",
+          "id": "candidate"
+        },
+        {
+          "name": "Record qualification setup and stage outcomes",
+          "if": "${{ always() }}",
+          "env": {
+            "CANDIDATE_PROFILE": "${{ inputs.profile }}",
+            "CHECKOUT_OUTCOME": "${{ steps.checkout.outcome }}",
+            "NODE_OUTCOME": "${{ steps.node.outcome }}",
+            "RUST_OUTCOME": "${{ steps.rust.outcome }}",
+            "NPM_OUTCOME": "${{ steps.npm.outcome }}",
+            "CARGO_OUTCOME": "${{ steps.cargo.outcome }}",
+            "BROWSERS_OUTCOME": "${{ steps.browsers.outcome }}",
+            "CANDIDATE_OUTCOME": "${{ steps.candidate.outcome }}"
+          },
+          "run": "mkdir -p target/v1-candidate-runs\nprintf '%s\t%s\n' \\\n  revision \"$GITHUB_SHA\" profile \"$CANDIDATE_PROFILE\" os \"$RUNNER_OS\" arch \"$RUNNER_ARCH\" \\\n  checkout \"${CHECKOUT_OUTCOME:-unavailable}\" node \"${NODE_OUTCOME:-unavailable}\" \\\n  rust \"${RUST_OUTCOME:-unavailable}\" npm \"${NPM_OUTCOME:-unavailable}\" cargo \"${CARGO_OUTCOME:-unavailable}\" \\\n  browsers \"${BROWSERS_OUTCOME:-unavailable}\" candidate \"${CANDIDATE_OUTCOME:-unavailable}\" \\\n  > target/v1-candidate-runs/runner-context.tsv"
         },
         {
           "name": "Retain candidate results and failure logs",

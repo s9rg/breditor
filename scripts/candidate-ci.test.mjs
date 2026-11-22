@@ -1,7 +1,9 @@
 import assert from "node:assert/strict";
 import {spawnSync} from "node:child_process";
-import {readFileSync} from "node:fs";
+import {mkdtempSync,readFileSync,rmSync} from "node:fs";
 import test from "node:test";
+import {tmpdir} from "node:os";
+import {join} from "node:path";
 
 const workflow=JSON.parse(readFileSync(new URL("../.github/workflows/candidate-qualification.yml",import.meta.url),"utf8"));
 const job=workflow.jobs.qualify,steps=job.steps;
@@ -96,4 +98,28 @@ test("profile dispatch preserves failures and rejects unknown values without she
   assert.equal(invalid.stdout,"");
   assert.match(invalid.stderr,/Unsupported candidate qualification profile/);
  }
+});
+
+test("a setup failure still has a retained commit and runner outcome report",()=>{
+ const row=named("Record qualification setup and stage outcomes");
+ const ids=["checkout","node","rust","npm","cargo","browsers","candidate"];
+ assert.deepEqual(steps.slice(0,ids.length).map(step=>step.id),ids);
+ assert.equal(row.if,"${{ always() }}");
+ assert.equal(steps.indexOf(row)+1,steps.indexOf(named("Retain candidate results and failure logs")));
+ for(const id of ids)assert.equal(row.env[id.toUpperCase()+"_OUTCOME"],"${{ steps."+id+".outcome }}");
+ const cwd=mkdtempSync(join(tmpdir(),"breditor-ci-setup-report-"));
+ try{
+  const sha="1".repeat(40);
+  const result=spawnSync("bash",["-ec",row.run],{
+   cwd,encoding:"utf8",env:{...process.env,GITHUB_SHA:sha,CANDIDATE_PROFILE:"full",RUNNER_OS:"Linux",RUNNER_ARCH:"X64",
+    CHECKOUT_OUTCOME:"success",NODE_OUTCOME:"success",RUST_OUTCOME:"failure",
+    NPM_OUTCOME:"skipped",CARGO_OUTCOME:"skipped",BROWSERS_OUTCOME:"skipped",CANDIDATE_OUTCOME:"skipped"},
+  });
+  assert.equal(result.status,0,result.stderr);
+  const report=readFileSync(join(cwd,"target/v1-candidate-runs/runner-context.tsv"),"utf8");
+  assert.deepEqual(Object.fromEntries(report.trimEnd().split("\n").map(line=>line.split("\t"))),{
+   revision:sha,profile:"full",os:"Linux",arch:"X64",checkout:"success",node:"success",rust:"failure",
+   npm:"skipped",cargo:"skipped",browsers:"skipped",candidate:"skipped",
+  });
+ }finally{rmSync(cwd,{recursive:true,force:true});}
 });
