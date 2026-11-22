@@ -29,6 +29,16 @@ if(runs.length===1){
     if(existsSync(join(directory,log)))lines.push("- The stage log in the uploaded artifact is `"+log+"`.");
    }
   }
+  const slowest=result.stages.flatMap(({id,status,execution,startedAt,finishedAt})=>{
+   if(status!=="passed"||execution==="activation-shard"||typeof id!=="string"||!token.test(id)||
+      typeof startedAt!=="string"||typeof finishedAt!=="string")return [];
+   const duration=Date.parse(finishedAt)-Date.parse(startedAt);
+   return Number.isFinite(duration)&&duration>=0?[{id,duration}]:[];
+  }).sort((a,b)=>b.duration-a.duration).slice(0,5);
+  if(slowest.length){
+   lines.push("- Slowest completed stages in this job");
+   for(const {id,duration} of slowest)lines.push(`  - ${code(id)} took ${(duration/1000).toFixed(2)} s.`);
+  }
  }catch{lines.push("- Could not read a candidate result matching the runner context.");}
  lines.push("- The result in the uploaded artifact is `"+manifest+"`.");
 }else if(runs.length===0){
