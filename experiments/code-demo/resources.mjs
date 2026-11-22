@@ -2,7 +2,7 @@ import {readFileSync} from "node:fs";
 
 export function codeDemoResources(mode, importMap) {
  const shared = mode === "shared";
- const editor = (id, label) => `<section class="editor-pane"><h2>${label}</h2><div data-demo-editor id="${id}"></div></section>`;
+ const editor = (id, label) => `<section class="editor-pane" aria-labelledby="code-pane-${id}"><h2 id="code-pane-${id}">${label}</h2><div data-demo-editor id="${id}"></div></section>`;
  const html = `<!doctype html>
 <html lang="en">
 <meta charset="utf-8">
@@ -11,6 +11,7 @@ export function codeDemoResources(mode, importMap) {
 ${importMap}
 <link rel="stylesheet" href="/code-demo.css">
 <body data-code-demo="${mode}">
+ <a class="skip-link" href="#code-editors">Skip to code editors</a>
  <header>
   <nav aria-label="Demo navigation"><a href="/demo">← ${shared ? "Shared demo" : "Rich content demo"}</a></nav>
   <h1>Code highlighting</h1>
@@ -22,7 +23,7 @@ ${importMap}
    <span id="code-ready" role="status">Loading editor…</span>
   </div>
  </header>
- <main class="editors">
+ <main id="code-editors" class="editors" tabindex="-1">
   ${shared ? editor("a", "Writer A") + editor("b", "Writer B") : editor("a", "Local editor")}
  </main>
  <script type="module" src="/code-demo.mjs"></script>

@@ -8,6 +8,24 @@ body {
  font: 1rem/1.5 system-ui, sans-serif;
 }
 body[data-code-demo="local"] { max-width: 54rem; }
+.skip-link {
+ position: absolute;
+ inset-block-start: 8px;
+ inset-inline-start: 8px;
+ transform: translateY(-200%);
+ padding: .35rem .65rem;
+ background: #fff;
+ color: #235e53;
+ z-index: 1;
+}
+.skip-link:focus {
+ position: relative;
+ display: inline-block;
+ inset: auto;
+ transform: none;
+ margin-bottom: .6rem;
+ outline: 2px solid #235e53;
+}
 header { margin-bottom: 2rem; }
 nav a {
  color: #235e53;
