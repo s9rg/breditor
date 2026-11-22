@@ -3,7 +3,7 @@ import init,* as wasm from "/wasm.js";
 import {mountRichLocalAutosave} from "/dist/browser/persistence/local_autosave.js";
 import {compileRichProfile,mountRichEditor,RichAssetStore,RichLocalSessionStore,insertImageFiles,defaultToolbar,
  mountRichSlashCommands,createRichSlashCommands,mountRichSelectionToolbar,mountRichContextMenu,
- mountRichTableColumnResize,richTableColumnResizeCommit,mountRichImageResize,richImageResizeCommit,mountRichBlockDrag,richUiStringsEn,standardRichSlashPicks} from "/rich.js";
+ mountRichTableColumnResize,richTableColumnResizeCommit,mountRichImageResize,richImageResizeCommit,mountRichBlockDrag,mountRichShortcutHelp,richUiStringsEn,standardRichSlashPicks} from "/rich.js";
 // ?ui=pseudo wraps every chrome string to show the opt-in catalog; &dir=rtl mirrors the chrome only, never content.
 const query=new URLSearchParams(location.search);
 const ui=query.get("ui")==="pseudo"?{strings:Object.fromEntries(Object.entries(richUiStringsEn).map(([key,value])=>[key,`⟦${value}⟧`])),lang:"en-XA",direction:query.get("dir")==="rtl"?"rtl":"ltr"}:undefined;
@@ -37,7 +37,16 @@ if(saved){try{owner=profile.restoreEditor(saved);core.dispose();}catch(error){co
 const overlay=document.createElement("div");overlay.id="table-resize";overlay.style.position="relative";
 document.getElementById("editor").before(overlay);
 const imageOverlay=document.createElement("div");imageOverlay.id="image-resize";imageOverlay.style.position="relative";overlay.after(imageOverlay);
-let extras=[];
+let extras=[],shortcutHelp;
+const shortcutButton=document.createElement("button");
+shortcutButton.type="button";
+shortcutButton.textContent="Keyboard shortcuts";
+shortcutButton.setAttribute("aria-haspopup","dialog");
+document.querySelector(".tools").append(shortcutButton);
+shortcutButton.addEventListener("click",()=>{
+ shortcutButton.focus({preventScroll:true});
+ shortcutHelp.open();
+});
 function mountExtras(editor){
  for(const extra of extras)extra.dispose();
  extras=[
@@ -48,6 +57,8 @@ function mountExtras(editor){
   mountRichImageResize(imageOverlay,editor,{commit:richImageResizeCommit(editor),onError:report}),
   mountRichBlockDrag(editor),
  ];
+ shortcutHelp=mountRichShortcutHelp(editor,{onError:report});
+ extras.push(shortcutHelp);
 }
 const saveState=document.getElementById("saved");
 saveState.setAttribute("role","status");
