@@ -21,14 +21,14 @@ async fn prepare(
     fixture: &Fixture,
     operation: OperationalLogGenerationServerRoom,
 ) -> TestResult<PreparedLogGenerationRecoveryHost> {
-    Ok(prepare_log_generation_recovery_host(
+    Ok(Box::pin(prepare_log_generation_recovery_host(
         operation,
         auth(&fixture.owner)?,
         fixture.source.local_copy()?,
         &fixture.source.local.info()?.identity,
         "owner",
         &fixture.owner,
-    )
+    ))
     .await?)
 }
 

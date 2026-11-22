@@ -35,23 +35,27 @@ impl ServerRecoveryAssetProvider for Mapping<'_> {
 }
 
 #[tokio::test]
+#[expect(
+    clippy::too_many_lines,
+    reason = "Keep the scenario and its assertions in chronological order"
+)]
 async fn activation_refuses_advanced_source_and_changed_mapping_then_resumes_synced_epoch()
 -> TestResult {
     let (fixture, room, _) = segment_handover_test_source(3, true, true)?;
     let native = fixture.room();
-    let root = native.parent().ok_or("fixture root")?;
-    let mut assets = AssetStore::open(&root.join("initial-rasters"), room.asset_binding())?;
+    let directory = native.parent().ok_or("fixture root")?;
+    let mut assets = AssetStore::open(&directory.join("initial-rasters"), room.asset_binding())?;
     let pixels = image(100)?;
     let id = asset_id(&pixels);
     assets.put(prepare_asset(&id, "image/png", pixels)?)?;
-    let archive = root.join("initial-rasters.archive");
+    let archive = directory.join("initial-rasters.archive");
     let original = assets.write_backup(&mut File::create_new(&archive)?)?;
     let assets = ContinuedAssetStore::create_from_backup(
-        &root.join("continued"),
+        &directory.join("continued"),
         File::open(archive)?,
         &original,
     )?;
-    let authority_root = root.join("authority");
+    let authority_root = directory.join("authority");
     let authority = RoomDeploymentAuthority::create_with_coordinated_recovery(
         &authority_root,
         &room.deployment_binding()?,
@@ -70,10 +74,10 @@ async fn activation_refuses_advanced_source_and_changed_mapping_then_resumes_syn
     let credentials = RecoveryRegistrationCredentials::default();
     let provider = Mapping(&id);
     let restore = |name: &str| {
-        let capture = root.join(format!("{name}-capture"));
+        let capture = directory.join(format!("{name}-capture"));
         let selection = handle.capture("owner", &token, &capture)?;
         let backup = ContinuedRasterRoomBackupFiles::open(&capture, &selection, None)?;
-        let path = root.join(name);
+        let path = directory.join(name);
         let mut target =
             backup.restore(&path, "next", ContinuedRasterRoomClientArchives::default())?;
         let report =
@@ -147,7 +151,10 @@ async fn activation_refuses_advanced_source_and_changed_mapping_then_resumes_syn
     ));
     drop(target);
     assert_eq!(authority.current_selection()?, planned);
-    assert!(matches!(handle.capture("owner", &token, &root.join("denied")), Err(Error::Lease)));
+    assert!(matches!(
+        handle.capture("owner", &token, &directory.join("denied")),
+        Err(Error::Lease)
+    ));
     assert!(authority.claim(&planned).is_err());
 
     let authority = RoomDeploymentAuthority::open_at_least(&authority_root, &planned)?;
@@ -160,30 +167,34 @@ async fn activation_refuses_advanced_source_and_changed_mapping_then_resumes_syn
     )?;
     assert_eq!(authority.current_selection()?, next);
     assert_eq!(next.generation.parse::<u64>()?, planned.generation.parse::<u64>()? + 1);
-    assert!(handle.capture("owner", &token, &root.join("restarted")).is_ok());
+    assert!(handle.capture("owner", &token, &directory.join("restarted")).is_ok());
     Ok(())
 }
 
 #[test]
+#[expect(
+    clippy::too_many_lines,
+    reason = "Keep the scenario and its assertions in chronological order"
+)]
 fn portable_seal_survives_lost_reply_and_refuses_changed_inputs_after_relocation() -> TestResult {
     let (fixture, room, _) = segment_handover_test_source(3, true, true)?;
     let root_path = fixture.room();
-    let root = root_path.parent().ok_or("fixture root")?;
-    let mut predecessor = AssetStore::open(&root.join("initial"), room.asset_binding())?;
+    let directory = root_path.parent().ok_or("fixture root")?;
+    let mut predecessor = AssetStore::open(&directory.join("initial"), room.asset_binding())?;
     let first = image(201)?;
     let first_id = asset_id(&first);
     predecessor.put(prepare_asset(&first_id, "image/png", first)?)?;
-    let archive = root.join("predecessor.archive");
+    let archive = directory.join("predecessor.archive");
     let pin = predecessor.write_backup(&mut File::create_new(&archive)?)?;
     let mut assets = ContinuedAssetStore::create_from_backup(
-        &root.join("continued"),
+        &directory.join("continued"),
         File::open(archive)?,
         &pin,
     )?;
     let other = image(202)?;
     let other_id = asset_id(&other);
     assets.put(prepare_asset(&other_id, "image/png", other)?)?;
-    let epochs = root.join("authority");
+    let epochs = directory.join("authority");
     let authority = RoomDeploymentAuthority::create_with_coordinated_recovery(
         &epochs,
         &room.deployment_binding()?,
@@ -198,13 +209,13 @@ fn portable_seal_survives_lost_reply_and_refuses_changed_inputs_after_relocation
     };
     let (_, source) =
         router_with_continued_assets_and_deployment_lease(room, auth()?, assets, lease)?;
-    let capture = root.join("capture");
+    let capture = directory.join("capture");
     let selection = source.capture("owner", &token, &capture)?;
     let backup = ContinuedRasterRoomBackupFiles::open(&capture, &selection, None)?;
     let credentials = RecoveryRegistrationCredentials::default();
     let provider = Mapping(&first_id);
     let mut preflight = backup.restore(
-        &root.join("preflight"),
+        &directory.join("preflight"),
         "preflight",
         ContinuedRasterRoomClientArchives::default(),
     )?;
@@ -227,12 +238,15 @@ fn portable_seal_survives_lost_reply_and_refuses_changed_inputs_after_relocation
         Err(Error::Contract("injected durable handover interruption")),
     ));
     assert!(matches!(seal.status(&authority)?, LogGenerationHandoverStatus::Sealed));
-    assert!(matches!(source.capture("owner", &token, &root.join("denied")), Err(Error::Lease)));
+    assert!(matches!(
+        source.capture("owner", &token, &directory.join("denied")),
+        Err(Error::Lease)
+    ));
     assert!(authority.claim(&planned).is_err());
     drop(source);
 
     let cold = RoomDeploymentAuthority::open_at_least(&epochs, &planned)?;
-    let path = root.join("relocated");
+    let path = directory.join("relocated");
     let mut target =
         backup.restore(&path, "relocated", ContinuedRasterRoomClientArchives::default())?;
     assert_ne!(target.identity(), preflight.identity());
@@ -274,19 +288,20 @@ fn portable_seal_survives_lost_reply_and_refuses_changed_inputs_after_relocation
     )?;
     assert_eq!(cold.current_selection()?, active);
     assert_eq!(active, approval.planned_selection()?);
-    let floor = replacement.capture("owner", &token, &root.join("final"))?;
+    let floor = replacement.capture("owner", &token, &directory.join("final"))?;
     drop(replacement);
     drop(backup);
     tail_tests::check_interrupted_repair(
-        root, &selection, &approval, &active, &floor, &hash, &token,
+        directory, &selection, &approval, &active, &floor, &hash, &token,
     )?;
-    let backup = ContinuedRasterRoomBackupFiles::open(&root.join("capture"), &selection, None)?;
+    let backup =
+        ContinuedRasterRoomBackupFiles::open(&directory.join("capture"), &selection, None)?;
     let repair_authority = RoomDeploymentAuthority::open_at_least(&epochs, &active)?;
     let restart = ContinuedRasterRestart {
         authority: &repair_authority,
         approval: &approval,
         expected: &active,
     };
-    rotation_tests::check_interrupted_rotation(root, &backup, &restart, &floor, &auth, &token)?;
+    rotation_tests::check_interrupted_rotation(directory, &backup, &restart, &floor, auth, &token)?;
     Ok(())
 }

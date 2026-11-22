@@ -11,14 +11,14 @@ async fn raster_only_additions_stale_the_current_proof_without_changing_the_nati
 -> TestResult {
     let source = Source::new((3, true), true, true, true)?;
     let (auth, owner, _) = authentication()?;
-    let handle = prepare_log_generation_recovery_host(
+    let handle = Box::pin(prepare_log_generation_recovery_host(
         source.operation("current")?,
         auth,
         source.original_copy()?,
         &source.original.info()?.identity,
         "owner",
         &owner,
-    )
+    ))
     .await?;
     let state = handle.capture_recovery_state("owner", &owner).await?;
     let expected = state.identity()?;
@@ -70,14 +70,14 @@ async fn a_later_registration_requires_its_own_protected_secret_in_addition_to_a
 -> TestResult {
     let source = Source::new((3, true), true, true, true)?;
     let (auth, owner, _) = authentication()?;
-    let handle = prepare_log_generation_recovery_host(
+    let handle = Box::pin(prepare_log_generation_recovery_host(
         source.operation("current")?,
         auth,
         source.original_copy()?,
         &source.original.info()?.identity,
         "owner",
         &owner,
-    )
+    ))
     .await?;
     let state = handle.capture_recovery_state("owner", &owner).await?;
     let expected = state.identity()?;
@@ -141,14 +141,14 @@ async fn streamed_current_archive_and_inventory_match_and_refuse_output_failures
 
     let source = Source::new((3, true), true, true, true)?;
     let (auth, owner, _) = authentication()?;
-    let handle = prepare_log_generation_recovery_host(
+    let handle = Box::pin(prepare_log_generation_recovery_host(
         source.operation("streamed")?,
         auth,
         source.original_copy()?,
         &source.original.info()?.identity,
         "owner",
         &owner,
-    )
+    ))
     .await?;
     let buffered = handle.capture_recovery_state("owner", &owner).await?;
     let expected = buffered.identity()?;

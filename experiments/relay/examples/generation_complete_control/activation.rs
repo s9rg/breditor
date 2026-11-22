@@ -32,12 +32,14 @@ pub struct Prepared {
 }
 
 pub async fn seal(
-    root: &Path,
+    directory: &Path,
     room: Room,
     assets: AssetStore,
 ) -> Result<(ServerLogGenerationRoomBackup, Predecessor)> {
-    let authority =
-        RoomDeploymentAuthority::create(&root.join("deployment"), &room.deployment_binding()?)?;
+    let authority = RoomDeploymentAuthority::create(
+        &directory.join("deployment"),
+        &room.deployment_binding()?,
+    )?;
     let lease = authority.claim(&authority.current_selection()?)?;
     let (auth, token) = authentication("owner")?;
     let (_router, live) = router_with_log_generation_backups_and_deployment_lease(
@@ -77,7 +79,12 @@ pub async fn seal(
     .await?;
     let backup = live.capture("owner", &token).await?;
     let intent = live
-        .prepare_handover("owner", &token, &root.join("source-intent"), backup.info()?.identity)
+        .prepare_handover(
+            "owner",
+            &token,
+            &directory.join("source-intent"),
+            backup.info()?.identity,
+        )
         .await?;
     let selected = intent.identity().clone();
     let intent = Arc::new(live.seal_prepared_handover("owner", &token, intent, &selected).await?);

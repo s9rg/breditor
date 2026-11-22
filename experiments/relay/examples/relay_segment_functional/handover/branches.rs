@@ -17,6 +17,10 @@ use std::{
     sync::Arc,
 };
 
+#[expect(
+    clippy::too_many_arguments,
+    reason = "The fixture supplies each independently selected input to the scenario"
+)]
 pub(super) fn inspect(
     parent: &Path,
     handle: &ServerBackupHandle,
@@ -116,7 +120,7 @@ pub(super) fn check_retention(
         originals,
         alternatives,
     )?;
-    assert_eq!(target.client_alternate_pins()?, [pin.clone()]);
+    assert_eq!(target.client_alternate_pins()?, std::slice::from_ref(pin));
     let mut copy = Vec::new();
     assert!(!target.copy_client_archive(pin, &mut copy)?);
     assert!(target.copy_client_alternative(pin, &mut copy)?);

@@ -16,8 +16,10 @@ mod full_predecessor;
 #[path = "relay_segment_functional/handover.rs"]
 mod handover;
 #[path = "server_generation_inventory_fixture/source.rs"]
+#[expect(dead_code, reason = "The standalone fixture uses the other items in this shared module")]
 mod source;
 #[path = "participant_inventory_fixture/storage.rs"]
+#[expect(dead_code, reason = "The standalone fixture uses the other items in this shared module")]
 mod storage;
 
 use breditor_collab_relay::{
@@ -178,6 +180,10 @@ fn source_router(
 }
 
 #[tokio::main(worker_threads = 2)]
+#[expect(
+    clippy::too_many_lines,
+    reason = "Keep the scenario and its assertions in chronological order"
+)]
 async fn main() -> Result {
     let args = std::env::args().skip(1).collect::<Vec<_>>();
     let [parent, mode, address] = args.as_slice() else {

@@ -157,14 +157,14 @@ pub(super) async fn crash_after_sealed_handover(parent: &Path, point: Point) -> 
     .finish(origin)?
     .begin_operation(origin, selected, POLICY, "owner")?;
     let (auth, owner, _) = authentication()?;
-    let host = prepare_log_generation_recovery_host(
+    let host = Box::pin(prepare_log_generation_recovery_host(
         operation,
         auth,
         copy(origin)?,
         selected,
         "owner",
         &owner,
-    )
+    ))
     .await?;
     let protected = TestProtected::capture(&setup.source);
     let proof = verify_current(&host, &owner, &protected).await?;
@@ -262,14 +262,14 @@ async fn recover(root: &Path, committed: bool) -> TestResult {
         "owner",
     )?;
     let (auth, owner, _) = authentication()?;
-    let host = prepare_log_generation_recovery_host(
+    let host = Box::pin(prepare_log_generation_recovery_host(
         operation,
         auth,
         copy(origin)?,
         &origin_identity,
         "owner",
         &owner,
-    )
+    ))
     .await?;
     let proof = verify_current(&host, &owner, &retained.protected).await?;
     assert_eq!(proof.identity(), *retained.checkpoint.current());

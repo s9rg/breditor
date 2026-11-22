@@ -87,14 +87,14 @@ pub(super) async fn finish(ready: Ready, pending: Pending) -> Result<(Ready, Off
         "owner",
     )?;
     let account = authentication::accounts()?;
-    let host = prepare_log_generation_recovery_host(
+    let host = Box::pin(prepare_log_generation_recovery_host(
         operation,
         account.authentication,
         ServerLogGenerationRoomBackup::from_owned_bytes(original.to_bytes()?)?,
         &original.info()?.identity,
         "owner",
         &account.owner,
-    )
+    ))
     .await?;
     let proof = credentials::verify(&host, &account.owner, &protected).await?;
     if pending.checkpoint.identity().previous_selection() != &prior {

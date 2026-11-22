@@ -61,6 +61,10 @@ pub(super) async fn fill_raster_store(source: &Source, count: usize) -> TestResu
 }
 
 #[tokio::test]
+#[expect(
+    clippy::too_many_lines,
+    reason = "Keep the scenario and its assertions in chronological order"
+)]
 async fn full_raster_store_activates_with_original_upload_bytes_and_no_new_receipt() -> TestResult {
     let source = Source::open()?;
     let seed = pixel(0)?;

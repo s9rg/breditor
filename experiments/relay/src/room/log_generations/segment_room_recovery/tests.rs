@@ -14,6 +14,10 @@ type TestResult = Result<(), Box<dyn std::error::Error>>;
 const REACQUIRE: RoomRecoveryPolicy = RoomRecoveryPolicy::HostReacquired;
 
 #[test]
+#[expect(
+    clippy::too_many_lines,
+    reason = "Keep the scenario and its assertions in chronological order"
+)]
 fn segment_room_restore_survives_absent_source_directories_and_can_roll_over_again() -> TestResult {
     let (files, mut room, _) = setup_profile(3, true, true)?;
     let source = files.room();

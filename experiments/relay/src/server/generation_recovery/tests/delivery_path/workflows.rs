@@ -55,14 +55,14 @@ async fn workflow(profile: (u32, bool), atomic: bool, document: bool, review: bo
         "owner",
     )?;
     let (auth, token, _) = authentication()?;
-    let reopened = prepare_log_generation_recovery_host(
+    let reopened = Box::pin(prepare_log_generation_recovery_host(
         operation,
         auth,
         seed.original_copy()?,
         &seed.original.info()?.identity,
         "owner",
         &token,
-    )
+    ))
     .await?;
     assert_eq!(
         reopened.capture_recovery_state("owner", &token).await?.identity()?,

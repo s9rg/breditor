@@ -64,6 +64,10 @@ pub(super) fn backup(parent: &Path) -> Result<RelaySegmentRoomBackupFiles> {
 }
 
 impl Carry {
+    #[expect(
+        clippy::too_many_lines,
+        reason = "Keep the scenario and its assertions in chronological order"
+    )]
     fn commit(self, parent: &Path, handle: &ServerBackupHandle) -> Result<Value> {
         let principal = "owner";
         let capture_path = parent.join("carry-capture");

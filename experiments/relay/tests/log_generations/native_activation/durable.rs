@@ -87,14 +87,14 @@ pub(super) async fn restart(
         "owner",
     )?;
     let (auth, token) = authentication()?;
-    let host = prepare_log_generation_recovery_host(
+    let host = Box::pin(prepare_log_generation_recovery_host(
         operation,
         auth,
         ServerLogGenerationRoomBackup::from_owned_bytes(original.to_bytes()?)?,
         &original.info()?.identity,
         "owner",
         &token,
-    )
+    ))
     .await?;
     let state = host.capture_recovery_state("owner", &token).await?;
     let current = state.identity()?;

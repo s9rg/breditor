@@ -6,18 +6,22 @@ use super::{
 use std::io::Write;
 
 #[test]
+#[expect(
+    clippy::too_many_lines,
+    reason = "Keep the scenario and its assertions in chronological order"
+)]
 fn two_full_raster_generations_roll_forward_and_reopen_twice() -> TestResult {
     let (files, room, _) = setup()?;
     let directory = files.recovery();
     fs::create_dir(&directory)?;
-    let mut root =
+    let mut original_assets =
         crate::assets::AssetStore::open(&directory.join("original"), room.asset_binding())?;
     for i in 0..MAX_ASSETS {
-        root.put(prepared(&image(i)?)?)?;
+        original_assets.put(prepared(&image(i)?)?)?;
     }
     let root_path = directory.join("root.archive");
-    let genesis = root.write_backup(&mut ancestor(&root_path)?)?;
-    drop(root);
+    let genesis = original_assets.write_backup(&mut ancestor(&root_path)?)?;
+    drop(original_assets);
     let mut source = ContinuedAssetStore::create_from_backup(
         &directory.join("source"),
         File::open(&root_path)?,
@@ -79,7 +83,7 @@ fn two_full_raster_generations_roll_forward_and_reopen_twice() -> TestResult {
     );
     drop(target);
     assert_eq!(source.active_count(), MAX_ASSETS);
-    assert!(!source.get(&asset_id(&new))?.is_some());
+    assert!(source.get(&asset_id(&new))?.is_none());
 
     let invalid = directory.join("packed-with-extra-byte");
     let mut changed = ancestor(&invalid)?;

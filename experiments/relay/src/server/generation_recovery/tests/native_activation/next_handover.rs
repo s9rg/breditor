@@ -201,14 +201,14 @@ async fn handover(durable: bool) -> TestResult {
     .finish(backup)?
     .begin_operation(backup, &current_identity.server, POLICY, "owner")?;
     let (auth, token, _) = authentication()?;
-    let successor = prepare_log_generation_recovery_host(
+    let successor = Box::pin(prepare_log_generation_recovery_host(
         operational,
         auth,
         ServerLogGenerationRoomBackup::from_owned_bytes(current_bytes)?,
         &current_identity.server,
         "owner",
         &token,
-    )
+    ))
     .await?;
     let successor_cut = successor.capture_recovery_state("owner", &token).await?;
     let identity = successor_cut.identity()?;

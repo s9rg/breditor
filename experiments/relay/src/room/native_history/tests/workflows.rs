@@ -480,6 +480,10 @@ fn resume_joined_author(
     assert_eq!(repeated.receipt, first.review_receipt.receipt);
     Ok(())
 }
+#[expect(
+    clippy::fn_params_excessive_bools,
+    reason = "This test helper covers an explicit matrix of independent feature flags"
+)]
 fn joined_physical_restore(
     profile_choice: (u32, bool),
     atomic: bool,

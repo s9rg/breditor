@@ -15,6 +15,10 @@ use breditor_collab_feasibility::{
 type TestResult = Result<(), Box<dyn std::error::Error>>;
 
 #[test]
+#[expect(
+    clippy::too_many_lines,
+    reason = "Keep the scenario and its assertions in chronological order"
+)]
 fn materialized_relay_checkpoint_keeps_old_receipts_and_resumes_both_offline_histories()
 -> TestResult {
     let (files, mut room, profile) = setup_profile(3, true, true)?;

@@ -12,14 +12,14 @@ use crate::{
 use std::{fs, os::unix::fs::MetadataExt, path::Path};
 
 pub(super) fn check_interrupted_rotation(
-    root: &Path,
+    directory: &Path,
     backup: &ContinuedRasterRoomBackupFiles,
     restart: &ContinuedRasterRestart<'_>,
     floor: &ContinuedRasterRoomBackupIdentity,
     authenticate: impl Fn() -> crate::Result<Authentication>,
     token: &str,
 ) -> TestResult {
-    let path = root.join("relocated");
+    let path = directory.join("relocated");
     let native = path.join("native");
     let marker = native.join(".rotation.json");
     let active = path.join("rasters/active");
@@ -53,7 +53,7 @@ pub(super) fn check_interrupted_rotation(
             backup.restart_activated_room(&path, authenticate()?, "owner", token, restart).is_err()
         );
         assert_eq!(fs::read(&marker)?, original_intent);
-        let evidence = root.join(generation);
+        let evidence = directory.join(generation);
         let plan = backup.inspect_activated_native_rotation(
             &path,
             &authenticate()?,
@@ -105,7 +105,7 @@ pub(super) fn check_interrupted_rotation(
     }
     let (_, reopened, epoch) =
         backup.restart_activated_room(&path, authenticate()?, "owner", token, restart)?;
-    let next_cut = reopened.capture("owner", token, &root.join("rotation-restarted"))?;
+    let next_cut = reopened.capture("owner", token, &directory.join("rotation-restarted"))?;
     assert_eq!(next_cut.source_epoch, epoch);
     assert_eq!(restart.authority.current_selection()?, epoch);
     Ok(())

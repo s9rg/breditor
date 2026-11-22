@@ -214,14 +214,14 @@ async fn continue_after_crash(root: &Path, committed: bool) -> TestResult {
         "owner",
     )?;
     let (auth, owner, _) = authentication()?;
-    let handle = prepare_log_generation_recovery_host(
+    let handle = Box::pin(prepare_log_generation_recovery_host(
         operation,
         auth,
         crate::ServerLogGenerationRoomBackup::from_owned_bytes(original.to_bytes()?)?,
         &original.info()?.identity,
         "owner",
         &owner,
-    )
+    ))
     .await?;
     let state = handle.capture_recovery_state("owner", &owner).await?;
     let current = state.identity()?;

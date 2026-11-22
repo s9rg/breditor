@@ -166,3 +166,18 @@ required-features = ["server"]
 name = "relay_segment_functional"
 path = "examples/relay_segment_functional.rs"
 required-features = ["server"]
+
+[[example]]
+name = "inactive_recovery_raster_functional"
+path = "examples/inactive_recovery_raster_functional.rs"
+required-features = ["server"]
+
+[[example]]
+name = "native_joint_process_recovery_functional"
+path = "examples/native_joint_process_recovery_functional.rs"
+required-features = ["server"]
+
+[[example]]
+name = "native_process_recovery_functional"
+path = "examples/native_process_recovery_functional.rs"
+required-features = ["server"]

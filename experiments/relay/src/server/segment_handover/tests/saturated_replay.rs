@@ -100,16 +100,19 @@ async fn a_saturated_relocated_relay_cold_reopens_and_accepts_offline_undo() -> 
 
 #[test]
 fn cold_full_relay_worker() -> TestResult {
-    let Some(root) = std::env::var_os("BREDITOR_FULL_RELAY_FIXTURE") else {
+    let Some(directory) = std::env::var_os("BREDITOR_FULL_RELAY_FIXTURE") else {
         return Ok(());
     };
-    let root = PathBuf::from(root);
+    let directory = PathBuf::from(directory);
     let selected: RelaySegmentPortableBackupIdentity =
-        serde_json::from_slice(&fs::read(root.join("full-relay-selection.json"))?)?;
-    let work: OfflineWork = serde_json::from_slice(&fs::read(root.join("offline-work.json"))?)?;
-    let bundle =
-        RelaySegmentRetainedBackup::open_portable(&root.join("packed-before-full"), &selected)?;
-    let path = root.join("relocated-full");
+        serde_json::from_slice(&fs::read(directory.join("full-relay-selection.json"))?)?;
+    let work: OfflineWork =
+        serde_json::from_slice(&fs::read(directory.join("offline-work.json"))?)?;
+    let bundle = RelaySegmentRetainedBackup::open_portable(
+        &directory.join("packed-before-full"),
+        &selected,
+    )?;
+    let path = directory.join("relocated-full");
     let mut target = bundle.backup().reopen(&path, POLICY)?;
     let room = target.components_mut().0;
     assert_eq!(room.catchup("saved-reader")?, work.before);

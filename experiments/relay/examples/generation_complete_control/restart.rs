@@ -47,7 +47,14 @@ pub fn checkpoint_digest(
     Ok(Sha256::digest(serde_json::to_vec(identity)?).into())
 }
 
+#[expect(
+    clippy::too_many_lines,
+    reason = "Keep the scenario and its assertions in chronological order"
+)]
 pub async fn run(root: &OsStr, inspect: bool) -> Result {
+    #[cfg(unix)]
+    use std::os::unix::fs::OpenOptionsExt;
+
     let root = std::fs::canonicalize(Path::new(root))?;
     let mut raw = Vec::new();
     std::io::stdin().take(1024 * 1024 + 1).read_to_end(&mut raw)?;
@@ -77,7 +84,7 @@ pub async fn run(root: &OsStr, inspect: bool) -> Result {
     };
     let (owner_token, owner_digest) = Authentication::issue_token()?;
     let (account_token, account_digest) = Authentication::issue_token()?;
-    let auth = capture::authentication_for_accounts(json!([
+    let auth = capture::authentication_for_accounts(&json!([
         {"principal":"owner","tokenHash":owner_digest},
         {"principal":"alice","tokenHash":account_digest}
     ]))?;
@@ -85,7 +92,6 @@ pub async fn run(root: &OsStr, inspect: bool) -> Result {
         if !input.documents.is_empty() || !input.reviews.is_empty() {
             return Err("inspection does not require registration credentials".into());
         }
-        use std::os::unix::fs::OpenOptionsExt;
         let file = root.join("restart-observed.backup");
         let output = std::fs::OpenOptions::new()
             .read(true)

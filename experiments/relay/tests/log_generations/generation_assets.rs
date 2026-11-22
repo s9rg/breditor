@@ -21,14 +21,14 @@ async fn prepare_standalone(
 ) -> TestResult<(PreparedLogGenerationRecoveryHost, String)> {
     let (token, hash) = Authentication::issue_token()?;
     let auth=Authentication::from_json(&serde_json::json!({"format":"breditor/relay-auth","formatVersion":1,"origins":["http://127.0.0.1:4187"],"accounts":[{"principal":"owner","tokenHash":hash}]}).to_string())?;
-    let host = prepare_log_generation_recovery_host(
+    let host = Box::pin(prepare_log_generation_recovery_host(
         operation,
         auth,
         ServerLogGenerationRoomBackup::from_owned_bytes(origin.to_bytes()?)?,
         &origin.info()?.identity,
         "owner",
         &token,
-    )
+    ))
     .await?;
     Ok((host, token))
 }

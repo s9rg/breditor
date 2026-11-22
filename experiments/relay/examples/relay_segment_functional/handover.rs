@@ -49,6 +49,10 @@ fn peer_principal() -> String {
 
 #[derive(Deserialize)]
 #[serde(tag = "kind", rename_all = "camelCase", deny_unknown_fields)]
+#[expect(
+    clippy::large_enum_variant,
+    reason = "Keep the fixture input values together for each scenario"
+)]
 enum Command {
     #[serde(rename_all = "camelCase")]
     Handover {
@@ -133,6 +137,14 @@ fn restore_selected_cohort(
     })
 }
 
+#[expect(
+    clippy::too_many_arguments,
+    reason = "The fixture supplies each independently selected input to the scenario"
+)]
+#[expect(
+    clippy::too_many_lines,
+    reason = "Keep the scenario and its assertions in chronological order"
+)]
 fn prepare_and_commit(
     parent: &Path,
     handle: &ServerBackupHandle,
@@ -142,7 +154,7 @@ fn prepare_and_commit(
     journals: &[RelaySegmentClientJournalPin],
     wrong_receipt: RelaySegmentClientJournalPin,
     asset_mapping: Option<provider::Selection>,
-    incoming_branch: Option<RelaySegmentClientJournalPin>,
+    incoming_branch: Option<&RelaySegmentClientJournalPin>,
 ) -> Result<Value> {
     let (expected, previous) =
         handle.capture_relay_segment("owner", token, &parent.join("capture"))?;
@@ -174,7 +186,6 @@ fn prepare_and_commit(
     let backup = restored_backup(parent)?;
     let authentication = configured_auth(parent)?;
     let branch_report = incoming_branch
-        .as_ref()
         .map(|incoming| {
             branches::inspect(
                 parent,
@@ -193,7 +204,6 @@ fn prepare_and_commit(
         })
         .transpose()?;
     let alternative = incoming_branch
-        .as_ref()
         .map(|pin| {
             RelaySegmentClientJournal::open(
                 File::open(parent.join("incoming-branch.bin"))?,
@@ -202,7 +212,7 @@ fn prepare_and_commit(
         })
         .transpose()?;
     let alternatives = alternative.as_slice();
-    if let Some(pin) = &incoming_branch {
+    if let Some(pin) = incoming_branch {
         branches::check_retention(parent, &backup, &archives, &originals, alternatives, pin)?;
     }
     let provider: Arc<dyn ServerRecoveryAssetProvider> = Arc::new(ContentAddressedServerAssets);
@@ -324,7 +334,7 @@ fn prepare_and_commit(
         return Err("original protected or provider inputs are incomplete".into());
     };
     let alternate_branches = &inputs.report().alternate_branches;
-    if let Some(pin) = &incoming_branch {
+    if let Some(pin) = incoming_branch {
         assert_eq!(inputs.report().format_version, 4);
         assert_eq!(alternate_branches.len(), 1);
         assert_eq!(alternate_branches[0].pin, *pin);
@@ -468,7 +478,7 @@ pub(super) fn serve_control(
             &journals,
             wrong_receipt,
             asset_mapping,
-            incoming_branch,
+            incoming_branch.as_ref(),
         )?;
         {
             let mut stdout = std::io::stdout().lock();
