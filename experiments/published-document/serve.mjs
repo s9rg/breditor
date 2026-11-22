@@ -124,14 +124,15 @@ async function reactPage(){
  return page("react",(document,options)=>renderToStaticMarkup(createElement(BreditorStaticDocument,{document,options})));
 }
 const server=createServer(async(request,response)=>{
- if(request.method==="GET"&&request.url==="/react"&&!pages.has("/react")){
+ const read=request.method==="GET"||request.method==="HEAD";
+ if(read&&request.url==="/react"&&!pages.has("/react")){
   try{pages.set("/react",await reactPage());}
   catch{response.writeHead(503).end("Build the candidate SDK and install React to use this preview.");return;}
  }
- const html=request.method==="GET"&&pages.get(request.url);
+ const html=read&&pages.get(request.url);
  if(!html){response.writeHead(404).end("Not found");return;}
- response.writeHead(200,{"Content-Type":"text/html; charset=utf-8","X-Content-Type-Options":"nosniff","Cache-Control":"no-store"});
- response.end(html);
+ response.writeHead(200,{"Content-Type":"text/html; charset=utf-8","X-Content-Type-Options":"nosniff","Cache-Control":"no-store","Content-Length":Buffer.byteLength(html)});
+ response.end(request.method==="HEAD"?undefined:html);
 });
 const port=Number(process.env.BREDITOR_PUBLISHED_PORT??49787);
 if(!Number.isInteger(port)||port<1024||port>65535)throw Error("Invalid published demo port");
