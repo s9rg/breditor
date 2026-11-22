@@ -2,7 +2,7 @@ import {describe,expect,it} from "vitest";
 import {renderToString,renderToStaticMarkup} from "react-dom/server";
 import {BreditorStaticDocument} from "../src/static_document_react.js";
 import {renderStaticDocument,StaticDocumentError} from "../src/static_document.js";
-import {envelope,fullDocument,p,text} from "./static_document_fixture.js";
+import {el,envelope,fullDocument,p,text} from "./static_document_fixture.js";
 
 describe("BreditorStaticDocument",()=>{
  const resolveAsset=({image}:{image:string})=>image==="i1"?"/assets/i1.png":undefined;
@@ -11,6 +11,18 @@ describe("BreditorStaticDocument",()=>{
   const expected=renderStaticDocument(document,{resolveAsset});
   expect(renderToString(<BreditorStaticDocument document={document} options={{resolveAsset}}/>)).toBe(expected);
   expect(renderToStaticMarkup(<BreditorStaticDocument document={JSON.stringify(document)} options={{resolveAsset}}/>)).toBe(expected);
+ });
+ it("includes the same code, list and print styles as the static string",()=>{
+  const document=envelope([
+   el("code-block",{"block-id":"sample",language:"javascript"},[text("const value = 3;")]),
+   el("page-break",{"block-id":"page"}),
+  ]);
+  const options={codeHighlighting:true,legalListNumbering:true,print:{size:"Letter" as const}};
+  const expected=renderStaticDocument(document,options);
+  expect(expected).toContain("data-breditor-print");
+  expect(expected).toContain("data-breditor-legal-lists");
+  expect(expected).toContain("data-breditor-code-highlighting");
+  expect(renderToStaticMarkup(<BreditorStaticDocument document={document} options={options}/>)).toBe(expected);
  });
  it("appends a host class and keeps the shared surface hooks",()=>{
   const html=renderToString(<BreditorStaticDocument document={envelope([p("x",[text("hi")])])} className="article"/>);

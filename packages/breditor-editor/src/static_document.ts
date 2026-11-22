@@ -117,14 +117,27 @@ export function renderStaticDocument(document:unknown,options:StaticRenderOption
 
 /** Same as {@link renderStaticDocument}, plus a report of skipped, hidden and unresolved content. */
 export function renderStaticDocumentWithReport(document:unknown,options:StaticRenderOptions={}):StaticRenderResult {
+ const rendered=renderContents(document,options,!options.fragment);
+ if(options.fragment)return rendered;
+ return {...rendered,html:`<div class="${staticSurfaceClass}" data-breditor-rich="" data-breditor-static="">${rendered.html}</div>`};
+}
+
+/** @internal Render the same contents and styles into a framework-owned wrapper. */
+export function renderStaticDocumentContents(document:unknown,options:Omit<StaticRenderOptions,"fragment">={}):string {
+ return renderContents(document,options,true).html;
+}
+
+function renderContents(document:unknown,options:StaticRenderOptions,includeStyles:boolean):StaticRenderResult {
  const renderer=new Renderer(options);
  const root=renderer.admit(document);
  renderer.legal(root);
  const body=renderer.render(root);
- const style=(renderer.print&&!options.fragment?`<style data-breditor-print="">${richPrintStyles(renderer.print)}</style>`:"")+(options.legalListNumbering===true&&!options.fragment?`<style data-breditor-legal-lists="">${richLegalListStyles}</style>`:"");
- const codeStyle=renderer.hasCodeColors?`<style data-breditor-code-highlighting="">${staticCodeHighlightingStyles}</style>`:"";
- const html=options.fragment?body:`<div class="${staticSurfaceClass}" data-breditor-rich="" data-breditor-static="">${style}${codeStyle}${body}</div>`;
- return {html,report:Object.freeze({skipped:Object.freeze(renderer.skipped),images:Object.freeze(renderer.images),hiddenTables:Object.freeze(renderer.hiddenTables),inactiveMerges:Object.freeze(renderer.inactiveMerges)})};
+ const style=includeStyles?[
+  renderer.print?`<style data-breditor-print="">${richPrintStyles(renderer.print)}</style>`:"",
+  options.legalListNumbering===true?`<style data-breditor-legal-lists="">${richLegalListStyles}</style>`:"",
+  renderer.hasCodeColors?`<style data-breditor-code-highlighting="">${staticCodeHighlightingStyles}</style>`:"",
+ ].join(""):"";
+ return {html:style+body,report:Object.freeze({skipped:Object.freeze(renderer.skipped),images:Object.freeze(renderer.images),hiddenTables:Object.freeze(renderer.hiddenTables),inactiveMerges:Object.freeze(renderer.inactiveMerges)})};
 }
 
 // ---------------------------------------------------------------------------------------

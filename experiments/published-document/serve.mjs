@@ -62,9 +62,9 @@ pre{background:#f4f7fa;border:1px solid #d6e0e7;border-radius:.55rem;padding:.85
 }
 `;
 
-function page(print){
- const contents=renderStaticDocument(document,{codeHighlighting:true,
-  tableOfContents:{label:"On this page",idPrefix:"published"},print});
+function page(mode,render=renderStaticDocument){
+ const contents=render(document,{codeHighlighting:true,
+  tableOfContents:{label:"On this page",idPrefix:"published"},print:mode==="print"});
  return `<!doctype html>
 <html lang="en">
 <head>
@@ -77,8 +77,9 @@ function page(print){
  <main>
   <header>
    <nav aria-label="Preview mode">
-    <a href="/"${print?"":' aria-current="page"'}>Web view</a>
-    <a href="/print"${print?' aria-current="page"':""}>Print view</a>
+    <a href="/"${mode==="web"?' aria-current="page"':""}>Web view</a>
+    <a href="/print"${mode==="print"?' aria-current="page"':""}>Print view</a>
+    <a href="/react"${mode==="react"?' aria-current="page"':""}>React view</a>
    </nav>
    <h1>Retry policy</h1>
    <p>Configure how an API client retries temporary failures.</p>
@@ -88,8 +89,18 @@ function page(print){
 </body>
 </html>`;
 }
-const pages=new Map([["/",page(false)],["/print",page(true)]]);
-const server=createServer((request,response)=>{
+const pages=new Map([["/",page("web")],["/print",page("print")]]);
+async function reactPage(){
+ const [{createElement},{renderToStaticMarkup},{BreditorStaticDocument}]=await Promise.all([
+  import("react"),import("react-dom/server"),import("@breditor/editor/react"),
+ ]);
+ return page("react",(document,options)=>renderToStaticMarkup(createElement(BreditorStaticDocument,{document,options})));
+}
+const server=createServer(async(request,response)=>{
+ if(request.method==="GET"&&request.url==="/react"&&!pages.has("/react")){
+  try{pages.set("/react",await reactPage());}
+  catch{response.writeHead(503).end("Build the candidate SDK and install React to use this preview.");return;}
+ }
  const html=request.method==="GET"&&pages.get(request.url);
  if(!html){response.writeHead(404).end("Not found");return;}
  response.writeHead(200,{"Content-Type":"text/html; charset=utf-8","X-Content-Type-Options":"nosniff","Cache-Control":"no-store"});

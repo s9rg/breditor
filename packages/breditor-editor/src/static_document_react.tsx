@@ -5,7 +5,7 @@
  * value; the component only places that string inside the shared surface wrapper.
  */
 import type {ReactElement} from "react";
-import {renderStaticDocument,staticSurfaceClass,type StaticRenderOptions} from "./static_document.js";
+import {renderStaticDocumentContents,staticSurfaceClass,type StaticRenderOptions} from "./static_document.js";
 
 export interface BreditorStaticDocumentProps {
  /** Canonical document JSON string or parsed object (for example `editor.view().documentJson`). */
@@ -18,6 +18,6 @@ export interface BreditorStaticDocumentProps {
 
 /** Validation errors throw during render, so a surrounding error boundary or SSR handler decides the fallback. */
 export function BreditorStaticDocument({document,options,className}:BreditorStaticDocumentProps):ReactElement {
- const html=renderStaticDocument(document,{...options,fragment:true});
+ const html=renderStaticDocumentContents(document,options);
  return <div className={className?`${staticSurfaceClass} ${className}`:staticSurfaceClass} data-breditor-rich="" data-breditor-static="" dangerouslySetInnerHTML={{__html:html}}/>;
 }
