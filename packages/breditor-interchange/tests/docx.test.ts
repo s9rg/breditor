@@ -246,6 +246,15 @@ describe("DOCX export (@breditor/interchange/docx)",()=>{
     expect(part.get("word/media/image1.png")).toEqual(PNG);
     expect(part.get("word/media/image2.jpeg")).toEqual(jpeg);
   });
+  it("reports detached image buffers and views as asset policy failures",async()=>{
+    const source=doc(el("image",{"image-id":"i","asset-id":"asset","asset-generation":"g","decorative":false,"alt-text":"Chart"}));
+    const buffer=new ArrayBuffer(8),view=new Uint8Array(buffer);
+    structuredClone(buffer,{transfer:[buffer]});
+    expect(buffer.byteLength).toBe(0);
+    for(const value of [buffer,view]){
+      await expect(exportDocxWithImages(source,{loadImage:()=>value})).resolves.toEqual({ok:false,error:"asset-policy",losses:[]});
+    }
+  });
   it("exports documents produced by the HTML importer from real producer markup",()=>{
     const owner:InterchangeOwner={supportsClipboardInterchange:()=>true,admitClipboardRoot(kind,root){return{format:"breditor/rich-clipboard-transfer",formatVersion:1,kind,structuredJson:JSON.stringify({kind,document:{root:JSON.parse(root)}}),plainText:""};},validateClipboard(source){return{format:"breditor/rich-clipboard-transfer",formatVersion:1,kind:"flow",structuredJson:source,plainText:""};}};
     const interchange=createRichInterchange(owner);

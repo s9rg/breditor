@@ -86,16 +86,18 @@ export async function exportDocxWithImages(documentJson:string,options:DocxAsync
     for(const binding of bindings.value){
       let value:Uint8Array|ArrayBuffer|Blob|undefined;
       try{value=await loadImage(binding);}catch{return failure(new ConversionFailure("asset-policy"),[]);}
-      let bytes:Uint8Array|undefined;
-      if(value===undefined)bytes=undefined;
-      else if(value instanceof Uint8Array)bytes=value;
-      else if(value instanceof ArrayBuffer)bytes=new Uint8Array(value);
-      else if(typeof Blob!=="undefined"&&value instanceof Blob){
-        if(value.size>docxLimits.imageBytes)return failure(new ConversionFailure("resource-limit"),[]);
-        try{bytes=new Uint8Array(await value.arrayBuffer());}catch{return failure(new ConversionFailure("asset-policy"),[]);}
-      }else return failure(new ConversionFailure("asset-policy"),[]);
-      if(bytes&&(bytes.length>docxLimits.imageBytes||(total+=bytes.length)>docxLimits.totalImageBytes))return failure(new ConversionFailure("resource-limit"),[]);
-      loaded.set(`${binding.asset}\u0000${binding.generation}`,bytes===undefined?undefined:new Uint8Array(bytes));
+      try{
+        let bytes:Uint8Array|undefined;
+        if(value===undefined)bytes=undefined;
+        else if(value instanceof Uint8Array)bytes=value;
+        else if(value instanceof ArrayBuffer)bytes=new Uint8Array(value);
+        else if(typeof Blob!=="undefined"&&value instanceof Blob){
+          if(value.size>docxLimits.imageBytes)return failure(new ConversionFailure("resource-limit"),[]);
+          bytes=new Uint8Array(await value.arrayBuffer());
+        }else return failure(new ConversionFailure("asset-policy"),[]);
+        if(bytes&&(bytes.length>docxLimits.imageBytes||(total+=bytes.length)>docxLimits.totalImageBytes))return failure(new ConversionFailure("resource-limit"),[]);
+        loaded.set(`${binding.asset}\u0000${binding.generation}`,bytes===undefined?undefined:new Uint8Array(bytes));
+      }catch{return failure(new ConversionFailure("asset-policy"),[]);}
     }
   }
   return exportDocx(documentJson,{...rest,image:binding=>loaded.get(`${binding.asset}\u0000${binding.generation}`)});
