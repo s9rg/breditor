@@ -35,13 +35,13 @@ fn editor(profile: &BreditorRichProfile) -> TestResult<BreditorRichEditor> {
     run(
         &mut editor,
         &json!({"kind":"setSelection","selection":{"kind":"text","anchor":point,"focus":point}}),
-    )?;
+    );
     Ok(editor)
 }
-fn run(editor: &mut BreditorRichEditor, command: &Value) -> TestResult<String> {
+fn run(editor: &mut BreditorRichEditor, command: &Value) -> String {
     let result = editor.execute(&editor.observe(), &command.to_string());
     assert!(result.error().is_none(), "{command}");
-    Ok(result.status())
+    result.status()
 }
 fn text(editor: &BreditorRichEditor) -> TestResult<String> {
     let value: Value = serde_json::from_str(&read(editor.observe().document_json())?)?;
@@ -65,23 +65,23 @@ fn coordinator_orders_undo_across_separate_root_editors() -> TestResult {
     );
     assert_eq!(code(&set.reconcile("header", &content)), "breditor_rich.root_owner");
 
-    run(&mut header, &json!({"kind":"insertPlainText","text":"A"}))?;
+    run(&mut header, &json!({"kind":"insertPlainText","text":"A"}));
     read(set.reconcile("header", &header))?;
-    run(&mut content, &json!({"kind":"insertPlainText","text":"B"}))?;
+    run(&mut content, &json!({"kind":"insertPlainText","text":"B"}));
     read(set.reconcile("content", &content))?;
     let value = state(&set)?;
     assert_eq!(value["undoDepth"], 2);
     assert_eq!(value["undoTarget"], "content");
     assert_eq!(value["active"], "content");
     // The host routes global Undo to the named root, then reconciles.
-    assert_eq!(run(&mut content, &json!({"kind":"undo"}))?, "undo");
+    assert_eq!(run(&mut content, &json!({"kind":"undo"})), "undo");
     read(set.reconcile("content", &content))?;
     assert_eq!(state(&set)?["undoTarget"], "header");
-    assert_eq!(run(&mut header, &json!({"kind":"undo"}))?, "undo");
+    assert_eq!(run(&mut header, &json!({"kind":"undo"})), "undo");
     read(set.reconcile("header", &header))?;
     assert_eq!((text(&header)?, text(&content)?), ("x".to_owned(), "x".to_owned()));
     assert_eq!(state(&set)?["redoTarget"], "header");
-    run(&mut header, &json!({"kind":"redo"}))?;
+    run(&mut header, &json!({"kind":"redo"}));
     read(set.reconcile("header", &header))?;
 
     let parts = json!([
