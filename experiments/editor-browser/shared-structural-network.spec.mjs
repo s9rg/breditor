@@ -38,7 +38,7 @@ test("V2 network shares offline task nesting code and media through real relay r
 });
 
 test("V2 network independent contexts exchange task completion code text assets and causal presence",async({page,browser})=>{
- await page.goto("/shared-structural-network.html?peer=alice");await ready(page);other=await browser.newContext();const peer=await other.newPage();await route(peer);await peer.goto("http://127.0.0.1:49784/shared-structural-network.html?peer=bob");await ready(peer);
+ await page.goto("/shared-structural-network.html?peer=alice");await ready(page);other=await browser.newContext();const peer=await other.newPage();await route(peer);await peer.goto(new URL("/shared-structural-network.html?peer=bob",page.url()).href);await ready(peer);
  await peer.evaluate(()=>{const p=window.sharedV2Network.peers.b;p.session.select(window.sharedV2Network.range("task-b-head",2));});
  await expect.poll(()=>page.evaluate(()=>window.sharedV2Network.peers.a.presence.view().some(p=>p.resolution?.kind==="resolved"&&p.resolution.selection?.kind==="text"&&p.resolution.selection.focus.block==="task-b-head"))).toBe(true);
  await page.evaluate(async()=>{const t=window.sharedV2Network,p=t.peers.a;p.session.execute({commands:[{kind:"set_task_checked",data:{block:"task-b",checked:true}},{kind:"insert_text",data:{block:"code",offset:0,text:"Peer code\n"}}]});await p.sync.flush();const canvas=document.createElement("canvas");canvas.width=1;canvas.height=1;canvas.getContext("2d").fillRect(0,0,1,1);const blob=await new Promise(resolve=>canvas.toBlob(resolve,"image/png"));await t.files("a",[new File([blob],"cross-context.png",{type:"image/png"})]);await p.sync.flush();await t.uploaded("a");});

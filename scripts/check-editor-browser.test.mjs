@@ -2,7 +2,24 @@ import test from "node:test";
 import assert from "node:assert/strict";
 import {readdirSync,readFileSync} from "node:fs";
 import config from "../experiments/editor-browser/playwright.config.mjs";
+import {editorBrowserPort} from "../experiments/editor-browser/port.mjs";
 import {editorBrowserRuns,editorBrowserPlan} from "./check-editor-browser.mjs";
+test("the installed consumer and Playwright use the same configurable loopback port",async()=>{
+ const previous=process.env.BREDITOR_EDITOR_PORT;
+ try{
+  delete process.env.BREDITOR_EDITOR_PORT;
+  assert.equal(editorBrowserPort(),49784);
+  process.env.BREDITOR_EDITOR_PORT="50818";
+  const {default:configured}=await import("../experiments/editor-browser/playwright.config.mjs?custom-port");
+  assert.equal(configured.use.baseURL,"http://127.0.0.1:50818");
+  assert.equal(configured.webServer.url,"http://127.0.0.1:50818/");
+  assert.equal(editorBrowserPort(),50818);
+  for(const value of ["", "invalid", "0", "65536", "50818.5"])assert.throws(()=>editorBrowserPort(value),/Invalid installed editor browser port/);
+ }finally{
+  if(previous===undefined)delete process.env.BREDITOR_EDITOR_PORT;
+  else process.env.BREDITOR_EDITOR_PORT=previous;
+ }
+});
 test("installed SDK matrices include every discovered spec once without project deadline or retry overrides",()=>{
  const names=readdirSync(new URL("../experiments/editor-browser",import.meta.url)).filter(n=>n.endsWith(".spec.mjs")),runs=editorBrowserRuns(names);
  assert.deepEqual(runs.flat().sort(),names.sort());assert.deepEqual(runs.at(-1),["shared-structural-network.spec.mjs"]);
