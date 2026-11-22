@@ -75,6 +75,30 @@ async fn prepare(
             .await?,
     ))
 }
+/// Retry `attempt` while it reports `Locked`, for at most five seconds.
+///
+/// Dropping the last owner releases its file locks at once in a relay process. This test
+/// binary also runs tests that spawn child processes; on Linux a child holds copies of the
+/// parent's open lock files between fork and exec, so a released `flock` can briefly
+/// stay held. Only `Locked` is retried; every other outcome is returned unchanged.
+async fn after_inherited_locks_close<T, F, Fut>(what: &str, mut attempt: F) -> TestResult<T>
+where
+    F: FnMut() -> Fut,
+    Fut: std::future::Future<Output = TestResult<T>>,
+{
+    let deadline = tokio::time::Instant::now() + Duration::from_secs(5);
+    loop {
+        match attempt().await {
+            Err(error)
+                if matches!(error.downcast_ref::<Error>(), Some(Error::Locked))
+                    && tokio::time::Instant::now() < deadline =>
+            {
+                tokio::time::sleep(Duration::from_millis(2)).await;
+            }
+            outcome => return outcome.map_err(|error| format!("{what}: {error:?}").into()),
+        }
+    }
+}
 async fn reopen_committed_checkpoint(
     root: &Path,
     first: &Identity,
@@ -82,18 +106,10 @@ async fn reopen_committed_checkpoint(
     authority: &RoomDeploymentAuthority,
 ) -> TestResult<Arc<Prepared>> {
     let expected = roundtrip(first)?;
-    // Wait only for read-only checkpoint custody to settle after the last router drops.
-    let recovered = tokio::time::timeout(Duration::from_secs(5), async {
-        loop {
-            match Prepared::open(root, &expected, source.clone()) {
-                Err(Error::Locked) => tokio::time::sleep(Duration::from_millis(2)).await,
-                outcome => return outcome,
-            }
-        }
+    let recovered = after_inherited_locks_close("reopen first checkpoint", || async {
+        Ok(Prepared::open(root, &expected, source.clone())?)
     })
-    .await
-    .map_err(|_| "first checkpoint remained locked after dropping its router")?
-    .map_err(|error| format!("reopen first checkpoint: {error:?}"))?;
+    .await?;
     assert_eq!(
         recovered
             .status(authority)
@@ -101,6 +117,13 @@ async fn reopen_committed_checkpoint(
         Status::Committed
     );
     Ok(Arc::new(recovered))
+}
+async fn reopen_released_target(
+    source: &Source,
+) -> TestResult<(PreparedLogGenerationRecoveryHost, String)> {
+    let target = source.directory.0.join("target");
+    after_inherited_locks_close("reopen target operation", || Box::pin(reopen(source, &target)))
+        .await
 }
 async fn workflow(profile: (u32, bool), atomic: bool, history: (bool, bool)) -> TestResult {
     let setup = Box::pin(Setup::new(profile, atomic, history, true)).await?;
@@ -142,9 +165,7 @@ async fn workflow(profile: (u32, bool), atomic: bool, history: (bool, bool)) -> 
     drop(router);
     let recovered =
         reopen_committed_checkpoint(&root, &first, &setup.intent, &setup.authority).await?;
-    let (handle, owner) = Box::pin(reopen(&setup.source, &setup.source.directory.0.join("target")))
-        .await
-        .map_err(|error| format!("reopen target operation: {error:?}"))?;
+    let (handle, owner) = reopen_released_target(&setup.source).await?;
     let p = proof(&handle, &owner, &setup.source).await?;
     assert_eq!(p.identity(), current);
     assert!(
