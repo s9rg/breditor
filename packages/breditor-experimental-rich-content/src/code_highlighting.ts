@@ -24,6 +24,10 @@ const maxBlockUnits = 16_384;
 const maxSurfaceUnits = 65_536;
 const maxRanges = 4_096;
 const mounted = new WeakSet<HTMLElement>();
+// Highlight names are page-global. `crypto.randomUUID` exists only in secure contexts, so a plain-HTTP host
+// would throw; a per-module counter plus a random suffix stays unique per mount and across module copies.
+const instance = Math.floor(Math.random() * 0x1_0000_0000).toString(36);
+let mounts = 0;
 
 function renderedCode(code: HTMLElement, maxUnits: number): {source: string; nodes: Text[]} | undefined {
  const walker = code.ownerDocument.createTreeWalker(code, 4 /* SHOW_TEXT */);
@@ -50,7 +54,7 @@ export function mountRichCodeHighlighting(
  if (!registry || typeof window?.Highlight !== "function") return {supported: false, dispose() {}};
  if (mounted.has(surface)) throw new Error("Code highlighting is already mounted on this surface");
 
- const prefix = `breditor-syntax-${window.crypto.randomUUID()}`;
+ const prefix = `breditor-syntax-${instance}-${++mounts}`;
  const names = kinds.map(kind => [kind, `${prefix}-${kind}`] as const);
  const style = document.createElement("style");
  if (options.nonce !== undefined) style.nonce = options.nonce;
