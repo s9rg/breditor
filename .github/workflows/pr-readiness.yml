@@ -1,0 +1,39 @@
+{
+  "name": "PR readiness contracts",
+  "on": {
+    "pull_request": {
+      "branches": ["main"]
+    }
+  },
+  "permissions": {
+    "contents": "read"
+  },
+  "jobs": {
+    "readiness-contracts": {
+      "runs-on": "ubuntu-24.04",
+      "timeout-minutes": 10,
+      "steps": [
+        {
+          "name": "Check out the proposed merge",
+          "uses": "actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1",
+          "with": {
+            "persist-credentials": false,
+            "fetch-depth": 1
+          }
+        },
+        {
+          "name": "Install the baseline Node toolchain",
+          "uses": "actions/setup-node@949feb2413d6458794dcd2491c4babbbce0c15c1",
+          "with": {
+            "node-version": "22.14.0",
+            "package-manager-cache": false
+          }
+        },
+        {
+          "name": "Validate readiness and qualification contracts",
+          "run": "node --test scripts/check-v1-readiness.test.mjs scripts/candidate-ci.test.mjs scripts/verify-candidate.test.mjs scripts/activation-qualification.test.mjs scripts/pr-readiness-ci.test.mjs"
+        }
+      ]
+    }
+  }
+}
