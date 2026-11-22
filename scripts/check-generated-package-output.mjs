@@ -22,6 +22,7 @@ const packages=[
 const sha=bytes=>createHash('sha256').update(bytes).digest('hex');
 function inventory(directory,excluded=[]){
  const rows=new Map();
+ assert.ok(fs.lstatSync(directory).isDirectory(),"Generated package inventory requires a direct directory: "+directory);
  function walk(base){
   for(const entry of fs.readdirSync(base,{withFileTypes:true}).sort((a,b)=>a.name.localeCompare(b.name))){
    const path=join(base,entry.name),name=relative(directory,path);
@@ -37,6 +38,8 @@ const temporary=fs.mkdtempSync(join(fs.realpathSync(tmpdir()),'breditor-generate
 try{
  for(const specification of packages){
   const base=join(root,'packages',specification.name),output=join(base,specification.output);
+  const expectedDirectory=resolve(fs.realpathSync(root),relative(root,output));
+  assert.equal(fs.realpathSync(output),expectedDirectory,'Generated package output root cannot traverse a link: '+output);
   const held=specification.external.map(name=>({name,files:[...inventory(join(output,name))]}));
   const fresh=join(temporary,specification.name);
   for(const flags of specification.passes)execFileSync(process.execPath,[join(root,'node_modules/typescript/bin/tsc'),'-p',join(base,'tsconfig.json'),'--outDir',fresh,...flags],{cwd:root,stdio:'inherit'});
