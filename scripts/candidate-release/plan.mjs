@@ -33,7 +33,12 @@ export function candidateReleasePlan({profile="full",environment=process.env}={}
  const script=(id,file,args=[],artifacts=[],timeout)=>stage(id,node,[`scripts/${file}`,...args],{},artifacts,timeout);
  const withSharedRuntime=check=>Object.freeze({...check,requiresSharedRuntime:true});
  const sharedCargo=(id,[command,...args])=>stage(id,cargo,[command,"--manifest-path","crates/breditor-collaboration/Cargo.toml",...args],{CARGO_TARGET_DIR:shared});
- const relayCargo=(id,[command,...args],artifacts=[])=>stage(id,cargo,[command,"--manifest-path","experiments/relay/Cargo.toml",...args],{CARGO_TARGET_DIR:relay},artifacts);
+ // Relay fixtures spawn real children. Keep independent libtest cases from
+ // inheriting sibling lock descriptors between fork and exec. Individual test
+ // cases retain their own concurrency and explicit libtest arguments.
+ const relayCargo=(id,[command,...args],artifacts=[])=>stage(id,cargo,[command,"--manifest-path","experiments/relay/Cargo.toml",...args],{
+  CARGO_TARGET_DIR:relay,...(command==="test"?{RUST_TEST_THREADS:"1"}:{}),
+ },artifacts);
  const checks=[
   stage("candidate-runner-contracts",node,["--test","scripts/verify-candidate.test.mjs"]),
   stage("history-workload-count-contracts",node,["--test","scripts/history-workload-counts.test.mjs"]),
