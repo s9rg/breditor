@@ -8,6 +8,24 @@ assertRuntimeNotices(require.resolve("@breditor/experimental-rich-content/wasm-b
 assert.equal(existsSync("node_modules/@breditor/experimental-collaboration"),false);
 assert.equal(existsSync("node_modules/@breditor/collaboration"),false);
 assert.equal(existsSync("node_modules/react"),false);
+// Exercise the static subpath before either editor or Wasm runtime initialization.
+const {renderStaticDocument}=await import("@breditor/editor/static");
+const text=value=>[{kind:"text",text:value,formats:[]}];
+const staticBlock=(type,properties,children)=>({kind:"element",type:`breditor/${type}`,entityId:null,properties,children});
+const published=renderStaticDocument({
+ format:"breditor/document",formatVersion:2,
+ schema:{name:"example/published",version:1},schemaFingerprint:`sha256:${"ab".repeat(32)}`,
+ root:staticBlock("document",{"breditor/document-id":"publication"},[
+  staticBlock("heading",{"breditor/block-id":"example","breditor/level":2},text("Example")),
+  staticBlock("code-block",{"breditor/block-id":"source","breditor/language":"typescript"},text("const escaped = '<example>';")),
+ ]),
+},{codeHighlighting:true,tableOfContents:true});
+assert.match(published,/<nav[^>]+aria-label="Table of contents"/);
+assert.match(published,/<style data-breditor-code-highlighting=""/);
+assert.match(published,/&lt;example&gt;/);
+assert.doesNotMatch(published,/<example>|<script|contenteditable/);
+console.log("Installed static entry renders linked contents and escaped code without initializing Wasm");
+
 await initializeLocalRuntime(readFileSync(require.resolve("@breditor/experimental-rich-content/wasm-binary")));
 const profile=await createLocalProfile();try{
  const owner=profile.createEditor(emptyDocumentJson(profile.descriptor(),"minimal-document","p"));try{owner.execute({kind:"setSelection",selection:{kind:"text",anchor:{block:"p",offset:"0",affinity:"after"},focus:{block:"p",offset:"0",affinity:"after"}}});owner.execute({kind:"insertPlainText",text:"Installed 🙂"});const after=owner.documentJson();owner.execute({kind:"undo"});const restored=profile.restoreEditor(owner.checkpointJson());try{restored.execute({kind:"redo"});assert.equal(restored.documentJson(),after);}finally{restored.dispose();}}finally{owner.dispose();}
