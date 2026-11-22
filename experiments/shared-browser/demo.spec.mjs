@@ -93,3 +93,21 @@ test("the contents and code demos expose accessible landmarks", async ({page}) =
   expect(audit.violations).toEqual([]);
  }
 });
+
+test("both code demo writers fit a phone viewport without losing editable controls",async({page})=>{
+ await page.setViewportSize({width:320,height:780});
+ await page.goto("/code");
+ await expect(page.locator("#code-ready")).toHaveText("Ready");
+ for(const name of ["Writer A","Writer B"]){
+  const editor=page.getByRole("region",{name});
+  const code=editor.locator("pre[data-language]").first();
+  await code.scrollIntoViewIfNeeded();
+  await code.click();
+  const language=editor.getByRole("textbox",{name:"Code language"});
+  await expect(language).toBeEnabled();
+  await language.scrollIntoViewIfNeeded();
+  await expect(language).toBeInViewport();
+  expect(await code.evaluate(element=>element.clientWidth)).toBeGreaterThanOrEqual(240);
+ }
+ expect(await page.evaluate(()=>document.documentElement.scrollWidth)).toBe(320);
+});
