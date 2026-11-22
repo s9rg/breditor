@@ -3,7 +3,7 @@ import {mkdirSync,mkdtempSync,realpathSync} from "node:fs";
 import {resolve,relative} from "node:path";
 import {fileURLToPath} from "node:url";
 import {candidateReleasePlan,repository} from "./candidate-release/plan.mjs";
-import {fileEvidence,sourceEvidence,saveEvidence} from "./candidate-release/evidence.mjs";
+import {fileEvidence,sourceEvidence,saveEvidence,retainStageArtifact} from "./candidate-release/evidence.mjs";
 import {executeCandidateStage} from "./candidate-release/process.mjs";
 import {retainCandidateActivationEvidence} from "./candidate-release/activation-evidence.mjs";
 import {activationRuntimeStageIds} from "./candidate-release/activation-shards.mjs";
@@ -44,7 +44,7 @@ export async function runCandidateChecks(plan,{root=repository,signal,report=con
      if(sharedRuntimeForActivation(root,source).sha256!==runtime.sha256)throw Error("Shared runtime build receipt changed during qualification");
      if(nativeFixture&&verifyNativeSuggestionBuild(root,source).sha256!==entry.nativeHostBuildReceiptSha256)throw Error("Native host build receipt changed during qualification");
     }
-    if(entry.status==="passed")entry.artifacts=check.artifacts.map(artifact=>{const evidence=fileEvidence(root,artifact.path);if(artifact.fresh&&evidence.modifiedAtMs<Date.parse(entry.startedAt))throw Error(`Stale stage report: ${artifact.path}`);return evidence;});
+    if(entry.status==="passed")entry.artifacts=check.artifacts.map(artifact=>{const evidence=fileEvidence(root,artifact.path);if(artifact.fresh&&evidence.modifiedAtMs<Date.parse(entry.startedAt))throw Error(`Stale stage report: ${artifact.path}`);return artifact.retain===true?retainStageArtifact(root,directory,check.id,evidence):evidence;});
    }
    checkSource();
    saveEvidence(manifest,result);report(`verify-candidate: ${entry.status} ${check.id}`);

@@ -25,6 +25,6 @@ test("both candidate profiles record fresh native dependency evidence after rela
   assert.equal(checks[index-1].id,"relay-native");
   assert.deepEqual(checks[index].args,["scripts/build-relay-notices.mjs"]);
   assert.equal(checks[index].env.CARGO_TARGET_DIR,checks[index-1].env.CARGO_TARGET_DIR);
-  assert.deepEqual(checks[index].artifacts,relayNoticePaths.map(path=>({path,fresh:true})));
+  assert.deepEqual(checks[index].artifacts,relayNoticePaths.map(path=>({path,fresh:true,retain:true})));
  }
 });

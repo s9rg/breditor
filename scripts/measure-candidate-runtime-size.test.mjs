@@ -41,6 +41,6 @@ test("both profiles record fresh size evidence only after both paired runtimes",
   const {checks}=candidateReleasePlan({profile});
   const index=checks.findIndex(check=>check.id==="paired-runtime-download-size");
   for(const name of ["paired-local-runtime","paired-shared-runtime"])assert.ok(checks.slice(0,index).some(check=>check.id===name));
-  assert.deepEqual(checks[index].artifacts,[{path:candidateRuntimeSizeReport,fresh:true}]);
+  assert.deepEqual(checks[index].artifacts,[{path:candidateRuntimeSizeReport,fresh:true,retain:true}]);
  }
 });
