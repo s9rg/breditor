@@ -135,12 +135,14 @@ import type {
   WasmProfileGenerationView,
 } from "./wasm_profile_descriptor.js";
 
-import type { BaseDocumentProjection } from "./projection.js";
+import { isOwnedProjection, type BaseDocumentProjection } from "./projection.js";
 import { isOwnedFlatListProjection, type FlatListDocumentProjection } from "./flat_list_projection.js";
 import { isOwnedNestedListProjection, type NestedListDocumentProjection } from "./nested_list_projection.js";
 import { FLAT_LIST_TOOLBAR_MANIFEST } from "./flat_list_toolbar_manifest.js";
 import { NESTED_LIST_TOOLBAR_MANIFEST } from "./nested_list_toolbar_manifest.js";
 import type { NativeCommandRequest } from "./native_command_builder.js";
+
+const EXPERIMENTAL_BLOCK_PROFILES = import.meta.breditorExperimentalBlockProfiles !== false;
 
 type OwnerProjection = BaseDocumentProjection | FlatListDocumentProjection | NestedListDocumentProjection;
 type OwnerAdapter = BreditorWasmCommandAdapter | BreditorFlatListWasmCommandAdapter | BreditorNestedListWasmCommandAdapter;
@@ -681,11 +683,13 @@ export class BreditorBrowserEditor {
 
   /** Explicit experimental list owner. The ordinary open() contract remains closed. @internal */
   static openFlatLists(options: BreditorFlatListBrowserEditorOptions): Promise<BreditorBrowserEditorOpenResult> {
+    if (!EXPERIMENTAL_BLOCK_PROFILES) throw new TypeError("Experimental block profiles are unavailable in this build");
     return BreditorBrowserEditor.#open(options, true);
   }
 
   /** Explicit recursive-list owner; legacy open() never enables nested behavior. @internal */
   static openNestedLists(options: BreditorNestedListBrowserEditorOptions): Promise<BreditorBrowserEditorOpenResult> {
+    if (!EXPERIMENTAL_BLOCK_PROFILES) throw new TypeError("Experimental block profiles are unavailable in this build");
     return BreditorBrowserEditor.#open(options, "nested");
   }
 
@@ -694,7 +698,7 @@ export class BreditorBrowserEditor {
     if (optionNamesOwnedHost(options)) {
       return openFailure("browser_editor.host_in_use");
     }
-    const normalized = normalizeOptions(options, flatLists);
+    const normalized = normalizeOptions(options, (EXPERIMENTAL_BLOCK_PROFILES && flatLists));
     if (normalized === null)
       return openFailure("browser_editor.invalid_options");
     if (EDITOR_HOSTS.has(normalized.host)) {
@@ -737,9 +741,9 @@ export class BreditorBrowserEditor {
       let loaded: IndexedDbSessionCheckpointLoadResult | undefined;
       if (normalized.persistence !== undefined) {
         if (normalized.semanticProfile !== undefined) {
-          const preflight = flatLists === "nested"
+          const preflight = EXPERIMENTAL_BLOCK_PROFILES && flatLists === "nested"
             ? preflightNestedListWasmSemanticProfile(normalized.wasm, normalized.semanticProfile as WasmNestedListProfileBootstrapSource)
-            : flatLists
+            : (EXPERIMENTAL_BLOCK_PROFILES && flatLists)
             ? preflightFlatListWasmSemanticProfile(normalized.wasm, normalized.semanticProfile as WasmFlatListProfileBootstrapSource)
             : preflightWasmSemanticProfile(normalized.wasm, normalized.semanticProfile as BreditorBrowserSemanticProfileOptions);
           if (!preflight.ok) {
@@ -805,9 +809,9 @@ export class BreditorBrowserEditor {
                 : { semanticProfile: normalized.semanticProfile }),
             })
           : normalized.initialSource;
-      const bootstrap = flatLists === "nested"
+      const bootstrap = EXPERIMENTAL_BLOCK_PROFILES && flatLists === "nested"
         ? bootstrapNestedListWasmEngine(normalized.wasm, source as WasmNestedListEngineBootstrapSource)
-        : flatLists
+        : (EXPERIMENTAL_BLOCK_PROFILES && flatLists)
         ? bootstrapFlatListWasmEngine(normalized.wasm, source as WasmFlatListEngineBootstrapSource)
         : bootstrapWasmEngine(normalized.wasm, source as WasmEngineBootstrapSource);
       if (!bootstrap.ok) {
@@ -902,9 +906,9 @@ export class BreditorBrowserEditor {
       }
 
       renderer = new BreditorDomRenderer(presentation);
-      const initialRender = flatLists === "nested"
+      const initialRender = EXPERIMENTAL_BLOCK_PROFILES && flatLists === "nested"
         ? renderer.renderNestedList(normalized.host, bootstrap.projection as NestedListDocumentProjection)
-        : flatLists
+        : (EXPERIMENTAL_BLOCK_PROFILES && flatLists)
         ? renderer.renderFlatList(normalized.host, bootstrap.projection as FlatListDocumentProjection)
         : renderer.render(normalized.host, bootstrap.projection as BaseDocumentProjection);
       if (!initialRender.ok) {
@@ -920,11 +924,11 @@ export class BreditorBrowserEditor {
         return openFailure("browser_editor.setup_failed");
       }
       const adapterOptions = {profileGeneration, profileDescriptor: bootstrap.profileDescriptor, renderer};
-      if (flatLists === "nested") {
+      if (EXPERIMENTAL_BLOCK_PROFILES && flatLists === "nested") {
         selectionBridge = new BreditorNestedListDomSelectionBridge();
         adapter = new BreditorNestedListWasmCommandAdapter(engine, observation, {
           ...adapterOptions, durableMode: "v7", rendered: rendered as RenderedProjection<NestedListDocumentProjection>, selectionBridge});
-      } else if (flatLists === true) {
+      } else if (EXPERIMENTAL_BLOCK_PROFILES && flatLists === true) {
         selectionBridge = new BreditorFlatListDomSelectionBridge();
         adapter = new BreditorFlatListWasmCommandAdapter(engine, observation, {
           ...adapterOptions, durableMode: "v6", rendered: rendered as RenderedProjection<FlatListDocumentProjection>, selectionBridge});
@@ -991,11 +995,11 @@ export class BreditorBrowserEditor {
       }
 
       // Publish coherent action states before submit returns in either mode.
-      if (flatLists === "nested") {
+      if (EXPERIMENTAL_BLOCK_PROFILES && flatLists === "nested") {
         const executor = (adapter as BreditorNestedListWasmCommandAdapter).commandExecutor;
         queue = new BreditorNestedListCommandQueue(executor, {observer: actionStore.queueObserver});
         queueLeasePort = openNestedListCommandQueueLeasePort(queue, executor) as OwnerQueuePort | undefined;
-      } else if (flatLists === true) {
+      } else if (EXPERIMENTAL_BLOCK_PROFILES && flatLists === true) {
         const executor = (adapter as BreditorFlatListWasmCommandAdapter).commandExecutor;
         queue = new BreditorFlatListCommandQueue(executor, {observer: actionStore.queueObserver});
         queueLeasePort = openFlatListCommandQueueLeasePort(queue, executor) as OwnerQueuePort | undefined;
@@ -1111,14 +1115,14 @@ export class BreditorBrowserEditor {
             renderer !== undefined
           ) {
             try {
-              if (flatLists === "nested") renderer.releaseNestedList(rendered as RenderedProjection<NestedListDocumentProjection>);
-              else if (flatLists) renderer.releaseFlatList(rendered as RenderedProjection<FlatListDocumentProjection>);
+              if (EXPERIMENTAL_BLOCK_PROFILES && flatLists === "nested") renderer.releaseNestedList(rendered as RenderedProjection<NestedListDocumentProjection>);
+              else if (EXPERIMENTAL_BLOCK_PROFILES && flatLists) renderer.releaseFlatList(rendered as RenderedProjection<FlatListDocumentProjection>);
               else renderer.release(rendered as RenderedProjection);
             } catch {
               // Startup failure remains authoritative.
             }
           }
-          bestEffortIntrinsic(selectionBridge, flatLists === "nested" ? NESTED_SELECTION_BRIDGE_DISPOSE : flatLists ? LIST_SELECTION_BRIDGE_DISPOSE : SELECTION_BRIDGE_DISPOSE);
+          bestEffortIntrinsic(selectionBridge, EXPERIMENTAL_BLOCK_PROFILES && flatLists === "nested" ? NESTED_SELECTION_BRIDGE_DISPOSE : (EXPERIMENTAL_BLOCK_PROFILES && flatLists) ? LIST_SELECTION_BRIDGE_DISPOSE : SELECTION_BRIDGE_DISPOSE);
           if (observation !== undefined) bestEffortFree(observation);
           if (profileGeneration !== undefined)
             bestEffortFree(profileGeneration);
@@ -1183,9 +1187,9 @@ export class BreditorBrowserEditor {
     }
 
     const delivery = this.#submitImmediate(() =>
-      this.#flatLists === "nested" ? nestedListCommandRequest(this.#adapter.deliveryToken() as NestedListEditorDeliveryToken,
+      EXPERIMENTAL_BLOCK_PROFILES && this.#flatLists === "nested" ? nestedListCommandRequest(this.#adapter.deliveryToken() as NestedListEditorDeliveryToken,
         preserveSelectionSync(), {kind: "api", detail: intentId},
-        {kind: "intent", intentId, input: {kind: "none"}}, "closeBefore") : this.#flatLists ? flatListCommandRequest(this.#adapter.deliveryToken() as FlatListEditorDeliveryToken,
+        {kind: "intent", intentId, input: {kind: "none"}}, "closeBefore") : (EXPERIMENTAL_BLOCK_PROFILES && this.#flatLists) ? flatListCommandRequest(this.#adapter.deliveryToken() as FlatListEditorDeliveryToken,
         preserveSelectionSync(), {kind: "api", detail: intentId},
         {kind: "intent", intentId, input: {kind: "none"}}, "closeBefore") : noInputIntentRequest(
         this.#adapter.deliveryToken() as EditorDeliveryToken,
@@ -1278,9 +1282,9 @@ export class BreditorBrowserEditor {
     }
 
     const delivery = this.#submitImmediate(() =>
-      this.#flatLists === "nested" ? nestedListCommandRequest(this.#adapter.deliveryToken() as NestedListEditorDeliveryToken,
+      EXPERIMENTAL_BLOCK_PROFILES && this.#flatLists === "nested" ? nestedListCommandRequest(this.#adapter.deliveryToken() as NestedListEditorDeliveryToken,
         preserveSelectionSync(), {kind: "api", detail: intentId},
-        {kind: "intent", intentId, input: {kind: "json", value: inputJson}}, "closeBefore") : this.#flatLists ? flatListCommandRequest(this.#adapter.deliveryToken() as FlatListEditorDeliveryToken,
+        {kind: "intent", intentId, input: {kind: "json", value: inputJson}}, "closeBefore") : (EXPERIMENTAL_BLOCK_PROFILES && this.#flatLists) ? flatListCommandRequest(this.#adapter.deliveryToken() as FlatListEditorDeliveryToken,
         preserveSelectionSync(), {kind: "api", detail: intentId},
         {kind: "intent", intentId, input: {kind: "json", value: inputJson}}, "closeBefore") : jsonIntentRequest(
         this.#adapter.deliveryToken() as EditorDeliveryToken,
@@ -1586,7 +1590,7 @@ export class BreditorBrowserEditor {
     // than freeing it beneath an owner which could still hold observations.
     const adapterDisposed = adapterIsDisposed(this.#adapter);
     if (adapterDisposed) {
-      bestEffortIntrinsic(this.#selectionBridge, this.#flatLists === "nested" ? NESTED_SELECTION_BRIDGE_DISPOSE : this.#flatLists ? LIST_SELECTION_BRIDGE_DISPOSE : SELECTION_BRIDGE_DISPOSE);
+      bestEffortIntrinsic(this.#selectionBridge, EXPERIMENTAL_BLOCK_PROFILES && this.#flatLists === "nested" ? NESTED_SELECTION_BRIDGE_DISPOSE : (EXPERIMENTAL_BLOCK_PROFILES && this.#flatLists) ? LIST_SELECTION_BRIDGE_DISPOSE : SELECTION_BRIDGE_DISPOSE);
       bestEffortFree(this.#engine);
     }
     bestEffortIntrinsic(this.#storage, STORAGE_CLOSE);
@@ -1649,7 +1653,7 @@ export class BreditorBrowserEditor {
     this.#toolbar = toolbar;
     // Qualify the new focus policy in the opt-in list owner first. The default
     // paragraph owner's focus behavior and wire contracts remain unchanged.
-    if (this.#flatLists) {
+    if (EXPERIMENTAL_BLOCK_PROFILES && this.#flatLists) {
       this.#releaseToolbarKeyboardReturn = installToolbarKeyboardReturn(this.#host, toolbar.element,
         () => this.#restoreToolbarKeyboardSelection(), () => this.#fault("toolbarDispatchFailed"));
     }
@@ -1671,10 +1675,10 @@ export class BreditorBrowserEditor {
     scheduleTask: ((callback: () => void) => void) | undefined,
   ): void {
     const options = {keyboard, keyboardShortcuts, ...(scheduleTask === undefined ? {} : {scheduleTask})};
-    const router = this.#flatLists === "nested"
+    const router = EXPERIMENTAL_BLOCK_PROFILES && this.#flatLists === "nested"
       ? new BreditorNestedListBrowserEventRouter(this.#queue as BreditorNestedListCommandQueue<WasmCommandSequenceOutcome<NestedListDocumentProjection>>,
         this.#adapter as BreditorNestedListWasmCommandAdapter, options)
-      : this.#flatLists
+      : (EXPERIMENTAL_BLOCK_PROFILES && this.#flatLists)
       ? new BreditorFlatListBrowserEventRouter(this.#queue as BreditorFlatListCommandQueue<WasmCommandSequenceOutcome<FlatListDocumentProjection>>,
         this.#adapter as BreditorFlatListWasmCommandAdapter, options)
       : new BreditorBrowserEventRouter(this.#queue as BreditorCommandQueue<WasmCommandSequenceOutcome>,
@@ -1843,9 +1847,9 @@ export class BreditorBrowserEditor {
       return toolbarCommandDispatchResult("rejected");
     }
     const delivery = this.#submitImmediate(() =>
-      this.#flatLists === "nested"
+      EXPERIMENTAL_BLOCK_PROFILES && this.#flatLists === "nested"
         ? nestedListToolbarCommandRequest(this.#adapter.deliveryToken() as NestedListEditorDeliveryToken, invocation)
-        : this.#flatLists
+        : (EXPERIMENTAL_BLOCK_PROFILES && this.#flatLists)
         ? flatListToolbarCommandRequest(this.#adapter.deliveryToken() as FlatListEditorDeliveryToken, invocation)
         : toolbarCommandRequest(this.#adapter.deliveryToken() as EditorDeliveryToken, invocation),
     );
@@ -2154,7 +2158,7 @@ function snapshotSemanticProfileOptions(
       return null;
     }
     if (keys.length === 1) {
-      if (flatLists) return null;
+      if (EXPERIMENTAL_BLOCK_PROFILES && flatLists) return null;
       return Object.freeze({ bootstrapJson: bootstrap.value });
     }
     const formatVersion = Reflect.getOwnPropertyDescriptor(
@@ -2164,7 +2168,7 @@ function snapshotSemanticProfileOptions(
     if (
       formatVersion === undefined ||
       !("value" in formatVersion) ||
-      (flatLists === "nested" ? formatVersion.value !== 5 : flatLists ? formatVersion.value !== 4 : formatVersion.value !== 2 && formatVersion.value !== 3)
+      (EXPERIMENTAL_BLOCK_PROFILES && flatLists === "nested" ? formatVersion.value !== 5 : (EXPERIMENTAL_BLOCK_PROFILES && flatLists) ? formatVersion.value !== 4 : formatVersion.value !== 2 && formatVersion.value !== 3)
     ) {
       return null;
     }
@@ -2190,8 +2194,8 @@ function normalizeOptions(value: unknown, flatLists: boolean | "nested"): Normal
     const normalizedSemanticProfile =
       semanticProfile === undefined
         ? undefined
-        : snapshotSemanticProfileOptions(semanticProfile, flatLists);
-    if (normalizedSemanticProfile === null || (flatLists && normalizedSemanticProfile === undefined)) return null;
+        : snapshotSemanticProfileOptions(semanticProfile, (EXPERIMENTAL_BLOCK_PROFILES && flatLists));
+    if (normalizedSemanticProfile === null || ((EXPERIMENTAL_BLOCK_PROFILES && flatLists) && normalizedSemanticProfile === undefined)) return null;
     const rendering = options.rendering;
     const keyboardShortcuts = options.keyboardShortcuts;
     const keyboard = options.keyboard;
@@ -2256,7 +2260,7 @@ function normalizeOptions(value: unknown, flatLists: boolean | "nested"): Normal
       }
       normalizedToolbar = Object.freeze({
         host: toolbar.host,
-        manifest: toolbar.manifest ?? (flatLists === "nested" ? NESTED_LIST_TOOLBAR_MANIFEST : flatLists ? FLAT_LIST_TOOLBAR_MANIFEST : DEFAULT_TOOLBAR_MANIFEST),
+        manifest: toolbar.manifest ?? (EXPERIMENTAL_BLOCK_PROFILES && flatLists === "nested" ? NESTED_LIST_TOOLBAR_MANIFEST : (EXPERIMENTAL_BLOCK_PROFILES && flatLists) ? FLAT_LIST_TOOLBAR_MANIFEST : DEFAULT_TOOLBAR_MANIFEST),
       });
     }
     let normalizedPersistence:
@@ -2594,10 +2598,13 @@ function snapshotRenderedHostChildren(
   try {
     const elements: HTMLElement[] = [];
     const projection = rendered.projection;
-    const tags = (isOwnedNestedListProjection(projection) || isOwnedFlatListProjection(projection))
+    const tags = ((EXPERIMENTAL_BLOCK_PROFILES && isOwnedNestedListProjection(projection)) || (EXPERIMENTAL_BLOCK_PROFILES && isOwnedFlatListProjection(projection)))
       ? projection.blocks.map(root => root.kind === "bulletList" ? "UL" : root.kind === "orderedList" ? "OL"
         : root.block.headingLevel === undefined ? "P" : `H${root.block.headingLevel}`)
-      : projection.paragraphs.map(block => block.headingLevel === undefined ? "P" : `H${block.headingLevel}`);
+      : isOwnedProjection(projection)
+        ? projection.paragraphs.map(block => block.headingLevel === undefined ? "P" : `H${block.headingLevel}`)
+        : null;
+    if (tags === null) return null;
     for (let index = 0; index < tags.length; index += 1) {
       const child = rendered.nodeForAstPath(Object.freeze([index]));
       const facts = nativeHtmlHostFacts(child);
@@ -2641,7 +2648,7 @@ function startupRenderIsCanonical(
       isSafeFlowContainerHost(options.host) &&
       nativeTreeRoot(facts.element) === facts.ownerDocument &&
       installedHostAttributesMatch(options) &&
-      (options.flatLists === "nested" ? renderer.ownsNestedList(adapter.rendered) : options.flatLists ? renderer.ownsFlatList(adapter.rendered) : renderer.owns(adapter.rendered)) &&
+      (EXPERIMENTAL_BLOCK_PROFILES && options.flatLists === "nested" ? renderer.ownsNestedList(adapter.rendered) : (EXPERIMENTAL_BLOCK_PROFILES && options.flatLists) ? renderer.ownsFlatList(adapter.rendered) : renderer.owns(adapter.rendered)) &&
       (requireEmptyToolbar
         ? options.toolbar === undefined ||
           usableEmptyToolbarHost(options.toolbar.host)

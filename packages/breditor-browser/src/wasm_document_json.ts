@@ -14,6 +14,8 @@ import { snapshotOwnDataArray } from "./protected_handle_snapshot.js";
 import { wellFormedUtf8Length } from "./well_formed_utf8_length.js";
 import { ACTIVE_WASM_STRING_HANDLES } from "./active_wasm_string_handles.js";
 
+const EXPERIMENTAL_BLOCK_PROFILES = import.meta.breditorExperimentalBlockProfiles !== false;
+
 /** Maximum UTF-8 bytes admitted by the browser Document V1 export boundary. */
 export const MAX_BROWSER_DOCUMENT_JSON_BYTES = 16_777_216;
 
@@ -308,6 +310,7 @@ export function documentJsonMatchesFlatListProjection(
   projection: FlatListDocumentProjection,
   contract: WasmDurableJsonContract,
 ): boolean {
+  if (!EXPERIMENTAL_BLOCK_PROFILES) throw new TypeError("Experimental block profiles are unavailable in this build");
   const resolved = resolveWasmDurableJsonContract(contract);
   if (!isOwnedFlatListProjection(projection) || resolved?.mode !== "v6" ||
     documentJsonUtf8Bytes(value, contract) === null ||
@@ -336,6 +339,7 @@ export function documentJsonMatchesFlatListProjection(
 /** Correlates V7 recursive structure and every text block, not just flattened text. @internal */
 export function documentJsonMatchesNestedListProjection(value: unknown, projection: NestedListDocumentProjection,
   contract: WasmDurableJsonContract): boolean {
+  if (!EXPERIMENTAL_BLOCK_PROFILES) throw new TypeError("Experimental block profiles are unavailable in this build");
   const resolved = resolveWasmDurableJsonContract(contract);
   if (!isOwnedNestedListProjection(projection) || resolved?.mode !== "v7" ||
     documentJsonUtf8Bytes(value, contract) === null || projection.schema.name !== resolved.schema.name ||
@@ -763,7 +767,7 @@ export function durableDocumentRootMatchesContract(
 
 /** V7 inserted blocks are a fragment sequence, not published root fanout. @internal */
 export function durableNestedFragmentRootMatchesContract(value: unknown, contract: ResolvedWasmDurableJsonContract): boolean {
-  return contract.mode === "v7" && validateDurableRoot(value, contract, MAX_NODES);
+  return (EXPERIMENTAL_BLOCK_PROFILES && contract.mode === "v7") && validateDurableRoot(value, contract, MAX_NODES);
 }
 
 function validateDurableRoot(value: unknown, contract: ResolvedWasmDurableJsonContract, maxChildren: number): boolean {
@@ -801,7 +805,7 @@ function validateDurableRoot(value: unknown, contract: ResolvedWasmDurableJsonCo
       paragraphs.push(block);
       return true;
     }
-    if ((contract.mode !== "v6" && contract.mode !== "v7") || depth + 2 > 63 ||
+    if (((!EXPERIMENTAL_BLOCK_PROFILES || contract.mode !== "v6") && (!EXPERIMENTAL_BLOCK_PROFILES || contract.mode !== "v7")) || depth + 2 > 63 ||
       block["kind"] !== "element" || block["entityId"] !== null ||
       !Array.isArray(block["children"]) || block["children"].length === 0 ||
       block["children"].length > maxChildren) return false;
@@ -819,7 +823,7 @@ function validateDurableRoot(value: unknown, contract: ResolvedWasmDurableJsonCo
         item["entityId"] !== null || !emptyJsonRecord(item["properties"]) ||
         !Array.isArray(item["children"]) || item["children"].length === 0 ||
         item["children"].length > maxChildren ||
-        (contract.mode !== "v7" && item["children"].length !== 1)) return false;
+        ((!EXPERIMENTAL_BLOCK_PROFILES || contract.mode !== "v7") && item["children"].length !== 1)) return false;
       const leading = exactJsonRecord(item["children"][0], ["kind", "type", "entityId", "properties", "children"]);
       if (leading === null || (leading["type"] !== "breditor/paragraph" && leading["type"] !== "breditor/heading") ||
         !visit(leading, depth + 2)) return false;
@@ -853,7 +857,7 @@ function validateDurableRoot(value: unknown, contract: ResolvedWasmDurableJsonCo
       if (!emptyJsonRecord(paragraph["properties"])) return false;
     } else {
       const properties = exactJsonRecord(paragraph["properties"], ["breditor/level"]);
-      if ((contract.mode !== "v5" && contract.mode !== "v6" && contract.mode !== "v7") || paragraph["type"] !== "breditor/heading" ||
+      if (((!EXPERIMENTAL_BLOCK_PROFILES || contract.mode !== "v5") && (!EXPERIMENTAL_BLOCK_PROFILES || contract.mode !== "v6") && (!EXPERIMENTAL_BLOCK_PROFILES || contract.mode !== "v7")) || paragraph["type"] !== "breditor/heading" ||
         properties === null || !isHeadingProjectionLevel(properties["breditor/level"])) return false;
       totalPropertyValues += 1;
       if (totalPropertyValues > MAX_PROPERTY_VALUES) return false;

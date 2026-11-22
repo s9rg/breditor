@@ -36,6 +36,8 @@ import {
   type WasmProfileGenerationView,
 } from "./wasm_profile_descriptor.js";
 
+const EXPERIMENTAL_BLOCK_PROFILES = import.meta.breditorExperimentalBlockProfiles !== false;
+
 /** JavaScript-visible Wasm transport generation accepted by this bootstrap. */
 export const BREDITOR_WASM_ABI_VERSION = "5" as const;
 
@@ -371,6 +373,7 @@ export function bootstrapFlatListWasmEngine(
   module: WasmEngineBootstrapModuleView,
   source: WasmFlatListEngineBootstrapSource,
 ): BrowserWasmEngineBootstrapResult<FlatListDocumentProjection> {
+  if (!EXPERIMENTAL_BLOCK_PROFILES) throw new TypeError("Experimental block profiles are unavailable in this build");
   return bootstrapEngine(module, source, true);
 }
 
@@ -379,6 +382,7 @@ export function bootstrapNestedListWasmEngine(
   module: WasmEngineBootstrapModuleView,
   source: WasmNestedListEngineBootstrapSource,
 ): BrowserWasmEngineBootstrapResult<NestedListDocumentProjection> {
+  if (!EXPERIMENTAL_BLOCK_PROFILES) throw new TypeError("Experimental block profiles are unavailable in this build");
   return bootstrapEngine(module, source, "nested");
 }
 
@@ -386,9 +390,9 @@ function bootstrapEngine(module: WasmEngineBootstrapModuleView, source: unknown,
 function bootstrapEngine(module: WasmEngineBootstrapModuleView, source: unknown, flatLists: false): BrowserWasmEngineBootstrapResult;
 function bootstrapEngine(module: WasmEngineBootstrapModuleView, source: unknown, flatLists: true): BrowserWasmEngineBootstrapResult<FlatListDocumentProjection>;
 function bootstrapEngine(module: WasmEngineBootstrapModuleView, source: unknown, flatLists: boolean | "nested"): BrowserWasmEngineBootstrapResult<BootstrapProjection> {
-  const request = readSource(source, flatLists);
-  if (request === null || (flatLists && !(request.semanticProfile !== undefined &&
-    "formatVersion" in request.semanticProfile && request.semanticProfile.formatVersion === (flatLists === "nested" ? 5 : 4)))) return failure(INVALID_REQUEST);
+  const request = readSource(source, (EXPERIMENTAL_BLOCK_PROFILES && flatLists));
+  if (request === null || ((EXPERIMENTAL_BLOCK_PROFILES && flatLists) && !(request.semanticProfile !== undefined &&
+    "formatVersion" in request.semanticProfile && request.semanticProfile.formatVersion === (EXPERIMENTAL_BLOCK_PROFILES && flatLists === "nested" ? 5 : 4)))) return failure(INVALID_REQUEST);
 
   const resolved = resolveFactory(module, request.semanticProfile);
   if (!resolved.ok) return failure(resolved.error);
@@ -509,6 +513,7 @@ export function preflightFlatListWasmSemanticProfile(
   module: WasmEngineBootstrapModuleView,
   source: WasmFlatListProfileBootstrapSource,
 ): BrowserWasmSemanticProfilePreflightResult {
+  if (!EXPERIMENTAL_BLOCK_PROFILES) throw new TypeError("Experimental block profiles are unavailable in this build");
   return preflightProfile(module, source, true);
 }
 
@@ -517,12 +522,13 @@ export function preflightNestedListWasmSemanticProfile(
   module: WasmEngineBootstrapModuleView,
   source: WasmNestedListProfileBootstrapSource,
 ): BrowserWasmSemanticProfilePreflightResult {
+  if (!EXPERIMENTAL_BLOCK_PROFILES) throw new TypeError("Experimental block profiles are unavailable in this build");
   return preflightProfile(module, source, "nested");
 }
 
 function preflightProfile(module: WasmEngineBootstrapModuleView, source: unknown, flatLists: boolean | "nested"): BrowserWasmSemanticProfilePreflightResult {
-  const normalized = readSemanticProfile(source, flatLists);
-  if (normalized === null || normalized === undefined || (flatLists && !("formatVersion" in normalized && normalized.formatVersion === (flatLists === "nested" ? 5 : 4)))) {
+  const normalized = readSemanticProfile(source, (EXPERIMENTAL_BLOCK_PROFILES && flatLists));
+  if (normalized === null || normalized === undefined || ((EXPERIMENTAL_BLOCK_PROFILES && flatLists) && !("formatVersion" in normalized && normalized.formatVersion === (EXPERIMENTAL_BLOCK_PROFILES && flatLists === "nested" ? 5 : 4)))) {
     return preflightFailure(INVALID_REQUEST);
   }
   const resolved = resolveFactory(module, normalized);
@@ -569,12 +575,14 @@ export function isOwnedBrowserWasmEngineBootstrapResult(
 
 /** List results deliberately do not satisfy the legacy result brand check. @internal */
 export function isOwnedBrowserFlatListWasmEngineBootstrapResult(value: unknown): value is BrowserWasmEngineBootstrapResult<FlatListDocumentProjection> {
+  if (!EXPERIMENTAL_BLOCK_PROFILES) return false;
   if (!objectLike(value) || !OWNED_BOOTSTRAP_RESULTS.has(value)) return false;
   const result = value as BrowserWasmEngineBootstrapResult<BootstrapProjection>;
   return !result.ok || isOwnedFlatListProjection(result.projection);
 }
 
 export function isOwnedBrowserNestedListWasmEngineBootstrapResult(value: unknown): value is BrowserWasmEngineBootstrapResult<NestedListDocumentProjection> {
+  if (!EXPERIMENTAL_BLOCK_PROFILES) return false;
   if (!objectLike(value) || !OWNED_BOOTSTRAP_RESULTS.has(value)) return false;
   const result = value as BrowserWasmEngineBootstrapResult<BootstrapProjection>;
   return !result.ok || isOwnedNestedListProjection(result.projection);
@@ -952,11 +960,11 @@ function consumeProjectionRead(
     return Object.freeze({ ok: false, error: INVALID_VIEW });
   }
   // Structural modes always have a compiled descriptor, never a base fingerprint.
-  const consumed = mode === "nestedLists" && typeof profile !== "string"
+  const consumed = (EXPERIMENTAL_BLOCK_PROFILES && mode === "nestedLists") && typeof profile !== "string"
     ? consumeNestedListSemanticProjection(facade as FlatListSemanticProjectionView, rawGeneration, profile)
-    : mode === "flatLists" && typeof profile !== "string"
+    : (EXPERIMENTAL_BLOCK_PROFILES && mode === "flatLists") && typeof profile !== "string"
     ? consumeFlatListSemanticProjection(facade as FlatListSemanticProjectionView, rawGeneration, profile)
-    : mode === "textBlocks" && typeof profile !== "string"
+    : (EXPERIMENTAL_BLOCK_PROFILES && mode === "textBlocks") && typeof profile !== "string"
     ? consumeTextBlockSemanticProjection(facade as TextBlockSemanticProjectionView, rawGeneration, profile)
     : consumeSemanticProjection(facade, rawGeneration, profile);
   if (!consumed.ok) {
@@ -1003,8 +1011,8 @@ function snapshotProjectionFacade(
     const formatPropertyString = view.formatPropertyString;
     const matchesProfileGeneration = view.matchesProfileGeneration;
     const headingLevel = textBlocks ? (raw as TextBlockSemanticProjectionView).headingLevel : undefined;
-    const listKind = (mode === "flatLists" || mode === "nestedLists") ? (raw as FlatListSemanticProjectionView).listKind : undefined;
-    const orderedListStart = (mode === "flatLists" || mode === "nestedLists") ? (raw as FlatListSemanticProjectionView).orderedListStart : undefined;
+    const listKind = ((EXPERIMENTAL_BLOCK_PROFILES && mode === "flatLists") || (EXPERIMENTAL_BLOCK_PROFILES && mode === "nestedLists")) ? (raw as FlatListSemanticProjectionView).listKind : undefined;
+    const orderedListStart = ((EXPERIMENTAL_BLOCK_PROFILES && mode === "flatLists") || (EXPERIMENTAL_BLOCK_PROFILES && mode === "nestedLists")) ? (raw as FlatListSemanticProjectionView).orderedListStart : undefined;
     const scalars = [
       schemaName,
       schemaVersion,
@@ -1033,7 +1041,7 @@ function snapshotProjectionFacade(
     if (
       typeof schemaFingerprint !== "string" ||
       (textBlocks && (typeof headingLevel !== "function" || valueIsThenable(headingLevel))) ||
-      ((mode === "flatLists" || mode === "nestedLists") && [listKind, orderedListStart].some(method => typeof method !== "function" || valueIsThenable(method))) ||
+      (((EXPERIMENTAL_BLOCK_PROFILES && mode === "flatLists") || (EXPERIMENTAL_BLOCK_PROFILES && mode === "nestedLists")) && [listKind, orderedListStart].some(method => typeof method !== "function" || valueIsThenable(method))) ||
       scalars.some(valueIsThenable) ||
       methods.some((method) =>
         typeof method !== "function" || valueIsThenable(method)
@@ -1047,7 +1055,7 @@ function snapshotProjectionFacade(
       // Replacing an async result with undefined makes absence probes accept it.
       return Reflect.apply(method, raw, args) as unknown;
     };
-    const wordFacade = mode === "nestedLists"
+    const wordFacade = (EXPERIMENTAL_BLOCK_PROFILES && mode === "nestedLists")
       ? snapshotNestedProjectionWordFacade(raw, valueIsThenable) : {};
     if (wordFacade === null) {
       bestEffortCleanup(cleanup);
@@ -1116,7 +1124,7 @@ function snapshotProjectionFacade(
       // at paragraph/root/absence probes, where undefined itself is valid.
       ...(textBlocks ? { headingLevel: (index: number) =>
         Reflect.apply(headingLevel as Function, raw, [index]) as number | undefined } : {}),
-      ...((mode === "flatLists" || mode === "nestedLists") ? {
+      ...(((EXPERIMENTAL_BLOCK_PROFILES && mode === "flatLists") || (EXPERIMENTAL_BLOCK_PROFILES && mode === "nestedLists")) ? {
         listKind: (index: number) => Reflect.apply(listKind as Function, raw, [index]) as ReturnType<FlatListSemanticProjectionView["listKind"]>,
         orderedListStart: (index: number) => Reflect.apply(orderedListStart as Function, raw, [index]) as number | undefined,
       } : {}),
@@ -1511,7 +1519,7 @@ function readSource(value: unknown, flatLists: boolean | "nested"): BootstrapSou
     const lineageId = document["lineageId"];
     const documentJson = document["documentJson"];
     const historyCapacity = document["historyCapacity"];
-    const semanticProfile = readSemanticProfile(document["semanticProfile"], flatLists);
+    const semanticProfile = readSemanticProfile(document["semanticProfile"], (EXPERIMENTAL_BLOCK_PROFILES && flatLists));
     const hasSemanticProfile = Object.hasOwn(document, "semanticProfile");
     if (
       typeof lineageId === "string" &&
@@ -1552,7 +1560,7 @@ function readSource(value: unknown, flatLists: boolean | "nested"): BootstrapSou
     checkpoint["kind"] === "sessionCheckpoint" &&
     sessionCheckpointJsonUtf8Bytes(checkpoint["checkpointJson"]) !== null
   ) {
-    const semanticProfile = readSemanticProfile(checkpoint["semanticProfile"], flatLists);
+    const semanticProfile = readSemanticProfile(checkpoint["semanticProfile"], (EXPERIMENTAL_BLOCK_PROFILES && flatLists));
     const hasSemanticProfile = Object.hasOwn(checkpoint, "semanticProfile");
     if (
       hasSemanticProfile
@@ -1585,7 +1593,7 @@ function readSemanticProfile(
   const v2 = exactRecord(value, ["bootstrapJson", "formatVersion"]);
   const record = v1 ?? v2;
   if (record === null) return null;
-  if (v2 !== null && v2["formatVersion"] !== 2 && v2["formatVersion"] !== 3 && !(flatLists === true && v2["formatVersion"] === 4) && !(flatLists === "nested" && v2["formatVersion"] === 5)) return null;
+  if (v2 !== null && v2["formatVersion"] !== 2 && v2["formatVersion"] !== 3 && !(EXPERIMENTAL_BLOCK_PROFILES && flatLists === true && v2["formatVersion"] === 4) && !(EXPERIMENTAL_BLOCK_PROFILES && flatLists === "nested" && v2["formatVersion"] === 5)) return null;
   const bootstrapJson = record["bootstrapJson"];
   if (
     typeof bootstrapJson !== "string" ||
