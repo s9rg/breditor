@@ -476,10 +476,12 @@ content-egress boundary without hiding growth by raising the bundler warning.
 Gzip measurements use Node's level-9 gzip implementation and are reproducible
 comparisons, not exact transfer-size promises for every CDN.
 
-The browser build emits runtime JavaScript without source comments, then runs a
-separate declaration-only pass so public API documentation remains in the
-shipped `.d.ts` files. This keeps explanatory source and type documentation
-without charging applications or the package tarball for duplicate prose.
+The browser build minifies each emitted ESM module with the pinned Rolldown
+toolchain and keeps function and class names. Shipped declarations retain their
+signatures. The package entry points and core editor, clipboard, HTML host,
+autosave, and command interfaces retain their editor hover documentation.
+Supporting declarations ship without comments. The source retains the complete
+API documentation.
 
 The three packed-tarball ceilings run inside `npm run smoke:packages`, after
 explicit browser/reference builds and the two-build Wasm package check and
