@@ -289,7 +289,8 @@ function headingLabel(node:Element):string {
  let label="";
  for(const child of node.children){
   if(child.kind!=="text")continue;
-  label+=child.text.slice(0,maxContentsLabelUnits+1-label.length);
+  const chunk=label.length===0?child.text.trimStart():child.text;
+  label+=chunk.slice(0,maxContentsLabelUnits+1-label.length);
   if(label.length>maxContentsLabelUnits)break;
  }
  const truncated=label.length>maxContentsLabelUnits;

@@ -54,6 +54,16 @@ describe("published document table of contents", () => {
   expect(() => renderStaticDocument(headingDocument, {tableOfContents: {idPrefix: "unsafe prefix"}})).toThrow(TypeError);
  });
 
+ it("ignores leading whitespace before bounding names and labels blank headings", () => {
+  const whitespace = " ".repeat(520);
+  const output = render([
+   heading("spaced", 2, whitespace + "Release notes"),
+   heading("blank", 2, whitespace),
+  ]);
+  expect([...output.querySelectorAll("nav a")].map(link => link.textContent)).toEqual(["Release notes", "Untitled heading"]);
+  expect(output.querySelector("h2")?.textContent).toBe(whitespace + "Release notes");
+ });
+
  it("bounds the navigation list and keeps complete heading text in the body", () => {
   const titles = Array.from({length: 513}, (_, index) => heading(`h-${index}`, 2,
    index === 0 ? "x".repeat(511) + "🌱" : `Heading ${index}`));
