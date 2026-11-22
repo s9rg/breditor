@@ -37,7 +37,9 @@ export function releaseChecks(environment = process.env) {
     check("demo-production", npm, ["run", "build", "--workspace", "@breditor/example-react"]),
     check("production-size", node, ["scripts/check-size-budgets.mjs"]),
     check("browser-matrix", node, [join(repository, "node_modules/@playwright/test/cli.js"), "test"]),
-    check("demo-matrix", node, [join(repository, "node_modules/@playwright/test/cli.js"), "test", "-c", "playwright.demo.config.ts"]),
+    check("demo-matrix", node, [join(repository, "node_modules/@playwright/test/cli.js"), "test", "-c", "playwright.demo.config.ts"], {
+      BREDITOR_RELEASE_DEMO_PREVIEW: "1",
+    }),
     check("diff-whitespace", "git", ["diff", "--check"]),
   ]);
 }
