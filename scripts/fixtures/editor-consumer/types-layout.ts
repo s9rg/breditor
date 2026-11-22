@@ -10,7 +10,8 @@ function shared(core:SharedRichEditor):RichBlockLayoutStateRead{core.changeSelec
 void [localFactory,sharedFactory,layoutProfileBootstrapJsonV3,layoutSharedProfileConfigurationV3,command,local,shared];
 function visual(local:LocalEditorOptions,shared:SharedEditorSessionOptions){
  void openLocalEditor({...local,richLanguage:3});void openSharedEditor({...shared,richLanguage:3});
- // @ts-expect-error Unknown future grammars must not inherit V3 behavior.
- void openSharedEditor({...shared,richLanguage:4});
+ void openLocalEditor({...local,richLanguage:4});void openSharedEditor({...shared,richLanguage:4});
+ // @ts-expect-error Unknown future grammars must not inherit V4 behavior.
+ void openSharedEditor({...shared,richLanguage:5});
 }
 void [visual,createLayoutRichToolbarV3,createLayoutSharedToolbarV3,rawLayout];
