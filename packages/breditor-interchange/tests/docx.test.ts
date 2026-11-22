@@ -230,6 +230,15 @@ describe("DOCX export (@breditor/interchange/docx)",()=>{
     const {files}=open(ok(result));expect(files.filter(file=>file.name.startsWith("word/media/")).map(file=>file.name)).toEqual(["word/media/image1.png","word/media/image2.png"]);
     expect((await exportDocxWithImages(source,{loadImage:()=>{throw Error("x");}})).ok).toBe(false);
   });
+  it("refuses invalid page options before contacting an async image provider",async()=>{
+    const source=doc(el("image",{"image-id":"i","asset-id":"a","asset-generation":"g","decorative":false,"alt-text":"x"}));
+    let calls=0;
+    const loadImage=()=>{calls++;return PNG;};
+    for(const options of [{pageSize:"legal" as "a4"},{title:"x".repeat(1025)}]){
+      await expect(exportDocxWithImages(source,{...options,loadImage})).resolves.toEqual({ok:false,error:"invalid-source",losses:[]});
+    }
+    expect(calls).toBe(0);
+  });
   it.each(["sync","async"] as const)("preserves exact media when the %s loader reuses a Buffer",async mode=>{
     const pic=(asset:string)=>el("image",{"image-id":asset,"asset-id":asset,"asset-generation":"g","decorative":false,"alt-text":asset});
     const source=doc(pic("png"),pic("jpeg"));

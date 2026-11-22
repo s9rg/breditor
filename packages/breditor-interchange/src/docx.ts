@@ -35,6 +35,10 @@ const failure=(error:unknown,losses:readonly DocxLoss[]):DocxResult<never>=>{
   if(error instanceof RangeError)return Object.freeze({ok:false,error:"resource-limit",losses});
   return Object.freeze({ok:false,error:"invalid-source",losses});
 };
+function validatePageOptions(title:unknown,pageSize:unknown):void {
+  if(title!==undefined&&(typeof title!=="string"||title.length>1024))throw new ConversionFailure("invalid-source");
+  if(pageSize!=="letter"&&pageSize!=="a4")throw new ConversionFailure("invalid-source");
+}
 /** Distinct image bindings in document order, so a host can preload bytes before `exportDocx`. */
 export function docxImageBindings(documentJson:string):DocxResult<readonly DocxImageBinding[]> {
   try{return Object.freeze({ok:true,value:Object.freeze(collectImageBindings(documentRoot(documentJson))),losses:Object.freeze([])});}
@@ -49,8 +53,7 @@ export function exportDocx(documentJson:string,options:DocxExportOptions={}):Doc
   let ledger=new LossLedger();
   try{
     const title=options.title,language=options.language,pageSize=options.pageSize??"letter";
-    if(title!==undefined&&(typeof title!=="string"||title.length>1024))return failure(new ConversionFailure("invalid-source"),ledger.list());
-    if(pageSize!=="letter"&&pageSize!=="a4")return failure(new ConversionFailure("invalid-source"),ledger.list());
+    validatePageOptions(title,pageSize);
     if(options.image!==undefined&&typeof options.image!=="function")return failure(new ConversionFailure("asset-policy"),ledger.list());
     const root=documentRoot(documentJson),page=pageSizes[pageSize];
     const writer=new DocxWriter({image:options.image,contentWidthTwips:page.width-2*pageMargin});ledger=writer.losses;
@@ -78,6 +81,7 @@ export function exportDocx(documentJson:string,options:DocxExportOptions={}):Doc
 /** Load every distinct image binding through an asynchronous host loader, then `exportDocx`. */
 export async function exportDocxWithImages(documentJson:string,options:DocxAsyncExportOptions={}):Promise<DocxResult<Uint8Array>> {
   const {loadImage,...rest}=options;
+  try{validatePageOptions(rest.title,rest.pageSize??"letter");}catch(error){return failure(error,Object.freeze([]));}
   const bindings=docxImageBindings(documentJson);if(!bindings.ok)return bindings;
   const loaded=new Map<string,Uint8Array|undefined>();
   if(loadImage!==undefined){
