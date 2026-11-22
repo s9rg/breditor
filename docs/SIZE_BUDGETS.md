@@ -488,7 +488,7 @@ configuration cannot turn those prerequisites into a stale-artifact pass.
 
 Native release builds keep optimization level 3 and one code-generation unit
 without LTO. Shipped Wasm instead uses the dedicated `wasm-release` profile:
-size optimization, fat LTO, one code-generation unit, aborting panics, and
+maximum size optimization (`opt-level = "z"`), fat LTO, one code-generation unit, aborting panics, and
 stripped symbols. The pinned package pipeline also removes Wasm name and
 producer sections and uses exact `rolldown 1.2.7` to deterministically minify
 generated JavaScript glue while retaining its declaration link. Package checks

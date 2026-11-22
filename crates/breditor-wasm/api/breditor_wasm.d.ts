@@ -1299,6 +1299,7 @@ export interface InitOutput {
     readonly __wbg_breditorstringresult_free: (a: number, b: number) => void;
     readonly breditorVersion: (a: number) => void;
     readonly breditorWasmAbiVersion: (a: number) => void;
+    readonly breditoractionstatesnapshot_changedCount: (a: number) => number;
     readonly breditoractionstatesnapshot_changedId: (a: number, b: number, c: number) => void;
     readonly breditoractionstatesnapshot_entryActivation: (a: number, b: number, c: number) => void;
     readonly breditoractionstatesnapshot_entryCount: (a: number) => number;
@@ -1342,6 +1343,7 @@ export interface InitOutput {
     readonly breditorcompiledprofile_generation: (a: number) => number;
     readonly breditorcompiledprofile_matchesProfileGeneration: (a: number, b: number) => number;
     readonly breditorcompiledprofiledescriptor_actionStateActivationContract: (a: number, b: number, c: number) => void;
+    readonly breditorcompiledprofiledescriptor_actionStateCount: (a: number) => number;
     readonly breditorcompiledprofiledescriptor_actionStateHistoryDirection: (a: number, b: number, c: number) => void;
     readonly breditorcompiledprofiledescriptor_actionStateId: (a: number, b: number, c: number) => void;
     readonly breditorcompiledprofiledescriptor_actionStateSourceActionId: (a: number, b: number, c: number) => void;
@@ -1349,6 +1351,7 @@ export interface InitOutput {
     readonly breditorcompiledprofiledescriptor_actionStateSourceKind: (a: number, b: number, c: number) => void;
     readonly breditorcompiledprofiledescriptor_actionStateValueContractName: (a: number, b: number, c: number) => void;
     readonly breditorcompiledprofiledescriptor_actionStateValueContractVersion: (a: number, b: number) => number;
+    readonly breditorcompiledprofiledescriptor_formatCount: (a: number) => number;
     readonly breditorcompiledprofiledescriptor_formatKind: (a: number, b: number, c: number) => void;
     readonly breditorcompiledprofiledescriptor_formatPropertyCount: (a: number, b: number) => number;
     readonly breditorcompiledprofiledescriptor_formatPropertyIntegerMaximum: (a: number, b: number, c: number, d: number) => void;
@@ -1360,9 +1363,11 @@ export interface InitOutput {
     readonly breditorcompiledprofiledescriptor_formatPropertyValueType: (a: number, b: number, c: number, d: number) => void;
     readonly breditorcompiledprofiledescriptor_formatRevision: (a: number, b: number) => number;
     readonly breditorcompiledprofiledescriptor_inlineFormatSetActionStateId: (a: number, b: number, c: number) => void;
+    readonly breditorcompiledprofiledescriptor_inlineFormatSetCount: (a: number) => number;
     readonly breditorcompiledprofiledescriptor_inlineFormatSetFormatKind: (a: number, b: number, c: number) => void;
     readonly breditorcompiledprofiledescriptor_inlineFormatSetIntentId: (a: number, b: number, c: number) => void;
     readonly breditorcompiledprofiledescriptor_intentActivationContract: (a: number, b: number, c: number) => void;
+    readonly breditorcompiledprofiledescriptor_intentCount: (a: number) => number;
     readonly breditorcompiledprofiledescriptor_intentId: (a: number, b: number, c: number) => void;
     readonly breditorcompiledprofiledescriptor_intentInputContractName: (a: number, b: number, c: number) => void;
     readonly breditorcompiledprofiledescriptor_intentInputContractVersion: (a: number, b: number) => number;
@@ -1430,9 +1435,12 @@ export interface InitOutput {
     readonly breditorintentresult_status: (a: number, b: number) => void;
     readonly breditorobservation_canRedo: (a: number) => number;
     readonly breditorobservation_canUndo: (a: number) => number;
+    readonly breditorobservation_historyCapacity: (a: number) => number;
     readonly breditorobservation_matchesProfileGeneration: (a: number, b: number) => number;
+    readonly breditorobservation_redoDepth: (a: number) => number;
     readonly breditorobservation_snapshotLineage: (a: number, b: number) => void;
     readonly breditorobservation_snapshotRevision: (a: number, b: number) => void;
+    readonly breditorobservation_undoDepth: (a: number) => number;
     readonly breditorprofilegeneration_matches: (a: number, b: number) => number;
     readonly breditorprojection_childAt: (a: number, b: number, c: number) => number;
     readonly breditorprojection_childCount: (a: number, b: number) => number;
@@ -1448,8 +1456,10 @@ export interface InitOutput {
     readonly breditorprojection_matchesProfileGeneration: (a: number, b: number) => number;
     readonly breditorprojection_nodeCount: (a: number) => number;
     readonly breditorprojection_nodeKind: (a: number, b: number, c: number) => void;
+    readonly breditorprojection_rootIndex: (a: number) => number;
     readonly breditorprojection_schemaFingerprint: (a: number, b: number) => void;
     readonly breditorprojection_schemaName: (a: number, b: number) => void;
+    readonly breditorprojection_schemaVersion: (a: number) => number;
     readonly breditorprojection_snapshotLineage: (a: number, b: number) => void;
     readonly breditorprojection_snapshotRevision: (a: number, b: number) => void;
     readonly breditorprojection_text: (a: number, b: number, c: number) => void;
@@ -1491,16 +1501,6 @@ export interface InitOutput {
     readonly breditorstringresult_status: (a: number, b: number) => void;
     readonly breditorstringresult_takeValue: (a: number, b: number) => void;
     readonly breditorstringresult_value: (a: number, b: number) => void;
-    readonly breditorprojection_rootIndex: (a: number) => number;
-    readonly breditoractionstatesnapshot_changedCount: (a: number) => number;
-    readonly breditorcompiledprofiledescriptor_actionStateCount: (a: number) => number;
-    readonly breditorcompiledprofiledescriptor_formatCount: (a: number) => number;
-    readonly breditorcompiledprofiledescriptor_inlineFormatSetCount: (a: number) => number;
-    readonly breditorcompiledprofiledescriptor_intentCount: (a: number) => number;
-    readonly breditorobservation_historyCapacity: (a: number) => number;
-    readonly breditorobservation_redoDepth: (a: number) => number;
-    readonly breditorobservation_undoDepth: (a: number) => number;
-    readonly breditorprojection_schemaVersion: (a: number) => number;
     readonly __wbindgen_add_to_stack_pointer: (a: number) => number;
     readonly __wbindgen_export: (a: number, b: number, c: number) => void;
     readonly __wbindgen_export2: (a: number, b: number) => number;
