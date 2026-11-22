@@ -1,5 +1,5 @@
 import {createElement,createRef} from "react";
-import {BreditorEditor,type BreditorEditorHandle} from "@breditor/editor/react";
+import {BreditorEditor,BreditorStaticDocument,type BreditorEditorHandle,type BreditorStaticDocumentProps} from "@breditor/editor/react";
 import {createSharedProfile,openSharedEditor,type SharedProfileConfiguration} from "@breditor/editor/collaboration";
 import {BreditorSharedEditor,type BreditorSharedEditorHandle} from "@breditor/editor/collaboration/react";
 const handle=createRef<BreditorEditorHandle>();createElement(BreditorEditor,{ref:handle,sessionKey:"doc",initialOptions:{initial:{kind:"empty"}},onReady:editor=>editor.focus()});
@@ -14,3 +14,8 @@ void handle.current?.closeTypingGroup();createElement(BreditorEditor,{initialOpt
 createElement(BreditorSharedEditor,{ref:sharedHandle,initialOptions:{database:"typed",room:"doc",writer:"101"},onCloseError:(error,editor)=>{void error;void editor.close();}});
 createElement(BreditorSharedEditor,{initialOptions:{richLanguage:2,database:"typed-v2",room:"doc",writer:"202"},onCloseError:()=>{}});
 void openSharedEditor;void sharedHandle.current?.getRecovery();
+
+const published:BreditorStaticDocumentProps={document:{},className:"article",options:{print:{size:"Letter"},codeHighlighting:true}};
+createElement(BreditorStaticDocument,published);
+// @ts-expect-error The React static component owns its surface wrapper.
+createElement(BreditorStaticDocument,{document:{},options:{fragment:true}});

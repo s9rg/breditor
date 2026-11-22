@@ -51,3 +51,18 @@ function autosaveContract(editor:LocalEditor):LocalAutosave {
  return autosave;
 }
 void autosaveContract;
+
+import {renderStaticDocument,renderStaticDocumentWithReport,type StaticRenderOptions,type StaticRenderResult} from "@breditor/editor/static";
+function staticPublishingContract(document:unknown):StaticRenderResult {
+ const options:StaticRenderOptions={
+  tableOfContents:{label:"On this page",idPrefix:"article"},
+  resolveAsset:({asset})=>`/assets/${encodeURIComponent(asset)}`,
+  print:{size:"A4"},
+ };
+ const fragment:string=renderStaticDocument(document,{...options,fragment:true});
+ void fragment;
+ // @ts-expect-error Static rendering and asset resolution are synchronous.
+ renderStaticDocument(document,{resolveAsset:async()=>"/assets/cover.png"});
+ return renderStaticDocumentWithReport(document,options);
+}
+void staticPublishingContract;
