@@ -1748,6 +1748,12 @@ for each stage; executable paths containing spaces remain one argument.
 
 ## Prepared hosted qualification
 
+The [PR readiness check](../.github/workflows/pr-readiness.yml) runs the
+release ledger, candidate runner, and activation workflow contract tests
+against proposed merges to `main`. It uses the pinned Node toolchain and
+requires no package installation or native build. The manual candidate
+workflow below runs the actual release qualification.
+
 The manual workflow in
 [GitHub Actions](../.github/workflows/candidate-qualification.yml) defaults to the
 full profile and offers the functional profile explicitly. It has read-only
