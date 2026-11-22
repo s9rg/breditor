@@ -170,7 +170,7 @@ fn refusals_publish_nothing() -> Result {
         group(&[json!({"kind":"insertPlainText","text":"x"})]),
         group(&[json!({"kind":"undo"})]),
         group(&[json!({"kind":"setSelection","selection":text("q", 0, 0)})]),
-        group(&[group(&[heading.clone()])]),
+        group(&[group(std::slice::from_ref(&heading))]),
         group(&[data(
             "replaceTriggerThen",
             json!({"selection":text("p", 0, 5),"command":heading}),
@@ -202,11 +202,14 @@ fn refusals_publish_nothing() -> Result {
         "selection"
     );
     let checkpoint = read(a.checkpoint_json())?;
-    assert_eq!(a.execute(&stale, &group(&[valid.clone()]).to_string()).status(), "error");
+    assert_eq!(
+        a.execute(&stale, &group(std::slice::from_ref(&valid)).to_string()).status(),
+        "error"
+    );
     assert_eq!(read(a.checkpoint_json())?, checkpoint);
     read(a.set_read_only(&a.observe(), true))?;
     let checkpoint = read(a.checkpoint_json())?;
-    assert_eq!(run(&mut a, &group(&[valid.clone()])), "error");
+    assert_eq!(run(&mut a, &group(std::slice::from_ref(&valid))), "error");
     assert_eq!(read(a.checkpoint_json())?, checkpoint);
     read(a.set_read_only(&a.observe(), false))?;
     assert_eq!(run(&mut a, &group(&[valid])), "content");
