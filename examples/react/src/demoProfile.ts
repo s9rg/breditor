@@ -1,5 +1,4 @@
 import { openBreditorBrowserEditor, type BreditorBrowserEditorOptions, type BreditorBrowserEditorOpenResult, type ToolbarManifest } from "@breditor/browser";
-import type { WasmEngineBootstrapModuleView } from "@breditor/browser/advanced";
 import {
   REFERENCE_SIZE_SHOWCASE_KEYBOARD_SHORTCUT_MANIFEST,
   REFERENCE_SIZE_SHOWCASE_LINEAGE_ID,
@@ -22,7 +21,7 @@ export type DemoProfile = Required<Pick<BreditorBrowserEditorOptions, "rendering
 };
 
 /** The default demo keeps its existing schema, wire generation and storage slot. */
-export function createDemoProfile(_wasm: WasmEngineBootstrapModuleView): DemoProfile {
+export function createDemoProfile(): DemoProfile {
   return {
     lineageId: REFERENCE_SIZE_SHOWCASE_LINEAGE_ID,
     documentJson: REFERENCE_SIZE_SHOWCASE_SAMPLE_DOCUMENT_JSON,

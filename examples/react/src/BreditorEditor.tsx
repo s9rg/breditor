@@ -17,9 +17,15 @@ import {
   type BreditorBrowserEditorSnapshot,
 } from "@breditor/browser";
 import { createDemoProfile } from "./demoProfile.js";
-import initializeWasm, * as breditorWasm from "@breditor/wasm";
+import initializeWasm, {
+  BreditorCompiledProfile,
+  BreditorEngine,
+  breditorVersion,
+  breditorWasmAbiVersion,
+} from "@breditor/wasm";
 import { downloadSessionBackup } from "./downloadSessionBackup";
 
+const breditorWasm = { BreditorCompiledProfile, BreditorEngine, breditorVersion, breditorWasmAbiVersion };
 let wasmInitialization: Promise<unknown> | undefined;
 
 /**
@@ -365,8 +371,8 @@ export const BreditorEditor = forwardRef<
           return;
         }
         setMountsRetiring(editorHost, toolbarHost, false);
-        const profile = createDemoProfile(breditorWasm);
-        const result = await profile.openEditor({
+        const profile = createDemoProfile();
+        const open = () => profile.openEditor({
           host: editorHost,
           label,
           wasm: breditorWasm,
@@ -397,6 +403,15 @@ export const BreditorEditor = forwardRef<
           },
           signal: abort.signal,
         });
+        let result = await open();
+        // A rejected projection leaves no owner. Try one fresh open against
+        // the same startup source after the first attempt has cleaned up.
+        if (!result.ok &&
+          result.error.code === "browser_editor.engine_bootstrap_failed" &&
+          result.error.causeCode === "engine_bootstrap.invalid_initial_projection" &&
+          !abort.signal.aborted && generation.current === currentGeneration) {
+          result = await open();
+        }
         if (!result.ok) {
           if (
             !abort.signal.aborted &&
