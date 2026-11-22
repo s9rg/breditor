@@ -233,6 +233,19 @@ impl Socket {
         self.stream = Some(stream);
         Ok(value)
     }
+    pub async fn notification(&mut self) -> TestResult<Value> {
+        let mut stream = self.stream.take().ok_or("closed test socket")?;
+        let (stream, reply) = tokio::task::spawn_blocking(move || {
+            let reply = receive(&mut stream)?;
+            Ok::<_, io::Error>((stream, reply))
+        })
+        .await??;
+        self.stream = Some(stream);
+        if reply.get("id") != Some(&Value::Null) {
+            return Err(invalid("expected unsolicited relay notification").into());
+        }
+        Ok(reply["result"].clone())
+    }
 }
 impl Drop for Socket {
     fn drop(&mut self) {
