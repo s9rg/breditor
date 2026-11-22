@@ -508,3 +508,13 @@ chunk, so future code splitting cannot evade either the raw or gzip ceiling.
 The eager chunk can exceed Vite's generic 500 kB warning while still passing
 the explicit product budgets; the gate does not suppress or relabel that
 warning as an error.
+
+## Rich editor demo latency sample
+
+With the paired rich runtime built, run
+`npx playwright test -c experiments/rich-browser/playwright.config.mjs demo-latency.spec.mjs`.
+The browser report records cold page readiness and 25 warm calls each for text
+insertion, Undo and Redo on the same small demo document. It includes browser
+and host versions. The command samples measure editor dispatch and synchronous
+rendering. Use these measurements as a scoped baseline when selecting broader
+V1 latency budgets.
