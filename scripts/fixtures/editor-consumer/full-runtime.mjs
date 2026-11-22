@@ -1,4 +1,5 @@
 import assert from "node:assert/strict";
+import {createHash} from "node:crypto";
 import {readFileSync} from "node:fs";
 import {createRequire} from "node:module";
 import {createElement} from "react";
@@ -9,13 +10,21 @@ import {initializeLocalRuntime,createLocalProfile,emptyDocumentJson} from "@bred
 import {initializeSharedRuntime,createSharedProfile,SharedRichEditor} from "@breditor/editor/collaboration";
 import * as applicationWasm from "@breditor/collaboration/wasm";
 const require=createRequire(import.meta.url);
-assert.deepEqual(Object.keys(applicationWasm).sort(),["SharedEditorOwner","SharedObservation","SharedRichProfile","SharedVersionRestorePlan","SharedSuggestionPreparation","SharedSuggestionEffectProof","SharedSearchResults","default","initSync"].sort());
+assert.deepEqual(Object.keys(applicationWasm).sort(),["SharedArchiveDigest","SharedEditorOwner","SharedObservation","SharedRichProfile","SharedVersionRestorePlan","SharedSuggestionPreparation","SharedSuggestionEffectProof","SharedSearchResults","default","initSync"].sort());
 for(const name of ["accept_document_suggestion","prepare_document_suggestion_effect","commit_document_suggestion_effect","apply_inverse","apply_diff"])assert.equal(applicationWasm.SharedEditorOwner.prototype[name],undefined,"Installed browser runtime must not expose server effects or arbitrary inverses");
 assert.equal(applicationWasm.SharedEditorOwner.prototype.undo,undefined);assert.equal(applicationWasm.SharedEditorOwner.prototype.apply,undefined);
 assert.match(renderToString(createElement(BreditorEditor)),/data-breditor-phase="starting"/);
 assert.match(renderToString(createElement(BreditorSharedEditor,{initialOptions:{database:"ssr",room:"room",writer:"101"},onCloseError:()=>{}})),/data-breditor-phase="starting"/);
 await initializeLocalRuntime(readFileSync(require.resolve("@breditor/experimental-rich-content/wasm-binary")));
 await initializeSharedRuntime(readFileSync(require.resolve("@breditor/collaboration/wasm-binary")));
+const sample=new TextEncoder().encode("installed archive");
+const archiveDigest=applicationWasm.SharedArchiveDigest.create(String(sample.byteLength));
+try{
+ assert.equal(applicationWasm.SharedArchiveDigest.version(),"1");
+ archiveDigest.update(sample);
+ assert.equal(archiveDigest.finish(),createHash("sha256").update(sample).digest("hex"));
+}finally{archiveDigest.free();}
+
 const local=await createLocalProfile(),shared=await createSharedProfile();try{
  assert.equal(local.inlineCatalogJson(),shared.inline_catalog_json());
  const a=new SharedRichEditor(shared.create(emptyDocumentJson(local.descriptor(),"sdk-room","p"),"101")),b=new SharedRichEditor(shared.join_frame("sdk-room","202",a.updateFrame()));
