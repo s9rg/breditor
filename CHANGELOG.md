@@ -6,6 +6,10 @@ its durable formats and Wasm transport.
 
 ## Unreleased
 
+- Scrollable table viewports (`scrollableTables`) now take their region and
+  scroll-button names from the UI catalog (`tableScrollRegion`,
+  `tableScrollLeft`, `tableScrollRight`) instead of fixed English text.
+
 - Add opt-in **code syntax highlighting** for local and shared rich editors
   (`mountRichCodeHighlighting`; `mountCodeHighlighting` in `@breditor/editor` and
   its collaboration entry). JavaScript, TypeScript, JSON, Python and Rust labels

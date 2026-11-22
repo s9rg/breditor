@@ -43,6 +43,8 @@ export interface RichUiStrings extends RichUiPanelStrings, RichAiUiStrings, Rich
  readonly imageResizeLabel:string;readonly imageResizeValue:string;readonly imageResizeOriginal:string;readonly imageResizePreview:string;readonly imageResizeBadge:string;
  // Rich V4 page breaks and the opt-in print preview (page_break.ts, print.ts).
  readonly pageBreakLabel:string;readonly printPreviewLabel:string;
+ // Opt-in scrollable table viewports (render.ts `scrollableTables`).
+ readonly tableScrollRegion:string;readonly tableScrollLeft:string;readonly tableScrollRight:string;
 }
 export type RichUiStringKey=keyof RichUiStrings;
 /** English defaults. Formatting these with no catalog reproduces the original output byte for byte. */
@@ -80,6 +82,8 @@ export const richUiStringsEn:Readonly<RichUiStrings>=Object.freeze({
  imageResizePreview:"{width} by {height} pixels (preview)",imageResizeBadge:"{width} × {height}",
  // Rich V4 page breaks and the opt-in print preview (page_break.ts, print.ts).
  pageBreakLabel:"Page break",printPreviewLabel:"Print preview: page boundaries are approximate",
+ // Opt-in scrollable table viewports (render.ts `scrollableTables`).
+ tableScrollRegion:"Table {number}",tableScrollLeft:"Scroll table {number} left",tableScrollRight:"Scroll table {number} right",
  // AI and language tools (separate block).
  ...richAiUiStringsEn,
  // Editing aids (separate block).
@@ -95,6 +99,7 @@ const parameters:Readonly<Partial<Record<RichUiStringKey,readonly string[]>>>={
  pasteLoss:["target","losses"],controlApply:["label"],controlPanel:["label"],slashCount:["count"],mentionCount:["count"],slashUnavailable:["label"],slashInapplicable:["label"],
  columnResizeLabel:["index","count"],columnResizeValue:["width"],columnResizePreview:["width"],columnResizeBadge:["width"],
  blockDragPickedUp:["count"],blockDragPosition:["index","count"],
+ tableScrollRegion:["number"],tableScrollLeft:["number"],tableScrollRight:["number"],
  ...richUiPanelParameters,
  // Image resize handles (image_resize.ts).
  imageResizeLabel:["index","count"],imageResizeValue:["width","height"],imageResizeOriginal:["width","height"],imageResizePreview:["width","height"],imageResizeBadge:["width","height"],

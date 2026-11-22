@@ -38,6 +38,7 @@ mentionLabel:"الإشارات",mentionLoading:"جارٍ تحميل الاقتر
  imageResizePreview:"{width} × {height} بكسل (معاينة)",imageResizeBadge:"{width} × {height}",
  // Candidate rich V4 page breaks and the print preview (separate block).
  pageBreakLabel:"فاصل صفحة",printPreviewLabel:"معاينة الطباعة: حدود الصفحات تقريبية",
+ tableScrollRegion:"الجدول {number}",tableScrollLeft:"تمرير الجدول {number} إلى اليسار",tableScrollRight:"تمرير الجدول {number} إلى اليمين",
  // AI and language tools (separate block).
  aiPanelLabel:"مساعد الكتابة",aiInstructionLabel:"التعليمات",aiScopeLabel:"التطبيق على",
  aiScopeSelection:"النص المحدد",aiScopeBlock:"الكتلة الحالية",aiScopeDocument:"المستند كاملًا",

@@ -52,6 +52,15 @@ test("interactive rich demo renders owned raster assets and restores exported ex
  await page.getByRole("button",{name:"Redo",exact:true}).click();expect(await page.evaluate(()=>window.demo.editor.view().documentJson)).toBe(exact);
 });
 
+test("table scroll labels come from the UI catalog", async ({page}) => {
+ await page.setViewportSize({width: 430, height: 900});
+ await page.goto("/demo?ui=pseudo");
+ await expect(page.locator("#ready")).toHaveText("Ready — real Rust/Wasm editor");
+ await expect(page.locator("[data-rich-table-scroll='t']")).toHaveAttribute("aria-label", "⟦Table 1⟧");
+ await expect(page.getByRole("button", {name: "⟦Scroll table 1 left⟧"})).toHaveCount(1);
+ await expect(page.getByRole("button", {name: "⟦Scroll table 1 right⟧"})).toHaveCount(1);
+});
+
 test("a narrow local table scrolls by keyboard and retains its offset and editability", async ({page}) => {
  await page.setViewportSize({width: 430, height: 900});
  await page.goto("/demo");
