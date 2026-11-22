@@ -346,6 +346,44 @@ describe("BreditorEditor lifecycle", () => {
     expect(shell(mounted.container).getAttribute("aria-busy")).toBe("false");
   });
 
+  it("opens the same backup again after one rejected initial projection", async () => {
+    const editor = fakeEditor();
+    mocks.openEditor.mockResolvedValueOnce({
+      ok: false,
+      error: {
+        code: "browser_editor.engine_bootstrap_failed",
+        causeCode: "engine_bootstrap.invalid_initial_projection",
+        message: "The editor could not open its initial projection.",
+      },
+    }).mockResolvedValueOnce(successful(editor));
+
+    const mounted = await render(<BreditorEditor label="Recovered" primaryModifier="control"
+      initialSessionCheckpointJson="unchanged backup" />);
+    await settle();
+
+    expect(mocks.openEditor).toHaveBeenCalledTimes(2);
+    expect(mocks.openEditor.mock.calls[1]).toEqual(mocks.openEditor.mock.calls[0]);
+    expect(editor.focus).toHaveBeenCalledOnce();
+    expect(status(mounted.container)).toBe("Autosave is off.");
+  });
+
+  it("surfaces a persistent projection rejection after the second open", async () => {
+    mocks.openEditor.mockResolvedValue({
+      ok: false,
+      error: {
+        code: "browser_editor.engine_bootstrap_failed",
+        causeCode: "engine_bootstrap.invalid_initial_projection",
+        message: "The editor could not open its initial projection.",
+      },
+    });
+    const mounted = await render(view("Rejected projection"));
+    await settle();
+
+    expect(mocks.openEditor).toHaveBeenCalledTimes(2);
+    expect(status(mounted.container)).toBe("The editor could not open its initial projection.");
+    expect(mounted.container.textContent).toContain("Retry editor");
+  });
+
   it("shows redacted startup diagnostics and retries the editor in place", async () => {
     const recovered = fakeEditor();
     mocks.openEditor
