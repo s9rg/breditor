@@ -100,3 +100,9 @@ header p { margin: 0 0 1rem; color: #41615c; }
  [data-code-demo] [data-demo-editor] :is(.breditor-rich-surface, .breditor-shared-surface) { padding: .65rem; }
  [data-code-demo] [data-demo-editor] pre[data-language] { padding-inline: .75rem; }
 }
+@media (forced-colors: active) {
+ [data-code-demo] [data-demo-editor] :is(.breditor-rich-surface, .breditor-shared-surface):focus-visible {
+  outline: 2px solid Highlight;
+  outline-offset: -3px;
+ }
+}
