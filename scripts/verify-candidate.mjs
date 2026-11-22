@@ -51,7 +51,13 @@ export async function runCandidateChecks(plan,{root=repository,signal,report=con
    if(entry.status!=="passed"){result.status=entry.status;break;}
   }
   if(result.status==="running"){checkSource();result.status=result.stages.length===plan.checks.length?"passed":"interrupted";}
- }catch(error){result.status="failed";result.error=String(error);const current=result.stages.at(-1);if(current?.status==="running"||current?.status==="passed"){current.status="failed";current.error=String(error);}}
+ }catch(error){
+  result.status="failed";result.error=String(error);
+  const current=result.stages.at(-1);
+  if(current?.status==="running"||current?.status==="passed"){current.status="failed";current.error=result.error;}
+  const reason=result.error.replace(/[\r\n]+/g," ").slice(0,512);
+  report(`verify-candidate: ${current?.id??"setup"}: ${reason}`);
+ }
  finally{result.finishedAt=new Date().toISOString();result.selectedChecksPassed=result.status==="passed";saveEvidence(manifest,result);}
  report(`verify-candidate: ${result.status}; ${result.stages.filter(row=>row.status==="passed").length}/${plan.checks.length} selected checks passed; V1 release approval remains separate.`);
  return {exitCode:result.status==="passed"?0:result.status==="interrupted"?130:1,manifest,result};

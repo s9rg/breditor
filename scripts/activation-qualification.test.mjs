@@ -258,7 +258,7 @@ test("aggregation requires six matching results and checks retained logs and pac
     return {status:"passed", exitCode:0, signal:null};
    },
   });
-  assert.equal(outcome.exitCode, 0);
+  assert.equal(outcome.exitCode, 0, outcome.result.error);
   retainActivationShard(root, reportDirectory(stage), stage, bundle, outcome.manifest);
  }
  for (const stage of activationStageIds.slice(0, -1)) await retain(stage);

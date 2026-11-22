@@ -526,3 +526,13 @@ test("both profiles retain the exact installed editor and interchange reports",(
    [{path:"target/interchange-installed-consumer.json",fresh:true,retain:true}]);
  }
 });
+
+test("candidate runner prints the stage ID and a single-line evidence failure",async()=>{
+ const root=temporary(),messages=[];
+ try{
+  const check={...fixtureCheck("missing-proof"),artifacts:[{path:"missing.json",fresh:true}]};
+  const run=await runCandidateChecks(plan([check]),quiet({root,report:message=>messages.push(message)}));
+  assert.equal(run.exitCode,1);
+  assert.match(messages.find(message=>message.startsWith("verify-candidate: missing-proof: ")),/ENOENT.*missing\.json/);
+ }finally{rmSync(root,{recursive:true,force:true});}
+});
