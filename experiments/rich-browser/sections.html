@@ -1,0 +1,29 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Collapsible sections · Breditor</title>
+<script type="importmap">{"imports":{"@breditor/browser/presentation":"/presentation/presentation.js"}}</script>
+<style>
+*{box-sizing:border-box}
+body{margin:auto;max-width:58rem;padding:clamp(1rem,5vw,3.5rem);background:#eef4f2;color:#173d37;font:1rem/1.5 system-ui,sans-serif}
+a{color:#235e53;text-underline-offset:.2em}
+h1{margin:1rem 0 .35rem;font-size:clamp(2rem,6vw,3.15rem);line-height:1.1;letter-spacing:-.04em}
+header p{max-width:38rem}
+[data-breditor-rich] details{border:1px solid #c9ded7;border-radius:.6rem;background:#f5faf7}
+[data-breditor-rich] summary{font-weight:650}
+[data-breditor-rich] summary:focus-within{outline:2px solid #235e53}
+</style>
+</head>
+<body>
+<header>
+ <a href="/demo">← Rich editor demo</a>
+ <h1>Collapsible sections</h1>
+ <p>Open a section with its arrow, edit the summary or body, and use Undo to reverse a change.</p>
+ <p id="section-status" role="status">Opening editor…</p>
+</header>
+<main id="section-editor"></main>
+<script type="module" src="/sections.mjs"></script>
+</body>
+</html>
