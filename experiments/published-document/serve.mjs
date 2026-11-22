@@ -9,6 +9,10 @@ const block=(type,id,properties={},children=[])=>({
 const heading=(id,value)=>block("heading",id,{"breditor/level":2},[text(value)]);
 const paragraph=(id,value)=>block("paragraph",id,{},[text(value)]);
 const code=(id,language,value)=>block("code-block",id,{"breditor/language":language},[text(value)]);
+const retryColumns=[{id:"option",width:136},{id:"setting",width:136}];
+const retryRow=(id,values,header=false)=>block("table-row",id,{"breditor/row-id":id},
+ retryColumns.map(({id:column},index)=>block("table-cell",`${id}-${column}`,
+  {"breditor/column-id":column,"breditor/header":header},[paragraph(`${id}-${column}-text`,values[index])])));
 const document={
  format:"breditor/document",formatVersion:2,
  schema:{name:"breditor-editor/standard",version:4},
@@ -34,6 +38,14 @@ const document={
    '  "initialDelayMs": 250',
    "}",
   ].join("\n")),
+  block("table","retry-defaults",{"breditor/table-id":"defaults","breditor/columns":retryColumns,
+   "breditor/merges":[],"breditor/retracted-merges":[]},[
+   retryRow("column-labels",["Option","Default setting"],true),
+   retryRow("attempts",["Maximum attempts","3"]),
+   retryRow("delay",["Initial delay","250 ms"]),
+   retryRow("backoff",["Delay strategy","Exponential"]),
+   paragraph("defaults-caption","Default retry settings"),
+  ]),
  ]},
 };
 
@@ -54,6 +66,10 @@ a:focus-visible{outline:2px solid #1a6653;outline-offset:3px}
 [data-breditor-static] h2{line-height:1.25;margin:1.6rem 0 .55rem}
 [data-breditor-static] p{margin:.45rem 0}
 pre{background:#f4f7fa;border:1px solid #d6e0e7;border-radius:.55rem;padding:.85rem 1rem;overflow:auto;line-height:1.55}
+[data-breditor-static] table{width:100%;border-collapse:collapse;margin-block:1.5rem}
+[data-breditor-static] :is(th,td){border:1px solid #c9d9d3;padding:.25rem .65rem;text-align:start}
+[data-breditor-static] th{background:#edf5f0}
+[data-breditor-static] caption{padding-top:.4rem;color:#405b54;font-size:.875rem}
 @media print{
  body{background:#fff}
  main{margin:0;padding:0;border:0;max-width:none}
