@@ -3,7 +3,7 @@ import test from "node:test";
 import {mkdtempSync,mkdirSync,rmSync,writeFileSync} from "node:fs";
 import {tmpdir} from "node:os";
 import {dirname,join} from "node:path";
-import {gzipSync} from "node:zlib";
+import {brotliCompressSync,constants,gzipSync} from "node:zlib";
 import {candidateReleasePlan} from "./candidate-release/plan.mjs";
 import {candidateRuntimeSizeReport,measureCandidateRuntimeSize} from "./measure-candidate-runtime-size.mjs";
 
@@ -31,9 +31,13 @@ test("the two runtime pairs are measured independently, with no partial report",
   const result=measureCandidateRuntimeSize(root);
   assert.deepEqual(result.profiles.map(profile=>profile.profile),["local","shared"]);
   assert.deepEqual(result.profiles.flatMap(profile=>profile.files.map(file=>file.path)),files);
+  assert.equal(result.brotliQuality,6);
+  const brotliLength=bytes=>brotliCompressSync(bytes,{params:{[constants.BROTLI_PARAM_QUALITY]:6}}).length;
   for(const profile of result.profiles){
    assert.equal(profile.rawBytes,contents.length+wasm.length);
    assert.equal(profile.gzipBytes,gzipSync(contents,{level:9}).length+gzipSync(wasm,{level:9}).length);
+   assert.deepEqual(profile.files.map(file=>file.brotliBytes),[brotliLength(contents),brotliLength(wasm)]);
+   assert.equal(profile.brotliBytes,brotliLength(contents)+brotliLength(wasm));
    for(const file of profile.files)assert.match(file.sha256,/^[0-9a-f]{64}$/);
   }
  }finally{rmSync(root,{recursive:true,force:true});}
