@@ -66,11 +66,12 @@ async function openShared() {
 
 try {
  const editors = await (document.body.dataset.mode === "shared" ? openShared() : openLocal());
- const panels = editors.map(editor => {
+ const shared = document.body.dataset.mode === "shared";
+ const panels = editors.map((editor, index) => {
   const host = document.createElement("div");
   editor.surface.before(host);
   return mountRichWritingTools(host, editor, {
-   presentation: "contents", label: "On this page", scrollContainer: editor.surface, onError: report,
+   presentation: "contents", label: shared ? `Writer ${index === 0 ? "A" : "B"} contents` : "On this page", scrollContainer: editor.surface, onError: report,
   });
  });
  status.textContent = "Ready";

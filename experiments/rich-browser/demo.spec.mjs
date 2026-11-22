@@ -1,3 +1,4 @@
+import AxeBuilder from "@axe-core/playwright";
 import {test,expect} from "@playwright/test";
 import {readFile} from "node:fs/promises";
 
@@ -128,4 +129,27 @@ test("disconnected cell and file edits recover together from a cached shell with
  expect(await page.evaluate(()=>window.demo.editor.view().documentJson)).toBe(before);
  await page.getByRole("button",{name:"Redo",exact:true}).click();
  expect(await page.evaluate(()=>window.demo.editor.view().documentJson)).toBe(saved.document);
+});
+
+test("the demo has accessible landmarks and skips to editing with the keyboard", async ({page, browserName}) => {
+ await page.goto("/demo");
+ await expect(page.locator("#ready")).toContainText("Ready");
+ const skip = page.getByRole("link", {name: "Skip to editor"});
+ // The default macOS WebKit keyboard setting reaches links with Option+Tab.
+ await page.keyboard.press(browserName === "webkit" && process.platform === "darwin" ? "Alt+Tab" : "Tab");
+ await expect(skip).toBeFocused();
+ await expect(skip).toBeInViewport();
+ await page.keyboard.press("Enter");
+ await expect(page.getByRole("main")).toBeFocused();
+ const audit = await new AxeBuilder({page}).analyze();
+ expect(audit.violations).toEqual([]);
+});
+
+test("the contents and code demos expose accessible landmarks", async ({page}) => {
+ for (const [path, ready] of [["contents", "#contents-ready"], ["code", "#code-ready"]]) {
+  await page.goto(`/${path}`);
+  await expect(page.locator(ready)).toHaveText("Ready");
+  const audit = await new AxeBuilder({page}).analyze();
+  expect(audit.violations).toEqual([]);
+ }
 });
