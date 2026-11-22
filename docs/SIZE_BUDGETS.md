@@ -505,6 +505,12 @@ panic locations. This reviewed recipe preserves the native throughput policy.
 It kept ABI 3 within the historical `0.2.0` ceilings, ABI 4 within the alpha.6
 ceilings, and ABI 5 within the current alpha.13 ceilings listed above.
 
+The production React example opens the fixed Text Size Showcase profile. Its
+build folds away experimental heading and list paths and compacts static
+internal exception messages. The SDK and the separate experimental demos
+retain those paths and diagnostics. The bundled HTML entity lookup table is
+compressed as data and restored losslessly before the editor initializes.
+
 The current React example deliberately initializes the editor eagerly and
 disables Vite's module-preload polyfill because its production build emits one
 JavaScript chunk and no preload links. The gate totals every emitted JavaScript

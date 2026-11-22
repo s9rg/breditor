@@ -22,6 +22,9 @@ const mocks = vi.hoisted(() => ({
 vi.mock("@breditor/wasm", () => ({
   default: mocks.initializeWasm,
   BreditorEngine: {},
+  BreditorCompiledProfile: {},
+  breditorVersion: vi.fn(),
+  breditorWasmAbiVersion: vi.fn(),
 }));
 
 vi.mock("@breditor/browser", () => ({

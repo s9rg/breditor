@@ -17,9 +17,15 @@ import {
   type BreditorBrowserEditorSnapshot,
 } from "@breditor/browser";
 import { createDemoProfile } from "./demoProfile.js";
-import initializeWasm, * as breditorWasm from "@breditor/wasm";
+import initializeWasm, {
+  BreditorCompiledProfile,
+  BreditorEngine,
+  breditorVersion,
+  breditorWasmAbiVersion,
+} from "@breditor/wasm";
 import { downloadSessionBackup } from "./downloadSessionBackup";
 
+const breditorWasm = { BreditorCompiledProfile, BreditorEngine, breditorVersion, breditorWasmAbiVersion };
 let wasmInitialization: Promise<unknown> | undefined;
 
 /**
@@ -365,7 +371,7 @@ export const BreditorEditor = forwardRef<
           return;
         }
         setMountsRetiring(editorHost, toolbarHost, false);
-        const profile = createDemoProfile(breditorWasm);
+        const profile = createDemoProfile();
         const result = await profile.openEditor({
           host: editorHost,
           label,
