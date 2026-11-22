@@ -97,7 +97,7 @@ readonly rolldown_executable
 rolldown_version="$("${rolldown_executable}" --version 2>/dev/null)" ||
   fail "could not read the Rolldown version from ${rolldown_executable}."
 readonly rolldown_version
-[[ "${rolldown_version}" == "${required_rolldown_version}" ]] ||
+[[ "${rolldown_version#"[log] "}" == "${required_rolldown_version}" ]] ||
   fail "expected ${required_rolldown_version}, found '${rolldown_version}' at ${rolldown_executable}."
 
 wasm_bindgen_version="$("${wasm_bindgen_executable}" --version 2>/dev/null)" ||
@@ -194,6 +194,8 @@ readonly generated_module="${generated_directory}/breditor_wasm.mjs"
   "${cargo_home_physical_directory}" \
   "${cargo_target_logical_directory}" \
   "${cargo_target_physical_directory}"
+
+"${node_executable}" "${repository_root}/scripts/compact-wasm-glue.mjs" "${generated_javascript}"
 
 printf 'check-wasm-api: minifying JavaScript glue with %s\n' "${required_rolldown_version}"
 "${rolldown_executable}" "${generated_javascript}" \
