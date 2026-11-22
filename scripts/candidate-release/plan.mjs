@@ -8,6 +8,7 @@ import {candidateRuntimePaths} from "../candidate-runtime-paths.mjs";
 import {metadataRecoveryArtifacts} from '../metadata-recovery-artifacts.mjs';
 import {sharedRuntimeBuildReport} from "./shared-runtime-evidence.mjs";
 import {nativeSuggestionBuildReport, nativeSuggestionExample, nativeSuggestionExecutable} from "./native-suggestion-build-evidence.mjs";
+import {candidateRuntimeSizeReport} from "../measure-candidate-runtime-size.mjs";
 export const repository=resolve(dirname(fileURLToPath(import.meta.url)),"../..");
 export const deferredFunctionalGates=Object.freeze([
  "default-package-release-matrix","installed-editor-browser-matrix",
@@ -113,6 +114,7 @@ export function candidateReleasePlan({profile="full",environment=process.env}={}
   stage("default-typescript-build",npm,["run","build"]),
   script("paired-local-runtime","build-rich-runtime.mjs",[],["packages/breditor-experimental-rich-content/dist/breditor_wasm.js","packages/breditor-experimental-rich-content/dist/breditor_wasm_bg.wasm","packages/breditor-experimental-rich-content/dist/breditor_wasm.d.ts","packages/breditor-experimental-rich-content/dist/breditor_dependency_inventory.json","packages/breditor-experimental-rich-content/dist/THIRD_PARTY_NOTICES.txt","packages/breditor-experimental-rich-content/dist/RUST_COPYRIGHT-library.html"]),
   script("paired-shared-runtime","build-collaboration-runtime.mjs",["--candidate-receipt"],[{path:sharedRuntimeBuildReport,fresh:true},"packages/breditor-collaboration/dist/runtime/breditor_shared.js","packages/breditor-collaboration/dist/runtime/breditor_shared_bg.wasm","packages/breditor-collaboration/dist/runtime/breditor_shared.d.ts","packages/breditor-collaboration/dist/runtime/breditor_dependency_inventory.json","packages/breditor-collaboration/dist/runtime/THIRD_PARTY_NOTICES.txt","packages/breditor-collaboration/dist/runtime/RUST_COPYRIGHT-library.html"]),
+  script("paired-runtime-download-size","measure-candidate-runtime-size.mjs",[],[{path:candidateRuntimeSizeReport,fresh:true}]),
   stage("shared-wasm-lint",cargo,["clippy","--manifest-path","crates/breditor-collaboration/Cargo.toml","--no-default-features","--target","wasm32-unknown-unknown","--locked","--offline","--release","--lib","--","-D","warnings"],{CARGO_TARGET_DIR:wasm,...candidateRuntimePaths(repository,wasm,environment).environment}),
   script("native-review-generations","check-review-generations-native.mjs",[],[{path:"target/native-review-generations.json",fresh:true}]),
   stage("rich-browser-build",node,["node_modules/typescript/bin/tsc","-p","packages/breditor-experimental-rich-content/tsconfig.json"]),

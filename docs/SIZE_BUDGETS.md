@@ -1,5 +1,12 @@
 # Browser release size budgets
 
+Both V1 candidate profiles record the raw and level-9 gzip download sizes of
+the rich local and shared Wasm binaries and JavaScript glue. Each measurement
+includes the exact file's SHA-256. Run `node scripts/measure-candidate-runtime-size.mjs`
+after building both paired runtimes to produce `target/candidate-runtime-size.json`.
+Use these measurements when selecting V1 download budgets. The existing
+default-package ceilings below still apply.
+
 Unreleased WebKit boundary and fault-recovery fixes retain all ceilings. Fresh browser JavaScript
 measures 1,080,821 bytes; fresh React JavaScript measures 862,002 raw / 224,717
 gzip bytes, retaining 283 gzip bytes of application headroom. Wasm measures
