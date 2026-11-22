@@ -1,5 +1,9 @@
 # Static rendering and framework adapters
 
+After building the candidate SDK, run `npm run demo:published` to preview a
+server-rendered document with linked contents and code colors. Its print view
+uses V4 page breaks and the static renderer's print stylesheet.
+
 Status: private SDK candidate in `@breditor/editor`. The API below is not a published
 package decision. It covers the "inert data renderer" and "adapter responsibility for other
 frameworks" parts of the `framework-integrations` gap in `docs/v1-readiness.json`.
