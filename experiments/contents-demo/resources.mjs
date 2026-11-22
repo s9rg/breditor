@@ -2,7 +2,7 @@ import {readFileSync} from "node:fs";
 
 export function contentsDemoResources(mode, importMap) {
  const shared = mode === "shared";
- const editor = (id, label) => `<section class="editor"><h2>${label}</h2><div class="editor-host" id="${id}"></div></section>`;
+ const editor = (id, label) => `<section class="editor" aria-labelledby="contents-pane-${id}"><h2 id="contents-pane-${id}">${label}</h2><div class="editor-host" id="${id}"></div></section>`;
  const html = `<!doctype html>
 <html lang="en">
 <meta charset="utf-8">
@@ -14,6 +14,8 @@ ${importMap}
 body{margin:auto;max-width:78rem;padding:clamp(1rem,4vw,3rem);background:#f3f7f5;color:#203a38;font:1rem/1.5 system-ui,sans-serif}
 body[data-mode="local"]{max-width:55rem}
 header{margin-bottom:1.75rem}
+.skip-link{position:absolute;inset-block-start:.5rem;inset-inline-start:.5rem;transform:translateY(-200%);padding:.4rem .7rem;background:#fff;color:#235e53;z-index:1}
+.skip-link:focus{transform:none;outline:2px solid #235e53}
 header a{color:#235e53;text-underline-offset:.2em;font-size:.875rem}
 header h1{margin:1rem 0 .25rem;color:#142e2c;font-size:clamp(2rem,5vw,3rem);line-height:1.1;letter-spacing:-.035em}
 header p{margin:0 0 .6rem;color:#41615c}
@@ -34,13 +36,14 @@ header p{margin:0 0 .6rem;color:#41615c}
 @media(max-width:780px){[data-mode="shared"] .editors{grid-template-columns:minmax(0,1fr)}}
 </style>
 <body data-mode="${mode}">
+ <a class="skip-link" href="#contents-editors">Skip to contents editors</a>
  <header>
   <a href="/demo">← ${shared ? "Shared demo" : "Rich content demo"}</a>
   <h1>Table of contents</h1>
   <p>${shared ? "Rename a heading in either editor to update both contents lists." : "Pick a heading to jump to it, or edit its text to update the contents."}</p>
   <div id="contents-ready" role="status">Loading editor…</div>
  </header>
- <main class="editors">
+ <main class="editors" id="contents-editors" tabindex="-1">
   ${shared ? editor("a", "Writer A") + editor("b", "Writer B") : editor("a", "Local editor")}
  </main>
  <script type="module" src="/contents-demo.mjs"></script>
