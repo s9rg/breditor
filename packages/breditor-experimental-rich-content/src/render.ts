@@ -12,7 +12,7 @@ import {createPageBreakElement,richPageBreakKind} from "./page_break.js";
 import {bookmarkAttributes,bookmarkNames,bookmarkOf,internalLinkAttributes,internalLinkOf} from "./bookmark.js";
 import {resolveRichUi,type RichUiLocale,type RichUiOptions} from "./ui_locale.js";
 export const structuralBlockStylesV2=`[data-breditor-rich] [data-rich-text]{white-space:pre-wrap;min-height:1em}[data-breditor-rich] blockquote{border-left:3px solid #9dbbb0;margin:12px 0;padding:1px 16px}[data-breditor-rich] pre{font-family:ui-monospace,monospace;background:#f1f5f2;padding:12px;overflow:auto}[data-breditor-rich] [data-task-list]{list-style:none;padding-left:12px}[data-breditor-rich] [data-rich-task]{display:grid;grid-template-columns:24px minmax(0,1fr);gap:8px;margin:8px 0}[data-breditor-rich] input[data-task-check]{width:18px;height:18px;margin:4px 0}[data-breditor-rich] [data-task-body]>:first-child{margin-top:0}[data-breditor-rich] hr{border:0;border-top:2px solid #9dbbb0;margin:16px 0}[data-breditor-rich] details[data-rich-details]{border:1px solid #c9d8d2;border-radius:6px;margin:12px 0;padding:4px 12px}[data-breditor-rich] summary[data-rich-text]{font-weight:600;cursor:text;padding:4px 0}[data-breditor-rich] details[data-rich-details][open]>summary[data-rich-text]{border-bottom:1px solid #e3ece8;margin-bottom:4px}`;
-export const richTableScrollStyles=`[data-rich-table-scroll]{max-inline-size:100%;contain:inline-size;overflow-x:auto}[data-rich-table-scroll-controls]{display:flex;justify-content:end;gap:4px}[data-rich-table-scroll-controls][hidden]{display:none}[data-rich-table-scroll-controls] button:focus-visible{outline:2px solid Highlight;outline-offset:2px}@media (pointer:coarse){[data-rich-table-scroll-controls] button{min-inline-size:44px;min-block-size:44px}}@media print{[data-rich-table-scroll]{contain:none;overflow:visible}[data-rich-table-scroll-controls]{display:none}}`;
+export const richTableScrollStyles=`[data-rich-table-scroll]{max-inline-size:100%;contain:inline-size;overflow-x:auto}[data-rich-table-scroll-controls]{display:flex;justify-content:end;gap:4px}[data-rich-table-scroll-controls][hidden]{display:none}[data-rich-table-scroll-controls] button[aria-disabled=true]{opacity:.48;cursor:default}[data-rich-table-scroll-controls] button:focus-visible{outline:2px solid Highlight;outline-offset:2px}@media (pointer:coarse){[data-rich-table-scroll-controls] button{min-inline-size:44px;min-block-size:44px}}@media print{[data-rich-table-scroll]{contain:none;overflow:visible}[data-rich-table-scroll-controls]{display:none}}`;
 export interface AssetBinding {image:string;asset:string;generation:string}
 export interface RenderOptions {
  resolveAsset?:(binding:AssetBinding)=>string|undefined|Promise<string|undefined>;
@@ -107,6 +107,17 @@ const tableScrollObservers=new WeakMap<HTMLElement,ResizeObserver>();
 export function releaseRichTableScroll(surface:HTMLElement):void{
  tableScrollObservers.get(surface)?.disconnect();
  tableScrollObservers.delete(surface);
+}
+function refreshTableScroll(viewport:HTMLElement,controls:HTMLElement):void {
+ const distance=viewport.scrollWidth-viewport.clientWidth;
+ controls.hidden=distance<=0;
+ if(controls.hidden)return;
+ const rtl=viewport.ownerDocument.defaultView?.getComputedStyle(viewport).direction==="rtl";
+ const left=rtl?-distance:0,right=rtl?0:distance;
+ for(const button of controls.querySelectorAll<HTMLButtonElement>("[data-scroll-table]")){
+  const edge=button.dataset["scrollTable"]==="left"?left:right;
+  button.setAttribute("aria-disabled",String(Math.abs(viewport.scrollLeft-edge)<1));
+ }
 }
 export function render(surface:HTMLElement,value:RichPresentationModel,options:RenderOptions):void {
  requireRenderOptions(value,options);
@@ -234,7 +245,9 @@ export function render(surface:HTMLElement,value:RichPresentationModel,options:R
    const button=document.createElement("button");
    button.type="button";button.dataset["scrollTable"]=direction;button.textContent=icon;
    button.setAttribute("aria-label",ui.text(direction==="left"?"tableScrollLeft":"tableScrollRight",{number}));
-   button.addEventListener("click",()=>viewport.scrollBy({left:delta,behavior:"instant"}));
+   button.addEventListener("click",()=>{
+    if(button.getAttribute("aria-disabled")!=="true")viewport.scrollBy({left:delta,behavior:"instant"});
+   });
    button.addEventListener("keydown",event=>{
     if(event.altKey||event.ctrlKey||event.metaKey||(event.key!=="ArrowLeft"&&event.key!=="ArrowRight"))return;
     event.preventDefault();event.stopPropagation();viewport.scrollBy({left:event.key==="ArrowLeft"?-72:72,behavior:"instant"});
@@ -242,6 +255,7 @@ export function render(surface:HTMLElement,value:RichPresentationModel,options:R
    controls.append(button);
   }
   viewport.append(element);
+  viewport.addEventListener("scroll",()=>refreshTableScroll(viewport,controls));
   frame.append(controls,viewport);tableViewports.push({viewport,table:element,controls});
   return frame;
  };
@@ -250,8 +264,7 @@ export function render(surface:HTMLElement,value:RichPresentationModel,options:R
  applyRestrictedPresentation(surface,value);
  paintSelection(surface,value);
  if(tableViewports.length){
-  const refresh=()=>{for(const {viewport,controls} of tableViewports)controls.hidden=viewport.scrollWidth<=viewport.clientWidth;};
-  refresh();
+  const refresh=()=>{for(const {viewport,controls} of tableViewports)refreshTableScroll(viewport,controls);};
   for(const {viewport,controls} of tableViewports){
    const previous=tableScroll.get(viewport.dataset["richTableScroll"]!);
    if(previous){
@@ -262,6 +275,7 @@ export function render(surface:HTMLElement,value:RichPresentationModel,options:R
     }
    }
   }
+  refresh();
   const Observer=document.defaultView?.ResizeObserver;
   if(Observer){
    const observer=new Observer(refresh);
