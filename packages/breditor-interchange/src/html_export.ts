@@ -5,16 +5,22 @@ import type {InterchangeOptions} from "./types.js";
 import {isCanonicalLanguageTagV1} from "./language_tag.js";
 import {isImageLinkHrefV1} from "./image_link_href.js";
 import {mentionUnits} from "./mention.js";
+import {rubyFormat,rubyUnits} from "./ruby.js";
 import {bookmarkIdPrefix,internalLinkOf,isBookmarkName} from "./bookmark.js";
 /** Export only native-admitted DTOs. Every output tag, attribute and CSS property is library-owned. */
 export class HtmlExport {
-  /** `bookmarks`: the source owner is bookmark-capable (candidate V4), so anchors and internal links are
+  /** `bookmarks`: the source owner is bookmark-capable (V4), so anchors and internal links are
    * exported; otherwise output is the original one. */
   constructor(readonly b:Budget,readonly options:InterchangeOptions,readonly bookmarks=false){}
   #visited=0;
   #visit():void{if(++this.#visited>limits.outputNodes)fail("resource-limit");}
-  inline(nodes:readonly Node[]):string{return mentionUnits(nodes).map(unit=>{
-    // Candidate V4: each whole mention is one inert entity span around its styled pieces.
+  inline(nodes:readonly Node[]):string{
+    // Opt-in ruby extension: each group of one equal annotation is one `<ruby>` around its base.
+    if(!nodes.some(n=>n.kind==="text"&&n.formats.some(f=>f.type===rubyFormat)))return this.#plain(nodes);
+    return rubyUnits(nodes).map(unit=>unit.kind==="nodes"?this.#plain(unit.nodes):`<ruby>${this.#plain(unit.runs)}<rp>(</rp><rt>${t(unit.annotation)}</rt><rp>)</rp></ruby>`).join("");
+  }
+  #plain(nodes:readonly Node[]):string{return mentionUnits(nodes).map(unit=>{
+    // V4: each whole mention is one inert entity span around its styled pieces.
     if(unit.kind==="mention")return `<span class="breditor-mention" data-mention-kind="${a(unit.mention.kind)}" data-mention-id="${a(unit.mention.id)}">${this.inline(unit.pieces)}</span>`;
     const n=unit.node;
     this.#visit();if(n.kind!=="text"){this.b.loss("block-structure");return t(nodeText(n));}
@@ -24,7 +30,7 @@ export class HtmlExport {
     const simple:Readonly<Record<string,string>>={"breditor/strong":"strong","breditor-inline/italic":"em","breditor-inline/underline":"u","breditor-inline/strike":"s","breditor-inline/code":"code","breditor-inline/subscript":"sub","breditor-inline/superscript":"sup"};
     const tag=simple[f.type];if(typeof tag==="string")return `<${tag}>${value}</${tag}>`;
     const p=f.properties;
-    // Candidate V4 internal link `#name`: a fragment link to the exported anchor `bm-<name>`.
+    // V4 internal link `#name`: a fragment link to the exported anchor `bm-<name>`.
     const internal=this.bookmarks?internalLinkOf(f):undefined;
     if(internal!==undefined)return `<a href="#${bookmarkIdPrefix}${a(internal)}">${value}</a>`;
     if(f.type==="breditor-inline/link"){
@@ -33,7 +39,9 @@ export class HtmlExport {
       if(href!==source)this.b.loss("style-approximation");
       return `<a href="${a(href)}"${p["breditor-inline/new-window"]===true?' target="_blank" rel="noopener noreferrer"':""}>${value}</a>`;
     }
-    // Candidate V4 text language: only an admitted canonical tag becomes an inert `lang` attribute.
+    // V4 text language: only an admitted canonical tag becomes an inert `lang` attribute.
+    // A ruby literal reaching here is outside the annotation policy: the base is kept, the annotation dropped.
+    if(f.type===rubyFormat){this.b.loss("removed-content");return value;}
     if(f.type==="breditor/text-language"){const tag=p["breditor/language-tag"];if(isCanonicalLanguageTagV1(tag))return `<span lang="${a(tag)}">${value}</span>`;this.b.loss("unsupported-attribute");return value;}
     const rgb=p["breditor-inline/rgb24"],pixels=p["breditor-inline/pixels"],family=p["breditor-inline/family"];
     if(["breditor-inline/text-color","breditor-inline/background-color"].includes(f.type)&&typeof rgb==="number"&&Number.isInteger(rgb)&&rgb>=0&&rgb<=0xffffff)return `<span style="${f.type==="breditor-inline/text-color"?"color":"background-color"}:#${rgb.toString(16).padStart(6,"0")}">${value}</span>`;
@@ -41,7 +49,7 @@ export class HtmlExport {
     if(f.type==="breditor-inline/font-family"&&typeof family==="number"&&Number.isInteger(family)&&family>=1&&family<=4)return `<span style="font-family:${["","system-ui","sans-serif","serif","monospace"][family]}">${value}</span>`;
     this.b.loss("unsupported-style");return value;
   }
-  /** Candidate V4 bookmark: `id="bm-<name>"` from an admitted name only. */
+  /** V4 bookmark: `id="bm-<name>"` from an admitted name only. */
   #anchor(node:Element):string {
     const name=property(node,"bookmark");if(name===undefined||!this.bookmarks)return "";
     if(!isBookmarkName(name))fail("native-admission");return ` id="${bookmarkIdPrefix}${a(name)}"`;
@@ -62,18 +70,18 @@ export class HtmlExport {
         case "breditor/paragraph":return `<p${this.#anchor(node)}${this.#layout(node)}>${this.inline(node.children)}</p>`;
         case "breditor/heading":{const rank=property(node,"level");if(typeof rank!=="number"||!Number.isInteger(rank)||rank<1||rank>6)fail("native-admission");return `<h${rank}${this.#anchor(node)}${this.#layout(node)}>${this.inline(node.children)}</h${rank}>`;}
         case "breditor/blockquote":return `<blockquote>${body()}</blockquote>`;
-        // Candidate V4 section: native disclosure; `open` only from the admitted `true` flag.
+        // V4 section: native disclosure; `open` only from the admitted `true` flag.
         case "breditor/details":{const open=property(node,"details-open");if(open!==undefined&&open!==true||node.children[0]?.kind!=="element"||node.children[0].type!=="breditor/details-summary")fail("native-admission");return `<details${open===true?" open":""}>${body()}</details>`;}
         case "breditor/details-summary":return `<summary>${this.inline(node.children)}</summary>`;
         case "breditor/code-block":{const language=property(node,"language");return `<pre${this.#anchor(node)}${this.#layout(node)}><code${typeof language==="string"?` class="language-${a(language)}"`:""}>${t(nodeText(node))}</code></pre>`;}
         case "breditor/horizontal-rule":return"<hr>";
-        // Candidate V4 page break: an empty block forcing a page after it (modern and legacy CSS spellings).
+        // V4 page break: an empty block forcing a page after it (modern and legacy CSS spellings).
         case "breditor/page-break":return '<div style="break-after:page;page-break-after:always"></div>';
         case "breditor/bullet-list":return `<ul>${body()}</ul>`;
         case "breditor/ordered-list":{
           const start=property(node,"start"),style=property(node,"list-style"),reversed=property(node,"list-reversed");
           if(typeof start!=="number"||!Number.isSafeInteger(start)||start<1)fail("native-admission");
-          // Candidate V4 numbering is emitted only from admitted closed values: an HTML `type` token and `reversed`.
+          // V4 numbering is emitted only from admitted closed values: an HTML `type` token and `reversed`.
           if(style!==undefined&&(typeof style!=="number"||!Number.isInteger(style)||style<1||style>5)||reversed!==undefined&&reversed!==true)fail("native-admission");
           return `<ol start="${start}"${typeof style==="number"?` type="${["1","a","A","i","I"][style-1]!}"`:""}${reversed===true?" reversed":""}>${body()}</ol>`;
         }
@@ -101,7 +109,7 @@ export class HtmlExport {
   }
   #table(node:Element,depth:number):string {
     const elements=node.children.filter((n):n is Element=>n.kind==="element"),last=elements.at(-1);
-    // Candidate V4 caption: the table's trailing paragraph, exported as the leading <caption>.
+    // V4 caption: the table's trailing paragraph, exported as the leading <caption>.
     const captionNode=last?.type==="breditor/paragraph"?last:undefined,rows=captionNode?elements.slice(0,-1):elements;
     const columns=property(node,"columns") as {id:string;width:number}[],merges=property(node,"merges") as Record<string,unknown>[];
     if(!Array.isArray(columns)||!Array.isArray(merges))fail("native-admission");if(!rows.length){this.b.loss("table-geometry");return captionNode?this.blocks([captionNode],depth+1):"";}
@@ -120,7 +128,7 @@ export class HtmlExport {
     return `<table>${caption}<colgroup>${columns.map(c=>{if(!Number.isInteger(c.width)||c.width<32||c.width>4096)fail("native-admission");return `<col width="${c.width}">`;}).join("")}</colgroup><tbody>${body}</tbody></table>`;
   }
 }
-/** Candidate V4 image link: the opening `<a>` from admitted canonical values only (link wraps the image, not the caption). */
+/** V4 image link: the opening `<a>` from admitted canonical values only (link wraps the image, not the caption). */
 export function imageLink(node:Element):{href:string;newWindow:boolean;open:string}|undefined {
   const href=property(node,"image-href"),newWindow=property(node,"image-link-new-window");
   if(href===undefined&&newWindow===undefined)return undefined;

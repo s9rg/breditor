@@ -6,6 +6,9 @@ import {encodeListNumberingPatch} from "./dist/browser/list_numbering_serializat
 import {encodeTextLanguageIntent} from "./dist/browser/text_language.js";
 import {encodeImageLinkIntent} from "./dist/browser/image_link.js";
 import {encodeMentionIntent} from "./dist/browser/mention.js";
+import {isRichRubyDeclaration} from "./dist/browser/ruby.js";
+/** Owners whose profile declares the exact ruby V1 extension (interchange capability). */
+const rubyOwners=new WeakSet();
 import {encodeSetBookmarkIntent,encodeRenameBookmarkIntent} from "./dist/browser/bookmark.js";
 import {parseRichSearchMetadata} from "./dist/browser/search_metadata.js";
 import {parseRichWritingTools} from "./dist/browser/writing_tools_metadata.js";
@@ -23,11 +26,20 @@ export {mountRichSlashCommands} from "./dist/browser/slash_command_session.js";
 export {RichSuggestionSession} from "./dist/browser/suggestion_session.js";
 export {mountRichMentions,requireRichMentionSuggestions,filterRichMentionSuggestions} from "./dist/browser/mention_session.js";
 export {richMentionFormat,richMentionKindProperty,richMentionIdProperty,richMentionLabelProperty,richMentionKinds,richMentionClass,richMentionStyles,isRichMentionId,isRichMentionKind,isRichMentionLabel,mentionOf,mentionText,mentionFormat,requireRichMention} from "./dist/browser/mention.js";
+export {richRubyExtensionName,richRubyFormat,richRubyAnnotationProperty,richRubyAnnotationMaxBytes,richRubyClass,richRubyStyles,richRubyBootstrapExtensionV1,richRubySharedExtensionV1,withRichRubyBootstrapV1,withRichRubySharedConfigurationV1,isRichRubyAnnotation,isRichRubyDeclaration,rubyAnnotationOf,rubyFormat,groupRubyRuns,createRubyElement,rubyGroupAt,rubyControls,rubyCommand,rubyToolbarControls} from "./dist/browser/ruby.js";
+export {richInlinePresentationHasRuby} from "./dist/browser/inline_presentation.js";
 export {mountRichSelectionToolbar,mountRichContextMenu,richSelectionToolbarDefaults,richContextMenuDefaults,richContextUiStyles} from "./dist/browser/context_ui.js";
+export {mountRichMenuBar,mountRichShortcutHelp,mountRichFloatingMenu,mountRichBalloonBlockLayout,richMenuBarDefaults,richFloatingMenuDefaults,richEditorShellStyles} from "./dist/browser/editor_shell.js";
+export {richActiveShortcuts,richCoordinatorShortcuts,richControlShortcutChord,formatRichShortcut,detectRichShortcutPlatform,richShortcutGroups} from "./dist/browser/shortcut_registry.js";
+export {richShellUiStringsEn} from "./dist/browser/ui_locale_shell.js";
 export {mountRichSourceView} from "./dist/browser/source_view.js";
 export {mountRichAiTools} from "./dist/browser/ai_rewrite.js";
 export {mountRichLanguageCheck} from "./dist/browser/language_check.js";
+export {mountRichEditingAids,mountRichEditingAidsControls,richBlockLabel,richInvisibleKinds,richInvisibleGlyphs,richFocusedBlockAttribute,richEditingAidsStyles,RICH_EDITING_AIDS_MAX_MARKERS} from "./dist/browser/editing_aids.js";
+export {richEditingAidsUiStringsEn} from "./dist/browser/ui_locale_editing_aids.js";
 export {richAiToolsHost,RICH_AI_MAX_BYTES,RICH_AI_MAX_INSTRUCTION,RICH_AI_MAX_TIMEOUT_MS} from "./dist/browser/ai_tools_host.js";
+export {createRichAgentTools,richAgentToolsHost,richAgentCommands,richAgentToolDefinitions,richAgentFormats,richAgentFormatTypes,admitAgentArguments,RichAgentError,RichAgentArgumentError,RICH_AGENT_MAX_TEXT,RICH_AGENT_MAX_BLOCKS,RICH_AGENT_MAX_EDITS} from "./dist/browser/ai_agent_tools.js";
+export {mountRichAgentReview,richAgentMcpAdapter} from "./dist/browser/ai_agent_review.js";
 export {richAiUiStringsEn} from "./dist/browser/ui_locale_ai.js";
 export {RICH_DOCUMENT_SOURCE_MAX_BYTES} from "./dist/browser/source_view_types.js";
 
@@ -40,6 +52,7 @@ class OwnedRichSearchResults {
   dispose(){const entry=searchResults.get(this);if(!entry)return;searchResults.delete(this);try{entry.raw.free();}finally{this.#closed();}}
 }
 function nativeSearchResults(owner,results){const entry=searchResults.get(results);if(!entry||entry.owner!==owner)throw new RichCommandError("breditor_rich.search_owner","The search result is disposed or belongs to another editor");return entry.raw;}
+export {mountRichMultiRootEditor,restoreRichRootSet} from "./dist/browser/multi_root.js";
 export {mountRichEditor,mountDocumentRichEditor,RichDomEditor,defaultToolbar,RichAssetStore,defaultAssetLimits,insertImageFiles,RichLocalSessionStore} from "./dist/browser/index.js";
 export {RichAssetBackupError,MAX_ASSET_BACKUP_BYTES,MAX_ASSET_BACKUP_HEADER_BYTES,ASSET_BACKUP_MIME} from "./dist/browser/index.js";
 export {RichAssetArchive,readRichAssetBackup} from "./dist/browser/index.js";
@@ -61,6 +74,7 @@ export {pageBreakToolbarControls,pageBreakPosition,rootBlockOfSelection,isPageBr
 export {richPrintStyles,resolveRichPrintLayout,richPrintPreviewStyles,mountRichPrintPreview,richPrintPageSizes,richPrintOrientations,richPrintMargins} from "./dist/browser/index.js";
 export {textLanguageControls,canonicalTextLanguage,textLanguageOf,richTextLanguageFormat,richTextLanguageTagProperty,richTextLanguageRecipeV4} from "./dist/browser/index.js";
 export {createFlowNavigationControls} from "./dist/browser/index.js";
+export {createFormattingProductivityToolbar,formattingProductivityControls,encodeCaseChangeIntent,createSpecialCharacterCatalog,filterSpecialCharacters,specialCharacterCode,mountSpecialCharacterPicker,richSpecialCharacterCategories,richSpecialCharacterStyles,RICH_SPECIAL_CHARACTER_MAX_CATEGORIES,RICH_SPECIAL_CHARACTER_MAX_CHARACTERS,richProductivityUiStringsEn} from "./dist/browser/index.js";
 export {createSelectionRichToolbarV1} from "./dist/browser/index.js";
 export {RichDocumentSessionStore} from "./dist/browser/index.js";
 
@@ -155,45 +169,72 @@ export function compileStandardRichProfileV4(wasm,bootstrapJson){
 }
 
 class RichCoreProfile {
-  #raw; #descriptor;
-  constructor(raw, descriptor) { this.#raw = raw; this.#descriptor = JSON.stringify(descriptor); }
+  #raw; #descriptor; #ruby;
+  constructor(raw, descriptor) { this.#raw = raw; this.#descriptor = JSON.stringify(descriptor); try{this.#ruby=(JSON.parse(read(raw.inlineCatalogJson())).formats??[]).some(format=>isRichRubyDeclaration(format));}catch{this.#ruby=false;} }
+  #own(editor){if(this.#ruby)rubyOwners.add(editor);return editor;}
   #live() { if (!this.#raw) throw new RichCommandError("breditor_rich.disposed", "The rich profile is disposed"); return this.#raw; }
   descriptor() { this.#live(); return JSON.parse(this.#descriptor); }
   supportsPlaceholder(){return this.#live().placeholderVersion?.()==="1";}
   inlineCatalogJson() { return read(this.#live().inlineCatalogJson()); }
   createEditor(documentJson, historyCapacity = "100") {
     const raw = transfer(this.#live().createEditor(documentJson, historyCapacity), "editor", "takeEditor");
-    return new RichCoreEditor(raw,this.#descriptor);
+    return this.#own(new RichCoreEditor(raw,this.#descriptor));
   }
   restoreEditor(checkpointJson) {
     const raw = transfer(this.#live().restoreEditor(checkpointJson), "editor", "takeEditor");
-    return new RichCoreEditor(raw,this.#descriptor);
+    return this.#own(new RichCoreEditor(raw,this.#descriptor));
   }
   supportsTypingHistory(){return typeof this.#live().restoreTypingEditor==="function";}
   restoreTypingEditor(checkpointJson){
     const profile=this.#live();if(!this.supportsTypingHistory())throw new RichCommandError("breditor_rich.typing_history_unavailable","Use a matching native owner with typing-history recovery");
-    return new RichCoreEditor(transfer(profile.restoreTypingEditor(checkpointJson),"editor","takeEditor"),this.#descriptor);
+    return this.#own(new RichCoreEditor(transfer(profile.restoreTypingEditor(checkpointJson),"editor","takeEditor"),this.#descriptor));
   }
   supportsDocumentSelection(){const p=this.#live();return p.documentSelectionVersion?.()==="1"&&typeof p.restoreDocumentEditor==="function"&&typeof p.restoreDocumentTypingEditor==="function";}
   #documentProfile(){if(!this.supportsDocumentSelection())throw new RichCommandError("breditor_rich.document_selection_unavailable","Use matching native document-selection recovery");return this.#live();}
   createDocumentEditor(documentJson,historyCapacity="100"){
-    const p=this.#documentProfile();return new RichCoreEditor(transfer(p.createEditor(documentJson,historyCapacity),"editor","takeEditor"),this.#descriptor,"document-v1");
+    const p=this.#documentProfile();return this.#own(new RichCoreEditor(transfer(p.createEditor(documentJson,historyCapacity),"editor","takeEditor"),this.#descriptor,"document-v1"));
   }
-  restoreDocumentEditor(checkpointJson){return new RichCoreEditor(transfer(this.#documentProfile().restoreDocumentEditor(checkpointJson),"editor","takeEditor"),this.#descriptor,"document-v1");}
-  restoreDocumentTypingEditor(checkpointJson){return new RichCoreEditor(transfer(this.#documentProfile().restoreDocumentTypingEditor(checkpointJson),"editor","takeEditor"),this.#descriptor,"document-v1");}
+  restoreDocumentEditor(checkpointJson){return this.#own(new RichCoreEditor(transfer(this.#documentProfile().restoreDocumentEditor(checkpointJson),"editor","takeEditor"),this.#descriptor,"document-v1"));}
+  restoreDocumentTypingEditor(checkpointJson){return this.#own(new RichCoreEditor(transfer(this.#documentProfile().restoreDocumentTypingEditor(checkpointJson),"editor","takeEditor"),this.#descriptor,"document-v1"));}
   restoreOriginalAsDocumentEditor(checkpointJson,history="explicit"){
     const p=this.#documentProfile();if(history!=="explicit"&&history!=="typing-v1")throw new TypeError("Expected history explicit or typing-v1");
     if(history==="typing-v1"&&!this.supportsTypingHistory())throw new RichCommandError("breditor_rich.typing_history_unavailable","Use matching native original typing-history recovery");
-    return new RichCoreEditor(transfer(history==="typing-v1"?p.restoreTypingEditor(checkpointJson):p.restoreEditor(checkpointJson),"editor","takeEditor"),this.#descriptor,"document-v1");
+    return this.#own(new RichCoreEditor(transfer(history==="typing-v1"?p.restoreTypingEditor(checkpointJson):p.restoreEditor(checkpointJson),"editor","takeEditor"),this.#descriptor,"document-v1"));
   }
   dispose() { this.#raw?.free(); this.#raw = undefined; }
+}
+
+// Multi-root coordinator access to a root's native owner; never exposed to hosts.
+const rootOwners=new WeakMap();
+/** Create the native multi-root history coordinator (see docs/MULTIPLE_ROOTS.md). */
+export function createRichRootSet(wasm){
+  if(typeof wasm?.BreditorRichRootSet!=="function")throw new RichCommandError("breditor_rich.module","Use a matching Wasm module with multi-root support");
+  const raw=new wasm.BreditorRichRootSet();
+  if(raw.rootSetVersion?.()!=="1"){raw.free();throw new RichCommandError("breditor_rich.module","Use a matching Wasm module with multi-root support");}
+  return new RichRootSet(raw);
+}
+class RichRootSet {
+  #raw;
+  constructor(raw){this.#raw=raw;}
+  #live(){if(!this.#raw)throw new RichCommandError("breditor_rich.disposed","The rich root set is disposed");return this.#raw;}
+  #owner(core){const owner=rootOwners.get(core);if(!owner)throw new RichCommandError("breditor_rich.root_owner","Expected a rich core editor from this module");return owner();}
+  state(){return JSON.parse(this.#live().stateJson());}
+  addRoot(meta,core,index){return JSON.parse(read(this.#live().addRoot(JSON.stringify(meta),this.#owner(core),index)));}
+  removeRoot(id){return JSON.parse(read(this.#live().removeRoot(id)));}
+  setAttributes(id,attributes){return JSON.parse(read(this.#live().setAttributes(id,JSON.stringify(attributes))));}
+  focus(id){return JSON.parse(read(this.#live().focus(id)));}
+  reconcile(id,core){return read(this.#live().reconcile(id,this.#owner(core)))==="true";}
+  checkpointJson(parts){return read(this.#live().checkpointJson(JSON.stringify(parts)));}
+  restore(envelope){return JSON.parse(read(this.#live().restore(envelope)));}
+  attach(id,core){return JSON.parse(read(this.#live().attach(id,this.#owner(core))));}
+  dispose(){this.#raw?.free();this.#raw=undefined;}
 }
 
 class RichCoreEditor {
   #raw; #observation; #language; #selectionPolicy;
   #assetReferences=new RichRetainedAssetReferenceRegistry();
   #searches=new Set();
-  constructor(raw,descriptor,selectionPolicy="original") { this.#raw = raw;this.#selectionPolicy=selectionPolicy;try{this.#language=JSON.parse(descriptor).richLanguageVersion??1;this.#observation = raw.observe();if((this.#language===3||this.#language===4)&&!this.supportsBlockLayout())throw new RichCommandError("breditor_rich.layout_runtime","Use matching native layout V3 commands and reads");if(this.#language===4&&!this.supportsListNumbering())throw new RichCommandError("breditor_rich.list_numbering_runtime","Use matching native rich V4 list numbering commands");if(this.#language===4&&!this.supportsTextLanguage())throw new RichCommandError("breditor_rich.text_language_runtime","Use matching native rich V4 text language commands");if(this.#language===4&&!this.supportsImageLinks())throw new RichCommandError("breditor_rich.image_link_runtime","Use matching native rich V4 image link commands");if(this.#language===4&&!this.supportsDetails())throw new RichCommandError("breditor_rich.details_runtime","Use matching native rich V4 collapsible section commands");if(this.#language===4&&!this.supportsMentions())throw new RichCommandError("breditor_rich.mention_runtime","Use matching native rich V4 mention commands");if(this.#language===4&&!this.supportsTableCaptions())throw new RichCommandError("breditor_rich.table_caption_runtime","Use matching native rich V4 table caption commands");if(this.#language===4&&!this.supportsPageBreaks())throw new RichCommandError("breditor_rich.page_break_runtime","Use matching native rich V4 page break commands");if(this.#language===4&&!this.supportsBookmarks())throw new RichCommandError("breditor_rich.bookmark_runtime","Use matching native rich V4 bookmark commands");if(selectionPolicy==="document-v1"&&!this.supportsDocumentSelection())throw new RichCommandError("breditor_rich.document_selection_unavailable","Use complete matching native document-selection capabilities");}catch(error){this.#observation?.free();raw.free();this.#raw=undefined;throw error;} }
+  constructor(raw,descriptor,selectionPolicy="original") { this.#raw = raw;rootOwners.set(this,()=>this.#live());this.#selectionPolicy=selectionPolicy;try{this.#language=JSON.parse(descriptor).richLanguageVersion??1;this.#observation = raw.observe();if((this.#language===3||this.#language===4)&&!this.supportsBlockLayout())throw new RichCommandError("breditor_rich.layout_runtime","Use matching native layout V3 commands and reads");if(this.#language===4&&!this.supportsListNumbering())throw new RichCommandError("breditor_rich.list_numbering_runtime","Use matching native rich V4 list numbering commands");if(this.#language===4&&!this.supportsTextLanguage())throw new RichCommandError("breditor_rich.text_language_runtime","Use matching native rich V4 text language commands");if(this.#language===4&&!this.supportsImageLinks())throw new RichCommandError("breditor_rich.image_link_runtime","Use matching native rich V4 image link commands");if(this.#language===4&&!this.supportsDetails())throw new RichCommandError("breditor_rich.details_runtime","Use matching native rich V4 collapsible section commands");if(this.#language===4&&!this.supportsMentions())throw new RichCommandError("breditor_rich.mention_runtime","Use matching native rich V4 mention commands");if(this.#language===4&&!this.supportsTableCaptions())throw new RichCommandError("breditor_rich.table_caption_runtime","Use matching native rich V4 table caption commands");if(this.#language===4&&!this.supportsPageBreaks())throw new RichCommandError("breditor_rich.page_break_runtime","Use matching native rich V4 page break commands");if(this.#language===4&&!this.supportsBookmarks())throw new RichCommandError("breditor_rich.bookmark_runtime","Use matching native rich V4 bookmark commands");if(selectionPolicy==="document-v1"&&!this.supportsDocumentSelection())throw new RichCommandError("breditor_rich.document_selection_unavailable","Use complete matching native document-selection capabilities");}catch(error){this.#observation?.free();raw.free();this.#raw=undefined;throw error;} }
   richLanguageVersion(){this.#live();return this.#language;}
   supportsRetainedAssetReferences(){const raw=this.#live();return raw.retainedAssetReferencesVersion?.()==="1"&&typeof raw.retainedAssetReferencesJson==="function";}
   retainedAssetReferences(revision){const raw=this.#live(),current=this.#observation.revision;if(revision!==undefined&&revision!==current)throw new RichCommandError("breditor_rich.stale_observation","The asset read was prepared from an older rich publication");if(!this.supportsRetainedAssetReferences())throw new RichCommandError("breditor_rich.asset_references_unavailable","Use complete matching native retained asset reads");return this.#assetReferences.retain(read(raw.retainedAssetReferencesJson(this.#observation)),current,"local-history",this.view().documentJson);}
@@ -225,8 +266,10 @@ class RichCoreEditor {
     return this.#markdownInput(method,data,revision);
   }
   /** `rules` is a nonempty duplicate-free list of `markdown-v1`/`autolink-v1`; refused retains the typed text. */
-  insertPlainTextWithInputRules(text,rules,namespace,revision){return this.#ruleSetInput("insertPlainTextWithInputRules",{text,namespace,rules:[...rules]},revision);}
-  insertTypingTextWithInputRules(text,clockMs,rules,namespace,revision){return this.#ruleSetInput("insertTypingTextWithInputRules",{text,clockMs,namespace,rules:[...rules]},revision);}
+  insertPlainTextWithInputRules(text,rules,namespace,revision,typography){return this.#ruleSetInput("insertPlainTextWithInputRules",{text,namespace,rules:[...rules],...(typography!==undefined?{typography}:{})},revision);}
+  insertTypingTextWithInputRules(text,clockMs,rules,namespace,revision,typography){return this.#ruleSetInput("insertTypingTextWithInputRules",{text,clockMs,namespace,rules:[...rules],...(typography!==undefined?{typography}:{})},revision);}
+  /** Version1 `typography-v1` acceptance in the rule-set calls; older runtimes reject the selection at mount. */
+  supportsTypographyInputRules(){return this.supportsInputRuleSets()&&this.#live().typographyInputRulesVersion?.()==="1";}
   /** Enter at a collapsed caret, then `autolink-v1`; one Undo removes only the link. */
   insertParagraphWithAutolink(data,revision){return this.#ruleSetInput("insertParagraphWithAutolink",{right:data.right,newItem:data.newItem},revision);}
   supportsSearch(){const raw=this.#live();return raw.searchVersion?.()==="1"&&[raw.findText,raw.checkSearchResults,raw.selectSearchMatch,raw.replaceSearchOne,raw.replaceSearchAll].every(method=>typeof method==="function");}
@@ -292,11 +335,15 @@ class RichCoreEditor {
   supportsSelectionFormatting(){const raw=this.#live();return typeof raw.selectionFormattingVersion==="function"&&raw.selectionFormattingVersion()==="1"&&typeof this.#observation.selectionCoverageJson==="function"&&typeof this.#observation.selectionFormatStateJson==="function";}
   supportsBlockLayout(){const raw=this.#live();return (this.#language===3||this.#language===4)&&typeof raw.blockLayoutVersion==="function"&&raw.blockLayoutVersion()==="1"&&typeof this.#observation.blockLayoutStateJson==="function";}
   supportsListNumbering(){const raw=this.#live();return this.#language===4&&typeof raw.listNumberingVersion==="function"&&raw.listNumberingVersion()==="1";}
+  supportsCaseChange(){const raw=this.#live();return typeof raw.caseChangeVersion==="function"&&raw.caseChangeVersion()==="1";}
   supportsTextLanguage(){const raw=this.#live();return this.#language===4&&typeof raw.textLanguageVersion==="function"&&raw.textLanguageVersion()==="1";}
   supportsImageLinks(){const raw=this.#live();return this.#language===4&&typeof raw.imageLinkVersion==="function"&&raw.imageLinkVersion()==="1";}
   supportsDetails(){const raw=this.#live();return this.#language===4&&typeof raw.detailsVersion==="function"&&raw.detailsVersion()==="1";}
+  /** The owner's profile includes the opt-in ruby V1 extension (`breditor-ruby/ruby`). */
+  supportsRubyAnnotations(){this.#live();return rubyOwners.has(this);}
   supportsMentions(){const raw=this.#live();return this.#language===4&&typeof raw.mentionVersion==="function"&&raw.mentionVersion()==="1";}
   supportsTriggerComposite(){const raw=this.#live();return typeof raw.triggerCompositeVersion==="function"&&raw.triggerCompositeVersion()==="1";}
+  supportsCommandGroup(){const raw=this.#live();return typeof raw.commandGroupVersion==="function"&&raw.commandGroupVersion()==="1";}
   supportsTableCaptions(){const raw=this.#live();return this.#language===4&&typeof raw.tableCaptionVersion==="function"&&raw.tableCaptionVersion()==="1";}
   supportsBookmarks(){const raw=this.#live();return this.#language===4&&typeof raw.bookmarkVersion==="function"&&raw.bookmarkVersion()==="1";}
   bookmarkIndex(){this.#live();if(!this.supportsBookmarks()||typeof this.#observation.bookmarkIndexJson!=="function")throw new RichCommandError("breditor_rich.bookmark_unavailable","Use an explicitly selected matching rich V4 owner");return JSON.parse(read(this.#observation.bookmarkIndexJson()));}
@@ -321,6 +368,24 @@ class RichCoreEditor {
     const changed=read(raw.setReadOnly(this.#observation,value));if(changed!=="true"&&changed!=="false")throw new RichCommandError("breditor_rich.boundary","Invalid policy result");
     const next=raw.observe();this.#observation.free();this.#observation=next;return changed==="true";
   }
+  supportsRestrictedEditing(){const raw=this.#live();return raw.restrictedEditingVersion?.()==="1"&&typeof raw.setRestrictedEditing==="function"&&typeof raw.navigateRestrictedRegion==="function";}
+  /** Install, replace or clear (`null`) the live block-region policy; returns whether it changed. */
+  setRestrictedEditing(policy,expectedRevision){
+    const raw=this.#live();
+    if(policy!==null&&(typeof policy!=="object"||!Array.isArray(policy.editable)||!policy.editable.every(id=>typeof id==="string")))throw new TypeError("restrictedEditing policy must be null or {editable:string[]}");
+    if(expectedRevision!==undefined&&expectedRevision!==this.#observation.revision)throw new RichCommandError("breditor_rich.stale_observation","The policy was prepared from an older rich view");
+    if(!this.supportsRestrictedEditing())throw new RichCommandError("breditor_rich.restricted_editing_unavailable","Use a matching native owner with restricted editing");
+    const input=JSON.stringify(policy===null?null:{format:"breditor/rich-restricted-policy",formatVersion:1,editable:[...policy.editable]});
+    const changed=read(raw.setRestrictedEditing(this.#observation,input));if(changed!=="true"&&changed!=="false")throw new RichCommandError("breditor_rich.boundary","Invalid policy result");
+    const next=raw.observe();this.#observation.free();this.#observation=next;return changed==="true";
+  }
+  /** Select the next/previous editable region; `unchanged` at either end. */
+  navigateRestrictedRegion(forward,expectedRevision){
+    const raw=this.#live();
+    if(expectedRevision!==undefined&&expectedRevision!==this.#observation.revision)throw new RichCommandError("breditor_rich.stale_observation","The navigation was prepared from an older rich view");
+    if(!this.supportsRestrictedEditing())throw new RichCommandError("breditor_rich.restricted_editing_unavailable","Use a matching native owner with restricted editing");
+    return this.#publish(raw.navigateRestrictedRegion(this.#observation,forward===true));
+  }
   caretFormats() { this.#live();if(typeof this.#observation.caretFormatsJson!=="function")throw new RichCommandError("breditor_rich.caret_formats_read","Use a matching Wasm module with caret-format reads");return JSON.parse(read(this.#observation.caretFormatsJson())); }
   inlineFormatState(kind) {
     this.#live();
@@ -333,3 +398,4 @@ class RichCoreEditor {
 }
 export {resolveRichUi,defaultRichUi,richUiStringsEn,richChromeIsRtl} from "./dist/browser/ui_locale.js";
 export {richUiPanelStringsEn,richUiNoticeCodes} from "./dist/browser/ui_locale.js";
+export {richRestrictedEditingStyles,applyRestrictedPresentation} from "./dist/browser/render.js";

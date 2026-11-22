@@ -6,6 +6,7 @@
 mod atom_edit;
 mod block_layout;
 mod bookmark;
+mod case_change;
 mod clipboard;
 mod clipboard_interchange;
 mod clipboard_text_projection;
@@ -30,8 +31,10 @@ mod profile;
 mod replace_document_plain_text;
 mod replace_document_typing_text;
 mod restore_typing_editor;
+mod restricted_editing;
 mod result;
 mod retained_asset_references;
+mod root_set;
 mod search;
 mod select_document;
 mod selection;
@@ -45,6 +48,7 @@ pub use editor::BreditorRichEditor;
 pub use observation::BreditorRichObservation;
 pub use profile::BreditorRichProfile;
 pub use result::{BreditorRichCommandResult, BreditorRichEditorResult, BreditorRichProfileResult};
+pub use root_set::BreditorRichRootSet;
 
 /// Separate rich browser boundary revision; default Wasm ABI 5 is not reinterpreted.
 pub const BREDITOR_RICH_ABI_VERSION: u32 = 1;

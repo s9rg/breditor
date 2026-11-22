@@ -4,7 +4,7 @@ import {compileStandardSharedProfileV1,compileStandardStructuralSharedProfileV2,
 import {createStandardRichInlinePresentationV1} from "@breditor/experimental-rich-content";
 import type {RichSearchHost} from "@breditor/experimental-rich-content";
 import type {SharedSearchResults} from "@breditor/collaboration";
-import {supportsSharedSearchHistory,restoreSharedSearchEditor,sharedAiToolsHost} from "@breditor/collaboration";
+import {supportsSharedSearchHistory,restoreSharedSearchEditor,sharedAiToolsHost,sharedAgentToolsHost} from "@breditor/collaboration";
 import {initializeSharedRuntime,standardSharedProfileConfiguration,structuralSharedProfileConfigurationV2,layoutSharedProfileConfigurationV3,richSharedProfileConfigurationV4} from "./shared_profile.js";
 import {checkSharedRichLanguage} from "./shared_language.js";
 import {claimHost,awaitInitialization} from "./host.js";
@@ -22,7 +22,7 @@ export interface SharedDocumentEditorSessionOptions extends Omit<SharedDocumentD
  initial?:SharedDocumentInitial;rangeEditing?:"general-v1";
  coreOptions?:Omit<SharedEditorOptions<"document-v1">,"selectionEditing"|"onError"|"searchHistory">;
  onClosing?:(editor:SharedDocumentEditorSession)=>void;
- toolbar?:(core:SharedRichEditor<"document-v1">,standard:readonly SharedToolbarControl<"document-v1">[])=>readonly SharedToolbarControl<"document-v1">[];
+ toolbar?:(core:SharedRichEditor<"document-v1">,standard:readonly SharedToolbarControl<"document-v1">[],presentation:import("@breditor/experimental-rich-content").RichInlinePresentation)=>readonly SharedToolbarControl<"document-v1">[];
  clipboardInterchange?:ClipboardInterchangeFactory<SharedRichEditor<"document-v1">>;
 }
 export interface SharedDocumentSearchEditorSessionOptions extends Omit<SharedDocumentEditorSessionOptions,"initial"|"history"|"richLanguage"> {
@@ -47,6 +47,8 @@ export interface SharedDocumentEditorSession extends SharedDocumentEditorRecover
  contextUi():import("@breditor/experimental-rich-content").RichContextUiHost;
  /** Borrowed port for the opt-in AI rewrite and language-check tools (`mountSharedAiTools`); it never publishes by itself. */
  aiTools():import("@breditor/experimental-rich-content").RichAiToolsHost;
+ /** Agent tool port (docs/AI_AGENT_TOOLS.md): applied plans are one guarded shared dispatch; pass a suggestion queue to file proposals. */
+ agentTools(options?:import("@breditor/collaboration").SharedAgentToolsHostOptions):import("@breditor/experimental-rich-content").RichAgentToolsHost;
  setPlaceholderLabel(label:string|null):void;
  /** The validated chrome catalog from the `ui` option (English, direction-neutral by default). */
  uiLocale():import("@breditor/experimental-rich-content").RichUiLocale;
@@ -78,6 +80,7 @@ class DocumentSessionOwner implements SharedDocumentEditorSession {
  fullscreen():import("@breditor/experimental-rich-content").RichFullscreenHost{this.#active();return this.#dom;}
  contextUi():import("@breditor/experimental-rich-content").RichContextUiHost{this.#active();return this.#dom;}
  aiTools():import("@breditor/experimental-rich-content").RichAiToolsHost{this.#active();return sharedAiToolsHost(this.#dom);}
+ agentTools(options?:import("@breditor/collaboration").SharedAgentToolsHostOptions):import("@breditor/experimental-rich-content").RichAgentToolsHost{this.#active();return sharedAgentToolsHost(this.#dom,options);}
  setPlaceholderLabel(label:string|null):void{this.#active();this.#dom.setPlaceholderLabel(label);}
  uiLocale():import("@breditor/experimental-rich-content").RichUiLocale{this.#active();return this.#dom.uiLocale();}
  view():SharedDocumentView{return this.core.view();}checkpointJson():string{return this.core.checkpointJson();}
@@ -136,7 +139,7 @@ async function openDocumentEditorFamily(options:SharedDocumentEditorSessionOptio
   };
   session=search?await SharedPersistentSession.openSearch({...persistence,rangeEditing:"general-v1",selectionEditing:"document-v1",restoreSearch:checkpoint=>{claim.assert();return restoreSharedSearchEditor(factory,options.room,checkpoint);}}):await SharedPersistentSession.openDocument({...persistence,restore:(checkpoint,storedHistory,storedRanges="original")=>{claim.assert();return storedRanges==="general-v1"?restoreSharedGeneralEditor(factory,options.room,checkpoint,storedHistory):storedHistory==="typing-v1"?restoreSharedTypingEditor(factory,options.room,checkpoint):factory.restore(options.room,checkpoint);},restoreDocument:(checkpoint,storedHistory)=>{claim.assert();return restoreSharedDocumentEditor(factory,options.room,checkpoint,storedHistory);}});
   claim.assert();if(options.readOnly!==undefined)session.core.setReadOnly(options.readOnly);
-  const core=session.core,standard=language===4?createRichSharedToolbarV4(core,presentation):language===3?createLayoutSharedToolbarV3(core,presentation):language===2?createStructuralSharedToolbarV2(core,presentation):createStandardSharedToolbarV1(core,presentation),toolbar=options.toolbar?.(core,standard)??standard;
+  const core=session.core,standard=language===4?createRichSharedToolbarV4(core,presentation):language===3?createLayoutSharedToolbarV3(core,presentation):language===2?createStructuralSharedToolbarV2(core,presentation):createStandardSharedToolbarV1(core,presentation),toolbar=options.toolbar?.(core,standard,presentation)??standard;
   const {clipboardInterchange:interchangeFactory,...domOptions}=options,interchange=clipboardInterchangeOptions(interchangeFactory,core);
   claim.assert();dom=mountSharedDocumentEditor(options.host,{...domOptions,...interchange,core,coreOwnership:"borrow",inlinePresentation:presentation,toolbar});claim.assert();return new DocumentSessionOwner(session,dom,claim.release,options,toolbar);
  }catch(error){try{dom?.dispose();if(session)await session.close();}catch(closeError){throw new SharedDocumentEditorOpenError(new AggregateError([error,closeError],"Document opening and durable cleanup failed"),session!);}finally{claim.rollback();}throw error;}

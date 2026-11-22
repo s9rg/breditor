@@ -39,25 +39,27 @@ byte for byte, to the vanilla string with the default wrapper.
 - A bare `breditor/document` root element is also accepted.
 
 The renderer checks the input against the rich content grammar, which is the union of rich
-languages V1 to V3 plus the candidate V4 ordered-list numbering properties (`list-style` 1–5,
+languages V1 to V3 plus the V4 ordered-list numbering properties (`list-style` 1–5,
 `list-reversed: true`; see `RICH_LANGUAGE_V4.md`), emitted as `<ol type reversed>`, and the
-candidate V4 `breditor/text-language` inline format (a canonical bounded BCP 47 tag), emitted as
+V4 `breditor/text-language` inline format (a canonical bounded BCP 47 tag), emitted as
 `<span class="breditor-text-language" lang="…">` in the same recipe order as the live renderer
-(`staticInlineRecipesV4`), and the candidate V4 image link (`image-href`, a canonical safe
+(`staticInlineRecipesV4`), and the V4 image link (`image-href`, a canonical safe
 HTTP(S) target, and `image-link-new-window: true`; never on a decorative image), emitted as
 `<a data-rich-image-link class="breditor-image-link" href [rel target]>` around the `<img>` only,
-with the inline `safeLinkV1` attribute set, and candidate V4 collapsible sections (`breditor/details`
+with the inline `safeLinkV1` attribute set, and V4 collapsible sections (`breditor/details`
 with one leading `breditor/details-summary`, at most 8 nested, `details-open: true` only), emitted as
 native `<details data-rich-details [open]><summary data-rich-text>…</summary>…</details>` so readers
-can toggle static output, and candidate V4 mentions (`breditor/mention` over whole `@label` text),
+can toggle static output, and V4 mentions (`breditor/mention` over whole `@label` text),
 emitted as one `<span class="breditor-mention" data-mention-kind="…" data-mention-id="…">` chip per
-mention around its styled pieces (no link; partial mention text is a `grammar` error), and candidate V4
+mention around its styled pieces (no link; partial mention text is a `grammar` error), the opt-in
+ruby extension (`breditor-ruby/ruby`, any rich language, [RUBY_ANNOTATIONS.md](RUBY_ANNOTATIONS.md)) emitted as one
+`<ruby class="breditor-ruby" data-rich-ruby="">base<rp>(</rp><rt>reading</rt><rp>)</rp></ruby>` per group of equal readings, and V4
 table captions (one trailing `breditor/paragraph` after a table's rows), emitted as the table's first child
 `<caption data-rich-table-caption="…" style="caption-side:bottom">` so it is laid out after the rows
-(a hidden table still renders nothing), and candidate V4 page breaks (`breditor/page-break`, document root
+(a hidden table still renders nothing), and V4 page breaks (`breditor/page-break`, document root
 only, no children), emitted as `<div data-rich-page-break class="breditor-page-break" role="separator"
 aria-label="Page break" style="break-after:page;page-break-after:always">` (label option `pageBreakLabel`),
-and candidate V4 bookmarks (`breditor/bookmark` on paragraphs, headings and code blocks; valid and unique
+and V4 bookmarks (`breditor/bookmark` on paragraphs, headings and code blocks; valid and unique
 per document, else a `property` error), emitted as `id="bm-<name>" data-rich-bookmark="<name>"`, with
 same-window `#name` links emitted as `href="#bm-<name>" data-rich-internal-link="<name>"` or, when no block
 carries the name, without `href` and with `data-rich-link-broken`.
@@ -92,6 +94,7 @@ repairs a document.
 | `fragment` | `false` | Return only the block markup, without the surface wrapper. |
 | `blockIds` | `true` | Emit `data-rich-block`, `data-rich-text`, `data-rich-task`, `data-task-check` and `data-rich-cell` hooks. |
 | `limits` | 16 MiB / depth 128 / 250 000 nodes | `maxInputBytes`, `maxDepth` and `maxNodes`. Each is clamped to a hard maximum (64 MiB, 512, 2 000 000). |
+| `legalListNumbering` | `false` | Legal multi-level markers (`1.`, `1.2.`, `1.2.3.`) on nested ordered lists, identical to the live option: `data-rich-legal` on lists, `data-rich-legal-marker` on items, and (unless `fragment`) a `<style data-breditor-legal-lists>` with `richLegalListStyles`. Presentation only; see [LIST_STRUCTURE.md](LIST_STRUCTURE.md). |
 
 `renderStaticDocumentWithReport` also returns a report with:
 

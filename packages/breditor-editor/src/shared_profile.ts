@@ -1,4 +1,5 @@
 import {compileStandardSharedProfileV1,compileStandardStructuralSharedProfileV2,compileStandardLayoutSharedProfileV3,compileStandardRichSharedProfileV4,type SharedProfileConfiguration,type SharedProfileConfigurationV2,type SharedProfileConfigurationV3,type SharedProfileConfigurationV4,type SharedRustProfile,type SharedProfileModule} from "@breditor/collaboration";
+import {withRichRubySharedConfigurationV1} from "@breditor/experimental-rich-content/rendering";
 import {runtimeLoader,type RuntimeInput} from "./runtime_loader.js";
 
 const load=runtimeLoader(()=>import("@breditor/collaboration/wasm"));
@@ -7,6 +8,9 @@ export const structuralSharedProfileConfigurationV2:SharedProfileConfigurationV2
 export const layoutSharedProfileConfigurationV3:SharedProfileConfigurationV3=Object.freeze({format:"breditor/shared-rich-profile",formatVersion:3,schema:Object.freeze({name:"breditor-editor/standard",version:3}),extensions:Object.freeze([])});
 /** Stock shared V4: schema `breditor-editor/standard@4`, the same frozen fingerprint as local V4. */
 export const richSharedProfileConfigurationV4:SharedProfileConfigurationV4=Object.freeze({format:"breditor/shared-rich-profile",formatVersion:4,schema:Object.freeze({name:"breditor-editor/standard",version:4}),extensions:Object.freeze([])});
+/** Opt-in ruby (furigana): the stock shared V4 configuration plus the `breditor-ruby/ruby` extension; the same
+ * fingerprint as `rubyProfileBootstrapJsonV4` (docs/RUBY_ANNOTATIONS.md). */
+export const rubySharedProfileConfigurationV4:SharedProfileConfigurationV4=Object.freeze(withRichRubySharedConfigurationV1(richSharedProfileConfigurationV4));
 /** Returns the original compiled native factory. Acquire a writer lease before create/join/restore. */
 export async function createSharedProfile(configuration:SharedProfileConfiguration=standardSharedProfileConfiguration,input?:RuntimeInput):Promise<SharedRustProfile>{
  const snapshot=JSON.parse(JSON.stringify(configuration)) as SharedProfileConfiguration;

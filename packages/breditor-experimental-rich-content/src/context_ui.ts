@@ -4,6 +4,7 @@
  * Nothing here edits document DOM, copies selection state or publishes; it only positions and focuses widgets.
  */
 import {defaultRichUi,richChromeIsRtl,type RichUiLocale} from "./ui_locale.js";
+import {registerRichPresentationShortcut} from "./shortcut_registry.js";
 import type {RichContextControlView,RichContextMenu,RichContextMenuOptions,RichContextUiHost,RichContextUiOptions,RichSelectionToolbar,RichSelectionToolbarOptions} from "./context_ui_types.js";
 /** Inline formatting and link controls, when the editor's toolbar admits them. */
 export const richSelectionToolbarDefaults:readonly string[]=Object.freeze(["bold","italic","underline","strike","code","link","unlink","clear-inline"]);
@@ -11,11 +12,14 @@ export const richSelectionToolbarDefaults:readonly string[]=Object.freeze(["bold
 export const richContextMenuDefaults:readonly string[]=Object.freeze(["undo","redo","bold","italic","underline","strike","code","link","unlink","clear-inline","paragraph","heading","h1","h2","h3","bullet","numbered","unlist","indent","outdent","row","add-row","column","add-column","delete-row","delete-column","merge","split","header","delete-node","remove-node"]);
 /** Scoped to the floating widgets; control appearance comes from the editor's toolbar styles. */
 export const richContextUiStyles=`[data-breditor-context-ui]{position:fixed;z-index:1000;box-sizing:border-box;display:flex;gap:4px;align-items:center;padding:4px;background:#fff;color:#173d37;border:1px solid #a5b9af;border-radius:6px;box-shadow:0 4px 14px rgba(23,61,55,.18);max-width:calc(100vw - 16px)}[data-breditor-context-ui][hidden]{display:none}[data-breditor-context-ui=selection-toolbar]{flex-wrap:wrap}[data-breditor-context-ui=menu]{flex-direction:column;align-items:stretch;min-width:180px;max-height:calc(100vh - 16px);overflow:auto}[data-breditor-context-ui=menu] .breditor-inline-control{display:flex}[data-breditor-context-ui=menu] .breditor-inline-control>button{flex:1;text-align:start}[data-breditor-context-ui=menu] .breditor-inline-control[hidden]{display:none}`;
-type Kind="selection-toolbar"|"menu";
+/** @internal */
+export type Kind="selection-toolbar"|"menu"|"floating-menu";
 const leases=new WeakMap<HTMLElement,Set<Kind>>();
 const GAP=8;
-interface Mounted {ui:RichUiLocale;d:Document;element:HTMLElement;views:readonly RichContextControlView[];ids:readonly string[];abort:AbortController;release():void;report(error:unknown):void}
-function prepare(host:RichContextUiHost,kind:Kind,options:RichContextUiOptions,defaults:readonly string[]):Mounted{
+/** @internal */
+export interface Mounted {ui:RichUiLocale;d:Document;element:HTMLElement;views:readonly RichContextControlView[];ids:readonly string[];abort:AbortController;release():void;report(error:unknown):void}
+/** @internal Shared by the editor shell's empty-line block menu. */
+export function prepare(host:RichContextUiHost,kind:Kind,options:RichContextUiOptions,defaults:readonly string[]):Mounted{
  if(options.controls!==undefined&&(!Array.isArray(options.controls)||options.controls.some(id=>typeof id!=="string"||!id)||new Set(options.controls).size!==options.controls.length||options.controls.length>64))throw TypeError("Expected unique nonempty context control ids");
  if(options.label!==undefined&&(typeof options.label!=="string"||!options.label||options.label.length>256))throw TypeError("Expected a nonempty bounded context UI label");
  const surface=host.surface,d=surface.ownerDocument;if(host.contextUiState().closed||!d.defaultView)throw Error("Context UI requires an open editor in a browsing context");
@@ -24,7 +28,7 @@ function prepare(host:RichContextUiHost,kind:Kind,options:RichContextUiOptions,d
  const ids=Object.freeze(options.controls?[...options.controls]:defaults.filter(id=>admitted.includes(id)));
  const root=options.container??surface.closest<HTMLElement>("[data-breditor-rich],[data-breditor-shared]")??surface.parentElement;
  if(!root||root.ownerDocument!==d||root===surface||surface.contains(root))throw Error("Context UI needs a container outside editable content in the editor document");
- const used=leases.get(surface)??new Set<Kind>();if(used.has(kind))throw Error(`This editor already has a ${kind==="menu"?"context menu":"selection toolbar"}`);
+ const used=leases.get(surface)??new Set<Kind>();if(used.has(kind))throw Error(`This editor already has a ${kind==="menu"?"context menu":kind==="floating-menu"?"block menu":"selection toolbar"}`);
  const abort=new AbortController(),element=d.createElement("div"),style=d.createElement("style"),ui=host.uiLocale?.()??defaultRichUi;
  element.dataset["breditorContextUi"]=kind;ui.applyChrome(element);element.hidden=true;style.textContent=richContextUiStyles;element.append(style);
  const report=(error:unknown)=>{try{options.onError?.(error);}catch{/* A host reporter cannot change editor ownership. */}};
@@ -32,9 +36,12 @@ function prepare(host:RichContextUiHost,kind:Kind,options:RichContextUiOptions,d
   return {ui,d,element,views,ids,abort,report,release:()=>{used.delete(kind);}};
  }catch(error){abort.abort();element.remove();throw error;}
 }
-function itemOf(view:RichContextControlView):HTMLElement{return view.element.tagName==="DETAILS"?view.element.querySelector<HTMLElement>(":scope>summary")??view.button:view.button;}
-function enabledView(view:RichContextControlView):boolean{const item=itemOf(view);return item===view.button?!view.button.disabled:item.getAttribute("aria-disabled")!=="true";}
-function liveRange(surface:HTMLElement):Range|null{
+/** @internal */
+export function itemOf(view:RichContextControlView):HTMLElement{return view.element.tagName==="DETAILS"?view.element.querySelector<HTMLElement>(":scope>summary")??view.button:view.button;}
+/** @internal */
+export function enabledView(view:RichContextControlView):boolean{const item=itemOf(view);return item===view.button?!view.button.disabled:item.getAttribute("aria-disabled")!=="true";}
+/** @internal */
+export function liveRange(surface:HTMLElement):Range|null{
  const selection=surface.ownerDocument.getSelection?.();if(!selection||!selection.rangeCount)return null;
  const range=selection.getRangeAt(0);return surface.contains(range.commonAncestorContainer)?range.cloneRange():null;
 }
@@ -55,13 +62,15 @@ function place(element:HTMLElement,rect:{left:number;top:number;bottom:number;wi
  const left=Math.min(Math.max(GAP,start),Math.max(GAP,vw-width-GAP));
  element.style.top=`${Math.round(top)}px`;element.style.left=`${Math.round(left)}px`;
 }
-function rove(event:KeyboardEvent,views:readonly RichContextControlView[],next:string,previous:string):boolean{
+/** @internal */
+export function rove(event:KeyboardEvent,views:readonly RichContextControlView[],next:string,previous:string):boolean{
  const items=views.filter(view=>!view.element.hidden&&enabledView(view)).map(itemOf),index=items.indexOf(event.target as HTMLElement);
  if(index<0||!items.length)return false;
  const target=event.key===next?items[(index+1)%items.length]:event.key===previous?items[(index-1+items.length)%items.length]:event.key==="Home"?items[0]:event.key==="End"?items[items.length-1]:undefined;
  if(!target)return false;event.preventDefault();target.focus({preventScroll:true});return true;
 }
-function owned(surface:HTMLElement,element:HTMLElement,node:unknown):boolean{return node instanceof Node&&(node===surface||surface.contains(node)||element.contains(node));}
+/** @internal */
+export function owned(surface:HTMLElement,element:HTMLElement,node:unknown):boolean{return node instanceof Node&&(node===surface||surface.contains(node)||element.contains(node));}
 
 /** Shows the admitted inline controls over a non-collapsed text selection while the editor (or toolbar) has focus. */
 export function mountRichSelectionToolbar(host:RichContextUiHost,options:RichSelectionToolbarOptions={}):RichSelectionToolbar{
@@ -85,7 +94,8 @@ export function mountRichSelectionToolbar(host:RichContextUiHost,options:RichSel
  const first=()=>views.find(view=>enabledView(view));
  const dismiss=()=>{if(disposed)return;dismissed=host.contextUiState().revision;hide(true);};
  const later=()=>realm.setTimeout(update,0);
- function dispose():void{if(disposed)return;disposed=true;unsubscribe();abort.abort();element.remove();release();}
+ const shortcuts=[registerRichPresentationShortcut(surface,{id:"ui:selection-toolbar",group:"interface",label:ui.text("shortcutFocusToolbar"),keys:[{key:"F10",alt:true}]}),registerRichPresentationShortcut(surface,{id:"ui:escape",group:"interface",label:ui.text("shortcutLeaveUi"),keys:[{key:"Escape"}]})];
+ function dispose():void{if(disposed)return;disposed=true;unsubscribe();abort.abort();element.remove();release();for(const free of shortcuts)free();}
  try{
   unsubscribe=host.subscribeContextUi(update);
   d.addEventListener("selectionchange",update,{signal});
@@ -159,7 +169,8 @@ export function mountRichContextMenu(host:RichContextUiHost,options:RichContextM
    position();
   }catch(error){report(error);}
  };
- function dispose():void{if(disposed)return;close(true);disposed=true;unsubscribe();abort.abort();element.remove();release();}
+ const shortcuts=[registerRichPresentationShortcut(surface,{id:"ui:context-menu",group:"interface",label:ui.text("shortcutContextMenu"),keys:[{key:"F10",shift:true},{key:"ContextMenu"}]}),registerRichPresentationShortcut(surface,{id:"ui:escape",group:"interface",label:ui.text("shortcutLeaveUi"),keys:[{key:"Escape"}]})];
+ function dispose():void{if(disposed)return;close(true);disposed=true;unsubscribe();abort.abort();element.remove();release();for(const free of shortcuts)free();}
  try{
   unsubscribe=host.subscribeContextUi(update);
   surface.addEventListener("contextmenu",event=>{

@@ -42,7 +42,7 @@ pub(super) fn normalize(
     whole(&view, &node)
 }
 
-/// The whole visible grid of `node` (active merges recaptured) plus its candidate V4
+/// The whole visible grid of `node` (active merges recaptured) plus its V4
 /// caption, if `node` still carries one. Grid rectangles never include a caption.
 pub(super) fn whole(view: &RichTableView, node: &NodeRef) -> Result<NodeRef, RichClipboardError> {
     let grid = rectangle(view, node, (0, view.rows().len() - 1), (0, view.columns().len() - 1))?;

@@ -1,4 +1,4 @@
-//! Candidate rich V4 table-caption commands: strict records, Rust-owned actions.
+//! Rich V4 table-caption commands: strict records, Rust-owned actions.
 //!
 //! `addTableCaption {table, caption}` inserts one empty trailing caption paragraph with the
 //! fresh identity `caption` and places the caret in it; `removeTableCaption {table}` removes

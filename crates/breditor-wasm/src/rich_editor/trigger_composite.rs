@@ -11,4 +11,12 @@ impl BreditorRichEditor {
     pub fn trigger_composite_version(&self) -> String {
         "1".into()
     }
+    /// String1: `commandGroup` runs 1–64 allowlisted text-range, inline-format and
+    /// block-identity commands as a single native history unit (agent tool contract). An
+    /// older module lacks this method and hosts apply one command at a time.
+    #[must_use]
+    #[wasm_bindgen(js_name=commandGroupVersion)]
+    pub fn command_group_version(&self) -> String {
+        "1".into()
+    }
 }

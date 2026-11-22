@@ -1,4 +1,4 @@
-/** Candidate rich V4 image links: read, intent encoding, inert editing render and toolbar controls. */
+/** Rich V4 image links: read, intent encoding, inert editing render and toolbar controls. */
 import {canonicalImageLinkHrefV1,imageLinkRenderAttributesV1,isImageLinkHrefV1} from "@breditor/browser/presentation";
 import type {RichImageLinkIntent,RichSelectionPolicy} from "./core.js";
 import {property,selectedImage,type ElementNode,type RichPresentationModel} from "./model.js";

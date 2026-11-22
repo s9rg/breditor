@@ -80,6 +80,7 @@ pub fn generate(input: &str) -> Result<Value> {
         container: "list".into(),
         left: "item-1".into(),
         right: "right-item".into(),
+        blocks: false,
     })])?;
     a.apply(vec![Command::IndentListItems(IndentListItems {
         container: "list".into(),

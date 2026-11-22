@@ -1111,6 +1111,18 @@ Profile Bootstrap V2, Document V2, V3 durable generations, generated Wasm
 members, and ABI 5 remain unchanged. The normative
 [`TEXT_SIZE_PRESETS.md`](TEXT_SIZE_PRESETS.md) freezes this slice.
 
+## First-party ruby extension
+
+Ruby (furigana) is the first first-party extension delivered on this seam
+rather than as a grammar slice: `breditor-ruby/ruby` declares one format with one
+required bounded string property and nothing else (Rust `ruby_extension_v1()`).
+Rich hosts compose it into a bootstrap or shared configuration; Rust compiles it
+to the profile's own fingerprint and the generic typed-format commands, history,
+replay and shared `SetFormat` carry it unchanged. Its presentation is a closed
+browser rule keyed to the exact declaration (one `<ruby>` group per equal
+annotation, reading as generated content), and typing never inherits it. See
+[RUBY_ANNOTATIONS.md](RUBY_ANNOTATIONS.md).
+
 ## Deferred beyond 0.2.0
 
 The following are explicitly deferred:

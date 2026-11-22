@@ -1,4 +1,4 @@
-//! Bounded ordered-list numbering of the explicit candidate rich V4.
+//! Bounded ordered-list numbering of the explicit rich V4.
 //!
 //! Each ordered list owns its own optional marker style and reversed flag. A
 //! nested list never inherits either value from its ancestors, and legal

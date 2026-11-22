@@ -85,7 +85,7 @@ pub fn inspect_block_layout(
     let Some(selection) = selection else { return Ok(state) };
     let coverage = RichSelectionCoverage::capture(document, selection)
         .map_err(|_| RichBlockLayoutError::Target)?;
-    // A candidate V4 section summary carries no block layout; it is not a layout target.
+    // A V4 section summary carries no block layout; it is not a layout target.
     for span in coverage
         .text()
         .iter()

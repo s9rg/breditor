@@ -64,6 +64,16 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
             println!("{}", json!({"kind":"listening","address":listener.local_addr()?.to_string(),"recovery":recovery}));
             axum::serve(listener, router).with_graceful_shutdown(async { let _ = tokio::signal::ctrl_c().await; }).await?;
         }
+        ["serve-documents", directory, auth, api, bind] => {
+            let address: SocketAddr = bind.parse()?;
+            if !address.ip().is_loopback() { return Err("reference relay currently requires loopback binding".into()); }
+            let auth = Authentication::from_json(&bounded(auth, 256 * 1024)?)?;
+            let api = server::DocumentServerConfiguration::from_json(&bounded(api, 256 * 1024)?)?;
+            let documents = server::DocumentServer::open(Path::new(directory), auth, api)?;
+            let listener = tokio::net::TcpListener::bind(address).await?;
+            println!("{}", json!({"kind":"listening","address":listener.local_addr()?.to_string(),"rooms":documents.rooms()}));
+            axum::serve(listener, documents.router()).with_graceful_shutdown(async { let _ = tokio::signal::ctrl_c().await; }).await?;
+        }
         ["inspect-sealed-room", request, auth, output] => {
             sealed_inspection::run(Path::new(request), Path::new(auth), Path::new(output)).await?;
         }
@@ -73,7 +83,7 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
                 selection_sha256, Path::new(output),
             ).await?;
         }
-        _ => return Err("usage: breditor-collab-relay token | init|init-v2|init-standard-v2|init-v3|init-standard-v3 LOG PROFILE_JSON DOCUMENT_JSON OWNER | serve LOG AUTH_JSON LOOPBACK_ADDRESS | inspect-sealed-room REQUEST_JSON AUTH_JSON NEW_EVIDENCE_DIR | repair-sealed-room REQUEST_JSON AUTH_JSON EVIDENCE_DIR SELECTION_SHA256 NEW_EVIDENCE_DIR".into()),
+        _ => return Err("usage: breditor-collab-relay token | init|init-v2|init-standard-v2|init-v3|init-standard-v3 LOG PROFILE_JSON DOCUMENT_JSON OWNER | serve LOG AUTH_JSON LOOPBACK_ADDRESS | serve-documents ROOMS_DIR AUTH_JSON DOCUMENT_API_JSON LOOPBACK_ADDRESS | inspect-sealed-room REQUEST_JSON AUTH_JSON NEW_EVIDENCE_DIR | repair-sealed-room REQUEST_JSON AUTH_JSON EVIDENCE_DIR SELECTION_SHA256 NEW_EVIDENCE_DIR".into()),
     }
     Ok(())
 }

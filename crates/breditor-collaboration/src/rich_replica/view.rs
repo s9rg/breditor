@@ -16,6 +16,12 @@ impl RichReplica {
         self.protocol.describe(&mut descriptor);
         descriptor.to_string()
     }
+    /// Exact typed inline declarations of this owner's schema (the profile's catalog), so a
+    /// browser owner can report optional extension capabilities such as ruby. Grants no authority.
+    #[must_use]
+    pub fn inline_catalog_json(&self) -> String {
+        breditor_core::codec::encode_inline_format_catalog(self.codec.schema())
+    }
     /// Read content, causal/version strings, selection, pending formats and original core geometry.
     /// # Errors
     /// Read admission/serialization failure has no shared or local mutation.
@@ -65,6 +71,15 @@ impl RichReplica {
             "selectionOutcome":self.journal.ui.outcome,"pendingFormatsJson":self.pending_formats().map(serde_json::to_string).transpose()?,"undoDepth":self.undo_count(),"redoDepth":self.redo_count(),"historyCapacity":1000,"tables":tables,"grid":grid});
         if self.read_only {
             view["readOnly"] = json!(true);
+        }
+        // Present only under a live host policy, so default view bytes stay unchanged.
+        if let Some(policy) = &self.restricted {
+            let editable = policy
+                .regions(&self.document)
+                .into_iter()
+                .map(|region| region.block.as_str().to_owned())
+                .collect::<Vec<_>>();
+            view["restricted"] = json!({"editable":editable,"selectionEditable":self.restricted_selection_editable()?});
         }
         if document_scope {
             view["selectionEditing"] = json!("document-v1");

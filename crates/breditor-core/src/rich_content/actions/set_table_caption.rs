@@ -1,4 +1,4 @@
-//! Candidate V4: add or remove a table's trailing paragraph caption as one guarded edit.
+//! V4: add or remove a table's trailing paragraph caption as one guarded edit.
 
 use super::{
     RichAction, RichActionError, RichEdit,

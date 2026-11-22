@@ -112,9 +112,11 @@ export function sharedStructureBoundaryV4(c:SharedIntentContext,backward:boolean
  return undefined;
 }
 /**
- * Enter in a summary never splits it: a caret in an open section's summary inserts one empty
- * paragraph as the first body block and moves the caret there (the local `enterDetailsBody`
- * without the expand step, which belongs to the open-state command); otherwise nothing happens.
+ * Enter in a summary never splits it: a caret in a summary inserts one empty paragraph as the
+ * first body block, expands a collapsed section in the same batch (`set_details_open`) and moves
+ * the caret there with pending formats cleared — the local `enterDetailsBody`, as one guarded
+ * dispatch and one writer-local Undo step. A range in a summary does nothing; so does a collapsed
+ * section on an owner without the V4 block-field (open-state) command.
  * Enter in a table caption inserts a line break like an image caption. `undefined` elsewhere.
  */
 export function sharedStructureEnterV4(c:SharedIntentContext):boolean|undefined{
@@ -123,8 +125,12 @@ export function sharedStructureEnterV4(c:SharedIntentContext):boolean|undefined{
  const node=selectedText(c.model)??c.model.nodes.get(s.focus.block),parent=node?c.model.parents.get(id(node)):undefined;if(!node||!parent)return undefined;
  if(parent.type==="breditor/table"&&s.anchor.block===s.focus.block){c.core.hardBreak(c.revision);return true;}
  if(node.type!==summary)return undefined;
- if(s.anchor.block!==s.focus.block||s.anchor.offset!==s.focus.offset||property(parent,"details-open")!==true)return true;
+ if(s.anchor.block!==s.focus.block||s.anchor.offset!==s.focus.offset)return true;
+ const collapsed=property(parent,"details-open")!==true;
+ if(collapsed&&(c.core as {supportsDetails?():boolean}).supportsDetails?.()!==true)return true;
  const first=parent.children.find((child,index)=>index>0&&child.kind==="element"),paragraph=c.allocate("p");
- publish(c,[{kind:"insert_blocks",data:{parent:id(parent),before:first?.kind==="element"?id(first):null,nodes:[emptyParagraph(paragraph)]}}],caret(paragraph));
+ const commands:SharedCommand[]=[{kind:"insert_blocks",data:{parent:id(parent),before:first?.kind==="element"?id(first):null,nodes:[emptyParagraph(paragraph)]}}];
+ if(collapsed)commands.push({kind:"set_details_open",data:{block:id(parent),open:true}});
+ c.core.dispatch({commands,selectionUpdate:{kind:"set",value:caret(paragraph)},pendingFormatsUpdate:{kind:"set",value:null}},c.revision);
  return true;
 }

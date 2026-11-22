@@ -43,7 +43,7 @@ impl MoveTableColumn {
         let node = table_node(document, table)?;
         let mut columns = column_properties(node)?;
         move_before(&mut columns, source, destination);
-        // Rows only: a candidate V4 caption is kept by `rebuild`.
+        // Rows only: a V4 caption is kept by `rebuild`.
         let rows = crate::rich_content::table_caption::rows(
             node.as_element().ok_or(RichActionError::Rewrite)?,
         )

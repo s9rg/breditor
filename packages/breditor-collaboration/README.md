@@ -461,6 +461,11 @@ DOM and root/React startup may explicitly select `inputRules: "markdown-v1"`,
 HTTP(S) or `www.` URL after a space or Enter through one original guarded
 `set_format` group (`supportsInputRuleSets()`, `splitWithAutolink`); remote
 peers receive an ordinary format annotation and never run recognition.
+`typography-v1` (or a configured `{rule: "typography-v1", include, exclude,
+quotes}` entry) replaces typed smart quotes, dashes, symbols and fractions
+through one original guarded `delete_text` + `insert_text` + `set_format`
+group (`supportsTypographyInputRules()`); see
+[the typography contract](../../docs/RICH_INPUT_RULES.md#optional-typography-typography-v1).
 It requires the current native browser-routing capability, is immutable per
 owner and is not persisted in checkpoints. The exclusive native call retains
 literal typing before its separate conversion group, so one Undo restores the

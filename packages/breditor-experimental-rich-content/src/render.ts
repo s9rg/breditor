@@ -1,9 +1,11 @@
 // Render only the admitted Rust AST and its derived non-destructive table geometry.
-import type {FormatLiteral,RichCell} from "./core.js";
-import {cellKey,id,property,type AstNode,type ElementNode,type RichPresentationModel,type TextNode} from "./model.js";
-import {requireRichInlinePresentation,richInlineRecipes,type RichInlinePresentation} from "./inline_presentation.js";
+import type {FormatLiteral,RichCell,RichView} from "./core.js";
+import {cellKey,id,property,sourceCell,type AstNode,type ElementNode,type RichPresentationModel,type TextNode} from "./model.js";
+import {requireRichInlinePresentation,richInlineRecipes,richInlinePresentationHasRuby,type RichInlinePresentation} from "./inline_presentation.js";
+import {createRubyElement,groupRubyRuns} from "./ruby.js";
 import {applyBlockLayout} from "./block_layout_presentation.js";
 import {applyListNumbering} from "./list_numbering_presentation.js";
+import {legalListAttribute,legalListMarkerAttribute,legalListMarkers} from "./list_structure.js";
 import {wrapImageLink} from "./image_link.js";
 import {createMentionChip,groupMentionRuns} from "./mention.js";
 import {createPageBreakElement,richPageBreakKind} from "./page_break.js";
@@ -15,12 +17,16 @@ export interface RenderOptions {
  resolveAsset?:(binding:AssetBinding)=>string|undefined|Promise<string|undefined>;
  inlineTag?:(format:FormatLiteral)=>"span"|"strong"|"em"|"code";
  inlinePresentation?:RichInlinePresentation;
- /** Chrome catalog; only the candidate V4 page-break marker label (`pageBreakLabel`) reads it. */
+ /** Chrome catalog; only the V4 page-break marker label (`pageBreakLabel`) reads it. */
  ui?:RichUiOptions;
- /** Candidate rich V4 bookmarks and internal links: bookmarked blocks get `id="bm-<name>"` and
+ /** Rich V4 bookmarks and internal links: bookmarked blocks get `id="bm-<name>"` and
   * `data-rich-bookmark`, internal links `href="#bm-<name>"` (or `data-rich-link-broken` when no block
   * carries the name). The controller sets it for a V4 owner; omitted keeps V1–V3 output exact. */
  bookmarks?:boolean;
+ /** Opt-in legal multi-level numbering (`1.`, `1.2.`, `1.2.3.`) for nested ordered lists, derived
+  * at render time from admitted structure and starts (see `legalListMarkers`); presentation only,
+  * never stored. Omitted keeps the existing output exact. */
+ legalListNumbering?:boolean;
 }
 const resolvedUi=new WeakMap<object,RichUiLocale>();
 /** Resolve (and cache per options object) the catalog that labels page-break markers. */
@@ -31,6 +37,7 @@ function pageBreakLabel(options:RenderOptions):string{
 }
 /** Validate opt-in presentation before publishing host DOM. Legacy callbacks stay separate. */
 export function requireRenderOptions(value:RichPresentationModel,options:RenderOptions):void {
+ if(options.legalListNumbering!==undefined&&typeof options.legalListNumbering!=="boolean")throw new TypeError("legalListNumbering must be a boolean");
  if(options.inlinePresentation){if(options.inlineTag)throw new TypeError("Use either inlinePresentation or inlineTag, not both");requireRichInlinePresentation(options.inlinePresentation,value.schema);}
 }
 /** A lone LF at the very end of a `pre-wrap` text block creates no line box after it, so Chromium
@@ -66,9 +73,24 @@ export function refreshAssets(surface:HTMLElement,options:RenderOptions):void {
  for(const figure of surface.querySelectorAll<HTMLElement>("figure[data-rich-image]"))resolveImage(figure,options);
 }
 /** Apply native host policy to every browser editing island, not only the outer surface.
- * Candidate V4 image links are inert while editing (like inline links inside the editable
+ * V4 image links are inert while editing (like inline links inside the editable
  * surface): they leave the tab order and the controller cancels their activation, so a click
  * selects the image node. A read-only surface lets them behave as ordinary links. */
+/** Presentation-only marking of editable regions; never a document property or an enforcement mechanism. */
+export function applyRestrictedPresentation(surface:HTMLElement,value:RichPresentationModel):void {
+ const restricted=value.view.restricted;
+ surface.toggleAttribute("data-rich-restricted",!!restricted);
+ const editable=new Set(restricted?.editable??[]),cells=new Set<string>();
+ // Table cells and rows render without a block id: mark their base cells instead.
+ for(const block of editable){
+  const node=value.nodes.get(block),parts=node?.type==="breditor/table-row"?node.children.filter(child=>child.kind==="element").map(child=>id(child as ElementNode)):node?.type==="breditor/table-cell"?[block]:[];
+  for(const part of parts){const cell=sourceCell(value,part);if(cell)cells.add(cellKey(cell));}
+ }
+ for(const element of surface.querySelectorAll<HTMLElement>("[data-rich-block]"))element.toggleAttribute("data-rich-editable-region",editable.has(element.dataset["richBlock"]??""));
+ for(const element of surface.querySelectorAll<HTMLElement>("[data-rich-cell]"))element.toggleAttribute("data-rich-editable-region",cells.has(element.dataset["richCell"]??""));
+}
+/** Default marking for `data-rich-editable-region` under `data-rich-restricted`; hosts may restyle. */
+export const richRestrictedEditingStyles="[data-rich-restricted] [data-rich-editable-region]{outline:1px dashed color-mix(in srgb,Highlight 70%,transparent);outline-offset:2px;background:color-mix(in srgb,Highlight 8%,transparent)}";
 export function applyEditingPolicy(surface:HTMLElement,readOnly:boolean):void {
  surface.contentEditable=readOnly?"false":"true";surface.setAttribute("aria-readonly",String(readOnly));
  for(const link of surface.querySelectorAll<HTMLElement>("a[data-rich-image-link]")){if(readOnly)link.removeAttribute("tabindex");else link.tabIndex=-1;}
@@ -80,16 +102,24 @@ export function render(surface:HTMLElement,value:RichPresentationModel,options:R
  requireRenderOptions(value,options);
  const document=surface.ownerDocument;
  const bookmarks=options.bookmarks===true?new Set(bookmarkNames(value.root)):undefined;
+ const legal=options.legalListNumbering===true?legalListMarkers(value.root):undefined;
  const anchor=(element:HTMLElement,node:ElementNode):void=>{const name=bookmarks?bookmarkOf(node):undefined;if(name!==undefined)for(const attribute of bookmarkAttributes(name))element.setAttribute(attribute.name,attribute.value);};
- // Candidate V4 mentions render as inert chips grouping their styled pieces (text blocks and summaries).
- const appendInline=(target:HTMLElement,node:ElementNode):void=>{for(const item of groupMentionRuns(node.children.filter((child):child is TextNode=>child.kind==="text"),(run,text,formats)=>({...run,text,formats})))target.append(item.kind==="run"?flow(item.run):createMentionChip(document,item.mention,item.pieces.map(flow)));};
+ // V4 mentions render as inert chips grouping their styled pieces (text blocks and summaries).
+ const mentions=(runs:readonly TextNode[]):Node[]=>groupMentionRuns(runs,(run,text,formats)=>({...run,text,formats})).map(item=>item.kind==="run"?flow(item.run):createMentionChip(document,item.mention,item.pieces.map(flow)));
+ // Opt-in ruby extension: each group of equal annotations is one `<ruby>` around its base pieces.
+ const ruby=options.inlinePresentation!==undefined&&richInlinePresentationHasRuby(options.inlinePresentation);
+ const appendInline=(target:HTMLElement,node:ElementNode):void=>{
+  const runs=node.children.filter((child):child is TextNode=>child.kind==="text");
+  if(!ruby){target.append(...mentions(runs));return;}
+  for(const segment of groupRubyRuns(runs,(run,formats)=>({...run,formats})))target.append(...(segment.kind==="plain"?mentions(segment.runs):[createRubyElement(document,segment.annotation,mentions(segment.runs))]));
+ };
  const flow=(node:AstNode):Node=>{
   if(node.kind==="text"){
    let result:Node=document.createTextNode(node.text);
    if(options.inlinePresentation){
     for(const {recipe,attributes} of [...richInlineRecipes(options.inlinePresentation,node.formats)].reverse()){
      const wrapper=document.createElement(recipe.element);wrapper.dataset["richFormat"]=recipe.formatKind;if(recipe.classes.length)wrapper.className=recipe.classes.join(" ");for(const attribute of attributes)wrapper.setAttribute(attribute.name,attribute.value);
-     // Candidate V4 internal link: the external policy emits no href for `#name`; the bookmark grammar does.
+     // V4 internal link: the external policy emits no href for `#name`; the bookmark grammar does.
      const internal=bookmarks&&recipe.formatKind==="breditor-inline/link"?node.formats.map(internalLinkOf).find(name=>name!==undefined):undefined;
      if(internal!==undefined)for(const attribute of internalLinkAttributes(internal,bookmarks!.has(internal)))wrapper.setAttribute(attribute.name,attribute.value);
      wrapper.append(result);result=wrapper;
@@ -99,7 +129,7 @@ export function render(surface:HTMLElement,value:RichPresentationModel,options:R
   }
   if(node.type==="breditor/table")return table(node);
   if(node.type==="breditor/image")return image(node);
-  // Candidate V4 page break: a non-editable, node-selectable marker that forces a page break when printed.
+  // V4 page break: a non-editable, node-selectable marker that forces a page break when printed.
   if(node.type===richPageBreakKind)return createPageBreakElement(document,node,pageBreakLabel(options));
   if(node.type==="breditor/horizontal-rule"){
    const rule=document.createElement("hr");rule.contentEditable="false";rule.dataset["richBlock"]=id(node);rule.dataset["selectNode"]=id(node);return rule;
@@ -110,7 +140,7 @@ export function render(surface:HTMLElement,value:RichPresentationModel,options:R
    const body=document.createElement("div");body.dataset["taskBody"]="";for(const child of node.children)body.append(flow(child));item.append(body);return item;
   }
   if(node.type==="breditor/details"){
-   // Candidate V4 section: native disclosure semantics; `open` mirrors persisted document state.
+   // V4 section: native disclosure semantics; `open` mirrors persisted document state.
    // While editing, the controller cancels native summary toggling (see applyEditingPolicy).
    const details=document.createElement("details");details.dataset["richBlock"]=id(node);details.dataset["richDetails"]=id(node);details.open=property(node,"details-open")===true;
    for(const child of node.children)details.append(flow(child));return details;
@@ -128,12 +158,14 @@ export function render(surface:HTMLElement,value:RichPresentationModel,options:R
   const element=document.createElement(tag);element.dataset["richBlock"]=id(node);
   if(node.type==="breditor/task-list"){element.dataset["taskList"]="";element.setAttribute("role","list");}
   if(node.type==="breditor/ordered-list")applyListNumbering(element,node);
+ if(legal&&node.type==="breditor/ordered-list"){element.setAttribute(legalListAttribute,"");element.setAttribute("role","list");}
+ const marker=legal&&node.type==="breditor/list-item"?legal.get(node):undefined;if(marker!==undefined)element.setAttribute(legalListMarkerAttribute,marker);
   if(node.type==="breditor/paragraph"||node.type==="breditor/heading"){
    element.dataset["richText"]=id(node);
    applyBlockLayout(element,node);anchor(element,node);
    if(node.children.length===0)element.append(document.createElement("br"));
   }
-  // Candidate V4 mentions render as inert chips grouping their styled pieces.
+  // V4 mentions render as inert chips grouping their styled pieces.
   if(node.type==="breditor/paragraph"||node.type==="breditor/heading"){appendInline(element,node);appendTrailingBreak(element,node);}
   else for(const child of node.children)element.append(flow(child));
   return element;
@@ -155,7 +187,7 @@ export function render(surface:HTMLElement,value:RichPresentationModel,options:R
   if(!geometry||geometry.hidden){const placeholder=document.createElement("div");placeholder.contentEditable="false";placeholder.dataset["selectNode"]=id(node);placeholder.textContent="Hidden table — select to restore axes or remove";return placeholder;}
   const bodies=new Map<string,ElementNode>();
   for(const row of node.children)if(row.kind==="element")for(const cell of row.children)if(cell.kind==="element")bodies.set(cellKey({table:tableId,row:String(property(row,"row-id")),column:String(property(cell,"column-id"))}),cell);
-  // Candidate V4 caption: the table's trailing paragraph. HTML requires <caption> as the table's
+  // V4 caption: the table's trailing paragraph. HTML requires <caption> as the table's
   // first child; `caption-side:bottom` shows it after the rows, matching document/reading order.
   const captionNode=node.children[node.children.length-1];
   if(captionNode?.kind==="element"&&captionNode.type==="breditor/paragraph"){const caption=document.createElement("caption");caption.dataset["richTableCaption"]=tableId;caption.style.captionSide="bottom";caption.append(flow(captionNode));element.append(caption);}
@@ -172,6 +204,7 @@ export function render(surface:HTMLElement,value:RichPresentationModel,options:R
  };
  surface.replaceChildren(...value.root.children.map(flow));
  applyEditingPolicy(surface,value.view.readOnly===true);
+ applyRestrictedPresentation(surface,value);
  paintSelection(surface,value);
 }
 export function paintSelection(surface:HTMLElement,value:RichPresentationModel):void {

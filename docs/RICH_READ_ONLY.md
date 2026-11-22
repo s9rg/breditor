@@ -80,10 +80,10 @@ roles and server permissions must still be checked independently. Permanent
 `retire()`/`close()` stops future local and remote publication; it is not a
 temporary read-only session.
 
-Editable-region restrictions are a separate, unimplemented capability. They
-need a native range/identity policy, explicit behavior for moves and cross-region
-selections, history authorization, remote changes and atomic mixed requests.
-Nested `contenteditable` islands or toolbar flags are not that contract.
+Editable-region restrictions are a separate native capability: see
+[RESTRICTED_EDITING.md](RESTRICTED_EDITING.md). Its block-region policy shares
+this policy's publication and `readOnlyRevision` fencing; read-only takes
+precedence. Nested `contenteditable` islands or toolbar flags are not that contract.
 
 ## Reproducible checks
 

@@ -14,6 +14,7 @@ mod block_layout_draft;
 mod block_layout_patch;
 mod block_layout_state;
 pub(crate) mod bookmark;
+mod case_change;
 pub(crate) mod clipboard;
 mod code_language;
 mod collapse_document_selection;
@@ -36,6 +37,7 @@ mod native_history_usage;
 mod navigate_flow;
 mod navigate_grid;
 pub(crate) mod page_break;
+mod restricted_editing;
 pub mod review;
 mod rich_document;
 mod rich_grid_selection;
@@ -43,6 +45,8 @@ mod rich_range_mapping;
 mod rich_selection;
 mod rich_selection_mapping;
 mod rich_text_mapping;
+pub mod root_set;
+mod ruby_v1;
 mod search;
 mod selection_coverage;
 mod selection_format_change;
@@ -73,6 +77,11 @@ pub use bookmark::{
     RichBookmarkIndex, RichBookmarkName, RichInternalLink, internal_link_name,
     is_valid_name as is_valid_bookmark_name,
 };
+pub use case_change::{
+    RICH_CASE_MAX_MINOR_WORD_BYTES, RICH_CASE_MAX_MINOR_WORDS, RichCaseChange, RichCaseChangeError,
+    RichCaseChangePlan, RichCaseOptions, RichCaseRequest, default_title_minor_words,
+    plan_rich_case_change,
+};
 pub use clipboard::{
     RichClipboardError, RichClipboardFragment, RichClipboardIdAllocator, RichClipboardIdentityKind,
     RichClipboardKind, RichClipboardNamespace, RichClipboardTextProjection,
@@ -100,13 +109,19 @@ pub use input_rules::{
     plan_rich_markdown_input_rule, plan_rich_paragraph_autolink_input_rule,
     rich_autolink_candidate,
 };
+pub use input_rules::{
+    RICH_TYPOGRAPHY_DEFAULT_GROUPS, RICH_TYPOGRAPHY_GROUPS, RichQuoteStyle, RichTypographyConfig,
+    RichTypographyConfigError, RichTypographyMatch, RichTypographyRequest, RichTypographyRule,
+    rich_typography_replacement,
+};
 pub use list_draft::{RichListDraft, RichListItemDraft, RichListKind};
 pub use list_numbering::{
     RichListNumberStyle, RichListNumbering, RichListNumberingError, RichListNumberingPatch,
 };
 pub use local_session::{
-    RICH_TYPING_GROUP_MAX_STEPS, RICH_TYPING_GROUP_WINDOW_MS, RichGeneralPlainRangePlan,
-    RichLocalOutcome, RichLocalSession, RichLocalSessionError, RichLocalSnapshot, RichLocalState,
+    RICH_COMMAND_GROUP_MAX_STEPS, RICH_TYPING_GROUP_MAX_STEPS, RICH_TYPING_GROUP_WINDOW_MS,
+    RichCommandGroupError, RichGeneralPlainRangePlan, RichHistoryProbe, RichLocalOutcome,
+    RichLocalSession, RichLocalSessionError, RichLocalSnapshot, RichLocalState,
     RichPendingFormatsUpdate, RichSelectionUpdate, RichTriggerStepError, RichTypingDeleteDirection,
 };
 pub use mention::{
@@ -121,6 +136,10 @@ pub use navigate_grid::{
     GridBoundary, GridMove, GridNavigationMode, GridNavigationOutcome, navigate_grid,
 };
 pub use page_break::{RICH_PAGE_BREAK_KIND, RichPageBreakError};
+pub use restricted_editing::{
+    RICH_RESTRICTED_MAX_REGIONS, RichRestrictedPolicy, RichRestrictedPolicyError,
+    RichRestrictedRegion,
+};
 pub use rich_document::{RichDocument, RichDocumentError};
 pub use rich_grid_selection::ResolvedRichGrid;
 pub use rich_selection::{
@@ -128,6 +147,10 @@ pub use rich_selection::{
 };
 pub use rich_selection_mapping::{
     RichSelectionLoss, RichSelectionMapping, RichSelectionMappingOutcome, rebase_rich_selection,
+};
+pub use ruby_v1::{
+    RICH_RUBY_ANNOTATION_MAX_BYTES, RICH_RUBY_ANNOTATION_V1, RICH_RUBY_EXTENSION_V1_NAME,
+    RICH_RUBY_FORMAT_V1, RichRubyAnnotation, RichRubyError, ruby_extension_v1,
 };
 pub use search::{
     RICH_SEARCH_MAX_ENGINE_BYTES, RICH_SEARCH_MAX_INSERTED_BYTES, RICH_SEARCH_MAX_MATCHES,

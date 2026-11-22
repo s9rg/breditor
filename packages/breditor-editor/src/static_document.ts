@@ -20,6 +20,8 @@ import {
 } from "@breditor/experimental-rich-content/rendering";
 import {groupMentionRuns,mentionChipAttributes,mentionOf,richMentionFormat,richMentionIdProperty,richMentionKindProperty,richMentionLabelProperty} from "@breditor/experimental-rich-content/rendering";
 import {bookmarkAttributes,internalLinkAttributes,internalLinkOf,isBookmarkName} from "@breditor/experimental-rich-content/rendering";
+import {groupRubyRuns,richRubyAnnotationMaxBytes,richRubyAnnotationProperty,richRubyClass,richRubyFormat} from "@breditor/experimental-rich-content/rendering";
+import {legalListMarkersWith,richLegalListStyles} from "@breditor/experimental-rich-content/rendering";
 import {pageBreakAttributes,richPrintStyles,resolveRichPrintLayout,richUiStringsEn,type RichPrintOptions,type RichPrintLayout} from "@breditor/experimental-rich-content/rendering";
 
 /** Immutable image binding handed to the host resolver; mirrors the live `AssetBinding`. */
@@ -50,7 +52,7 @@ export interface StaticRenderOptions {
  /** Emit `data-rich-block` / `data-rich-text` / `data-rich-cell` hooks (default true). */
  blockIds?:boolean;
  limits?:StaticRenderLimits;
- /** Accessible label of candidate V4 page-break elements (default the English catalog `pageBreakLabel`, "Page break"). */
+ /** Accessible label of V4 page-break elements (default the English catalog `pageBreakLabel`, "Page break"). */
  pageBreakLabel?:string;
  /**
   * Print/export mode (default off, output unchanged). `true` or bounded `RichPrintOptions` (A4/Letter,
@@ -60,6 +62,13 @@ export interface StaticRenderOptions {
   * body row) are emitted in `<thead>` so paged media repeats them on each page.
   */
  print?:boolean|RichPrintOptions;
+ /**
+  * Legal multi-level numbering presentation (default off, output unchanged), with the same derived
+  * markers as the live `legalListNumbering` option: ordered lists get `data-rich-legal` and
+  * `role="list"`, their items `data-rich-legal-marker="1.2."`. The wrapper carries a
+  * `<style data-breditor-legal-lists>` with `richLegalListStyles`; fragments carry no stylesheet.
+  */
+ legalListNumbering?:boolean;
 }
 
 export type StaticImageState="ready"|"unresolved"|"rejected"|"error";
@@ -93,8 +102,9 @@ export function renderStaticDocument(document:unknown,options:StaticRenderOption
 export function renderStaticDocumentWithReport(document:unknown,options:StaticRenderOptions={}):StaticRenderResult {
  const renderer=new Renderer(options);
  const root=renderer.admit(document);
+ renderer.legal(root);
  const body=renderer.children(root);
- const style=renderer.print&&!options.fragment?`<style data-breditor-print="">${richPrintStyles(renderer.print)}</style>`:"";
+ const style=(renderer.print&&!options.fragment?`<style data-breditor-print="">${richPrintStyles(renderer.print)}</style>`:"")+(options.legalListNumbering===true&&!options.fragment?`<style data-breditor-legal-lists="">${richLegalListStyles}</style>`:"");
  const html=options.fragment?body:`<div class="${staticSurfaceClass}" data-breditor-rich="" data-breditor-static="">${style}${body}</div>`;
  return {html,report:Object.freeze({skipped:Object.freeze(renderer.skipped),images:Object.freeze(renderer.images),hiddenTables:Object.freeze(renderer.hiddenTables),inactiveMerges:Object.freeze(renderer.inactiveMerges)})};
 }
@@ -117,9 +127,9 @@ export const staticInlineCatalogV1:readonly BrowserProfileFormatDescriptor[]=Obj
  {kind:K.textSize,revision:1,properties:[{name:P.pixels,presence:"required",valueType:integerType(8,96)}]},
  {kind:K.fontFamily,revision:1,properties:[{name:P.family,presence:"required",valueType:integerType(1,4)}]},
 ] as BrowserProfileFormatDescriptor[]);
-/** Candidate rich V4 native text-language format (Rust `text_language.rs`). */
+/** Rich V4 native text-language format (Rust `text_language.rs`). */
 const LANGUAGE="breditor/text-language",LANGUAGE_TAG="breditor/language-tag";
-/** @internal Standard inline V1 catalog plus the candidate rich V4 `breditor/text-language` format. */
+/** @internal Standard inline V1 catalog plus the rich V4 `breditor/text-language` format. */
 export const staticInlineCatalogV4:readonly BrowserProfileFormatDescriptor[]=Object.freeze([...staticInlineCatalogV1,
  {kind:LANGUAGE,revision:1,properties:[{name:LANGUAGE_TAG,presence:"required",valueType:{kind:"string",minimumUtf8Bytes:2,maximumUtf8Bytes:35}}]},
 ] as BrowserProfileFormatDescriptor[]);
@@ -148,7 +158,7 @@ export const staticInlineRecipesV4:readonly InlineFormatRenderRecipe[]=compileIn
  {formatKind:LANGUAGE,element:"span",classes:["breditor-text-language"],attributes:{kind:"safeLanguageTagV1",propertyName:LANGUAGE_TAG}},
 ]}));
 /**
- * @internal Candidate rich V4 `breditor/mention` declaration (Rust `mention.rs`). It has no inline
+ * @internal Rich V4 `breditor/mention` declaration (Rust `mention.rs`). It has no inline
  * recipe: a mention renders as one structural chip `<span class="breditor-mention" data-mention-kind
  * data-mention-id>@label</span>` grouping its styled pieces, exactly like the live renderer.
  */
@@ -157,22 +167,30 @@ export const staticMentionFormatV4:BrowserProfileFormatDescriptor=Object.freeze(
  {name:richMentionKindProperty,presence:"required",valueType:{kind:"string",minimumUtf8Bytes:3,maximumUtf8Bytes:4}},
  {name:richMentionLabelProperty,presence:"required",valueType:{kind:"string",minimumUtf8Bytes:1,maximumUtf8Bytes:256}},
 ])} as BrowserProfileFormatDescriptor);
-const catalogByKind=new Map([...staticInlineCatalogV4,staticMentionFormatV4].map(format=>[format.kind,format]));
+/**
+ * @internal The opt-in ruby V1 extension format (`breditor-ruby/ruby`, docs/RUBY_ANNOTATIONS.md). It has
+ * no recipe: each group of equal annotations renders as `<ruby class="breditor-ruby" data-rich-ruby="">base
+ * <rp>(</rp><rt>annotation</rt><rp>)</rp></ruby>`. An annotation outside the authoring policy renders as plain base.
+ */
+export const staticRubyFormatV1:BrowserProfileFormatDescriptor=Object.freeze({kind:richRubyFormat,revision:1,properties:Object.freeze([
+ {name:richRubyAnnotationProperty,presence:"required",valueType:{kind:"string",minimumUtf8Bytes:1,maximumUtf8Bytes:richRubyAnnotationMaxBytes}},
+])} as BrowserProfileFormatDescriptor);
+const catalogByKind=new Map([...staticInlineCatalogV4,staticMentionFormatV4,staticRubyFormatV1].map(format=>[format.kind,format]));
 const linkPolicy=staticInlineRecipesV1.find(recipe=>recipe.formatKind===K.link)!.attributes!;
 
 /** Block layout codes, identical to `applyBlockLayout` and Rust `block_layout.rs`. */
 const alignments=["start","center","end","justify","left","right"] as const;
 const directions=["ltr","rtl","auto"] as const;
 
-/** Ordered-list marker types of candidate rich V4, identical to `applyListNumbering` and Rust `list_numbering.rs`. */
+/** Ordered-list marker types of rich V4, identical to `applyListNumbering` and Rust `list_numbering.rs`. */
 const listTypes=["1","a","A","i","I"] as const;
 
-/** Rich child grammar: the union of rich languages V1–V3 plus the candidate V4 list numbering,
+/** Rich child grammar: the union of rich languages V1–V3 plus the V4 list numbering,
  * image-link properties, collapsible sections (`breditor/details`, Rust `details.rs`), table
  * captions (one trailing `breditor/paragraph` after a table's rows, Rust `table_caption.rs`) and
  * page breaks (`breditor/page-break`, document root only, Rust `page_break.rs`). */
 const flowKinds=["paragraph","heading","bullet-list","ordered-list","image","blockquote","code-block","horizontal-rule","task-list","details"].map(local=>`breditor/${local}`);
-/** Candidate V4: at most this many sections on any root-to-leaf path (Rust `RICH_DETAILS_MAX_DEPTH`). */
+/** V4: at most this many sections on any root-to-leaf path (Rust `RICH_DETAILS_MAX_DEPTH`). */
 const MAX_DETAILS_DEPTH=8;
 const flowWithTables=[...flowKinds,"breditor/table"];
 interface Grammar {readonly children:readonly string[]|"text"|"none";readonly minimum:number;readonly maximum?:number;readonly required:readonly string[];readonly optional?:readonly string[];readonly firstTextBlock?:boolean}
@@ -259,8 +277,9 @@ class Renderer {
  /** Validated print layout, or undefined when print mode is off. */
  readonly print:RichPrintLayout|undefined;
  #nodes=0;#textBytes=0;#detailsDepth=0;
- /** Candidate V4 bookmark names seen during admission (unique per document). */
+ /** V4 bookmark names seen during admission (unique per document). */
  readonly #bookmarks=new Set<string>();
+ readonly #legal:boolean;#markers:ReadonlyMap<Element,string>=new Map();
  constructor(options:StaticRenderOptions){
   if(typeof options!=="object"||options===null||Array.isArray(options))throw new TypeError("Static render options must be an object");
   if(options.unknown!==undefined&&options.unknown!=="error"&&options.unknown!=="skip")throw new TypeError("unknown must be \"error\" or \"skip\"");
@@ -269,6 +288,8 @@ class Renderer {
   const label=options.pageBreakLabel??richUiStringsEn.pageBreakLabel;
   if(typeof label!=="string"||!label.trim()||label.length>512||/[\u0000-\u001F\u007F]/.test(label))throw new TypeError("pageBreakLabel must be a nonempty string of at most 512 characters without control characters");
   this.#pageBreak=label;
+  if(options.legalListNumbering!==undefined&&typeof options.legalListNumbering!=="boolean")throw new TypeError("legalListNumbering must be a Boolean");
+  this.#legal=options.legalListNumbering===true;
   if(options.print!==undefined&&typeof options.print!=="boolean"&&(typeof options.print!=="object"||options.print===null))throw new TypeError("print must be a Boolean or print options");
   this.print=options.print===undefined||options.print===false?undefined:resolveRichPrintLayout(options.print===true?{}:options.print);
   const limits=options.limits??{};
@@ -324,7 +345,7 @@ class Renderer {
   const props=this.#properties(type,rule,properties,`${path}.properties`);
   const raw=children as unknown[];
   if(raw.length<rule.minimum||(rule.maximum!==undefined&&raw.length>rule.maximum))this.#fail("grammar","Child count is outside the rich grammar",path);
-  // The 257th table child can only be a candidate V4 caption: the row ceiling stays 256.
+  // The 257th table child can only be a V4 caption: the row ceiling stays 256.
   if(type==="breditor/table"&&raw.length>256&&!(isRecord(raw[256])&&own(raw[256],"type")==="breditor/paragraph"))this.#fail("grammar","Child count is outside the rich grammar",path);
   const admitted:Node[]=[],section=type==="breditor/details";
   if(section&&++this.#detailsDepth>MAX_DETAILS_DEPTH)this.#fail("grammar","Collapsible sections exceed the nesting bound",path);
@@ -410,7 +431,7 @@ class Renderer {
     const width=Object.hasOwn(result,"width"),height=Object.hasOwn(result,"height");
     if(width!==height)this.#fail("property","Image display dimensions must be supplied as a pair",path);
     if(width){integer("width",1,4096);integer("height",1,4096);}
-    // Candidate V4 image link (Rust `image_link.rs`): one canonical admitted target, `true`-only
+    // V4 image link (Rust `image_link.rs`): one canonical admitted target, `true`-only
     // new-window flag that needs a target, and never on a decorative image.
     if(Object.hasOwn(result,"image-href")){
      if(!isImageLinkHrefV1(result["image-href"]))this.#fail("property","Invalid image link target",at("image-href"));
@@ -421,7 +442,7 @@ class Renderer {
    }
    case "breditor/table":id("table-id");break;
   }
-  // Candidate V4 bookmark (Rust `bookmark.rs`): a bounded name, unique per document.
+  // V4 bookmark (Rust `bookmark.rs`): a bounded name, unique per document.
   if(Object.hasOwn(result,"bookmark")){
    const name=result["bookmark"];
    if(!isBookmarkName(name))this.#fail("property","Invalid bookmark name",at("bookmark"));
@@ -437,6 +458,12 @@ class Renderer {
 
  // ---- output -----------------------------------------------------------------------
  children(element:Element):string {return element.children.map(child=>this.#flow(child)).join("");}
+ /** Derive legal markers once from the admitted tree (opt-in). */
+ legal(root:Element):void {
+  if(!this.#legal)return;
+  const elements=(node:Element):Element[]=>node.children.filter((child):child is Element=>child.kind==="element");
+  this.#markers=legalListMarkersWith<Element>(root,{type:node=>node.type,children:elements,start:node=>node.properties["start"],reversed:node=>node.properties["list-reversed"]===true});
+ }
  #blockAttributes(node:Element,text:boolean):string {
   if(!this.#ids)return "";
   const id=escapeHtmlAttribute(String(node.properties["block-id"]));
@@ -451,7 +478,7 @@ class Renderer {
   if(height!==undefined)style.push(`line-height:${height/100}`);
   return (style.length?` style="${style.join(";")}"`:"")+(direction!==undefined?` dir="${directions[direction-1]!}"`:"");
  }
- /** Candidate V4 bookmark anchor: `id="bm-<name>" data-rich-bookmark="<name>"`, as in the live renderer. */
+ /** V4 bookmark anchor: `id="bm-<name>" data-rich-bookmark="<name>"`, as in the live renderer. */
  #bookmark(node:Element):string {
   const name=node.properties["bookmark"];
   return typeof name==="string"?bookmarkAttributes(name).map(a=>` ${a.name}="${escapeHtmlAttribute(a.value)}"`).join(""):"";
@@ -467,23 +494,30 @@ class Renderer {
    let open=`<${recipe.element} data-rich-format="${escapeHtmlAttribute(recipe.formatKind)}"`;
    if(recipe.classes.length)open+=` class="${escapeHtmlAttribute(recipe.classes.join(" "))}"`;
    for(const attribute of attributes)open+=` ${attribute.name}="${escapeHtmlAttribute(attribute.value)}"`;
-   // Candidate V4 internal link `#name`: `href="#bm-name"`, or a broken marker for a dangling target.
+   // V4 internal link `#name`: `href="#bm-name"`, or a broken marker for a dangling target.
    const internal=recipe.formatKind===K.link?internalLinkOf(literal):undefined;
    if(internal!==undefined)for(const attribute of internalLinkAttributes(internal,this.#bookmarks.has(internal)))open+=` ${attribute.name}="${escapeHtmlAttribute(attribute.value)}"`;
    html=`${open}>${html}</${recipe.element}>`;
   }
   return html;
  }
- /** Candidate V4 mentions: whole `@label` units become chips around their styled pieces. */
+ /** V4 mentions: whole `@label` units become chips around their styled pieces. */
  #inlineChildren(node:Element):string {
   const runs=node.children.filter((child):child is Text=>child.kind==="text");
+  const rebuild=(run:Text,text:string,formats:readonly Text["formats"][number][])=>Object.freeze({kind:"text" as const,text,formats});
   let items;
-  try{items=groupMentionRuns(runs,(run,text,formats)=>Object.freeze({kind:"text" as const,text,formats}),true);}
+  try{items=groupMentionRuns(runs,rebuild,true);}
   catch{return this.#fail("grammar","Mention text must be whole copies of @ plus its label",node.path);}
-  return items.map(item=>{
+  const mentions=(list:ReturnType<typeof groupMentionRuns<Text>>)=>list.map(item=>{
    if(item.kind==="run")return this.#inline(item.run);
    const open=mentionChipAttributes(item.mention).map(({name,value})=>` ${name}="${escapeHtmlAttribute(value)}"`).join("");
    return `<span${open}>${item.pieces.map(piece=>this.#inline(piece)).join("")}</span>`;
+  }).join("");
+  // Opt-in ruby extension: group equal annotations; mentions are grouped within each segment.
+  if(!runs.some(run=>run.formats.some(format=>format.type===richRubyFormat)))return mentions(items);
+  return groupRubyRuns(runs,(run,formats)=>rebuild(run,run.text,formats)).map(segment=>{
+   const body=mentions(groupMentionRuns(segment.runs,rebuild));
+   return segment.kind==="plain"?body:`<ruby class="${richRubyClass}" data-rich-ruby="">${body}<rp>(</rp><rt>${escapeHtmlText(segment.annotation)}</rt><rp>)</rp></ruby>`;
   }).join("");
  }
  #flow(node:Node):string {
@@ -499,8 +533,8 @@ class Renderer {
     return `<pre${this.#blockAttributes(node,true)}${this.#layout(node)}${this.#bookmark(node)}${language}><code>${node.children.length?inner():"<br>"}</code></pre>`;
    }
    case "breditor/bullet-list":return `<ul${this.#blockAttributes(node,false)}>${inner()}</ul>`;
-   case "breditor/ordered-list":return `<ol${this.#blockAttributes(node,false)} start="${String(p["start"])}"${p["list-style"]!==undefined?` type="${listTypes[(p["list-style"] as number)-1]!}"`:""}${p["list-reversed"]===true?" reversed":""}>${inner()}</ol>`;
-   case "breditor/list-item":return `<li${this.#blockAttributes(node,false)}>${inner()}</li>`;
+   case "breditor/ordered-list":return `<ol${this.#blockAttributes(node,false)} start="${String(p["start"])}"${p["list-style"]!==undefined?` type="${listTypes[(p["list-style"] as number)-1]!}"`:""}${p["list-reversed"]===true?" reversed":""}${this.#legal?' data-rich-legal="" role="list"':""}>${inner()}</ol>`;
+   case "breditor/list-item":{const marker=this.#markers.get(node);return `<li${this.#blockAttributes(node,false)}${marker!==undefined?` data-rich-legal-marker="${escapeHtmlAttribute(marker)}"`:""}>${inner()}</li>`;}
    case "breditor/task-list":return `<ul${this.#blockAttributes(node,false)} data-task-list="" role="list">${inner()}</ul>`;
    case "breditor/task-item":{
     const value=this.#ids?escapeHtmlAttribute(String(p["block-id"])):"",id=this.#ids?` data-rich-task="${value}"`:"";
@@ -508,7 +542,7 @@ class Renderer {
    }
    case "breditor/blockquote":return `<blockquote${this.#blockAttributes(node,false)}>${inner()}</blockquote>`;
    case "breditor/horizontal-rule":return `<hr${this.#blockAttributes(node,false)}>`;
-   // Candidate V4 page break: the live marker's attributes minus editing affordances (`break-after:page`).
+   // V4 page break: the live marker's attributes minus editing affordances (`break-after:page`).
    case "breditor/page-break":return `<div${this.#blockAttributes(node,false)}${this.#ids?` data-rich-page-break="${escapeHtmlAttribute(String(p["block-id"]))}"`:""}${pageBreakAttributes(this.#pageBreak).map(a=>` ${a.name}="${escapeHtmlAttribute(a.value)}"`).join("")}></div>`;
    // Native disclosure: `open` mirrors persisted state; readers may toggle the static output freely.
    case "breditor/details":return `<details${this.#blockAttributes(node,false)}${this.#ids?` data-rich-details="${escapeHtmlAttribute(String(p["block-id"]))}"`:""}${p["details-open"]===true?' open=""':""}>${inner()}</details>`;
@@ -536,7 +570,7 @@ class Renderer {
   const image=`<img alt="${escapeHtmlAttribute(String(p["alt-text"]))}"${size}${src?` src="${escapeHtmlAttribute(src)}"`:""}>`;
   return `<figure${block} data-rich-image="${escapeHtmlAttribute(binding.image)}" data-asset-state="${state}">${this.#imageLink(p,image)}${caption}</figure>`;
  }
- /** Candidate V4: the link wraps the image only, with the inline `safeLinkV1` attribute set. */
+ /** V4: the link wraps the image only, with the inline `safeLinkV1` attribute set. */
  #imageLink(p:Readonly<Record<string,unknown>>,image:string):string {
   const href=p["image-href"];if(typeof href!=="string")return image;
   const attributes=imageLinkRenderAttributesV1(href,p["image-link-new-window"]===true);
@@ -548,7 +582,7 @@ class Renderer {
   const geometry=resolveTableGeometry(tableId,node,(code,message,suffix)=>this.#fail(code,message,`${node.path}${suffix}`));
   for(const conflict of geometry.conflicts)this.inactiveMerges.push({table:tableId,...conflict});
   if(geometry.rows.length===0||geometry.columns.length===0){this.hiddenTables.push(tableId);return "";}
-  // Candidate V4: a trailing caption paragraph. <caption> must be the table's first child; it is
+  // V4: a trailing caption paragraph. <caption> must be the table's first child; it is
   // shown after the rows (`caption-side:bottom`), exactly like the live renderer.
   const last=node.children[node.children.length-1],captionNode=last?.kind==="element"&&last.type==="breditor/paragraph"?last:undefined;
   const caption=captionNode?`<caption data-rich-table-caption="${escapeHtmlAttribute(tableId)}" style="caption-side:bottom">${this.#flow(captionNode)}</caption>`:"";
@@ -632,7 +666,7 @@ export function resolveTableGeometry(table:string,node:{readonly properties:Read
   if(typeof width!=="number"||!Number.isSafeInteger(width)||width<32||width>4096)fail("table","Column width outside 32–4096",at);
   return {id,width};
  });
- // A candidate V4 caption paragraph (always last) is not a row.
+ // A V4 caption paragraph (always last) is not a row.
  const all=node.children as readonly Element[],tail=all[all.length-1],rowNodes=tail?.type==="breditor/paragraph"?all.slice(0,-1):all;
  if(rowNodes.length>256||rowNodes.length*columns.length>4096)fail("table","Table exceeds its row or base-cell ceiling","");
  const rows=rowNodes.map((row,rowIndex)=>{

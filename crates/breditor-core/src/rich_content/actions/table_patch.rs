@@ -33,7 +33,7 @@ pub(super) fn rebuild(
     rows: Vec<NodeRef>,
 ) -> Result<NodeRef, RichActionError> {
     let element = node.as_element().ok_or(RichActionError::Rewrite)?;
-    // Every row/column/cell rewrite keeps a candidate V4 caption as the table's last
+    // Every row/column/cell rewrite keeps a V4 caption as the table's last
     // child, whether the caller passed all children (index-based row edits, which act
     // before the caption) or only the rows (column edits zip rows with the axis).
     let mut rows: Vec<NodeRef> = rows

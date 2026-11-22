@@ -41,5 +41,7 @@ const server=createServer((request,response)=>{
  if(!resource){response.writeHead(404);response.end("Not found");return;}
  response.writeHead(200,{"Content-Type":resource[0],"Cache-Control":"no-store","X-Content-Type-Options":"nosniff"});response.end(resource[1]);
 });
-server.listen(49773,"127.0.0.1",()=>console.log("Rich owner contract host: http://127.0.0.1:49773/"));
+// BREDITOR_RICH_PORT lets parallel checkouts run the suite side by side; 49773 stays the default.
+const port=Number(process.env.BREDITOR_RICH_PORT??49773);
+server.listen(port,"127.0.0.1",()=>console.log(`Rich owner contract host: http://127.0.0.1:${port}/`));
 for(const signal of ["SIGINT","SIGTERM"])process.on(signal,()=>server.close(()=>process.exit(0)));

@@ -213,6 +213,8 @@ pub struct RichReplica {
     pub(super) writer_windows: Vec<super::writer_transport::Window>,
     pub(super) read_only: bool,
     pub(super) read_only_revision: Option<String>,
+    // Host restricted-editing policy; never replicated, journaled or checkpointed.
+    pub(super) restricted: Option<Arc<breditor_core::rich_content::RichRestrictedPolicy>>,
 }
 
 impl RichReplica {
@@ -391,6 +393,7 @@ impl RichReplica {
             writer_windows: Vec::new(),
             read_only: false,
             read_only_revision: None,
+            restricted: None,
         };
         owner.note_writer_window(&VersionVector::default(), true)?;
         Ok(owner)
@@ -905,10 +908,18 @@ impl RichReplica {
         candidate.read_only = self.read_only;
         candidate.search_owner = Arc::clone(&self.search_owner);
         candidate.read_only_revision.clone_from(&self.read_only_revision);
+        candidate.restricted.clone_from(&self.restricted);
         Ok(candidate)
     }
 
+    /// Adopt a local candidate: under restricted editing it must not change protected content.
     pub(super) fn adopt(&mut self, mut candidate: Self) -> Result<(), Error> {
+        self.require_restricted(&mut candidate)?;
+        self.adopt_incoming(candidate)
+    }
+
+    /// Adopt incoming peer or retained-branch state, which local host policy never filters.
+    pub(super) fn adopt_incoming(&mut self, mut candidate: Self) -> Result<(), Error> {
         candidate.search_owner = Arc::clone(&self.search_owner);
         candidate.note_writer_window(&self.doc.state_vv(), false)?;
         candidate.journal.publication = publication(&self.journal.publication)?
@@ -1203,7 +1214,7 @@ impl RichReplica {
         candidate.refresh_document()?;
         candidate.journal.ui.normalize(&candidate.doc, &candidate.document, previous.as_ref())?;
         candidate.journal.entries.push(Entry::Remote { bytes });
-        self.adopt(candidate)?;
+        self.adopt_incoming(candidate)?;
         Ok(())
     }
     fn history(&mut self, redo: bool) -> Result<bool, Error> {

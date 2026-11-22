@@ -16,6 +16,8 @@ mod rule_set;
 mod source;
 mod step;
 mod trigger;
+mod typography;
+mod typography_config;
 
 pub use autolink::{RichAutolinkCandidate, rich_autolink_candidate};
 pub use error::RichInputRuleError;
@@ -27,6 +29,11 @@ pub use plan::{
 pub use rule_set::RichInputRuleSet;
 pub use step::{RichInputRuleKind, RichInputRuleStep};
 pub use trigger::is_rich_markdown_input_rule_trigger;
+pub use typography::{RichTypographyMatch, rich_typography_replacement};
+pub use typography_config::{
+    RICH_TYPOGRAPHY_DEFAULT_GROUPS, RICH_TYPOGRAPHY_GROUPS, RichQuoteStyle, RichTypographyConfig,
+    RichTypographyConfigError, RichTypographyRequest, RichTypographyRule,
+};
 
 /// Bounded trailing inline recognition window in original scalar-aligned UTF-16 units.
 /// Block-prefix rules require the complete prefix, never a truncated suffix.

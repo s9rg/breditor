@@ -15,6 +15,7 @@ export * from "./dist/browser/block_layout_controls.js";
 export * from "./dist/browser/block_layout_serialization.js";
 export * from "./dist/browser/list_numbering_presentation.js";
 export * from "./dist/browser/list_numbering_serialization.js";
+export * from "./dist/browser/list_structure.js";
 export * from "./dist/browser/rich_language.js";
 export * from "./dist/browser/clipboard_interchange.js";
 export {parseRichSearchMetadata} from "./dist/browser/search_metadata.js";
@@ -37,3 +38,8 @@ export {bookmarkOf,bookmarkNames,isBookmarkName,internalLinkName,internalLinkOf,
 export {richPageBreakKind,richPageBreakClass,richPageBreakStyle,pageBreakAttributes,isPageBreak} from "./dist/browser/page_break.js";
 export {richPrintStyles,resolveRichPrintLayout,richPrintPageSizes,richPrintOrientations,richPrintMargins,type RichPrintOptions,type RichPrintLayout,type RichPrintPageSize,type RichPrintOrientation,type RichPrintMargin} from "./dist/browser/print.js";
 export {richMentionFormat,richMentionKindProperty,richMentionIdProperty,richMentionLabelProperty,richMentionKinds,richMentionClass,richMentionStyles,isRichMentionId,isRichMentionKind,isRichMentionLabel,mentionOf,mentionText,mentionFormat,groupMentionRuns,mentionChipAttributes,createMentionChip,type RichMention,type RichMentionKind,type MentionRun,type MentionInlineItem} from "./dist/browser/mention.js";
+export {richCoordinatorShortcuts,type RichShortcutEntry,type RichShortcutChord,type RichShortcutGroup,type RichCoordinatorShortcutFacts} from "./dist/browser/shortcut_registry.js";
+export * from "./dist/browser/formatting_productivity.js";
+export * from "./dist/browser/special_characters.js";
+export {richRubyExtensionName,richRubyFormat,richRubyAnnotationProperty,richRubyAnnotationMaxBytes,richRubyClass,richRubyStyles,richRubyBootstrapExtensionV1,richRubySharedExtensionV1,withRichRubyBootstrapV1,withRichRubySharedConfigurationV1,isRichRubyAnnotation,isRichRubyDeclaration,rubyAnnotationOf,rubyFormat,groupRubyRuns,createRubyElement,rubyGroupAt,rubyControls,rubyCommand,rubyToolbarControls,type RubyRun,type RubySegment,type RubyIntent,type RubyControl} from "./dist/browser/ruby.js";
+export {richInlinePresentationHasRuby} from "./dist/browser/inline_presentation.js";

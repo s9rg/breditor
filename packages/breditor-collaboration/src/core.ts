@@ -23,8 +23,10 @@ import type {SharedReviewedHistoryIdentity,SharedOwnedSuggestionAcceptance,Share
 import {sharedProtocolLanguage} from "./protocol.js";
 import {sharedTextLanguageInput,sharedMentionInput,sharedImageLinkInput,type SharedImageLinkIntent} from "./inline_v4_input.js";
 import {encodeBlockLayoutPatch} from "@breditor/experimental-rich-content/rendering";
+import {isRichRubyDeclaration} from "@breditor/experimental-rich-content/rendering";
+import {encodeCaseChangeIntent} from "@breditor/experimental-rich-content/rendering";
 import {sharedStructureRequestV4} from "./structure_v4.js";
-import type {RichSearchQuery,RichSearchReplacement,RichInputRuleOutcome,RichInputRuleId} from "@breditor/experimental-rich-content";
+import type {RichSearchQuery,RichSearchReplacement,RichInputRuleOutcome,RichInputRuleId,RichTypographyOptions} from "@breditor/experimental-rich-content";
 import {SharedSearchResults,nativeSearchResults} from "./search_results.js";
 import {parseSegmentedHistoryInfo,type SharedSegmentedHistoryInfo} from "./segmented_history.js";
 import {registerManagedCore} from "./managed_custody.js";
@@ -65,6 +67,7 @@ export class SharedRichEditor<P extends SharedSelectionPolicy="original"> {
  readonly #packetAssetReferences=new SharedPacketAssetReferenceRegistry();
  #raw:SharedRustOwner|undefined;#observation:ReturnType<SharedRustOwner["observe"]>|undefined;#view="";#descriptor="";
  #readState:CoreReadState|undefined;
+ #ruby:boolean|undefined;
  #disposedRevisions:{documentRevision:string;reviewRevision:string}|undefined;
  #documentReadStamp:object=Object.freeze({});#reviewReadStamp:object=Object.freeze({});
  #listeners=new Set<(event:SharedPublication<P>)=>void>();#queue:Pending[]=[];#bytes=0;#holds=0;#publishing=false;#draining=false;#retired=false;
@@ -318,8 +321,10 @@ export class SharedRichEditor<P extends SharedSelectionPolicy="original"> {
   return this.#markdownInput(method,data,revision);
  }
  /** `rules` is a nonempty duplicate-free list of `markdown-v1`/`autolink-v1`; refused retains the typed text. */
- insertPlainTextWithInputRules(text:string,rules:readonly RichInputRuleId[],namespace:string,revision?:string):RichInputRuleOutcome{return this.#ruleSetInput("insert_plain_text_with_input_rules",{text,namespace,rules:[...rules]},revision);}
- insertTypingTextWithInputRules(text:string,clockMs:string,rules:readonly RichInputRuleId[],namespace:string,revision?:string):RichInputRuleOutcome{return this.#ruleSetInput("insert_typing_text_with_input_rules",{text,clockMs,namespace,rules:[...rules]},revision);}
+ insertPlainTextWithInputRules(text:string,rules:readonly RichInputRuleId[],namespace:string,revision?:string,typography?:RichTypographyOptions):RichInputRuleOutcome{return this.#ruleSetInput("insert_plain_text_with_input_rules",{text,namespace,rules:[...rules],...(typography!==undefined?{typography}:{})},revision);}
+ insertTypingTextWithInputRules(text:string,clockMs:string,rules:readonly RichInputRuleId[],namespace:string,revision?:string,typography?:RichTypographyOptions):RichInputRuleOutcome{return this.#ruleSetInput("insert_typing_text_with_input_rules",{text,clockMs,namespace,rules:[...rules],...(typography!==undefined?{typography}:{})},revision);}
+ /** Version1 `typography-v1` acceptance in the rule-set calls; older runtimes reject the selection at mount. */
+ supportsTypographyInputRules():boolean{return this.supportsInputRuleSets()&&this.#live().typography_input_rules_version?.()==="1";}
  /** One caret split, then `autolink-v1` on its retained left block; one SDK publication after both. */
  splitWithAutolink(request:SharedDispatch,revision?:string):RichInputRuleOutcome{return this.#ruleSetInput("split_with_autolink",request,revision);}
  /** Pure matching/navigation remains available without upgrading history or leaving read-only. */
@@ -634,6 +639,10 @@ export class SharedRichEditor<P extends SharedSelectionPolicy="original"> {
  bookmarkIndex():SharedBookmarkIndex{this.#requireV4BlockFields();return parseSharedBookmarkIndex(this.#live().bookmark_index_json!(this.#observation));}
  /** Explicit shared V4 structure commands (sections, page breaks, table captions): each is one guarded dispatch and one Undo step. */
  supportsSharedStructureV4():boolean{const raw=this.#live();return this.supportsRichLanguageV4()&&raw.structure_commands_v4_version?.()==="1";}
+ /** Interchange capabilities of the structure slices, reported exactly like a local V4 owner: `@breditor/interchange`
+  * then maps `<caption>` and forced page-break CSS (and Word/Google Docs page breaks) to native V4 content. */
+ supportsTableCaptions():boolean{return this.supportsSharedStructureV4();}
+ supportsPageBreaks():boolean{return this.supportsSharedStructureV4();}
  wrapDetails(first:string,last:string,wrapper:string,summary:string,revision?:string):boolean{return this.dispatch(sharedStructureRequestV4(this,{kind:"wrap_details",data:{first,last,wrapper,summary,open:true}}),revision);}
  unwrapDetails(wrapper:string,revision?:string):boolean{return this.dispatch(sharedStructureRequestV4(this,{kind:"unwrap_details",data:{wrapper}}),revision);}
  insertPageBreak(block:string,before:string|null,revision?:string):boolean{return this.dispatch(sharedStructureRequestV4(this,{kind:"insert_page_break",data:{block,before}}),revision);}
@@ -651,8 +660,15 @@ export class SharedRichEditor<P extends SharedSelectionPolicy="original"> {
  replaceAtomTypingText(paragraph:string,text:string,clockMs:string,revision?:string):boolean{return this.#run("local",(raw,o)=>{if(!this.supportsAtomEditing())throw new SharedEditorError("atom_edit_unavailable","Use a matching native atom-edit owner");return raw.replace_atom_typing_text!(o,paragraph,text,clockMs);},revision);}
  /** Shared V4 inline commands (text language, mentions, image links): one native command and Undo step each. */
  supportsInlineCommandsV4():boolean{const raw=this.#live();return this.supportsRichLanguageV4()&&raw.inline_commands_v4_version?.()==="1"&&typeof raw.set_text_language==="function"&&typeof raw.insert_mention==="function"&&typeof raw.set_image_link==="function";}
+ /** Native `change_selection_case` (UPPER, lower, Title Case, cycle); every shared rich language. */
+ supportsCaseChange():boolean{const raw=this.#live();return typeof raw.case_change_version==="function"&&raw.case_change_version()==="1"&&typeof raw.change_selection_case==="function";}
+ /** Change the letter case of the selection (a caret changes its whole block) in one Undo step. False when nothing changes. */
+ changeSelectionCase(intent:import("@breditor/experimental-rich-content/rendering").RichCaseChangeIntent,revision?:string):boolean{const input=JSON.stringify(encodeCaseChangeIntent(intent));return this.#run("local",(raw,o)=>{if(!this.supportsCaseChange())throw new SharedEditorError("case_change_unavailable","Use a matching native shared owner with case change");return raw.change_selection_case!(o,input);},revision);}
  supportsTextLanguage():boolean{return this.supportsInlineCommandsV4()&&this.supportsSelectionFormatting();}
  supportsMentions():boolean{return this.supportsInlineCommandsV4();}
+ /** The owner's schema includes the opt-in ruby V1 extension (`breditor-ruby/ruby`), the same rule as local owners;
+  * interchange then maps `<ruby>`. Owners without the additive catalog read report false. */
+ supportsRubyAnnotations():boolean{const raw=this.#live();if(this.#ruby===undefined){try{this.#ruby=typeof raw.inline_catalog_json==="function"&&((JSON.parse(raw.inline_catalog_json()) as {formats?:unknown[]}).formats??[]).some(format=>isRichRubyDeclaration(format as never));}catch{this.#ruby=false;}}return this.#ruby;}
  supportsImageLinks():boolean{return this.supportsInlineCommandsV4();}
  /** Set (any letter case) or clear (`null`) the selection's language; a caret changes pending formats only. */
  setTextLanguage(language:string|null,revision?:string):boolean{const input=sharedTextLanguageInput(language);return this.#run("local",(raw,o)=>{if(!this.supportsTextLanguage())throw new SharedEditorError("text_language_unavailable","Use an explicitly selected native shared V4 owner");return raw.set_text_language!(o,input);},revision);}

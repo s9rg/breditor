@@ -1,5 +1,5 @@
 /**
- * Opt-in `@` mention suggestion menu for a candidate rich V4 owner. It reuses the shared typed-trigger
+ * Opt-in `@` mention suggestion menu for a rich V4 owner. It reuses the shared typed-trigger
  * session of slash commands (accessible listbox, Rust-read trigger, AbortSignal-cancelled providers,
  * stale-result rejection). Choosing a suggestion publishes **one** native `insertMention` command
  * that replaces the typed `@query` by the mention, so a single Undo restores the typed trigger.
@@ -78,7 +78,7 @@ const mentionSpec:RichSuggestionSpec<Option,RichMentionExecution>=Object.freeze(
  },
 });
 /**
- * Mount one opt-in `@` mention menu for a borrowed DOM coordinator over a candidate rich V4 owner.
+ * Mount one opt-in `@` mention menu for a borrowed DOM coordinator over a rich V4 owner.
  * Pass `core` to refuse mounting on an owner without native mentions.
  */
 export function mountRichMentions(host:RichMentionHost,options:RichMentionOptions):RichMentions{

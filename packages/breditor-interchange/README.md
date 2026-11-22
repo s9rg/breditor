@@ -83,7 +83,7 @@ and complete loss notices for each.
   its `list-style-type` is `decimal` and its `data-leveltext` is `%N.`/`%N)`, so
   lettered, roman and compound formats are never silently shown as decimal.
   Whitespace-only `EOP` paragraph-mark runs are dropped.
-- For owners that report `supportsListNumbering()` (candidate rich V4), both
+- For owners that report `supportsListNumbering()` (rich V4), both
   Word shapes map lettered and roman numbering to the native list style instead
   (see the V4 list numbering section below); other owners keep the conversion
   and notices above exactly.
@@ -109,10 +109,10 @@ normal`, `vertical-align: baseline`, `background-color: transparent`, native
 `list-style-type` values report `list-numbering`. Everything else unrecognized,
 including `mso-*` producer properties and the `font` shorthand, keeps its notice.
 
-### Ordered-list numbering (candidate rich V4 owners)
+### Ordered-list numbering (rich V4 owners)
 
 The adapter reads the owner's optional `supportsListNumbering()` once. Only a
-local candidate rich V4 owner reports `true`; for every other owner the
+local rich V4 owner reports `true`; for every other owner the
 original behavior and notices are unchanged. With a V4 owner:
 
 - `<ol type>` tokens `1`, `a`, `A`, `i`, `I` and `list-style-type` values
@@ -149,10 +149,10 @@ original behavior and notices are unchanged. With a V4 owner:
 - Markdown export keeps decimal lists as `N.` lists. Letter, roman and reversed
   lists are exported as safe HTML with a `markdown-feature` notice.
 
-### Image links (candidate rich V4 owners)
+### Image links (rich V4 owners)
 
 The adapter also reads the owner's optional `supportsImageLinks()` once. Only a
-local candidate rich V4 owner reports `true`; every other owner keeps the
+local rich V4 owner reports `true`; every other owner keeps the
 original conversion (the link around an image is dropped silently, an unsafe
 href reports `unsafe-link`, and `<figure><a><img></a></figure>` falls back with
 `block-structure`). With a V4 owner:
@@ -167,10 +167,10 @@ href reports `unsafe-link`, and `<figure><a><img></a></figure>` falls back with
   re-parses exactly; captions, sizes and new-window links fall back to HTML with
   `markdown-feature`. That Markdown shape imports back as the image link.
 
-### Collapsible sections (candidate rich V4 owners)
+### Collapsible sections (rich V4 owners)
 
 The adapter also reads the owner's optional `supportsDetails()` once. Only a
-local candidate rich V4 owner reports `true`; every other owner keeps the
+local rich V4 owner reports `true`; every other owner keeps the
 original conversion (`<details>`/`<summary>` unwrap into ordinary flow with
 `unsupported-element`, and `open` reports `unsupported-attribute`). With a V4
 owner:
@@ -185,10 +185,10 @@ owner:
 - Markdown has no section syntax: a section is exported as a safe HTML block with
   `markdown-feature` (blank lines inside it are escaped), which reimports exactly.
 
-### Table captions (candidate rich V4 owners)
+### Table captions (rich V4 owners)
 
 The adapter also reads the owner's optional `supportsTableCaptions()` once. Only a
-local candidate rich V4 owner reports `true`; every other owner keeps the original
+local rich V4 owner reports `true`; every other owner keeps the original
 conversion (`<caption>` content becomes flow before the table with
 `block-structure`). With a V4 owner:
 
@@ -202,10 +202,10 @@ conversion (`<caption>` content becomes flow before the table with
 - GFM tables have no caption: a captioned table falls back to a safe HTML block with
   `markdown-feature`, which reimports as the caption.
 
-### Page breaks (candidate rich V4 owners)
+### Page breaks (rich V4 owners)
 
 The adapter also reads the owner's optional `supportsPageBreaks()` once. Only a local
-candidate rich V4 owner reports `true`; every other owner keeps the original
+rich V4 owner reports `true`; every other owner keeps the original
 conversion (forced-break CSS reports `unsupported-style`, Word's `<br clear=all>`
 stays a line break, Google Docs' hidden page-break `<hr>` is removed). With a V4 owner:
 
@@ -223,7 +223,7 @@ stays a line break, Google Docs' hidden page-break `<hr>` is removed). With a V4
 - Markdown has no page break: it falls back to that HTML block with
   `markdown-feature`, which reimports as a page break.
 
-### Bookmarks and internal links (candidate rich V4 owners)
+### Bookmarks and internal links (rich V4 owners)
 
 The adapter reads the owner's optional `supportsBookmarks()` once (local V4 owners).
 
@@ -238,10 +238,10 @@ The adapter reads the owner's optional `supportsBookmarks()` once (local V4 owne
 - Other owners keep the original conversion (ids dropped, `<a name>` reported,
   `href="#…"` reported as `unsafe-link`).
 
-### Mentions (candidate rich V4 owners)
+### Mentions (rich V4 owners)
 
 The adapter also reads the owner's optional `supportsMentions()` once. Only a
-local candidate rich V4 owner reports `true`; every other owner imports a
+local rich V4 owner reports `true`; every other owner imports a
 mention span as its plain `@label` text. With a V4 owner:
 
 - HTML export writes each mention as
@@ -253,10 +253,10 @@ mention span as its plain `@label` text. With a V4 owner:
 - Markdown has no mention syntax: a block with a mention falls back to a safe HTML
   block with `markdown-feature`, which reimports as the mention.
 
-### Text language (candidate rich V4 owners)
+### Text language (rich V4 owners)
 
 The adapter also reads the owner's optional `supportsTextLanguage()` once. Only a
-local candidate rich V4 owner reports `true`; every other owner keeps accepting
+local rich V4 owner reports `true`; every other owner keeps accepting
 and silently dropping `lang` and `xml:lang`. With a V4 owner:
 
 - `lang` (or the equivalent `xml:lang`) on any inline or block element becomes the

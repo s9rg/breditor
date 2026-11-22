@@ -12,7 +12,7 @@ export interface RichToolbarReading {
  readonly values?:Readonly<Record<string,string>>;
  readonly pressed?:boolean|"mixed";
  /** Optional current choices for `select` fields whose options depend on the document (for example
-  * the candidate V4 bookmark list). Applied while no draft is open; the blank choice stays first. */
+  * the V4 bookmark list). Applied while no draft is open; the blank choice stays first. */
  readonly options?:Readonly<Record<string,readonly {readonly value:string;readonly label:string}[]>>;
 }
 export interface RichControlPresentation<C> {
@@ -20,7 +20,17 @@ export interface RichControlPresentation<C> {
  readonly fields?:readonly RichToolbarField[];readonly shortcut?:string;
  readonly mixedHint?:string;
  readonly read?:(context:C)=>RichToolbarReading;readonly value?:(context:C)=>string;
+ /** Optional custom panel body (opt-in tools such as the special-character picker) instead of fields. */
+ readonly panel?:(body:HTMLElement,port:RichControlPanelPort)=>void;
+ /** Optional editor-surface attachment (format painter, Shift+F3). Implementations must be idempotent per surface. */
+ readonly attach?:(port:RichControlAttachPort)=>void;
 }
+/** Given to a custom panel body. `apply` runs the owner's command path exactly like the Apply button. */
+export interface RichControlPanelPort {readonly signal:AbortSignal;readonly ui:RichUiLocale;apply(fields:Readonly<Record<string,string>>):void;close():void;enabled():boolean}
+/** Given to a surface attachment. `run` syncs the native selection, then runs the owner's command path. */
+export interface RichControlAttachPort {readonly surface:HTMLElement;readonly button:HTMLButtonElement;readonly signal:AbortSignal;readonly ui:RichUiLocale;run(fields:Readonly<Record<string,string>>):void;
+ /** Activate the control exactly like its toolbar button (opens a panel control and focuses it). */
+ activate():void}
 export interface RichControlView<C> {
  readonly button:HTMLButtonElement;readonly control:RichControlPresentation<C>;
  refresh(context:C,enabled:boolean,stamp:string):void;
@@ -34,9 +44,11 @@ export function mountToolbarControl<C>(toolbar:HTMLElement,source:RichControlPre
  ui?:RichUiLocale;
  run:(value:string|undefined,fields:Readonly<Record<string,string>>)=>void;
  attempt:(work:()=>void)=>void;focus:()=>void;
+ /** The owning editing surface; required only by controls with `attach`. */
+ surface?:HTMLElement;
 }):RichControlView<C>{
  const ui=hooks.ui??defaultRichUi,control=ui.control(source),d=toolbar.ownerDocument,button=d.createElement("button"),fields=new Map<string,HTMLInputElement|HTMLSelectElement>();
- const panel=control.fields?d.createElement("details"):undefined,container=panel??d.createElement("span");
+ const panel=control.fields||control.panel?d.createElement("details"):undefined,container=panel??d.createElement("span");
  container.dataset[`${hooks.prefix}Control`]=control.id;container.className="breditor-inline-control";
  let summary:HTMLElement|undefined;
  if(panel){summary=d.createElement("summary");summary.textContent=control.label;summary.setAttribute("aria-label",ui.text("controlPanel",{label:control.label}));panel.append(summary);}
@@ -55,6 +67,12 @@ export function mountToolbarControl<C>(toolbar:HTMLElement,source:RichControlPre
  const help=d.createElement("small");help.hidden=true;help.textContent=control.mixedHint??ui.text("controlMixedHint");if(panel)container.append(help);
  toolbar.append(container);
  let lastStamp="",draft:string|undefined,enabled=false,lastContext:C,lastReading:RichToolbarReading|undefined;
+ let body:HTMLElement|undefined;
+ if(control.panel&&panel){
+  button.hidden=true;body=d.createElement("div");body.className="breditor-control-panel";container.insertBefore(body,button);
+  control.panel(body,{signal:hooks.signal,ui,enabled:()=>enabled,close(){panel.open=false;},apply:values=>hooks.attempt(()=>{if(!enabled)return;hooks.run(undefined,Object.freeze({...values}));panel.open=false;if(!hooks.signal.aborted)hooks.focus();})});
+ }
+
  const syncOptions=()=>{
   for(const [id,input]of fields){
    const options=lastReading?.options?.[id];if(!(input instanceof HTMLSelectElement)||!options)continue;
@@ -78,7 +96,7 @@ export function mountToolbarControl<C>(toolbar:HTMLElement,source:RichControlPre
   if(draft!==undefined&&draft!==hooks.stamp())throw Error("Formatting form is stale. Press Escape and reopen it.");
   for(const input of fields.values())if(!input.checkValidity()){input.reportValidity();return;}
   const values=Object.freeze(Object.fromEntries([...fields].map(([id,input])=>[id,input.value])));
-  hooks.run(fields.get("value")?.value,values);draft=undefined;write();if(panel)panel.open=false;if(!hooks.signal.aborted)hooks.focus();
+  hooks.run(fields.get("value")?.value,values);draft=undefined;if(lastContext!==undefined)lastReading=control.read?.(lastContext);write();if(panel)panel.open=false;if(!hooks.signal.aborted)hooks.focus();
  });
  container.addEventListener("pointerdown",event=>hooks.attempt(()=>{if(!definitions.length)event.preventDefault();hooks.sync();}),{signal:hooks.signal});
  summary?.addEventListener("click",event=>{if(!enabled)event.preventDefault();},{signal:hooks.signal});
@@ -91,5 +109,7 @@ export function mountToolbarControl<C>(toolbar:HTMLElement,source:RichControlPre
   if(event.key==="Escape"){event.preventDefault();draft=undefined;write();if(panel)panel.open=false;hooks.focus();}
   else if(event.key==="Enter"&&fields.size&&event.target!==summary&&event.target!==button){event.preventDefault();submit();}
  },{signal:hooks.signal});
- return {control:source,button,refresh(context,nextEnabled,stamp){lastContext=context;lastStamp=stamp;enabled=nextEnabled;lastReading=control.read?.(context);write();},activate(){if(!enabled)return;if(panel){panel.open=true;fields.values().next().value?.focus();}else submit();}};
+ const view:RichControlView<C>={control:source,button,refresh(context,nextEnabled,stamp){lastContext=context;lastStamp=stamp;enabled=nextEnabled;lastReading=control.read?.(context);write();},activate(){if(!enabled)return;if(panel){panel.open=true;(body?.querySelector<HTMLElement>("input,button,[tabindex='0']")??fields.values().next().value)?.focus();}else submit();}};
+ if(control.attach&&hooks.surface)control.attach({surface:hooks.surface,button,signal:hooks.signal,ui,activate:()=>hooks.attempt(()=>{hooks.sync();view.activate();}),run:values=>hooks.attempt(()=>{hooks.sync();hooks.run(undefined,Object.freeze({...values}));})});
+ return view;
 }

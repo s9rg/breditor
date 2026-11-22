@@ -16,7 +16,7 @@ pub enum RichFlowParent {
     Blockquote(BlockId),
     /// One V2 task item's leading prose and trailing rich flow.
     TaskItem(BlockId),
-    /// One candidate V4 collapsible section: its leading summary and nonempty body.
+    /// One V4 collapsible section: its leading summary and nonempty body.
     /// An insertion before the summary is rejected by the complete-tree grammar.
     Details(BlockId),
 }

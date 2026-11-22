@@ -6,6 +6,7 @@ import {
 } from "@breditor/browser/presentation";
 import type {FormatLiteral} from "./core.js";
 import {richMentionFormat} from "./mention.js";
+import {isRichRubyDeclaration,richRubyFormat} from "./ruby.js";
 
 export interface RichInlineSchema {readonly name:string;readonly version:number;readonly fingerprint:string}
 /** This is a presentation identity, never a Rust schema proof or document authority. */
@@ -13,7 +14,7 @@ export interface RichInlinePresentation {
  readonly schema:RichInlineSchema;
  readonly recipesOuterToInner:readonly InlineFormatRenderRecipe[];
 }
-interface Metadata {formats:ReadonlyMap<string,BrowserProfileFormatDescriptor>}
+interface Metadata {formats:ReadonlyMap<string,BrowserProfileFormatDescriptor>;ruby:boolean}
 const owned=new WeakMap<RichInlinePresentation,Metadata>();
 const qualified=/^[a-z][a-z0-9._-]*\/[a-z][a-z0-9._-]*$/;
 const utf8=new TextEncoder();
@@ -76,13 +77,20 @@ export function createRichInlinePresentation(catalogJson:string,manifest:unknown
  const formats=raw.map(item=>{const r=record(item,["kind","revision","properties"]),kind=name(r["kind"]);requireValue(kind>previous,"format catalog must be unique and lexically ordered");previous=kind;
   return Object.freeze({kind,revision:integer(r["revision"],1,0xffffffff),properties:properties(r["properties"])});
  });
- // A candidate V4 mention renders as a structural chip (`mention.ts`), not as a recipe wrapper.
- const recipesOuterToInner=compileInlineFormatRecipes(formats.filter(format=>format.kind!==richMentionFormat),createInlineFormatRenderManifest(manifest));
- const presentation=Object.freeze({schema,recipesOuterToInner});owned.set(presentation,{formats:new Map(formats.map(format=>[format.kind,format]))});return presentation;
+ // A V4 mention renders as a structural chip (`mention.ts`), not as a recipe wrapper. The exact
+ // ruby V1 extension format renders as a `<ruby>` group around its base (`ruby.ts`); another
+ // declaration that merely reuses its kind needs an ordinary recipe.
+ const ruby=formats.some(format=>isRichRubyDeclaration(format));
+ const recipesOuterToInner=compileInlineFormatRecipes(formats.filter(format=>format.kind!==richMentionFormat&&!(ruby&&format.kind===richRubyFormat)),createInlineFormatRenderManifest(manifest));
+ const presentation=Object.freeze({schema,recipesOuterToInner});owned.set(presentation,{formats:new Map(formats.map(format=>[format.kind,format])),ruby});return presentation;
 }
 /** Reject forged or foreign presentations before a controller mutates its host. */
 export function requireRichInlinePresentation(presentation:RichInlinePresentation,schema:RichInlineSchema):void {
  requireValue(owned.has(presentation)&&presentation.schema.name===schema.name&&presentation.schema.version===schema.version&&presentation.schema.fingerprint===schema.fingerprint,"presentation and document schema differ");
+}
+/** Whether the compiled catalog includes the exact ruby V1 extension format (`ruby.ts`). */
+export function richInlinePresentationHasRuby(presentation:RichInlinePresentation):boolean {
+ const metadata=owned.get(presentation);requireValue(metadata,"presentation identity is not owned");return metadata.ruby;
 }
 /** Internal immutable declaration read for versioned standard presentation checks. */
 export function richInlineFormatDescriptor(presentation:RichInlinePresentation,kind:string):BrowserProfileFormatDescriptor|undefined {

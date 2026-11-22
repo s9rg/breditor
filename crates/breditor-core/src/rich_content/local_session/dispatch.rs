@@ -47,6 +47,7 @@ impl RichLocalSession {
         if !actions.is_empty() || !matches!(pending_update, RichPendingFormatsUpdate::Map) {
             self.require_writable()?;
         }
+        let explicit_pending = matches!(pending_update, RichPendingFormatsUpdate::Set(_));
         let edit = apply_batch(&self.context, &self.state.document, actions)?;
         let document = edit
             .as_ref()
@@ -61,9 +62,9 @@ impl RichLocalSession {
             },
         };
         let pending_formats = match pending_update {
-            // A candidate V4 mention is never a pending typing style.
+            // A V4 mention is never a pending typing style.
             RichPendingFormatsUpdate::Set(formats) => {
-                formats.map(|formats| crate::rich_content::mention::without_mentions(&formats))
+                formats.map(|formats| crate::rich_content::mention::without_uninherited(&formats))
             }
             RichPendingFormatsUpdate::Map => super::typing_state::mapped(
                 &self.state,
@@ -78,6 +79,12 @@ impl RichLocalSession {
             selection.as_ref(),
             pending_formats.as_ref(),
         )?;
+        if explicit_pending {
+            self.require_restricted_selection(
+                &document,
+                selection.as_ref().map(RichSelection::kind),
+            )?;
+        }
         let content_changed = document.document() != self.state.document.document();
         if !content_changed
             && selection == self.state.selection
@@ -102,11 +109,11 @@ impl RichLocalSession {
         }
         let edit = edit.ok_or(RichLocalSessionError::HistoryMismatch)?;
         let inverse = edit.into_parts().1;
-        Ok(self.commit_content(
+        self.commit_content(
             candidate,
             super::history_recipe::HistoryRecipe::Actions(actions.to_vec()),
             super::history_recipe::HistoryRecipe::Actions(inverse),
-        ))
+        )
     }
 
     /// Validate and publish only logical selection; this does not create user undo.

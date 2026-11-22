@@ -1,28 +1,38 @@
-# Rich language V4 (frozen candidate)
+# Rich language V4
 
 Rich V4 is an explicit, opt-in rich language made of eight slices, all recorded
 here: ordered-list numbering, text-run language, image links, collapsible
 sections, mention entities, table captions, page breaks and bookmarks with
 internal links.
 
-**Status (November 20, 2026): frozen candidate, persistable locally, not
-released.**
+**Status (November 21, 2026): released and frozen.** V4 is a supported rich
+language alongside V1 (original), V2 (structural) and V3 (layout), with the same
+opt-in selection model: hosts select it explicitly, it is never a default and
+nothing migrates into or out of it.
 
 - **Frozen.** V4's grammar, sealed rich rule revision (4 under compiler contract
   6) and schema fingerprints are frozen at these eight slices. They will not
   change again: any later grammar or rule change is a new language (V5) with its
   own compiler entry, bootstrap format, selector and fingerprint. See
   [Freeze and durable persistence](#freeze-and-durable-persistence).
-- **Persistable locally.** Hosts may store V4 documents, checkpoints and
-  histories from local editors. Every saved V4 record binds the exact V4
-  fingerprint and is refused under any other profile.
-- **Not released.** V4 is still a candidate: it is not part of a released V1, and
-  whether it ships in V1 is the compatibility gate's decision
-  ([V1 release plan](V1_RELEASE_PLAN.md)). Freezing guarantees that data saved
-  now keeps restoring exactly; it does not promote the V4 API surface.
-- **Shared V4 foundation.** Collaboration supports V4 explicitly with its own
-  causal model 14 and journal 15, reusing this frozen grammar unchanged (see
-  [Shared V4](#shared-v4)); per-slice shared commands come next.
+- **Persistable, locally and shared.** Hosts may store V4 documents, checkpoints
+  and histories from local editors, and shared V4 rooms persist and replay their
+  journals. Every saved V4 record binds the exact V4 fingerprint (and, in shared
+  rooms, causal model 14 / journal 15) and is refused under any other profile.
+- **Local and shared editing.** Every slice has local commands and controls and
+  shared commands and controls with the same user-visible semantics and one Undo
+  step per action (see [Shared V4](#shared-v4) and
+  [SHARED_RICH_V4.md](SHARED_RICH_V4.md)).
+- **Same release scope as V1–V3.** Like the other rich languages, V4 ships in the
+  opt-in rich-content and collaboration packages; the repository as a whole is
+  still before its V1 release ([V1 release plan](V1_RELEASE_PLAN.md)), and the
+  package-level promises in [COMPATIBILITY.md](COMPATIBILITY.md) apply to V4
+  exactly as to V1–V3.
+- **Defaults unchanged.** An omitted `richLanguage` still selects language 1 in
+  every API. Releasing V4 does not change any default.
+- **Known gap.** Shared interchange does not yet report the V4 capabilities, so
+  HTML/Markdown imports into a shared owner keep the V1–V3 conversions (see
+  [Shared V4](#shared-v4)).
 
 ## Selection and compatibility
 
@@ -38,7 +48,7 @@ reinterprets an older document, and older profiles reject every V4 property.
 | Capability queries | `supports_rich_block_layout()` (V3 and V4), `supports_rich_list_numbering()`, `supports_rich_text_language()`, `supports_rich_image_links()`, `supports_rich_details()`, `supports_rich_mentions()`, `supports_rich_table_captions()`, `supports_rich_page_breaks()` and `supports_rich_bookmarks()` (V4 only) |
 | Wasm | explicit profile bootstrap **format 9**: `BreditorRichProfile.fromBootstrapJsonV4` / `fromStandardBootstrapJsonV4`; descriptor `richLanguageVersion: 4`, `taskStructureVersion: 1`, `blockLayoutVersion: 1`, `listNumberingVersion: 1`, `textLanguageVersion: 1`, `imageLinkVersion: 1`, `detailsVersion: 1`, `mentionVersion: 1`, `tableCaptionVersion: 1`, `pageBreakVersion: 1`, `bookmarkVersion: 1`; owner `listNumberingVersion()`, `textLanguageVersion()`, `imageLinkVersion()`, `detailsVersion()`, `mentionVersion()`, `tableCaptionVersion()`, `pageBreakVersion()` and `bookmarkVersion()` all `"1"` |
 | JavaScript factories | `compileRichProfileV4`, `compileStandardRichProfileV4` (`@breditor/experimental-rich-content`); `createLocalProfileV4`, `profileBootstrapJsonV4` (`@breditor/editor`, schema `breditor-editor/standard@4`) |
-| SDK openings | `openLocalEditor({richLanguage: 4})`, `openLocalDocumentEditor({richLanguage: 4, ...})` and both local React components' `initialOptions` |
+| SDK openings | `openLocalEditor({richLanguage: 4})`, `openLocalDocumentEditor({richLanguage: 4, ...})` and both local React components' `initialOptions`; shared: `openSharedEditor`, `openSharedSearchEditor`, `openSharedDocumentEditor`, `openSharedDocumentSearchEditor` and the shared React components with `richLanguage: 4` (see [Shared V4](#shared-v4)) |
 | Toolbar | `createRichToolbarV4(core, presentation)`: the V3 structural/layout controls plus **List numbering**, **Language**, **Clear language**, **Image link**, **Remove image link**, **Collapsible section**, **Remove collapsible section**, **Expand/Collapse section**, **Table caption**, **Page break**, **Bookmark**, **Remove bookmark** and **Link to bookmark** |
 
 Each factory checks its exact descriptor tuple. A V3 factory refuses a V9
@@ -49,7 +59,7 @@ are rejected, never mapped to an older language.
 
 ### Shared V4
 
-Shared editing now supports V4 explicitly (foundation): shared configuration
+Shared editing supports V4 explicitly: shared configuration
 format 4, causal model 14 and journal 15 reuse this frozen grammar and its
 fingerprints unchanged. `openSharedEditor`, `openSharedSearchEditor`,
 `openSharedDocumentEditor`, `openSharedDocumentSearchEditor` and the shared React
@@ -58,14 +68,12 @@ replicates and persists exactly, works with the generic shared commands, and has
 its own shared per-slice commands and toolbar controls (list numbering,
 bookmarks/internal links, section wrap/unwrap/open state, text language, mentions
 with the shared `@` menu, image links, page breaks and table captions; see
-[SHARED_RICH_V4.md](SHARED_RICH_V4.md)). Shared
-interchange owners still do not report list numbering, text language, image
-links, sections, mentions or table captions, so imports into a shared owner keep
-the original `list-numbering` notices, keep dropping `lang` silently, keep the
-original image-link and `<details>` conversion, import mention spans as plain
-`@label` text, keep converting `<caption>` to flow before the table, keep reporting
-forced page-break CSS as `unsupported-style` and keep dropping element ids and
-`#fragment` links (no bookmarks). The selector, replica encoding, conflict
+[SHARED_RICH_V4.md](SHARED_RICH_V4.md)). Shared V4
+owners report exactly the eight interchange capabilities of a local V4 owner, so
+`@breditor/interchange` imports and exports every slice the same way in shared
+editors as locally (HTML, Markdown, DOCX export, rich and Office/Google Docs
+paste); an import publishes as one ordinary guarded shared paste (one Undo step,
+fresh identities). Shared V1–V3 owners keep the original conversions. The selector, replica encoding, conflict
 policies and merge repairs are specified in [SHARED_RICH_V4.md](SHARED_RICH_V4.md).
 
 ## Freeze and durable persistence
@@ -155,9 +163,12 @@ name or an arbitrary string.
   the same rule (a reversed copy whose first ordinal would be below 1 is an
   unsupported range). A numbered-to-numbered `setListKind` start change keeps
   style and reversal; converting to bullets removes them.
-- **Not in V4:** legal multilevel counters (`1.2.3`), per-item `value`
-  overrides, custom counter styles, marker suffix/prefix text and per-item
-  marker styles. A nested list is numbered independently.
+- **Not in V4:** legal multilevel counters (`1.2.3`) as a stored property,
+  per-item `value` overrides, custom counter styles, marker suffix/prefix text
+  and per-item marker styles. A nested list is numbered independently. Legal
+  counters are available as an opt-in, presentation-only `legalListNumbering`
+  render option derived from these admitted values; a stored form is a V5
+  candidate ([LIST_STRUCTURE.md](LIST_STRUCTURE.md)).
 
 ### Native action and commands
 
@@ -199,7 +210,8 @@ order (Ascending/Reversed) and Start at, and sends only changed fields.
 ### Interchange
 
 `@breditor/interchange` reads `supportsListNumbering()` from its owner once at
-creation. Local V4 owners report `true`; V1–V3 and shared owners do not.
+creation. Local and shared V4 owners report `true`; V1–V3 owners (local and
+shared) do not.
 
 - **HTML import, V4 owner:** `<ol type="1|a|A|i|I">` and `list-style-type`
   (`decimal`, `lower-alpha`/`lower-latin`, `upper-alpha`/`upper-latin`,
@@ -366,8 +378,8 @@ keys are needed.
 
 ### Interchange
 
-`@breditor/interchange` reads `supportsTextLanguage()` once at creation. Local V4
-owners report `true`; V1–V3 and shared owners do not.
+`@breditor/interchange` reads `supportsTextLanguage()` once at creation. Local and shared V4
+owners report `true`; V1–V3 owners (local and shared) do not.
 
 - **HTML import, V4 owner:** `lang` and the equivalent `xml:lang` on **any**
   element (inline or block, including `<body>`) become the language of every
@@ -541,8 +553,8 @@ before it can be linked. Localization uses the existing per-control map (ids
 
 ### Interchange
 
-`@breditor/interchange` reads `supportsImageLinks()` once at creation. Local V4
-owners report `true`; V1–V3 and shared owners do not.
+`@breditor/interchange` reads `supportsImageLinks()` once at creation. Local and shared V4
+owners report `true`; V1–V3 owners (local and shared) do not.
 
 - **HTML import, V4 owner:** an `<img>` inside `<a href>` (inline, or
   `<figure><a href><img></a><figcaption>`) takes the anchor's link; `target` and
@@ -717,8 +729,8 @@ item (`details`) that appears only with a V4 toolbar.
 
 ### Interchange
 
-`@breditor/interchange` reads `supportsDetails()` once at creation (local V4
-owners only).
+`@breditor/interchange` reads `supportsDetails()` once at creation (local and
+shared V4 owners).
 
 - **HTML import, V4 owner:** `<details>` becomes a section; the first `<summary>`
   child is its summary and `open` maps to `details-open`. Block markup inside a
@@ -905,8 +917,8 @@ error. `richMentionStyles` is an optional host CSS hook.
 
 ### Interchange
 
-`@breditor/interchange` reads `supportsMentions()` once. Local V4 owners report
-`true`; V1–V3 and shared owners do not.
+`@breditor/interchange` reads `supportsMentions()` once. Local and shared V4
+owners report `true`; V1–V3 owners (local and shared) do not.
 
 - **HTML export:** each unit is the span above around its styled pieces.
 - **HTML import, V4 owner:** only that exact shape (class `breditor-mention`,
@@ -1089,8 +1101,8 @@ per-control map; no new string keys.
 
 ### Interchange
 
-`@breditor/interchange` reads `supportsTableCaptions()` once (local V4 owners
-only).
+`@breditor/interchange` reads `supportsTableCaptions()` once (local and shared V4
+owners).
 
 - **HTML import, V4 owner:** the first `<caption>` becomes the table's caption
   paragraph (inline formats, links, language and mentions as usual). A caption
@@ -1213,7 +1225,8 @@ holding the selection) and the standard slash menu gains a **Page break** item
 
 ### Interchange
 
-`@breditor/interchange` reads `supportsPageBreaks()` once (local V4 owners only).
+`@breditor/interchange` reads `supportsPageBreaks()` once (local and shared V4
+owners).
 HTML import maps Word's `<br clear=all style='page-break-before:always'>` (also
 inside a paragraph, which is split), Google Docs'
 `<hr style="page-break-before:always;display:none">`, an empty `<div>` with a
@@ -1380,7 +1393,8 @@ is added, so the trigger-composite allowlist is unchanged.
 
 ### Interchange
 
-`@breditor/interchange` reads `supportsBookmarks()` once (local V4 owners only).
+`@breditor/interchange` reads `supportsBookmarks()` once (local and shared V4
+owners).
 
 - **HTML export (V4 owner):** `id="bm-<name>"` on the bookmarked `<p>`, `<hN>` or `<pre>`
   and `<a href="#bm-<name>">` for internal links.

@@ -261,6 +261,18 @@ const check = mountLanguageCheck(otherHost, editor, {
 
 See [the AI and language tool contract](../../docs/AI_AND_LANGUAGE_TOOLS.md).
 
+## Editing aids
+
+```js
+import {mountEditingAids, mountEditingAidsControls} from '@breditor/editor';
+const aids = mountEditingAids(editor, {focus: true});   // a shared session works the same way
+mountEditingAidsControls(editor.toolbar, aids);          // Show blocks / Show invisible characters
+```
+
+Show blocks, invisible characters and a focused-block attribute are painted
+outside the editable DOM; toggling is never an edit, frame or Undo step. See
+[the editing-aid contract](../../docs/EDITING_AIDS.md).
+
 ## General range editing
 
 Pass `rangeEditing: 'general-v1'` to local or shared openings, or to React
@@ -474,7 +486,12 @@ The other initial values are `{kind: 'document', documentJson}` and
 Rust. The default schema is `breditor-editor/standard@1`; a custom
 `profileBootstrapJson` must retain the original V6 bootstrap shape. Additional
 inline formats need explicit safe presentation recipes through
-`additionalInlinePresentation`. Ordinary set-format commands still replace complete
+`additionalInlinePresentation`. Opt-in ruby (furigana) is such an extension with
+built-in presentation: pass `profileBootstrapJson: rubyProfileBootstrapJsonV4`
+(shared: `configuration: rubySharedProfileConfigurationV4`) and append
+`rubyToolbarControls(core, presentation)` / `sharedRubyToolbarControls(core,
+presentation)` in the `toolbar` factory, whose third argument is the editor's
+inline presentation (see `docs/RUBY_ANNOTATIONS.md`). Ordinary set-format commands still replace complete
 property maps. The separate compound command also accepts an explicit property
 patch. In the Link form, leave one field blank to preserve that field on each
 existing link; enter both fields to replace or create complete links. Partial
@@ -540,19 +557,23 @@ owner. Numeric values must be finite primitives; arbitrary CSS and objects that
 serialize into null are rejected. See `docs/RICH_BLOCK_LAYOUT.md` in the repository
 for bounds, independent shared fields, history and qualification scope.
 
-### Candidate rich language V4 (frozen, local only, not released)
+### Rich language V4 (released, frozen)
 
-`richLanguage: 4` selects the candidate V4 for local openings
+`richLanguage: 4` selects rich language V4 for local openings
 (`openLocalEditor`, `openLocalDocumentEditor` and the local React components'
-`initialOptions`). It is V3 plus bounded ordered-list numbering, text-run language, image links, collapsible sections, mention entities, table captions, page breaks and bookmarks with internal links.
+`initialOptions`) and for shared openings (`openSharedEditor`,
+`openSharedSearchEditor`, `openSharedDocumentEditor`,
+`openSharedDocumentSearchEditor` and the shared React components). It is V3 plus bounded ordered-list numbering, text-run language, image links, collapsible sections, mention entities, table captions, page breaks and bookmarks with internal links.
 Its grammar and schema fingerprint are **frozen**: a later grammar change becomes
-a new language, never a change to V4. V4 is still a candidate (not part of a
-released V1). Shared openings reject `richLanguage: 4` explicitly; shared
-editing stays on languages 1–3 while a shared V4 is built. The standard schema is
-`breditor-editor/standard@4` (`profileBootstrapJsonV4`, bootstrap format 9);
-the headless factory is `createLocalProfileV4`.
+a new language (V5), never a change to V4. V4 is a supported language like V1–V3
+and, like them, is opt-in: an omitted `richLanguage` still selects language 1.
+Shared V4 uses its own causal model 14 and journal 15; nothing migrates between
+languages. The standard schema is
+`breditor-editor/standard@4` (`profileBootstrapJsonV4`, bootstrap format 9;
+shared: `richSharedProfileConfigurationV4`); the headless factory is
+`createLocalProfileV4`.
 
-Local V4 documents, checkpoints and histories may be persisted. Bind the store to
+V4 documents, checkpoints and histories may be persisted. Bind the store to
 the exact fingerprint; saved records are refused under any other profile:
 
 ```ts

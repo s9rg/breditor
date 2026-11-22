@@ -9,8 +9,17 @@ export {richUiPanelStringsEn,richUiNoticeCodes,type RichUiPanelStrings,type Rich
 // AI and language-tool chrome strings live in a separate block (ui_locale_ai.ts) merged below.
 import {richAiUiStringsEn,richAiUiParameters,type RichAiUiStrings} from "./ui_locale_ai.js";
 export type {RichAiUiStrings} from "./ui_locale_ai.js";
+// Editing-aid chrome strings (show blocks, invisible characters) live in ui_locale_editing_aids.ts.
+import {richEditingAidsUiStringsEn,richEditingAidsUiParameters,type RichEditingAidsUiStrings} from "./ui_locale_editing_aids.js";
+export type {RichEditingAidsUiStrings} from "./ui_locale_editing_aids.js";
+// Editor shell chrome (menu bar, shortcut help, empty-line block menu) lives in ui_locale_shell.ts.
+import {richShellUiStringsEn,richShellUiParameters,type RichShellUiStrings} from "./ui_locale_shell.js";
+export type {RichShellUiStrings} from "./ui_locale_shell.js";
+// Formatting-productivity chrome (special characters, format painter) lives in ui_locale_productivity.ts.
+import {richProductivityUiStringsEn,richProductivityUiParameters,type RichProductivityUiStrings} from "./ui_locale_productivity.js";
+export type {RichProductivityUiStrings} from "./ui_locale_productivity.js";
 /** Every built-in chrome string. Templates use `{name}` placeholders only; there are no plural or select forms. */
-export interface RichUiStrings extends RichUiPanelStrings, RichAiUiStrings {
+export interface RichUiStrings extends RichUiPanelStrings, RichAiUiStrings, RichEditingAidsUiStrings, RichShellUiStrings, RichProductivityUiStrings {
  readonly richEditorLabel:string;readonly richToolbarLabel:string;
  readonly richStatusReadOnly:string;readonly richStatusEditable:string;readonly richStatusOutcome:string;readonly richStatusReadOnlyOutcome:string;
  readonly richOperationFailed:string;
@@ -32,7 +41,7 @@ export interface RichUiStrings extends RichUiPanelStrings, RichAiUiStrings {
  readonly blockDragItemLead:string;readonly blockDragBoundary:string;readonly blockDragNative:string;
  // Image resize handles (image_resize.ts).
  readonly imageResizeLabel:string;readonly imageResizeValue:string;readonly imageResizeOriginal:string;readonly imageResizePreview:string;readonly imageResizeBadge:string;
- // Candidate rich V4 page breaks and the opt-in print preview (page_break.ts, print.ts).
+ // Rich V4 page breaks and the opt-in print preview (page_break.ts, print.ts).
  readonly pageBreakLabel:string;readonly printPreviewLabel:string;
 }
 export type RichUiStringKey=keyof RichUiStrings;
@@ -69,10 +78,15 @@ export const richUiStringsEn:Readonly<RichUiStrings>=Object.freeze({
  // Image resize handles (image_resize.ts).
  imageResizeLabel:"Resize image {index} of {count}",imageResizeValue:"{width} by {height} pixels",imageResizeOriginal:"{width} by {height} pixels (original size)",
  imageResizePreview:"{width} by {height} pixels (preview)",imageResizeBadge:"{width} × {height}",
- // Candidate rich V4 page breaks and the opt-in print preview (page_break.ts, print.ts).
+ // Rich V4 page breaks and the opt-in print preview (page_break.ts, print.ts).
  pageBreakLabel:"Page break",printPreviewLabel:"Print preview: page boundaries are approximate",
  // AI and language tools (separate block).
  ...richAiUiStringsEn,
+ // Editing aids (separate block).
+ ...richEditingAidsUiStringsEn,
+ ...richShellUiStringsEn,
+ // Formatting-productivity tools (separate block).
+ ...richProductivityUiStringsEn,
 });
 /** Placeholders each template may use. Anything else in braces is rejected. */
 const parameters:Readonly<Partial<Record<RichUiStringKey,readonly string[]>>>={
@@ -86,6 +100,11 @@ const parameters:Readonly<Partial<Record<RichUiStringKey,readonly string[]>>>={
  imageResizeLabel:["index","count"],imageResizeValue:["width","height"],imageResizeOriginal:["width","height"],imageResizePreview:["width","height"],imageResizeBadge:["width","height"],
  // AI and language tools (separate block).
  ...richAiUiParameters,
+ // Editing aids (separate block).
+ ...richEditingAidsUiParameters,
+ ...richShellUiParameters,
+ // Formatting-productivity tools (separate block).
+ ...richProductivityUiParameters,
 };
 /** Ids of `standardRichSlashPicks`; other provider items carry their own labels. */
 export type RichStandardSlashItemId="paragraph"|"heading-1"|"heading-2"|"heading-3"|"bullet-list"|"numbered-list"|"task-list"|"blockquote"|"code-block"|"horizontal-rule"|"table"|"details"|"page-break";
@@ -124,6 +143,11 @@ export interface RichUiOptions {
   * when a status line would otherwise show the developer `Error.message`. Keys are lowercase dotted codes.
   */
  readonly refusals?:Readonly<Record<string,string>>;
+ /**
+  * Special-character picker names: `categories` by category id and `characters` by the character itself
+  * (for example `{"€":"Euro"}`). Entries for characters or categories a picker does not show are inert.
+  */
+ readonly specialCharacters?:Readonly<{categories?:Readonly<Record<string,string>>;characters?:Readonly<Record<string,string>>}>;
 }
 type Values=Readonly<Record<string,string|number>>;
 interface Presentation {readonly id:string;readonly label:string;readonly type?:"text"|"number";readonly mixedHint?:string;readonly fields?:readonly {readonly id:string;readonly label:string;readonly placeholder?:string;readonly options?:readonly {readonly value:string;readonly label:string}[]}[]}
@@ -147,6 +171,8 @@ export interface RichUiLocale {
  describe(error:unknown,otherwise:string):string;
  /** End-user label for an interchange notice code; the code itself when the catalog has none. */
  notice(code:string):string;
+ /** Catalog name of a special-character category (by id) or character (by the character), else `fallback`. */
+ specialCharacterLabel?(kind:"category"|"character",key:string,fallback:string):string;
 }
 const MAX_TEXT=512,MAX_ENTRIES=256;
 const lang=/^[A-Za-z]{2,8}(?:-[A-Za-z0-9]{1,8}){0,7}$/;
@@ -195,8 +221,9 @@ class Locale implements RichUiLocale {
  readonly lang:string|null;readonly direction:RichUiDirection|null;readonly strings:Readonly<RichUiStrings>;
  readonly #controls:Readonly<Record<string,RichUiControlStrings>>;readonly #slash:Readonly<Record<string,RichUiSlashItemStrings>>;
  readonly #notices:Readonly<Record<string,string>>;readonly #refusals:Readonly<Record<string,string>>;
+ readonly #specialCategories:Readonly<Record<string,string>>;readonly #specialCharacters:Readonly<Record<string,string>>;
  constructor(options:RichUiOptions|undefined){
-  const value=options===undefined?{}:record(options,"UI options");only(value,["lang","direction","strings","controls","slashItems","notices","refusals"],"UI option");
+  const value=options===undefined?{}:record(options,"UI options");only(value,["lang","direction","strings","controls","slashItems","notices","refusals","specialCharacters"],"UI option");
   if(value["lang"]!==undefined&&(typeof value["lang"]!=="string"||!lang.test(value["lang"])))throw new TypeError("Expected a BCP 47 UI language tag");
   if(value["direction"]!==undefined&&value["direction"]!=="ltr"&&value["direction"]!=="rtl")throw new TypeError("Expected UI direction ltr or rtl");
   const known=Object.keys(richUiStringsEn),strings=value["strings"]===undefined?{}:record(value["strings"],"UI strings",Math.max(MAX_ENTRIES,known.length));
@@ -208,6 +235,7 @@ class Locale implements RichUiLocale {
   this.#controls=Object.freeze(Object.fromEntries(Object.entries(controls).map(([id,entry])=>[id,freezeControl(id,entry)])));
   this.#slash=Object.freeze(Object.fromEntries(Object.entries(slash).map(([id,entry])=>[id,freezeSlash(id,entry)])));
   [this.#notices,this.#refusals]=codeMaps(value);
+  [this.#specialCategories,this.#specialCharacters]=specialCharacterMaps(value["specialCharacters"]);
   Object.freeze(this);
  }
  text(key:RichUiStringKey,values?:Values):string{const text=this.strings[key];if(typeof text!=="string")throw new TypeError(`Unknown UI string ${String(key)}`);return format(text,values);}
@@ -230,6 +258,7 @@ class Locale implements RichUiLocale {
   }
   return error instanceof Error?error.message:otherwise;
  }
+ specialCharacterLabel(kind:"category"|"character",key:string,fallback:string):string{const map=kind==="category"?this.#specialCategories:this.#specialCharacters;return Object.prototype.hasOwnProperty.call(map,key)?map[key]!:fallback;}
  notice(code:string):string{return Object.prototype.hasOwnProperty.call(this.#notices,code)?this.#notices[code]!:code;}
  applyChrome(element:HTMLElement):void{if(this.direction)element.dir=this.direction;if(this.lang)element.lang=this.lang;}
  checkControls(controls:readonly Presentation[]):void{
@@ -244,6 +273,17 @@ class Locale implements RichUiLocale {
    }
   }
  }
+}
+// ---- Special-character names (see formatting_productivity.ts) ----
+function specialCharacterMaps(value:unknown):[Readonly<Record<string,string>>,Readonly<Record<string,string>>]{
+ if(value===undefined)return [Object.freeze({}),Object.freeze({})];
+ const entry=record(value,"UI special characters");only(entry,["categories","characters"],"UI special-character");
+ const categories=entry["categories"]===undefined?{}:record(entry["categories"],"UI special-character categories",64);
+ const characters=entry["characters"]===undefined?{}:record(entry["characters"],"UI special-character names",4096);
+ for(const id of Object.keys(categories))if(!/^[a-z][a-z0-9-]{0,31}$/.test(id))throw new TypeError(`Expected a special-character category id, not ${JSON.stringify(id)}`);
+ for(const key of Object.keys(characters))if(!key||key.length>16||/[\u0000-\u001F\u007F-\u009F]/.test(key))throw new TypeError(`Expected a special character key, not ${JSON.stringify(key)}`);
+ const freeze=(map:Readonly<Record<string,unknown>>,what:string)=>Object.freeze(Object.fromEntries(Object.entries(map).map(([key,text])=>[key,plain(text,`${what} ${key}`)])));
+ return [freeze(categories,"UI special-character category"),freeze(characters,"UI special-character name")];
 }
 // ---- Panel refusals and notice/refusal code maps (see ui_locale_panels.ts) ----
 const codePattern=/^[a-z][a-z0-9_-]{0,63}(?:\.[a-z0-9_-]{1,63}){0,3}$/;

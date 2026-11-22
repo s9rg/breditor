@@ -82,7 +82,7 @@ impl RichReplica {
         if candidate.journal.entries.len() == self.journal.entries.len() {
             return Ok(false);
         }
-        self.adopt(candidate)?;
+        self.adopt_incoming(candidate)?;
         Ok(true)
     }
 }

@@ -93,6 +93,14 @@ so toolbar styles apply), `label`, `onError`; the menu also takes `hideDisabled`
 - Repositions on scroll/resize relative to the surface (pointer-opened) or the
   selection (keyboard-opened).
 
+## Editor shell
+
+The menu bar, keyboard shortcut help dialog and empty-line block menu
+([EDITOR_SHELL.md](EDITOR_SHELL.md)) are built on this same host port. The
+selection toolbar and context menu register their chords (Alt+F10, Shift+F10,
+the Menu key, Escape) in the editor's read-only shortcut registry while mounted,
+so the help dialog lists them.
+
 ## Teardown
 
 `dispose()` aborts every borrowed widget (removing it from the coordinator's

@@ -6,6 +6,9 @@ pub enum RichLocalSessionError {
     /// Explicit native Markdown shortcut planning or complete admission failed.
     #[error(transparent)]
     InputRule(#[from] crate::rich_content::RichInputRuleError),
+    /// Native case-change planning or final admission failed.
+    #[error(transparent)]
+    CaseChange(#[from] crate::rich_content::RichCaseChangeError),
     /// Native source-bound search/replacement planning or final admission failed.
     #[error(transparent)]
     Search(#[from] crate::rich_content::RichSearchError),
@@ -25,9 +28,16 @@ pub enum RichLocalSessionError {
     /// exactly one content-changing follow-up step.
     #[error("trigger removal composite target or follow-up step is not admitted")]
     TriggerStep,
+    /// A command group needs 1–64 steps, each publishing content or nothing, and no
+    /// selection-only, read-only or typing-history step.
+    #[error("command group size or step outcome is not admitted")]
+    CommandGroup,
     /// The live host policy forbids content, history or pending-format mutation.
     #[error("rich editor is read-only")]
     ReadOnly,
+    /// The live restricted-editing policy forbids this change outside editable regions.
+    #[error("rich change touches content outside the editable regions")]
+    Restricted,
     /// Code typing never retains semantic inline formatting overrides.
     #[error("code blocks require plain pending typing formats")]
     CodeFormats,

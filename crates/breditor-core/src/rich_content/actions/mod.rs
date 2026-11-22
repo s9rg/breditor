@@ -233,11 +233,11 @@ pub enum RichAction {
     SetListKind(SetListKind),
     /// Patch one ordered list's bounded V4 marker style, reversal or start.
     SetListNumbering(SetListNumbering),
-    /// Set, replace or clear one image's bounded candidate-V4 link.
+    /// Set, replace or clear one image's bounded V4 link.
     SetImageLink(SetImageLink),
-    /// Set, clear or rename (retargeting internal links) candidate-V4 bookmarks.
+    /// Set, clear or rename (retargeting internal links) V4 bookmarks.
     SetBookmark(SetBookmark),
-    /// Wrap a rich sibling range as the body of one candidate-V4 collapsible section.
+    /// Wrap a rich sibling range as the body of one V4 collapsible section.
     WrapDetails(WrapDetails),
     /// Remove one section, keeping its summary as a paragraph and its whole body.
     UnwrapDetails(UnwrapDetails),
@@ -261,7 +261,7 @@ pub enum RichAction {
     ReplaceImage(ReplaceImage),
     /// Add, remove or replace the whole optional paragraph caption.
     SetImageCaption(SetImageCaption),
-    /// Candidate V4: add or remove a table's trailing paragraph caption.
+    /// V4: add or remove a table's trailing paragraph caption.
     SetTableCaption(SetTableCaption),
     /// Insert a whole explicitly drafted table in stable flow space.
     InsertTable(InsertTable),

@@ -8,7 +8,7 @@ import {
 import {createStandardRichInlinePresentationV1} from "@breditor/experimental-rich-content";
 import type {RichSearchHost} from "@breditor/experimental-rich-content";
 import type {SharedSearchResults} from "@breditor/collaboration";
-import {supportsSharedSearchHistory,restoreSharedSearchEditor,sharedAiToolsHost} from "@breditor/collaboration";
+import {supportsSharedSearchHistory,restoreSharedSearchEditor,sharedAiToolsHost,sharedAgentToolsHost} from "@breditor/collaboration";
 import {initializeSharedRuntime,standardSharedProfileConfiguration,structuralSharedProfileConfigurationV2,layoutSharedProfileConfigurationV3,richSharedProfileConfigurationV4} from "./shared_profile.js";
 import {checkSharedRichLanguage} from "./shared_language.js";
 import {claimHost,awaitInitialization} from "./host.js";
@@ -34,8 +34,9 @@ export type SharedSearchInitial=Extract<SharedInitial,{kind:"resume"|"empty"|"do
 
 export interface SharedEditorSessionOptions extends Omit<SharedDomOptions,"core"|"coreOwnership"|"toolbar"|"inlinePresentation"|"inlineTag"|"clipboardInterchange"> {
  host:HTMLElement;database:string;room:string;writer:string;initial?:SharedInitial;
- configuration?:SharedProfileConfiguration|SharedProfileConfigurationV2|SharedProfileConfigurationV3;additionalInlinePresentation?:unknown;
- /** Explicit native language. Omitted/1 retains original model11; 3 selects layout model13. */
+ configuration?:SharedProfileConfiguration|SharedProfileConfigurationV2|SharedProfileConfigurationV3|SharedProfileConfigurationV4;additionalInlinePresentation?:unknown;
+ /** Explicit native language. Omitted/1 retains original model11; 2 selects structural model12,
+  * 3 layout model13 and 4 the released frozen rich V4 (model14, journal15). Never a default. */
  richLanguage?:1|2|3|4;
  readOnly?:boolean;
  /** Immutable native history policy; omitted/explicit preserves existing defaults. */
@@ -47,7 +48,7 @@ export interface SharedEditorSessionOptions extends Omit<SharedDomOptions,"core"
  /** Stop borrowed relay/presence/asset adapters before the native writer retires. Reporting errors cannot cancel close. */
  onClosing?:(editor:SharedEditorSession)=>void;
  /** Configuration only: do not publish edits from a toolbar factory. */
- toolbar?:(core:SharedRichEditor,standard:readonly SharedToolbarControl[])=>readonly SharedToolbarControl[];
+ toolbar?:(core:SharedRichEditor,standard:readonly SharedToolbarControl[],presentation:import("@breditor/experimental-rich-content").RichInlinePresentation)=>readonly SharedToolbarControl[];
  /** Configuration only, against this durable native owner before mounting. */
  clipboardInterchange?:ClipboardInterchangeFactory<SharedRichEditor>;
 }
@@ -72,6 +73,8 @@ export interface SharedEditorSession extends SharedEditorRecovery {
  contextUi():import("@breditor/experimental-rich-content").RichContextUiHost;
  /** Borrowed port for the opt-in AI rewrite and language-check tools (`mountSharedAiTools`); it never publishes by itself. */
  aiTools():import("@breditor/experimental-rich-content").RichAiToolsHost;
+ /** Agent tool port (docs/AI_AGENT_TOOLS.md): applied plans are one guarded shared dispatch; pass a suggestion queue to file proposals. */
+ agentTools(options?:import("@breditor/collaboration").SharedAgentToolsHostOptions):import("@breditor/experimental-rich-content").RichAgentToolsHost;
  setPlaceholderLabel(label:string|null):void;
  /** The validated chrome catalog from the `ui` option (English, direction-neutral by default). */
  uiLocale():import("@breditor/experimental-rich-content").RichUiLocale;
@@ -108,6 +111,7 @@ class SharedEditorSessionOwner implements SharedEditorSession {
  fullscreen():import("@breditor/experimental-rich-content").RichFullscreenHost{this.#active();return this.#dom;}
  contextUi():import("@breditor/experimental-rich-content").RichContextUiHost{this.#active();return this.#dom;}
  aiTools():import("@breditor/experimental-rich-content").RichAiToolsHost{this.#active();return sharedAiToolsHost(this.#dom);}
+ agentTools(options?:import("@breditor/collaboration").SharedAgentToolsHostOptions):import("@breditor/experimental-rich-content").RichAgentToolsHost{this.#active();return sharedAgentToolsHost(this.#dom,options);}
  setPlaceholderLabel(label:string|null):void{this.#active();this.#dom.setPlaceholderLabel(label);}
  uiLocale():import("@breditor/experimental-rich-content").RichUiLocale{this.#active();return this.#dom.uiLocale();}
  toolbarControls():readonly SharedToolbarControl[]{return this.#controls;}
@@ -193,7 +197,7 @@ async function openSharedEditorFamily(options:SharedEditorSessionOptions|SharedS
   session=search?await SharedPersistentSession.openSearch({...persistence,rangeEditing:ranges,selectionEditing:"original",restoreSearch:checkpoint=>{claim.assert();return restoreSharedSearchEditor(factory,options.room,checkpoint);}}):await SharedPersistentSession.open({...persistence,...(ranges==="general-v1"?{rangeEditing:ranges}:{}),restore:(checkpoint,storedHistory,storedRanges="original")=>{claim.assert();return storedRanges==="general-v1"?restoreSharedGeneralEditor(factory,options.room,checkpoint,storedHistory):storedHistory==="typing-v1"?restoreSharedTypingEditor(factory,options.room,checkpoint):factory.restore(options.room,checkpoint);}});
   claim.assert();
   if(options.readOnly!==undefined)session.core.setReadOnly(options.readOnly);
-  const core=session.core,standard=language===4?createRichSharedToolbarV4(core,presentation):language===3?createLayoutSharedToolbarV3(core,presentation):language===2?createStructuralSharedToolbarV2(core,presentation):createStandardSharedToolbarV1(core,presentation),toolbar=options.toolbar?.(core,standard)??standard;
+  const core=session.core,standard=language===4?createRichSharedToolbarV4(core,presentation):language===3?createLayoutSharedToolbarV3(core,presentation):language===2?createStructuralSharedToolbarV2(core,presentation):createStandardSharedToolbarV1(core,presentation),toolbar=options.toolbar?.(core,standard,presentation)??standard;
   const {clipboardInterchange:interchangeFactory,...domOptions}=options,interchange=clipboardInterchangeOptions(interchangeFactory,core);
   claim.assert();dom=mountSharedEditor(options.host,{...domOptions,...interchange,core,coreOwnership:"borrow",inlinePresentation:presentation,toolbar});claim.assert();
   return new SharedEditorSessionOwner(session,dom,claim.release,options,toolbar);

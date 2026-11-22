@@ -31,6 +31,8 @@ pub enum RichInputRuleKind {
     ListItemTask(bool),
     /// Enter after two empty trailing code lines: remove them and enter a fresh paragraph.
     CodeExit,
+    /// Optional `typography-v1`: recognized characters replaced by their typographic form.
+    Typography(super::RichTypographyRule),
 }
 
 /// Already planned scalar-safe edits, in dependent execution order.
@@ -135,5 +137,14 @@ pub enum RichInputRuleStep {
         end: TextOffset,
         /// Canonical safe HTTP(S) target admitted by the native link subset.
         href: String,
+    },
+    /// Insert replacement text with explicit formats (after a `Delete` of the typed characters).
+    Insert {
+        /// UTF-16 insertion offset at this dependent step.
+        at: TextOffset,
+        /// Nonempty replacement text.
+        text: String,
+        /// Exact formats of the replaced characters.
+        formats: crate::document::FormatSet,
     },
 }

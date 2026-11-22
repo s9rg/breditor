@@ -5,10 +5,12 @@
 
 mod bookmark;
 mod change_inline_formats;
+mod change_selection_case;
 mod change_selection_formats;
 mod change_selection_layout;
 mod clear_table_cells;
 mod clipboard_ids;
+mod command_group;
 mod data_dispatch;
 mod delete_atom;
 mod delete_horizontal_rule;
@@ -85,6 +87,7 @@ mod set_table_header;
 mod set_task_checked;
 mod set_text_language;
 mod split_list_item;
+mod split_list_item_block;
 mod split_support;
 mod split_table_cell;
 mod split_task_item;
@@ -202,6 +205,9 @@ enum CommandTag {
     ClearTableCells,
     NavigateGrid,
     ReplaceTriggerThen,
+    ChangeSelectionCase,
+    CommandGroup,
+    SplitListItemBlock,
 }
 #[derive(Deserialize)]
 #[serde(deny_unknown_fields)]
@@ -345,6 +351,9 @@ pub(super) fn execute(
         ),
         CommandTag::ReplaceTriggerThen => {
             replace_trigger_then::execute(owner, observation, command.data.ok_or(invalid())?.get())
+        }
+        CommandTag::CommandGroup => {
+            command_group::execute(owner, observation, command.data.ok_or(invalid())?.get())
         }
         CommandTag::SetPendingFormats => set_pending_formats::execute(
             owner,

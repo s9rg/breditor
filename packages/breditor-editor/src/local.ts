@@ -2,6 +2,7 @@ import {compileStandardRichProfileV1,compileStandardStructuralRichProfileV2,comp
 import {validatePlaceholderOption,resolveRichUi} from "@breditor/experimental-rich-content/rendering";
 import {refreshAssets,validateMarkdownInputPolicy} from "@breditor/experimental-rich-content/rendering";
 import type {RichSearchHost} from "@breditor/experimental-rich-content";
+import {withRichRubyBootstrapV1} from "@breditor/experimental-rich-content/rendering";
 import {initializeLocalRuntime,type RuntimeInput} from "./runtime.js";
 import {claimHost,awaitInitialization} from "./host.js";
 import {emptyDocumentJson} from "./empty_document.js";
@@ -10,7 +11,7 @@ export const standardProfileBootstrapJson=JSON.stringify({format:"breditor/profi
 /** Explicit bootstrap V7; neither old schema selectors nor saved checkpoints migrate. */
 export const structuralProfileBootstrapJsonV2=JSON.stringify({format:"breditor/profile-bootstrap",formatVersion:7,schema:{name:"breditor-editor/standard",version:2},extensions:[]});
 export const layoutProfileBootstrapJsonV3=JSON.stringify({format:"breditor/profile-bootstrap",formatVersion:8,schema:{name:"breditor-editor/standard",version:3},extensions:[]});
-/** Explicit bootstrap V9 for the frozen candidate rich V4 (V3 plus its eight local slices).
+/** Explicit bootstrap V9 for the released, frozen rich V4 (V3 plus its eight slices).
  * V4's grammar and fingerprint are frozen, so V4 documents, checkpoints and histories may be
  * persisted locally, bound to the exact fingerprint (see `standardSchemaFingerprintV4`). */
 export const profileBootstrapJsonV4=JSON.stringify({format:"breditor/profile-bootstrap",formatVersion:9,schema:{name:"breditor-editor/standard",version:4},extensions:[]});
@@ -19,6 +20,12 @@ export const profileBootstrapJsonV4=JSON.stringify({format:"breditor/profile-boo
  * schemaFingerprint:standardSchemaFingerprintV4})`; a custom bootstrap binds its own
  * `profile.descriptor().schemaFingerprint`. It never changes: a grammar change is a new language. */
 export const standardSchemaFingerprintV4="sha256:7ac98189f850119abd83956f49b82fdbdcc91a77033781fbde090ba931fccc77";
+/** Opt-in ruby (furigana): the stock V4 bootstrap plus the `breditor-ruby/ruby` typed inline extension
+ * (docs/RUBY_ANNOTATIONS.md). Not a grammar change: it compiles to its own fingerprint (`rubySchemaFingerprintV4`),
+ * and the frozen stock V4 profile is unchanged. Pass it as `profileBootstrapJson` with `richLanguage: 4`. */
+export const rubyProfileBootstrapJsonV4=withRichRubyBootstrapV1(profileBootstrapJsonV4);
+/** Fingerprint of `rubyProfileBootstrapJsonV4`; saved ruby V4 records bind it. */
+export const rubySchemaFingerprintV4="sha256:59b7d3c1fcbe2e85e23e526198312400e5732579d957a244d622c60a61194833";
 /** Select the exact standard profile for one explicit local rich language. */
 export function compileLocalLanguageProfile(runtime:Parameters<typeof compileStandardRichProfileV1>[0],language:1|2|3|4,bootstrapJson?:string):RichCoreProfile{
  return language===4?compileStandardRichProfileV4(runtime,bootstrapJson??profileBootstrapJsonV4):language===3?compileStandardLayoutRichProfileV3(runtime,bootstrapJson??layoutProfileBootstrapJsonV3):language===2?compileStandardStructuralRichProfileV2(runtime,bootstrapJson??structuralProfileBootstrapJsonV2):compileStandardRichProfileV1(runtime,bootstrapJson??standardProfileBootstrapJson);
@@ -35,15 +42,17 @@ export type LocalInitial={kind:"empty";documentId?:string;blockId?:string}|{kind
 export interface LocalEditorOptions extends Omit<RichEditorOptions,"core"|"toolbar"|"inlinePresentation"|"inlineTag"|"clipboardInterchange"> {
  host:HTMLElement;initial?:LocalInitial;profileBootstrapJson?:string;additionalInlinePresentation?:unknown;
  /** Explicit native grammar; omitted/1 preserves V1, 2 selects structure, 3 adds layout and 4
-  * selects the frozen local-only candidate V4 (layout plus its eight slices; persistable locally). */
+  * selects the released, frozen rich V4 (layout plus its eight slices; persistable). Never a default. */
  richLanguage?:1|2|3|4;
  /** Initial live host policy, reapplied after checkpoint restore; not serialized permission. */
  readOnly?:boolean;
+ /** Opt-in restricted mode: only the named block subtrees are editable (native admission); Tab moves between them. Live host policy, never saved. */
+ restrictedEditing?:{readonly policy:import("@breditor/experimental-rich-content").RichRestrictedPolicy};
  /** Immutable native history policy; omitted/explicit preserves existing defaults. */
  history?:"explicit"|"typing-v1";
  runtimeInput?:RuntimeInput;signal?:AbortSignal;
  /** Created for this exact owner, after native compilation and before host mutation. */
- toolbar?:(core:RichCoreEditor,standard:readonly ToolbarControl[])=>readonly ToolbarControl[];
+ toolbar?:(core:RichCoreEditor,standard:readonly ToolbarControl[],presentation:import("@breditor/experimental-rich-content").RichInlinePresentation)=>readonly ToolbarControl[];
  /** Explicit opt-in, configured for this owner before mount. Do not publish edits in the factory. */
  clipboardInterchange?:ClipboardInterchangeFactory<RichCoreEditor>;
 }
@@ -63,8 +72,14 @@ export interface LocalEditor {
  execute(command:RichCommand,focus?:boolean,revision?:string):RichCommandOutcome|"queued";
  /** Whether the native owner runs `replaceTriggerThen` (slash commands as one Undo step). */
  supportsTriggerComposite():boolean;
+ /** Whether the native owner runs `commandGroup` (several commands as one Undo step; agent tools). */
+ supportsCommandGroup():boolean;
  view():RichView;checkpointJson():string;focus():void;refreshAssets():void;
  setReadOnly(value:boolean,revision?:string):boolean;
+ /** Install, replace or clear (`null`) the live restricted-editing policy. */
+ setRestrictedEditing(policy:import("@breditor/experimental-rich-content").RichRestrictedPolicy|null,revision?:string):boolean;
+ /** Select the next/previous editable region (Tab/Shift+Tab in restricted mode). */
+ navigateRestrictedRegion(direction:"next"|"previous",revision?:string):RichCommandOutcome|"queued";
  closeTypingGroup(revision?:string):boolean;
  /** Borrow queued search/navigation UI; disposing its panel never disposes this owner. */
  search():RichSearchHost;
@@ -83,7 +98,7 @@ export async function createStructuralLocalProfileV2(bootstrapJson=structuralPro
 export async function createLayoutLocalProfileV3(bootstrapJson=layoutProfileBootstrapJsonV3,runtimeInput?:RuntimeInput):Promise<RichCoreProfile>{
  return compileStandardLayoutRichProfileV3(await initializeLocalRuntime(runtimeInput),bootstrapJson);
 }
-/** Explicit headless candidate rich V4 factory (bootstrap V9); local only, never shared. */
+/** Explicit headless rich V4 local profile factory (bootstrap V9); shared rooms use `createRichSharedProfileV4`. */
 export async function createLocalProfileV4(bootstrapJson=profileBootstrapJsonV4,runtimeInput?:RuntimeInput):Promise<RichCoreProfile>{
  return compileStandardRichProfileV4(await initializeLocalRuntime(runtimeInput),bootstrapJson);
 }
@@ -93,12 +108,15 @@ class LocalEditorOwner implements LocalEditor {
  constructor(dom:RichDomEditor,release:()=>void,render:RenderOptions){this.#dom=dom;this.#release=release;this.#render=render;this.surface=dom.surface;this.toolbar=dom.toolbar;this.status=dom.status;}
  execute(command:RichCommand,focus=true,revision?:string):RichCommandOutcome|"queued"{return this.#dom.execute(command,focus,revision);}
  supportsTriggerComposite():boolean{return this.#dom.supportsTriggerComposite();}
+ supportsCommandGroup():boolean{return this.#dom.supportsCommandGroup();}
  supportsRetainedAssetReferences():boolean{return this.#dom.supportsRetainedAssetReferences();}
  retainedAssetReferences(revision?:string):import("@breditor/experimental-rich-content").RichRetainedAssetReferencesRead{return this.#dom.retainedAssetReferences(revision);}
  checkRetainedAssetReferences(read:import("@breditor/experimental-rich-content").RichRetainedAssetReferencesRead,revision?:string):void{this.#dom.checkRetainedAssetReferences(read,revision);}
  view():RichView{return this.#dom.view();}checkpointJson():string{return this.#dom.checkpointJson();}focus():void{this.#dom.focus();}
  refreshAssets():void{this.#dom.view();refreshAssets(this.surface,this.#render);}
  setReadOnly(value:boolean,revision?:string):boolean{return this.#dom.setReadOnly(value,revision);}
+ setRestrictedEditing(policy:import("@breditor/experimental-rich-content").RichRestrictedPolicy|null,revision?:string):boolean{return this.#dom.setRestrictedEditing(policy,revision);}
+ navigateRestrictedRegion(direction:"next"|"previous",revision?:string):RichCommandOutcome|"queued"{return this.#dom.navigateRestrictedRegion(direction,revision);}
  closeTypingGroup(revision?:string):boolean{return this.#dom.closeTypingGroup(revision);}
  search():RichSearchHost{this.#dom.view();return this.#dom;}
  writing():import("@breditor/experimental-rich-content").RichWritingToolsHost{this.#dom.view();return this.#dom;}
@@ -116,6 +134,8 @@ export async function openLocalEditor(options:LocalEditorOptions):Promise<LocalE
  validatePlaceholderOption(options.placeholder);resolveRichUi(options.ui);
  checkLocalRichLanguage(options.richLanguage);
  if(options.readOnly!==undefined&&typeof options.readOnly!=="boolean")throw new TypeError("readOnly must be Boolean");
+ const restricted=options.restrictedEditing;
+ if(restricted!==undefined&&(typeof restricted!=="object"||restricted===null||typeof restricted.policy!=="object"||restricted.policy===null||!Array.isArray(restricted.policy.editable)||!restricted.policy.editable.every(id=>typeof id==="string")))throw new TypeError("restrictedEditing must be {policy:{editable:string[]}}");
  if(options.history!==undefined&&options.history!=="explicit"&&options.history!=="typing-v1")throw new TypeError("Expected history explicit or typing-v1");
  if(options.rangeEditing!==undefined&&options.rangeEditing!=="original"&&options.rangeEditing!=="general-v1")throw new TypeError("Expected rangeEditing original or general-v1");
  if(options.initial?.kind==="typingCheckpoint"&&options.history==="explicit")throw new TypeError("A typing checkpoint requires its declared natural history policy");
@@ -139,8 +159,9 @@ export async function openLocalEditor(options:LocalEditorOptions):Promise<LocalE
    core.enableTypingHistory();
   }
   if(options.readOnly!==undefined){if(core.supportsReadOnly?.()!==true||!core.setReadOnly)throw Error("Use a matching native owner with read-only enforcement");core.setReadOnly(options.readOnly);}
+  if(restricted!==undefined){if(core.supportsRestrictedEditing?.()!==true||!core.setRestrictedEditing)throw Error("Use a matching native owner with restricted editing");core.setRestrictedEditing({editable:[...restricted.policy.editable]});}
   const standard=localLanguageToolbar(core,presentation,language);
-  const toolbar=options.toolbar?.(core,standard)??standard;
+  const toolbar=options.toolbar?.(core,standard,presentation)??standard;
   const render:RenderOptions={inlinePresentation:presentation,...(options.resolveAsset?{resolveAsset:options.resolveAsset}:{})};
   const {clipboardInterchange:factory,...domOptions}=options,interchange=clipboardInterchangeOptions(factory,core);
   claim.assert();dom=mountRichEditor(options.host,{...domOptions,...interchange,core,...render,toolbar});claim.assert();

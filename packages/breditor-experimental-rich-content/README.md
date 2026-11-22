@@ -96,10 +96,10 @@ DOM focus stays in the editor. The surface gets `aria-controls`,
 
 See [the contract](../../docs/SLASH_COMMANDS.md).
 
-## Mentions (candidate rich V4)
+## Mentions (rich V4)
 
 `mountRichMentions(dom, {items, core?})` mounts the same kind of session for a
-typed `@` on a candidate rich V4 owner (`supportsMentions()`; pass `core` to
+typed `@` on a rich V4 owner (`supportsMentions()`; pass `core` to
 refuse other owners). The slash and mention menus share one typed-trigger
 session (`RichSuggestionSession`) and may both be mounted on one surface.
 `items` is a static list of `{kind: "user"|"page"|"tag", id, label,
@@ -112,9 +112,9 @@ Mentions render as inert `span.breditor-mention` chips
 `mentionLabel`, `mentionLoading`, `mentionCountOne`, `mentionCount`,
 `mentionEmpty`. See `docs/RICH_LANGUAGE_V4.md` (Slice 5).
 
-## Table captions (candidate rich V4)
+## Table captions (rich V4)
 
-A candidate rich V4 table may end with one caption paragraph after its rows
+A rich V4 table may end with one caption paragraph after its rows
 (`supportsTableCaptions()`, descriptor `tableCaptionVersion: 1`). It renders as the
 table's first DOM child, `<caption data-rich-table-caption style="caption-side: bottom">`,
 so it is laid out below the rows and edited like any paragraph.
@@ -123,9 +123,9 @@ so it is laid out below the rows and edited like any paragraph.
 `removeTableCaption {table}`; `tableCaptionOf`, `isTableCaption` and
 `selectedTableCaption` are read-only helpers. See `docs/RICH_LANGUAGE_V4.md` (Slice 6).
 
-## Page breaks and print (candidate rich V4)
+## Page breaks and print (rich V4)
 
-Breditor stays a flow editor. A candidate rich V4 document may hold explicit
+Breditor stays a flow editor. A rich V4 document may hold explicit
 `breditor/page-break` blocks, admitted only as direct children of the document root
 (`supportsPageBreaks()`, descriptor `pageBreakVersion: 1`). They render as a
 non-editable, node-selectable `<div class="breditor-page-break" role="separator"
@@ -143,9 +143,17 @@ headings kept with the next block, `<thead>` repeated, chrome hidden), and
 `mountRichPrintPreview(editor.surface, options)` shows approximate page boundaries
 on screen (catalog key `printPreviewLabel`). See `docs/PAGINATION_AND_PRINT.md`.
 
-## Bookmarks and internal links (candidate rich V4)
+## Editing aids
 
-A candidate rich V4 paragraph, heading or code block may carry one document-unique
+`mountRichEditingAids(editor, {showBlocks, invisibles, focus})` outlines and labels
+blocks and marks spaces, no-break spaces, tabs, hard breaks and paragraph ends in an
+`aria-hidden` layer outside the editable surface; `mountRichEditingAidsControls(editor.toolbar, aids)`
+adds two toggle buttons (Ctrl/Cmd+Alt+Shift+B and +P). Presentation only: never a
+command, publication or Undo step, for local and shared editors. See `docs/EDITING_AIDS.md`.
+
+## Bookmarks and internal links (rich V4)
+
+A rich V4 paragraph, heading or code block may carry one document-unique
 bookmark name (`breditor/bookmark`, `[A-Za-z][A-Za-z0-9_-]{0,63}`), and a standard
 link whose href is `#name` is an internal link to it (`supportsBookmarks()`, descriptor
 `bookmarkVersion: 1`). `setBookmark {block, name|null}` sets or clears one;
@@ -173,6 +181,11 @@ const editor = mountRichEditor(root, {core, ui: {
 }});
 mountRichContextMenu(editor);  // label, dir and lang come from editor.uiLocale()
 ```
+
+The opt-in editor shell builds on the same port: `mountRichMenuBar` (Alt+F9),
+`mountRichShortcutHelp` (Alt+0), `mountRichFloatingMenu` (empty-line block
+menu) and the `mountRichBalloonBlockLayout` preset. See
+[the editor shell contract](../../docs/EDITOR_SHELL.md).
 
 `mountRichSearchPanel`, `mountRichWritingTools` and
 `mountRichFullscreenControls` read the same catalog from their host's
@@ -218,6 +231,15 @@ removes only the link and keeps the typed space or split. Selecting it requires
 `supportsInputRuleSets()`; code, existing links, paste, composition, remote and
 read-only input are never converted. See
 [the input-rule contract](../../docs/RICH_INPUT_RULES.md#optional-autolink-autolink-v1).
+
+`inputRules: "typography-v1"` (alone or in a list) replaces typed smart quotes,
+`...`, delimited ` -- `/` --- `, `(c)`/`(r)`/`(tm)`, delimited fractions and
+arrows and `<=`/`>=`/`!=`; `{rule: "typography-v1", include, exclude, quotes}`
+selects CKEditor-style groups/rules and a quote preset (`english`, `german`,
+`french`, `swiss`, `polish`) or a custom pair. One Undo restores exactly the
+typed characters; code, paste, composition, remote and read-only input never
+convert. Selecting it requires `supportsTypographyInputRules()`. See
+[the typography contract](../../docs/RICH_INPUT_RULES.md#optional-typography-typography-v1).
 
 Initialize the bundled opt-in Wasm module once, then pass that exact module to
 the profile factory. Do not mix generated classes from different module heaps.
@@ -605,7 +627,7 @@ writers, merge tabs, persist collaboration state or acknowledge a server save.
 
 `RichDocumentSessionStore.open(name, {richLanguage, history})` stores the
 document-scope families under a separate key. Languages 1–3 write record V1. The
-frozen candidate rich language 4 requires the exact profile fingerprint,
+released, frozen rich language 4 requires the exact profile fingerprint,
 `{richLanguage: 4, schemaFingerprint: profile.descriptor().schemaFingerprint}`, and
 writes record V2 with that fingerprint; it refuses checkpoints and records bound to
 any other fingerprint, language or history, and older runtimes refuse V4 records.

@@ -1,6 +1,7 @@
 //! Thin Wasm ownership boundary over the canonical shared rich editor.
 mod atom_edit;
 mod block_layout;
+mod case_change;
 mod clipboard_interchange;
 mod clipboard_text_projection;
 mod copy_general_clipboard;
@@ -126,6 +127,21 @@ impl RichReplicaProbe {
     ) -> Result<bool, JsValue> {
         self.inner.set_read_only_guarded(&observation.inner, read_only).map_err(error)
     }
+    /// Additive restricted-editing capability: block-region host policy and `restricted` view field.
+    #[allow(clippy::unused_self)]
+    pub fn restricted_editing_version(&self) -> String {
+        "1".to_owned()
+    }
+    /// Install, replace or clear (`null`) the local restricted-editing policy under the exact guard.
+    pub fn set_restricted_editing(
+        &mut self,
+        observation: &RichSharedObservation,
+        policy_json: &str,
+    ) -> Result<bool, JsValue> {
+        self.inner
+            .set_restricted_editing_json_guarded(&observation.inner, policy_json)
+            .map_err(error)
+    }
     /// Guarded field-only intent; only existing complete-format operations are persisted.
     pub fn patch_inline_format_properties(
         &mut self,
@@ -175,6 +191,10 @@ impl RichReplicaProbe {
     /// Read the matching ABI, private projection/history revisions and immutable schema binding.
     pub fn descriptor_json(&self) -> String {
         self.inner.descriptor_json()
+    }
+    /// Additive: the owner schema's typed inline catalog (as `SharedRichProfile.inline_catalog_json`).
+    pub fn inline_catalog_json(&self) -> String {
+        self.inner.inline_catalog_json()
     }
     /// Replace selected text with rich flow in one original-source-preserving Undo group.
     pub fn paste_flow_at_text_namespace(

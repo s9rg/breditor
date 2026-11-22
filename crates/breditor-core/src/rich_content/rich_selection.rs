@@ -86,14 +86,14 @@ impl RichSelection {
     /// # Errors
     /// Rejects absent/wrong-kind targets, hidden tables, cross-table grids or
     /// out-of-range/half-surrogate text positions. A text endpoint inside a
-    /// candidate V4 mention is snapped out of it (a caret to the nearest edge, a
+    /// V4 mention is snapped out of it (a caret to the nearest edge, a
     /// range outward), so [`Self::kind`] may differ from the candidate there.
     pub fn try_new(
         document: &RichDocument,
         kind: RichSelectionKind,
     ) -> Result<Self, RichSelectionError> {
         resolve_kind(document, &kind)?;
-        // Candidate V4: text endpoints never rest inside an atomic mention.
+        // V4: text endpoints never rest inside an atomic mention.
         let kind = super::mention::snap_selection(document, kind);
         Ok(Self {
             document: document.id().clone(),

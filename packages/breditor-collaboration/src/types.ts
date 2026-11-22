@@ -77,7 +77,8 @@ export type SharedCommand=
  |Op<"indent_list_items",{container:string;first:string;last:string;new_nested:{block:string;style:ListStyle}|null}>
  |Op<"outdent_list_items",{container:string;first:string;last:string;fresh_tail:string|null}>
  |Op<"split_list_item",{block:string;offset:number;new_item:string;right:string;right_heading:number|null}>
- |Op<"join_list_items",{container:string;left:string;right:string}>
+ |Op<"join_list_items",{container:string;left:string;right:string;blocks?:true}>
+ |Op<"split_list_item_block",{block:string;new_item:string}>
  |Op<"replace_image",{block:string;asset:string;generation:string}>
  |Op<"set_image_alt",{block:string;text:string;decorative:boolean}>
  |Op<"set_image_caption",{block:string;caption:SharedParagraph|null}>
@@ -210,6 +211,8 @@ export interface SharedRustOwner extends SharedReviewRustCapability,SharedReview
  /** Shared V4 inline commands (text language, mentions, image links); local slice JSON inputs. */
  inline_commands_v4_version?():string;
  set_text_language?(observation:unknown,input:string):boolean;
+ case_change_version?():string;
+ change_selection_case?(observation:unknown,input:string):boolean;
  insert_mention?(observation:unknown,input:string):boolean;
  set_image_link?(observation:unknown,input:string):boolean;
  v4_block_fields_version?():string;set_details_open?(observation:unknown,block:string,open:boolean):boolean;bookmark_index_json?(observation:unknown):string;
@@ -223,6 +226,8 @@ export interface SharedRustOwner extends SharedReviewRustCapability,SharedReview
  insert_typing_text_with_markdown_rules?(observation:unknown,input:string):string;
  /** Version1 rule sets (`markdown-v1`, `autolink-v1`) and the Enter autolink split. */
  input_rule_sets_version?():string;
+ /** Version1 `typography-v1` acceptance in the rule-set calls. */
+ typography_input_rules_version?():string;
  insert_plain_text_with_input_rules?(observation:unknown,input:string):string;
  insert_typing_text_with_input_rules?(observation:unknown,input:string):string;
  split_with_autolink?(observation:unknown,input:string):string;
@@ -232,6 +237,8 @@ export interface SharedRustOwner extends SharedReviewRustCapability,SharedReview
  delete_typing_range?(observation:unknown,input:string):boolean;
  typing_checkpoint?():string;
  descriptor_json():string;
+ /** Additive: the owner schema's typed inline catalog; older owners omit it. */
+ inline_catalog_json?():string;
  observe():{view_json():string;free():void};
  dispatch(observation:unknown,input:string):boolean;
  set_selection(observation:unknown,input:string):boolean;

@@ -5,6 +5,7 @@ import {formatsAt,id,isInlineText,isProse,isSummary,isText,property,selectedImag
 import type {RichToolbarField,RichToolbarReading} from "./toolbar_control_view.js";
 import {exitEmptyTask} from "./task_actions_v2.js";
 import {selectedFlowAtom} from "./flow_controls.js";
+import {multiBlockListBackspace,multiBlockListEnter} from "./list_structure.js";
 import type {RichSelectionPolicy} from "./core.js";
 export interface ActionContext<P extends RichSelectionPolicy="original"> {core?:RichCoreEditor<P>;model:RichModel<P>;allocate:(kind:string)=>string;stamp:()=>{replica:string;counter:string;lamport:string}}
 type IntentContext=ActionContext<RichSelectionPolicy>;
@@ -19,6 +20,9 @@ export interface ToolbarControl<P extends RichSelectionPolicy="original"> {
  enabled:(context:ActionContext<P>)=>boolean;
  value?:(context:ActionContext<P>)=>string;
  command:(context:ActionContext<P>,value?:string,fields?:Readonly<Record<string,string>>)=>RichCommand|null;
+ /** Optional custom panel body and surface attachment (see `RichControlPresentation`). */
+ panel?:NonNullable<import("./toolbar_control_view.js").RichControlPresentation<ActionContext<P>>["panel"]>;
+ attach?:NonNullable<import("./toolbar_control_view.js").RichControlPresentation<ActionContext<P>>["attach"]>;
 }
 export function positionAfter(context:IntentContext):FlowPosition {
  if(context.model.view.selection?.kind==="document")throw Error("Whole-document insertion requires an explicit replacement intent");
@@ -78,13 +82,15 @@ export function enter(context:IntentContext,general=false,target?:Extract<RichSe
  const selection=target??context.model.view.selection;if(selection?.kind!=="text")return null;
  const cross=selection.anchor.block!==selection.focus.block;
  const exit=target?null:exitEmptyTask(context);if(exit)return exit;
+ // Multi-block item: Enter in an empty later paragraph moves it (and what follows) to a new item.
+ const lift=target?undefined:multiBlockListEnter(context.model);if(lift)return {kind:"splitListItemBlock",data:{block:lift.block,newItem:context.allocate("item")}};
  const value=context.model,a=value.textBlocks.findIndex(node=>id(node)===selection.anchor.block),f=value.textBlocks.findIndex(node=>id(node)===selection.focus.block);
  const point=a<f||(a===f&&BigInt(selection.anchor.offset)<=BigInt(selection.focus.offset))?selection.anchor:selection.focus;
  const parent=value.parents.get(point.block),summary=value.nodes.get(point.block);
- // Candidate V4: Enter in a summary never splits it. A caret opens a fresh first body paragraph
+ // V4: Enter in a summary never splits it. A caret opens a fresh first body paragraph
  // (expanding a collapsed section); a range inside a summary is left unchanged.
  if(summary&&isSummary(summary)&&!cross)return selection.anchor.offset===selection.focus.offset?{kind:"enterDetailsBody",data:{paragraph:context.allocate("p")}}:null;
- // Image and (candidate V4) table captions keep one paragraph: Enter inserts a line break.
+ // Image and (V4) table captions keep one paragraph: Enter inserts a line break.
  if(parent?.type==="breditor/image"||parent?.type==="breditor/table"||value.nodes.get(point.block)?.type==="breditor/code-block")return general&&cross?{kind:"replaceGeneralRangePlainText",data:{selection,text:"\n",prefix:context.allocate("range")}}:{kind:"insertHardBreak"};
  if(general&&cross){if(context.core?.supportsGeneralParagraph?.()!==true)throw Error("Use matching native general paragraph editing");return {kind:"insertGeneralParagraph",data:{selection,prefix:context.allocate("range")}};}
  const right=context.allocate("p");
@@ -96,17 +102,19 @@ export function boundaryDelete(context:IntentContext,backward:boolean):RichComma
  const value=context.model,selection=value.view.selection;if(selection?.kind!=="text"||selection.anchor.block!==selection.focus.block||selection.anchor.offset!==selection.focus.offset)return null;
  const node=value.nodes.get(selection.focus.block),parent=node?value.parents.get(id(node)):undefined;if(!node||!parent)return null;
  const offset=Number(selection.focus.offset);if(backward?offset!==0:offset!==text(node).length)return null;
+ // Multi-block item: Backspace in an empty leading block keeps it as a later block of the previous item.
+ const merge=backward?multiBlockListBackspace(value):undefined;if(merge)return {kind:"joinListItems",data:{...merge,blocks:true}};
  const list=listContext(value)??listContext(value,true);
  if(list&&(parent.type==="breditor/list-item"||parent.type==="breditor/task-item")&&parent.children[0]===node){
   const current=list.first,other=backward?current-1:current+1;
   const a=list.items[Math.min(current,other)],b=list.items[Math.max(current,other)];
   return a&&b?{kind:list.list.type==="breditor/task-list"?"joinTaskItems":"joinListItems",data:{container:id(list.list),left:id(a),right:id(b)}}:null;
  }
- // A candidate V4 table caption never merges with a cell or the next block. Backspace at the start
+ // A V4 table caption never merges with a cell or the next block. Backspace at the start
  // of an empty caption removes it; other caption boundaries do nothing.
  if(parent.type==="breditor/table")return backward&&text(node)===""?{kind:"removeTableCaption",data:{table:String(property(parent,"table-id"))}}:null;
  const position=parent.children.indexOf(node),other=parent.children[position+(backward?-1:1)];
- // Candidate V4 section boundaries never merge summary and body text. Backspace at a summary start
+ // V4 section boundaries never merge summary and body text. Backspace at a summary start
  // removes the section (its summary becomes a paragraph); the other boundaries only move the caret.
  if(isSummary(node)){
   if(backward)return {kind:"unwrapDetails",data:{wrapper:id(parent)}};
@@ -217,5 +225,16 @@ const commonToolbar:readonly Omit<ToolbarControl<RichSelectionPolicy>,"owner">[]
  {id:"asset",label:"Image asset",type:"text",enabled:imageEnabled,value:c=>String(property(selectedImage(c.model)!,"asset-id")),command:(c,input)=>{const image=selectedImage(c.model);return image&&input?{kind:"replaceImage",data:{image:String(property(image,"image-id")),asset:input,generation:c.allocate("generation")}}:null;}},
 ];
 export const defaultToolbar:readonly ToolbarControl[]=commonToolbar;
+/**
+ * Tab / Shift+Tab inside an ordinary list (any block of an item, so also a multi-block item's later
+ * paragraphs): Tab indents the selected items under the previous sibling exactly like the Indent
+ * control; Shift+Tab outdents only a NESTED list's items. Null (focus navigation is kept) for the
+ * first item, a top-level Shift+Tab, a selection outside one list, or a task list (see `taskTab`).
+ */
+export function listTab(context:IntentContext,backward:boolean):RichCommand|null {
+ const list=listContext(context.model);if(!list)return null;
+ if(backward)return context.model.parents.get(id(list.list))?.type==="breditor/list-item"?commonToolbar.find(control=>control.id==="outdent")!.command(context):null;
+ return list.first>0?commonToolbar.find(control=>control.id==="indent")!.command(context):null;
+}
 /** Same controls with an explicit extended context; never cast an extended owner to an old view. */
 export function defaultToolbarFor<P extends RichSelectionPolicy>():readonly ToolbarControl<P>[]{return commonToolbar;}

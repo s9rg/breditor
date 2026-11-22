@@ -1,6 +1,6 @@
 // Opt-in print presentation for rich documents. Breditor stays a continuous flow editor: this module
 // is CSS only. It never measures, splits or reflows content and never changes the canonical document.
-// Forced breaks come from candidate V4 page-break blocks; everything else is the browser's paged-media
+// Forced breaks come from V4 page-break blocks; everything else is the browser's paged-media
 // layout under a bounded @page choice and a few `break-*` hints.
 import {resolveRichUi,type RichUiLocale,type RichUiOptions} from "./ui_locale.js";
 import {richPageBreakClass} from "./page_break.js";

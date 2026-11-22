@@ -6,6 +6,186 @@ its durable formats and Wasm transport.
 
 ## Unreleased
 
+- Add an opt-in **document server API** to the reference relay
+  (`serve-documents`, `server::DocumentServer`, configuration
+  `breditor/relay-document-api` V1, everything off by default): authenticated
+  REST listing, canonical JSON snapshots with an exact causal revision, room
+  creation and retained archival, comment-thread reads; **server-side content
+  injection** of allowlisted native shared commands at an exact base revision
+  (stale requests refused) by a service principal's ordinary writer, admitted
+  through the same durable writer-group path and seen by connected editors as a
+  remote change; and **HMAC-SHA256-signed webhooks** (timestamp + replay window,
+  debounced `document.changed`, `comment.created`/`comment.resolved`,
+  `room.created`/`room.deleted`) with bounded queues, retries with backoff and a
+  delivery log. Existing relay routers, CLI commands and log formats are
+  unchanged. See [docs/DOCUMENT_SERVER_API.md](docs/DOCUMENT_SERVER_API.md).
+
+- Add opt-in **multiple editable roots** for local rich editors
+  (`docs/MULTIPLE_ROOTS.md`): a root set of ordinary V1–V4 documents with stable
+  root ids, labels, attributes and order, one active root (no cross-root
+  selections) and ONE global Undo/Redo order across roots. Native
+  `RichRootSet`/`RichMultiRootSession` (core), `BreditorRichRootSet` (Wasm),
+  `createRichRootSet`, `mountRichMultiRootEditor` (one surface per root, one
+  shared toolbar that follows focus) and `restoreRichRootSet`, with a versioned
+  `breditor/rich-root-set` checkpoint that re-verifies every root's history. No
+  grammar change; shared multi-root is specified and deferred.
+- Add native **restricted editing** (opt-in; see `docs/RESTRICTED_EDITING.md`).
+  A live host policy names editable regions by retained block ids, and the
+  frozen V4 grammar is unchanged. Rust admits every local command, mixed request,
+  pending style and Undo/Redo step by its complete effect: anything that would
+  change protected content is refused whole with `breditor_rich.restricted`.
+  Local Wasm adds `restrictedEditingVersion`, `setRestrictedEditing`,
+  `navigateRestrictedRegion` and an additive `restricted` view field. DOM editors
+  move between regions with Tab/Shift+Tab, mark regions for presentation only
+  (`richRestrictedEditingStyles`), and disable authoring controls outside them.
+  `openLocalEditor({restrictedEditing: {policy}})` applies the policy before
+  mount. Shared owners enforce the same rule for local work and do not filter
+  incoming peer changes; relay enforcement is specified but not implemented. The
+  policy is never saved, so restored owners start unrestricted.
+- Add an opt-in **editor shell** for local, shared and SDK rich editors
+  (`mountRichMenuBar`, `mountRichShortcutHelp`, `mountRichFloatingMenu`,
+  `mountRichBalloonBlockLayout`; `mountMenuBar` / `mountShortcutHelp` /
+  `mountFloatingMenu` / `mountBalloonBlockLayout` in `@breditor/editor` and its
+  collaboration entry, `mountShared*` in `@breditor/collaboration`, React
+  `BreditorMenuBar` / `BreditorShortcutHelp` / `BreditorFloatingMenu`). A
+  WAI-ARIA **menu bar** (Alt+F9, arrows, typeahead, Escape back to the text) and
+  an **empty-line block menu** (Tiptap FloatingMenu equivalent, Alt+F10) borrow
+  admitted toolbar controls, so every item is the same Rust-derived state and one
+  command / one Undo step (one guarded dispatch when shared). An accessible
+  **keyboard shortcut help** dialog (Alt+0, focus trap, ⌘ or Ctrl display) lists
+  the new read-only shortcut registry: `contextShortcuts()` on the coordinators
+  plus the chords mounted presentations install (`richActiveShortcuts`). The
+  host state gains `emptyParagraph`; new UI catalog block `richShellUiStringsEn`.
+  Editors that mount none of it are unchanged. See
+  [docs/EDITOR_SHELL.md](docs/EDITOR_SHELL.md).
+- Add an opt-in, provider-agnostic **AI agent tool contract** for local and
+  shared rich editors (`createRichAgentTools`, `richAgentToolsHost`,
+  `mountRichAgentReview`, `richAgentMcpAdapter`; SDK `createAgentTools` /
+  `agentToolsHost`, collaboration `createSharedAgentTools` /
+  `sharedAgentToolsHost`, shared sessions' `agentTools()`). Nine tools with
+  closed JSON Schemas (`get_document`, `get_selection`, `find_text`,
+  `replace_range`, `set_format`, `insert_blocks`, `delete_blocks`,
+  `set_block_type`, `propose_changes`) validate every call as untrusted input,
+  bind edits to the revision the agent read (re-based only when every target
+  region is unchanged) and are reviewable by default: staged edits are accepted
+  as ONE native publication and Undo step (or filed as shared suggestion
+  proposals); direct application is opt-in. New native Wasm command
+  `commandGroup` (`commandGroupVersion() === "1"`, `supportsCommandGroup()`)
+  runs 1–64 allowlisted commands as one exact history unit. No model, client or
+  network code is bundled. See [docs/AI_AGENT_TOOLS.md](docs/AI_AGENT_TOOLS.md).
+- Add opt-in **ruby (furigana) annotations** as a first-party typed inline
+  extension, `breditor-ruby/ruby` (one required 1–256-byte `annotation`
+  property), not a grammar change: the frozen V1–V4 grammars and fingerprints
+  are unchanged and a profile with the extension has its own fingerprint
+  (`rubyProfileBootstrapJsonV4` / `rubySchemaFingerprintV4`,
+  `rubySharedProfileConfigurationV4`; Rust `ruby_extension_v1()`). **Ruby** and
+  **Remove ruby** toolbar controls (`rubyToolbarControls`,
+  `sharedRubyToolbarControls`, localizable by control id) set, replace or remove
+  a validated reading on a selection or on the whole group around a caret, each
+  in one Undo step through the generic typed-format commands. Live and static
+  output render `<ruby>base<rp>(</rp><rt>…</rt><rp>)</rp></ruby>` (in the live
+  editor the reading is generated content, outside the editable text). Typing
+  beside or inside a base never inherits a reading, locally and in shared rooms.
+  HTML import/export maps `<ruby>` for owners that report
+  `supportsRubyAnnotations()` (local and shared owners alike; shared owners read
+  their schema catalog through a new additive `inline_catalog_json()` owner
+  read), Markdown falls back to exact HTML and DOCX writes
+  `w:ruby`. The SDK `toolbar` factories receive the inline presentation as a new
+  third argument. See [docs/RUBY_ANNOTATIONS.md](docs/RUBY_ANNOTATIONS.md).
+
+- Add **multi-block list item editing** and an opt-in **legal multi-level
+  numbering** presentation, without changing any rich language (V4 stays
+  frozen). Rich V1–V4 items already admit `paragraph block*`; new native edits
+  create and dissolve such items: Rust `JoinListItems::capture_blocks` and
+  `SplitListItem::capture_block` (exact inverses, one Undo step each), local
+  commands `joinListItems` `blocks: true` and `splitListItemBlock`, shared
+  `join_list_items` `blocks` and `split_list_item_block`. Keys, local and
+  shared: Backspace in an empty item's leading block keeps it as a later block
+  of the previous item, Enter in an empty later block splits it out into a new
+  item, and Tab/Shift+Tab indent/outdent ordinary list items from any of their
+  blocks (Tab on a first item and top-level Shift+Tab keep focus navigation).
+  `legalListNumbering: true` (live, shared and `renderStaticDocument`) draws
+  `1.`, `1.2.`, `1.2.3.` markers derived from each ordered list's start and
+  reversal; nothing is stored and default output is unchanged. Skip-level items
+  and stored legal numbering are specified as a V5 candidate. See
+  [docs/LIST_STRUCTURE.md](docs/LIST_STRUCTURE.md).
+- Add opt-in **editing aids** for local and shared rich editors:
+  `mountRichEditingAids` / `mountRichEditingAidsControls` (`mountEditingAids` /
+  `mountEditingAidsControls` in `@breditor/editor` and its collaboration entry).
+  **Show blocks** outlines every block and labels its type from the UI catalog
+  (new `aid*` keys); **invisible characters** marks spaces, no-break spaces,
+  tabs, hard breaks and paragraph ends with configurable glyphs; an optional
+  `data-breditor-focused` attribute follows the caret's block. Everything is
+  painted in an `aria-hidden`, pointer-transparent layer outside the editable
+  DOM: toggling (buttons or Ctrl/Cmd+Alt+Shift+B / +P) is never a command,
+  publication, shared frame or Undo step, and caret, IME, Copy and static output
+  are unchanged. See [docs/EDITING_AIDS.md](docs/EDITING_AIDS.md).
+- **Rich language V4 is released.** V4 is no longer a "frozen candidate": it is a
+  supported, explicitly selected rich language alongside V1–V3, locally and in
+  shared rooms, with the same release scope as V1–V3. The freeze guarantees are
+  unchanged (any grammar change is a new V5; the lock and golden checkpoint stay
+  as they are). Defaults are unchanged: an omitted `richLanguage` still selects
+  language 1 in every API. No public identifier was renamed (none carried a
+  "candidate" name). Docs, READMEs and TSDoc drop the "candidate", "unreleased"
+  and "local-only" wording; `docs/COMPATIBILITY.md` adds a "Rich language
+  releases" policy and the V4 model 14 / journal 15 binding. Additive: the
+  shared session `configuration` option type now also accepts
+  `SharedProfileConfigurationV4` (it already worked at runtime), and
+  `scripts/check-collaboration-runtime-surface.mjs` now also requires the shared
+  V4 block-field and structure exports (`v4_block_fields_version`,
+  `set_details_open`, `bookmark_index_json`, `structure_commands_v4_version`).
+- **Shared V4 Enter at a collapsed section summary** now behaves like the local
+  `enterDetailsBody`: one guarded dispatch inserts an empty first body paragraph,
+  expands the section (`set_details_open`) in the same batch, moves the caret
+  there and clears pending formats, as one writer-local Undo step (previously a
+  collapsed summary ignored Enter). Owners without the V4 block-field commands
+  keep the old no-op. Covered by a Rust contract, a vitest case and
+  `experiments/shared-browser/v4-structure.spec.mjs` in Chromium, Firefox and
+  WebKit.
+- Add the opt-in **`typography-v1`** input-rule set (automatic text
+  transformations): smart quotes with apostrophes, `...` → `…`, delimited
+  ` -- `/` --- ` → en/em dash, `(c)`/`(r)`/`(tm)`, delimited fractions and
+  arrows, `<=`/`>=`/`!=`, plus an opt-in `misc` group (`(sm)`, `+/-`, `<<`,
+  `>>`, `^2`, `^3`). Rules are selected by CKEditor-style groups and names
+  (`include`/`exclude`), quotes by preset (`english`, `german`, `french` with
+  no-break spaces, `swiss`, `polish`) or a validated custom pair. Every
+  replacement is one native Undo group that restores exactly what was typed,
+  keeps the replaced characters' formats, never fires in code, paste,
+  composition or remote updates, and behaves identically in local and shared
+  editors. Select it with `inputRules: "typography-v1"` or
+  `inputRules: {rule: "typography-v1", include, exclude, quotes}` (alone or in
+  a list with `markdown-v1`/`autolink-v1`). Rust `RichInputRuleSet::TYPOGRAPHY_V1`,
+  `typography_with`, `RichTypographyConfig`, `RichQuoteStyle`,
+  `rich_typography_replacement`; Wasm `typographyInputRulesVersion()` /
+  `typography_input_rules_version()` and an optional `typography` request
+  field; TypeScript `supportsTypographyInputRules()`. See
+  [docs/RICH_INPUT_RULES.md](docs/RICH_INPUT_RULES.md#optional-typography-typography-v1).
+- Add opt-in **formatting-productivity tools** for local and shared rich editors
+  (see `docs/FORMATTING_PRODUCTIVITY.md`): a searchable, keyboard-navigable
+  **special-character picker** (five built-in categories, validated host
+  categories and order, names through `RichUiOptions.specialCharacters`) that
+  inserts through native text input; native **case change**
+  (`RichLocalSession::change_selection_case`, Wasm command `changeSelectionCase`
+  and `caseChangeVersion()`, shared `RichReplica::change_selection_case_json_guarded`)
+  with UPPER/lower/Title Case, Shift+F3 cycling, full Unicode mapping (`ß`→`SS`,
+  final sigma, titlecase digraphs), Turkic i only for an explicit `tr`/`az`
+  locale and a configurable English minor-word list, preserving format runs,
+  identities and mentions in one Undo step; and a **format painter** (single-use,
+  double-click sticky, Escape cancels, Mod+Alt+C/V) applying copied inline
+  formatting as one native selection-format change. Toolbar factories:
+  `createFormattingProductivityToolbar` and `createSharedFormattingProductivityToolbar`;
+  toolbar controls may now declare an optional custom `panel` and surface `attach`.
+  Default toolbars, documents and descriptors are unchanged.
+
+- **Shared V4 interchange.** A shared V4 `SharedRichEditor` now reports the same
+  eight `@breditor/interchange` capabilities as a local V4 owner (new
+  `supportsTableCaptions()` and `supportsPageBreaks()`, following the shared
+  structure commands), so HTML, Markdown, DOCX export and rich, Office and Google
+  Docs paste convert every V4 slice in shared editors exactly as locally: list
+  numbering, `lang`, image links, `<details>`, mention spans, `<caption>`, page
+  breaks, bookmark ids and `#` links. Imports publish as one ordinary guarded shared
+  paste (one Undo step, fresh identities). Shared V1–V3 owners keep the original
+  conversions byte for byte.
 - Add the **shared rich V4 inline commands**: text language, mentions and image
   links, each one native shared command and one Undo step with the local V4
   semantics. Rust `RichReplica::set_text_language_json_guarded`,

@@ -96,7 +96,7 @@ impl RichLocalSession {
             candidate,
             HistoryRecipe::Recovered(forward),
             HistoryRecipe::Recovered(inverse),
-        ))
+        )?)
     }
 
     fn require_trigger(&self, trigger: &RichSelectionKind) -> Result<(), RichLocalSessionError> {
@@ -123,7 +123,7 @@ impl RichLocalSession {
     }
 
     /// A private owner at the exact current publication with empty, plain history.
-    fn scratch(&self) -> Self {
+    pub(super) fn scratch(&self) -> Self {
         Self {
             context: self.context.clone(),
             state: self.state.clone(),
@@ -133,7 +133,9 @@ impl RichLocalSession {
             token: Arc::new(()),
             read_only: false,
             read_only_revision: None,
+            restricted: None,
             typing_history: None,
+            probe: super::history_probe::RichHistoryProbe::default(),
         }
     }
 }

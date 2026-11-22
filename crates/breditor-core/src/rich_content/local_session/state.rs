@@ -66,7 +66,7 @@ impl RichLocalState {
             return Err(RichLocalSessionError::TypingCaret);
         }
         if let Some(formats) = &self.pending_formats {
-            return Ok(crate::rich_content::mention::without_mentions(formats));
+            return Ok(crate::rich_content::mention::without_uninherited(formats));
         }
         let selection = self.selection.as_ref().ok_or(RichLocalSessionError::TypingCaret)?;
         let crate::rich_content::ResolvedRichSelection::TextRange { focus, .. } =

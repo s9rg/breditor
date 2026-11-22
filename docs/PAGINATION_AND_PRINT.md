@@ -15,7 +15,7 @@ exact cross-engine history.
 
 Instead Breditor gains two separate, small pieces:
 
-1. **An explicit page-break block** in the unreleased local-only candidate rich V4
+1. **An explicit page-break block** in rich V4
    (`breditor/page-break`). It is the only page-related fact stored in a
    document: "start a new page after this point when printing". It is ordinary
    canonical content with history, clipboard, interchange and static output.
@@ -27,7 +27,7 @@ Instead Breditor gains two separate, small pieces:
 Everything else about pages (where automatic breaks fall, widows/orphans, header
 repetition) is the browser's paged-media layout under those rules.
 
-## The page-break block (candidate rich V4)
+## The page-break block (rich V4)
 
 | Item | Value |
 | --- | --- |
@@ -181,7 +181,8 @@ and the engine.
   keep-with-next per block, section-specific page sizes or orientation, or
   avoid-break toggles in the document. Breaks inside lists, quotes, sections and
   cells are not representable (root only).
-- V4 is local only: shared collaboration has no page breaks.
+- Shared V4 has page breaks too (`insert_page_break`/`delete_page_break`, see
+  [SHARED_RICH_V4.md](SHARED_RICH_V4.md)); shared interchange does not report them yet.
 
 ## Interchange
 

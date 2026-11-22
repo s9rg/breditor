@@ -2,6 +2,7 @@
 use super::CommandTag;
 use crate::BreditorError;
 use breditor_core::rich_content::{RichLocalOutcome, RichLocalSession, RichLocalSnapshot};
+#[allow(clippy::too_many_lines)] // One arm per command tag keeps dispatch auditable.
 pub(super) fn execute(
     tag: CommandTag,
     owner: &mut RichLocalSession,
@@ -105,10 +106,16 @@ pub(super) fn execute(
         }
         CommandTag::SplitTextBlock => super::split_text_block::execute(owner, observation, input),
         CommandTag::SplitListItem => super::split_list_item::execute(owner, observation, input),
+        CommandTag::ChangeSelectionCase => {
+            super::change_selection_case::execute(owner, observation, input)
+        }
+        CommandTag::SplitListItemBlock => {
+            super::split_list_item_block::execute(owner, observation, input)
+        }
         _ => candidate_v4(tag, owner, observation, input),
     }
 }
-/// Candidate rich V4 commands; each decoder refuses a non-V4 context itself.
+/// Rich V4 commands; each decoder refuses a non-V4 context itself.
 fn candidate_v4(
     tag: CommandTag,
     owner: &mut RichLocalSession,

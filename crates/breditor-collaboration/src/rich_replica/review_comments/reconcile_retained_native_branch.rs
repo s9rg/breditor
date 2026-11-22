@@ -137,7 +137,7 @@ impl RichReplica {
         let ((), review_changed) =
             review.commit_retained_branch_with(review_observed, prepared, || {
                 if document_changed {
-                    self.adopt(candidate)?;
+                    self.adopt_incoming(candidate)?;
                 }
                 Ok::<(), Error>(())
             })?;

@@ -1,11 +1,11 @@
-# Shared rich language V4 (foundation)
+# Shared rich language V4
 
 Shared V4 lets a collaboration room hold, replicate, persist and replay documents
 that use any of the eight frozen V4 slices ([RICH_LANGUAGE_V4.md](RICH_LANGUAGE_V4.md)):
 ordered-list numbering, text-run language, image links, collapsible sections,
 mentions, table captions, page breaks and bookmarks with internal links.
 
-**Status (November 21, 2026): complete candidate.** The shared language, its
+**Status (November 21, 2026): released.** The shared language, its
 causal model, journal, persistence, Wasm/SDK selection and relay rooms exist and
 converge exactly, and every V4 slice has its own shared commands, Wasm/TS surface
 and toolbar controls: the [inline commands](#shared-inline-commands-text-language-mentions-image-links),
@@ -14,7 +14,9 @@ and the [structure commands](#structure-commands-sections-page-breaks-table-capt
 qualified in Chromium, Firefox and WebKit by the shared-browser harness. Generic
 shared editing (typing, inline formats, structure commands, clipboard, history,
 checkpoints, relay frames) also works on V4 documents. What is still open is in
-[Remaining work](#remaining-work); V4 itself remains an unreleased candidate.
+[Remaining work](#remaining-work). V4 is a released, frozen rich language
+([RICH_LANGUAGE_V4.md](RICH_LANGUAGE_V4.md)); shared V4 is selected explicitly
+and never by default.
 
 ## Selector
 
@@ -120,6 +122,11 @@ the root only; sections are valid insertion parents), `MoveBlock`, `DeleteBlock`
 `InsertRow` (appends before the caption), `InsertColumn` and grid paste (rows only),
 rich clipboard copy/paste (fresh identities), checkpoints of every history family,
 exact restore and relay frames.
+
+Multi-block list items (every shared rich language, not only V4) add
+`join_list_items` with `blocks: true` and `split_list_item_block`, plus list
+Tab/Shift+Tab and the opt-in `legalListNumbering` render option; see
+[LIST_STRUCTURE.md](LIST_STRUCTURE.md). They change no V4 field or protocol.
 
 ## Shared inline commands: text language, mentions, image links
 
@@ -292,13 +299,52 @@ removal and the command are one Undo step. Keyboard: Backspace at a summary star
 unwraps the section, Delete at a summary end enters an open body, Backspace at the
 first body start moves to the summary end, Backspace in an empty caption removes
 it (other caption boundaries do nothing), Enter in a caption inserts a line break
-and Enter at an open summary caret inserts one empty first body paragraph (a
-collapsed summary is left unchanged until the open-state command exists). The
+and Enter at any summary caret is the local `enterDetailsBody`: one guarded batch
+inserts one empty first body paragraph, expands a collapsed section in the same
+batch (`insert_blocks` then `set_details_open {open:true}`), places the caret in
+the new paragraph and clears pending formats, so it is one writer-local Undo step
+that restores the collapsed section (an owner without the block-field commands
+leaves a collapsed summary unchanged; Enter with a range in a summary does nothing). The
 `@breditor/editor` shared V4 sessions get all of this through their stock toolbar
 and `sharedSlashCommands`. The shared controller now also injects the local
 `richPageBreakStyles` (re-exported additively from the `rendering` subpath), so a
 shared page break renders as the labelled dashed separator and can be clicked to
 node-select it, instead of a zero-height block.
+
+## Interchange
+
+`@breditor/interchange` reads its owner's capabilities once at creation. A shared
+V4 `SharedRichEditor` reports the same eight as a local V4 owner:
+`supportsListNumbering()`, `supportsBookmarks()` and `supportsDetails()` with the
+block-field commands, `supportsTextLanguage()`, `supportsMentions()` and
+`supportsImageLinks()` with the inline commands, and `supportsTableCaptions()` and
+`supportsPageBreaks()` with the structure commands (`structure_commands_v4_version`).
+Every V4 slice therefore imports and exports exactly as locally: HTML and Markdown
+import (ordered-list style/reversal, `lang`/`xml:lang`, linked images, `<details>`,
+mention spans, `<caption>`, CSS/Word/Google Docs page breaks, element ids and
+`#fragment` links), HTML/Markdown export (bookmark ids and internal links) and DOCX
+export of the shared `documentJson`. Shared V1–V3 owners report none of them and keep
+the original conversions byte for byte.
+
+No new shared command or Rust surface is involved: the shared owner's
+`admit_clipboard_root`/`validate_clipboard` already admit under the frozen V4 grammar
+(the same transfer bytes as the local V4 context), and the shared controller pastes
+an imported transfer through the existing guarded `paste_clipboard`: one
+`PasteBlocks` (or inline paste) dispatch, one writer-local Undo step, fresh
+identities from the clipboard namespace (asset generations rekeyed as for any
+paste), no bookmark carried (the local paste rule), and nothing for the merge
+repairs to change.
+
+Tests: `crates/breditor-collaboration/tests/shared_v4_interchange_contracts.rs`
+(research shim in `experiments/collaboration/tests/`): admission of an adapter root
+with every slice equal to the local V4 context, V3 refusal, flow and inline paste as
+one step with fresh identities, peer convergence, Undo/Redo and restart;
+`packages/breditor-editor/tests/shared_v4_interchange.test.ts`: capability parity and
+identical import/export results for local and shared owners of V4 and V3, per slice;
+`experiments/shared-browser/v4-interchange.spec.mjs`: two real Wasm writers in a V4
+room plus a real local V4 owner in the same page, pasting HTML with every slice,
+Markdown and Google Docs HTML, converging, and exporting HTML, Markdown and DOCX
+identical to the local owner (Chromium, Firefox, WebKit).
 
 ## Tests
 
@@ -360,9 +406,9 @@ node-select it, instead of a zero-height block.
 - Every V4 slice now has its shared commands, Wasm/TS surface and toolbar
   controls (inline, block-field and structure sections above), qualified in all
   three engines by `v4-inline.spec.mjs`, `v4-block-fields.spec.mjs` and
-  `v4-structure.spec.mjs`. Still open: shared interchange that reports V4
-  capabilities (until then shared imports keep the V1–V3 conversions), and Enter
-  at a collapsed summary expanding the section (the structure keyboard handling
-  predates the open-state command and leaves a collapsed summary unchanged).
+  `v4-structure.spec.mjs`; shared interchange reports the V4 capabilities
+  ([Interchange](#interchange)), and Enter at a collapsed summary expands the
+  section and enters its body in one guarded step, like the local
+  `enterDetailsBody`.
 - A second concurrent caption stays hidden by the projection (decision and reasons
   under [Structure commands](#structure-commands-sections-page-breaks-table-captions)).

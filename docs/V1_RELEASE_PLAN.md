@@ -1,5 +1,60 @@
 # Breditor V1 release preparation
 
+## November 21 parity round
+
+**Status: not release ready.** This round closed the last shared V4 gaps,
+released V4, and worked through the capability groups the catalog review listed
+as missing. The [capability audit](v1-readiness.json) now records 13 implemented
+slices, 42 partial and 2 missing groups (from 10 / 36 / 11 this morning). All 13
+qualification gates are still open.
+
+### What landed
+
+- **V4 released.** Rich language V4 is a supported, explicitly selected language
+  alongside V1–V3; the freeze guarantees are unchanged and the default stays
+  language 1. Shared V4 owners report every V4 interchange capability, so HTML,
+  Markdown, DOCX export and Office/Google Docs paste behave identically in local and
+  shared V4 editors, and Enter at a collapsed shared summary expands the section.
+- **Now implemented:** typographic replacements (`typography-v1`), special
+  characters / case change / format painter, and ruby annotations (an opt-in typed
+  inline extension, no grammar change).
+- **Now partial (were missing):**
+  - editing aids: show blocks, invisible characters and a focused-block attribute
+    (the minimap and a title field remain);
+  - the editor shell: menu bar, Alt+0 shortcut help, empty-line block menu and a
+    balloon-block preset (screen readers not qualified);
+  - advanced lists: multi-block items with CKEditor-style keys, and a
+    presentation-only legal numbering mode;
+  - the AI agent tool contract and the reference relay's opt-in document server
+    API with server-side injection and signed webhooks;
+  - multiple editable roots for local editors, with one global Undo order;
+  - native block-region restricted editing, enforced in Rust for local editors
+    and in the shared owner.
+- **Still missing:** code syntax highlighting and an in-document table of
+  contents (not part of this round).
+
+### Decisions for the user
+
+1. **V5.** Skip-level list items, stored legal numbering and inline
+   restricted-editing exceptions all need a grammar change. Each is specified
+   ([LIST_STRUCTURE.md](LIST_STRUCTURE.md), [RESTRICTED_EDITING.md](RESTRICTED_EDITING.md));
+   none was started.
+2. **Default rich language.** It stays language 1; nothing in the repo says the
+   newest language becomes the default.
+3. **Qualification matrices.** About 40 qualification scripts still cover
+   languages 1–3; extending them to V4 needs V4 fixtures.
+4. **Exclusions** listed in the November 21 catalog review still need approval.
+
+### Known limits
+
+- Shared multi-root, shared restricted-editing DOM wiring, relay enforcement of
+  restricted editing, and relay-backed agent proposals are specified, not built.
+- The relay's `clippy --all-targets --features server` reports about 90
+  pre-existing lints in test and example targets, so `scripts/check-relay.mjs`
+  stops at its clippy step; this predates the round.
+- Parallel agents sharing one Cargo target directory occasionally compiled
+  against another checkout's sources; isolated target directories avoid it.
+
 ## November 21 catalog review
 
 **Status: not release ready.** The Tiptap and CKEditor catalogs were re-reviewed
@@ -22,6 +77,11 @@ qualification gates are still open.
 - **Shared V4.** Shared rooms select V4 explicitly (model 14, journal 15) with
   deterministic merge repairs, and every slice has shared commands, Wasm/TS
   surface and toolbar controls (see [SHARED_RICH_V4.md](SHARED_RICH_V4.md)).
+- **V4 released.** Rich language V4 is no longer a candidate: it is a supported,
+  frozen, explicitly selected language alongside V1–V3 (local and shared), with
+  the same release scope as V1–V3 (see [COMPATIBILITY.md](COMPATIBILITY.md#rich-language-releases)).
+  Defaults are unchanged (an omitted `richLanguage` is still language 1). Shared
+  Enter at a collapsed section summary now expands it like the local editor.
   Along the way, list start changes on seeded lists and splits of styled lists,
   both previously refused in shared editors, now work, and shared editors render
   bookmarks, internal links and page breaks.
@@ -35,6 +95,7 @@ feature index, digest and about 90 feature pages).
 - **No row moves to `implemented`.** Shared import and export still use the
   V1–V3 conversions (V4 features are not reported by shared interchange), V4 is
   an unreleased candidate, and each V4 row still bundles missing capabilities.
+  *(V4 has since been released; the other two reasons still hold.)*
 - **Eight V4 rows were rewritten** (list-properties, mentions-slash,
   widgets-and-embeds, pagination, document-utilities, localization-and-bidi,
   advanced-images, advanced-tables): their text still said V4 was local-only.
@@ -75,8 +136,8 @@ The catalog-coverage gate needs each intentional difference approved. Proposed:
 
 ### Recommended next order
 
-1. **Shared V4 interchange** so shared import and export report the V4 features,
-   plus Enter on a collapsed shared summary. These are the last shared V4 gaps.
+1. **Shared V4 interchange** so shared import and export report the V4 features.
+   This is the last shared V4 gap (Enter on a collapsed shared summary is done).
 2. **Approve or reject the exclusions above**, then write per-capability
    acceptance cases (catalog-coverage gate).
 3. **Automate release CI** over every distributed feature, now that shared
@@ -184,7 +245,8 @@ native-contract designs, not UI additions. The largest partial gaps are:
    and the durable local store persists it (see
    [Rich language V4](RICH_LANGUAGE_V4.md#freeze-and-durable-persistence)). Open:
    shared V4 is in progress; whether V4 ships in V1 remains the compatibility
-   gate's decision.
+   gate's decision. *(Superseded November 21: shared V4 landed and V4 is
+   released with the same scope as V1–V3.)*
 3. **Automate release CI.** The repository workflows are manual-only. Run the Rust
    suites, the package vitest suites and the grouped rich-browser suite on every
    change before attempting the release-ci gate.

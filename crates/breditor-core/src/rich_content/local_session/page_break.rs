@@ -1,4 +1,4 @@
-//! Candidate V4 page breaks through the exclusive local owner.
+//! V4 page breaks through the exclusive local owner.
 //!
 //! Inserting places one atomic page break at an explicit root-flow position and maps the
 //! current selection; deleting removes one page break and, when it is node-selected,

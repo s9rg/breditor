@@ -13,9 +13,9 @@ export type FlowDraft = ({kind:"paragraph"}&TextDraft)|({kind:"heading";level:nu
  |{kind:"blockquote";block:string;body:readonly FlowDraft[]}
  |{kind:"codeBlock";block:string;text:string;language:string|null}
  |{kind:"horizontalRule";block:string}
- /** Candidate rich V4 atomic page break; admitted only as a direct child of the document root. */
+ /** Rich V4 atomic page break; admitted only as a direct child of the document root. */
  |{kind:"pageBreak";block:string}
- /** Candidate rich V4 collapsible section: summary identity and runs, persisted open state, nonempty body. */
+ /** Rich V4 collapsible section: summary identity and runs, persisted open state, nonempty body. */
  |{kind:"details";block:string;summary:string;text:string;formatsJson:string;open:boolean;body:readonly FlowDraft[]}
  |{kind:"taskList";block:string;items:readonly {block:string;checked:boolean;body:readonly FlowDraft[]}[]}
  |{kind:"list";block:string;start:number|null;items:readonly {block:string;body:readonly FlowDraft[]}[]}
@@ -28,6 +28,9 @@ export type RichSelectionFormatChange={kind:"set"|"remove";formatsJson:string}|{
 /** Follow-up kinds admitted by `replaceTriggerThen`; each addresses blocks by identity, never text offsets. */
 export type RichTriggerCompositeKind="setHeading"|"setCodeBlock"|"wrapList"|"setListKind"|"wrapTaskList"|"wrapBlockquote"|"wrapDetails"|"insertHorizontalRule"|"insertTable"|"insertBlocks"|"insertPageBreak";
 export type RichTriggerCompositeCommand=Extract<RichCommand,{kind:RichTriggerCompositeKind}>;
+/** Step kinds admitted by `commandGroup` (text range, inline format and block-identity flow commands). */
+export type RichCommandGroupKind="replaceTextRange"|"replaceGeneralRangePlainText"|"setInlineFormat"|"changeInlineFormats"|"setHeading"|"insertBlocks"|"replaceBlocks"|"moveBlock";
+export type RichCommandGroupStep=Extract<RichCommand,{kind:RichCommandGroupKind}>;
 export type RichCommand =
  |{kind:"replaceGeneralRangeText";data:{selection:Extract<RichSelection,{kind:"text"}>;runs:readonly {text:string;formatsJson:string}[];prefix:string}}
  |{kind:"pasteGeneralInlineClipboard";data:{selection:Extract<RichSelection,{kind:"text"}>;clipboardJson:string;prefix:string}}
@@ -54,7 +57,7 @@ export type RichCommand =
  |{kind:"setTaskChecked";data:{item:string;checked:boolean}}
  |{kind:"wrapBlockquote";data:{first:string;last:string;wrapper:string}}
  |{kind:"unwrapBlockquote";data:{wrapper:string}}
- /** Candidate rich V4 collapsible sections (each refused by V1–V3 owners). The wrapped siblings become
+ /** Rich V4 collapsible sections (each refused by V1–V3 owners). The wrapped siblings become
   * the body of a new section with an empty summary; unwrap keeps the summary text as a paragraph. */
  |{kind:"wrapDetails";data:{first:string;last:string;wrapper:string;summary:string;open:boolean}}
  |{kind:"unwrapDetails";data:{wrapper:string}}
@@ -62,20 +65,20 @@ export type RichCommand =
  |{kind:"setDetailsOpen";data:{block:string;open:boolean}}
  /** Enter from a summary caret: a fresh first body paragraph (expanding a collapsed section). */
  |{kind:"enterDetailsBody";data:{paragraph:string}}
- /** Candidate rich V4: add one empty trailing caption (fresh block `caption`) to a table and place
+ /** Rich V4: add one empty trailing caption (fresh block `caption`) to a table and place
   * the caret in it, as one history group. A table that already has a caption is refused. */
  |{kind:"addTableCaption";data:{table:string;caption:string}}
- /** Candidate rich V4: remove a table's caption in one history group; an absent caption is a no-op.
+ /** Rich V4: remove a table's caption in one history group; an absent caption is a no-op.
   * A caret in the caption becomes a node selection of the table. */
  |{kind:"removeTableCaption";data:{table:string}}
  |{kind:"wrapTaskList";data:{first:string;last:string;container:string;items:readonly {block:string;checked:boolean}[]}}
  |{kind:"unwrapTaskList";data:{list:string}}
  |{kind:"insertHorizontalRule";data:{position:FlowPosition;block:string}}
  |{kind:"deleteHorizontalRule";data:{block:string;replacement:FlowDraft|null}}
- /** Candidate rich V4: insert one page break (fresh block `block`) at a document-root position as one
+ /** Rich V4: insert one page break (fresh block `block`) at a document-root position as one
   * history group; the selection is kept. A non-root position is refused. */
  |{kind:"insertPageBreak";data:{position:FlowPosition;block:string}}
- /** Candidate rich V4: delete one page break as one history group. `paragraph` is a fresh floor used only
+ /** Rich V4: delete one page break as one history group. `paragraph` is a fresh floor used only
   * when nothing else would remain; a node-selected page break recovers like `deleteAtom`. */
  |{kind:"deletePageBreak";data:{block:string;paragraph:string}}
  |{kind:"splitTaskItem";data:{point:RichPoint;newItem:string;right:string;rightHeading:number|null}}
@@ -118,37 +121,46 @@ export type RichCommand =
  |{kind:"wrapList";data:{first:string;last:string;container:string;items:readonly string[];start:number|null}}
  |{kind:"unwrapList";data:{list:string}}
  |{kind:"setListKind";data:{list:string;start:number|null}}
- /** Candidate rich V4 only: one ordered list's marker style, reversal and/or start, one history group. */
+ /** Rich V4 only: one ordered list's marker style, reversal and/or start, one history group. */
  |{kind:"setListNumbering";data:import("./core.js").RichListNumberingPatch}
- /** Candidate rich V4 only: set (a well-formed BCP 47 tag, any letter case; Rust stores the canonical
+ /** Rich V4 only: set (a well-formed BCP 47 tag, any letter case; Rust stores the canonical
   * case) or clear (`null`) the language of the native selection; a caret changes pending formats. */
  |{kind:"setTextLanguage";data:{language:string|null}}
- /** Candidate rich V4 only: set, replace or clear (`href:null`) one image's link in one history group.
+ /** Rich V4 only: set, replace or clear (`href:null`) one image's link in one history group.
   * The href must already be canonical (`canonicalImageLinkHref`); a decorative image cannot be linked. */
  |{kind:"setImageLink";data:import("./core.js").RichImageLinkIntent}
- /** Candidate rich V4 only: set, replace or clear (`name:null`) one paragraph/heading/code-block
+ /** Rich V4 only: set, replace or clear (`name:null`) one paragraph/heading/code-block
   * bookmark in one history group. Links are not rewritten (a replaced or cleared name dangles). */
  |{kind:"setBookmark";data:import("./bookmark.js").RichSetBookmarkIntent}
- /** Candidate rich V4 only: rename one bookmark and retarget every internal `#from` link to `#to`,
+ /** Rich V4 only: rename one bookmark and retarget every internal `#from` link to `#to`,
   * in one history group. */
  |{kind:"renameBookmark";data:import("./bookmark.js").RichRenameBookmarkIntent}
- /** Candidate rich V4 only: replace one text range inside a paragraph or heading (normally the typed
+ /** Rich V4 only: replace one text range inside a paragraph or heading (normally the typed
   * `@query` trigger) by one mention plus a plain space, in one history group (one Undo step). */
  |{kind:"insertMention";data:{selection:Extract<RichSelection,{kind:"text"}>;mention:import("./mention.js").RichMention}}
  /** Remove one typed trigger range (a nonempty same-block range in a paragraph, heading or section
   * summary), then run one allowlisted command (`RichTriggerCompositeKind`) against the post-removal
   * document, as ONE native history unit. Requires `supportsTriggerComposite()`. */
  |{kind:"replaceTriggerThen";data:{selection:Extract<RichSelection,{kind:"text"}>;command:RichTriggerCompositeCommand}}
+ /** Run 1–64 allowlisted commands (`RichCommandGroupKind`) in order, each against the publication left by the
+  * previous ones, as ONE native history unit; any failure publishes nothing. Requires `supportsCommandGroup()`. */
+ |{kind:"commandGroup";data:{commands:readonly RichCommandGroupStep[]}}
  |{kind:"indentListItems";data:{container:string;first:string;last:string;nested:{block:string;start:number|null}|null}}
  |{kind:"outdentListItems";data:{container:string;first:string;last:string;tail:string|null}}
  |{kind:"splitTextBlock";data:{point:RichPoint;right:string;rightHeading:number|null}}
  |{kind:"splitListItem";data:{point:RichPoint;newItem:string;right:string;rightHeading:number|null}}
  |{kind:"joinTextBlocks";data:{left:string;right:string}}
- |{kind:"joinListItems";data:{container:string;left:string;right:string}}
+ /** `blocks: true` merges the right item as later blocks of the left (multi-block item); text is never joined. */
+ |{kind:"joinListItems";data:{container:string;left:string;right:string;blocks?:true}}
+ /** Move a later paragraph/heading of an item (and its following flow) into a fresh sibling item. */
+ |{kind:"splitListItemBlock";data:{block:string;newItem:string}}
  |{kind:"insertFormattedText";data:{text:string;formatsJson:string}}
  |{kind:"setInlineFormat";data:{change:{kind:"set";formatsJson:string}|{kind:"remove";format:string};targets:readonly {block:string;start:string;end:string}[]}}
  /** Simultaneous changes to unique kinds; one guarded publication/history unit. */
  |{kind:"changeInlineFormats";data:{changes:readonly ({kind:"set";formatsJson:string}|{kind:"remove";format:string}|{kind:"patch";formatsJson:string;properties:readonly string[]})[];targets:readonly {block:string;start:string;end:string}[]}}
  |{kind:"pasteInlineClipboard";data:{clipboardJson:string}}
  |{kind:"pasteFlowClipboard";data:{clipboardJson:string;position:FlowPosition;allocation:ClipboardAllocation}}
- |{kind:"pasteGridClipboard";data:{clipboardJson:string;allocation:ClipboardAllocation}};
+ |{kind:"pasteGridClipboard";data:{clipboardJson:string;allocation:ClipboardAllocation}}
+ /** Native letter case of the selection (a caret changes its whole block), one history group.
+  * Requires `supportsCaseChange()`. See docs/FORMATTING_PRODUCTIVITY.md. */
+ |{kind:"changeSelectionCase";data:import("./formatting_productivity.js").RichCaseChangeIntent};

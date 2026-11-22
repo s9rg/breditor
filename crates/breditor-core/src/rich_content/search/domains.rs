@@ -53,7 +53,7 @@ pub(in crate::rich_content) fn domains(
             if view.geometry().is_hidden() {
                 continue;
             }
-            // A candidate V4 caption (the table's last child) follows every cell; the
+            // A V4 caption (the table's last child) follows every cell; the
             // stack is last-in-first-out, so it is pushed before the cells.
             if crate::rich_content::table_caption::caption(node).is_some() {
                 queued(visited, stack.len(), 1)?;

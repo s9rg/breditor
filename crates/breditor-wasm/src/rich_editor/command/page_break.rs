@@ -1,4 +1,4 @@
-//! Candidate rich V4 page-break commands: strict records, Rust-owned actions.
+//! Rich V4 page-break commands: strict records, Rust-owned actions.
 //!
 //! `insertPageBreak {position, block}` inserts one atomic page break with the fresh
 //! identity `block` at a document-root position; `deletePageBreak {block, paragraph}`

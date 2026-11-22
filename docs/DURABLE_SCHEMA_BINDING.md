@@ -284,7 +284,7 @@ version 1) embed a Document V2 base, so the base's `schema` and
 under the restoring profile and replays every entry; another fingerprint is
 refused before any owner exists.
 
-Rich languages 1–3 and the frozen candidate rich language 4 all use these
+Rich languages 1–3 and the released, frozen rich language 4 all use these
 formats unchanged. V4's grammar, rule revision and fingerprints are frozen (see
 [Rich language V4](RICH_LANGUAGE_V4.md#freeze-and-durable-persistence)); a later
 grammar change is a new language with a new fingerprint, never a reinterpretation

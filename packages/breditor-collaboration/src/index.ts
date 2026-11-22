@@ -50,6 +50,7 @@ export {mountRichTableColumnResize as mountSharedTableColumnResize,clampRichTabl
 export {sharedTableColumnResizeCommit,type SharedTableColumnResizeRequest} from "./table_column_resize.js";
 export {mountRichImageResize as mountSharedImageResize,clampRichImageDimension,scaleRichImageSize,RICH_IMAGE_SIZE_MIN,RICH_IMAGE_SIZE_MAX,type RichImageResize,type RichImageResizeHost,type RichImageResizeHostState,type RichImageResizeOptions,type RichImageResizeRequest,type RichImageResizePreview,type RichImageResizeCancel,type RichImageResizeHandleKind,type RichImageSize} from "@breditor/experimental-rich-content";
 export {sharedImageResizeCommit,type SharedImageResizeRequest} from "./image_resize.js";
+export {mountRichMenuBar as mountSharedMenuBar,mountRichShortcutHelp as mountSharedShortcutHelp,mountRichFloatingMenu as mountSharedFloatingMenu,mountRichBalloonBlockLayout as mountSharedBalloonBlockLayout,richMenuBarDefaults,richFloatingMenuDefaults,richActiveShortcuts,type RichMenuBar,type RichMenuBarMenu,type RichMenuBarOptions,type RichMenuBarState,type RichShortcutHelp,type RichShortcutHelpOptions,type RichShortcutHelpState,type RichFloatingMenu,type RichFloatingMenuOptions,type RichFloatingMenuState,type RichBalloonBlockLayout,type RichBalloonBlockLayoutOptions,type RichShortcutEntry,type RichShortcutChord} from "@breditor/experimental-rich-content";
 export {mountRichSelectionToolbar as mountSharedSelectionToolbar,mountRichContextMenu as mountSharedContextMenu,richSelectionToolbarDefaults,richContextMenuDefaults,type RichContextUiHost,type RichContextUiHostState,type RichContextSelectionKind,type RichContextControlView,type RichContextUiOptions,type RichSelectionToolbar,type RichSelectionToolbarOptions,type RichSelectionToolbarState,type RichContextMenu,type RichContextMenuOptions,type RichContextMenuState} from "@breditor/experimental-rich-content";
 export {supportsSharedGeneralRanges,restoreSharedGeneralEditor} from "./profile.js";
 export {supportsSharedDocumentSelection,restoreSharedDocumentEditor} from "./profile.js";
@@ -331,5 +332,8 @@ export type {
  SharedRecoveredBranchTextSuggestionOptions,
 } from './independent_delivery_branch_archive/contract.js';
 export {sharedAiToolsHost,mountSharedAiTools,mountSharedLanguageCheck,type SharedAiEditorPort,type SharedAiToolsSession,type SharedAiToolsSource} from "./ai_tools.js";
+export {sharedAgentToolsHost,sharedAgentCommands,createSharedAgentTools,type SharedAgentEditorPort,type SharedAgentProposalQueue,type SharedAgentToolsHostOptions} from "./ai_agent_tools.js";
 export {mountSharedSlashCommands,createSharedSlashCommands,requireSharedSlashItems,standardSharedSlashPicks,sharedSlashCommandKinds,type SharedSlashCommandHost,type SharedSlashCommands,type SharedSlashCommandOptions,type SharedSlashContext,type SharedSlashExecution,type SharedSlashItem,type SharedSlashPick,type SharedSlashPreparation,type SharedSlashProvider} from "./slash_commands.js";
+export {sharedRubyToolbarControls} from "./ruby.js";
 export {sharedInlineControlsV4,mountSharedMentions,sharedTextLanguageInput,sharedMentionInput,sharedImageLinkInput,type SharedImageLinkIntent,type SharedMentionExecution,type SharedMentionOptions,type SharedMentions} from "./inline_v4.js";
+export {createSharedFormattingProductivityToolbar} from "./formatting_productivity.js";

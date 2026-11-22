@@ -72,6 +72,9 @@ pub enum Error {
     /// The live host policy forbids authoring content, history or pending styles.
     #[error("shared editor is read-only")]
     ReadOnly,
+    /// The live restricted-editing policy forbids changing content outside editable regions.
+    #[error("shared change touches content outside the editable regions")]
+    Restricted,
     /// Released replication engine rejected an operation.
     #[error(transparent)]
     Engine(#[from] loro::LoroError),

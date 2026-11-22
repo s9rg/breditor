@@ -1,4 +1,4 @@
-/** Candidate rich V4 bookmarks and internal links: grammar mirror, presentation attributes shared by
+/** Rich V4 bookmarks and internal links: grammar mirror, presentation attributes shared by
  * the live and static renderers, intent encoding and owner-bound toolbar controls. Rust
  * (`rich_content/bookmark.rs`) owns admission, uniqueness, rename and history. */
 import type {FormatLiteral,RichCoreEditor,RichSelectionPolicy} from "./core.js";

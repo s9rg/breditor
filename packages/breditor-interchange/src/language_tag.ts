@@ -1,5 +1,5 @@
 /**
- * Bounded BCP 47 language-tag grammar of candidate rich V4 text language. This package has no
+ * Bounded BCP 47 language-tag grammar of rich V4 text language. This package has no
  * runtime dependency on `@breditor/browser`, so it keeps an identical copy of
  * `packages/breditor-browser/src/language_tag.ts`; a parity test compares both.
  *

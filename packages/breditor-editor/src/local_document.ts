@@ -15,7 +15,7 @@ export type LocalDocumentInitial=Extract<LocalInitial,{kind:"empty"|"document"}>
 export interface LocalDocumentEditorOptions extends Omit<RichDocumentEditorOptions,"core"|"toolbar"|"inlinePresentation"|"inlineTag"|"clipboardInterchange">,Pick<LocalEditorOptions,"host"|"profileBootstrapJson"|"additionalInlinePresentation"|"richLanguage"|"readOnly"|"history"|"runtimeInput"|"signal"> {
  initial?:LocalDocumentInitial;
  /** Runs against the actual typed native document owner before host mutation. */
- toolbar?:(core:RichDocumentCoreEditor,standard:readonly ToolbarControl<"document-v1">[])=>readonly ToolbarControl<"document-v1">[];
+ toolbar?:(core:RichDocumentCoreEditor,standard:readonly ToolbarControl<"document-v1">[],presentation:import("@breditor/experimental-rich-content").RichInlinePresentation)=>readonly ToolbarControl<"document-v1">[];
  clipboardInterchange?:ClipboardInterchangeFactory<RichDocumentCoreEditor>;
 }
 export interface LocalDocumentEditor extends Omit<LocalEditor,"view"|"insertImageFiles"> {
@@ -38,9 +38,12 @@ class DocumentOwner implements LocalDocumentEditor {
  checkRetainedAssetReferences(read:import("@breditor/experimental-rich-content").RichRetainedAssetReferencesRead,revision?:string):void{this.#dom.checkRetainedAssetReferences(read,revision);}
  execute(...args:Parameters<LocalDocumentEditor["execute"]>):ReturnType<LocalDocumentEditor["execute"]>{return this.#dom.execute(...args);}
  supportsTriggerComposite():boolean{return this.#dom.supportsTriggerComposite();}
+ supportsCommandGroup():boolean{return this.#dom.supportsCommandGroup();}
  view():RichDocumentView{return this.#dom.view();}checkpointJson():string{return this.#dom.checkpointJson();}
  focus():void{this.#dom.focus();}refreshAssets():void{this.#dom.view();refreshAssets(this.surface,this.#render);}
  setReadOnly(...args:Parameters<LocalDocumentEditor["setReadOnly"]>):boolean{return this.#dom.setReadOnly(...args);}
+ setRestrictedEditing(...args:Parameters<LocalDocumentEditor["setRestrictedEditing"]>):boolean{return this.#dom.setRestrictedEditing(...args);}
+ navigateRestrictedRegion(...args:Parameters<LocalDocumentEditor["navigateRestrictedRegion"]>):ReturnType<LocalDocumentEditor["navigateRestrictedRegion"]>{return this.#dom.navigateRestrictedRegion(...args);}
  closeTypingGroup(...args:Parameters<LocalDocumentEditor["closeTypingGroup"]>):boolean{return this.#dom.closeTypingGroup(...args);}
  search():RichSearchHost{this.#dom.view();return this.#dom;}
  writing():import("@breditor/experimental-rich-content").RichWritingToolsHost{this.#dom.view();return this.#dom;}
@@ -81,7 +84,7 @@ export async function openLocalDocumentEditor(options:LocalDocumentEditorOptions
   if(history==="typing-v1"){if(core.supportsTypingHistory?.()!==true||!core.enableTypingHistory)throw Error("Use matching native document typing history");core.enableTypingHistory();}
   else if(core.view().historyGrouping!==undefined)throw Error("Explicit history cannot flatten a document typing checkpoint");
   if(options.readOnly!==undefined){if(core.supportsReadOnly?.()!==true||!core.setReadOnly)throw Error("Use matching native read-only enforcement");core.setReadOnly(options.readOnly);}
-  const standard=localLanguageToolbar(core,presentation,language),toolbar=options.toolbar?.(core,standard)??standard;
+  const standard=localLanguageToolbar(core,presentation,language),toolbar=options.toolbar?.(core,standard,presentation)??standard;
   const render:RenderOptions={inlinePresentation:presentation,...(options.resolveAsset?{resolveAsset:options.resolveAsset}:{})};
   const {clipboardInterchange:factory,...domOptions}=options,interchange=clipboardInterchangeOptions(factory,core);
   claim.assert();dom=mountDocumentRichEditor(options.host,{...domOptions,...interchange,core,...render,toolbar});claim.assert();return new DocumentOwner(dom,claim.release,render);

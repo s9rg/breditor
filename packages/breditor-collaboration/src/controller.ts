@@ -1,8 +1,8 @@
 import {isStructuralRichLanguage} from "@breditor/experimental-rich-content/rendering";
-import {id,text,sourceCell,render,requireRenderOptions,paintSelection,refreshAssets,readNative,readTarget,restoreDocumentNative,nativeSelectsDocument,standardInlineStylesV1,structuralBlockStylesV2,richPageBreakStyles,type RichModel,type RenderOptions} from "@breditor/experimental-rich-content/rendering";
+import {id,text,sourceCell,render,requireRenderOptions,paintSelection,refreshAssets,readNative,readTarget,restoreDocumentNative,nativeSelectsDocument,standardInlineStylesV1,structuralBlockStylesV2,richPageBreakStyles,richLegalListStyles,type RichModel,type RenderOptions} from "@breditor/experimental-rich-content/rendering";
 import {SharedRichEditor,SharedEditorError} from "./core.js";
 import {bold,boundaryDelete,caret,cellBlock,enter,positionAfter,removeSelection,type ActionContext,type SharedToolbarControl} from "./actions.js";
-import {defaultSharedToolbarFor,moveSharedToolbarFor} from "./toolbar.js";
+import {defaultSharedToolbarFor,moveSharedToolbarFor,sharedListTab,sharedListTabApplies} from "./toolbar.js";
 import type {SharedDispatch,SharedPublication,RichSelection,Navigation,SharedSelectionPolicy,SharedEditorView,SharedDocumentSelection} from "./types.js";
 import {sharedPresentationModel} from "./document_presentation.js";
 import {requireSharedDocumentBrowserCore} from "./document_core.js";
@@ -13,16 +13,18 @@ import {flowEdgeEligible,selectedFlowAtom} from "@breditor/experimental-rich-con
 import {mountToolbarControl,toolbarControlStyles,isCurrentCaretTarget,type RichControlView} from "@breditor/experimental-rich-content/rendering";
 import {resolveRichUi,type RichUiLocale,type RichUiOptions} from "@breditor/experimental-rich-content/rendering";
 import {standardSelectionInlineControls,selectionFormatChanges} from "@breditor/experimental-rich-content/rendering";
+import {richRubyStyles,richInlinePresentationHasRuby} from "@breditor/experimental-rich-content/rendering";
 import {blockLayoutShortcut} from "@breditor/experimental-rich-content/rendering";
 import {requireClipboardInterchange,readClipboardInput,exportClipboard,writeClipboard,clipboardInterchangeReport,clipboardInterchangeStatus,clipboardProjectionText,type RichClipboardInterchange,type RichClipboardInterchangeReport,type RichInterchangeFormatReport} from "@breditor/experimental-rich-content/rendering";
 import {RichSearchEvents,type RichSearchHostState,type RichSearchCompletion} from "@breditor/experimental-rich-content/rendering";
 import type {RichSearchQuery,RichSearchReplacement} from "@breditor/experimental-rich-content";
 import type {SharedSearchResults} from "./search_results.js";
-import {requireInputRules,needsInputRuleSets,isPlainInputScalar,captureMarkdownInputSource,checkMarkdownInputSource,publishMarkdownInput,type MarkdownInputSource,type RichInputRulesOption} from "@breditor/experimental-rich-content/rendering";
-import type {RichInputRuleId,RichInputRuleOutcome} from "@breditor/experimental-rich-content";
+import {requireInputRules,inputRuleTypography,needsInputRuleSets,isPlainInputScalar,captureMarkdownInputSource,checkMarkdownInputSource,publishMarkdownInput,type MarkdownInputSource,type RichInputRulesOption} from "@breditor/experimental-rich-content/rendering";
+import type {RichInputRuleId,RichInputRuleOutcome,RichTypographyOptions} from "@breditor/experimental-rich-content";
 import type {RichWritingToolsRead} from "@breditor/experimental-rich-content";
 import {RichWritingEvents,RichWritingReadRegistry,type RichWritingToolsHostState} from "@breditor/experimental-rich-content/rendering";
 import {prepareRichPlaceholder,RichPlaceholderPresentation,richPlaceholderStyles} from "@breditor/experimental-rich-content/rendering";
+import {richCoordinatorShortcuts,type RichShortcutEntry} from "@breditor/experimental-rich-content/rendering";
 import {mountSharedV4BlockFieldDom,sharedV4RenderOptions} from "./v4_block_fields_dom.js";
 export interface SharedDomOptions<P extends SharedSelectionPolicy="original"> extends RenderOptions {
  core:SharedRichEditor<P>;toolbar?:readonly SharedToolbarControl<P>[];label?:string;image?:{asset:string;alt:string};
@@ -34,7 +36,7 @@ export interface SharedDomOptions<P extends SharedSelectionPolicy="original"> ex
  selectionEditing?:P;
  /** Existing default transfers the owner. Borrow only when a persistent session owns its closure. */
  coreOwnership?:"transfer"|"borrow";
- /** Immutable explicit native shortcut policy (`markdown-v1`, `autolink-v1` or both); omitted preserves ordinary input. */
+ /** Immutable explicit native shortcut policy (`markdown-v1`, `autolink-v1`, `typography-v1` or a configured typography entry, alone or listed); omitted preserves ordinary input. */
  inputRules?:RichInputRulesOption;
  /** Input committed but conversion refused; this is not a failed or repeatable keystroke. */
  onInputRuleRefused?:()=>void;
@@ -71,21 +73,21 @@ export class SharedDomEditor<P extends SharedSelectionPolicy="original"> {
  readonly #borrowed=new Set<{control:SharedToolbarControl<P>;view:RichControlView<ActionContext<P>>}>();
  readonly #selectionPolicy:P;readonly #document:SharedRichEditor<"document-v1">|undefined;
  readonly #interchange:RichClipboardInterchange|undefined;
- readonly #inputRules:boolean;readonly #inputRuleIds:readonly RichInputRuleId[]|null;
+ readonly #inputRules:boolean;readonly #inputRuleIds:readonly RichInputRuleId[]|null;readonly #typography:RichTypographyOptions|null;
  constructor(root:HTMLElement,options:SharedDomOptions<P>&(P extends "document-v1"?SharedDocumentDomOptions:unknown)){
   const policy=options.selectionEditing??"original";
   if(policy!=="original"&&policy!=="document-v1")throw new TypeError("Expected selectionEditing original or document-v1");
   if((options.core.selectionPolicy?.()??"original")!==policy)throw Error("The original shared DOM owner does not admit document-selection facades without an explicit matching policy");
   this.#selectionPolicy=policy as P;this.#document=policy==="document-v1"?requireSharedDocumentBrowserCore(options.core):undefined;
   this.#interchange=requireClipboardInterchange(options.clipboardInterchange,options.core);
-  this.#inputRuleIds=requireInputRules(options.inputRules,options.core);this.#inputRules=this.#inputRuleIds!==null;
+  this.#inputRuleIds=requireInputRules(options.inputRules,options.core);this.#typography=inputRuleTypography(options.inputRules);this.#inputRules=this.#inputRuleIds!==null;
   const placeholder=prepareRichPlaceholder(options.placeholder,options.core);
   this.#root=root;this.#options=options;this.#model=this.#read();this.#logical=this.#isLogical();
   requireRenderOptions(this.#model,options);
   if(this.#model.view.historyGrouping==="typing-v1"&&!options.core.supportsTypingHistory())throw Error("Use matching native shared typing history");
   for(const control of options.toolbar??[...defaultSharedToolbarFor<P>(),...moveSharedToolbarFor<P>()])if(control.owner!==undefined&&control.owner!==options.core)throw Error("Toolbar control belongs to a different Rust owner");
   const ui=resolveRichUi(options.ui);ui.checkControls(options.toolbar??[...defaultSharedToolbarFor<P>(),...moveSharedToolbarFor<P>()]);this.#ui=ui;
-  const d=root.ownerDocument,style=d.createElement("style");style.textContent=styles+standardInlineStylesV1+toolbarControlStyles+(structuralBlockStylesV2+richPageBreakStyles).replaceAll("[data-breditor-rich]","[data-breditor-shared]")+(this.#document?sharedDocumentSelectionStyles:"")+(placeholder?richPlaceholderStyles:"");root.dataset["breditorShared"]="";
+  const d=root.ownerDocument,style=d.createElement("style");style.textContent=styles+standardInlineStylesV1+toolbarControlStyles+(structuralBlockStylesV2+richPageBreakStyles+richLegalListStyles).replaceAll("[data-breditor-rich]","[data-breditor-shared]")+(this.#document?sharedDocumentSelectionStyles:"")+(placeholder?richPlaceholderStyles:"")+(options.inlinePresentation&&richInlinePresentationHasRuby(options.inlinePresentation)?richRubyStyles:"");root.dataset["breditorShared"]="";
   this.surface=d.createElement("div");this.surface.contentEditable="true";this.surface.className="breditor-shared-surface";this.surface.setAttribute("role","textbox");this.surface.setAttribute("aria-multiline","true");this.surface.setAttribute("aria-label",options.label??ui.text("sharedEditorLabel"));
   this.toolbar=d.createElement("div");this.toolbar.className="breditor-shared-toolbar";this.toolbar.setAttribute("role","toolbar");this.toolbar.setAttribute("aria-label",ui.text("sharedToolbarLabel"));ui.applyChrome(this.toolbar);this.status=d.createElement("p");this.status.setAttribute("role","status");ui.applyChrome(this.status);
   const seen=new Set<string>();for(const control of options.toolbar??[...defaultSharedToolbarFor<P>(),...moveSharedToolbarFor<P>()]){
@@ -121,11 +123,17 @@ export class SharedDomEditor<P extends SharedSelectionPolicy="original"> {
  #report(error:unknown):void{if(this.#disposed)return;this.#reportedError={error};this.status.textContent=this.#ui.describe(error,String(error));try{this.#options.onError?.(error);}catch{/* A callback cannot rewind committed state. */}}
  #alreadyReported(error:unknown):boolean{return this.#reportedError!==undefined&&this.#reportedError.error===error;}
  #attempt(run:()=>void):void{this.#reportedError=undefined;try{run();}catch(error){if(!this.#alreadyReported(error)){this.#refresh(false);this.#report(error);}}}
- #mountControl(container:HTMLElement,control:SharedToolbarControl<P>,signal:AbortSignal):RichControlView<ActionContext<P>>{return mountToolbarControl(container,control,{prefix:"shared",ui:this.#ui,signal,sync:()=>this.#sync(),stamp:()=>JSON.stringify(this.#options.core.view()),attempt:work=>this.#attempt(work),focus:()=>this.focus(),run:(value,fields)=>this.#perform(c=>control.run(c,value,fields))});}
+ #mountControl(container:HTMLElement,control:SharedToolbarControl<P>,signal:AbortSignal):RichControlView<ActionContext<P>>{return mountToolbarControl(container,control,{prefix:"shared",ui:this.#ui,surface:this.surface,signal,sync:()=>this.#sync(),stamp:()=>JSON.stringify(this.#options.core.view()),attempt:work=>this.#attempt(work),focus:()=>this.focus(),run:(value,fields)=>this.#perform(c=>control.run(c,value,fields))});}
  /** Context UI port (see RichContextUiHost): the same admitted control, widget, gating and command path in another presentation. */
- contextUiState():{readonly revision:string;readonly closed:boolean;readonly busy:boolean;readonly composing:boolean;readonly readOnly:boolean;readonly selection:"none"|"caret"|"text"|"node"|"grid"|"document"}{
+ contextUiState():{readonly revision:string;readonly closed:boolean;readonly busy:boolean;readonly composing:boolean;readonly readOnly:boolean;readonly selection:"none"|"caret"|"text"|"node"|"grid"|"document";readonly emptyParagraph:boolean}{
   const view=this.#model.view,s=view.selection,selection=!s?"none" as const:s.kind==="text"?(s.anchor.block===s.focus.block&&s.anchor.offset===s.focus.offset?"caret" as const:"text" as const):s.kind;
-  return Object.freeze({revision:view.revision,closed:this.#disposed,busy:this.#busy,composing:!!this.#composition,readOnly:view.readOnly===true,selection});
+  const node=selection==="caret"&&s?.kind==="text"?this.#model.nodes.get(s.focus.block):undefined,emptyParagraph=node?.type==="breditor/paragraph"&&node.children.every(child=>child.kind==="text"&&!child.text);
+  return Object.freeze({revision:view.revision,closed:this.#disposed,busy:this.#busy,composing:!!this.#composition,readOnly:view.readOnly===true,selection,emptyParagraph});
+ }
+ /** Editor shell port: the chords this coordinator's keydown routing owns, from the same controls and capabilities. */
+ contextShortcuts():readonly RichShortcutEntry[]{
+  const core=this.#options.core,structural=isStructuralRichLanguage(core.richLanguageVersion());
+  return richCoordinatorShortcuts({ui:this.#ui,controls:this.#controls.map(entry=>entry.control),structural,selectionFormatting:core.supportsSelectionFormatting()&&!!this.#options.inlinePresentation,flowNavigation:core.supportsFlowNavigation(),blockLayout:core.supportsBlockLayout()});
  }
  subscribeContextUi(listener:()=>void):()=>void{this.#live();return this.#writingEvents.subscribe(listener);}
  /** The validated chrome catalog; opt-in tools read their strings and chrome direction from it. */
@@ -164,7 +172,7 @@ export class SharedDomEditor<P extends SharedSelectionPolicy="original"> {
  }
  #typeMarkdown(source:MarkdownInputSource,text:string):void {
   const view=this.#options.core.view();checkMarkdownInputSource(view,source);
-  const inputRule=Object.freeze({text,namespace:this.#allocate("rule"),...(view.historyGrouping==="typing-v1"?{clockMs:this.#clock()}:{} ),...(needsInputRuleSets(this.#inputRuleIds)?{rules:this.#inputRuleIds!}:{})});
+  const inputRule=Object.freeze({text,namespace:this.#allocate("rule"),...(view.historyGrouping==="typing-v1"?{clockMs:this.#clock()}:{} ),...(needsInputRuleSets(this.#inputRuleIds)?{rules:this.#inputRuleIds!,...(this.#typography?{typography:this.#typography}:{})}:{})});
   let outcome:RichInputRuleOutcome|undefined;
   this.#perform(c=>{outcome=publishMarkdownInput(c.core,inputRule,c.revision);},true,source.revision,false,()=>{if(outcome==="refused")this.#inputRuleRefused();});
  }
@@ -308,7 +316,7 @@ export class SharedDomEditor<P extends SharedSelectionPolicy="original"> {
   // WebKit can report insertParagraph for Shift+Enter. Resolve the keyboard
   // contract here without changing composition, grid Enter or beforeinput targets.
   if(event.key==="Enter"&&event.shiftKey&&!mod&&!event.altKey){this.#attempt(()=>{this.#sync();if(this.#model.view.selection?.kind==="text"){event.preventDefault();this.#perform(c=>{const s=c.model.view.selection;if(c.model.view.rangeEditing==="general-v1"&&s?.kind==="text")c.core.replaceGeneralRangePlainText(s,"\n",c.allocate("range"),c.revision);else c.core.hardBreak(c.revision);});}});if(event.defaultPrevented)return;}
-  if(this.#model.view.readOnly!==true&&event.key==="Tab"&&!mod&&!event.altKey){this.#attempt(()=>{this.#sync();const command=sharedTaskTab(this.#context(),event.shiftKey);if(command){event.preventDefault();this.#perform(c=>{c.core.dispatch({commands:[command]},c.revision);});}});if(event.defaultPrevented)return;}
+  if(this.#model.view.readOnly!==true&&event.key==="Tab"&&!mod&&!event.altKey){this.#attempt(()=>{this.#sync();const command=sharedTaskTab(this.#context(),event.shiftKey);if(command){event.preventDefault();this.#perform(c=>{c.core.dispatch({commands:[command]},c.revision);});}else if(sharedListTabApplies(this.#context(),event.shiftKey)){event.preventDefault();const backward=event.shiftKey;this.#perform(c=>sharedListTab(c,backward));}});if(event.defaultPrevented)return;}
   const s=this.#model.view.selection;if(s?.kind==="grid"){
    const moves:Record<string,Navigation>={ArrowLeft:"left",ArrowRight:"right",ArrowUp:"up",ArrowDown:"down",Tab:event.shiftKey?"previous":"next",Home:mod?"tableStart":"rowStart",End:mod?"tableEnd":"rowEnd"},move=moves[event.key];
    if(move){this.#attempt(()=>this.#perform(c=>{const result=c.core.navigate(move,event.key!=="Tab"&&event.shiftKey,c.revision);if(event.key!=="Tab"||result.kind!=="boundary")event.preventDefault();}));return;}
@@ -328,7 +336,7 @@ export class SharedDomEditor<P extends SharedSelectionPolicy="original"> {
     if((kind==="insertText"||kind==="insertReplacementText")&&event.data)this.#replaceDocumentInput(c,event.data,kind==="insertText");return;
    }
    if((kind==="insertParagraph"||kind==="insertLineBreak")&&isStructuralRichLanguage(c.core.richLanguageVersion())&&c.core.supportsFlowNavigation()&&selectedFlowAtom(c.model)){c.core.insertParagraphAdjacent(c.allocate("p"),kind==="insertLineBreak"?"before":"after",c.revision);return;}
-   if(kind==="insertParagraph"&&this.#codeEnter(c)){paragraph=publishMarkdownInput(c.core,{text:"\n",namespace:this.#allocate("rule"),...(needsInputRuleSets(this.#inputRuleIds)?{rules:this.#inputRuleIds!}:{})},c.revision);return;}
+   if(kind==="insertParagraph"&&this.#codeEnter(c)){paragraph=publishMarkdownInput(c.core,{text:"\n",namespace:this.#allocate("rule"),...(needsInputRuleSets(this.#inputRuleIds)?{rules:this.#inputRuleIds!,...(this.#typography?{typography:this.#typography}:{})}:{})},c.revision);return;}
    if(kind==="insertParagraph"){const range=event.getTargetRanges?.()[0],target=c.model.view.rangeEditing==="general-v1"&&range?readTarget(this.surface,range):null;paragraph=enter(c,target&&target.anchor.block!==target.focus.block?target:undefined,!!this.#inputRuleIds?.includes("autolink-v1")&&!this.#logical);return;}
    if(isStructuralRichLanguage(c.core.richLanguageVersion())&&c.core.supportsAtomEditing()&&selectedFlowAtom(c.model)){
     if(kind.startsWith("delete")){c.core.deleteAtom(c.allocate("p"),kind.includes("Backward")?"before":"after",c.revision);return;}

@@ -1133,3 +1133,75 @@ fn move_block_is_one_exact_history_group_and_rejects_without_publication() -> Te
     assert_eq!(result.error().ok_or("read only")?.code(), "breditor_rich.read_only");
     Ok(())
 }
+
+#[test]
+fn multi_block_list_items_join_as_blocks_and_split_at_a_later_block() -> TestResult {
+    let profile = profile()?;
+    let mut editor = editor(&profile)?;
+    roundtrip(
+        &mut editor,
+        &action(
+            "insertBlocks",
+            json!({"position":{"parent":{"kind":"document"},"before":null},
+        "blocks":[paragraph("first","one"),paragraph("second",""),paragraph("third","three")]}),
+        ),
+    )?;
+    roundtrip(
+        &mut editor,
+        &action(
+            "wrapList",
+            json!({"first":"first","last":"third","container":"list",
+        "items":["item-first","item-second","item-third"],"start":2}),
+        ),
+    )?;
+    let document = |editor: &BreditorRichEditor| -> TestResult<String> {
+        read(editor.observe().document_json())
+    };
+    let before = document(&editor)?;
+    // Unknown fields and a leading-block split are refused without changing the document.
+    for bad in [
+        action(
+            "joinListItems",
+            json!({"container":"list","left":"item-first","right":"item-second","blocks":true,"x":1}),
+        ),
+        action("splitListItemBlock", json!({"block":"first","newItem":"fresh"})),
+        action("splitListItemBlock", json!({"block":"second"})),
+    ] {
+        assert_eq!(editor.execute(&editor.observe(), &bad.to_string()).status(), "error", "{bad}");
+        assert_eq!(document(&editor)?, before);
+    }
+    roundtrip(
+        &mut editor,
+        &action(
+            "joinListItems",
+            json!({"container":"list","left":"item-first","right":"item-second","blocks":true}),
+        ),
+    )?;
+    let joined: Value = serde_json::from_str(&document(&editor)?)?;
+    let items = joined["root"]["children"]
+        .as_array()
+        .ok_or("root")?
+        .iter()
+        .find(|node| node["properties"]["breditor/block-id"] == "list")
+        .ok_or("list")?["children"]
+        .clone();
+    assert_eq!(items.as_array().ok_or("items")?.len(), 2);
+    assert_eq!(items[0]["children"][1]["properties"]["breditor/block-id"], "second");
+    assert_eq!(items[0]["children"][0]["children"][0]["text"], "one");
+    roundtrip(
+        &mut editor,
+        &action("splitListItemBlock", json!({"block":"second","newItem":"item-again"})),
+    )?;
+    let split: Value = serde_json::from_str(&document(&editor)?)?;
+    let list = split["root"]["children"]
+        .as_array()
+        .ok_or("root")?
+        .iter()
+        .find(|node| node["properties"]["breditor/block-id"] == "list")
+        .ok_or("list")?
+        .clone();
+    assert_eq!(list["properties"]["breditor/start"], 2);
+    assert_eq!(list["children"][1]["properties"]["breditor/block-id"], "item-again");
+    assert_eq!(list["children"][1]["children"][0]["properties"]["breditor/block-id"], "second");
+    Ok(())
+}

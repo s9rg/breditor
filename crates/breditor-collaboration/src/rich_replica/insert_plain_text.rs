@@ -91,7 +91,15 @@ impl RichReplica {
         self.check(observation)?;
         self.insert_plain_text(text)
     }
+    /// Effective caret formats for new text. The opt-in ruby extension's annotation
+    /// (`breditor-ruby/ruby`) is never inherited, exactly like the local core: a reading
+    /// belongs to its exact base. Only profiles that admit the kind can contain it.
     pub(super) fn effective_formats(&self, selection: &Selection) -> Result<Vec<Value>, Error> {
+        let mut formats = self.inherited_formats(selection)?;
+        formats.retain(|format| format["type"] != RUBY_FORMAT);
+        Ok(formats)
+    }
+    fn inherited_formats(&self, selection: &Selection) -> Result<Vec<Value>, Error> {
         if let Some(formats) = self.pending_formats() {
             return Ok(formats.to_vec());
         }
@@ -120,7 +128,7 @@ impl RichReplica {
             &codec.encode(node.formats()).map_err(|_| Error::Contract("shared typing formats"))?,
         )?)
     }
-    fn block_formats(&self, block: &str) -> Result<BTreeMap<String, Value>, Error> {
+    pub(super) fn block_formats(&self, block: &str) -> Result<BTreeMap<String, Value>, Error> {
         let node = self
             .document
             .document()
@@ -160,6 +168,9 @@ impl RichReplica {
         Ok(kinds)
     }
 }
+/// The opt-in ruby V1 extension format kind (`breditor_core::rich_content::RICH_RUBY_FORMAT_V1`).
+const RUBY_FORMAT: &str = breditor_core::rich_content::RICH_RUBY_FORMAT_V1;
+
 fn mark(point: &TextPoint, length: u32, format: Value, enabled: bool) -> Command {
     Command::SetFormat(SetFormat {
         block: point.block.clone(),

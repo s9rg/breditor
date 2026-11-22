@@ -53,7 +53,8 @@ const ui: RichUiOptions = {
   one catalog serves the original, structural and layout toolbars; a field or
   option an admitted control does not have rejects. Single-value controls
   (`type: "text" | "number"`) take only `label`. Hosts that build their own
-  controls pass their own labels instead.
+  controls pass their own labels instead. The opt-in ruby controls are `ruby`
+  (field `annotation`) and `remove-ruby` ([RUBY_ANNOTATIONS.md](RUBY_ANNOTATIONS.md)).
 - `slashItems` relabels the standard slash items (`standardRichSlashPicks` ids)
   with `label`, `description` and `keywords`. Filtering uses the localized label
   and keywords; the stable id still matches, so `"hea"` finds the heading items in
@@ -224,7 +225,7 @@ with panels from another.
 ## Not covered
 
 - Text-part language in rich V1–V3: those languages have no inline `lang`
-  format. The unreleased candidate rich V4 adds the native
+  format. Rich V4 adds the native
   `breditor/text-language` format (`lang` on spans, a **Language** toolbar
   control and HTML `lang` interchange), locally and in shared V4; see
   [RICH_LANGUAGE_V4.md](RICH_LANGUAGE_V4.md) and
@@ -251,3 +252,32 @@ and status messages from the editor catalog through separate `ai*` and `lang*` k
 `dir`/`lang`. Provider and document text are never translated; the "Editor
 closed" notice and API-misuse errors stay English, as elsewhere. See
 [AI_AND_LANGUAGE_TOOLS.md](AI_AND_LANGUAGE_TOOLS.md).
+
+## Editing aids
+
+The show-blocks labels and the two editing-aid toggle buttons read `aid*` keys
+(`aidBlockHeading` takes `{level}`) plus `aidsLabel`, `aidsShowBlocks` and
+`aidsInvisibles`, kept in `ui_locale_editing_aids.ts` and merged into
+`RichUiStrings`. The aids default to the editor's `uiLocale()`. See
+[EDITING_AIDS.md](EDITING_AIDS.md).
+
+## Formatting-productivity tools
+
+The opt-in special-character picker and format painter
+([Formatting productivity](FORMATTING_PRODUCTIVITY.md)) add a separate string
+block (`ui_locale_productivity.ts`): `specialCharactersSearch`,
+`specialCharactersCategory`, `specialCharactersAll`, `specialCharactersGrid`,
+`specialCharactersCountOne`, `specialCharactersCount` (`{count}`),
+`specialCharactersEmpty`, `specialCharacterItem` (`{name}`, `{code}`) and the
+painter announcements `formatPainterCopied`, `formatPainterSticky`,
+`formatPainterApplied`, `formatPainterCancelled` and `formatPainterNothing`. Their
+English defaults are new keys; existing keys and defaults are unchanged.
+
+Character and category names use the optional `specialCharacters` entry:
+`{categories:{currency:"Währung"},characters:{"€":"Eurozeichen"}}`. Category keys
+are category ids (`[a-z][a-z0-9-]{0,31}`, at most 64 entries); character keys are
+the characters themselves (1–16 UTF-16 units without control characters, at most
+4,096 entries); values follow the ordinary string rules. Entries for characters a
+picker does not show are inert. The picker searches localized and English names.
+Toolbar labels (`special-characters`, `case-upper`, `case-lower`, `case-title`,
+`format-painter`) use the ordinary `controls` catalog.

@@ -22,6 +22,7 @@ mod authentication;
 mod backup;
 mod connection;
 mod deployment_fence;
+mod documents;
 mod generation_backup;
 mod generation_recovery;
 mod http;
@@ -53,6 +54,10 @@ pub use backup::{
 pub use deployment_fence::{
     RoomDeploymentAuthority, RoomDeploymentIdentity, RoomDeploymentLease, RoomDeploymentSelection,
     router_with_assets_and_deployment_lease, router_with_deployment_lease,
+};
+pub use documents::{
+    DocumentServer, DocumentServerConfiguration, WEBHOOK_SIGNATURE_HEADER, sign_webhook,
+    verify_webhook_signature,
 };
 pub use generation_backup::{
     LogGenerationHandoverStatus, LogGenerationServerBackupHandle, PreparedLogGenerationHandover,
@@ -246,6 +251,13 @@ fn create_host(
     authentication: Authentication,
     assets: Option<crate::assets::AssetStore>,
 ) -> Host {
+    create_shared_host(room, Arc::new(authentication), assets)
+}
+fn create_shared_host(
+    room: Room,
+    authentication: Arc<Authentication>,
+    assets: Option<crate::assets::AssetStore>,
+) -> Host {
     let (changed, _) = watch::channel(0);
     let (assets_changed, _) = watch::channel(0);
     let (presence_changed, _) = watch::channel(0);
@@ -254,7 +266,7 @@ fn create_host(
     let (suggestions_changed, _) = watch::channel(0);
     Host {
         room: Arc::new(Mutex::new(room)),
-        authentication: Arc::new(authentication),
+        authentication,
         changed,
         connections: Arc::new(Semaphore::new(64)),
         assets: assets.map(|store| Arc::new(Mutex::new(store))),

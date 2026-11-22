@@ -1,6 +1,6 @@
 // Opt-in read-only rendering/selection primitives shared by local and collaborative coordinators.
 export {model,documentModel,presentationModel,id,property,isText,isProse,text,cellKey,textTargets,formatsAt,selectedText,selectedTable,selectedImage,sourceCell} from "./dist/browser/model.js";
-export {render,requireRenderOptions,paintSelection,refreshAssets,applyEditingPolicy,structuralBlockStylesV2} from "./dist/browser/render.js";
+export {render,requireRenderOptions,paintSelection,refreshAssets,applyEditingPolicy,structuralBlockStylesV2,applyRestrictedPresentation,richRestrictedEditingStyles} from "./dist/browser/render.js";
 export {readNative,readTarget,restoreNative,restoreDocumentNative,nativeSelectsDocument,isCurrentCaretTarget} from "./dist/browser/selection.js";
 export {standardInlineStylesV1} from "./dist/browser/standard_inline_v1.js";
 export {richPageBreakStyles} from "./dist/browser/page_break.js";
@@ -13,6 +13,7 @@ export {applyBlockLayout} from "./dist/browser/block_layout_presentation.js";
 export {blockLayoutControls,blockLayoutShortcut} from "./dist/browser/block_layout_controls.js";
 export {encodeBlockLayoutPatch} from "./dist/browser/block_layout_serialization.js";
 export {applyListNumbering,listNumberingOf,listNumberStyles,listNumberHtmlTypes} from "./dist/browser/list_numbering_presentation.js";
+export {legalListMarkers,legalListMarkersWith,legalListAttribute,legalListMarkerAttribute,richLegalListStyles,multiBlockListEnter,multiBlockListBackspace} from "./dist/browser/list_structure.js";
 export {encodeListNumberingPatch} from "./dist/browser/list_numbering_serialization.js";
 export {parseRichSearchMetadata} from "./dist/browser/search_metadata.js";
 export {parseRichWritingTools} from "./dist/browser/writing_tools_metadata.js";
@@ -21,7 +22,7 @@ export {RichRetainedAssetReferenceRegistry} from "./dist/browser/retained_asset_
 export {RichWritingEvents,RichWritingReadRegistry} from "./dist/browser/writing_tools_host.js";
 export {RichSearchEvents} from "./dist/browser/search_host.js";
 export {prepareRichPlaceholder,validatePlaceholderOption,RichPlaceholderPresentation,richPlaceholderStyles} from "./dist/browser/placeholder.js";
-export {requireMarkdownInputRules,requireInputRules,inputRuleSelection,needsInputRuleSets,validateMarkdownInputPolicy,isPlainInputScalar,captureMarkdownInputSource,checkMarkdownInputSource,publishMarkdownInput} from "./dist/browser/input_rule_intent.js";
+export {requireMarkdownInputRules,requireInputRules,inputRuleSelection,inputRuleTypography,TYPOGRAPHY_RULE_GROUPS,TYPOGRAPHY_DEFAULT_GROUPS,needsInputRuleSets,validateMarkdownInputPolicy,isPlainInputScalar,captureMarkdownInputSource,checkMarkdownInputSource,publishMarkdownInput} from "./dist/browser/input_rule_intent.js";
 export {isStructuralRichLanguage} from "./dist/browser/rich_language.js";
 export {requireClipboardInterchange,readClipboardInput,exportClipboard,writeClipboard,clipboardInterchangeReport,clipboardInterchangeStatus} from "./dist/browser/clipboard_interchange.js";
 export {mountRichBlockDragPort,richBlockDragStyles} from "./dist/browser/block_drag.js";
@@ -38,3 +39,9 @@ export {bookmarkOf,bookmarkNames,isBookmarkName,internalLinkName,internalLinkOf,
 export {richPageBreakKind,richPageBreakClass,richPageBreakStyle,pageBreakAttributes,isPageBreak} from "./dist/browser/page_break.js";
 export {richPrintStyles,resolveRichPrintLayout,richPrintPageSizes,richPrintOrientations,richPrintMargins} from "./dist/browser/print.js";
 export {richMentionFormat,richMentionKindProperty,richMentionIdProperty,richMentionLabelProperty,richMentionKinds,richMentionClass,richMentionStyles,isRichMentionId,isRichMentionKind,isRichMentionLabel,mentionOf,mentionText,mentionFormat,groupMentionRuns,mentionChipAttributes,createMentionChip} from "./dist/browser/mention.js";
+// Editor shell registry: coordinators describe the chords their own keydown routing owns.
+export {richCoordinatorShortcuts} from "./dist/browser/shortcut_registry.js";
+export * from "./dist/browser/formatting_productivity.js";
+export * from "./dist/browser/special_characters.js";
+export {richRubyExtensionName,richRubyFormat,richRubyAnnotationProperty,richRubyAnnotationMaxBytes,richRubyClass,richRubyStyles,richRubyBootstrapExtensionV1,richRubySharedExtensionV1,withRichRubyBootstrapV1,withRichRubySharedConfigurationV1,isRichRubyAnnotation,isRichRubyDeclaration,rubyAnnotationOf,rubyFormat,groupRubyRuns,createRubyElement,rubyGroupAt,rubyControls,rubyCommand,rubyToolbarControls} from "./dist/browser/ruby.js";
+export {richInlinePresentationHasRuby} from "./dist/browser/inline_presentation.js";

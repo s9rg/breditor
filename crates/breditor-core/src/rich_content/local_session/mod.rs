@@ -4,11 +4,13 @@
 //! is separately enabled and persisted; original checkpoints/defaults stay exact.
 
 mod apply_markdown_input_rule;
+mod change_selection_case;
 mod change_selection_formats;
 mod change_selection_layout;
 mod check_observation;
 mod close_typing_group;
 mod collapse_document_selection;
+mod command_group;
 mod commit_content;
 mod delete_atom;
 mod delete_typing_range;
@@ -19,6 +21,7 @@ mod enable_typing_history;
 mod error;
 mod exit_code_block;
 mod history_entry;
+mod history_probe;
 mod history_recipe;
 mod insert_general_paragraph;
 mod insert_hard_break;
@@ -55,6 +58,7 @@ mod retained_asset_references;
 mod select_document;
 mod set_pending_formats;
 mod set_read_only;
+mod set_restricted_editing;
 mod set_text_language;
 mod snapshot;
 mod state;
@@ -64,7 +68,9 @@ pub(crate) mod typing_state;
 mod undo;
 mod validate_observation;
 
+pub use command_group::{RICH_COMMAND_GROUP_MAX_STEPS, RichCommandGroupError};
 pub use error::RichLocalSessionError;
+pub use history_probe::RichHistoryProbe;
 pub use plan_general_range_plain_text::RichGeneralPlainRangePlan;
 pub use replace_trigger_then::RichTriggerStepError;
 pub use snapshot::RichLocalSnapshot;
@@ -131,7 +137,11 @@ pub struct RichLocalSession {
     // Host policy, never part of document/history/checkpoint permissions.
     read_only: bool,
     read_only_revision: Option<Revision>,
+    // Host restricted-editing policy; never document, history or checkpoint data.
+    restricted: Option<Arc<crate::rich_content::RichRestrictedPolicy>>,
     typing_history: Option<typing_history::TypingHistory>,
+    // Process-local monotonic history event counters; never persisted or compared.
+    probe: history_probe::RichHistoryProbe,
 }
 
 impl std::fmt::Debug for RichLocalSession {
@@ -167,7 +177,9 @@ impl RichLocalSession {
             token: Arc::new(()),
             read_only: false,
             read_only_revision: None,
+            restricted: None,
             typing_history: None,
+            probe: history_probe::RichHistoryProbe::default(),
         })
     }
     /// Current admitted immutable document, selection and publication revision.
@@ -188,6 +200,7 @@ impl RichLocalSession {
             self.state.clone(),
             self.read_only,
             self.read_only_revision,
+            self.restricted.clone(),
         )
     }
     /// Maximum retained chronological entries, including undo and redo.

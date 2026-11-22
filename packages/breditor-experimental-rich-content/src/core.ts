@@ -3,7 +3,7 @@ import type {RichWritingToolsRead} from "./writing_tools_types.js";
 export type {RichWritingToolsRead,RichWritingCounts,RichWritingHeading} from "./writing_tools_types.js";
 import type {RichRetainedAssetReferencesRead} from "./retained_asset_references_types.js";
 export type {RichRetainedAssetReferencesRead,RichRetainedAssetReference} from "./retained_asset_references_types.js";
-export type {RichCommand,RichTriggerCompositeKind,RichTriggerCompositeCommand,RichSelectionFormatChange,FormatLiteral,ImageAlt,ImageSize,TextDraft,ImageDraft,TableColumnDraft,TableCellDraft,TableRowDraft,TableDraft,FlowDraft,FlowPosition,ClipboardAllocation} from "./commands.js";
+export type {RichCommand,RichTriggerCompositeKind,RichTriggerCompositeCommand,RichCommandGroupKind,RichCommandGroupStep,RichSelectionFormatChange,FormatLiteral,ImageAlt,ImageSize,TextDraft,ImageDraft,TableColumnDraft,TableCellDraft,TableRowDraft,TableDraft,FlowDraft,FlowPosition,ClipboardAllocation} from "./commands.js";
 /** Initialized generated Wasm module; pass the same instance for all owners using it. */
 export interface RichWasmModule {
   readonly BreditorRichProfile: {fromBootstrapJson(input: string): unknown;fromStandardBootstrapJsonV1?(input:string):unknown;fromStructuralBootstrapJsonV2?(input:string):unknown;fromStandardStructuralBootstrapJsonV2?(input:string):unknown;fromLayoutBootstrapJsonV3?(input:string):unknown;fromStandardLayoutBootstrapJsonV3?(input:string):unknown;fromBootstrapJsonV4?(input:string):unknown;fromStandardBootstrapJsonV4?(input:string):unknown};
@@ -17,7 +17,11 @@ export type RichHistoryPolicy="explicit"|"typing-v1";
 /** Refused means literal input committed; report separately and never retry it. */
 export type RichInputRuleOutcome="unchanged"|"inserted"|"applied"|"refused";
 /** Explicitly selected native input-rule policies; never a saved document setting. */
-export type RichInputRuleId="markdown-v1"|"autolink-v1";
+export type RichInputRuleId="markdown-v1"|"autolink-v1"|"typography-v1";
+/** Quote preset, or a custom pair of single non-ASCII scalars with optional inner no-break spacing. */
+export type RichTypographyQuotes="english"|"german"|"french"|"swiss"|"polish"|{readonly double:readonly [string,string];readonly single:readonly [string,string];readonly space?:"nbsp"|"narrow-nbsp"};
+/** `typography-v1` selection: `include` (groups or rule names) replaces the default groups, `exclude` removes. */
+export interface RichTypographyOptions {readonly include?:readonly string[];readonly exclude?:readonly string[];readonly quotes?:RichTypographyQuotes}
 /** Explicit native matching intent; never a persisted editor command. */
 export interface RichSearchQuery {pattern:string;mode:"literal"|"regex";caseSensitive:boolean;wholeWords:boolean}
 export interface RichSearchReplacement {text:string;mode:"literal"|"captures"}
@@ -40,12 +44,12 @@ export type RichDocumentSelection=RichSelection|Readonly<{kind:"document"}>;
 export interface RichProfileDescriptor {kind: "rich"; abiVersion: 1; schema: {name: string; version: number}; schemaFingerprint: string;richLanguageVersion?:2|3|4;taskStructureVersion?:1;blockLayoutVersion?:1;listNumberingVersion?:1;textLanguageVersion?:1;imageLinkVersion?:1;detailsVersion?:1;mentionVersion?:1;tableCaptionVersion?:1;pageBreakVersion?:1;bookmarkVersion?:1}
 /** Closed native intent. Omission keeps, null clears; bounds are enforced in Rust. */
 export interface RichBlockLayoutPatch {alignment?:"start"|"center"|"end"|"justify"|"left"|"right"|null;direction?:"ltr"|"rtl"|"auto"|null;indent?:number|null;lineHeightPercent?:number|null}
-/** Closed candidate rich V4 ordered-list marker families (CSS `list-style-type` keywords). */
+/** Closed rich V4 ordered-list marker families (CSS `list-style-type` keywords). */
 export type RichListNumberStyle="decimal"|"lower-alpha"|"upper-alpha"|"lower-roman"|"upper-roman";
 /** One ordered list's numbering intent. Omission keeps; a null style clears it; `reversed:false`
  * removes reversal; `start` sets the explicit first ordinal. At least one change is required. */
 export interface RichListNumberingPatch {list:string;style?:RichListNumberStyle|null;reversed?:boolean;start?:number}
-/** Candidate rich V4 image link of one image. `href` is a canonical absolute HTTP(S) URL (see
+/** Rich V4 image link of one image. `href` is a canonical absolute HTTP(S) URL (see
  * `canonicalImageLinkHref`), or `null` to remove the link; `newWindow` is only allowed with an href. */
 export type RichImageLinkIntent={image:string;href:string;newWindow?:boolean}|{image:string;href:null};
 export type RichLayoutFieldState<T>={kind:"unavailable"}|{kind:"mixed"}|{kind:"uniform";value:T|null};
@@ -70,12 +74,16 @@ export interface RichSelectionCoverageRead {
  nodes:readonly {block:string;parent:string|null;kind:string;extent:"whole"|"partial";domain:RichCoverageDomain;hiddenTable:boolean}[];
  text:readonly {block:string;kind:string;start:string;end:string;domain:RichCoverageDomain}[];
 }
+/** Host restricted-editing policy: only these block subtrees (and their contents) are editable. */
+export interface RichRestrictedPolicy {readonly editable:readonly string[]}
 export interface RichView {
   format: "breditor/rich-view"; formatVersion: 1; revision: string; documentJson: string;
   /** Omitted means the original editable default. This live host policy is not document permission. */
   readOnly?:true;
   /** Last live host-policy publication; omitted until changed, never a durable permission. */
   readOnlyRevision?:string;
+  /** Present only under a live restricted-editing policy: current outermost editable regions in document order and whether the selection lies wholly inside one. */
+  restricted?:Readonly<{editable:readonly string[];selectionEditable:boolean}>;
   /** Explicit native grouping; omitted preserves original per-dispatch history. */
   historyGrouping?:"typing-v1";
   /** Explicit shared semantic replay family; omitted retains the original range contract. */
@@ -111,8 +119,10 @@ export interface RichCoreEditor<P extends RichSelectionPolicy="original"> {
   insertTypingTextWithMarkdownRules?(text:string,clockMs:string,namespace:string,expectedRevision?:string):RichInputRuleOutcome;
   /** Version1 rule-set calls (`markdown-v1`, `autolink-v1`) and the Enter autolink split; no JS matching. */
   supportsInputRuleSets?():boolean;
-  insertPlainTextWithInputRules?(text:string,rules:readonly RichInputRuleId[],namespace:string,expectedRevision?:string):RichInputRuleOutcome;
-  insertTypingTextWithInputRules?(text:string,clockMs:string,rules:readonly RichInputRuleId[],namespace:string,expectedRevision?:string):RichInputRuleOutcome;
+  insertPlainTextWithInputRules?(text:string,rules:readonly RichInputRuleId[],namespace:string,expectedRevision?:string,typography?:RichTypographyOptions):RichInputRuleOutcome;
+  insertTypingTextWithInputRules?(text:string,clockMs:string,rules:readonly RichInputRuleId[],namespace:string,expectedRevision?:string,typography?:RichTypographyOptions):RichInputRuleOutcome;
+  /** Version1 `typography-v1` acceptance (and its optional `typography` request) in the rule-set calls. */
+  supportsTypographyInputRules?():boolean;
   /** The `insertParagraph` record at a collapsed caret, then `autolink-v1` on the retained left block. */
   insertParagraphWithAutolink?(data:{readonly right:string;readonly newItem:string|null},expectedRevision?:string):RichInputRuleOutcome;
   /** Complete optional Rust capability; absent/older runtimes never fall back to DOM matching. */
@@ -156,31 +166,42 @@ export interface RichCoreEditor<P extends RichSelectionPolicy="original"> {
   supportsSelectionFormatting?():boolean;
   supportsBlockLayout?():boolean;
   blockLayoutState?():RichBlockLayoutStateRead;
-  /** Candidate rich V4 ordered-list numbering; an older owner may omit it. */
+  /** Rich V4 ordered-list numbering; an older owner may omit it. */
   supportsListNumbering?():boolean;
-  /** Candidate rich V4 text-run language metadata; an older owner may omit it. */
+  /** Rich V4 text-run language metadata; an older owner may omit it. */
   supportsTextLanguage?():boolean;
-  /** Candidate rich V4 image links; an older owner may omit it. */
+  /** Native `changeSelectionCase` (UPPER, lower, Title Case, cycle) in every rich language. */
+  supportsCaseChange?():boolean;
+  /** Rich V4 image links; an older owner may omit it. */
   supportsImageLinks?():boolean;
-  /** Candidate rich V4 collapsible sections; an older owner may omit it. */
+  /** Rich V4 collapsible sections; an older owner may omit it. */
   supportsDetails?():boolean;
-  /** Candidate rich V4 mention entities (`insertMention`); an older owner may omit it. */
+  /** Rich V4 mention entities (`insertMention`); an older owner may omit it. */
   supportsMentions?():boolean;
+  /** The owner's profile includes the opt-in ruby V1 extension (`breditor-ruby/ruby`); any rich language. */
+  supportsRubyAnnotations?():boolean;
   /** Native `replaceTriggerThen` (slash commands as one Undo step); an older owner may omit it. */
   supportsTriggerComposite?():boolean;
-  /** Candidate rich V4 table captions (`addTableCaption`, `removeTableCaption`); an older owner may omit it. */
+  /** Native `commandGroup` (several commands as one Undo step); an older owner may omit it. */
+  supportsCommandGroup?():boolean;
+  /** Rich V4 table captions (`addTableCaption`, `removeTableCaption`); an older owner may omit it. */
   supportsTableCaptions?():boolean;
-  /** Candidate rich V4 root-level page breaks (`insertPageBreak`, `deletePageBreak`); an older owner may omit it. */
+  /** Rich V4 root-level page breaks (`insertPageBreak`, `deletePageBreak`); an older owner may omit it. */
   supportsPageBreaks?():boolean;
-  /** Candidate rich V4 bookmarks and internal links (`setBookmark`, `renameBookmark`); an older owner may omit it. */
+  /** Rich V4 bookmarks and internal links (`setBookmark`, `renameBookmark`); an older owner may omit it. */
   supportsBookmarks?():boolean;
-  /** Candidate rich V4: exact bookmark/internal-link inventory, including dangling links, of the current snapshot. */
+  /** Rich V4: exact bookmark/internal-link inventory, including dangling links, of the current snapshot. */
   bookmarkIndex?():import("./bookmark.js").RichBookmarkIndex;
   selectionCoverage?(scope?:"selection"|"document"):RichSelectionCoverageRead;
   selectionFormatState?(kind:string):RichSelectionFormatStateRead;
   enableTypingHistory?(expectedRevision?:string):boolean;
   closeTypingGroup?(expectedRevision?:string):boolean;
   setReadOnly?(value:boolean,expectedRevision?:string):boolean;
+  supportsRestrictedEditing?():boolean;
+  /** Live host policy naming editable block subtrees by retained block id; `null` clears it. */
+  setRestrictedEditing?(policy:RichRestrictedPolicy|null,expectedRevision?:string):boolean;
+  /** Select the next/previous editable region; `unchanged` when none remains. */
+  navigateRestrictedRegion?(forward:boolean,expectedRevision?:string):RichCommandOutcome;
   caretFormats?():readonly import("./commands.js").FormatLiteral[];
   execute(command: string | RichCommand, expectedRevision?: string): RichCommandOutcome;
   view(): RichEditorView<P>;

@@ -5,32 +5,32 @@ use breditor_core::{codec::encode_rich_block_layout_state, rich_content::inspect
 use wasm_bindgen::prelude::*;
 #[wasm_bindgen]
 impl BreditorRichEditor {
-    /// String1 selects layout (rich V3 or candidate V4); String0 means the old owner
+    /// String1 selects layout (rich V3 or V4); String0 means the old owner
     /// remains unsupported.
     #[must_use]
     #[wasm_bindgen(js_name=blockLayoutVersion)]
     pub fn block_layout_version(&self) -> String {
         if self.inner.context().schema().supports_rich_block_layout() { "1" } else { "0" }.into()
     }
-    /// String1 selects candidate V4 ordered-list numbering; String0 means unsupported.
+    /// String1 selects V4 ordered-list numbering; String0 means unsupported.
     #[must_use]
     #[wasm_bindgen(js_name=listNumberingVersion)]
     pub fn list_numbering_version(&self) -> String {
         if self.inner.context().schema().supports_rich_list_numbering() { "1" } else { "0" }.into()
     }
-    /// String1 selects candidate V4 text-run language metadata; String0 means unsupported.
+    /// String1 selects V4 text-run language metadata; String0 means unsupported.
     #[must_use]
     #[wasm_bindgen(js_name=textLanguageVersion)]
     pub fn text_language_version(&self) -> String {
         if self.inner.context().schema().supports_rich_text_language() { "1" } else { "0" }.into()
     }
-    /// String1 selects candidate V4 image links (`setImageLink`); String0 means unsupported.
+    /// String1 selects V4 image links (`setImageLink`); String0 means unsupported.
     #[must_use]
     #[wasm_bindgen(js_name=imageLinkVersion)]
     pub fn image_link_version(&self) -> String {
         if self.inner.context().schema().supports_rich_image_links() { "1" } else { "0" }.into()
     }
-    /// String1 selects candidate V4 collapsible sections (`wrapDetails`, `unwrapDetails`,
+    /// String1 selects V4 collapsible sections (`wrapDetails`, `unwrapDetails`,
     /// `setDetailsOpen`, `enterDetailsBody`); String0 means unsupported.
     #[must_use]
     #[wasm_bindgen(js_name=detailsVersion)]
