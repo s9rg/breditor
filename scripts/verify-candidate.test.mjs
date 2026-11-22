@@ -420,6 +420,27 @@ test("missing/stale declared artifacts reject a zero-exit stage",async()=>{
 test("a source edit during a stage invalidates its pass before later checks",async()=>{
  const root=temporary();let changed=false;try{const run=await runCandidateChecks(plan([fixtureCheck("first"),fixtureCheck("never")]),quiet({root,snapshot:()=>({...stable(),sha256:changed?"changed":"original"}),execute:async(check,options)=>{const result=await executeCandidateStage(check,options);changed=true;return result;}}));assert.equal(run.exitCode,1);assert.equal(run.result.stages.length,1);assert.equal(run.result.stages[0].status,"failed");assert.equal(run.result.stages[0].log.sha256,fileEvidence(root,run.result.stages[0].log.path).sha256,"Source changes cannot discard the completed stage log hash");assert.match(run.result.error,/Source changed/);}finally{rmSync(root,{recursive:true,force:true});}
 });
+test("a chmod-only edit invalidates candidate evidence when Git ignores file modes",{skip:process.platform==="win32"},async()=>{
+ const root=temporary(),path=join(root,"tool.sh");
+ try{
+  execFileSync("git",["init","-q"],{cwd:root});
+  execFileSync("git",["config","core.fileMode","false"],{cwd:root});
+  writeFileSync(path,"#!/bin/sh\nexit 0\n");
+  execFileSync("git",["add","tool.sh"],{cwd:root});
+  execFileSync("git",["-c","user.name=Fixture","-c","user.email=fixture@example.invalid","commit","-qm","fixture"],{cwd:root});
+  writeFileSync(join(root,".git","info","exclude"),"/target/\n");
+  const before=sourceEvidence(root);
+  const run=await runCandidateChecks(plan([
+   fixtureCheck("mode-change","require('node:fs').chmodSync('tool.sh',0o755)"),
+   fixtureCheck("never"),
+  ]),quiet({root,snapshot:sourceEvidence}));
+  assert.equal(sourceEvidence(root).dirty,false);
+  assert.notEqual(sourceEvidence(root).sha256,before.sha256);
+  assert.equal(run.exitCode,1);
+  assert.equal(run.result.stages.length,1);
+  assert.match(run.result.error,/Source changed/);
+ }finally{rmSync(root,{recursive:true,force:true});}
+});
 test("empty, repeated or path-bearing check IDs cannot manufacture a successful run",async()=>{
  const root=temporary();try{for(const checks of [[],[fixtureCheck("same"),fixtureCheck("same")],[fixtureCheck("../outside")]])await assert.rejects(runCandidateChecks(plan(checks),quiet({root})),/Invalid candidate check plan/);}finally{rmSync(root,{recursive:true,force:true});}
 });
