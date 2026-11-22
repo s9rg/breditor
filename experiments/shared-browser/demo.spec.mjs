@@ -2,6 +2,23 @@ import {test,expect} from "@playwright/test";
 async function caret(page,side,block,end){
  const surface=page.locator(`#${side} .breditor-shared-surface`);await surface.focus();await surface.locator(`[data-rich-text="${block}"]`).evaluate((element,end)=>{const range=document.createRange();range.selectNodeContents(element);range.collapse(!end);const selection=document.getSelection();selection.removeAllRanges();selection.addRange(range);},end);
 }
+
+test("the shared code example colors a typed change for both writers", async ({page}) => {
+ await page.goto("/demo");
+ await page.getByRole("link", {name: "Try code highlighting"}).click();
+ await expect(page.locator("#code-ready")).toHaveText("Ready");
+ await caret(page, "a", "retry", true);
+ await page.keyboard.press("Enter");
+ await page.keyboard.insertText("// Shared example");
+ for (const writer of ["a", "b"]) {
+  await expect(page.locator(`#${writer} pre[data-language]`)).toContainText("// Shared example");
+ }
+ await expect.poll(() => page.evaluate(() => [...CSS.highlights]
+  .filter(([name]) => name.startsWith("breditor-syntax-") && name.endsWith("-comment"))
+  .flatMap(([, ranges]) => [...ranges].filter(range => range.toString() === "// Shared example"))
+  .length)).toBe(2);
+});
+
 test("combined demo saves both offline writers reconnects and reloads selective history",async({page})=>{
  await page.goto("/demo");await expect(page.locator("#state")).toHaveText("Connected · A saved · B saved");
  await page.locator("#connection").click();await caret(page,"a","p",true);await page.keyboard.type(" demoA");await caret(page,"b","caption",false);await page.keyboard.type("demoB ");
