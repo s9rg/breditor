@@ -22,3 +22,38 @@ const structural=await createStructuralLocalProfileV2();try{
  }finally{owner.dispose();}
 }finally{structural.dispose();}
 console.log("Minimal structural V2 owner and exact future history passed without optional peers");
+
+const {mountLocalAutosave}=await import("@breditor/editor/autosave");
+const saveProfile=await createLocalProfile();
+try {
+ const owner=saveProfile.createEditor(emptyDocumentJson(saveProfile.descriptor(),"autosave-minimal","p"));
+ try {
+  const surface={},listeners=new Set();
+  const checkpointHost={
+   surface,
+   view:()=>owner.view(),
+   checkpointJson:()=>owner.checkpointJson(),
+   writingState:()=>({closed:false,busy:false,composing:false,revision:owner.view().revision}),
+   subscribeWriting(listener){listeners.add(listener);return ()=>listeners.delete(listener);},
+  };
+  const writes=[];
+  const autosave=mountLocalAutosave(checkpointHost,{async save(checkpoint){writes.push(checkpoint);}});
+  try {
+   const point={block:"p",offset:"0",affinity:"after"};
+   owner.execute({kind:"setSelection",selection:{kind:"text",anchor:point,focus:point}});
+   owner.execute({kind:"insertPlainText",text:"Saved through the installed entry"});
+   const edited=owner.documentJson();
+   owner.execute({kind:"undo"});
+   for(const listener of listeners)listener();
+   assert.equal((await autosave.flush()).status,"committed");
+   assert.deepEqual(writes,[owner.checkpointJson()]);
+   const restored=saveProfile.restoreEditor(writes[0]);
+   try {
+    restored.execute({kind:"redo"});
+    assert.equal(restored.documentJson(),edited);
+   }finally{restored.dispose();}
+  }finally{autosave.dispose();}
+  assert.equal(listeners.size,0);
+ }finally{owner.dispose();}
+}finally{saveProfile.dispose();}
+console.log("Installed autosave entry saved exact local history without React or collaboration");
