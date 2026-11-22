@@ -1,6 +1,6 @@
 /** Clean-installed SDK qualification in complete bounded editing/network matrices. Never publishes. */
 import {execFileSync} from "node:child_process";
-import {readdirSync,realpathSync} from "node:fs";
+import {readFileSync,readdirSync,realpathSync} from "node:fs";
 import {resolve,dirname} from "node:path";
 import {fileURLToPath} from "node:url";
 const root=resolve(dirname(fileURLToPath(import.meta.url)),".."),configuration="experiments/editor-browser/playwright.config.mjs";
@@ -20,9 +20,19 @@ export function editorBrowserPlan(){
  const names=readdirSync(resolve(root,"experiments/editor-browser")).filter(name=>name.endsWith(".spec.mjs"));
  return {build:[process.execPath,["scripts/check-editor-package.mjs"]],runs:editorBrowserRuns(names).map(names=>[resolve(root,"node_modules/.bin/playwright"),["test","-c",configuration,...names.map(name=>`(^|[/\\\\])${name.replaceAll(".","\\.")}$`)]])};
 }
+export function installedBrowserEnvironment(report,environment=process.env){
+ if(typeof report?.consumer!=="string"||!report.consumer)throw Error("Missing freshly installed editor consumer");
+ return {...environment,BREDITOR_EDITOR_CONSUMER:realpathSync(report.consumer)};
+}
 if(process.argv[1]&&realpathSync(process.argv[1])===fileURLToPath(import.meta.url)){
  const args=process.argv.slice(2),plan=editorBrowserPlan();
  if(args.length===1&&args[0]==="--dry-run")console.log(JSON.stringify({executed:false,...plan},null,2));
- else if(!args.length){for(const [command,arguments_] of [plan.build,...plan.runs])execFileSync(command,arguments_,{cwd:root,stdio:"inherit",shell:false});}
+ else if(!args.length){
+  const options={cwd:root,stdio:"inherit",shell:false};
+  execFileSync(...plan.build,options);
+  const report=JSON.parse(readFileSync(resolve(root,"target/editor-installed-consumer.json"),"utf8"));
+  const env=installedBrowserEnvironment(report);
+  for(const [command,arguments_] of plan.runs)execFileSync(command,arguments_,{...options,env});
+ }
  else throw Error("Usage: node scripts/check-editor-browser.mjs [--dry-run]");
 }
