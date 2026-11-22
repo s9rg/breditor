@@ -6,17 +6,19 @@ import {readFileSync} from 'node:fs';
 import {createHash} from 'node:crypto';
 import {join,resolve} from 'node:path';
 import {pathToFileURL} from 'node:url';
-import {WebSocket as Socket} from 'undici';
 import {pixel} from './fixtures/review-assets/pixels.mjs';
-import {selectedDeliveryNativeHost} from './fixtures/selected-delivery/native-host.mjs';
-import {environment} from './fixtures/room-participant-inventory/environment.mjs';
 const origin='http://127.0.0.1:4187';
 export const selectedDeliveryProfiles=Object.freeze([[1,false],[2,false],[2,true],[3,false],[3,true]].flatMap(([language,standard])=>[false,true].map(atomic=>Object.freeze({language,standard,atomic}))));
 export async function probeSelectedDeliveryCase(root,directory,{language,standard,atomic},
- {sdkModule=new URL('../packages/breditor-collaboration/dist/index.js',import.meta.url),onAdvancedControls,nativeHostFactory=selectedDeliveryNativeHost,nativeHostRoot=(value=>value)}={}){
+ {sdkModule=new URL('../packages/breditor-collaboration/dist/index.js',import.meta.url),onAdvancedControls,nativeHostFactory,nativeHostRoot=(value=>value)}={}){
+ const {WebSocket:Socket}=await import('undici');
+ const {environment}=await import('./fixtures/room-participant-inventory/environment.mjs');
+ const createHost=nativeHostFactory===undefined
+  ?(await import('./fixtures/selected-delivery/native-host.mjs')).selectedDeliveryNativeHost
+  :nativeHostFactory;
  const api=await import(sdkModule),native=await import(pathToFileURL(resolve(directory,'breditor_shared.js')));
  await native.default({module_or_path:readFileSync(join(directory,'breditor_shared_bg.wasm'))});
- const host=await nativeHostFactory(nativeHostRoot(root),{language,standard,atomic}),reset=environment(),saved=new Map(),originalFetch=globalThis.fetch,requests=[];let profile,oldCheck,newCheck,oldDelivery,newDelivery,middle,chainedCheck,chainedDelivery,oldPath,newPath,chainedPath;
+ const host=await createHost(nativeHostRoot(root),{language,standard,atomic}),reset=environment(),saved=new Map(),originalFetch=globalThis.fetch,requests=[];let profile,oldCheck,newCheck,oldDelivery,newDelivery,middle,chainedCheck,chainedDelivery,oldPath,newPath,chainedPath;
  for(const[name,value]of Object.entries({fetch:(url,options={})=>{const headers=new Headers(options.headers);headers.set('Origin',origin);return originalFetch(url,{...options,headers});},WebSocket:class extends Socket{constructor(url){super(url,{headers:{Origin:origin}});}send(raw){requests.push(JSON.parse(raw).request.kind);assert.ok(requests.length<20000);return super.send(raw);}}})){saved.set(name,Object.getOwnPropertyDescriptor(globalThis,name));Object.defineProperty(globalThis,name,{value,configurable:true});}
  const sessions=[],documents=[],reviews=[];
  try{const first=host.initial,fixture=host.fixture(first),metadata=JSON.parse(fixture.inventoryJson);const method=language===1?'from_configuration_json':standard?'from_standard_configuration_json_v'+language:'from_configuration_json_v'+language;profile=native.SharedRichProfile[method](fixture.configuration);assert.notDeepEqual(fixture.generationRecoveryState.origin,fixture.generationRecoveryState.server);

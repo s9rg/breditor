@@ -31,7 +31,7 @@
         },
         {
           "name": "Validate readiness and qualification contracts",
-          "run": "node --test scripts/check-v1-readiness.test.mjs scripts/candidate-ci.test.mjs scripts/verify-candidate.test.mjs scripts/activation-qualification.test.mjs scripts/pr-readiness-ci.test.mjs"
+          "run": "node --test scripts/check-v1-readiness.test.mjs scripts/candidate-ci.test.mjs scripts/verify-candidate.test.mjs scripts/activation-qualification.test.mjs scripts/pr-readiness-ci.test.mjs scripts/*-candidate-plan.test.mjs"
         }
       ]
     }

@@ -19,7 +19,7 @@ test("the fast PR check uses the proposed merge with read-only permissions", () 
  assert.equal(node.uses, candidateNode.uses);
  assert.deepEqual(node.with, candidateNode.with);
  assert.equal(job.steps.length, 3);
- assert.equal(contracts.run, "node --test scripts/check-v1-readiness.test.mjs scripts/candidate-ci.test.mjs scripts/verify-candidate.test.mjs scripts/activation-qualification.test.mjs scripts/pr-readiness-ci.test.mjs");
+ assert.equal(contracts.run, "node --test scripts/check-v1-readiness.test.mjs scripts/candidate-ci.test.mjs scripts/verify-candidate.test.mjs scripts/activation-qualification.test.mjs scripts/pr-readiness-ci.test.mjs scripts/*-candidate-plan.test.mjs");
  assert.equal(contracts.if, undefined);
  assert.equal(contracts["continue-on-error"], undefined);
 });
