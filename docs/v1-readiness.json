@@ -437,11 +437,11 @@
       "sources":["ckeditor-multilevel-lists"]
     },
     {
-      "id":"code-syntax-highlighting","area":"Editing","status":"missing",
+      "id":"code-syntax-highlighting","area":"Editing","status":"implemented",
       "summary":"Syntax-highlighted code blocks",
-      "current":"Code blocks carry an inert code-language field rendered as data-language; there is no highlighter.",
-      "acceptance":"Add an inert, deterministic highlighting layer outside the editing model (no stored markup), bounded for size and performance, local and shared.",
-      "evidence":["docs/RICH_STRUCTURAL_V2.md"],
+      "current":"An opt-in local and shared SDK decorator derives bounded CSS highlight ranges from explicit JavaScript, TypeScript, JSON, Python and Rust labels. Editor DOM, selection offsets and serialized content are unchanged. Unsupported languages and browsers display plain code.",
+      "acceptance":"Qualify the bounded language set and styling on the supported browser matrix and exact release candidate. Record supported languages and plain-code fallback in integration docs.",
+      "evidence":["docs/RICH_STRUCTURAL_V2.md","packages/breditor-experimental-rich-content/src/code_highlighting.ts","experiments/rich-browser/code-highlighting.spec.mjs","experiments/shared-browser/code-highlighting.spec.mjs"],
       "sources":["tiptap-code-highlight"]
     },
     {

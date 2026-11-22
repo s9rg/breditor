@@ -83,8 +83,42 @@ formatting as unavailable, not unset or a silently filtered partial selection.
 Enter and Shift+Enter insert LF inside code. The Code block form requires an
 explicit formatting-loss choice; Reject formatted text is its default. Paragraph
 and Heading perform explicit whole-block conversion back to prose. Code language
-is inert `data-language` metadata on semantic `pre`/`code` output; no highlighter
-provider, executable code or arbitrary CSS is selected by that token.
+appears as inert `data-language` metadata on semantic `pre`/`code` output.
+
+### Syntax highlighting
+
+Mount syntax colors on a local or shared editor after mounting its surface.
+
+```js
+import {mountCodeHighlighting} from '@breditor/editor';
+
+const highlighting = mountCodeHighlighting(editor);
+// When unmounting the editor:
+highlighting.dispose();
+```
+
+The shared SDK also exports this helper from `@breditor/editor/collaboration`.
+It recognizes explicit JavaScript (`js`, `javascript`, `mjs`, `cjs`),
+TypeScript (`ts`, `typescript`, `mts`, `cts`), JSON, Python (`py`,
+`python`) and Rust (`rs`, `rust`) labels, case-insensitively. Unlabeled code,
+other languages and browsers without the CSS Custom Highlight API display
+plain code. The mount's `supported` flag reports whether the browser can paint
+ranges. Tokenization is lexical. JavaScript template literals are colored as
+strings. JSX, regular expressions and embedded languages use the ordinary
+lexical rules.
+
+The decorator colors ranges in the existing text nodes. Editing DOM, selection
+offsets, clipboard payloads, saved documents, static output and shared history
+use the original code text. Each pass processes at most 128 known-language
+blocks, up to 16,384 UTF-16 units per block, 65,536 units per surface and 4,096
+ranges. Oversized blocks display as plain code. Near the surface limit, later
+blocks may display as plain code. Changes coalesce to one paint per animation
+frame.
+
+Hosts can set `--breditor-code-comment`, `--breditor-code-keyword`,
+`--breditor-code-literal`, `--breditor-code-number`, `--breditor-code-operator`
+and `--breditor-code-string` on their editor surface or its ancestors. Pass
+`{nonce}` if the palette stylesheet requires a CSP nonce.
 
 ## Named actions and history
 

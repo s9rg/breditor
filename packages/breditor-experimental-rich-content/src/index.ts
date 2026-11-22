@@ -2,6 +2,7 @@ export {mountRichEditor,mountDocumentRichEditor,RichDomEditor,type RichEditorOpt
 export type {RichClipboardInterchange,RichClipboardInterchangeReport,RichInterchangeFormatReport,RichInterchangeNotice,RichInterchangeResult} from "./clipboard_interchange.js";
 export {defaultToolbar,type ToolbarControl,type ActionContext} from "./actions.js";
 export type {AssetBinding,RenderOptions} from "./render.js";
+export {mountRichCodeHighlighting,type RichCodeHighlighting,type RichCodeHighlightingOptions} from "./code_highlighting.js";
 export {RichAssetStore,type RichAssetOptions} from "./assets/store.js";
 export {RichAssetStoreCustody,RichAssetCustodyError} from './assets/custody.js';
 export {RichAssetReconciliation,type RichAssetReconciliationOptions} from "./assets/reconciliation/coordinator.js";
