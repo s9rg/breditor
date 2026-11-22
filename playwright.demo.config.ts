@@ -1,6 +1,9 @@
 import { defineConfig, devices } from "@playwright/test";
 
-const PORT = 4_174;
+const PORT = Number(process.env.BREDITOR_RELEASE_DEMO_PORT ?? 4_174);
+if (!Number.isInteger(PORT) || PORT < 1024 || PORT > 65535) {
+  throw new Error("Invalid BREDITOR_RELEASE_DEMO_PORT");
+}
 
 export default defineConfig({
   testDir: "./tests/demo",
@@ -37,7 +40,7 @@ export default defineConfig({
   ],
   webServer: {
     command:
-      "npm run dev --workspace @breditor/example-react -- --host 127.0.0.1 --port 4174 --strictPort --force",
+      `npm run dev --workspace @breditor/example-react -- --host 127.0.0.1 --port ${PORT} --strictPort --force`,
     url: `http://127.0.0.1:${PORT}`,
     reuseExistingServer: false,
     timeout: 30_000,
