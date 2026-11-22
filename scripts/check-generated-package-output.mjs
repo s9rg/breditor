@@ -17,6 +17,7 @@ const packages=[
  {name:'breditor-experimental-rich-content',output:'dist/browser',external:[],passes:[[]]},
  {name:'breditor-collaboration',output:'dist',external:['runtime'],passes:[[]]},
  {name:'breditor-editor',output:'dist',external:[],passes:[[]]},
+ {name:'breditor-interchange',output:'dist',external:[],passes:[[]]},
 ];
 const sha=bytes=>createHash('sha256').update(bytes).digest('hex');
 function inventory(directory,excluded=[]){
