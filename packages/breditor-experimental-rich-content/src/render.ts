@@ -32,12 +32,13 @@ export interface RenderOptions {
  scrollableTables?:boolean;
 }
 const resolvedUi=new WeakMap<object,RichUiLocale>();
-/** Resolve (and cache per options object) the catalog that labels page-break markers. */
-function pageBreakLabel(options:RenderOptions):string{
- const ui=options.ui;if(ui===undefined)return resolveRichUi().text("pageBreakLabel");
+/** Resolve (and cache per options object) the catalog that labels rendered chrome. */
+function renderUi(options:RenderOptions):RichUiLocale{
+ const ui=options.ui;if(ui===undefined)return resolveRichUi();
  let locale=resolvedUi.get(ui);if(!locale){locale=resolveRichUi(ui);resolvedUi.set(ui,locale);}
- return locale.text("pageBreakLabel");
+ return locale;
 }
+function pageBreakLabel(options:RenderOptions):string{return renderUi(options).text("pageBreakLabel");}
 /** Validate opt-in presentation before publishing host DOM. Legacy callbacks stay separate. */
 export function requireRenderOptions(value:RichPresentationModel,options:RenderOptions):void {
  if(options.legalListNumbering!==undefined&&typeof options.legalListNumbering!=="boolean")throw new TypeError("legalListNumbering must be a boolean");
@@ -226,12 +227,13 @@ export function render(surface:HTMLElement,value:RichPresentationModel,options:R
   controls.contentEditable="false";
   viewport.dataset["richTableScroll"]=tableId;
   viewport.setAttribute("role","region");
-  viewport.setAttribute("aria-label",`Table ${++tableNumber}`);
+  const ui=renderUi(options),number=++tableNumber;
+  viewport.setAttribute("aria-label",ui.text("tableScrollRegion",{number}));
   element.style.minInlineSize=`${geometry.columns.reduce((width,column)=>width+column.width,0)}px`;
   for(const [direction,icon,delta] of [["left","←",-72],["right","→",72]] as const){
    const button=document.createElement("button");
    button.type="button";button.dataset["scrollTable"]=direction;button.textContent=icon;
-   button.setAttribute("aria-label",`Scroll table ${tableNumber} ${direction}`);
+   button.setAttribute("aria-label",ui.text(direction==="left"?"tableScrollLeft":"tableScrollRight",{number}));
    button.addEventListener("click",()=>viewport.scrollBy({left:delta,behavior:"instant"}));
    button.addEventListener("keydown",event=>{
     if(event.altKey||event.ctrlKey||event.metaKey||(event.key!=="ArrowLeft"&&event.key!=="ArrowRight"))return;

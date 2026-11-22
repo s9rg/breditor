@@ -253,6 +253,13 @@ and status messages from the editor catalog through separate `ai*` and `lang*` k
 closed" notice and API-misuse errors stay English, as elsewhere. See
 [AI_AND_LANGUAGE_TOOLS.md](AI_AND_LANGUAGE_TOOLS.md).
 
+## Scrollable tables
+
+The opt-in `scrollableTables` viewport labels each wide table region and its two
+scroll buttons with `tableScrollRegion` ("Table {number}"), `tableScrollLeft` and
+`tableScrollRight` ("Scroll table {number} left/right"). The direction words are
+physical, matching the arrow glyphs, and stay the same under RTL chrome.
+
 ## Editing aids
 
 The show-blocks labels and the two editing-aid toggle buttons read `aid*` keys

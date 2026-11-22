@@ -13,7 +13,10 @@ then stay inside the editor with a horizontal viewport. Use the Left and
 Right controls, a scrollbar, or a touch gesture. The buttons also accept
 Left and Right arrow keys. A render following an edit, resize or remote publication retains the
 table's scroll offset when the table still exists. The setting is view-only
-and has no effect on saved documents or copied table content.
+and has no effect on saved documents or copied table content. The viewport and
+button names come from the editor's UI catalog (`tableScrollRegion`,
+`tableScrollLeft` and `tableScrollRight`, each with a `{number}` placeholder),
+so they follow the `ui` option like other editor chrome.
 
 ## Column resize handles
 
