@@ -6,6 +6,16 @@ its durable formats and Wasm transport.
 
 ## Unreleased
 
+- Add opt-in **code syntax highlighting** for local and shared rich editors
+  (`mountRichCodeHighlighting`; `mountCodeHighlighting` in `@breditor/editor` and
+  its collaboration entry). JavaScript, TypeScript, JSON, Python and Rust labels
+  are colored through the CSS Custom Highlight API without changing editor DOM,
+  offsets, clipboard, saved documents or history; other languages and browsers
+  without the API show plain code. Highlight names no longer use
+  `crypto.randomUUID`, so mounting works on plain-HTTP pages instead of throwing.
+  See [docs/RICH_STRUCTURAL_V2.md](docs/RICH_STRUCTURAL_V2.md#syntax-highlighting).
+  The local and shared demos link to an editable code example.
+
 - Add an opt-in **document server API** to the reference relay
   (`serve-documents`, `server::DocumentServer`, configuration
   `breditor/relay-document-api` V1, everything off by default): authenticated
