@@ -1,5 +1,6 @@
 // Interactive sample using the actual opt-in package and Rust owner, not a mock editor.
 import init,* as wasm from "/wasm.js";
+import {mountRichLocalAutosave} from "/dist/browser/persistence/local_autosave.js";
 import {compileRichProfile,mountRichEditor,RichAssetStore,RichLocalSessionStore,insertImageFiles,defaultToolbar,
  mountRichSlashCommands,createRichSlashCommands,mountRichSelectionToolbar,mountRichContextMenu,
  mountRichTableColumnResize,richTableColumnResizeCommit,mountRichImageResize,richImageResizeCommit,mountRichBlockDrag,richUiStringsEn,standardRichSlashPicks} from "/rich.js";
@@ -48,17 +49,36 @@ function mountExtras(editor){
   mountRichBlockDrag(editor),
  ];
 }
-let editor=mount(owner),saveSequence=0;mountExtras(editor);
-function save(){
- const sequence=++saveSequence;document.getElementById("saved").textContent="Saving locally…";
- try{void sessions.save(editor.checkpointJson()).then(()=>{if(sequence===saveSequence)document.getElementById("saved").textContent="Saved locally";}).catch(error=>report(error));}
- catch(error){report(error);}
+const saveState=document.getElementById("saved");
+saveState.setAttribute("role","status");
+const retrySave=document.createElement("button");
+retrySave.type="button";
+retrySave.textContent="Retry save";
+retrySave.hidden=true;
+saveState.after(retrySave);
+const saveLabels={scheduled:"Saving locally…",saving:"Saving locally…",idle:"Saved locally",paused:"Save paused"};
+function startAutosave(owner){
+ const mounted=mountRichLocalAutosave(owner,sessions,{delayMs:140,maxLatencyMs:500});
+ const showStatus=({phase})=>{
+  const label=saveLabels[phase]??"";
+  if(saveState.textContent!==label)saveState.textContent=label;
+  retrySave.hidden=phase!=="paused";
+ };
+ mounted.observeStatus(showStatus);
+ showStatus(mounted.getStatus());
+ return mounted;
 }
-function report(error){document.getElementById("saved").textContent="Not saved";document.getElementById("notice").textContent=error instanceof Error?error.message:"Local operation failed";}
+let editor=mount(owner),autosave=startAutosave(editor);
+mountExtras(editor);
+retrySave.addEventListener("click",()=>{void autosave.retry();});
+document.addEventListener("visibilitychange",()=>{
+ if(document.visibilityState==="hidden")void autosave.flush();
+});
+function report(error){document.getElementById("notice").textContent=error instanceof Error?error.message:"Local operation failed";}
 function mount(owner){return mountRichEditor(document.getElementById("editor"),{core:owner,scrollableTables:true,...(ui?{ui}:{}),
  resolveAsset:binding=>assets.get(binding.asset)??assetStore.resolve(binding.asset),
  onFiles:async(files,position)=>{await insertImageFiles(editor,assetStore,files,position);await showAssets();},
- onError:report,onChange:view=>{document.getElementById("revision").textContent=`Revision ${view.revision} · ${view.undoDepth} undo groups`;save();}});}
+ onError:report,onChange:view=>{document.getElementById("revision").textContent=`Revision ${view.revision} · ${view.undoDepth} undo groups`;}});}
 async function showAssets(){
  const list=document.getElementById("assets");if(!list)return;
  const records=await assetStore.list();list.replaceChildren();
@@ -74,8 +94,8 @@ document.getElementById("images").addEventListener("change",async event=>{
  try{await insertImageFiles(editor,assetStore,files,{parent:{kind:"document"},before:null});await showAssets();}
  catch(error){report(error);}finally{event.target.value="";}
 });
-window.demo={get editor(){return editor;},get extras(){return extras;},profile,assetStore,sessions};
-save();await showAssets();
+window.demo={get editor(){return editor;},get extras(){return extras;},get autosave(){return autosave;},profile,assetStore,sessions};
+await showAssets();
 document.getElementById("export").addEventListener("click",()=>{
  const blob=new Blob([editor.checkpointJson()],{type:"application/json"}),url=URL.createObjectURL(blob),link=document.createElement("a");link.href=url;link.download="breditor-rich-session.json";link.click();setTimeout(()=>URL.revokeObjectURL(url),0);
 });
@@ -94,9 +114,25 @@ document.getElementById("export-docx").addEventListener("click",async()=>{
  }catch(error){document.getElementById("notice").textContent=error instanceof Error?error.message:"Word export failed";}
 });
 document.getElementById("import").addEventListener("change",async event=>{
- const file=event.target.files?.[0];if(!file)return;
- try {if(file.size>16*1024*1024)throw Error("Session file exceeds 16 MiB");const restored=profile.restoreEditor(await file.text());for(const extra of extras)extra.dispose();extras=[];editor.dispose();editor=mount(restored);mountExtras(editor);save();document.getElementById("notice").textContent="Restored the exact local content and undo/redo branch.";}
+ const input=event.currentTarget,file=input.files?.[0];
+ if(!file||input.disabled)return;
+ input.disabled=true;
+ try {
+  if(file.size>16*1024*1024)throw Error("Session file exceeds 16 MiB");
+  const checkpoint=await file.text();
+  const previous=await autosave.flush();
+  if(previous.status!=="committed")throw Error("Retry the current save before restoring a different session.");
+  const restored=profile.restoreEditor(checkpoint);
+  for(const extra of extras)extra.dispose();
+  extras=[];
+  autosave.dispose();
+  editor.dispose();
+  editor=mount(restored);
+  autosave=startAutosave(editor);
+  mountExtras(editor);
+  document.getElementById("notice").textContent="Restored the exact local content and undo/redo branch.";
+ }
  catch(error){document.getElementById("notice").textContent=error instanceof Error?error.message:"Session restore failed";}
- finally{event.target.value="";}
+ finally{input.value="";input.disabled=false;}
 });
 document.getElementById("ready").textContent="Ready — real Rust/Wasm editor";
