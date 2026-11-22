@@ -437,3 +437,16 @@ Implementation references: [standard file locking and sync](https://doc.rust-lan
 [OS-backed credential entropy](https://docs.rs/getrandom/0.4.3/getrandom/fn.fill.html),
 [Axum WebSockets](https://docs.rs/axum/0.8.9/axum/extract/ws/),
 [Tokio task and blocking-work contracts](https://docs.rs/tokio/1.53.3/tokio/).
+
+## Native dependency evidence
+
+Run `node scripts/build-relay-notices.mjs` with the locked Cargo sources and the
+pinned Rust toolchain installed. Both V1 candidate profiles run this command.
+It builds the native release binary with the `server` feature and records its
+SHA-256, the host target, the locked Cargo graph, and the available third-party
+and Rust library notices in `target/relay-native-notices/`.
+
+The inventory includes native-target runtime and build dependencies, including
+the vendored replication sources and the raster decoders. The report lists
+missing upstream notice texts. Audit the final platform's system libraries and
+distribution obligations before approving the dependency and license gate.
