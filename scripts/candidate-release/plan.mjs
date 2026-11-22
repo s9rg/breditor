@@ -8,6 +8,7 @@ import {candidateRuntimePaths} from "../candidate-runtime-paths.mjs";
 import {metadataRecoveryArtifacts} from '../metadata-recovery-artifacts.mjs';
 import {sharedRuntimeBuildReport} from "./shared-runtime-evidence.mjs";
 import {nativeSuggestionBuildReport, nativeSuggestionExample, nativeSuggestionExecutable} from "./native-suggestion-build-evidence.mjs";
+import {richDemoLatencyReport} from "../record-rich-demo-latency.mjs";
 import {candidateRuntimeSizeReport} from "../measure-candidate-runtime-size.mjs";
 export const repository=resolve(dirname(fileURLToPath(import.meta.url)),"../..");
 export const deferredFunctionalGates=Object.freeze([
@@ -808,6 +809,7 @@ export function candidateReleasePlan({profile="full",environment=process.env}={}
   script("readiness-inventory","check-v1-readiness.mjs",["--json"]),
  ];
  if(profile==="full")checks.push(
+  script("rich-demo-latency","record-rich-demo-latency.mjs",[],[{path:richDemoLatencyReport,fresh:true,retain:true}],240000),
   script("installed-search-browser","check-search-browser.mjs",[],[{path:"target/search-installed-browser.json",fresh:true}]),
   script("installed-placeholder-browser","check-placeholder-browser.mjs",[],[{path:"target/placeholder-installed-browser.json",fresh:true}]),
   script("installed-fullscreen-browser","check-fullscreen-browser.mjs",[],[{path:"target/fullscreen-installed-browser.json",fresh:true}]),
