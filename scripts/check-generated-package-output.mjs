@@ -1,4 +1,4 @@
-/** Re-emit the three SDK TypeScript packages into disposable directories and
+/** Re-emit the SDK TypeScript packages into disposable directories and
  * require exact file names and bytes before packing. Normal Wasm/glue is a
  * separately qualified input: this check snapshots it, never rebuilds it. */
 import {tmpdir} from 'node:os';
@@ -16,6 +16,7 @@ const packages=[
  {name:'breditor-browser',output:'dist',external:[],passes:[['--declaration','false','--removeComments'],['--emitDeclarationOnly']]},
  {name:'breditor-experimental-rich-content',output:'dist/browser',external:[],passes:[[]]},
  {name:'breditor-collaboration',output:'dist',external:['runtime'],passes:[[]]},
+ {name:'breditor-editor',output:'dist',external:[],passes:[[]]},
 ];
 const sha=bytes=>createHash('sha256').update(bytes).digest('hex');
 function inventory(directory,excluded=[]){
