@@ -9,9 +9,12 @@ test("the contents demo jumps to an editable heading and follows a rename", asyn
  const surface = page.locator(".breditor-rich-surface");
  await contents.getByRole("button", {name: "Restore a checkpoint"}).click();
  await expect.poll(() => surface.evaluate(element => element.scrollTop)).toBeGreaterThan(0);
+ await expect(contents.getByRole("button", {name: "Restore a checkpoint"})).toHaveAttribute("aria-current", "location");
  await page.keyboard.insertText("Safely ");
  await expect(contents.getByRole("button", {name: "Safely Restore a checkpoint"})).toBeEnabled();
  await expect(surface.getByRole("heading", {name: "Safely Restore a checkpoint"})).toBeVisible();
+ await surface.evaluate(element => { element.scrollTop = 0; });
+ await expect(contents.getByRole("button", {name: "Getting started"})).toHaveAttribute("aria-current", "location");
 });
 
 test("the local code example toggles colors while keeping its source", async ({page}) => {

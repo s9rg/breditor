@@ -13,6 +13,8 @@ test("both demo contents lists follow an edited heading and the writer's Undo", 
  for (const writer of ["a", "b"]) {
   await expect(contents(writer).getByRole("button", {name: "Offline Recovery"})).toBeEnabled();
  }
+ await contents("b").getByRole("button", {name: "Restore a checkpoint"}).click();
+ await expect(contents("b").getByRole("button", {name: "Restore a checkpoint"})).toHaveAttribute("aria-current", "location");
  await page.locator("#a").getByRole("button", {name: "Undo", exact: true}).click();
  await expect(contents("b").getByRole("button", {name: "Recovery", exact: true})).toBeEnabled();
  await expect(contents("a").getByRole("button", {name: "Offline Recovery"})).toHaveCount(0);

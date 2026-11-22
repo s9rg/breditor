@@ -151,6 +151,11 @@ Headings in collapsed editor sections appear when their section opens.
 Pages stay bounded by `pageSize`; a skipped rank nests under its nearest
 preceding shallower heading on the current page.
 
+Entries mark the current section with `aria-current="location"` as the
+reader scrolls. Set `scrollContainer` to an element containing the editing
+surface when it scrolls independently of the browser window. The reading
+marker follows the visible headings near the top of that scrollport.
+
 For published HTML, request anchor links from the static renderer.
 
 ```js
