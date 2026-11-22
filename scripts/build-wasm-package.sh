@@ -144,7 +144,8 @@ readonly rolldown_executable
 rolldown_version="$("${rolldown_executable}" --version 2>/dev/null)" ||
   fail "could not read the Rolldown version from ${rolldown_executable}."
 readonly rolldown_version
-[[ "${rolldown_version}" == "${required_rolldown_version}" ]] ||
+# With CI=true, the pinned CLI prefixes its version with its log level.
+[[ "${rolldown_version#"[log] "}" == "${required_rolldown_version}" ]] ||
   fail "expected ${required_rolldown_version}, found '${rolldown_version}' at ${rolldown_executable}."
 
 wasm_bindgen_version="$("${wasm_bindgen_executable}" --version 2>/dev/null)" ||
