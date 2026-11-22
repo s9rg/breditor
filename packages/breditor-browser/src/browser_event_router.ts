@@ -36,6 +36,8 @@ import type { FlatListDocumentProjection } from "./flat_list_projection.js";
 import type { NestedListDocumentProjection } from "./nested_list_projection.js";
 import type { NativeDeliveryToken } from "./native_command_builder.js";
 
+const EXPERIMENTAL_BLOCK_PROFILES = import.meta.breditorExperimentalBlockProfiles !== false;
+
 type RouterProjection = BaseDocumentProjection | FlatListDocumentProjection | NestedListDocumentProjection;
 type RouterOutcome = WasmCommandSequenceOutcome<RouterProjection>;
 type RouterAdapter = BreditorWasmCommandAdapter | BreditorFlatListWasmCommandAdapter | BreditorNestedListWasmCommandAdapter;
@@ -187,7 +189,7 @@ class BrowserEventRouterCore {
     options: BrowserEventRouterOptions,
     flatLists: boolean | "nested",
   ) {
-    if (!(flatLists === "nested" ? queue instanceof BreditorNestedListCommandQueue : flatLists ? queue instanceof BreditorFlatListCommandQueue : queue instanceof BreditorCommandQueue)) {
+    if (!(EXPERIMENTAL_BLOCK_PROFILES && flatLists === "nested" ? queue instanceof BreditorNestedListCommandQueue : (EXPERIMENTAL_BLOCK_PROFILES && flatLists) ? queue instanceof BreditorFlatListCommandQueue : queue instanceof BreditorCommandQueue)) {
       throw new TypeError("browser event router queue is invalid");
     }
     const rendered = readInitialRender(adapter);
@@ -235,7 +237,7 @@ class BrowserEventRouterCore {
       let ordinary: OrdinaryRoutePort;
       // Select mode exactly once, before listeners can run. Do not infer it
       // from a later event, mutable public property or incoming projection.
-      if (flatLists === "nested" && queue instanceof BreditorNestedListCommandQueue) {
+      if (EXPERIMENTAL_BLOCK_PROFILES && flatLists === "nested" && queue instanceof BreditorNestedListCommandQueue) {
         const listAdapter = adapter as BreditorNestedListWasmCommandAdapter;
         composition = new BreditorNestedListCompositionController(queue, listAdapter, compositionOptions);
         clipboard = new BreditorNestedListClipboardController(queue, listAdapter);
@@ -243,7 +245,7 @@ class BrowserEventRouterCore {
           {...ordinaryOptions, selectionBridge: listAdapter.selectionBridge}) as unknown as OrdinaryRoutePort;
         this.#nestedTab = createNestedListTabController(queue, listAdapter, snapshot.keyboard.shortcuts === "enabled",
           () => this.#status.kind === "live" && composition?.active === false);
-      } else if (flatLists === true && queue instanceof BreditorFlatListCommandQueue) {
+      } else if (EXPERIMENTAL_BLOCK_PROFILES && flatLists === true && queue instanceof BreditorFlatListCommandQueue) {
         const listAdapter = adapter as BreditorFlatListWasmCommandAdapter;
         composition = new BreditorFlatListCompositionController(queue, listAdapter, compositionOptions);
         clipboard = new BreditorFlatListClipboardController(queue, listAdapter);

@@ -58,6 +58,7 @@ import {
   BaseRangeSelection,
   baseSelectionPointsEqual,
   spatialPositionForPoint,
+  isOwnedBaseRangeSelection,
 } from "./selection.js";
 import {
   preventDomEventDefault,
@@ -77,6 +78,8 @@ import { type NestedListDocumentProjection } from "./nested_list_projection.js";
 import { flatListBlockAtPath, flatListSpatialPositionForPoint, isOwnedFlatListRangeSelection, FlatListRangeSelection } from "./flat_list_selection.js";
 import { nestedListBlockAtPath, nestedListSpatialPositionForPoint, isOwnedNestedListRangeSelection, NestedListRangeSelection } from "./nested_list_selection.js";
 import { astPathsEqual } from "./ast_path.js";
+
+const EXPERIMENTAL_BLOCK_PROFILES = import.meta.breditorExperimentalBlockProfiles !== false;
 
 type NativeRender = RenderedProjection | RenderedProjection<FlatListDocumentProjection> | RenderedProjection<NestedListDocumentProjection>;
 type NativeRange = BaseRangeSelection | FlatListRangeSelection | NestedListRangeSelection;
@@ -176,14 +179,14 @@ class BrowserEventControllerCore<TResult, R extends NativeRender, D extends Nati
     this.#flatLists = flatLists;
     let validQueue = false;
     try {
-      validQueue = flatLists === "nested" ? queue instanceof BreditorNestedListCommandQueue : flatLists ? queue instanceof BreditorFlatListCommandQueue : queue instanceof BreditorCommandQueue;
+      validQueue = EXPERIMENTAL_BLOCK_PROFILES && flatLists === "nested" ? queue instanceof BreditorNestedListCommandQueue : (EXPERIMENTAL_BLOCK_PROFILES && flatLists) ? queue instanceof BreditorFlatListCommandQueue : queue instanceof BreditorCommandQueue;
     } catch {
       // Rejected below.
     }
     if (!validQueue) {
       throw new TypeError("browser event controller requires an owned command queue");
     }
-    const snapshot = snapshotControllerOptions(options, flatLists);
+    const snapshot = snapshotControllerOptions(options, (EXPERIMENTAL_BLOCK_PROFILES && flatLists));
     if (snapshot === null) {
       throw new TypeError("browser event controller options are invalid");
     }
@@ -560,10 +563,11 @@ class BrowserEventControllerCore<TResult, R extends NativeRender, D extends Nati
         return selectionReconcile("domDrift");
       }
       const selection = observed.value.selection;
-      const sync = selection === null ? noSelectionSync() : isOwnedNestedListRangeSelection(selection)
-        ? nestedListRangeSelectionSync(selection) : isOwnedFlatListRangeSelection(selection)
-        ? flatListRangeSelectionSync(selection) : rangeSelectionSync(selection);
-      const request = nativeCommandBuilder(this.#flatLists, delivery, sync).request(
+      const sync = selection === null ? noSelectionSync() : (EXPERIMENTAL_BLOCK_PROFILES && isOwnedNestedListRangeSelection(selection))
+        ? nestedListRangeSelectionSync(selection) : (EXPERIMENTAL_BLOCK_PROFILES && isOwnedFlatListRangeSelection(selection))
+        ? flatListRangeSelectionSync(selection) : isOwnedBaseRangeSelection(selection) ? rangeSelectionSync(selection) : undefined;
+      if (sync === undefined) return selectionBlocked("selectionUnavailable");
+      const request = nativeCommandBuilder((EXPERIMENTAL_BLOCK_PROFILES && this.#flatLists), delivery, sync).request(
         {kind: "selectionchange", detail: "document-selection"}, {kind: "selection", operation: "synchronize"}, "preserve");
       const submission = this.#submit(request);
       if (submission.status === "completed" || submission.status === "queued") {
@@ -669,9 +673,10 @@ class BrowserEventControllerCore<TResult, R extends NativeRender, D extends Nati
       if (!observed.ok || observed.value.kind !== "range") {
         return undefined;
       }
-      return isOwnedNestedListRangeSelection(observed.value.selection)
-        ? nestedListRangeSelectionSync(observed.value.selection) : isOwnedFlatListRangeSelection(observed.value.selection)
-        ? flatListRangeSelectionSync(observed.value.selection) : rangeSelectionSync(observed.value.selection);
+      return (EXPERIMENTAL_BLOCK_PROFILES && isOwnedNestedListRangeSelection(observed.value.selection))
+        ? nestedListRangeSelectionSync(observed.value.selection) : (EXPERIMENTAL_BLOCK_PROFILES && isOwnedFlatListRangeSelection(observed.value.selection))
+        ? flatListRangeSelectionSync(observed.value.selection) : isOwnedBaseRangeSelection(observed.value.selection)
+          ? rangeSelectionSync(observed.value.selection) : undefined;
     } catch {
       return undefined;
     }
@@ -685,14 +690,14 @@ class BrowserEventControllerCore<TResult, R extends NativeRender, D extends Nati
       return undefined;
     }
     try {
-      if (isOwnedNestedListRenderedProjection(rendered)) {
+      if (EXPERIMENTAL_BLOCK_PROFILES && isOwnedNestedListRenderedProjection(rendered)) {
         const target = mapDomNestedListTargetRange(rendered, targets.range);
         if (!target.ok) return undefined;
         const selection = NestedListRangeSelection.create(rendered.projection,
           {kind: "range", anchor: target.value.start, focus: target.value.end});
         return selection.ok ? nestedListRangeSelectionSync(selection.value) : undefined;
       }
-      if (isOwnedFlatListRenderedProjection(rendered)) {
+      if (EXPERIMENTAL_BLOCK_PROFILES && isOwnedFlatListRenderedProjection(rendered)) {
         const target = mapDomFlatListTargetRange(rendered, targets.range);
         if (!target.ok) return undefined;
         const selection = FlatListRangeSelection.create(rendered.projection,
@@ -750,16 +755,16 @@ class BrowserEventControllerCore<TResult, R extends NativeRender, D extends Nati
   }
 
   #ownsRender(rendered: NativeRender): boolean {
-    return this.#flatLists === "nested" ? isOwnedNestedListRenderedProjection(rendered) : this.#flatLists ? isOwnedFlatListRenderedProjection(rendered) : isOwnedRenderedProjection(rendered);
+    return EXPERIMENTAL_BLOCK_PROFILES && this.#flatLists === "nested" ? (EXPERIMENTAL_BLOCK_PROFILES && isOwnedNestedListRenderedProjection(rendered)) : (EXPERIMENTAL_BLOCK_PROFILES && this.#flatLists) ? (EXPERIMENTAL_BLOCK_PROFILES && isOwnedFlatListRenderedProjection(rendered)) : isOwnedRenderedProjection(rendered);
   }
 
   #acceptsDelivery(delivery: NativeDeliveryToken): boolean {
-    return this.#flatLists === "nested" ? nestedListEditorDeliveryAuthorityAccepts(this.#deliveryAuthority, delivery) : this.#flatLists ? flatListEditorDeliveryAuthorityAccepts(this.#deliveryAuthority, delivery)
+    return EXPERIMENTAL_BLOCK_PROFILES && this.#flatLists === "nested" ? nestedListEditorDeliveryAuthorityAccepts(this.#deliveryAuthority, delivery) : (EXPERIMENTAL_BLOCK_PROFILES && this.#flatLists) ? flatListEditorDeliveryAuthorityAccepts(this.#deliveryAuthority, delivery)
       : editorDeliveryAuthorityAccepts(this.#deliveryAuthority, delivery);
   }
 
   #matchesRender(delivery: NativeDeliveryToken, rendered: NativeRender): boolean {
-    return this.#flatLists === "nested" ? nestedListEditorDeliveryTokenMatchesRender(delivery, rendered as RenderedProjection<NestedListDocumentProjection>) : this.#flatLists ? flatListEditorDeliveryTokenMatchesRender(delivery, rendered as RenderedProjection<FlatListDocumentProjection>)
+    return EXPERIMENTAL_BLOCK_PROFILES && this.#flatLists === "nested" ? nestedListEditorDeliveryTokenMatchesRender(delivery, rendered as RenderedProjection<NestedListDocumentProjection>) : (EXPERIMENTAL_BLOCK_PROFILES && this.#flatLists) ? flatListEditorDeliveryTokenMatchesRender(delivery, rendered as RenderedProjection<FlatListDocumentProjection>)
       : editorDeliveryTokenMatchesRender(delivery, rendered as RenderedProjection);
   }
 
@@ -771,16 +776,16 @@ class BrowserEventControllerCore<TResult, R extends NativeRender, D extends Nati
   }
 
   #translateBeforeInput(input: InputEventSnapshot, composing: boolean, delivery: NativeDeliveryToken, selection: NativeSelectionSync) {
-    return this.#flatLists === "nested"
-      ? translateNestedListBeforeInput(input, composing, delivery as NestedListEditorDeliveryToken, selection as NestedListEditorSelectionSync) : this.#flatLists
+    return EXPERIMENTAL_BLOCK_PROFILES && this.#flatLists === "nested"
+      ? translateNestedListBeforeInput(input, composing, delivery as NestedListEditorDeliveryToken, selection as NestedListEditorSelectionSync) : (EXPERIMENTAL_BLOCK_PROFILES && this.#flatLists)
       ? translateFlatListBeforeInput(input, composing, delivery as FlatListEditorDeliveryToken, selection as FlatListEditorSelectionSync)
       : translateBeforeInput(input, composing, delivery as EditorDeliveryToken, selection as EditorSelectionSync);
   }
 
   #translateKeyDown(input: KeyboardSnapshot, policy: KeyboardTranslationPolicy, composing: boolean,
     delivery: NativeDeliveryToken, selection: NativeSelectionSync, shortcuts: BrowserCompiledKeyboardShortcuts) {
-    return this.#flatLists === "nested"
-      ? translateNestedListKeyDown(input, policy, composing, delivery as NestedListEditorDeliveryToken, selection as NestedListEditorSelectionSync, shortcuts) : this.#flatLists
+    return EXPERIMENTAL_BLOCK_PROFILES && this.#flatLists === "nested"
+      ? translateNestedListKeyDown(input, policy, composing, delivery as NestedListEditorDeliveryToken, selection as NestedListEditorSelectionSync, shortcuts) : (EXPERIMENTAL_BLOCK_PROFILES && this.#flatLists)
       ? translateFlatListKeyDown(input, policy, composing, delivery as FlatListEditorDeliveryToken, selection as FlatListEditorSelectionSync, shortcuts)
       : translateKeyDown(input, policy, composing, delivery as EditorDeliveryToken, selection as EditorSelectionSync, shortcuts);
   }
@@ -863,8 +868,8 @@ function validateTargetRangeForTranslation(
   if (targets.count === "multiple") {
     return "targetRangeCount";
   }
-  const target = isOwnedNestedListRenderedProjection(rendered) ? mapDomNestedListTargetRange(rendered, targets.range)
-    : isOwnedFlatListRenderedProjection(rendered) ? mapDomFlatListTargetRange(rendered, targets.range)
+  const target = (EXPERIMENTAL_BLOCK_PROFILES && isOwnedNestedListRenderedProjection(rendered)) ? mapDomNestedListTargetRange(rendered, targets.range)
+    : (EXPERIMENTAL_BLOCK_PROFILES && isOwnedFlatListRenderedProjection(rendered)) ? mapDomFlatListTargetRange(rendered, targets.range)
     : mapDomTargetRange(rendered as RenderedProjection, targets.range);
   if (!target.ok) {
     return "targetRangeInvalid";
@@ -944,8 +949,8 @@ function targetRangeMatchesSelection(
   const path = selectionStart.textPath;
   const paragraphIndex = path[0];
   const runIndex = path[path.length - 1];
-  const paragraph = isOwnedNestedListRenderedProjection(rendered)
-    ? nestedListBlockAtPath(rendered.projection, path.slice(0, -1)) : isOwnedFlatListRenderedProjection(rendered)
+  const paragraph = (EXPERIMENTAL_BLOCK_PROFILES && isOwnedNestedListRenderedProjection(rendered))
+    ? nestedListBlockAtPath(rendered.projection, path.slice(0, -1)) : (EXPERIMENTAL_BLOCK_PROFILES && isOwnedFlatListRenderedProjection(rendered))
     ? flatListBlockAtPath(rendered.projection, path.slice(0, -1))
     : paragraphIndex === undefined ? undefined : (rendered as RenderedProjection).projection.paragraphs[paragraphIndex];
   const run = runIndex === undefined ? undefined : paragraph?.runs[runIndex];
@@ -971,13 +976,13 @@ function targetRangeMatchesSelection(
 function targetPointHasSamePosition(rendered: NativeRender,
   target: BaseRangeSelection["anchor"], selected: BaseRangeSelection["anchor"]): boolean {
   if (baseSelectionPointsEqual(target, selected)) return true;
-  if (isOwnedNestedListRenderedProjection(rendered)) {
+  if (EXPERIMENTAL_BLOCK_PROFILES && isOwnedNestedListRenderedProjection(rendered)) {
     const a = nestedListSpatialPositionForPoint(rendered.projection, target);
     const b = nestedListSpatialPositionForPoint(rendered.projection, selected);
     return a !== null && b !== null && a.utf16Offset === b.utf16Offset &&
       astPathsEqual(a.textBlockPath, b.textBlockPath);
   }
-  if (isOwnedFlatListRenderedProjection(rendered)) {
+  if (EXPERIMENTAL_BLOCK_PROFILES && isOwnedFlatListRenderedProjection(rendered)) {
     const a = flatListSpatialPositionForPoint(rendered.projection, target);
     const b = flatListSpatialPositionForPoint(rendered.projection, selected);
     return a !== null && b !== null && a.utf16Offset === b.utf16Offset &&
@@ -1254,7 +1259,7 @@ function snapshotControllerOptions(
   if (
     keyboard === null ||
     !isOwnedBrowserCompiledKeyboardShortcuts(keyboardShortcuts) ||
-    !(flatLists === "nested" ? selectionBridge instanceof BreditorNestedListDomSelectionBridge : flatLists ? selectionBridge instanceof BreditorFlatListDomSelectionBridge : selectionBridge instanceof BreditorDomSelectionBridge) ||
+    !(EXPERIMENTAL_BLOCK_PROFILES && flatLists === "nested" ? selectionBridge instanceof BreditorNestedListDomSelectionBridge : (EXPERIMENTAL_BLOCK_PROFILES && flatLists) ? selectionBridge instanceof BreditorFlatListDomSelectionBridge : selectionBridge instanceof BreditorDomSelectionBridge) ||
     !isEditorDeliveryAuthority(deliveryAuthority) ||
     typeof compositionActive !== "function" ||
     typeof scheduleTask !== "function"

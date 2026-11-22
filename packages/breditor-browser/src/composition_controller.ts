@@ -65,6 +65,7 @@ import {
 import {
   BaseRangeSelection,
   spatialPositionForPoint,
+  isOwnedBaseRangeSelection,
 } from "./selection.js";
 import {
   type BreditorWasmCommandAdapter,
@@ -84,6 +85,8 @@ import type { NestedListDocumentProjection } from "./nested_list_projection.js";
 import { FlatListRangeSelection, isOwnedFlatListRangeSelection, flatListSpatialPositionForPoint } from "./flat_list_selection.js";
 import { NestedListRangeSelection, isOwnedNestedListRangeSelection, nestedListSpatialPositionForPoint } from "./nested_list_selection.js";
 import { nativeCommandBuilder } from "./native_command_builder.js";
+
+const EXPERIMENTAL_BLOCK_PROFILES = import.meta.breditorExperimentalBlockProfiles !== false;
 
 type CompositionProjection = BaseDocumentProjection | FlatListDocumentProjection | NestedListDocumentProjection;
 type Delivery<P extends CompositionProjection> = WasmCommandDeliveryToken<P>;
@@ -238,7 +241,7 @@ class CompositionControllerCore<P extends CompositionProjection> {
     options: CompositionControllerOptions<P>,
     flatLists: boolean | "nested",
   ) {
-    if (!(flatLists === "nested" ? queue instanceof BreditorNestedListCommandQueue : flatLists ? queue instanceof BreditorFlatListCommandQueue : queue instanceof BreditorCommandQueue)) {
+    if (!(EXPERIMENTAL_BLOCK_PROFILES && flatLists === "nested" ? queue instanceof BreditorNestedListCommandQueue : (EXPERIMENTAL_BLOCK_PROFILES && flatLists) ? queue instanceof BreditorFlatListCommandQueue : queue instanceof BreditorCommandQueue)) {
       throw new TypeError("composition queue is invalid");
     }
     const surface = adapter as unknown as AdapterSurface<P>;
@@ -249,9 +252,9 @@ class CompositionControllerCore<P extends CompositionProjection> {
       adapterValid =
         typeof executor === "function" &&
         surface.commandExecutor === executor &&
-        (flatLists === "nested" ? surface.selectionBridge instanceof BreditorNestedListDomSelectionBridge : flatLists ? surface.selectionBridge instanceof BreditorFlatListDomSelectionBridge : surface.selectionBridge instanceof BreditorDomSelectionBridge) &&
+        (EXPERIMENTAL_BLOCK_PROFILES && flatLists === "nested" ? surface.selectionBridge instanceof BreditorNestedListDomSelectionBridge : (EXPERIMENTAL_BLOCK_PROFILES && flatLists) ? surface.selectionBridge instanceof BreditorFlatListDomSelectionBridge : surface.selectionBridge instanceof BreditorDomSelectionBridge) &&
         isEditorDeliveryAuthority(surface.deliveryAuthority) &&
-        (flatLists === "nested" ? isOwnedNestedListRenderedProjection(surface.rendered) : flatLists ? isOwnedFlatListRenderedProjection(surface.rendered) : isOwnedRenderedProjection(surface.rendered)) &&
+        (EXPERIMENTAL_BLOCK_PROFILES && flatLists === "nested" ? (EXPERIMENTAL_BLOCK_PROFILES && isOwnedNestedListRenderedProjection(surface.rendered)) : (EXPERIMENTAL_BLOCK_PROFILES && flatLists) ? (EXPERIMENTAL_BLOCK_PROFILES && isOwnedFlatListRenderedProjection(surface.rendered)) : isOwnedRenderedProjection(surface.rendered)) &&
         typeof surface.deliveryToken === "function" &&
         typeof surface.acceptsDeliveryToken === "function" &&
         typeof surface.beginCompositionLease === "function" &&
@@ -266,11 +269,11 @@ class CompositionControllerCore<P extends CompositionProjection> {
     if (!adapterValid || executor === undefined) {
       throw new TypeError("composition adapter is invalid");
     }
-    const queuePort = (flatLists === "nested" && queue instanceof BreditorNestedListCommandQueue
+    const queuePort = (EXPERIMENTAL_BLOCK_PROFILES && flatLists === "nested" && queue instanceof BreditorNestedListCommandQueue
       ? openNestedListCommandQueueLeasePort(queue, executor as (request: NestedListEditorCommandRequest) => WasmCommandSequenceOutcome<P>)
-      : flatLists === true && queue instanceof BreditorFlatListCommandQueue
+      : EXPERIMENTAL_BLOCK_PROFILES && flatLists === true && queue instanceof BreditorFlatListCommandQueue
       ? openFlatListCommandQueueLeasePort(queue, executor as (request: FlatListEditorCommandRequest) => WasmCommandSequenceOutcome<P>)
-      : !flatLists && queue instanceof BreditorCommandQueue
+      : !(EXPERIMENTAL_BLOCK_PROFILES && flatLists) && queue instanceof BreditorCommandQueue
         ? openCommandQueueLeasePort(queue, executor as (request: EditorCommandRequest) => WasmCommandSequenceOutcome<P>) : undefined
     ) as CommandQueueLeasePort<WasmCommandSequenceOutcome<P>, Request<P>> | undefined;
     if (queuePort === undefined) {
@@ -656,18 +659,18 @@ class CompositionControllerCore<P extends CompositionProjection> {
 
   #readSelection(rendered: RenderedProjection<P>): Selection<P> | null {
     const bridge = this.#adapter.selectionBridge;
-    const observed = this.#flatLists === "nested" && isOwnedNestedListRenderedProjection(rendered) && bridge instanceof BreditorNestedListDomSelectionBridge
+    const observed = EXPERIMENTAL_BLOCK_PROFILES && this.#flatLists === "nested" && (EXPERIMENTAL_BLOCK_PROFILES && isOwnedNestedListRenderedProjection(rendered)) && bridge instanceof BreditorNestedListDomSelectionBridge
       ? bridge.read(rendered)
-      : this.#flatLists === true && isOwnedFlatListRenderedProjection(rendered) && bridge instanceof BreditorFlatListDomSelectionBridge
+      : EXPERIMENTAL_BLOCK_PROFILES && this.#flatLists === true && (EXPERIMENTAL_BLOCK_PROFILES && isOwnedFlatListRenderedProjection(rendered)) && bridge instanceof BreditorFlatListDomSelectionBridge
       ? bridge.read(rendered)
-      : !this.#flatLists && isOwnedRenderedProjection(rendered) && bridge instanceof BreditorDomSelectionBridge
+      : !(EXPERIMENTAL_BLOCK_PROFILES && this.#flatLists) && isOwnedRenderedProjection(rendered) && bridge instanceof BreditorDomSelectionBridge
         ? bridge.read(rendered) : null;
     return observed?.ok && observed.value.kind === "range" ? observed.value.selection as Selection<P> : null;
   }
 
   #refinedTargetSelection(range: AbstractRange, captured: Selection<P>): Selection<P> | null {
     const rendered = this.#adapter.rendered;
-    if (this.#flatLists === "nested" && isOwnedNestedListRenderedProjection(rendered)) {
+    if (EXPERIMENTAL_BLOCK_PROFILES && this.#flatLists === "nested" && (EXPERIMENTAL_BLOCK_PROFILES && isOwnedNestedListRenderedProjection(rendered))) {
       const mapped = mapDomNestedListTargetRange(rendered, range);
       if (!mapped.ok) return null;
       const refined = NestedListRangeSelection.create(rendered.projection, {
@@ -687,7 +690,7 @@ class CompositionControllerCore<P extends CompositionProjection> {
       }
       return refined.value as Selection<P>;
     }
-    if (this.#flatLists === true && isOwnedFlatListRenderedProjection(rendered)) {
+    if (EXPERIMENTAL_BLOCK_PROFILES && this.#flatLists === true && (EXPERIMENTAL_BLOCK_PROFILES && isOwnedFlatListRenderedProjection(rendered))) {
       const mapped = mapDomFlatListTargetRange(rendered, range);
       if (!mapped.ok) return null;
       const refined = FlatListRangeSelection.create(rendered.projection, {
@@ -707,7 +710,7 @@ class CompositionControllerCore<P extends CompositionProjection> {
       }
       return refined.value as Selection<P>;
     }
-    if (!this.#flatLists && isOwnedRenderedProjection(rendered)) {
+    if (!(EXPERIMENTAL_BLOCK_PROFILES && this.#flatLists) && isOwnedRenderedProjection(rendered)) {
       const mapped = mapDomTargetRange(rendered, range);
       if (!mapped.ok) return null;
       const refined = BaseRangeSelection.create(rendered.projection, {
@@ -814,7 +817,7 @@ class CompositionControllerCore<P extends CompositionProjection> {
       return this.#quarantine("invalidTransition");
     }
     if (!hostConnected(active.token.host)) return this.#quarantine("staleBase");
-    const reconciled = (this.#flatLists === "nested" ? reconcileNestedListCompositionDom : this.#flatLists ? reconcileFlatListCompositionDom : reconcileCompositionDom)(
+    const reconciled = (EXPERIMENTAL_BLOCK_PROFILES && this.#flatLists === "nested" ? reconcileNestedListCompositionDom : (EXPERIMENTAL_BLOCK_PROFILES && this.#flatLists) ? reconcileFlatListCompositionDom : reconcileCompositionDom)(
       active.token.host,
       active.token.projection,
       active.selection,
@@ -842,10 +845,12 @@ class CompositionControllerCore<P extends CompositionProjection> {
 
     let request;
     try {
-      const selection = isOwnedNestedListRangeSelection(restored.selection)
-        ? nestedListRangeSelectionSync(restored.selection) : isOwnedFlatListRangeSelection(restored.selection)
-        ? flatListRangeSelectionSync(restored.selection) : rangeSelectionSync(restored.selection);
-      const builder = nativeCommandBuilder(this.#flatLists, restored.delivery, selection);
+      const selection = (EXPERIMENTAL_BLOCK_PROFILES && isOwnedNestedListRangeSelection(restored.selection))
+        ? nestedListRangeSelectionSync(restored.selection) : (EXPERIMENTAL_BLOCK_PROFILES && isOwnedFlatListRangeSelection(restored.selection))
+        ? flatListRangeSelectionSync(restored.selection) : isOwnedBaseRangeSelection(restored.selection)
+          ? rangeSelectionSync(restored.selection) : undefined;
+      if (selection === undefined) return this.#quarantine("uncertain");
+      const builder = nativeCommandBuilder((EXPERIMENTAL_BLOCK_PROFILES && this.#flatLists), restored.delivery, selection);
       const source = {kind: "beforeinput" as const, detail: candidate.value.kind === "cancel" ? "composition-cancel" : "composition"};
       request = builder.request(source, candidate.value.kind === "cancel"
         ? {kind: "control", operation: "closeHistoryGroup"}
