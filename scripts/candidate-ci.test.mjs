@@ -150,5 +150,12 @@ test("candidate summary points to the failed stage log in a downloaded artifact"
   assert.match(result.stdout,/Last stage `relay-native` recorded `failed` and exit code 101/);
   assert.match(result.stdout,/`run-ABC123\/02-relay-native\.log`/);
   assert.match(result.stdout,/V1 release approval is reviewed separately/);
+  const reportPath=join(run,"result.json"),report=JSON.parse(readFileSync(reportPath,"utf8"));
+  Object.assign(report.stages[1],{status:"timeout",exitCode:null,signal:"SIGTERM"});
+  writeFileSync(reportPath,JSON.stringify(report));
+  const timedOut=spawnSync(process.execPath,[executable,directory],{encoding:"utf8"});
+  assert.equal(timedOut.status,0,timedOut.stderr);
+  assert.match(timedOut.stdout,/Last stage `relay-native` recorded `timeout` and signal `SIGTERM`/);
+  assert.doesNotMatch(timedOut.stdout,/exit code null/);
  }finally{rmSync(directory,{recursive:true,force:true});}
 });

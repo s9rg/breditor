@@ -21,7 +21,8 @@ if(runs.length===1){
   lines.push(`- Candidate result ${code(result.status)} with ${passed} passed ${passed===1?"stage":"stages"}.`);
   const stage=result.stages.at(-1);
   if(stage&&stage.status!=="passed"){
-   const exit=Number.isSafeInteger(stage.exitCode)?` and exit code ${stage.exitCode}`:"";
+   const exit=Number.isSafeInteger(stage.exitCode)?` and exit code ${stage.exitCode}`:
+    typeof stage.signal==="string"&&/^SIG[A-Z0-9]+$/.test(stage.signal)?` and signal ${code(stage.signal)}`:"";
    lines.push(`- Last stage ${code(stage.id)} recorded ${code(stage.status)}${exit}.`);
    if(typeof stage.id==="string"&&token.test(stage.id)){
     const log=join(run,`${String(result.stages.length).padStart(2,"0")}-${stage.id}.log`);
