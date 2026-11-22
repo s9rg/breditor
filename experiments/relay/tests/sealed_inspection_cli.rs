@@ -33,6 +33,11 @@ mod repair;
 
 type Result<T = ()> = std::result::Result<T, Box<dyn std::error::Error>>;
 
+// A sibling test's CLI fork can inherit a fixture's lock descriptors until
+// exec, including during the seal and activation handoffs. Keep each complete
+// fixture and its subprocesses together within this test binary.
+static FIXTURE_PROCESS: tokio::sync::Mutex<()> = tokio::sync::Mutex::const_new(());
+
 struct Directory(PathBuf);
 impl Directory {
     fn create() -> Result<Self> {
@@ -56,6 +61,7 @@ struct Fixture {
     expected_inventory: String,
     active_wal: PathBuf,
     raster: PathBuf,
+    _process: tokio::sync::MutexGuard<'static, ()>,
 }
 
 impl Fixture {
@@ -152,6 +158,7 @@ fn original_room(directory: &Path) -> Result<(Room, AssetStore)> {
 }
 
 async fn sealed_room() -> Result<Fixture> {
+    let process = FIXTURE_PROCESS.lock().await;
     let directory = Directory::create()?;
     let fixture_root = &directory.0;
     let (mut room, mut rasters) = original_room(&directory.0)?;
@@ -249,6 +256,7 @@ async fn sealed_room() -> Result<Fixture> {
         expected_inventory,
         active_wal,
         raster,
+        _process: process,
     })
 }
 
