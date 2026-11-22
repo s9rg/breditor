@@ -111,3 +111,15 @@ test("both code demo writers fit a phone viewport without losing editable contro
  }
  expect(await page.evaluate(()=>document.documentElement.scrollWidth)).toBe(320);
 });
+
+test("the shared contents demo exposes named writer regions after its keyboard skip link",async({page,browserName})=>{
+ await page.goto("/contents");
+ await expect(page.locator("#contents-ready")).toHaveText("Ready");
+ await page.keyboard.press(browserName==="webkit"&&process.platform==="darwin"?"Alt+Tab":"Tab");
+ await expect(page.getByRole("link",{name:"Skip to contents editors"})).toBeFocused();
+ await page.keyboard.press("Enter");
+ await expect(page.getByRole("main")).toBeFocused();
+ for(const name of ["Writer A","Writer B"]){
+  await expect(page.getByRole("region",{name,exact:true}).getByRole("navigation",{name:`${name} contents`})).toBeVisible();
+ }
+});

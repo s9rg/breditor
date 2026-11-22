@@ -180,3 +180,15 @@ test("the local code demo keeps its controls and a readable code area inside a p
  expect(await code.evaluate(element=>element.clientWidth)).toBeGreaterThanOrEqual(240);
  expect(await page.evaluate(()=>document.documentElement.scrollWidth)).toBe(320);
 });
+
+test("the local contents demo can bypass its header with the keyboard",async({page,browserName})=>{
+ await page.goto("/contents");
+ await expect(page.locator("#contents-ready")).toHaveText("Ready");
+ const skip=page.getByRole("link",{name:"Skip to contents editors"});
+ await page.keyboard.press(browserName==="webkit"&&process.platform==="darwin"?"Alt+Tab":"Tab");
+ await expect(skip).toBeFocused();
+ await expect(skip).toBeInViewport();
+ await page.keyboard.press("Enter");
+ await expect(page.getByRole("main")).toBeFocused();
+ await expect(page.getByRole("region",{name:"Local editor"}).getByRole("navigation",{name:"On this page"})).toBeVisible();
+});
