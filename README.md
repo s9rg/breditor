@@ -11,6 +11,8 @@ also contains deeper experimental Rust storage and replay research. The exact
 support boundary is in [Compatibility](docs/COMPATIBILITY.md), and release
 history is in the [Changelog](CHANGELOG.md).
 
+[Install and integrate the editor candidate](docs/INTEGRATE_EDITOR.md).
+
 The current source version is `0.3.0-alpha.22`. Default browser/Wasm packages
 provide the supported paragraph and typed inline-format profile described below.
 Separate private opt-in packages now implement headings and nested lists, rich
