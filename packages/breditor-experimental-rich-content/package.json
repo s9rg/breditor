@@ -13,6 +13,7 @@
   "exports": {
     ".": {"types": "./index.d.ts", "import": "./index.js"},
     "./rendering": {"types":"./rendering.d.ts", "import":"./rendering.js"},
+    "./autosave": {"types":"./dist/browser/persistence/local_autosave.d.ts", "import":"./dist/browser/persistence/local_autosave.js"},
     "./wasm": {"types":"./dist/breditor_wasm.d.ts", "import":"./dist/breditor_wasm.js"},
     "./wasm-binary": "./dist/breditor_wasm_bg.wasm"
   }
