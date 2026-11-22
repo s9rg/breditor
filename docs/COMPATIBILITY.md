@@ -30,6 +30,13 @@ The [pre-V4 checkpoint fixtures](../crates/breditor-core/tests/fixtures/pre-v4/R
 exercise exact local history replay and cross-language refusal for languages 1–3.
 No automatic migration or stable arbitrary-node plugin contract is implied.
 
+The [November 22 archive and reader qualification](qualification/2026-11-22-v1-archive-and-support.json)
+records separate checks for pre-V4 native checkpoints, frozen V4 inputs,
+default chronological history, and the installed shared V4 journal. The
+reader tests exercise byte-exact restore and explicit mismatched-language
+refusal. Full compatibility approval also requires a reviewed V1 API
+boundary and the pinned earlier input-rule readers listed in the candidate plan.
+
 ### Opt-in rich and shared recovery
 
 Grammar, schema/profile configuration, selection scope, history policy and writer

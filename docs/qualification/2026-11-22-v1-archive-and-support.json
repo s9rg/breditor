@@ -1,0 +1,156 @@
+{
+  "format": "breditor/v1-candidate-distribution",
+  "formatVersion": 1,
+  "source": "e2a911e5a2fe1c2e4d9969e0667e7ed1dfa7508e",
+  "platform": "darwin",
+  "arch": "arm64",
+  "node": "v22.14.0",
+  "packageArchives": [
+    {
+      "name": "@breditor/browser",
+      "version": "0.3.0-alpha.22",
+      "filename": "breditor-browser-0.3.0-alpha.22.tgz",
+      "bytes": 332126,
+      "sha256": "570a0521a3421773abb72d113542f13253c03dc23199f44c67354556a08aa7ca",
+      "integrity": "sha512-Ilv8hD8lDYznRZnghsVYDhLM21aDwYUyDvla88Ma3gwpU7hK43cw33W/51Zh2VWGEIGlTc8FACCxSxB0edXPcw=="
+    },
+    {
+      "name": "@breditor/experimental-rich-content",
+      "version": "0.3.0-alpha.22",
+      "filename": "breditor-experimental-rich-content-0.3.0-alpha.22.tgz",
+      "bytes": 2337732,
+      "sha256": "2769a821f1dac5396c8166663885aa9d6f1288c9bde686b6f8eeee52805258f5",
+      "integrity": "sha512-IMVC0O9jxUbNofHWuljqj3WXhzWtFFu6ION/7PtIGqgVrJfJEQag064xWbGm/8EXjB99lVUFgTCLZ4GMIJLlTA=="
+    },
+    {
+      "name": "@breditor/collaboration",
+      "version": "0.3.0-alpha.22",
+      "filename": "breditor-collaboration-0.3.0-alpha.22.tgz",
+      "bytes": 5626174,
+      "sha256": "54bc42b3709cb19300802aa4acc248d543b129812577e122dbc2f602da0b58f3",
+      "integrity": "sha512-CygvtxupROsD0PZ175VcANjoRyxj2vLnAZKxCE6ZVkGKbru9CQlAoVKj9rUuiuG9eZ9mX5GL3G5LGDi8JMVQSg=="
+    },
+    {
+      "name": "@breditor/editor",
+      "version": "0.3.0-alpha.22",
+      "filename": "breditor-editor-0.3.0-alpha.22.tgz",
+      "bytes": 83477,
+      "sha256": "ff50188718a1587bc21fda0e0700a2f4de61085ae00d083cf569789d29c713dd",
+      "integrity": "sha512-OlgrP2aluD2q7Pgqj4ENCVaPf+ipGNi153mYzU6YA3BmPlMoHI/yJVr6Ls4MxxuGGk6zLoE4sHSz4QH6E2tPDA=="
+    }
+  ],
+  "installedStaticBundle": {
+    "modules": 21,
+    "wasmAssets": 0
+  },
+  "localQuickstart": [
+    {
+      "browser": "chromium",
+      "version": "151.0.7922.34",
+      "productionWasmSha256": "f100599f39805586d465961161bf751e0bd51e8d524ad2ab653001946347200e",
+      "typingUndoRedo": true
+    },
+    {
+      "browser": "firefox",
+      "version": "153.0",
+      "productionWasmSha256": "f100599f39805586d465961161bf751e0bd51e8d524ad2ab653001946347200e",
+      "typingUndoRedo": true
+    },
+    {
+      "browser": "webkit",
+      "version": "26.5",
+      "productionWasmSha256": "f100599f39805586d465961161bf751e0bd51e8d524ad2ab653001946347200e",
+      "typingUndoRedo": true
+    }
+  ],
+  "scope": "Fresh local-only install of the tested candidate tarballs, source quickstart snippet, production Vite assets and real bundled browser engines. Archive SDK proof separately built both matching runtimes and isolated local, shared-only and React consumers. Source changes since the tested commit are documentation and relay test fixture changes. The distribution result covers the candidate archive install path. Performance limits, registry publication and immutable RC approval have separate gates.",
+  "reviewedOn": "2026-11-22",
+  "producerChecks": {
+    "command": "node scripts/check-editor-package.mjs",
+    "ownPackageLicenseFilesVerified": 4,
+    "strictConsumerDeclarations": true,
+    "independentInstalls": [
+      "local only",
+      "shared without React",
+      "local and shared with React"
+    ],
+    "productionBundleBuilt": true
+  },
+  "recordedSupport": {
+    "guide": "docs/INTEGRATE_EDITOR.md",
+    "guideSha256": "7bad4886fa0bf5e21febce702d825c17bbb449b6e305475f0b90dee5ce89ecd6",
+    "securityPolicy": "SECURITY.md",
+    "privateReportingEnabled": true,
+    "issuesEnabled": true
+  },
+  "compatibilityEvidence": {
+    "command": "cargo test -p breditor-core --locked --offline --features experimental-rich-content --test historical_rich_checkpoints --test rich_language_v4_frozen --test session_checkpoint_json_roundtrips --test session_history_contracts",
+    "cases": [
+      {
+        "test": "historical_rich_checkpoints",
+        "passed": 2
+      },
+      {
+        "test": "rich_language_v4_frozen",
+        "passed": 3
+      },
+      {
+        "test": "session_checkpoint_json_roundtrips",
+        "passed": 9
+      },
+      {
+        "test": "session_history_contracts",
+        "passed": 15
+      }
+    ],
+    "installedSharedV4RestoresRedo": true,
+    "installedSharedV3RefusesV4Journal": true,
+    "remaining": [
+      "V1 API freeze",
+      "Pinned earlier input-rule readers",
+      "Approval of supported upgrade and rollback routes"
+    ]
+  },
+  "consumerDependencyEvidence": {
+    "format": "CycloneDX 1.5",
+    "registryPackages": [
+      {
+        "name": "entities",
+        "version": "8.1.0",
+        "licenses": [
+          "BSD-2-Clause"
+        ]
+      },
+      {
+        "name": "parse5",
+        "version": "8.0.1",
+        "licenses": [
+          "MIT"
+        ]
+      }
+    ],
+    "npmAudit": {
+      "scope": "Production dependency graph of the local-only quickstart lockfile",
+      "date": "2026-11-22",
+      "reportedVulnerabilities": 0
+    }
+  },
+  "outstandingSizeBudget": {
+    "scope": "Default browser archive ceiling enforced by scripts/smoke-npm-packages.sh",
+    "actualBytes": 332126,
+    "maximumBytes": 270000
+  },
+  "installedBrowser": {
+    "tests": [
+      "experiments/editor-browser/local-typing-history.spec.mjs",
+      "experiments/editor-browser/shared-lifecycle.spec.mjs"
+    ],
+    "engines": [
+      "chromium",
+      "firefox",
+      "webkit"
+    ],
+    "passed": 66,
+    "scope": "Local editing and typing, React and shared IndexedDB lifecycle in the three installed production bundles. The tested loopback application used the verified archive set."
+  }
+}

@@ -15,10 +15,12 @@ test("the checked-in audit has resolvable sources and evidence without claiming 
   assert.equal(result.testsExecuted, false);
   assert.equal(result.coverage, "grouped-audit-not-exhaustive");
   assert.equal(Object.values(result.counts).reduce((sum, value) => sum + value, 0), audit.features.length);
-  assert.equal(result.openGates.length, audit.gates.filter(row => row.status === "open").length);
+  assert.deepEqual(
+    result.openGates.map(row => row.id),
+    audit.gates.filter(row => row.status === "open").map(row => row.id),
+  );
   assert.ok(result.featureGaps.some(row => row.id === "basic-inline-formatting"));
   assert.ok(result.openGates.some(row => row.id === "browser-reliability"));
-  assert.ok(result.openGates.some(row => row.id === "distribution"));
 });
 
 for (const [name, mutate] of [
