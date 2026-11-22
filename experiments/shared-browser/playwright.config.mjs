@@ -13,4 +13,7 @@ export function sharedBrowserProjects(testMatch){
  return [{name:"chromium",use:{...devices["Desktop Chrome"]}},{name:"firefox",use:{...devices["Desktop Firefox"]}},
   ...Array.from({length:groups},(_,group)=>({name:`webkit-${group+1}`,testMatch:sorted.filter((_,index)=>index%groups===group).map(name=>`**/${name}`),use:{...devices["Desktop Safari"]}}))];
 }
-export default defineConfig({testDir:".",testMatch:specs,outputDir:"../../target/shared-browser-results",workers:1,retries:0,timeout:60_000,globalTimeout:45*60_000,forbidOnly:true,reporter:"line",use:{baseURL:"http://127.0.0.1:49774",trace:"retain-on-failure"},projects:sharedBrowserProjects(specs),webServer:{command:"node experiments/shared-browser/serve.mjs",cwd:"../..",url:"http://127.0.0.1:49774/",reuseExistingServer:false,timeout:10_000}});
+const port=Number(process.env["BREDITOR_SHARED_PORT"]??49774);
+if(!Number.isInteger(port)||port<1024||port>65535)throw Error("Invalid shared demo port");
+const origin=`http://127.0.0.1:${port}`;
+export default defineConfig({testDir:".",testMatch:specs,outputDir:"../../target/shared-browser-results",workers:1,retries:0,timeout:60_000,globalTimeout:45*60_000,forbidOnly:true,reporter:"line",use:{baseURL:origin,trace:"retain-on-failure"},projects:sharedBrowserProjects(specs),webServer:{command:"node experiments/shared-browser/serve.mjs",cwd:"../..",url:`${origin}/`,reuseExistingServer:false,timeout:10_000}});
