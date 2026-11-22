@@ -246,7 +246,8 @@ export function render(surface:HTMLElement,value:RichPresentationModel,options:R
    button.type="button";button.dataset["scrollTable"]=direction;button.textContent=icon;
    button.setAttribute("aria-label",ui.text(direction==="left"?"tableScrollLeft":"tableScrollRight",{number}));
    button.addEventListener("click",()=>{
-    if(button.getAttribute("aria-disabled")!=="true")viewport.scrollBy({left:delta,behavior:"instant"});
+    refreshTableScroll(viewport,controls);
+    if(!controls.hidden&&button.getAttribute("aria-disabled")!=="true")viewport.scrollBy({left:delta,behavior:"instant"});
    });
    button.addEventListener("keydown",event=>{
     if(event.altKey||event.ctrlKey||event.metaKey||(event.key!=="ArrowLeft"&&event.key!=="ArrowRight"))return;
@@ -279,10 +280,11 @@ export function render(surface:HTMLElement,value:RichPresentationModel,options:R
   const Resize=document.defaultView?.ResizeObserver,Mutation=document.defaultView?.MutationObserver;
   const resize=Resize?new Resize(refresh):null;
   for(const {viewport,table} of tableViewports){resize?.observe(viewport);resize?.observe(table);}
-  // Direction can change when a host switches its document language, without resizing the table.
+  // Hosts can change direction through markup or CSS without resizing the table.
   const direction=Mutation?new Mutation(refresh):null;
   if(direction){
-   for(let target:HTMLElement|null=surface;target;target=target.parentElement)direction.observe(target,{attributes:true,attributeFilter:["dir"]});
+   const attributes={attributes:true,attributeFilter:["dir","class","style"]};
+   for(let target:HTMLElement|null=surface;target;target=target.parentElement)direction.observe(target,attributes);
   }
   tableScrollCleanup.set(surface,()=>{resize?.disconnect();direction?.disconnect();});
  }
