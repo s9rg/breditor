@@ -59,7 +59,7 @@
   },
   "scripts": {
     "clean": "node ../../scripts/clean-package.mjs",
-    "build": "node ../../scripts/check-package-licenses.mjs && node ../../scripts/check-browser-wasm-package-pair.mjs && npm run clean && tsc -p tsconfig.json --declaration false --removeComments && tsc -p tsconfig.json --emitDeclarationOnly",
+    "build": "node ../../scripts/check-package-licenses.mjs && node ../../scripts/check-browser-wasm-package-pair.mjs && npm run clean && node ../../scripts/emit-browser-package.mjs",
     "prepack": "npm run build",
     "test": "vitest run",
     "typecheck": "tsc -p tsconfig.json --noEmit && tsc -p tsconfig.test.json"

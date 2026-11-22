@@ -12,8 +12,7 @@ import {fileURLToPath} from 'node:url';
 const root=resolve(fileURLToPath(new URL('../',import.meta.url)));
 if(process.argv.length!==2)throw Error('Run without package filters');
 const packages=[
- // Match the browser package's two-pass build: stripped JS, full declarations.
- {name:'breditor-browser',output:'dist',external:[],passes:[['--declaration','false','--removeComments'],['--emitDeclarationOnly']]},
+ {name:'breditor-browser',output:'dist',external:[],emit:'emit-browser-package.mjs'},
  {name:'breditor-reference-highlight',output:'dist',external:[],passes:[['--declaration','false','--removeComments'],['--emitDeclarationOnly']]},
  {name:'breditor-experimental-rich-content',output:'dist/browser',external:[],passes:[[]]},
  {name:'breditor-collaboration',output:'dist',external:['runtime'],passes:[[]]},
@@ -43,7 +42,9 @@ try{
   assert.equal(fs.realpathSync(output),expectedDirectory,'Generated package output root cannot traverse a link: '+output);
   const held=specification.external.map(name=>({name,files:[...inventory(join(output,name))]}));
   const fresh=join(temporary,specification.name);
-  for(const flags of specification.passes)execFileSync(process.execPath,[join(root,'node_modules/typescript/bin/tsc'),'-p',join(base,'tsconfig.json'),'--outDir',fresh,...flags],{cwd:root,stdio:'inherit'});
+  if(specification.emit){
+   execFileSync(process.execPath,[join(root,'scripts',specification.emit),fresh],{cwd:root,stdio:'inherit'});
+  }else for(const flags of specification.passes)execFileSync(process.execPath,[join(root,'node_modules/typescript/bin/tsc'),'-p',join(base,'tsconfig.json'),'--outDir',fresh,...flags],{cwd:root,stdio:'inherit'});
   const expected=inventory(fresh),actual=inventory(output,specification.external);
   assert.ok(expected.size>0,'Compiler produced no package output');
   const missing=[...expected.keys()].filter(name=>!actual.has(name));
@@ -53,5 +54,5 @@ try{
   for(const item of held)assert.deepEqual([...inventory(join(output,item.name))],item.files,'Separately qualified runtime changed during package inspection');
   results.push({package:specification.name,output:specification.output,generatedFiles:expected.size,generatedTreeSha256:sha(JSON.stringify([...expected])),externalInputs:held.map(item=>({directory:item.name,files:item.files.length,treeSha256:sha(JSON.stringify(item.files))}))});
  }
- console.log(JSON.stringify({format:'breditor/generated-package-output',formatVersion:1,passed:true,packages:results,scope:'Exact TypeScript output names and bytes; separately qualified Wasm/glue inputs held unchanged. Not a new Wasm build or functional qualification.'},null,2));
+ console.log(JSON.stringify({format:'breditor/generated-package-output',formatVersion:1,passed:true,packages:results,scope:'Exact generated TypeScript package output names and bytes; separately qualified Wasm/glue inputs held unchanged. Not a new Wasm build or functional qualification.'},null,2));
 }finally{fs.rmSync(temporary,{recursive:true,force:true});}
