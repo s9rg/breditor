@@ -26,6 +26,8 @@ import {
   type WasmProfileGenerationView,
 } from "./wasm_profile_descriptor.js";
 
+const EXPERIMENTAL_BLOCK_PROFILES = import.meta.breditorExperimentalBlockProfiles !== false;
+
 // Capture the generated getters through one generic call site, in contract
 // order. Each value remains untrusted; all existing validation runs afterward.
 // Do not substitute retries or later getter reads for a rejected snapshot.
@@ -115,23 +117,27 @@ export function consumeSemanticSelectionWithCleanup(
 /** Explicit list selection consumption with the same captured-read/cleanup guard. @internal */
 export function consumeFlatListSemanticSelection(projection: FlatListDocumentProjection, view: SemanticSelectionView,
   generation: WasmProfileGenerationView): BrowserSelectionResult<FlatListRangeSelection | null> {
+  if (!EXPERIMENTAL_BLOCK_PROFILES) throw new TypeError("Experimental block profiles are unavailable in this build");
   return consumeFlatListSemanticSelectionWithCleanup(projection, view, undefined, generation);
 }
 
 /** List selection consumption with cleanup captured by the command-result owner. @internal */
 export function consumeFlatListSemanticSelectionWithCleanup(projection: FlatListDocumentProjection, view: SemanticSelectionView,
   cleanup: (() => unknown) | undefined, generation: WasmProfileGenerationView, asynchronous?: boolean): BrowserSelectionResult<FlatListRangeSelection | null> {
+  if (!EXPERIMENTAL_BLOCK_PROFILES) throw new TypeError("Experimental block profiles are unavailable in this build");
   return consumeSelection(projection, view, cleanup, generation, asynchronous, true) as BrowserSelectionResult<FlatListRangeSelection | null>;
 }
 
 /** Recursive selection consumption retains the same exact-owner cleanup contract. */
 export function consumeNestedListSemanticSelection(projection: NestedListDocumentProjection, view: SemanticSelectionView,
   generation: WasmProfileGenerationView): BrowserSelectionResult<NestedListRangeSelection | null> {
+  if (!EXPERIMENTAL_BLOCK_PROFILES) throw new TypeError("Experimental block profiles are unavailable in this build");
   return consumeNestedListSemanticSelectionWithCleanup(projection, view, undefined, generation);
 }
 /** @internal */
 export function consumeNestedListSemanticSelectionWithCleanup(projection: NestedListDocumentProjection, view: SemanticSelectionView,
   cleanup: (() => unknown) | undefined, generation: WasmProfileGenerationView, asynchronous?: boolean): BrowserSelectionResult<NestedListRangeSelection | null> {
+  if (!EXPERIMENTAL_BLOCK_PROFILES) throw new TypeError("Experimental block profiles are unavailable in this build");
   return consumeSelection(projection, view, cleanup, generation, asynchronous, "nested") as BrowserSelectionResult<NestedListRangeSelection | null>;
 }
 
@@ -151,9 +157,9 @@ function consumeSelection(projection: SelectionProjection, view: SemanticSelecti
     );
     try {
       result = !capturedAsynchronous &&
-        (flatLists === "nested" ? isOwnedNestedListProjection(projection) : flatLists ? isOwnedFlatListProjection(projection) : isOwnedProjection(projection)) &&
+        (EXPERIMENTAL_BLOCK_PROFILES && flatLists === "nested" ? (EXPERIMENTAL_BLOCK_PROFILES && isOwnedNestedListProjection(projection)) : (EXPERIMENTAL_BLOCK_PROFILES && flatLists) ? (EXPERIMENTAL_BLOCK_PROFILES && isOwnedFlatListProjection(projection)) : isOwnedProjection(projection)) &&
         wasmProfileGenerationIsLive(generation) &&
-        (isOwnedNestedListProjection(projection) ? nestedListProjectionMatchesProfileGeneration(projection, generation) : isOwnedFlatListProjection(projection) ? flatListProjectionMatchesProfileGeneration(projection, generation) : projectionMatchesProfileGeneration(projection, generation)) &&
+        ((EXPERIMENTAL_BLOCK_PROFILES && isOwnedNestedListProjection(projection)) ? nestedListProjectionMatchesProfileGeneration(projection, generation) : (EXPERIMENTAL_BLOCK_PROFILES && isOwnedFlatListProjection(projection)) ? flatListProjectionMatchesProfileGeneration(projection, generation) : isOwnedProjection(projection) && projectionMatchesProfileGeneration(projection, generation)) &&
         wasmViewMatchesProfileGeneration(view, generation)
         ? readSemanticSelection(projection, view)
         : selectionFailure("selection.invalid_wasm_view");
@@ -248,11 +254,13 @@ export function semanticRangeSelectionScalars(
 
 /** Exact preorder indices include list and item wrappers; no engine call. @internal */
 export function flatListSemanticRangeSelectionScalars(selection: FlatListRangeSelection): BrowserSelectionResult<SemanticRangeSelectionScalars> {
+  if (!EXPERIMENTAL_BLOCK_PROFILES) throw new TypeError("Experimental block profiles are unavailable in this build");
   return isOwnedFlatListRangeSelection(selection) ? rangeSelectionScalars(selection) : selectionFailure("selection.invalid_shape");
 }
 
 /** Scalar ABI mapping includes all nested list/item wrappers in preorder. */
 export function nestedListSemanticRangeSelectionScalars(selection: NestedListRangeSelection): BrowserSelectionResult<SemanticRangeSelectionScalars> {
+  if (!EXPERIMENTAL_BLOCK_PROFILES) throw new TypeError("Experimental block profiles are unavailable in this build");
   return isOwnedNestedListRangeSelection(selection) ? rangeSelectionScalars(selection) : selectionFailure("selection.invalid_shape");
 }
 function rangeSelectionScalars(selection: BaseRangeSelection | FlatListRangeSelection | NestedListRangeSelection): BrowserSelectionResult<SemanticRangeSelectionScalars> {
@@ -345,8 +353,8 @@ function readSemanticSelection(
     anchor: anchorInput,
     focus: focusInput,
   };
-  const selection = isOwnedNestedListProjection(projection) ? NestedListRangeSelection.create(projection, input) : isOwnedFlatListProjection(projection) ? FlatListRangeSelection.create(projection, input) : BaseRangeSelection.create(projection, input);
-  if (!selection.ok || selection.value.order !== rangeOrder) {
+  const selection = (EXPERIMENTAL_BLOCK_PROFILES && isOwnedNestedListProjection(projection)) ? NestedListRangeSelection.create(projection, input) : (EXPERIMENTAL_BLOCK_PROFILES && isOwnedFlatListProjection(projection)) ? FlatListRangeSelection.create(projection, input) : isOwnedProjection(projection) ? BaseRangeSelection.create(projection, input) : null;
+  if (selection === null || !selection.ok || selection.value.order !== rangeOrder) {
     return selectionFailure("selection.invalid_wasm_view");
   }
   return selection;
@@ -397,13 +405,18 @@ function pathAtPreorderIndex(
   requestedIndex: number,
   expectedKind: SemanticSelectionPointKind,
 ): AstPath | null {
-  if (isOwnedFlatListProjection(projection) || isOwnedNestedListProjection(projection)) {
-    for (const entry of isOwnedNestedListProjection(projection) ? nestedListSelectableNodes(projection) : flatListSelectableNodes(projection)) {
+  const entries = EXPERIMENTAL_BLOCK_PROFILES && isOwnedNestedListProjection(projection)
+    ? nestedListSelectableNodes(projection)
+    : EXPERIMENTAL_BLOCK_PROFILES && isOwnedFlatListProjection(projection)
+      ? flatListSelectableNodes(projection) : undefined;
+  if (entries !== undefined) {
+    for (const entry of entries) {
       if (entry.index === requestedIndex) return entry.kind === expectedKind ? entry.path : null;
       if (entry.index > requestedIndex) return null;
     }
     return null;
   }
+  if (!isOwnedProjection(projection)) return null;
   let nodeIndex = 1;
   for (let paragraphIndex = 0; paragraphIndex < projection.paragraphs.length; paragraphIndex += 1) {
     const paragraph = projection.paragraphs[paragraphIndex];
@@ -429,8 +442,12 @@ function preorderIndexForPoint(
   point: BaseSelectionPoint,
 ): number | null {
   const path = point.kind === "text" ? point.textPath : point.parentPath;
-  if (isOwnedFlatListProjection(projection) || isOwnedNestedListProjection(projection)) {
-    for (const entry of isOwnedNestedListProjection(projection) ? nestedListSelectableNodes(projection) : flatListSelectableNodes(projection)) {
+  const entries = EXPERIMENTAL_BLOCK_PROFILES && isOwnedNestedListProjection(projection)
+    ? nestedListSelectableNodes(projection)
+    : EXPERIMENTAL_BLOCK_PROFILES && isOwnedFlatListProjection(projection)
+      ? flatListSelectableNodes(projection) : undefined;
+  if (entries !== undefined) {
+    for (const entry of entries) {
       if (entry.kind === point.kind && astPathsEqual(entry.path, path)) return entry.index;
     }
     return null;
@@ -439,6 +456,7 @@ function preorderIndexForPoint(
   if (targetParagraph === undefined) {
     return null;
   }
+  if (!isOwnedProjection(projection)) return null;
   let nodeIndex = 1;
   for (let paragraphIndex = 0; paragraphIndex < projection.paragraphs.length; paragraphIndex += 1) {
     const paragraph = projection.paragraphs[paragraphIndex];
@@ -461,6 +479,7 @@ function preorderIndexForPoint(
 
 /** Traverses the validated topology, counting—but never selecting—wrappers. */
 function* flatListSelectableNodes(projection: FlatListDocumentProjection): Generator<Readonly<{index: number; path: AstPath; kind: SemanticSelectionPointKind}>> {
+  if (!EXPERIMENTAL_BLOCK_PROFILES) throw new TypeError("Experimental block profiles are unavailable in this build");
   let index = 1;
   for (const [rootIndex, root] of projection.blocks.entries()) {
     if (root.kind !== "textBlock") index += 1;
@@ -475,6 +494,7 @@ function* flatListSelectableNodes(projection: FlatListDocumentProjection): Gener
 }
 
 function* nestedListSelectableNodes(projection: NestedListDocumentProjection): Generator<Readonly<{index: number; path: AstPath; kind: SemanticSelectionPointKind}>> {
+  if (!EXPERIMENTAL_BLOCK_PROFILES) throw new TypeError("Experimental block profiles are unavailable in this build");
   let index = 1;
   type Entry = Readonly<{index: number; path: AstPath; kind: SemanticSelectionPointKind}>;
   function* block(path: readonly number[], runs: number): Generator<Entry> {

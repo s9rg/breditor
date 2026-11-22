@@ -12,6 +12,8 @@ import { projectionFailure, projectionSuccess, type BrowserProjectionResult } fr
 import { browserCompiledProfileDescriptorMatchesGeneration, wasmProfileGenerationIsLive,
   type BrowserCompiledProfileDescriptor, type WasmProfileGenerationView } from "./wasm_profile_descriptor.js";
 
+const EXPERIMENTAL_BLOCK_PROFILES = import.meta.breditorExperimentalBlockProfiles !== false;
+
 /** Root text block or nested list; list items contain exactly one text block. */
 export type NestedListRootProjection =
   | Readonly<{ kind: "textBlock"; block: BaseParagraphProjection }>
@@ -117,35 +119,41 @@ export class NestedListDocumentProjection {
 
 /** @internal */
 export function isOwnedNestedListProjection(value: unknown): value is NestedListDocumentProjection {
+  if (!EXPERIMENTAL_BLOCK_PROFILES) return false;
   return typeof value === "object" && value !== null && OWNED.has(value as NestedListDocumentProjection);
 }
 
 /** Shares exact-owner presentation admission without exposing the internal proof. @internal */
 export function bindNestedListProjectionPresentation(projection: NestedListDocumentProjection, presentation: BrowserCompiledPresentation): boolean {
+  if (!EXPERIMENTAL_BLOCK_PROFILES) throw new TypeError("Experimental block profiles are unavailable in this build");
   const text = TEXT_PROOFS.get(projection);
   return text !== undefined && bindProjectionPresentation(text, presentation);
 }
 
 /** Exact bound presentation for strict DOM reconciliation; no text proof escapes. @internal */
 export function nestedListProjectionPresentation(projection: NestedListDocumentProjection): BrowserCompiledPresentation | undefined {
+  if (!EXPERIMENTAL_BLOCK_PROFILES) throw new TypeError("Experimental block profiles are unavailable in this build");
   const text = TEXT_PROOFS.get(projection);
   return text === undefined ? undefined : projectionPresentation(text);
 }
 
 /** Exact owner correlation for consuming generated selection/update handles. @internal */
 export function nestedListProjectionMatchesProfileGeneration(projection: NestedListDocumentProjection, generation: WasmProfileGenerationView): boolean {
+  if (!EXPERIMENTAL_BLOCK_PROFILES) throw new TypeError("Experimental block profiles are unavailable in this build");
   const text = TEXT_PROOFS.get(projection);
   return text !== undefined && projectionMatchesProfileGeneration(text, generation);
 }
 
 /** @internal */
 export function nestedListProjectionsShareProfile(left: NestedListDocumentProjection, right: NestedListDocumentProjection): boolean {
+  if (!EXPERIMENTAL_BLOCK_PROFILES) throw new TypeError("Experimental block profiles are unavailable in this build");
   const a = TEXT_PROOFS.get(left), b = TEXT_PROOFS.get(right);
   return a !== undefined && b !== undefined && projectionsShareProfileBinding(a, b);
 }
 
 /** @internal */
 export function nestedListProjectionDescriptor(projection: NestedListDocumentProjection): BrowserCompiledProfileDescriptor | undefined {
+  if (!EXPERIMENTAL_BLOCK_PROFILES) throw new TypeError("Experimental block profiles are unavailable in this build");
   const text = TEXT_PROOFS.get(projection);
   return text === undefined ? undefined : projectionProfileDescriptor(text);
 }
@@ -153,6 +161,7 @@ export function nestedListProjectionDescriptor(projection: NestedListDocumentPro
 /** Internal adapter bridge; the temporary flat text proof is never a renderer result. @internal */
 export function createNestedListTextProjection(input: unknown, generation: WasmProfileGenerationView,
   descriptor: BrowserCompiledProfileDescriptor): BrowserProjectionResult<BaseDocumentProjection> {
+  if (!EXPERIMENTAL_BLOCK_PROFILES) throw new TypeError("Experimental block profiles are unavailable in this build");
   const LIMIT = Symbol("projection budget");
   try {
     const record = exactDataRecord(input, ["schema", "snapshot", "blocks"]);
