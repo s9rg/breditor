@@ -17,20 +17,23 @@ test("the two runtime pairs are measured independently, with no partial report",
    "packages/breditor-collaboration/dist/runtime/breditor_shared_bg.wasm",
   ];
   const contents=Buffer.alloc(512,2);
+  const wasm=Buffer.from("0061736d01000000","hex");
   for(const file of files.slice(0,-1)){
    mkdirSync(dirname(join(root,file)),{recursive:true});
-   writeFileSync(join(root,file),contents);
+   writeFileSync(join(root,file),file.endsWith(".wasm")?wasm:contents);
   }
   assert.throws(()=>measureCandidateRuntimeSize(root),{code:"ENOENT"});
   writeFileSync(join(root,files[3]),"");
   assert.throws(()=>measureCandidateRuntimeSize(root),/Empty runtime artifact/);
   writeFileSync(join(root,files[3]),contents);
+  assert.throws(()=>measureCandidateRuntimeSize(root),/Invalid Wasm module header/);
+  writeFileSync(join(root,files[3]),wasm);
   const result=measureCandidateRuntimeSize(root);
   assert.deepEqual(result.profiles.map(profile=>profile.profile),["local","shared"]);
   assert.deepEqual(result.profiles.flatMap(profile=>profile.files.map(file=>file.path)),files);
   for(const profile of result.profiles){
-   assert.equal(profile.rawBytes,1024);
-   assert.equal(profile.gzipBytes,gzipSync(contents,{level:9}).length*2);
+   assert.equal(profile.rawBytes,contents.length+wasm.length);
+   assert.equal(profile.gzipBytes,gzipSync(contents,{level:9}).length+gzipSync(wasm,{level:9}).length);
    for(const file of profile.files)assert.match(file.sha256,/^[0-9a-f]{64}$/);
   }
  }finally{rmSync(root,{recursive:true,force:true});}
