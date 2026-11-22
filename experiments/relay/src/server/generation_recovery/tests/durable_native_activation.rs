@@ -7,14 +7,14 @@ use crate::{
     Error, OperationalLogGenerationServerRoom,
     server::{
         NativeGenerationActivationCheckpointStatus as Status,
-        NativeGenerationActivationPrepareOptions as Options, PreparedLogGenerationRecoveryHost,
-        PreparedNativeGenerationActivation as Prepared,
-        PreparedNativeGenerationActivationIdentity as Identity,
+        NativeGenerationActivationPrepareOptions as Options, PreparedLogGenerationHandover,
+        PreparedLogGenerationRecoveryHost, PreparedNativeGenerationActivation as Prepared,
+        PreparedNativeGenerationActivationIdentity as Identity, RoomDeploymentAuthority,
         ServerLogGenerationRecoveryCoverage, VerifiedServerLogGenerationRecoveryState,
         prepare_log_generation_recovery_host,
     },
 };
-use std::{fs, path::Path, sync::Arc};
+use std::{fs, path::Path, sync::Arc, time::Duration};
 async fn proof(
     handle: &PreparedLogGenerationRecoveryHost,
     owner: &str,
@@ -75,6 +75,33 @@ async fn prepare(
             .await?,
     ))
 }
+async fn reopen_committed_checkpoint(
+    root: &Path,
+    first: &Identity,
+    source: &Arc<PreparedLogGenerationHandover>,
+    authority: &RoomDeploymentAuthority,
+) -> TestResult<Arc<Prepared>> {
+    let expected = roundtrip(first)?;
+    // Wait only for read-only checkpoint custody to settle after the last router drops.
+    let recovered = tokio::time::timeout(Duration::from_secs(5), async {
+        loop {
+            match Prepared::open(root, &expected, source.clone()) {
+                Err(Error::Locked) => tokio::time::sleep(Duration::from_millis(2)).await,
+                outcome => return outcome,
+            }
+        }
+    })
+    .await
+    .map_err(|_| "first checkpoint remained locked after dropping its router")?
+    .map_err(|error| format!("reopen first checkpoint: {error:?}"))?;
+    assert_eq!(
+        recovered
+            .status(authority)
+            .map_err(|error| format!("read first checkpoint status: {error:?}"))?,
+        Status::Committed
+    );
+    Ok(Arc::new(recovered))
+}
 async fn workflow(profile: (u32, bool), atomic: bool, history: (bool, bool)) -> TestResult {
     let setup = Box::pin(Setup::new(profile, atomic, history, true)).await?;
     let p = setup.proof().await?;
@@ -113,10 +140,11 @@ async fn workflow(profile: (u32, bool), atomic: bool, history: (bool, bool)) -> 
     drop(prepared);
     assert!(matches!(Prepared::open(&root, &first, setup.intent.clone()), Err(Error::Locked)));
     drop(router);
-    let recovered = Arc::new(Prepared::open(&root, &roundtrip(&first)?, setup.intent.clone())?);
-    assert_eq!(recovered.status(&setup.authority)?, Status::Committed);
-    let (handle, owner) =
-        Box::pin(reopen(&setup.source, &setup.source.directory.0.join("target"))).await?;
+    let recovered =
+        reopen_committed_checkpoint(&root, &first, &setup.intent, &setup.authority).await?;
+    let (handle, owner) = Box::pin(reopen(&setup.source, &setup.source.directory.0.join("target")))
+        .await
+        .map_err(|error| format!("reopen target operation: {error:?}"))?;
     let p = proof(&handle, &owner, &setup.source).await?;
     assert_eq!(p.identity(), current);
     assert!(
@@ -145,7 +173,8 @@ async fn workflow(profile: (u32, bool), atomic: bool, history: (bool, bool)) -> 
                     authority: setup.authority.clone(),
                 },
             )
-            .await?,
+            .await
+            .map_err(|error| format!("prepare second checkpoint: {error:?}"))?,
     );
     assert_eq!(next.identity().previous_selection(), first.planned_selection());
     assert_ne!(next.identity().planned_selection(), first.planned_selection());
@@ -179,7 +208,11 @@ async fn forty_durable_native_activation_modes_reopen_actual_target_and_take_fre
         for atomic in [false, true] {
             for document in [false, true] {
                 for review in [false, true] {
-                    Box::pin(workflow(profile, atomic, (document, review))).await?;
+                    Box::pin(workflow(profile, atomic, (document, review)))
+                        .await
+                        .map_err(|error| format!(
+                            "profile {profile:?}, atomic={atomic}, document={document}, review={review}: {error:?}"
+                        ))?;
                 }
             }
         }

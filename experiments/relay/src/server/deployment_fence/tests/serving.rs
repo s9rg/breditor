@@ -79,6 +79,9 @@ async fn offline_case(version: u32, standard: bool, atomic: bool) -> TestResult 
     let mut previous = Socket::connect(first.address).await?;
     assert_eq!(previous.request(json!({"kind":"authenticate","principal":"owner","token":token,"capabilities":if atomic {vec!["writerTransportV2"]}else{vec![]}})).await?["kind"], "authenticated");
     assert_eq!(previous.request(json!({"kind":"resume","writer":registration.lease.writer,"credential":registration.credential})).await?["kind"], "resumed");
+    // Wait for resume's queued catchup before advancing the epoch so the next rejection
+    // comes from the stale submit on this socket.
+    assert_eq!(previous.notification().await?["kind"], "catchup");
     let replacement = RoomDeploymentAuthority::open(&d.authority(), &authority.identity())?;
     let next = claim_when_idle(&replacement).await?;
     let second =
