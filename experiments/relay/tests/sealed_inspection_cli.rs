@@ -2,7 +2,7 @@
 #![cfg(all(feature = "server", unix))]
 use breditor_collab_feasibility::rich_replica::SharedRichProfile;
 use breditor_collab_relay::{
-    AtomicTransportProfile, RecoveryRegistrationCredentials, Role, Room, RoomRecoveryPolicy,
+    AtomicTransportProfile, Error, RecoveryRegistrationCredentials, Role, Room, RoomRecoveryPolicy,
     ServerLogGenerationOptions, ServerLogGenerationRoomBackup, ServerLogGenerationRoomRecovery,
     assets::{AssetStore, asset_id, prepare_asset},
     server::{
@@ -25,6 +25,7 @@ use std::{
     path::{Path, PathBuf},
     process::{Command, Output, Stdio},
     sync::Arc,
+    time::Duration,
 };
 
 #[path = "sealed_inspection_cli/repair.rs"]
@@ -251,6 +252,21 @@ async fn sealed_room() -> Result<Fixture> {
     })
 }
 
+// On Linux, a concurrently spawning test child can briefly inherit the last
+// owner's open file description between fork and exec after the owner drops it.
+async fn reopen_fixture_native_log(directory: &Path) -> Result<Room> {
+    let deadline = tokio::time::Instant::now() + Duration::from_secs(5);
+    loop {
+        match Room::open_log_generations(directory) {
+            Ok((room, _)) => return Ok(room),
+            Err(Error::Locked) if tokio::time::Instant::now() < deadline => {
+                tokio::time::sleep(Duration::from_millis(2)).await;
+            }
+            Err(error) => return Err(format!("reopen sealed fixture native log: {error:?}").into()),
+        }
+    }
+}
+
 fn selected_files(operating: &Path) -> Result<(PathBuf, PathBuf)> {
     let clean = capture_files(operating)?;
     let head = clean
@@ -346,8 +362,8 @@ async fn cli_retains_complete_cut_and_refuses_unsafe_destinations() -> Result {
 async fn cli_retains_descendant_cut_and_both_exact_interrupted_writes() -> Result {
     let fixture = Box::pin(sealed_room()).await?;
     let operating = fixture.directory.0.join("operating");
-    let (mut room, _) =
-        Room::open_log_generations(fixture.active_wal.parent().ok_or("WAL parent")?)?;
+    let mut room =
+        reopen_fixture_native_log(fixture.active_wal.parent().ok_or("WAL parent")?).await?;
     room.grant("owner", "accepted-after-checkpoint", Some(Role::Reader))?;
     drop(room);
     let (floor, complete) =
@@ -424,11 +440,11 @@ struct PendingRotation {
     identity: Inode,
 }
 
-fn keep_pending_rotation(fixture: &Fixture, head_published: bool) -> Result<[u8; 32]> {
+async fn keep_pending_rotation(fixture: &Fixture, head_published: bool) -> Result<[u8; 32]> {
     let native = fixture.active_wal.parent().ok_or("active WAL directory")?;
     let head = native.join(".head.json");
     let prior_head = fs::read(&head)?;
-    let (mut room, _) = Room::open_log_generations(native)?;
+    let mut room = reopen_fixture_native_log(native).await?;
     room.grant("owner", "accepted-before-rotation", Some(Role::Reader))?;
     let before = room.log_generation_descriptor("owner")?.manifest;
     let after = room.rotate_log_generation("owner", "cli-rotation")?.after_manifest;
@@ -477,7 +493,7 @@ fn keep_pending_rotation(fixture: &Fixture, head_published: bool) -> Result<[u8;
 #[tokio::test]
 async fn cli_retains_rotation_and_exact_pending_raster_evidence() -> Result {
     let fixture = Box::pin(sealed_room()).await?;
-    let planned = keep_pending_rotation(&fixture, true)?;
+    let planned = keep_pending_rotation(&fixture, true).await?;
     let (output, manifest) =
         inspect(&fixture, &fixture.request("rotation", fixture.expected.current()), "rotation")?;
     let rotation = &manifest["pending"]["rotation"];
