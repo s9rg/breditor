@@ -746,11 +746,41 @@ and broader selection/history/interchange work remain open.
 The optional shared entry also has an explicit structural V2 candidate described below.
 See `docs/RICH_STRUCTURAL_V2.md` in the repository for the full contract boundary.
 
-Persistence and asset storage are explicit host services, not implicit SDK
-autosave. `RichLocalSessionStore` and `RichAssetStore` are exported. Supply
+Persistence and asset storage are explicit host services.
+`RichLocalSessionStore` and `RichAssetStore` are exported. Supply
 `resolveAsset` and route `onFiles` to `editor.insertImageFiles(store, files,
 position)` when enabling local uploads. Persist asset bytes separately from the
 exact native checkpoint; the checkpoint is not an image-byte backup.
+
+### Local checkpoint autosave
+
+Load any existing checkpoint before creating the editor and attach autosave
+to the same single-writer destination.
+
+```ts
+import {openLocalEditor, RichLocalSessionStore} from '@breditor/editor';
+import {mountLocalAutosave} from '@breditor/editor/autosave';
+
+const store = await RichLocalSessionStore.open('my-document');
+const saved = await store.load();
+const editor = await openLocalEditor({
+  host,
+  initial: saved ? {kind: 'checkpoint', checkpointJson: saved} : {kind: 'empty'},
+});
+const autosave = mountLocalAutosave(editor, store);
+```
+
+The mount schedules the current checkpoint and coalesces later publications
+into ordered writes. Set `delayMs` or `maxLatencyMs` to tune scheduling.
+`getStatus()` and `observeStatus()` report scheduled, saving and paused writes.
+Call `retry()` after a write failure. When leaving the editor, await a
+committed `flush()` before disposing autosave, disposing the editor and
+closing the store. For typing-history or document-selection sessions, select
+the matching editor and checkpoint family when restoring.
+
+The host owns the storage key and any cross-tab exclusivity. The local
+checkpoint saves native content and Undo/Redo history. Keep asset bytes in the
+separate asset store.
 
 ## React ownership
 

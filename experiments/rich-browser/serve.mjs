@@ -7,7 +7,7 @@ import {dirname,resolve} from "node:path";
 import {fileURLToPath} from "node:url";
 const root=resolve(dirname(fileURLToPath(import.meta.url)),"../..");
 const artifacts=resolve(root,"packages/breditor-experimental-rich-content/dist");
-const imports=`<script type="importmap">{"imports":{"@breditor/browser/presentation":"/presentation/presentation.js"}}</script>`;
+const imports=`<script type="importmap">{"imports":{"@breditor/browser/presentation":"/presentation/presentation.js","@breditor/browser/autosave":"/presentation/session_checkpoint_autosave.js"}}</script>`;
 const resources=new Map([
   ["/",["text/html; charset=utf-8",Buffer.from(`<!doctype html><html lang="en"><meta charset="utf-8">${imports}<title>Breditor rich owner contracts</title><h1>Rich owner functional checks</h1><p>Real generated Rust/Wasm, not a JavaScript editor model.</p><pre id="status">Loading…</pre><script type="module">import init,* as wasm from '/wasm.js';import {compileRichProfile,mountRichEditor,defaultToolbar,RichAssetStore,insertImageFiles} from '/rich.js';await init();window.rich={wasm,compileRichProfile,mountRichEditor,defaultToolbar,RichAssetStore,insertImageFiles,root:await(await fetch('/root.json')).json()};document.querySelector('#status').textContent='Ready';</script></html>`) ]],
   ["/wasm.js",["text/javascript; charset=utf-8",readFileSync(resolve(artifacts,"breditor_wasm.js"))]],

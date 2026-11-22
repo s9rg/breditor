@@ -36,6 +36,11 @@
       "types": "./dist/presentation.d.ts",
       "import": "./dist/presentation.js",
       "default": "./dist/presentation.js"
+    },
+    "./autosave": {
+      "types": "./dist/session_checkpoint_autosave.d.ts",
+      "import": "./dist/session_checkpoint_autosave.js",
+      "default": "./dist/session_checkpoint_autosave.js"
     }
   },
   "publishConfig": {

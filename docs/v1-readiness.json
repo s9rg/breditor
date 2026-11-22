@@ -487,9 +487,9 @@
     {
       "id":"autosave","area":"Integration","status":"partial",
       "summary":"Autosave contract for rich and shared sessions",
-      "current":"Base-text sessions have a checkpoint autosave; shared sessions persist durably; the rich local SDK has no implicit autosave (hosts save explicitly).",
-      "acceptance":"Specify a debounced, ordered, failure-reporting autosave for rich local sessions (or document explicit saving as the contract) and qualify it with reload and failure tests.",
-      "evidence":["packages/breditor-browser/src/session_checkpoint_autosave.ts","docs/RICH_LANGUAGE_V4.md"],
+      "current":"Base-text sessions have checkpoint autosave and shared sessions persist durably. The local rich SDK offers opt-in debounced checkpoint autosave for a host-owned single-writer storage key, with ordered writes, status, flush and explicit retry.",
+      "acceptance":"Qualify the opt-in rich local workflow on the exact supported browser artifacts, including stored-session reload, busy editor lifetimes and write failures. Hosts own cross-tab exclusivity.",
+      "evidence":["packages/breditor-browser/src/session_checkpoint_autosave.ts","packages/breditor-experimental-rich-content/src/persistence/local_autosave.ts","experiments/rich-browser/local-autosave.spec.mjs","packages/breditor-editor/README.md"],
       "sources":["ckeditor-autosave"]
     },
     {

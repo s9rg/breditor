@@ -8,6 +8,7 @@
   ".":{"types":"./dist/index.d.ts","import":"./dist/index.js"},
   "./react":{"types":"./dist/react.d.ts","import":"./dist/react.js"},
   "./static":{"types":"./dist/static_document.d.ts","import":"./dist/static_document.js"},
+  "./autosave":{"types":"./dist/local_autosave.d.ts","import":"./dist/local_autosave.js"},
   "./collaboration":{"types":"./dist/collaboration.d.ts","import":"./dist/collaboration.js"},
   "./collaboration/react":{"types":"./dist/shared_react.d.ts","import":"./dist/shared_react.js"}
  },
