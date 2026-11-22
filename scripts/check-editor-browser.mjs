@@ -18,7 +18,7 @@ export function editorBrowserRuns(discovered){
 }
 export function editorBrowserPlan(){
  const names=readdirSync(resolve(root,"experiments/editor-browser")).filter(name=>name.endsWith(".spec.mjs"));
- return {build:[process.execPath,["scripts/check-editor-package.mjs"]],runs:editorBrowserRuns(names).map(names=>[resolve(root,"node_modules/.bin/playwright"),["test","-c",configuration,...names]])};
+ return {build:[process.execPath,["scripts/check-editor-package.mjs"]],runs:editorBrowserRuns(names).map(names=>[resolve(root,"node_modules/.bin/playwright"),["test","-c",configuration,...names.map(name=>`(^|[/\\\\])${name.replaceAll(".","\\.")}$`)]])};
 }
 if(process.argv[1]&&realpathSync(process.argv[1])===fileURLToPath(import.meta.url)){
  const args=process.argv.slice(2),plan=editorBrowserPlan();
