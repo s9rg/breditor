@@ -61,6 +61,8 @@ header a{padding:.28rem .75rem;border:1px solid #c9d9d3;border-radius:.45rem}
 header a[aria-current=page]{background:#dbece3;font-weight:650}
 a{color:#205e4e;text-underline-offset:.22em}
 a:focus-visible{outline:2px solid #1a6653;outline-offset:3px}
+.skip-link{position:absolute;inset-block-start:.5rem;inset-inline-start:.5rem;transform:translateY(-200%);padding:.4rem .7rem;background:#fff;z-index:1}
+.skip-link:focus{transform:none}
 [data-breditor-static] nav{padding:.75rem 1.1rem;background:#edf5f0;border:1px solid #d3e2da;border-radius:.6rem}
 [data-breditor-static] nav h2{margin:0;font-size:1.05rem}
 [data-breditor-static] nav ol{margin:.4rem 0 0;padding-inline-start:1.2rem}
@@ -74,7 +76,7 @@ pre{background:#f4f7fa;border:1px solid #d6e0e7;border-radius:.55rem;padding:.85
 @media print{
  body{background:#fff}
  main{margin:0;padding:0;border:0;max-width:none}
- header nav,header .paper-size{display:none}
+ .skip-link,header nav,header .paper-size{display:none}
  pre{white-space:pre-wrap;overflow:visible}
 }
 `;
@@ -94,6 +96,7 @@ function page(mode,render=renderStaticDocument){
  <style>${styles}</style>
 </head>
 <body>
+ <a class="skip-link" href="#published-content">Skip to document</a>
  <main>
   <header>
    <nav aria-label="Preview mode">
@@ -106,7 +109,9 @@ function page(mode,render=renderStaticDocument){
    <p>Configure how an API client retries temporary failures.</p>
    ${print?`<p class="paper-size">${printLabel}</p>`:""}
   </header>
-  ${contents}
+  <article id="published-content" aria-label="Retry policy document" tabindex="-1">
+   ${contents}
+  </article>
  </main>
 </body>
 </html>`;
