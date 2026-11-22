@@ -120,6 +120,13 @@ Hosts can set `--breditor-code-comment`, `--breditor-code-keyword`,
 and `--breditor-code-string` on their editor surface or its ancestors. Pass
 `{nonce}` if the palette stylesheet requires a CSP nonce.
 
+Set `codeHighlighting: true` on `renderStaticDocument` to publish the same
+syntax palette as inert HTML. The renderer emits escaped text and token spans
+using the same language labels and bounds. Wrapped output includes the
+palette stylesheet. Load the exported `staticCodeHighlightingStyles` when
+using fragment output or the React static component, or style the
+`data-breditor-code-token` attributes in the host stylesheet.
+
 ## Named actions and history
 
 Every new action has its own documented file under

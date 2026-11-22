@@ -21,6 +21,7 @@ export * from "./dist/browser/clipboard_interchange.js";
 export {parseRichSearchMetadata} from "./dist/browser/search_metadata.js";
 export {parseRichWritingTools} from "./dist/browser/writing_tools_metadata.js";
 export {headingHierarchy,type HeadingBranch} from "./dist/browser/heading_hierarchy.js";
+export {CodeSyntaxBudget,codeSyntaxPalette} from "./dist/browser/code_syntax.js";
 export {parseRichRetainedAssetReferences} from "./dist/browser/retained_asset_references_metadata.js";
 export {RichRetainedAssetReferenceRegistry} from "./dist/browser/retained_asset_references_registry.js";
 export {RichWritingEvents,RichWritingReadRegistry,type RichWritingToolsHost,type RichWritingToolsHostState} from "./dist/browser/writing_tools_host.js";
