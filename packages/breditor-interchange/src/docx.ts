@@ -15,7 +15,7 @@ export const docxContractV1=Object.freeze({version:1,format:"ecma-376-transition
 export type DocxErrorCode="invalid-source"|"resource-limit"|"asset-policy";
 export type DocxResult<T>=Readonly<{ok:true;value:T;losses:readonly DocxLoss[]}>|Readonly<{ok:false;error:DocxErrorCode;losses:readonly DocxLoss[]}>;
 export interface DocxExportOptions {
-  /** Synchronous host lookup of immutable image bytes for one native asset binding. `undefined`
+  /** Synchronous host lookup of image bytes for one immutable native asset binding. `undefined`
    * reports `image-reference` and keeps the alt text; PNG, JPEG and GIF are embedded, any other
    * signature reports `image-format`. The library never fetches. Throwing fails with `asset-policy`. */
   readonly image?:(binding:DocxImageBinding)=>Uint8Array|undefined;
@@ -27,7 +27,7 @@ export interface DocxExportOptions {
   readonly pageSize?:"letter"|"a4";
 }
 export interface DocxAsyncExportOptions extends Omit<DocxExportOptions,"image"> {
-  /** Asynchronous host loader (for example `RichAssetStore.blob`). Called once per distinct binding, in document order. */
+  /** Called once per distinct binding, in document order. Returned bytes are copied before the next lookup. */
   readonly loadImage?:(binding:DocxImageBinding)=>Promise<Uint8Array|ArrayBuffer|Blob|undefined>|Uint8Array|ArrayBuffer|Blob|undefined;
 }
 const failure=(error:unknown,losses:readonly DocxLoss[]):DocxResult<never>=>{
@@ -95,7 +95,7 @@ export async function exportDocxWithImages(documentJson:string,options:DocxAsync
         try{bytes=new Uint8Array(await value.arrayBuffer());}catch{return failure(new ConversionFailure("asset-policy"),[]);}
       }else return failure(new ConversionFailure("asset-policy"),[]);
       if(bytes&&(bytes.length>docxLimits.imageBytes||(total+=bytes.length)>docxLimits.totalImageBytes))return failure(new ConversionFailure("resource-limit"),[]);
-      loaded.set(`${binding.asset}\u0000${binding.generation}`,bytes);
+      loaded.set(`${binding.asset}\u0000${binding.generation}`,bytes===undefined?undefined:new Uint8Array(bytes));
     }
   }
   return exportDocx(documentJson,{...rest,image:binding=>loaded.get(`${binding.asset}\u0000${binding.generation}`)});
