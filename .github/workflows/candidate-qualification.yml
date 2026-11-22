@@ -88,7 +88,7 @@
             "BROWSERS_OUTCOME": "${{ steps.browsers.outcome }}",
             "CANDIDATE_OUTCOME": "${{ steps.candidate.outcome }}"
           },
-          "run": "mkdir -p target/v1-candidate-runs\nprintf '%s\t%s\n' \\\n  revision \"$GITHUB_SHA\" profile \"$CANDIDATE_PROFILE\" os \"$RUNNER_OS\" arch \"$RUNNER_ARCH\" \\\n  checkout \"${CHECKOUT_OUTCOME:-unavailable}\" node \"${NODE_OUTCOME:-unavailable}\" \\\n  rust \"${RUST_OUTCOME:-unavailable}\" npm \"${NPM_OUTCOME:-unavailable}\" cargo \"${CARGO_OUTCOME:-unavailable}\" \\\n  browsers \"${BROWSERS_OUTCOME:-unavailable}\" candidate \"${CANDIDATE_OUTCOME:-unavailable}\" \\\n  > target/v1-candidate-runs/runner-context.tsv"
+          "run": "mkdir -p target/v1-candidate-runs\nprintf '%s\t%s\n' \\\n  revision \"$GITHUB_SHA\" profile \"$CANDIDATE_PROFILE\" os \"$RUNNER_OS\" arch \"$RUNNER_ARCH\" \\\n  checkout \"${CHECKOUT_OUTCOME:-unavailable}\" node \"${NODE_OUTCOME:-unavailable}\" \\\n  rust \"${RUST_OUTCOME:-unavailable}\" npm \"${NPM_OUTCOME:-unavailable}\" cargo \"${CARGO_OUTCOME:-unavailable}\" \\\n  browsers \"${BROWSERS_OUTCOME:-unavailable}\" candidate \"${CANDIDATE_OUTCOME:-unavailable}\" \\\n  > target/v1-candidate-runs/runner-context.tsv\nif [[ -n \"${GITHUB_STEP_SUMMARY:-}\" ]]; then\n  if [[ -r scripts/summarize-candidate-run.mjs ]] && command -v node >/dev/null; then\n    node scripts/summarize-candidate-run.mjs >> \"$GITHUB_STEP_SUMMARY\"\n  else\n    printf '\\n## Candidate qualification\\n\\nSee runner-context.tsv in the uploaded artifact for setup outcomes.\\n' >> \"$GITHUB_STEP_SUMMARY\"\n  fi\nfi"
         },
         {
           "name": "Retain candidate results and failure logs",

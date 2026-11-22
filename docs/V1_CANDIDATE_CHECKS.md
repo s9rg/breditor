@@ -16,6 +16,10 @@ the selected commit and profile, the runner platform, and each step's outcome.
 When the verifier starts, the same artifact includes its existing stage logs
 and candidate result.
 
+The GitHub Actions job summary identifies failed setup or the last recorded
+candidate stage. It gives the stage log's path within the uploaded artifact
+when available.
+
 Completed runtime size reports and native relay dependency notices are copied
 into the run artifact with their recorded hashes, so reviewers can read the
 exact evidence from GitHub Actions.
