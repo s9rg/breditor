@@ -5,11 +5,17 @@ import {lstatSync,mkdirSync,readFileSync,realpathSync,writeFileSync,renameSync,o
 import {resolve,relative,isAbsolute,dirname} from "node:path";
 const hash=bytes=>createHash("sha256").update(bytes).digest("hex");
 function within(root,path){const actual=relative(realpathSync(root),realpathSync(path));if(isAbsolute(actual)||actual.split(/[\\/]/)[0]==="..")throw Error("Evidence input escapes its repository");}
-export function fileEvidence(root,path){
+function inspectFile(root,path){
  if(isAbsolute(path)||path.split(/[\\/]/).includes(".."))throw Error("Evidence needs a repository-relative path");
  const full=resolve(root,path),stat=lstatSync(full);within(root,full);
  if(!stat.isFile()||stat.size>32*1024*1024)throw Error(`Unsupported or oversized evidence file: ${path}`);
- return {path,bytes:stat.size,sha256:hash(readFileSync(full)),modifiedAtMs:stat.mtimeMs};
+ // Git tracks the owner's execute bit on POSIX. Windows does not expose a comparable bit.
+ const executable=process.platform!=="win32"&&(stat.mode&0o100)!==0;
+ return {path,bytes:stat.size,sha256:hash(readFileSync(full)),modifiedAtMs:stat.mtimeMs,executable};
+}
+export function fileEvidence(root,path){
+ const {executable,...evidence}=inspectFile(root,path);
+ return evidence;
 }
 /** Copy explicitly selected release evidence into the uploaded run directory. */
 export function retainStageArtifact(root,directory,stage,evidence){
@@ -26,9 +32,9 @@ export function sourceEvidence(root){
  const git=args=>execFileSync("git",args,{cwd:root,encoding:"utf8",maxBuffer:8*1024*1024});
  const paths=[...new Set(git(["ls-files","--cached","--others","--exclude-standard","-z"]).split("\0").filter(Boolean))].sort();
  if(!paths.length||paths.length>32768)throw Error("Unsupported source inventory size");
- const files=paths.map(path=>fileEvidence(root,path));if(files.reduce((sum,file)=>sum+file.bytes,0)>256*1024*1024)throw Error("Source evidence exceeds its explicit budget");
+ const files=paths.map(path=>inspectFile(root,path));if(files.reduce((sum,file)=>sum+file.bytes,0)>256*1024*1024)throw Error("Source evidence exceeds its explicit budget");
  let commit=null;try{commit=git(["rev-parse","--verify","HEAD"]).trim();}catch{/* An uncommitted fixture can still prove source-change refusal. */}
- const digest=createHash("sha256");for(const {path,bytes,sha256} of files)digest.update(JSON.stringify([path,bytes,sha256])+"\n");
+ const digest=createHash("sha256");for(const {path,bytes,sha256,executable} of files)digest.update(JSON.stringify([path,bytes,sha256,executable])+"\n");
  return {commit,dirty:git(["status","--porcelain=v1"]).length>0,sha256:digest.digest("hex"),files:files.length,bytes:files.reduce((sum,file)=>sum+file.bytes,0)};
 }
 /** Atomic replacement within a fresh owned result directory; interruption retains old evidence. */
