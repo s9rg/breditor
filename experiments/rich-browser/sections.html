@@ -11,19 +11,22 @@ body{margin:auto;max-width:58rem;padding:clamp(1rem,5vw,3.5rem);background:#eef4
 a{color:#235e53;text-underline-offset:.2em}
 h1{margin:1rem 0 .35rem;font-size:clamp(2rem,6vw,3.15rem);line-height:1.1;letter-spacing:-.04em}
 header p{max-width:38rem}
+.skip-link{position:absolute;inset-block-start:8px;inset-inline-start:8px;transform:translateY(-200%);padding:.35rem .65rem;background:#fff;border-radius:.25rem}
+.skip-link:focus{position:relative;display:inline-block;inset:auto;transform:none;margin-bottom:.75rem;outline:2px solid #235e53;outline-offset:2px}
 [data-breditor-rich] details{border:1px solid #c9ded7;border-radius:.6rem;background:#f5faf7}
 [data-breditor-rich] summary{font-weight:650}
 [data-breditor-rich] summary:focus-within{outline:2px solid #235e53}
 </style>
 </head>
 <body>
+<a class="skip-link" href="#section-editor">Skip to section editor</a>
 <header>
  <a href="/demo">← Rich editor demo</a>
  <h1>Collapsible sections</h1>
- <p>Select a section’s summary and use Expand/Collapse section in the toolbar. Edit the text and use Undo to reverse a change.</p>
+ <p>Use Expand/Collapse section in the toolbar to open the recovery section. Select any summary to switch sections. Undo restores its previous state.</p>
  <p id="section-status" role="status">Opening editor…</p>
 </header>
-<main id="section-editor"></main>
+<main id="section-editor" tabindex="-1"></main>
 <script type="module" src="/sections.mjs"></script>
 </body>
 </html>
