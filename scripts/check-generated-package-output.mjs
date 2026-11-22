@@ -14,6 +14,7 @@ if(process.argv.length!==2)throw Error('Run without package filters');
 const packages=[
  // Match the browser package's two-pass build: stripped JS, full declarations.
  {name:'breditor-browser',output:'dist',external:[],passes:[['--declaration','false','--removeComments'],['--emitDeclarationOnly']]},
+ {name:'breditor-reference-highlight',output:'dist',external:[],passes:[['--declaration','false','--removeComments'],['--emitDeclarationOnly']]},
  {name:'breditor-experimental-rich-content',output:'dist/browser',external:[],passes:[[]]},
  {name:'breditor-collaboration',output:'dist',external:['runtime'],passes:[[]]},
  {name:'breditor-editor',output:'dist',external:[],passes:[[]]},
