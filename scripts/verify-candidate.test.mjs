@@ -479,3 +479,20 @@ test('both profiles require genuine mixed V2 parent custody, atomic guards and f
  const acceptance=readFileSync(join(repository,'scripts/fixtures/room-operation-v2/acceptance.mjs'),'utf8');for(const value of ['participantRecordComparisons:180','wholeUploadComparisons:180','coldResumedParticipants:60','databaseCloseRefusals:6','atomicGuardRefusals:12','originalSourceReentrancyRefusals:6','preparedCurrentPolicyParticipants:12','preparedPolicyReleaseRetries:12','operationOpeningCleanupRetries:12','operationalResumeOpeningRetries:24','heldReadyOperationRetries:12'])assert.ok(acceptance.includes(value),value);
  assert.ok(readFileSync(join(repository,'scripts/probe-room-operational-recovery.mjs'),'utf8').includes('roomFailureDiagnostic'));assert.ok(readFileSync(join(repository,'scripts/fixtures/room-operation/managed-handoffs.mjs'),'utf8').includes('internalFailureChain'));
 });
+
+test("selected audit reports retain exact bytes with the stage log",async()=>{
+ const root=temporary();
+ try{
+  const selected=fixtureCheck("audit",
+   "const fs=require('node:fs'); fs.writeFileSync('target/audit.json', '{}\\n'); fs.writeFileSync('target/local-only.json', 'local')");
+  selected.artifacts=[{path:"target/audit.json",fresh:true,retain:true},{path:"target/local-only.json"}];
+  const {result,manifest}=await runCandidateChecks(plan([selected]),quiet({root}));
+  assert.equal(result.status,"passed");
+  const [audit,local]=result.stages[0].artifacts;
+  assert.equal(audit.retainedPath,"artifacts/audit/target/audit.json");
+  assert.equal(local.retainedPath,undefined);
+  const retained=fileEvidence(join(manifest,".."),audit.retainedPath);
+  assert.deepEqual([retained.sha256,retained.bytes],[audit.sha256,audit.bytes]);
+  assert.equal(readFileSync(join(manifest,"..",audit.retainedPath),"utf8"),"{}\n");
+ }finally{rmSync(root,{recursive:true,force:true});}
+});

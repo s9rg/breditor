@@ -1,7 +1,7 @@
 /** Source and artifact evidence for a working-tree qualification, never a hermetic RC claim. */
 import {execFileSync} from "node:child_process";
 import {createHash} from "node:crypto";
-import {lstatSync,readFileSync,realpathSync,writeFileSync,renameSync,openSync,fsyncSync,closeSync} from "node:fs";
+import {lstatSync,mkdirSync,readFileSync,realpathSync,writeFileSync,renameSync,openSync,fsyncSync,closeSync} from "node:fs";
 import {resolve,relative,isAbsolute,dirname} from "node:path";
 const hash=bytes=>createHash("sha256").update(bytes).digest("hex");
 function within(root,path){const actual=relative(realpathSync(root),realpathSync(path));if(isAbsolute(actual)||actual.split(/[\\/]/)[0]==="..")throw Error("Evidence input escapes its repository");}
@@ -10,6 +10,16 @@ export function fileEvidence(root,path){
  const full=resolve(root,path),stat=lstatSync(full);within(root,full);
  if(!stat.isFile()||stat.size>32*1024*1024)throw Error(`Unsupported or oversized evidence file: ${path}`);
  return {path,bytes:stat.size,sha256:hash(readFileSync(full)),modifiedAtMs:stat.mtimeMs};
+}
+/** Copy explicitly selected release evidence into the uploaded run directory. */
+export function retainStageArtifact(root,directory,stage,evidence){
+ const bytes=readFileSync(resolve(root,evidence.path));
+ if(bytes.length!==evidence.bytes||hash(bytes)!==evidence.sha256)throw Error(`Stage report changed before retention: ${evidence.path}`);
+ const retainedPath=`artifacts/${stage}/${evidence.path}`;
+ const target=resolve(directory,retainedPath);
+ mkdirSync(dirname(target),{recursive:true});
+ writeFileSync(target,bytes,{flag:"wx",mode:0o600});
+ return {...evidence,retainedPath};
 }
 /** Include tracked and nonignored untracked inputs, not ignored generated caches/logs. */
 export function sourceEvidence(root){
