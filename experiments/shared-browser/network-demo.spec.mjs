@@ -49,3 +49,67 @@ test("single account demo pages exchange real image bytes and visible peer caret
  await expect(page.locator("#state-a")).toContainText("images 1/1");await expect(peer.locator("#state-b")).toContainText("images 1/1");await expect.poll(()=>peer.locator("#b img").last().evaluate(img=>img.naturalWidth)).toBe(2);
  const cache=await peer.evaluate(()=>window.breditorNetworkDemo.peers.b.cache.list());expect(cache[0]).toMatchObject({status:"uploaded",attempts:0,asset:fixture.asset});
 });
+
+test("independent offline writers keep exact journals across a relay and page restart",async({page,browser})=>{
+ await page.goto("/network-demo?peer=alice");
+ await ready(page);
+ otherContext=await browser.newContext();
+ const bob=await otherContext.newPage();
+ await route(bob);
+ await bob.goto("/network-demo?peer=bob");
+ await ready(bob);
+
+ const writers=[[page,"a","p","Alice offline. "],[bob,"b","caption","Bob offline. "]];
+ for(const [writer,key,block,text] of writers){
+  await writer.getByRole("button",{name:"Go offline",exact:true}).click();
+  await expect(writer.locator(`#state-${key}`)).toContainText("offline");
+  await writer.evaluate(({key,block})=>{
+   const {mounted}=window.breditorNetworkDemo.peers[key];
+   const point={block,offset:"0",affinity:"after"};
+   mounted.surface.focus();
+   mounted.select({kind:"text",anchor:point,focus:point});
+  },{key,block});
+  await writer.keyboard.insertText(text);
+ }
+ await expect(page.locator('#a [data-rich-text="caption"]')).toHaveText("xy🙂");
+ await expect(bob.locator('#b [data-rich-text="p"]')).toHaveText("a🙂b");
+
+ const saved=await Promise.all(writers.map(([writer,key])=>writer.evaluate(async key=>{
+  const {session,identity}=window.breditorNetworkDemo.peers[key];
+  await session.flush();
+  return {checkpoint:session.core.checkpointJson(),writer:identity.writer};
+ },key)));
+
+ await relay.offline();
+ await Promise.all(writers.map(([writer])=>writer.evaluate(()=>window.breditorNetworkDemo.close())));
+ await Promise.all(writers.map(([writer])=>writer.reload()));
+ for(const [index,[writer,key]] of writers.entries()){
+  await expect(writer.locator("#network-state")).toHaveText("Editors ready");
+  const reloaded=await writer.evaluate(key=>{
+   const {session,identity}=window.breditorNetworkDemo.peers[key];
+   return {checkpoint:session.core.checkpointJson(),writer:identity.writer,recovered:session.recovered};
+  },key);
+  expect(reloaded).toEqual({...saved[index],recovered:true});
+ }
+
+ expect(await relay.online()).toBe(relay.url);
+ await Promise.all(writers.map(([writer,key])=>writer.evaluate(async key=>{
+  const {sync}=window.breditorNetworkDemo.peers[key];
+  await sync.connect();
+  await sync.flush();
+ },key)));
+ for(const [writer,key] of writers){
+  await ready(writer);
+  await expect(writer.locator(`#${key} [data-rich-text="p"]`)).toHaveText("Alice offline. a🙂b");
+  await expect(writer.locator(`#${key} [data-rich-text="caption"]`)).toHaveText("Bob offline. xy🙂");
+ }
+
+ const documentJson=([writer,key])=>writer.evaluate(key=>window.breditorNetworkDemo.peers[key].session.core.documentJson(),key);
+ const merged=await documentJson(writers[0]);
+ expect(await documentJson(writers[1])).toBe(merged);
+ await page.getByRole("button",{name:"Undo",exact:true}).click();
+ await expect(bob.locator('#b [data-rich-text="p"]')).toHaveText("a🙂b");
+ await expect(bob.locator('#b [data-rich-text="caption"]')).toHaveText("Bob offline. xy🙂");
+ await page.getByRole("button",{name:"Redo",exact:true}).click();
+ await expect.poll(()=>documentJson(writers[1])).toBe(merged);
+});
