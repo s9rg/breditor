@@ -22,3 +22,17 @@ test("overlapping spec names have exact anchored CLI filters rather than duplica
  const names=["profile.spec.mjs","custom-profile.spec.mjs"],runs=sharedBrowserRuns(names,names).slice(1);
  for(const name of names)assert.equal(runs.filter(run=>new RegExp(run.patterns[0]).test(`/test/${name}`)).length,1);
 });
+
+
+test("custom shared ports move both the browser and its fixture host",async()=>{
+ const previous=process.env.BREDITOR_SHARED_PORT;
+ try{
+  process.env.BREDITOR_SHARED_PORT="50844";
+  const {default:isolated}=await import("../experiments/shared-browser/playwright.config.mjs?custom-port");
+  assert.equal(isolated.use.baseURL,"http://127.0.0.1:50844");
+  assert.equal(isolated.webServer.url,"http://127.0.0.1:50844/");
+ }finally{
+  if(previous===undefined)delete process.env.BREDITOR_SHARED_PORT;
+  else process.env.BREDITOR_SHARED_PORT=previous;
+ }
+});
