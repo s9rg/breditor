@@ -25,6 +25,7 @@ header p{margin:0 0 .6rem;color:#41615c}
 .editor-host [data-breditor-contents]{margin-block:.7rem;padding:.75rem .9rem;border-color:#d3e3db;background:#eef6f1}
 .editor-host [data-breditor-contents] h2{margin:0 0 .35rem;font-size:.95rem}
 .editor-host [data-breditor-contents] li{padding-block:.06rem}
+.editor-host [data-breditor-contents] button:focus-visible{outline:2px solid #235e53;outline-offset:2px;border-radius:2px}
 .editor-host :is(.breditor-rich-surface,.breditor-shared-surface){height:22rem;overflow-y:auto;overscroll-behavior:contain}
 .editor-host :is(.breditor-rich-surface,.breditor-shared-surface) :is(h2,h3){scroll-margin-top:12px}
 .editor-host :is(.breditor-rich-surface,.breditor-shared-surface) h2{font-size:1.35rem;margin:.25rem 0}
