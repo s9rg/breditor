@@ -55,7 +55,7 @@ function save(){
  catch(error){report(error);}
 }
 function report(error){document.getElementById("saved").textContent="Not saved";document.getElementById("notice").textContent=error instanceof Error?error.message:"Local operation failed";}
-function mount(owner){return mountRichEditor(document.getElementById("editor"),{core:owner,...(ui?{ui}:{}),
+function mount(owner){return mountRichEditor(document.getElementById("editor"),{core:owner,scrollableTables:true,...(ui?{ui}:{}),
  resolveAsset:binding=>assets.get(binding.asset)??assetStore.resolve(binding.asset),
  onFiles:async(files,position)=>{await insertImageFiles(editor,assetStore,files,position);await showAssets();},
  onError:report,onChange:view=>{document.getElementById("revision").textContent=`Revision ${view.revision} · ${view.undoDepth} undo groups`;save();}});}

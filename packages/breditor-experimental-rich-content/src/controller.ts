@@ -3,7 +3,7 @@ import {isStructuralRichLanguage} from "./rich_language.js";
 import type {FlowPosition,RichCommand,RichCommandOutcome,RichCoreEditor,RichSelection,RichDocumentSelection,RichSelectionPolicy,RichEditorView,RichDocumentCoreEditor,RichRestrictedPolicy} from "./core.js";
 import {bold,boundaryDelete,defaultToolbarFor,deleteSelection,enter,listTab,positionAfter,type ActionContext,type ToolbarControl} from "./actions.js";
 import {id,presentationModel,sourceCell,text,type RichModel} from "./model.js";
-import {paintSelection,render,requireRenderOptions,structuralBlockStylesV2,type RenderOptions} from "./render.js";
+import {paintSelection,render,requireRenderOptions,structuralBlockStylesV2,richTableScrollStyles,releaseRichTableScroll,type RenderOptions} from "./render.js";
 import {richPageBreakStyles} from "./page_break.js";
 import {richBookmarkStyles} from "./bookmark.js";
 import {richLegalListStyles} from "./list_structure.js";
@@ -115,7 +115,7 @@ export class RichDomEditor<P extends RichSelectionPolicy="original"> {
   this.toolbar=document.createElement("div");this.toolbar.className="breditor-rich-toolbar";this.toolbar.setAttribute("role","toolbar");this.toolbar.setAttribute("aria-label",ui.text("richToolbarLabel"));ui.applyChrome(this.toolbar);
   this.status=document.createElement("p");this.status.className="breditor-rich-status";this.status.setAttribute("role","status");ui.applyChrome(this.status);
   this.#placeholder=placeholder?new RichPlaceholderPresentation(this.surface,placeholder.label):undefined;
-  const style=document.createElement("style");style.textContent=styles+standardInlineStylesV1+toolbarControlStyles+structuralBlockStylesV2+richPageBreakStyles+richBookmarkStyles+richLegalListStyles+(this.#document?documentSelectionStyles:"")+(placeholder?richPlaceholderStyles:"")+(options.inlinePresentation&&richInlinePresentationHasRuby(options.inlinePresentation)?richRubyStyles:"");root.dataset["breditorRich"]="";root.replaceChildren(style,this.toolbar,this.#placeholder?.container??this.surface,this.status);
+  const style=document.createElement("style");style.textContent=styles+standardInlineStylesV1+toolbarControlStyles+structuralBlockStylesV2+(options.scrollableTables?richTableScrollStyles:"")+richPageBreakStyles+richBookmarkStyles+richLegalListStyles+(this.#document?documentSelectionStyles:"")+(placeholder?richPlaceholderStyles:"")+(options.inlinePresentation&&richInlinePresentationHasRuby(options.inlinePresentation)?richRubyStyles:"");root.dataset["breditorRich"]="";root.replaceChildren(style,this.toolbar,this.#placeholder?.container??this.surface,this.status);
   const seen=new Set<string>();
   for(const control of options.toolbar??defaultToolbarFor<P>()){
    if(seen.has(control.id))throw Error("Duplicate rich toolbar control identity");seen.add(control.id);
@@ -631,7 +631,7 @@ export class RichDomEditor<P extends RichSelectionPolicy="original"> {
   });
  }
  /** Unmount the surface and release its transferred exclusive core owner. */
- dispose():void {if(this.#disposed)return;this.#disposed=true;this.#placeholder?.dispose();this.#abort.abort();this.#cancelQueue(Error("The rich DOM editor is disposed"));this.#notifySearch();this.#searchEvents.clear();this.#writingEvents.clear();this.#root.replaceChildren();delete this.#root.dataset["breditorRich"];this.#options.core.dispose();}
+ dispose():void {if(this.#disposed)return;this.#disposed=true;this.#placeholder?.dispose();this.#abort.abort();this.#cancelQueue(Error("The rich DOM editor is disposed"));this.#notifySearch();this.#searchEvents.clear();this.#writingEvents.clear();releaseRichTableScroll(this.surface);this.#root.replaceChildren();delete this.#root.dataset["breditorRich"];this.#options.core.dispose();}
 }
 export function mountRichEditor(root:HTMLElement,options:RichEditorOptions):RichDomEditor{return new RichDomEditor(root,options);}
 /** Opt-in extended coordinator; ordinary mounts and original execute/selection DTOs stay closed. */

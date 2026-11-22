@@ -12,6 +12,7 @@ import {createPageBreakElement,richPageBreakKind} from "./page_break.js";
 import {bookmarkAttributes,bookmarkNames,bookmarkOf,internalLinkAttributes,internalLinkOf} from "./bookmark.js";
 import {resolveRichUi,type RichUiLocale,type RichUiOptions} from "./ui_locale.js";
 export const structuralBlockStylesV2=`[data-breditor-rich] [data-rich-text]{white-space:pre-wrap;min-height:1em}[data-breditor-rich] blockquote{border-left:3px solid #9dbbb0;margin:12px 0;padding:1px 16px}[data-breditor-rich] pre{font-family:ui-monospace,monospace;background:#f1f5f2;padding:12px;overflow:auto}[data-breditor-rich] [data-task-list]{list-style:none;padding-left:12px}[data-breditor-rich] [data-rich-task]{display:grid;grid-template-columns:24px minmax(0,1fr);gap:8px;margin:8px 0}[data-breditor-rich] input[data-task-check]{width:18px;height:18px;margin:4px 0}[data-breditor-rich] [data-task-body]>:first-child{margin-top:0}[data-breditor-rich] hr{border:0;border-top:2px solid #9dbbb0;margin:16px 0}[data-breditor-rich] details[data-rich-details]{border:1px solid #c9d8d2;border-radius:6px;margin:12px 0;padding:4px 12px}[data-breditor-rich] summary[data-rich-text]{font-weight:600;cursor:text;padding:4px 0}[data-breditor-rich] details[data-rich-details][open]>summary[data-rich-text]{border-bottom:1px solid #e3ece8;margin-bottom:4px}`;
+export const richTableScrollStyles=`[data-rich-table-scroll]{max-inline-size:100%;contain:inline-size;overflow-x:auto}[data-rich-table-scroll-controls]{display:flex;justify-content:end;gap:4px}[data-rich-table-scroll-controls][hidden]{display:none}[data-rich-table-scroll-controls] button:focus-visible{outline:2px solid Highlight;outline-offset:2px}@media print{[data-rich-table-scroll]{contain:none;overflow:visible}[data-rich-table-scroll-controls]{display:none}}`;
 export interface AssetBinding {image:string;asset:string;generation:string}
 export interface RenderOptions {
  resolveAsset?:(binding:AssetBinding)=>string|undefined|Promise<string|undefined>;
@@ -27,6 +28,8 @@ export interface RenderOptions {
   * at render time from admitted structure and starts (see `legalListMarkers`); presentation only,
   * never stored. Omitted keeps the existing output exact. */
  legalListNumbering?:boolean;
+ /** Opt-in horizontal table viewports for narrow editor layouts. */
+ scrollableTables?:boolean;
 }
 const resolvedUi=new WeakMap<object,RichUiLocale>();
 /** Resolve (and cache per options object) the catalog that labels page-break markers. */
@@ -38,6 +41,7 @@ function pageBreakLabel(options:RenderOptions):string{
 /** Validate opt-in presentation before publishing host DOM. Legacy callbacks stay separate. */
 export function requireRenderOptions(value:RichPresentationModel,options:RenderOptions):void {
  if(options.legalListNumbering!==undefined&&typeof options.legalListNumbering!=="boolean")throw new TypeError("legalListNumbering must be a boolean");
+ if(options.scrollableTables!==undefined&&typeof options.scrollableTables!=="boolean")throw new TypeError("scrollableTables must be a boolean");
  if(options.inlinePresentation){if(options.inlineTag)throw new TypeError("Use either inlinePresentation or inlineTag, not both");requireRichInlinePresentation(options.inlinePresentation,value.schema);}
 }
 /** A lone LF at the very end of a `pre-wrap` text block creates no line box after it, so Chromium
@@ -98,9 +102,24 @@ export function applyEditingPolicy(surface:HTMLElement,readOnly:boolean):void {
  for(const caption of surface.querySelectorAll<HTMLElement>("figcaption"))caption.contentEditable=readOnly?"false":"true";
  for(const check of surface.querySelectorAll<HTMLInputElement>("input[data-task-check]"))check.disabled=readOnly;
 }
+const tableScrollObservers=new WeakMap<HTMLElement,ResizeObserver>();
+export function releaseRichTableScroll(surface:HTMLElement):void{
+ tableScrollObservers.get(surface)?.disconnect();
+ tableScrollObservers.delete(surface);
+}
 export function render(surface:HTMLElement,value:RichPresentationModel,options:RenderOptions):void {
  requireRenderOptions(value,options);
  const document=surface.ownerDocument;
+ const tableScroll=new Map<string,{offset:number;focus:string|undefined}>();
+ const tableViewports:{viewport:HTMLElement;table:HTMLTableElement;controls:HTMLElement}[]=[];
+ releaseRichTableScroll(surface);
+ if(options.scrollableTables){
+  for(const viewport of surface.querySelectorAll<HTMLElement>("[data-rich-table-scroll]")){
+   const focus=viewport.parentElement?.querySelector<HTMLElement>("[data-scroll-table]:focus");
+   tableScroll.set(viewport.dataset["richTableScroll"]!,{offset:viewport.scrollLeft,focus:focus?.dataset["scrollTable"]});
+  }
+ }
+ let tableNumber=0;
  const bookmarks=options.bookmarks===true?new Set(bookmarkNames(value.root)):undefined;
  const legal=options.legalListNumbering===true?legalListMarkers(value.root):undefined;
  const anchor=(element:HTMLElement,node:ElementNode):void=>{const name=bookmarks?bookmarkOf(node):undefined;if(name!==undefined)for(const attribute of bookmarkAttributes(name))element.setAttribute(attribute.name,attribute.value);};
@@ -200,12 +219,54 @@ export function render(surface:HTMLElement,value:RichPresentationModel,options:R
     for(const source of cell.sources){const original=bodies.get(cellKey(source));if(!original)continue;const partition=document.createElement("div");partition.dataset["sourceCell"]=JSON.stringify(source);for(const child of original.children)partition.append(flow(child));td.append(partition);}
     tr.append(td);
    }body.append(tr);
-  }element.append(body);return element;
+  }element.append(body);
+  if(!options.scrollableTables)return element;
+  const frame=document.createElement("div"),controls=document.createElement("div"),viewport=document.createElement("div");
+  controls.dataset["richTableScrollControls"]="";
+  controls.contentEditable="false";
+  viewport.dataset["richTableScroll"]=tableId;
+  viewport.setAttribute("role","region");
+  viewport.setAttribute("aria-label",`Table ${++tableNumber}`);
+  element.style.minInlineSize=`${geometry.columns.reduce((width,column)=>width+column.width,0)}px`;
+  for(const [direction,icon,delta] of [["left","←",-72],["right","→",72]] as const){
+   const button=document.createElement("button");
+   button.type="button";button.dataset["scrollTable"]=direction;button.textContent=icon;
+   button.setAttribute("aria-label",`Scroll table ${tableNumber} ${direction}`);
+   button.addEventListener("click",()=>viewport.scrollBy({left:delta,behavior:"instant"}));
+   button.addEventListener("keydown",event=>{
+    if(event.altKey||event.ctrlKey||event.metaKey||(event.key!=="ArrowLeft"&&event.key!=="ArrowRight"))return;
+    event.preventDefault();event.stopPropagation();viewport.scrollBy({left:event.key==="ArrowLeft"?-72:72,behavior:"instant"});
+   });
+   controls.append(button);
+  }
+  viewport.append(element);
+  frame.append(controls,viewport);tableViewports.push({viewport,table:element,controls});
+  return frame;
  };
  surface.replaceChildren(...value.root.children.map(flow));
  applyEditingPolicy(surface,value.view.readOnly===true);
  applyRestrictedPresentation(surface,value);
  paintSelection(surface,value);
+ if(tableViewports.length){
+  const refresh=()=>{for(const {viewport,controls} of tableViewports)controls.hidden=viewport.scrollWidth<=viewport.clientWidth;};
+  refresh();
+  for(const {viewport,controls} of tableViewports){
+   const previous=tableScroll.get(viewport.dataset["richTableScroll"]!);
+   if(previous){
+    viewport.scrollLeft=previous.offset;
+    if(previous.focus){
+     const button=[...controls.querySelectorAll("button")].find(item=>item.dataset["scrollTable"]===previous.focus);
+     button?.focus({preventScroll:true});
+    }
+   }
+  }
+  const Observer=document.defaultView?.ResizeObserver;
+  if(Observer){
+   const observer=new Observer(refresh);
+   for(const {viewport,table} of tableViewports){observer.observe(viewport);observer.observe(table);}
+   tableScrollObservers.set(surface,observer);
+  }
+ }
 }
 export function paintSelection(surface:HTMLElement,value:RichPresentationModel):void {
  surface.toggleAttribute("data-document-selected",value.view.selection?.kind==="document");

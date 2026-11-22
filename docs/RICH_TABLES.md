@@ -6,6 +6,15 @@ exist in rich V4 only (one trailing caption paragraph per
 table; see [RICH_LANGUAGE_V4.md](RICH_LANGUAGE_V4.md), Slice 6). Table/cell
 presentation panels and broader rich paste are separate work.
 
+## Horizontal table scrolling
+
+Local and shared editor mounts accept `scrollableTables: true`. Wide tables
+then stay inside the editor with a horizontal viewport. Use the Left and
+Right controls, a scrollbar, or a touch gesture. The buttons also accept
+Left and Right arrow keys. A render following an edit, resize or remote publication retains the
+table's scroll offset when the table still exists. The setting is view-only
+and has no effect on saved documents or copied table content.
+
 ## Column resize handles
 
 `mountRichTableColumnResize(overlay, host, {commit})` from
