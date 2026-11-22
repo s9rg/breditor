@@ -166,3 +166,17 @@ test("the code demo offers a keyboard skip link and a named editor region", asyn
  await expect(main).toBeFocused();
  await expect(main.getByRole("region",{name:"Local editor"})).toBeVisible();
 });
+
+test("the local code demo keeps its controls and a readable code area inside a phone viewport",async({page})=>{
+ await page.setViewportSize({width:320,height:780});
+ await page.goto("/code");
+ await expect(page.locator("#code-ready")).toHaveText("Ready");
+ const editor=page.getByRole("region",{name:"Local editor"});
+ const code=editor.locator("pre[data-language]").first();
+ await code.click();
+ const language=editor.getByRole("textbox",{name:"Code language"});
+ await expect(language).toBeEnabled();
+ await expect(language).toBeInViewport();
+ expect(await code.evaluate(element=>element.clientWidth)).toBeGreaterThanOrEqual(240);
+ expect(await page.evaluate(()=>document.documentElement.scrollWidth)).toBe(320);
+});

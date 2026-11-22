@@ -94,3 +94,9 @@ header p { margin: 0 0 1rem; color: #41615c; }
 @media (max-width: 760px) {
  [data-code-demo="shared"] .editors { grid-template-columns: minmax(0, 1fr); }
 }
+@media (max-width: 420px) {
+ body[data-code-demo] { padding: .75rem; }
+ [data-code-demo] .editor-pane { padding: .6rem; }
+ [data-code-demo] [data-demo-editor] :is(.breditor-rich-surface, .breditor-shared-surface) { padding: .65rem; }
+ [data-code-demo] [data-demo-editor] pre[data-language] { padding-inline: .75rem; }
+}
