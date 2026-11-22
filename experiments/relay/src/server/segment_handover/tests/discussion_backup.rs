@@ -44,7 +44,7 @@ async fn a_live_write_can_finish_during_backup_copy_and_stays_outside_the_cut() 
     let (release, parked) = mpsc::channel();
     let job = tokio::task::spawn_blocking(move || {
         handle.capture_discussion_backup("owner", &token, &destination, || {
-            started.send(()).map_err(|_| Error::NeedsRecovery)?;
+            started.send(()).map_err(|()| Error::NeedsRecovery)?;
             parked.recv_timeout(Duration::from_secs(30)).map_err(|_| Error::NeedsRecovery)
         })
     });

@@ -26,10 +26,10 @@ type Result<T = ()> = std::result::Result<T, Box<dyn std::error::Error>>;
 #[tokio::main(worker_threads = 2)]
 async fn main() -> Result {
     let args: Vec<_> = std::env::args_os().skip(1).collect();
-    if let [parent, mode] = args.as_slice() {
-        if mode == "--inspect-published" || mode == "--reopen-published" {
-            return Box::pin(restart::run(parent, mode == "--inspect-published")).await;
-        }
+    if let [parent, mode] = args.as_slice()
+        && (mode == "--inspect-published" || mode == "--reopen-published")
+    {
+        return Box::pin(restart::run(parent, mode == "--inspect-published")).await;
     }
     let (parent, migrated, server_packet_assets) = match args.as_slice() {
         [parent] => (parent, false, false),

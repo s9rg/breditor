@@ -40,6 +40,10 @@ struct Companion {
     uploads: RelaySegmentClientUploadPin,
 }
 
+#[expect(
+    clippy::too_many_lines,
+    reason = "Keep the scenario and its assertions in chronological order"
+)]
 pub(super) fn run(parent: &Path, reopen: bool) -> Result {
     let original: Originals =
         serde_json::from_str(&read(&parent.join("originals.json"), 32 * 1024)?)?;

@@ -89,8 +89,12 @@ fn compacted_checkpoint_keeps_abandoned_asset_references_without_the_original_ar
     retained_packet_ancestry(Compactable, Original)
 }
 
+#[expect(
+    clippy::too_many_lines,
+    reason = "Keep the scenario and its assertions in chronological order"
+)]
 fn retained_packet_ancestry(
-    root: SegmentCheckpointEncoding,
+    checkpoint_encoding: SegmentCheckpointEncoding,
     suffix: SegmentCheckpointEncoding,
 ) -> TestResult {
     let (files, mut room, profile) = setup_profile(3, true, true)?;
@@ -173,15 +177,15 @@ fn retained_packet_ancestry(
         "owner",
         &mut fs::File::create_new(&archive)?,
         &mut fs::File::create_new(&checkpoint)?,
-        root,
+        checkpoint_encoding,
     )?;
     let raw = crate::RelaySegmentBaseFile::open(
         fs::File::open(&archive)?,
         fs::File::open(&checkpoint)?,
         &identity,
     )?;
-    assert!(raw.checkpoint_encoding()? == root);
-    let base = if root == Compactable {
+    assert!(raw.checkpoint_encoding()? == checkpoint_encoding);
+    let base = if checkpoint_encoding == Compactable {
         let compacted = crate::RelaySegmentBaseFile::open_compacted_checkpoint(
             fs::File::open(&checkpoint)?,
             &identity,
@@ -195,7 +199,7 @@ fn retained_packet_ancestry(
         raw
     };
     let base = std::sync::Arc::new(base);
-    if root == IndexedAssetHistory {
+    if checkpoint_encoding == IndexedAssetHistory {
         use crate::room::materialized_checkpoint::Checkpoint;
         use sha2::{Digest, Sha256};
         let exact = fs::read(&checkpoint)?;
@@ -279,8 +283,14 @@ fn retained_packet_ancestry(
 }
 
 #[test]
+#[expect(
+    clippy::too_many_lines,
+    reason = "Keep the scenario and its assertions in chronological order"
+)]
 fn a_committed_revision_spanning_physical_files_keeps_its_full_packet_ancestry_and_global_sources()
 -> TestResult {
+    use std::{io::Write, os::unix::fs::OpenOptionsExt};
+
     let (files, mut room, profile) = setup_profile(3, true, true)?;
     room.enable_document_suggestions("owner")?;
     room.enable_document_suggestion_revisions("owner")?;
@@ -332,7 +342,6 @@ fn a_committed_revision_spanning_physical_files_keeps_its_full_packet_ancestry_a
     // An unrelated unpublished stage is included in the archive pin, never in packet history.
     let stage = files.room().join(format!(".stage-{}", crate::credentials::issue()?));
     let mut options = fs::OpenOptions::new();
-    use std::{io::Write, os::unix::fs::OpenOptionsExt};
     let mut file = options.write(true).create_new(true).mode(0o600).open(&stage)?;
     file.write_all(b"unpublished")?;
     file.sync_all()?;

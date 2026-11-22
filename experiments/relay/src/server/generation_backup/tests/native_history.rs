@@ -10,6 +10,10 @@ use crate::{
 };
 
 #[tokio::test(flavor = "multi_thread", worker_threads = 2)]
+#[expect(
+    clippy::too_many_lines,
+    reason = "Keep the scenario and its assertions in chronological order"
+)]
 async fn fenced_source_history_maintenance_retains_the_original_receipt_and_refuses_old_epochs()
 -> TestResult {
     let directory = Directory::new()?;

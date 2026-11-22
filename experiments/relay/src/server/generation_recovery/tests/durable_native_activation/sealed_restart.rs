@@ -138,14 +138,14 @@ async fn committed_sealed_restart_checks_advanced_current_state_and_same_operati
     assert!(matches!(verified, Coverage::Verified(proof) if proof.identity() == current));
 
     let (auth, other_owner, _) = super::authentication()?;
-    let other = crate::server::prepare_log_generation_recovery_host(
+    let other = Box::pin(crate::server::prepare_log_generation_recovery_host(
         setup.source.operation("unrelated-operation")?,
         auth,
         setup.source.original_copy()?,
         &setup.source.original.info()?.identity,
         "owner",
         &other_owner,
-    )
+    ))
     .await?;
     let other_cut = other.capture_recovery_state("owner", &other_owner).await?.identity()?;
     assert!(matches!(

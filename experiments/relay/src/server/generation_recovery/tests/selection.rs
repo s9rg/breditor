@@ -20,14 +20,14 @@ async fn preparation_rejects_wrong_current_auth_or_origin_without_changing_recov
         let principal = if wrong == "owner" { "reader" } else { "owner" };
         let token = if wrong == "origin" { &owner } else { &reader };
         assert!(
-            prepare_log_generation_recovery_host(
+            Box::pin(prepare_log_generation_recovery_host(
                 operation,
                 auth,
                 source.original_copy()?,
                 &expected,
                 principal,
                 token
-            )
+            ))
             .await
             .is_err(),
             "{wrong}"
@@ -55,14 +55,14 @@ async fn checksum_valid_omitted_native_streams_and_wrong_origin_cannot_produce_h
 -> TestResult {
     let source = Source::new((3, true), true, true, true)?;
     let (auth, owner, _) = authentication()?;
-    let handle = prepare_log_generation_recovery_host(
+    let handle = Box::pin(prepare_log_generation_recovery_host(
         source.operation("selected")?,
         auth,
         source.original_copy()?,
         &source.original.info()?.identity,
         "owner",
         &owner,
-    )
+    ))
     .await?;
     let state = handle.capture_recovery_state("owner", &owner).await?;
     let mut expected = state.identity()?;

@@ -128,14 +128,14 @@ async fn restore_origin_is_not_relabelled_as_an_older_previous_and_other_live_ho
     .finish(&previous)?
     .begin_operation(&previous, &selected, POLICY, "owner")?;
     let (auth, token, _) = authentication()?;
-    let newer = prepare_log_generation_recovery_host(
+    let newer = Box::pin(prepare_log_generation_recovery_host(
         operation,
         auth,
         source::copy(&previous)?,
         &selected,
         "owner",
         &token,
-    )
+    ))
     .await?;
     let current = source::proof(&newer, &token, &seed).await?;
     assert!(

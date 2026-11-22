@@ -18,14 +18,14 @@ async fn a_cancelled_native_transaction_retains_parent_and_native_recovery_lease
     let rasters = root.join(rasters["directory"].as_str().ok_or("raster directory")?);
     let binding = source.original.info()?.identity.assets.binding;
     let (auth, owner, _) = authentication()?;
-    let handle = prepare_log_generation_recovery_host(
+    let handle = Box::pin(prepare_log_generation_recovery_host(
         operation,
         auth,
         source.original_copy()?,
         &source.original.info()?.identity,
         "owner",
         &owner,
-    )
+    ))
     .await?;
     let host = handle.host.clone();
     let (started_tx, started_rx) = tokio::sync::oneshot::channel();
@@ -81,14 +81,14 @@ async fn native_and_raster_owners_cannot_be_swapped_for_byte_identical_other_rec
 -> TestResult {
     let source = Source::new((3, true), true, true, true)?;
     let (auth, owner, _) = authentication()?;
-    let handle = prepare_log_generation_recovery_host(
+    let handle = Box::pin(prepare_log_generation_recovery_host(
         source.operation("one")?,
         auth,
         source.original_copy()?,
         &source.original.info()?.identity,
         "owner",
         &owner,
-    )
+    ))
     .await?;
     let mut other = source.operation("two")?;
     let custody = handle.host.generation_custody.as_ref().ok_or("actual custody")?;

@@ -143,14 +143,14 @@ async fn http_activated_host_seals_the_next_cut_and_fresh_control_resumes_offlin
     .finish(archive)?
     .begin_operation(archive, &selected.server, POLICY, "owner")?;
     let (auth, token, _) = authentication()?;
-    let successor = prepare_log_generation_recovery_host(
+    let successor = Box::pin(prepare_log_generation_recovery_host(
         operation,
         auth,
         ServerLogGenerationRoomBackup::from_owned_bytes(archive.to_bytes()?)?,
         &selected.server,
         "owner",
         &token,
-    )
+    ))
     .await?;
     let cut = successor.capture_recovery_state("owner", &token).await?;
     let identity = cut.identity()?;

@@ -8,14 +8,14 @@ use std::fs;
 async fn clones_taken_before_epoch_attachment_cannot_keep_an_unfenced_native_owner() -> TestResult {
     let source = Source::new((3, true), true, true, true)?;
     let (authentication, owner, _) = authentication()?;
-    let handle = prepare_log_generation_recovery_host(
+    let handle = Box::pin(prepare_log_generation_recovery_host(
         source.operation("clone-epoch")?,
         authentication,
         source.original_copy()?,
         &source.original.info()?.identity,
         "owner",
         &owner,
-    )
+    ))
     .await?;
     let earlier = handle.clone();
     earlier.capture_recovery_state("owner", &owner).await?;
@@ -43,14 +43,14 @@ async fn a_different_actual_profile_cannot_attach_or_change_the_original_unfence
 -> TestResult {
     let source = Source::new((3, true), true, true, true)?;
     let (authentication, owner, _) = authentication()?;
-    let handle = prepare_log_generation_recovery_host(
+    let handle = Box::pin(prepare_log_generation_recovery_host(
         source.operation("binding-host")?,
         authentication,
         source.original_copy()?,
         &source.original.info()?.identity,
         "owner",
         &owner,
-    )
+    ))
     .await?;
     let earlier = handle.clone();
     let before = handle.capture_recovery_state("owner", &owner).await?.identity()?;
@@ -77,14 +77,14 @@ async fn a_new_current_lease_cannot_refresh_or_revive_a_retired_host_or_its_olde
 -> TestResult {
     let source = Source::new((3, true), true, true, true)?;
     let (authentication, owner, _) = authentication()?;
-    let handle = prepare_log_generation_recovery_host(
+    let handle = Box::pin(prepare_log_generation_recovery_host(
         source.operation("no-refresh")?,
         authentication,
         source.original_copy()?,
         &source.original.info()?.identity,
         "owner",
         &owner,
-    )
+    ))
     .await?;
     let earlier = handle.clone();
     let binding = handle.host.room.lock().map_err(|_| "native owner")?.deployment_binding()?;

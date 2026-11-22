@@ -27,6 +27,10 @@ impl ServerRecoveryAssetProvider for Mapping {
 }
 
 #[tokio::test]
+#[expect(
+    clippy::too_many_lines,
+    reason = "Keep the scenario and its assertions in chronological order"
+)]
 async fn verified_takeover_refuses_missing_inputs_and_changed_provider_then_commits() -> TestResult
 {
     let source = Source::open()?;

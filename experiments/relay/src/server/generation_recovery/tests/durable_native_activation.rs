@@ -43,14 +43,14 @@ async fn reopen(
         "owner",
     )?;
     let (auth, owner, _) = authentication()?;
-    let handle = prepare_log_generation_recovery_host(
+    let handle = Box::pin(prepare_log_generation_recovery_host(
         operation,
         auth,
         source.original_copy()?,
         &source.original.info()?.identity,
         "owner",
         &owner,
-    )
+    ))
     .await?;
     Ok((handle, owner))
 }
@@ -206,14 +206,14 @@ async fn different_operational_copy_cannot_reuse_a_committed_checkpoint_even_wit
         .await?;
     let before = setup.ledger()?;
     let (auth, owner, _) = authentication()?;
-    let other = prepare_log_generation_recovery_host(
+    let other = Box::pin(prepare_log_generation_recovery_host(
         setup.source.operation("other")?,
         auth,
         setup.source.original_copy()?,
         &setup.source.original.info()?.identity,
         "owner",
         &owner,
-    )
+    ))
     .await?;
     let p = proof(&other, &owner, &setup.source).await?;
     let root = setup.source.directory.0.join("forbidden-other");

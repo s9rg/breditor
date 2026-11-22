@@ -14,14 +14,14 @@ async fn newer_physical_or_raster_ancestor_refuses_even_when_both_sources_are_re
     for physical in [false, true] {
         let source = Source::new((3, true), true, true, true)?;
         let (auth, owner, _) = authentication()?;
-        let local = prepare_log_generation_recovery_host(
+        let local = Box::pin(prepare_log_generation_recovery_host(
             source.operation("older-local")?,
             auth,
             source.original_copy()?,
             &source.original.info()?.identity,
             "owner",
             &owner,
-        )
+        ))
         .await?;
         if physical {
             local

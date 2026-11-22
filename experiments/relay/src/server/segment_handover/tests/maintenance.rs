@@ -12,6 +12,10 @@ use crate::{
 use std::{fs, sync::Arc};
 
 #[tokio::test]
+#[expect(
+    clippy::too_many_lines,
+    reason = "Keep the scenario and its assertions in chronological order"
+)]
 async fn relocated_relay_continues_histories_and_reclaims_wal_storage() -> TestResult {
     let source = Source::open_coordinated()?;
     let provider = seed_asset_provider(&source).await?;
@@ -79,12 +83,12 @@ async fn relocated_relay_continues_histories_and_reclaims_wal_storage() -> TestR
             .await,
         Err(Error::Permission),
     ));
-    let parked = source.parent.join("parked-maintenance");
-    fs::rename(&path, &parked)?;
+    let original_location = source.parent.join("parked-maintenance");
+    fs::rename(&path, &original_location)?;
     let displaced = handle
         .apply_native_history_boundary("owner", &source.token, Lane::Document, enable("doc"))
         .await;
-    fs::rename(parked, &path)?;
+    fs::rename(original_location, &path)?;
     assert!(displaced.is_err());
     assert_eq!(handle.storage_capacity("owner", &source.token).await?, before);
 

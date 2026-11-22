@@ -82,14 +82,14 @@ async fn workflow(version: u32, standard: bool, atomic: bool) -> TestResult {
     .finish(&original)?
     .begin_operation(&original, &selected, RoomRecoveryPolicy::HostReacquired, "owner")?;
     let (auth, token) = authentication()?;
-    let handle = prepare_log_generation_recovery_host(
+    let handle = Box::pin(prepare_log_generation_recovery_host(
         operational,
         auth,
         ServerLogGenerationRoomBackup::from_owned_bytes(original.to_bytes()?)?,
         &selected,
         "owner",
         &token,
-    )
+    ))
     .await?;
     complete_proof(&handle, &token, protected_records(&author, &observer, &reviewer)).await?;
     let copy = handle.clone();
@@ -175,14 +175,14 @@ pub(super) fn maximum_host(
     tokio::runtime::Builder::new_multi_thread().worker_threads(2).enable_all().build()?.block_on(
         async {
             let (auth, token) = authentication()?;
-            let handle = prepare_log_generation_recovery_host(
+            let handle = Box::pin(prepare_log_generation_recovery_host(
                 operational,
                 auth,
                 ServerLogGenerationRoomBackup::from_owned_bytes(original.to_bytes()?)?,
                 &original.info()?.identity,
                 "owner",
                 &token,
-            )
+            ))
             .await?;
             complete_proof(&handle, &token, RecoveryRegistrationCredentials::default()).await?;
             Ok(())

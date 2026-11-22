@@ -43,6 +43,10 @@ fn compact_frame_uses_raw_bytes_when_gzip_would_grow_the_checkpoint() -> TestRes
 }
 
 #[test]
+#[expect(
+    clippy::too_many_lines,
+    reason = "Keep the scenario and its assertions in chronological order"
+)]
 fn long_lineage_moves_and_reopens_under_a_small_descriptor_limit() -> TestResult {
     let (files, mut room, _) = segment_handover_test_source(3, true, true)?;
     let parent = files.room().parent().ok_or("fixture directory")?.to_owned();
@@ -116,12 +120,12 @@ fn long_lineage_moves_and_reopens_under_a_small_descriptor_limit() -> TestResult
     fs::write(parent.join("selection.json"), serde_json::to_vec(&packed)?)?;
     fs::write(parent.join("expected-catchup"), document)?;
     drop((router, handle));
-    let parked = parent.join("parked-originals");
-    fs::create_dir(&parked)?;
+    let original_location = parent.join("parked-originals");
+    fs::create_dir(&original_location)?;
     for entry in fs::read_dir(&parent)? {
         let entry = entry?;
         if entry.file_name().as_encoded_bytes().starts_with(b"original-") {
-            fs::rename(entry.path(), parked.join(entry.file_name()))?;
+            fs::rename(entry.path(), original_location.join(entry.file_name()))?;
         }
     }
     fs::rename(parent.join("packed"), parent.join("moved"))?;
@@ -152,6 +156,10 @@ fn long_lineage_moves_and_reopens_under_a_small_descriptor_limit() -> TestResult
 }
 
 #[test]
+#[expect(
+    clippy::too_many_lines,
+    reason = "Keep the scenario and its assertions in chronological order"
+)]
 fn cold_lineage_worker() -> TestResult {
     let Some(root) = std::env::var_os("BREDITOR_LINEAGE_FIXTURE") else {
         return Ok(());

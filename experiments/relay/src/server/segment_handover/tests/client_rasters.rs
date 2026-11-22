@@ -14,7 +14,24 @@ use std::{
 };
 
 #[test]
+#[expect(
+    clippy::too_many_lines,
+    reason = "Keep the scenario and its assertions in chronological order"
+)]
 fn selected_client_raster_is_bound_to_the_target_and_required_after_commit() -> TestResult {
+    struct Mapping(String);
+    impl ServerRecoveryAssetProvider for Mapping {
+        fn check(&self) -> crate::Result<()> {
+            Ok(())
+        }
+        fn resolve(
+            &self,
+            pair: &breditor_collab_feasibility::rich_replica::VersionAssetReference,
+        ) -> crate::Result<Option<String>> {
+            Ok((pair.asset == "asset" && pair.generation == "generation").then(|| self.0.clone()))
+        }
+    }
+
     let source = Source::open()?;
     let backup = source.capture("before")?;
     let mut png = Cursor::new(Vec::new());
@@ -57,18 +74,6 @@ fn selected_client_raster_is_bound_to_the_target_and_required_after_commit() -> 
     fs::remove_file(input)?;
     // The unit source intentionally has an opaque image. Map its binding to this exact raster
     // to verify the restored bytes as a genuine dependency as well as a client payload.
-    struct Mapping(String);
-    impl ServerRecoveryAssetProvider for Mapping {
-        fn check(&self) -> crate::Result<()> {
-            Ok(())
-        }
-        fn resolve(
-            &self,
-            pair: &breditor_collab_feasibility::rich_replica::VersionAssetReference,
-        ) -> crate::Result<Option<String>> {
-            Ok((pair.asset == "asset" && pair.generation == "generation").then(|| self.0.clone()))
-        }
-    }
     let provider: Arc<dyn ServerRecoveryAssetProvider> = Arc::new(Mapping(id.clone()));
     let RelaySegmentHandoverInputCoverage::Verified(inputs) = target.verify_handover_inputs(
         &auth(&source.token)?,

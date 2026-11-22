@@ -9,14 +9,14 @@ async fn current_auth_all_revoked_and_observer_secrets_are_required_without_revi
     let source = Source::new((3, true), true, true, true)?;
     let operation = source.operation("recovered")?;
     let (auth, owner, reader) = authentication()?;
-    let handle = prepare_log_generation_recovery_host(
+    let handle = Box::pin(prepare_log_generation_recovery_host(
         operation,
         auth,
         source.original_copy()?,
         &source.original.info()?.identity,
         "owner",
         &owner,
-    )
+    ))
     .await?;
     assert!(matches!(
         handle.capture_recovery_state("owner", &reader).await,
@@ -91,14 +91,14 @@ async fn current_auth_all_revoked_and_observer_secrets_are_required_without_revi
 async fn proofs_are_host_local_weak_and_stale_after_physical_only_rotation() -> TestResult {
     let source = Source::new((3, true), true, true, true)?;
     let (auth, owner, _) = authentication()?;
-    let handle = prepare_log_generation_recovery_host(
+    let handle = Box::pin(prepare_log_generation_recovery_host(
         source.operation("one")?,
         auth,
         source.original_copy()?,
         &source.original.info()?.identity,
         "owner",
         &owner,
-    )
+    ))
     .await?;
     let state = handle.capture_recovery_state("owner", &owner).await?;
     let expected = state.identity()?;
@@ -142,14 +142,14 @@ async fn proofs_are_host_local_weak_and_stale_after_physical_only_rotation() -> 
         return Err("current protected input".into());
     };
     let (other_auth, other_owner, _) = authentication()?;
-    let other = prepare_log_generation_recovery_host(
+    let other = Box::pin(prepare_log_generation_recovery_host(
         source.operation("two")?,
         other_auth,
         source.original_copy()?,
         &source.original.info()?.identity,
         "owner",
         &other_owner,
-    )
+    ))
     .await?;
     assert!(proof.check_live(&other, "owner", &other_owner).await.is_err());
     let weak = std::sync::Arc::downgrade(&handle.host.room);

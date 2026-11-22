@@ -129,14 +129,14 @@ pub async fn generate(parent: &Path, spec: source::Spec) -> Result<Value> {
     .finish(&original)?
     .begin_operation(&original, &expected, RoomRecoveryPolicy::HostReacquired, "owner")?;
     let (auth, token) = authentication()?;
-    let host = prepare_log_generation_recovery_host(
+    let host = Box::pin(prepare_log_generation_recovery_host(
         recovered,
         auth,
         ServerLogGenerationRoomBackup::from_owned_bytes(original.to_bytes()?)?,
         &expected,
         "owner",
         &token,
-    )
+    ))
     .await?;
     let before = verified_state(&host, &token, &protected).await?;
     let before_identity = before.identity()?;
@@ -152,14 +152,14 @@ pub async fn generate(parent: &Path, spec: source::Spec) -> Result<Value> {
     )?;
     operation.room_mut().rotate_log_generation("owner", "physical-only")?;
     let (auth, second_token) = authentication()?;
-    let host = prepare_log_generation_recovery_host(
+    let host = Box::pin(prepare_log_generation_recovery_host(
         operation,
         auth,
         ServerLogGenerationRoomBackup::from_owned_bytes(original.to_bytes()?)?,
         &expected,
         "owner",
         &second_token,
-    )
+    ))
     .await?;
     if host.capture_recovery_state("owner", &token).await.is_ok() {
         return Err("former account token admitted by fresh host".into());

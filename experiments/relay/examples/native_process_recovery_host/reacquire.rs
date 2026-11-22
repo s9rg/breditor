@@ -39,14 +39,14 @@ pub(super) async fn apply(input: Bootstrap) -> Result<Reacquired> {
     if account.alice == input.old_alice_token {
         return Err("new process must provision fresh accounts".into());
     }
-    let host = prepare_log_generation_recovery_host(
+    let host = Box::pin(prepare_log_generation_recovery_host(
         operation,
         account.authentication,
         ServerLogGenerationRoomBackup::from_owned_bytes(original.to_bytes()?)?,
         &original.info()?.identity,
         "owner",
         &account.owner,
-    )
+    ))
     .await?;
     let protected = input.protected.admit()?;
     let proof = credentials::verify(&host, &account.owner, &protected).await?;

@@ -61,6 +61,10 @@ fn upload_archive(body: &[u8], payload: &[u8]) -> TestResult<Vec<u8>> {
 }
 
 #[tokio::test]
+#[expect(
+    clippy::too_many_lines,
+    reason = "Keep the scenario and its assertions in chronological order"
+)]
 async fn incomplete_roster_and_changed_archive_custody_never_authorize_takeover() -> TestResult {
     let source = Source::open()?;
     let registrations = source
@@ -198,6 +202,10 @@ async fn incomplete_roster_and_changed_archive_custody_never_authorize_takeover(
 }
 
 #[tokio::test]
+#[expect(
+    clippy::too_many_lines,
+    reason = "Keep the scenario and its assertions in chronological order"
+)]
 async fn selective_restore_gives_the_last_raster_slot_to_offline_redo() -> TestResult {
     use crate::{
         Admission, RecoveryDocumentCredential, RelaySegmentClientJournal,
@@ -379,7 +387,7 @@ async fn selective_restore_gives_the_last_raster_slot_to_offline_redo() -> TestR
     else {
         return Err("selected raster did not complete the verification".into());
     };
-    assert_eq!(verified.report().client_rasters, [only_redo.clone()]);
+    assert_eq!(verified.report().client_rasters, std::slice::from_ref(&only_redo));
     let approval = RelaySegmentHandoverApproval::select_verified(
         &target,
         &verified,

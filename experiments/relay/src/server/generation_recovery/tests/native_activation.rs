@@ -63,14 +63,14 @@ impl Setup {
             intent
         };
         let (auth, token, reader) = authentication()?;
-        let handle = prepare_log_generation_recovery_host(
+        let handle = Box::pin(prepare_log_generation_recovery_host(
             source.operation("target")?,
             auth,
             source.original_copy()?,
             &source.original.info()?.identity,
             "owner",
             &token,
-        )
+        ))
         .await?;
         // Target account credentials are separately configured, not copied from the source.
         Ok(Self {
@@ -428,14 +428,14 @@ async fn unsealed_source_cannot_preview_native_activation() -> TestResult {
 
 async fn other_host(setup: &Setup) -> TestResult<(PreparedLogGenerationRecoveryHost, String)> {
     let (auth, owner, _) = authentication()?;
-    let other = prepare_log_generation_recovery_host(
+    let other = Box::pin(prepare_log_generation_recovery_host(
         setup.source.operation("other")?,
         auth,
         setup.source.original_copy()?,
         &setup.source.original.info()?.identity,
         "owner",
         &owner,
-    )
+    ))
     .await?;
     Ok((other, owner))
 }

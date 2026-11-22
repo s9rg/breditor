@@ -10,6 +10,10 @@ use std::{fs, io::Write, sync::Arc};
 type TestResult = Result<(), Box<dyn std::error::Error>>;
 
 #[test]
+#[expect(
+    clippy::too_many_lines,
+    reason = "Keep the scenario and its assertions in chronological order"
+)]
 fn writable_segment_continues_a_full_last_wal_and_keeps_offline_edits_and_receipts() -> TestResult {
     let (files, mut original, profile) = setup_profile(3, true, true)?;
     let source = files.room();
@@ -203,17 +207,17 @@ fn writable_segment_refuses_stale_and_copied_sources_and_repairs_only_its_admitt
 #[test]
 fn repeatable_segment_handoff_rejects_skipped_links_and_retains_old_marker_and_archive_custody()
 -> TestResult {
-    let (files, mut root, _) = setup_profile(3, true, true)?;
+    let (files, mut source_room, _) = setup_profile(3, true, true)?;
     let first = files.room();
     let second = files.recovery();
     let parent = first.parent().ok_or("fixture directory")?;
     let third = parent.join("third");
-    root.grant("owner", "root-reader", Some(Role::Reader))?;
-    let (_, root_base) = save(&mut root, parent)?;
+    source_room.grant("owner", "root-reader", Some(Role::Reader))?;
+    let (_, root_base) = save(&mut source_room, parent)?;
     let root_base = Arc::new(root_base);
     let mut middle =
-        root.continue_into_relay_segment("owner", &second, root_base.clone(), "middle")?;
-    drop(root);
+        source_room.continue_into_relay_segment("owner", &second, root_base.clone(), "middle")?;
+    drop(source_room);
     middle.grant("owner", "middle-reader", Some(Role::Reader))?;
     middle.rotate_log_generation("owner", "middle-two")?;
     middle.grant("owner", "after-rotation-reader", Some(Role::Reader))?;

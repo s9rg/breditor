@@ -131,8 +131,10 @@ fn assert_same_lineage(left: &Path, right: &Path) -> Result<()> {
     let right_bytes = fs::read(right.join("native-lineage/packed.bin"))?;
     assert!(
         left_bytes == right_bytes,
-        "lineage differs between {left:?} ({} bytes) and {right:?} ({} bytes)",
+        "lineage differs between {} ({} bytes) and {} ({} bytes)",
+        left.display(),
         left_bytes.len(),
+        right.display(),
         right_bytes.len()
     );
     Ok(())
@@ -169,6 +171,10 @@ enum Command {
     },
 }
 
+#[expect(
+    clippy::too_many_lines,
+    reason = "Keep the scenario and its assertions in chronological order"
+)]
 pub(crate) fn router(
     parent: &Path,
     authentication: Authentication,

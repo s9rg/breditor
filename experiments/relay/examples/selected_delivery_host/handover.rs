@@ -48,14 +48,14 @@ pub(super) async fn apply(
             .finish(archive)?
             .begin_operation(archive, &expected, policy, "owner")?;
     let accounts = authentication::accounts()?;
-    let successor = prepare_log_generation_recovery_host(
+    let successor = Box::pin(prepare_log_generation_recovery_host(
         operation,
         accounts.authentication,
         ServerLogGenerationRoomBackup::from_owned_bytes(archive.to_bytes()?)?,
         &expected,
         "owner",
         &accounts.owner,
-    )
+    ))
     .await?;
     let proof = credentials::verify(&successor, &accounts.owner, &ready.protected).await?;
     let active = activate::activate(

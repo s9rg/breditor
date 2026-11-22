@@ -15,14 +15,14 @@ async fn workflow(
     let operation = source.operation("prepared")?;
     let destination = operation.root().to_owned();
     let (auth, owner, _) = authentication()?;
-    let handle = prepare_log_generation_recovery_host(
+    let handle = Box::pin(prepare_log_generation_recovery_host(
         operation,
         auth,
         source.original_copy()?,
         &source.original.info()?.identity,
         "owner",
         &owner,
-    )
+    ))
     .await?;
     let state = handle.capture_recovery_state("owner", &owner).await?;
     let expected = state.identity()?;

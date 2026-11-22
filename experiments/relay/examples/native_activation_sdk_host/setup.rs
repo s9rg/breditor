@@ -106,14 +106,14 @@ async fn prepare_selected(
     operation.room_mut().grant("owner", "post-origin-reader", Some(Role::Reader))?;
     operation.room_mut().rotate_log_generation("owner", "post-origin-physical-cut")?;
     let target = authentication::accounts()?;
-    let host = prepare_log_generation_recovery_host(
+    let host = Box::pin(prepare_log_generation_recovery_host(
         operation,
         target.authentication,
         ServerLogGenerationRoomBackup::from_owned_bytes(original.to_bytes()?)?,
         &original.info()?.identity,
         "owner",
         &target.owner,
-    )
+    ))
     .await?;
     let proof = credentials::verify(&host, &target.owner, &protected).await?;
     let (active, checkpoint) =

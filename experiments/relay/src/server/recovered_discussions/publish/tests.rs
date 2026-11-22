@@ -18,7 +18,7 @@ const DEADLINE: Duration = Duration::from_secs(10);
 struct Fixture {
     host: Host,
     authority: RoomDeploymentAuthority,
-    _files: SegmentHandoverTestFiles,
+    files: SegmentHandoverTestFiles,
 }
 
 impl Fixture {
@@ -42,7 +42,7 @@ impl Fixture {
         )?;
         let (_, handle) =
             router_with_server_backups_and_deployment_lease(room, auth, assets, lease)?;
-        Ok(Self { host: handle.host, authority, _files: files })
+        Ok(Self { host: handle.host, authority, files })
     }
 
     fn has_reader(&self, principal: &str) -> TestResult<bool> {
@@ -67,7 +67,7 @@ async fn archive_work_leaves_the_room_open_and_a_superseded_epoch_cannot_commit(
             &host,
             permit,
             move || {
-                started.send(()).map_err(|_| Error::NeedsRecovery)?;
+                started.send(()).map_err(|()| Error::NeedsRecovery)?;
                 parked.recv_timeout(DEADLINE).map_err(|_| Error::NeedsRecovery)?;
                 Ok(())
             },
@@ -82,7 +82,7 @@ async fn archive_work_leaves_the_room_open_and_a_superseded_epoch_cannot_commit(
         fixture.host.transaction(|room| room.grant("owner", "ordinary-reader", Some(Role::Reader))),
     )
     .await??;
-    let authority_path = fixture._files.room().parent().ok_or("fixture parent")?.join("authority");
+    let authority_path = fixture.files.room().parent().ok_or("fixture parent")?.join("authority");
     let identity = fixture.authority.identity();
     tokio::time::timeout(
         DEADLINE,
@@ -113,7 +113,7 @@ async fn abandoning_the_request_retains_quota_until_the_archive_worker_finishes(
             &host,
             permit,
             move || {
-                started.send(()).map_err(|_| Error::NeedsRecovery)?;
+                started.send(()).map_err(|()| Error::NeedsRecovery)?;
                 parked.recv_timeout(DEADLINE).map_err(|_| Error::NeedsRecovery)?;
                 Ok(())
             },
