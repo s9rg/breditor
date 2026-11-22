@@ -6,7 +6,7 @@ export function runtimeLoader<M extends InitializableModule>(importModule:()=>Pr
  return (input?:RuntimeInput)=>{
   if(pending){if(input!==undefined&&input!==chosen)return Promise.reject(Error("This runtime is already initialized with another input"));return pending;}
   chosen=input;
-  const attempt=importModule().then(async module=>{await module.default(input===undefined?undefined:{module_or_path:input});return module;});
+  const attempt=Promise.resolve().then(importModule).then(async module=>{await module.default(input===undefined?undefined:{module_or_path:input});return module;});
   pending=attempt.catch(error=>{pending=undefined;chosen=undefined;throw error;});return pending;
  };
 }
