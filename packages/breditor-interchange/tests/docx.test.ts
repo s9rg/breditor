@@ -1,4 +1,5 @@
 import {describe,it,expect} from "vitest";
+import {Buffer} from "node:buffer";
 import {readFileSync,writeFileSync} from "node:fs";
 import {deflateSync} from "node:zlib";
 import {docxContentType,docxImageBindings,docxLimits,exportDocx,exportDocxWithImages,type DocxResult} from "../src/docx.js";
@@ -228,6 +229,22 @@ describe("DOCX export (@breditor/interchange/docx)",()=>{
     expect(order).toEqual(["b","a","c"]);expect(codes(result)).toEqual({"image-reference":1});
     const {files}=open(ok(result));expect(files.filter(file=>file.name.startsWith("word/media/")).map(file=>file.name)).toEqual(["word/media/image1.png","word/media/image2.png"]);
     expect((await exportDocxWithImages(source,{loadImage:()=>{throw Error("x");}})).ok).toBe(false);
+  });
+  it.each(["sync","async"] as const)("preserves exact media when the %s loader reuses a Buffer",async mode=>{
+    const pic=(asset:string)=>el("image",{"image-id":asset,"asset-id":asset,"asset-generation":"g","decorative":false,"alt-text":asset});
+    const source=doc(pic("png"),pic("jpeg"));
+    const scratch=Buffer.alloc(Math.max(PNG.length,jpeg.length)+2);
+    const load=({asset}:{asset:string})=>{
+      const bytes=asset==="png"?PNG:jpeg;
+      const view=scratch.subarray(1,1+bytes.length);
+      view.set(bytes);
+      return view;
+    };
+    const result=mode==="sync"?exportDocx(source,{image:load}):await exportDocxWithImages(source,{loadImage:load});
+    const {part}=open(ok(result));
+    expect(result.losses).toEqual([]);
+    expect(part.get("word/media/image1.png")).toEqual(PNG);
+    expect(part.get("word/media/image2.jpeg")).toEqual(jpeg);
   });
   it("exports documents produced by the HTML importer from real producer markup",()=>{
     const owner:InterchangeOwner={supportsClipboardInterchange:()=>true,admitClipboardRoot(kind,root){return{format:"breditor/rich-clipboard-transfer",formatVersion:1,kind,structuredJson:JSON.stringify({kind,document:{root:JSON.parse(root)}}),plainText:""};},validateClipboard(source){return{format:"breditor/rich-clipboard-transfer",formatVersion:1,kind:"flow",structuredJson:source,plainText:""};}};

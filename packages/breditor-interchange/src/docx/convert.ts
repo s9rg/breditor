@@ -373,7 +373,7 @@ export class DocxWriter {
     const image=sniffImage(bytes);
     if(!image){this.#images.set(key,null);this.losses.add("image-format");return null;}
     const name=`image${this.media.length+1}.${image.extension}`;
-    this.media.push({name,data:bytes.slice(),image});
+    this.media.push({name,data:new Uint8Array(bytes),image});
     const media={relId:this.#rel(relType.image,`media/${name}`,false),name,image};this.#images.set(key,media);return media;
   }
   #table(node:JsonElement,ctx:Ctx,depth:number):string {
