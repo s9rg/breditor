@@ -56,6 +56,7 @@ main{margin:clamp(1rem,5vw,4rem) auto;max-width:50rem;background:white;border:1p
 header h1{margin:.3rem 0;font-size:clamp(2rem,6vw,3.35rem);line-height:1.1;letter-spacing:-.045em}
 header p{color:#405b54;margin:.55rem 0 1.65rem}
 header nav{display:flex;flex-wrap:wrap;gap:.5rem}
+header .paper-size{font-size:.875rem;font-weight:650}
 header a{padding:.28rem .75rem;border:1px solid #c9d9d3;border-radius:.45rem}
 header a[aria-current=page]{background:#dbece3;font-weight:650}
 a{color:#205e4e;text-underline-offset:.22em}
@@ -73,14 +74,17 @@ pre{background:#f4f7fa;border:1px solid #d6e0e7;border-radius:.55rem;padding:.85
 @media print{
  body{background:#fff}
  main{margin:0;padding:0;border:0;max-width:none}
- header nav{display:none}
+ header nav,header .paper-size{display:none}
  pre{white-space:pre-wrap;overflow:visible}
 }
 `;
 
 function page(mode,render=renderStaticDocument){
+ const landscape=mode==="landscape";
+ const print=landscape?{size:"A4",orientation:"landscape",margin:"narrow"}:mode==="print";
+ const printLabel=landscape?"A4 landscape · Narrow margins":"A4 portrait · Normal margins";
  const contents=render(document,{codeHighlighting:true,
-  tableOfContents:{label:"On this page",idPrefix:"published"},print:mode==="print"});
+  tableOfContents:{label:"On this page",idPrefix:"published"},print});
  return `<!doctype html>
 <html lang="en">
 <head>
@@ -95,17 +99,19 @@ function page(mode,render=renderStaticDocument){
    <nav aria-label="Preview mode">
     <a href="/"${mode==="web"?' aria-current="page"':""}>Web view</a>
     <a href="/print"${mode==="print"?' aria-current="page"':""}>Print view</a>
+    <a href="/print/landscape"${landscape?' aria-current="page"':""}>Landscape print</a>
     <a href="/react"${mode==="react"?' aria-current="page"':""}>React view</a>
    </nav>
    <h1>Retry policy</h1>
    <p>Configure how an API client retries temporary failures.</p>
+   ${print?`<p class="paper-size">${printLabel}</p>`:""}
   </header>
   ${contents}
  </main>
 </body>
 </html>`;
 }
-const pages=new Map([["/",page("web")],["/print",page("print")]]);
+const pages=new Map([["/",page("web")],["/print",page("print")],["/print/landscape",page("landscape")]]);
 async function reactPage(){
  const [{createElement},{renderToStaticMarkup},{BreditorStaticDocument}]=await Promise.all([
   import("react"),import("react-dom/server"),import("@breditor/editor/react"),
