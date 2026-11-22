@@ -130,6 +130,48 @@ ordinary rerenders and panel retirement do not create, close or replace a writer
 `onError` may change independently. Keep the editor host stable and remove the
 borrowed component before closing the editor session.
 
+### Table of contents
+
+Use the contents presentation in a host next to the local or collaborative
+editing surface. It displays a navigation landmark with nested heading links
+to the current editor positions. The live controls use buttons to move the
+native caret to the selected heading and scroll it into view.
+
+```js
+const contents = mountWritingTools(contentsHost, editor.writing(), {
+  presentation: 'contents',
+  label: 'Table of contents',
+});
+```
+
+The same option works with `BreditorWritingTools` through `initialOptions`.
+The list uses native heading identities, refreshes after local and shared
+publications, and keeps the read and revision checks used by the outline.
+Headings in collapsed editor sections appear when their section opens.
+Pages stay bounded by `pageSize`; a skipped rank nests under its nearest
+preceding shallower heading on the current page.
+
+For published HTML, request anchor links from the static renderer.
+
+```js
+import {renderStaticDocument} from '@breditor/editor/static';
+
+const html = renderStaticDocument(editor.view().documentJson, {
+  tableOfContents: {label: 'Table of contents', idPrefix: 'reader'},
+});
+```
+
+`tableOfContents: true` uses the default title and document identity as the
+namespace. Choose distinct `idPrefix` values if the same document appears
+more than once on a page. Links preserve block identities when labels change
+and coexist with V4 bookmarks. The static renderer lists the first 512
+rendered headings, bounds each label to 512 UTF-16 units, and omits the
+navigation when there are no headings. Fragment output and
+`BreditorStaticDocument` accept the same option.
+
+Placement is part of host presentation. A movable contents block in saved
+documents and DOCX or Markdown projection are separate parity work.
+
 ## Document placeholder
 
 Pass `placeholder: 'Start writing…'` to a local/shared DOM mount or managed editor

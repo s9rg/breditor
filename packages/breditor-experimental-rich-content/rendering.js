@@ -17,6 +17,7 @@ export {legalListMarkers,legalListMarkersWith,legalListAttribute,legalListMarker
 export {encodeListNumberingPatch} from "./dist/browser/list_numbering_serialization.js";
 export {parseRichSearchMetadata} from "./dist/browser/search_metadata.js";
 export {parseRichWritingTools} from "./dist/browser/writing_tools_metadata.js";
+export {headingHierarchy} from "./dist/browser/heading_hierarchy.js";
 export {parseRichRetainedAssetReferences} from "./dist/browser/retained_asset_references_metadata.js";
 export {RichRetainedAssetReferenceRegistry} from "./dist/browser/retained_asset_references_registry.js";
 export {RichWritingEvents,RichWritingReadRegistry} from "./dist/browser/writing_tools_host.js";

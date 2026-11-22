@@ -461,11 +461,11 @@
       "sources":["ckeditor-special-characters","ckeditor-case-change","ckeditor-format-painter"]
     },
     {
-      "id":"table-of-contents","area":"Productivity","status":"missing",
+      "id":"table-of-contents","area":"Productivity","status":"partial",
       "summary":"In-document table of contents",
-      "current":"A stable-ID outline panel with click-to-select exists; there is no in-content table-of-contents block, anchors or scroll tracking.",
-      "acceptance":"Define a live, read-only derived table-of-contents block (identity, refresh on heading changes, navigation, export) or document the outline panel as the supported equivalent.",
-      "evidence":["docs/RICH_WRITING_TOOLS.md"],
+      "current":"The local and shared editor contents presentation nests native heading reads and navigates with revision-guarded selection. Static HTML can prepend a linked contents list using stable heading IDs and existing bookmark anchors. Placement is host-controlled.",
+      "acceptance":"Define or explicitly scope the movable, saved contents block, scroll tracking and non-HTML export behavior. Qualify the selected workflow on exact release artifacts.",
+      "evidence":["docs/RICH_WRITING_TOOLS.md","packages/breditor-editor/tests/static_document_contents.test.ts","experiments/rich-browser/document-contents.spec.mjs","experiments/shared-browser/document-contents.spec.mjs"],
       "sources":["ckeditor-table-of-contents","tiptap-catalog"]
     },
     {
