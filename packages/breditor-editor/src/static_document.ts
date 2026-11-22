@@ -23,6 +23,7 @@ import {bookmarkAttributes,internalLinkAttributes,internalLinkOf,isBookmarkName}
 import {groupRubyRuns,richRubyAnnotationMaxBytes,richRubyAnnotationProperty,richRubyClass,richRubyFormat} from "@breditor/experimental-rich-content/rendering";
 import {legalListMarkersWith,richLegalListStyles} from "@breditor/experimental-rich-content/rendering";
 import {pageBreakAttributes,richPrintStyles,resolveRichPrintLayout,richUiStringsEn,type RichPrintOptions,type RichPrintLayout} from "@breditor/experimental-rich-content/rendering";
+import {headingHierarchy,type HeadingBranch} from "@breditor/experimental-rich-content/rendering";
 
 /** Immutable image binding handed to the host resolver; mirrors the live `AssetBinding`. */
 export interface StaticAssetBinding {readonly image:string;readonly asset:string;readonly generation:string}
@@ -35,6 +36,13 @@ export interface StaticRenderLimits {
  maxDepth?:number;
  /** Maximum element plus text nodes. Default 250 000, hard maximum 2 000 000. */
  maxNodes?:number;
+}
+
+export interface StaticTableOfContentsOptions {
+ /** Visible title and navigation landmark name. Defaults to "Table of contents". */
+ label?:string;
+ /** Unique instance prefix when putting more than one copy of a document on a page. */
+ idPrefix?:string;
 }
 
 export interface StaticRenderOptions {
@@ -69,6 +77,8 @@ export interface StaticRenderOptions {
   * `<style data-breditor-legal-lists>` with `richLegalListStyles`; fragments carry no stylesheet.
   */
  legalListNumbering?:boolean;
+ /** Prepend a linked table of contents to the rendered document, including fragment output. */
+ tableOfContents?:boolean|StaticTableOfContentsOptions;
 }
 
 export type StaticImageState="ready"|"unresolved"|"rejected"|"error";
@@ -103,7 +113,7 @@ export function renderStaticDocumentWithReport(document:unknown,options:StaticRe
  const renderer=new Renderer(options);
  const root=renderer.admit(document);
  renderer.legal(root);
- const body=renderer.children(root);
+ const body=renderer.render(root);
  const style=(renderer.print&&!options.fragment?`<style data-breditor-print="">${richPrintStyles(renderer.print)}</style>`:"")+(options.legalListNumbering===true&&!options.fragment?`<style data-breditor-legal-lists="">${richLegalListStyles}</style>`:"");
  const html=options.fragment?body:`<div class="${staticSurfaceClass}" data-breditor-rich="" data-breditor-static="">${style}${body}</div>`;
  return {html,report:Object.freeze({skipped:Object.freeze(renderer.skipped),images:Object.freeze(renderer.images),hiddenTables:Object.freeze(renderer.hiddenTables),inactiveMerges:Object.freeze(renderer.inactiveMerges)})};
@@ -234,6 +244,43 @@ const loneSurrogate=/[\uD800-\uDBFF](?![\uDC00-\uDFFF])|(?<![\uD800-\uDBFF])[\uD
 const encoder=new TextEncoder();
 const U64_MAX=(1n<<64n)-1n;
 const MAX_ORDINAL=2_147_483_647;
+const maxContentsEntries=512;
+const maxContentsLabelUnits=512;
+const contentsPrefix=/^[A-Za-z][A-Za-z0-9_-]{0,63}$/;
+
+interface ContentsHeading {
+ readonly id:string;
+ readonly level:number;
+ readonly label:string;
+}
+
+function contentsOptions(value:StaticRenderOptions["tableOfContents"]):Readonly<StaticTableOfContentsOptions>|undefined {
+ if(value===undefined||value===false)return undefined;
+ if(value===true)return {};
+ if(typeof value!=="object"||value===null||Array.isArray(value))throw new TypeError("tableOfContents must be a Boolean or contents options");
+ const {label,idPrefix}=value;
+ if(label!==undefined&&(typeof label!=="string"||!label.trim()||label.length>256||loneSurrogate.test(label)||/[\u0000-\u001F\u007F]/.test(label)))throw new TypeError("Contents label must be nonempty text of at most 256 characters");
+ if(idPrefix!==undefined&&(typeof idPrefix!=="string"||!contentsPrefix.test(idPrefix)))throw new TypeError("Contents idPrefix must be a letter followed by at most 63 letters, digits, underscores, or hyphens");
+ return {...(label===undefined?{}:{label}),...(idPrefix===undefined?{}:{idPrefix})};
+}
+
+function headingLabel(node:Element):string {
+ let label="";
+ for(const child of node.children){
+  if(child.kind!=="text")continue;
+  label+=child.text.slice(0,maxContentsLabelUnits+1-label.length);
+  if(label.length>maxContentsLabelUnits)break;
+ }
+ const truncated=label.length>maxContentsLabelUnits;
+ label=label.slice(0,maxContentsLabelUnits).replace(/[\uD800-\uDBFF]$/,"").trim();
+ return label+(truncated?"…":"")||"Untitled heading";
+}
+
+function contentsList(branches:readonly HeadingBranch<ContentsHeading>[]):string {
+ return `<ol>${branches.map(({heading,children})=>
+  `<li><a href="#${escapeHtmlAttribute(heading.id)}">${escapeHtmlText(heading.label)}</a>${children.length?contentsList(children):""}</li>`
+ ).join("")}</ol>`;
+}
 
 const isRecord=(value:unknown):value is Record<string,unknown>=>typeof value==="object"&&value!==null&&!Array.isArray(value);
 const own=(value:Record<string,unknown>,key:string):unknown=>Object.hasOwn(value,key)?value[key]:undefined;
@@ -280,6 +327,9 @@ class Renderer {
  /** V4 bookmark names seen during admission (unique per document). */
  readonly #bookmarks=new Set<string>();
  readonly #legal:boolean;#markers:ReadonlyMap<Element,string>=new Map();
+ readonly #contentsOptions:Readonly<StaticTableOfContentsOptions>|undefined;
+ readonly #contentsHeadings=new Map<string,ContentsHeading>();
+ #contentsScope:string|undefined;
  constructor(options:StaticRenderOptions){
   if(typeof options!=="object"||options===null||Array.isArray(options))throw new TypeError("Static render options must be an object");
   if(options.unknown!==undefined&&options.unknown!=="error"&&options.unknown!=="skip")throw new TypeError("unknown must be \"error\" or \"skip\"");
@@ -290,6 +340,7 @@ class Renderer {
   this.#pageBreak=label;
   if(options.legalListNumbering!==undefined&&typeof options.legalListNumbering!=="boolean")throw new TypeError("legalListNumbering must be a Boolean");
   this.#legal=options.legalListNumbering===true;
+  this.#contentsOptions=contentsOptions(options.tableOfContents);
   if(options.print!==undefined&&typeof options.print!=="boolean"&&(typeof options.print!=="object"||options.print===null))throw new TypeError("print must be a Boolean or print options");
   this.print=options.print===undefined||options.print===false?undefined:resolveRichPrintLayout(options.print===true?{}:options.print);
   const limits=options.limits??{};
@@ -458,6 +509,23 @@ class Renderer {
 
  // ---- output -----------------------------------------------------------------------
  children(element:Element):string {return element.children.map(child=>this.#flow(child)).join("");}
+ /** Collect contents while rendering headings, so both links and targets use displayed order. */
+ render(root:Element):string {
+  if(!this.#contentsOptions)return this.children(root);
+  this.#contentsScope=this.#contentsOptions.idPrefix??String(root.properties["document-id"]);
+  const body=this.children(root);
+  if(!this.#contentsHeadings.size)return body;
+  const label=this.#contentsOptions.label??"Table of contents";
+  return `<nav data-breditor-contents="" aria-label="${escapeHtmlAttribute(label)}"><p>${escapeHtmlText(label)}</p>${contentsList(headingHierarchy([...this.#contentsHeadings.values()]))}</nav>${body}`;
+ }
+ #contentsAnchor(node:Element):string {
+  if(this.#contentsScope===undefined||this.#contentsHeadings.size>=maxContentsEntries)return "";
+  const block=String(node.properties["block-id"]);
+  if(this.#contentsHeadings.has(block))return "";
+  const id=`breditor-contents-${this.#contentsScope}~${block}`;
+  this.#contentsHeadings.set(block,{id,label:headingLabel(node),level:Number(node.properties["level"])});
+  return ` id="${escapeHtmlAttribute(id)}"`;
+ }
  /** Derive legal markers once from the admitted tree (opt-in). */
  legal(root:Element):void {
   if(!this.#legal)return;
@@ -526,7 +594,9 @@ class Renderer {
   switch(node.type){
    case "breditor/paragraph":case "breditor/heading":{
     const tag=node.type==="breditor/paragraph"?"p":`h${String(p["level"])}`;
-    return `<${tag}${this.#blockAttributes(node,true)}${this.#layout(node)}${this.#bookmark(node)}>${node.children.length?inner():"<br>"}</${tag}>`;
+    const bookmark=this.#bookmark(node),contents=node.type==="breditor/heading"?this.#contentsAnchor(node):"";
+    const target=bookmark&&contents?`<span${contents}></span>`:"";
+    return `<${tag}${this.#blockAttributes(node,true)}${this.#layout(node)}${bookmark||contents}>${target}${node.children.length?inner():"<br>"}</${tag}>`;
    }
    case "breditor/code-block":{
     const language=typeof p["language"]==="string"?` data-language="${escapeHtmlAttribute(p["language"])}"`:"";
