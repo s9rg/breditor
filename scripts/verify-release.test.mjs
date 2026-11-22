@@ -21,6 +21,7 @@ test("the plan covers each release boundary in a safe build order", () => {
     "browser-test-types", "demo-test-types", "package-consumers", "wasm-abi",
     "demo-production", "production-size", "browser-matrix", "demo-matrix", "diff-whitespace",
   ]);
+  assert.equal(checks.find(check => check.id === "demo-matrix").env.BREDITOR_RELEASE_DEMO_PREVIEW, "1");
   for (const id of ["rust-lint", "rust-tests", "rust-docs"]) {
     assert.ok(checks.find((check) => check.id === id).args.includes("--locked"));
   }

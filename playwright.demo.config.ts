@@ -5,10 +5,12 @@ if (!Number.isInteger(PORT) || PORT < 1024 || PORT > 65535) {
   throw new Error("Invalid BREDITOR_RELEASE_DEMO_PORT");
 }
 
+const preview = process.env.BREDITOR_RELEASE_DEMO_PREVIEW === "1";
+
 export default defineConfig({
   testDir: "./tests/demo",
   outputDir: "./target/playwright-demo-results",
-  globalTimeout: 2 * 60_000,
+  globalTimeout: (preview ? 5 : 2) * 60_000,
   timeout: 30_000,
   expect: { timeout: 5_000 },
   fullyParallel: false,
@@ -39,8 +41,9 @@ export default defineConfig({
     },
   ],
   webServer: {
-    command:
-      `npm run dev --workspace @breditor/example-react -- --host 127.0.0.1 --port ${PORT} --strictPort --force`,
+    command: preview
+      ? `npm exec --offline --workspace @breditor/example-react -- vite preview --host 127.0.0.1 --port ${PORT} --strictPort`
+      : `npm run dev --workspace @breditor/example-react -- --host 127.0.0.1 --port ${PORT} --strictPort --force`,
     url: `http://127.0.0.1:${PORT}`,
     reuseExistingServer: false,
     timeout: 30_000,
