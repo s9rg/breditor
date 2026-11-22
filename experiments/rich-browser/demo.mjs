@@ -42,7 +42,10 @@ const shortcutButton=document.createElement("button");
 shortcutButton.type="button";
 shortcutButton.textContent="Keyboard shortcuts";
 shortcutButton.setAttribute("aria-haspopup","dialog");
-document.querySelector(".tools").append(shortcutButton);
+const rtlContent=document.createElement("input"),rtlLabel=document.createElement("label");
+rtlContent.type="checkbox";
+rtlLabel.append(rtlContent," Right-to-left content");
+document.querySelector(".tools").append(shortcutButton,rtlLabel);
 shortcutButton.addEventListener("click",()=>{
  shortcutButton.focus({preventScroll:true});
  shortcutHelp.open();
@@ -81,15 +84,21 @@ function startAutosave(owner){
 }
 let editor=mount(owner),autosave=startAutosave(editor);
 mountExtras(editor);
+rtlContent.addEventListener("change",()=>setContentDirection(editor));
 retrySave.addEventListener("click",()=>{void autosave.retry();});
 document.addEventListener("visibilitychange",()=>{
  if(document.visibilityState==="hidden")void autosave.flush();
 });
 function report(error){document.getElementById("notice").textContent=error instanceof Error?error.message:"Local operation failed";}
-function mount(owner){return mountRichEditor(document.getElementById("editor"),{core:owner,scrollableTables:true,...(ui?{ui}:{}),
- resolveAsset:binding=>assets.get(binding.asset)??assetStore.resolve(binding.asset),
- onFiles:async(files,position)=>{await insertImageFiles(editor,assetStore,files,position);await showAssets();},
- onError:report,onChange:view=>{document.getElementById("revision").textContent=`Revision ${view.revision} · ${view.undoDepth} undo groups`;}});}
+function setContentDirection(mounted){mounted.surface.style.direction=rtlContent.checked?"rtl":"";}
+function mount(owner){
+ const mounted=mountRichEditor(document.getElementById("editor"),{core:owner,scrollableTables:true,...(ui?{ui}:{}),
+  resolveAsset:binding=>assets.get(binding.asset)??assetStore.resolve(binding.asset),
+  onFiles:async(files,position)=>{await insertImageFiles(editor,assetStore,files,position);await showAssets();},
+  onError:report,onChange:view=>{document.getElementById("revision").textContent=`Revision ${view.revision} · ${view.undoDepth} undo groups`;}});
+ setContentDirection(mounted);
+ return mounted;
+}
 async function showAssets(){
  const list=document.getElementById("assets");if(!list)return;
  const records=await assetStore.list();list.replaceChildren();
