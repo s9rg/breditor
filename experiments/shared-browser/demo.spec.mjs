@@ -46,3 +46,25 @@ test("combined demo saves both offline writers reconnects and reloads selective 
  await page.locator('#a .breditor-shared-toolbar [data-shared-action="undo"]').click();await expect(page.locator('#b [data-rich-text="p"]')).toHaveText("a🙂b demo");await expect(page.locator('#b [data-rich-text="caption"]')).toHaveText("demoB xy🙂");
  await page.locator('#a .breditor-shared-toolbar [data-shared-action="redo"]').click();await expect(page.locator('#b [data-rich-text="p"]')).toHaveText("a🙂b demoA");await expect(page.locator("#state")).toHaveText("Connected · A saved · B saved");
 });
+
+test("a shared wide table retains its scroll offset when a peer edits a cell", async ({page}) => {
+ await page.setViewportSize({width: 430, height: 900});
+ await page.goto("/demo");
+ await expect(page.locator("#state")).toHaveText("Connected · A saved · B saved");
+ const region = page.locator("#b [data-rich-table-scroll='t']");
+ await page.evaluate(() => window.demoEditors.a.execute({
+  commands: [{kind: "resize_column", data: {block: "table-block", column: "c", width: 680}}],
+ }, false));
+ await expect.poll(() => region.evaluate(element => element.scrollWidth > element.clientWidth)).toBe(true);
+ const depth = await page.evaluate(() => window.demoEditors.b.view().undoDepth);
+ await page.locator("#b").getByRole("button", {name: "Scroll table 1 right"}).focus();
+ await page.keyboard.press("ArrowRight");
+ await expect.poll(() => region.evaluate(element => element.scrollLeft)).toBeGreaterThan(0);
+ const offset = await region.evaluate(element => element.scrollLeft);
+ expect(await page.evaluate(() => window.demoEditors.b.view().undoDepth)).toBe(depth);
+ await page.evaluate(() => window.demoEditors.a.execute({
+  commands: [{kind: "insert_text", data: {block: "p", offset: 0, text: "Wide "}}],
+ }, false));
+ await expect(region.locator("[data-rich-text='p']")).toHaveText("Wide a🙂b");
+ await expect.poll(() => region.evaluate(element => element.scrollLeft)).toBe(offset);
+});

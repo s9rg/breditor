@@ -52,6 +52,29 @@ test("interactive rich demo renders owned raster assets and restores exported ex
  await page.getByRole("button",{name:"Redo",exact:true}).click();expect(await page.evaluate(()=>window.demo.editor.view().documentJson)).toBe(exact);
 });
 
+test("a narrow local table scrolls by keyboard and retains its offset and editability", async ({page}) => {
+ await page.setViewportSize({width: 430, height: 900});
+ await page.goto("/demo");
+ await expect(page.locator("#ready")).toHaveText("Ready — real Rust/Wasm editor");
+ const region = page.locator("[data-rich-table-scroll='t']");
+ await expect(region).toHaveAttribute("aria-label", "Table 1");
+ expect(await region.evaluate(element => element.scrollWidth > element.clientWidth)).toBe(true);
+ const depth = await page.evaluate(() => window.demo.editor.view().undoDepth);
+ await page.getByRole("button", {name: "Scroll table 1 right"}).focus();
+ await page.keyboard.press("ArrowRight");
+ await expect.poll(() => region.evaluate(element => element.scrollLeft)).toBeGreaterThan(0);
+ const offset = await region.evaluate(element => element.scrollLeft);
+ expect(await page.evaluate(() => window.demo.editor.view().undoDepth)).toBe(depth);
+ await page.evaluate(() => window.demo.editor.execute({kind: "resizeTableColumn", data: {table: "t", column: "c", width: 420}}, false));
+ await expect.poll(() => region.evaluate(element => element.scrollLeft)).toBe(offset);
+ await page.evaluate(() => {
+  const point = {block: "demo-p12", offset: "0", affinity: "after"};
+  window.demo.editor.execute({kind: "setSelection", selection: {kind: "text", anchor: point, focus: point}});
+ });
+ await page.keyboard.insertText("Wide ");
+ await expect(region.locator("[data-rich-text='demo-p12']")).toHaveText("Wide Rich cells");
+});
+
 test("disconnected cell and file edits recover together from a cached shell without live resource fetches",async({page,context,baseURL})=>{
  const resources=new Map(),captures=[];
  page.on("response",response=>{if(response.url().startsWith(`${baseURL}/`))captures.push((async()=>{resources.set(new URL(response.url()).pathname,{body:await response.body(),contentType:response.headers()["content-type"]});})());});
