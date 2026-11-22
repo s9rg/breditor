@@ -33,11 +33,21 @@ function contract(host:HTMLElement,editor:LocalEditor):void {
  editor.execute({kind:"indentTaskItems",data:{container:"tasks",first:"task",last:"task"}});
  // @ts-expect-error Task nesting does not reuse the ordinary list kind/start DTO.
  editor.execute({kind:"indentTaskItems",data:{container:"tasks",first:"task",last:"task",nested:{block:"nested",start:null}}});
- // @ts-expect-error Unknown grammar versions never silently use V1.
  void openLocalEditor({...options,richLanguage:4});
+ // @ts-expect-error Unknown grammar versions never silently use V1.
+ void openLocalEditor({...options,richLanguage:5});
  // @ts-expect-error Code conversion requires an explicit formatting-loss policy.
  editor.execute({kind:"setCodeBlock",data:{block:"p",language:null}});
  // @ts-expect-error UTF-16 positions remain exact decimal strings, not lossy numeric DTOs.
  editor.execute({kind:"setSelection",selection:{kind:"text",anchor:{block:"p",offset:0,affinity:"after"},focus:{block:"p",offset:"0",affinity:"after"}}});
 }
 void contract;
+
+import {mountLocalAutosave,type LocalAutosave} from "@breditor/editor/autosave";
+function autosaveContract(editor:LocalEditor):LocalAutosave {
+ const autosave=mountLocalAutosave(editor,{save:async(checkpoint:string)=>{ void checkpoint; }});
+ // @ts-expect-error The persisted checkpoint is a string, never a decoded document.
+ mountLocalAutosave(editor,{save:async(checkpoint:Uint8Array)=>{ void checkpoint; }});
+ return autosave;
+}
+void autosaveContract;
