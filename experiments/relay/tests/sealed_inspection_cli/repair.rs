@@ -1,8 +1,8 @@
 //! Apply a retained selection through the installed or source-built relay executable.
 use super::{
     Authentication, Fixture, MetadataExt, OpenOptionsExt, OsStr, Output, Path, PathBuf, Result,
-    Role, Room, ServerLogGenerationRecoveryStateIdentity, Sha256, Value, Write, capture_files,
-    check_pin, fs, hex, inspect, json, keep_pending_rotation, sealed_room,
+    Role, ServerLogGenerationRecoveryStateIdentity, Sha256, Value, Write, capture_files, check_pin,
+    fs, hex, inspect, json, keep_pending_rotation, reopen_fixture_native_log, sealed_room,
 };
 use sha2::Digest;
 
@@ -148,8 +148,9 @@ async fn repair_cli_refuses_changed_evidence_and_unapproved_paths() -> Result {
     fs::write(evidence, raw)?;
     assert!(!denied.exists());
     assert_eq!(capture_files(&operating)?, before);
-    let (mut room, _) =
-        Room::open_log_generations(fixture.active_wal.parent().ok_or("selected WAL directory")?)?;
+    let mut room =
+        reopen_fixture_native_log(fixture.active_wal.parent().ok_or("selected WAL directory")?)
+            .await?;
     room.grant("owner", "accepted-after-inspection", Some(Role::Reader))?;
     drop(room);
     let advanced = capture_files(&operating)?;
@@ -164,7 +165,7 @@ async fn repair_cli_completes_rotation_and_retains_the_actual_selected_head() ->
     for (mode, published) in [("rotation", true), ("rotation-and-raster", false)] {
         let fixture = Box::pin(sealed_room()).await?;
         let operating = fixture.directory.0.join("operating");
-        let planned = keep_pending_rotation(&fixture, published)?;
+        let planned = keep_pending_rotation(&fixture, published).await?;
         let stage = (!published).then(|| stage_raster(&fixture, false)).transpose()?;
         let before = capture_files(&operating)?;
         let ledger = capture_files(&fixture.directory.0.join("authority"))?;
