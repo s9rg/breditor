@@ -21,6 +21,21 @@
       "sha256": "a9ec532f4f11817f427e4f3ca0432b176138721e0866f152864b17ebdeac6bbf"
     },
     {
+      "key": "generic-btree@0.10.7",
+      "license": "MIT",
+      "revision": "f88a9f7ff4e442fc4f6aebfaa30496652b92decd",
+      "pathInVcs": "",
+      "url": "https://raw.githubusercontent.com/loro-dev/generic-btree/0ae02fad39fbaf6b4836e1e578e3da7759e321ed/LICENSE",
+      "release": {
+        "tag": "v0.10.7",
+        "revision": "0ae02fad39fbaf6b4836e1e578e3da7759e321ed",
+        "sourceFiles": 14,
+        "sourceSha256": "f5694c50d54ee9a90d7ef1a786fee2e743b4a69f3625151d6708345596134cf7"
+      },
+      "text": "MIT License\n\nCopyright (c) 2023 Zixuan Chen\n\nPermission is hereby granted, free of charge, to any person obtaining a copy of\nthis software and associated documentation files (the \"Software\"), to deal in\nthe Software without restriction, including without limitation the rights to\nuse, copy, modify, merge, publish, distribute, sublicense, and/or sell copies of\nthe Software, and to permit persons to whom the Software is furnished to do so,\nsubject to the following conditions:\n\nThe above copyright notice and this permission notice shall be included in all\ncopies or substantial portions of the Software.\n\nTHE SOFTWARE IS PROVIDED \"AS IS\", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR\nIMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY, FITNESS\nFOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE AUTHORS OR\nCOPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER LIABILITY, WHETHER\nIN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM, OUT OF OR IN\nCONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.\n",
+      "sha256": "732d8393fd664a8126a46f0b7a4c23c577fdfc9658e9ad1620d5354050fb9f51"
+    },
+    {
       "key": "serde_columnar@0.3.14",
       "license": "MIT OR Apache-2.0",
       "revision": "06663cfc569c6c770b28688f015f8a87fc04e156",

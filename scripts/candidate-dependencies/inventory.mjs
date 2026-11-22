@@ -67,6 +67,28 @@ export function packageNotices(directory,{maxFiles=32768,maxNoticeBytes=1024*102
  walk(root);return notices;
 }
 
+/** Identify all shipped source files for a separately verified upstream release tag. */
+export function registryReleaseSource(directory){
+ const root=realpathSync(directory),generated=new Set([".cargo-ok",".cargo-checksum.json",".cargo_vcs_info.json","Cargo.lock","Cargo.toml"]);
+ const files=[];let totalBytes=0,entries=0;
+ function walk(parent){
+  for(const entry of readdirSync(parent,{withFileTypes:true}).sort((a,b)=>compare(a.name,b.name))){
+   requireValue(++entries<=4096,"Tagged release source exceeds file budget");
+   const path=join(parent,entry.name),stat=lstatSync(path),name=relative(root,path).replaceAll("\\","/");
+   requireValue(!stat.isSymbolicLink()&&within(root,realpathSync(path)),"Unsupported tagged release source symlink");
+   if(stat.isDirectory()){walk(path);continue;}
+   requireValue(stat.isFile(),"Unsupported tagged release source file");
+   if(generated.has(name))continue;
+   totalBytes+=stat.size;
+   requireValue(totalBytes<=16*1024*1024,"Tagged release source exceeds byte budget");
+   files.push([name,sha256(readFileSync(path))]);
+  }
+ }
+ walk(root);
+ requireValue(files.some(([name])=>name==="Cargo.toml.orig"),"Tagged release source lacks its original Cargo manifest");
+ return {files:files.length,sha256:sha256(JSON.stringify(files))};
+}
+
 /** No timestamps or machine-specific paths enter the reproducible inventory digest. */
 export function candidateDependencyInventory(metadata,rootName,options){
  const graph=selectedCargoGraph(metadata,rootName,options),byKey=new Map([...graph.sources.values()].map(value=>[value.key,value])),noticeTexts=[],gaps=[];
@@ -78,10 +100,18 @@ export function candidateDependencyInventory(metadata,rootName,options){
   if(supplement){
    requireValue(p.source==="crates.io"&&raw.length===0&&p.license===supplement.license,"Upstream notice supplement source or license drift");
    requireValue(typeof supplement.text==="string"&&supplement.text.length>0&&supplement.text.length<=1024*1024&&utf8.decode(Buffer.from(supplement.text))===supplement.text&&sha256(supplement.text)===supplement.sha256,"Upstream notice text hash drift");
-   const url=new URL(supplement.url);requireValue(url.origin==="https://raw.githubusercontent.com"&&!url.username&&!url.password&&!url.search&&!url.hash&&/^[a-f0-9]{40}$/.test(supplement.revision)&&url.pathname.includes(`/${supplement.revision}/`)&&url.pathname.endsWith("/LICENSE"),"Upstream notice needs an immutable source URL");
+   const release=supplement.release;
+   const noticeRevision=release?.revision??supplement.revision;
+   const url=new URL(supplement.url);requireValue(url.origin==="https://raw.githubusercontent.com"&&!url.username&&!url.password&&!url.search&&!url.hash&&/^[a-f0-9]{40}$/.test(noticeRevision)&&url.pathname.includes(`/${noticeRevision}/`)&&url.pathname.endsWith("/LICENSE"),"Upstream notice needs an immutable source URL");
+   if(release!==undefined){
+    const actual=registryReleaseSource(source.directory);
+    requireValue(release?.tag===`v${p.version}`&&actual.files===release.sourceFiles&&actual.sha256===release.sourceSha256,"Tagged upstream notice differs from packaged source bytes");
+   }
    const file=join(source.directory,".cargo_vcs_info.json"),stat=lstatSync(file);requireValue(stat.isFile()&&stat.size<=65536,"Unsupported upstream source revision evidence");
    const vcs=JSON.parse(readFileSync(file,"utf8"));requireValue(vcs.git?.sha1===supplement.revision&&vcs.git.dirty!==true&&vcs.path_in_vcs===supplement.pathInVcs,"Upstream notice differs from packaged source revision");
-   raw.push({path:"upstream/LICENSE",bytes:Buffer.byteLength(supplement.text),sha256:supplement.sha256,text:supplement.text,origin:{url:supplement.url,revision:supplement.revision,pathInVcs:supplement.pathInVcs}});
+   raw.push({path:"upstream/LICENSE",bytes:Buffer.byteLength(supplement.text),sha256:supplement.sha256,text:supplement.text,origin:{url:supplement.url,revision:noticeRevision,pathInVcs:supplement.pathInVcs,
+    ...(release?{packageRevision:supplement.revision,releaseTag:release.tag,sourceSha256:release.sourceSha256}:{}),
+   }});
   }
   const notices=raw.map(({text,...notice})=>{noticeTexts.push({package:p.key,...notice,text});return notice;});
   if(!notices.length)gaps.push({package:p.key,reason:"no-notice-text-in-cargo-source"});

@@ -4,7 +4,7 @@ import {mkdtempSync,mkdirSync,writeFileSync,readFileSync,rmSync,symlinkSync} fro
 import {createHash} from "node:crypto";
 import {tmpdir} from "node:os";
 import {join} from "node:path";
-import {selectedCargoGraph,packageNotices,candidateDependencyInventory} from "./candidate-dependencies/inventory.mjs";
+import {selectedCargoGraph,packageNotices,candidateDependencyInventory,registryReleaseSource} from "./candidate-dependencies/inventory.mjs";
 const registry="registry+https://github.com/rust-lang/crates.io-index";
 function fixture(){
  const root=mkdtempSync(join(tmpdir(),"breditor-notice-graph-"));
@@ -47,8 +47,25 @@ test("upstream text, license, owner and revision drift cannot silently fill a no
   const f=fixture();try{const e=supplement(f);mutate(f,e);assert.throws(()=>candidateDependencyInventory(f.metadata,"app",f.options));}finally{rmSync(f.root,{recursive:true,force:true});}
  }
 });
+test("a tagged release supplement requires every packaged source byte to match the reviewed release",()=>{
+ const f=fixture();
+ try{
+  const entry=supplement(f),directory=join(f.root,"dep");
+  writeFileSync(join(directory,"Cargo.toml.orig"),"[package]\nname = 'dep'\n");
+  writeFileSync(join(directory,"source.rs"),"fn source() {}\n");
+  const source=registryReleaseSource(directory),revision="d".repeat(40);
+  entry.release={tag:"v1.0.0",revision,sourceFiles:source.files,sourceSha256:source.sha256};
+  entry.url=`https://raw.githubusercontent.com/example/upstream/${revision}/LICENSE`;
+  const {inventory}=candidateDependencyInventory(f.metadata,"app",f.options);
+  const origin=inventory.packages.find(p=>p.name==="dep").notices[0].origin;
+  assert.equal(origin.revision,revision);
+  assert.equal(origin.packageRevision,entry.revision);
+  writeFileSync(join(directory,"source.rs"),"fn changed() {}\n");
+  assert.throws(()=>candidateDependencyInventory(f.metadata,"app",f.options),/differs from packaged source bytes/);
+ }finally{rmSync(f.root,{recursive:true,force:true});}
+});
 test("checked-in upstream supplements lock their original bytes and immutable source URLs",()=>{
- const record=JSON.parse(readFileSync(new URL("./candidate-dependencies/upstream-notices.json",import.meta.url),"utf8"));assert.equal(record.format,"breditor/pinned-upstream-notices");assert.equal(record.formatVersion,1);assert.equal(record.entries.length,4);assert.equal(new Set(record.entries.map(e=>e.key)).size,4);
- for(const e of record.entries){assert.equal(createHash("sha256").update(e.text).digest("hex"),e.sha256);assert.match(e.revision,/^[a-f0-9]{40}$/);assert.ok(e.url.includes(`/${e.revision}/LICENSE`));assert.ok(e.text.includes("Copyright (c) 2022"));}
+ const record=JSON.parse(readFileSync(new URL("./candidate-dependencies/upstream-notices.json",import.meta.url),"utf8"));assert.equal(record.format,"breditor/pinned-upstream-notices");assert.equal(record.formatVersion,1);assert.deepEqual(record.entries.map(e=>e.key),["append-only-bytes@0.1.12","arref@0.1.0","generic-btree@0.10.7","serde_columnar@0.3.14","serde_columnar_derive@0.3.7"]);
+ for(const e of record.entries){assert.equal(createHash("sha256").update(e.text).digest("hex"),e.sha256);assert.match(e.revision,/^[a-f0-9]{40}$/);assert.ok(e.url.includes(`/${e.release?.revision??e.revision}/LICENSE`));assert.match(e.text,/Copyright /);}
  assert.ok(record.entries.find(e=>e.key.startsWith("serde_columnar@")).text.includes("\r\n"),"Original upstream line endings are data, not editor formatting");
 });
