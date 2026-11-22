@@ -1,6 +1,9 @@
 import { defineConfig, devices } from "@playwright/test";
 
-const PORT = 4_173;
+const PORT = Number(process.env.BREDITOR_RELEASE_BROWSER_PORT ?? 4_173);
+if (!Number.isInteger(PORT) || PORT < 1024 || PORT > 65535) {
+  throw new Error("Invalid BREDITOR_RELEASE_BROWSER_PORT");
+}
 
 export default defineConfig({
   testDir: "./tests/browser",
@@ -38,7 +41,7 @@ export default defineConfig({
   ],
   webServer: {
     command:
-      "vite --config vite.browser.config.ts --host 127.0.0.1 --port 4173 --strictPort --force",
+      `vite --config vite.browser.config.ts --host 127.0.0.1 --port ${PORT} --strictPort --force`,
     url: `http://127.0.0.1:${PORT}`,
     reuseExistingServer: false,
     timeout: 30_000,
