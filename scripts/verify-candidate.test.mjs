@@ -246,6 +246,14 @@ test("functional and full plans cover current candidate work without weakening t
  assert.throws(()=>candidateReleasePlan({profile:"skip-hard-parts"}));
  for(const check of full.checks){assert.ok(Object.isFrozen(check)&&Object.isFrozen(check.args)&&Object.isFrozen(check.artifacts));assert.ok(!check.args.some(arg=>/^(publish|push|tag|--skip-tests|--retries)$/.test(arg)));}
 });
+test("candidate relay tests isolate independent subprocess fixtures",()=>{
+ const checks=candidateReleasePlan().checks;
+ const relayTests=checks.filter(check=>check.args[0]==="test"&&check.args.includes("experiments/relay/Cargo.toml"));
+ assert.ok(relayTests.some(check=>check.id==="relay-native"));
+ assert.ok(relayTests.some(check=>check.id==="relay-native-generation-activation-native"));
+ assert.ok(relayTests.every(check=>check.env.RUST_TEST_THREADS==="1"));
+ assert.equal(checks.find(check=>check.id==="workspace-native").env.RUST_TEST_THREADS,undefined);
+});
 test("both profiles strictly lint the relay without server-only helpers or default features",()=>{
  for(const profile of ["functional","full"]){const p=candidateReleasePlan({profile,environment:{BREDITOR_CARGO:"/tool path/cargo"}}),check=p.checks.find(c=>c.id==="relay-no-server-lint");assert.ok(check);assert.equal(check.command,"/tool path/cargo");assert.deepEqual(check.args,["clippy","--manifest-path","experiments/relay/Cargo.toml","--no-default-features","--all-targets","--locked","--offline","--release","--","-D","warnings"]);assert.equal(check.env.CARGO_TARGET_DIR,p.checks.find(c=>c.id==="relay-native").env.CARGO_TARGET_DIR);assert.ok(!check.args.includes("--features"));}
 });
