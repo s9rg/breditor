@@ -2,19 +2,29 @@
 import assert from "node:assert/strict";
 import {execFileSync} from "node:child_process";
 import {cpSync,readFileSync,writeFileSync,mkdirSync,mkdtempSync,realpathSync} from "node:fs";
-import {createHash} from "node:crypto";
 import {resolve,dirname,join} from "node:path";
 import {tmpdir} from "node:os";
 import {fileURLToPath} from "node:url";
 import {build} from "vite";
+import {installedArchiveDigests} from "./installed-archive-digests.mjs";
 const root=resolve(dirname(fileURLToPath(import.meta.url)),".."),temporary=mkdtempSync(join(tmpdir(),"breditor-interchange-consumer-")),archives=join(temporary,"archives"),consumer=join(temporary,"consumer");
 const run=(command,args,cwd=root)=>execFileSync(command,args,{cwd,stdio:"inherit"});
 for(const name of ["breditor-experimental-rich-content","breditor-collaboration","breditor-editor","breditor-interchange"])run(process.execPath,["node_modules/typescript/bin/tsc","-p",`packages/${name}/tsconfig.json`]);
 mkdirSync(archives);cpSync(join(root,"scripts/fixtures/interchange-consumer"),consumer,{recursive:true});
-const names=["@breditor/browser","@breditor/experimental-rich-content","@breditor/collaboration","@breditor/editor","@breditor/interchange"],packs=JSON.parse(execFileSync("npm",["pack","--ignore-scripts","--json","--pack-destination",archives,...names.flatMap(name=>["--workspace",name])],{cwd:root,encoding:"utf8"})),paths=packs.map(p=>join(archives,p.filename));
+const names=["@breditor/browser","@breditor/experimental-rich-content","@breditor/collaboration","@breditor/editor","@breditor/interchange"],packs=JSON.parse(execFileSync("npm",["pack","--ignore-scripts","--json","--pack-destination",archives,...names.flatMap(name=>["--workspace",name])],{cwd:root,encoding:"utf8"}));
+const archiveEvidence=installedArchiveDigests(archives,packs,names);
+const paths=archiveEvidence.map(({filename})=>join(archives,filename));
 run("npm",["install","--offline","--ignore-scripts","--no-audit","--no-fund","--package-lock=false",...paths,"react@19.2.8","react-dom@19.2.8","@types/react@19.2.18","jsdom@29.1.1","fake-indexeddb@6.2.6"],consumer);
 for(const name of names){const installed=realpathSync(join(consumer,"node_modules",name));assert.ok(installed.startsWith(`${realpathSync(consumer)}/node_modules/`),`Workspace link escaped installed proof: ${name}`);}
 run(process.execPath,[join(root,"node_modules/typescript/bin/tsc"),"--noEmit","--strict","--exactOptionalPropertyTypes","--target","ES2022","--module","NodeNext","--lib","ES2022,DOM","--types","react","types.ts"],consumer);
+const adapter=join(consumer,"node_modules/@breditor/interchange");
+const adapterManifest=JSON.parse(readFileSync(join(adapter,"package.json"),"utf8"));
+const rootManifest=JSON.parse(readFileSync(join(root,"package.json"),"utf8"));
+assert.equal(adapterManifest.license,rootManifest.license,"Installed interchange license expression differs from the workspace");
+for(const filename of ["LICENSE-MIT","LICENSE-APACHE"]){
+ assert.ok(readFileSync(join(adapter,filename)).equals(readFileSync(join(root,filename))),
+  `Installed interchange ${filename} differs from the canonical license`);
+}
 run(process.execPath,["docx-runtime.mjs"],consumer);
 // These are generated test artifacts, not modified product source. Only import/resource paths change.
 let probe=readFileSync(join(root,"scripts/probe-browser-interchange.mjs"),"utf8");
@@ -39,5 +49,6 @@ for(const [name,entry] of [["default","default-entry.ts"],["interchange","interc
 const foreign=id=>/node_modules\/(?:parse5|markdown-it|css-tree)\//.test(id);assert.ok(!modules.default.some(foreign),"Default editor must not import the foreign parser graph");for(const name of ["parse5","markdown-it","css-tree"])assert.ok(modules.interchange.some(id=>id.includes(`/node_modules/${name}/`)),`Explicit adapter bundle must include ${name}`);
 const docxForeignParserModules=modules.docx.filter(foreign).length;
 assert.equal(docxForeignParserModules,0,"The installed DOCX entry must not import the HTML or Markdown parser graph");
-const report={format:"breditor/interchange-installed-consumer",formatVersion:1,passed:true,consumer,archives:packs.map((p,i)=>({name:p.name,path:paths[i],sha256:createHash("sha256").update(readFileSync(paths[i])).digest("hex")})),strictConsumerTypes:true,workspaceLinks:false,defaultForeignParserModules:modules.default.filter(foreign).length,optInForeignParserModules:modules.interchange.filter(foreign).length,docxForeignParserModules,installedDocxExport:true,functionalProbe:{...result,scope:"Installed archives with bare package imports and bundled paired Wasm; compiled managed SDK/React synthetic DOM/clipboard/IDB/locks. Not OS clipboard, captured Office applications, cross-browser, IME, accessibility or release qualification."}};
+assert.deepEqual(installedArchiveDigests(archives,packs,names),archiveEvidence,"Installed archives changed during qualification");
+const report={format:"breditor/interchange-installed-consumer",formatVersion:1,passed:true,consumer,archives:archiveEvidence.map((archive,i)=>({...archive,path:paths[i]})),installedInterchangeLicenses:true,strictConsumerTypes:true,workspaceLinks:false,defaultForeignParserModules:modules.default.filter(foreign).length,optInForeignParserModules:modules.interchange.filter(foreign).length,docxForeignParserModules,installedDocxExport:true,functionalProbe:{...result,scope:"Installed archives with bare package imports and bundled paired Wasm; compiled managed SDK/React synthetic DOM/clipboard/IDB/locks. Not OS clipboard, captured Office applications, cross-browser, IME, accessibility or release qualification."}};
 writeFileSync(join(root,"target/interchange-installed-consumer.json"),JSON.stringify(report,null,2)+"\n");console.log(JSON.stringify(report,null,2));
