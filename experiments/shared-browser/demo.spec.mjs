@@ -7,7 +7,8 @@ async function caret(page,side,block,end){
 test("both demo contents lists follow an edited heading and the writer's Undo", async ({page}) => {
  await page.goto("/demo");
  await page.getByRole("link", {name: "Try the table of contents"}).click();
- await expect(page.locator("#contents-ready")).toHaveText("Ready");
+ // A cold navigation loads the shared Wasm and module graph before exposing both editors.
+ await expect(page.locator("#contents-ready")).toHaveText("Ready", {timeout: 15_000});
  const contents = writer => page.locator(`#${writer}`).getByRole("navigation", {name: `Writer ${writer.toUpperCase()} contents`});
  await contents("a").getByRole("button", {name: "Recovery", exact: true}).click();
  await page.keyboard.insertText("Offline ");
