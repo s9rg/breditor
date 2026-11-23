@@ -18,6 +18,10 @@ const scopes = {
     label: "descriptor",
     functions: ["readDescriptor", "readFormats", "readFormatProperties", "readFormatPropertyValueType", "readIntents", "readActionStates", "readInlineFormatSets", "readInputContract", "readStateContract", "readStateSource"],
   },
+  wasm_projection_adapter: {
+    label: "projection",
+    functions: ["consumeProjection", "consumeSemanticProjectionUnlocked", "readProfiledSemanticProjection", "readSemanticProjection", "snapshotSemanticProjection"],
+  },
   wasm_selection_adapter: {
     label: "selection",
     functions: ["readSemanticSelection", "readPoint", "pointInputAtPreorderIndex", "pathAtPreorderIndex"],
@@ -105,8 +109,23 @@ export function instrumentStartupModule(code: string, id: string, recorderImport
       capture(node, scope, false);
       return;
     }
+    if (module === "wasm_projection_adapter" && scope !== null &&
+        (policy.functions as readonly string[]).includes(scope) &&
+        node.type === "CallExpression" && sourceText(node.callee) === "projectionFailure" &&
+        parent?.type !== "VariableDeclarator") {
+      capture(node, scope, false);
+      return;
+    }
     if (scope !== null && node.type === "ReturnStatement" && node.argument !== null) {
       const expression = node.argument;
+      if (module === "wasm_engine_bootstrap" && scope === "consumeProjectionRead" &&
+          expression.type === "CallExpression" && sourceText(expression.callee) === "Object.freeze" &&
+          expression.arguments.some(argument => argument.type === "ObjectExpression" &&
+            argument.properties.some(property => property.type === "Property" &&
+              sourceText(property.key) === "error" && sourceText(property.value) === "INVALID_PROJECTION"))) {
+        capture(expression, scope, false);
+        return;
+      }
       if (["readFormatPropertyValueType", "pathAtPreorderIndex", "readInputContract", "readStateSource"].includes(scope) && expression.type === "ConditionalExpression" &&
           expression.alternate.type === "Literal" && expression.alternate.value === null) {
         capture(expression.alternate, scope, false);

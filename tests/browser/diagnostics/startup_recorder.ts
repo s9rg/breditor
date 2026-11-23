@@ -8,7 +8,7 @@ export function createStartupDiagnosticRecorder() {
     // Diagnostics must never replace the rejection they are observing.
     try {
       if (typeof stage !== "string" || stage.length > 160 ||
-          !/^(bootstrap|checkpoint|document|descriptor|selection):[A-Za-z0-9_]+:[0-9]+$/u.test(stage)) return;
+          !/^(bootstrap|checkpoint|document|descriptor|projection|selection):[A-Za-z0-9_]+:[0-9]+$/u.test(stage)) return;
       if (events?.length === limit) {
         if (omitted < 1_000_000) omitted += 1;
         return;

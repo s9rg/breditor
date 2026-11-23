@@ -18,7 +18,7 @@ const diagnosticPlugin: Plugin = {
     return { code: instrumented.code, map: null };
   },
   generateBundle() {
-    if (manifest.size !== 5) throw new Error(`Expected five boundary diagnostic modules, found ${manifest.size}`);
+    if (manifest.size !== 6) throw new Error(`Expected six boundary diagnostic modules, found ${manifest.size}`);
     this.emitFile({ type: "asset", fileName: "startup-diagnostic-map.json",
       source: JSON.stringify({ version: 1, modules: Object.fromEntries(manifest) }, null, 2) });
   },
