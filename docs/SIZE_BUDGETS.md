@@ -528,3 +528,10 @@ insertion, Undo and Redo on the same small demo document. It includes browser
 and host versions. The command samples measure editor dispatch and synchronous
 rendering. Use these measurements as a scoped baseline when selecting broader
 V1 latency budgets.
+
+The installed editor browser matrix also records two wall-clock samples for
+its two-peer task, table, code, and raster fixture. Offline replay starts when
+the paused peer reconnects and ends when both documents agree and the other
+peer renders the uploaded image. Relay restart starts when the stopped relay
+is relaunched and ends when both peers are ready and agree. Each sample names
+the browser version and host architecture. Both include test-runner polling.
