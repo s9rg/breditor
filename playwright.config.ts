@@ -41,7 +41,7 @@ export default defineConfig({
   ],
   webServer: {
     command:
-      `vite --config vite.browser.config.ts --host 127.0.0.1 --port ${PORT} --strictPort --force`,
+      `node node_modules/vite/bin/vite.js --config vite.browser.config.ts --host 127.0.0.1 --port ${PORT} --strictPort --force`,
     url: `http://127.0.0.1:${PORT}`,
     reuseExistingServer: false,
     timeout: 30_000,
