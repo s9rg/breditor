@@ -8,19 +8,24 @@ import {createHash} from 'node:crypto';
 import {join,dirname,resolve,relative} from 'node:path';
 import {fileURLToPath} from 'node:url';
 import {sourceEvidence,saveEvidence} from './candidate-release/evidence.mjs';
-import {reconciledPacketTests as tests,reconciledPacketTypes as types,reconciledPacketData as data,reconciledPacketCaseCount as count,reconciledPacketTimeoutMs,reconciledPacketBuildReport} from './reconciled-packet-recovery-plan.mjs';
+import {copySharedRuntimeForActivation} from './candidate-release/shared-runtime-evidence.mjs';
+import {historicalSharedWasmSha256} from './fixtures/native-runtime/shared-runtime-receipt.mjs';
+import {reconciledPacketTypes as types,reconciledPacketData as data,reconciledPacketSelection,reconciledPacketReport,reconciledPacketBuildReport} from './reconciled-packet-recovery-plan.mjs';
 import {checkReconciledPacketEvidence} from './reconciled-packet-recovery-evidence.mjs';
 import {searchConsumerLock,verifySearchConsumerRegistry} from './search-consumer-lock.mjs';
 const root=resolve(dirname(fileURLToPath(import.meta.url)),'..');
-if(process.argv.length!==2)throw Error('All paired recovery/current cases and original current-read compatibility are mandatory');
+if(process.argv.length>3)throw Error('Choose one named packet recovery case or the complete matrix');
+const selection=reconciledPacketSelection(process.argv[2]),{tests,count,pattern,timeoutMs}=selection;
+const testArgs=['--test','--test-concurrency=1',...(pattern?['--test-name-pattern='+pattern]:[]),...tests.map(name=>'scripts/'+name)];
 const source=sourceEvidence(root),directory=fs.mkdtempSync(join(fs.realpathSync(tmpdir()),'breditor-reconciled-packet-recovery-installed-')),archives=join(directory,'archives'),consumer=join(directory,'consumer'),sha=value=>createHash('sha256').update(value).digest('hex');
 fs.mkdirSync(archives);fs.mkdirSync(consumer);
+const sharedRuntime=copySharedRuntimeForActivation(root,consumer,source);
 const packages=['breditor-browser','breditor-experimental-rich-content','breditor-collaboration'],mapping=new Map(packages.map(name=>[name,JSON.parse(fs.readFileSync(join(root,'packages',name,'package.json'))).name]));
 const packed=JSON.parse(execFileSync('npm',['pack','--offline','--ignore-scripts','--json','--pack-destination',archives,...packages.map(name=>join(root,'packages',name))],{cwd:root,encoding:'utf8',maxBuffer:8*1024*1024}));
 const producer=JSON.parse(fs.readFileSync(join(root,'package-lock.json'))),locked=searchConsumerLock(producer,packed.map(pack=>({name:pack.name,path:join(archives,pack.filename)})));
 locked.manifest.dependencies.undici=producer.packages['node_modules/undici'].version;
 fs.writeFileSync(join(consumer,'package.json'),JSON.stringify(locked.manifest));fs.writeFileSync(join(consumer,'package-lock.json'),JSON.stringify(locked.lock));
-execFileSync('npm',['install','--offline','--ignore-scripts','--no-audit','--no-fund'],{cwd:consumer,stdio:'inherit'});
+execFileSync('npm',['install','--offline','--ignore-scripts','--no-audit','--no-fund'],{cwd:consumer,env:{...process.env,...sharedRuntime?.environment},stdio:'inherit'});
 const registryArtifacts=verifySearchConsumerRegistry(producer,JSON.parse(fs.readFileSync(join(consumer,'package-lock.json'))));
 for(const name of mapping.values())assert.ok(fs.realpathSync(join(consumer,'node_modules',name)).startsWith(fs.realpathSync(consumer)+'/node_modules/'));
 const copied=[],seen=new Set();
@@ -42,19 +47,23 @@ const native=[];
 for(const target of ['reconciled-packet-native'])for(const name of ['selected_suggestion_delivery_functional','complete_cohort_control_functional']){
  const path='target/'+target+'/release/examples/'+name,from=join(root,path),to=join(consumer,path);fs.mkdirSync(dirname(to),{recursive:true});fs.copyFileSync(from,to);assert.equal(sha(fs.readFileSync(to)),sha(fs.readFileSync(from)));native.push({path,sha256:sha(fs.readFileSync(from))});
 }
-const wasm=join(consumer,'node_modules/@breditor/collaboration/dist/runtime/breditor_shared_bg.wasm'),normalWasmSha256=sha(fs.readFileSync(wasm));assert.equal(normalWasmSha256,'165e23dbaef2ab77a6f920a20012e19624422ab2ccb74ec4e01f2146ac8086e0');
+const wasm=join(consumer,'node_modules/@breditor/collaboration/dist/runtime/breditor_shared_bg.wasm'),normalWasmSha256=sha(fs.readFileSync(wasm));assert.equal(normalWasmSha256,sharedRuntime?.wasmSha256??historicalSharedWasmSha256);
 const compiler=join(root,'node_modules/typescript/bin/tsc'),compilerSha256=sha(fs.readFileSync(compiler));
-const state={format:'breditor/reconciled-packet-recovery-installed-consumer',formatVersion:1,complete:false,source,sourceRoot:root,directory,consumer,workspaceLinks:false,registryArtifacts,copied,native,normalWasmSha256,compilerSha256,archives:packed.map(pack=>({name:pack.name,path:join(archives,pack.filename),sha256:sha(fs.readFileSync(join(archives,pack.filename)))})),releaseReady:false,v1GatesOpen:13};
-saveEvidence(join(directory,'running.json'),state);console.log(JSON.stringify({directory,phase:'strict-public-types-and-genuine-all-family-receipt-containment'}));
+const state={format:'breditor/reconciled-packet-recovery-installed-consumer',formatVersion:1,complete:false,case:selection.id,source,sourceRoot:root,directory,consumer,workspaceLinks:false,registryArtifacts,copied,native,normalWasmSha256,sharedRuntimeReceiptSha256:sharedRuntime?.sha256??null,compilerSha256,archives:packed.map(pack=>({name:pack.name,path:join(archives,pack.filename),sha256:sha(fs.readFileSync(join(archives,pack.filename)))})),releaseReady:false,v1GatesOpen:13};
+saveEvidence(join(directory,'running.json'),state);console.log(JSON.stringify({directory,phase:'strict-public-types-and-packet-recovery'}));
 try{
  const typesLog=execFileSync(process.execPath,[compiler,'--noEmit','--strict','--exactOptionalPropertyTypes','--noUncheckedIndexedAccess','--target','ES2022','--module','NodeNext','--lib','ES2022,DOM',...types],{cwd:consumer,encoding:'utf8',maxBuffer:4*1024*1024,timeout:120000});
  fs.writeFileSync(join(directory,'types.log'),typesLog);
- const logPath=join(directory,'contracts.log'),fd=fs.openSync(logPath,'wx');let execution;try{execution=spawnSync(process.execPath,['--test','--test-concurrency=1',...tests.map(test=>'scripts/'+test)],{cwd:consumer,stdio:['ignore',fd,fd],timeout:reconciledPacketTimeoutMs});}finally{fs.closeSync(fd);}assert.equal(execution.error,undefined);assert.equal(execution.status,0,'Read '+logPath);assert.ok(fs.statSync(logPath).size<=8*1024*1024);const log=fs.readFileSync(logPath,'utf8');
- checkReconciledPacketEvidence(log);
- for(const[key,n]of [['tests',count],['pass',count],['fail',0],['skipped',0],['cancelled',0],['todo',0]])assert.match(log,new RegExp('^# '+key+' '+n+'$','m'));
- assert.deepEqual(sourceEvidence(root),source);assert.equal(sha(fs.readFileSync(compiler)),compilerSha256);for(const row of native)assert.equal(sha(fs.readFileSync(join(root,row.path))),row.sha256);
- Object.assign(state,{complete:true,passed:true,tests:count,sourceUnchanged:true,strictPublicTypes:true,log:join(directory,'contracts.log'),logSha256:sha(log),scope:'One actual seven-family Native/metadata/upload reservation binds full resolved client/server packet and raster bytes to fresh current provider/client state. Literal Pending and byte/current outcomes remain separate. Original checked reference-only behavior, exact disk replay, native stamps, metadata queues, cache flags and future histories remain checked. No workspace links, serving authority or V1 approval.'});
- saveEvidence(join(directory,'result.json'),state);saveEvidence(join(root,'target/reconciled-packet-recovery-installed-consumer.json'),state);console.log(JSON.stringify({directory,passed:true,tests:count,workspaceLinks:false,sourceUnchanged:true}));
+ const logPath=join(directory,'contracts.log'),fd=fs.openSync(logPath,'wx');let execution;try{execution=spawnSync(process.execPath,testArgs,{cwd:consumer,env:{...process.env,...sharedRuntime?.environment},stdio:['ignore',fd,fd],timeout:timeoutMs});}finally{fs.closeSync(fd);}assert.equal(execution.error,undefined);assert.equal(execution.status,0,'Read '+logPath);assert.ok(fs.statSync(logPath).size<=8*1024*1024);const log=fs.readFileSync(logPath,'utf8');
+ const observations=checkReconciledPacketEvidence(log,selection.id);
+ for(const [key,value] of [['tests',count],['pass',count],['fail',0],['skipped',0],['cancelled',0],['todo',0]]){
+  const observed=new RegExp('^# '+key+' (\\d+)$','m').exec(log)?.[1];
+  assert.equal(observed,String(value),'Reconciled packet '+key+' count');
+ }
+ assert.deepEqual(sourceEvidence(root),source);assert.equal(sha(fs.readFileSync(compiler)),compilerSha256);assert.equal(sha(fs.readFileSync(wasm)),normalWasmSha256);
+ for(const row of native){assert.equal(sha(fs.readFileSync(join(root,row.path))),row.sha256);assert.equal(sha(fs.readFileSync(join(consumer,row.path))),row.sha256);}
+ Object.assign(state,{complete:true,passed:true,tests:count,sourceUnchanged:true,strictPublicTypes:true,observations,log:join(directory,'contracts.log'),logSha256:sha(log)});
+ saveEvidence(join(directory,'result.json'),state);saveEvidence(join(root,reconciledPacketReport('installed',selection.id)),state);console.log(JSON.stringify({directory,passed:true,tests:count,workspaceLinks:false,sourceUnchanged:true}));
 }catch(error){
  if(error.stdout)fs.writeFileSync(join(directory,'failed-stdout.log'),error.stdout);if(error.stderr)fs.writeFileSync(join(directory,'failed-stderr.log'),error.stderr);
  saveEvidence(join(directory,'failed.json'),{...state,error:String(error)});throw error;

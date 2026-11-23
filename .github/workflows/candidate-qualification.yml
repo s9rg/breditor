@@ -70,7 +70,15 @@
             "native-cold-restart-document-segmented-source",
             "native-cold-restart-document-segmented-installed",
             "native-cold-restart-both-segmented-source",
-            "native-cold-restart-both-segmented-installed"
+            "native-cold-restart-both-segmented-installed",
+            "reconciled-packet-contracts-source",
+            "reconciled-packet-contracts-installed",
+            "reconciled-packet-availability-source",
+            "reconciled-packet-availability-installed",
+            "reconciled-packet-checked-source",
+            "reconciled-packet-checked-installed",
+            "reconciled-packet-compatibility-source",
+            "reconciled-packet-compatibility-installed"
           ]
         }
       }
