@@ -14,6 +14,15 @@ function fixture(){
 }
 const log=value=>Object.entries({cold:'COLD_CURRENT_RECONCILIATION_NATIVE',future:'INDEPENDENT_FUTURE_NATIVE_HISTORIES',authentication:'NATIVE_COLD_RESTART_AUTHENTICATION'}).flatMap(([key,marker])=>value[key].map(row=>'# '+marker+' '+JSON.stringify(row))).join('\n')+'\n';
 test('complete parser fixture requires four independent pairs and both exact future-history observations',()=>{const result=checkNativeColdEvidence(log(fixture()));assert.equal(result.cold.length,4);assert.equal(result.future.length,8);});
+test('a shard requires evidence for its exact pair or for restart authentication',()=>{
+ const {cold,future,authentication}=fixture();
+ const selected={cold:[cold[1]],future:future.slice(2,4),authentication:[]};
+ assert.equal(checkNativeColdEvidence(log(selected),'original/segmented-v1').cold.length,1);
+ assert.throws(()=>checkNativeColdEvidence(log(selected),'segmented-v1/original'));
+ assert.throws(()=>checkNativeColdEvidence(log({...selected,future:future.slice(0,2)}),'original/segmented-v1'));
+ assert.equal(checkNativeColdEvidence(log({cold:[],future:[],authentication}),null).authentication.length,1);
+ assert.throws(()=>checkNativeColdEvidence(log(fixture()),null));
+});
 for(const [name,change]of [
  ['omitted independent policy pair',value=>value.cold.pop()],
  ['repeated default policy pair',value=>value.cold[3].actualNativePolicies=value.cold[0].actualNativePolicies],
