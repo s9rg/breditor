@@ -7,7 +7,8 @@ import {dirname, join, resolve} from "node:path";
 import {fileURLToPath} from "node:url";
 import {createHash} from "node:crypto";
 const root = resolve(dirname(fileURLToPath(import.meta.url)), "../..");
-const binary = resolve(root, "target/relay-native/debug/breditor-collab-relay");
+const binary = process.env.BREDITOR_BROWSER_RELAY_EXE ??
+  resolve(root, "target/relay-native/debug/breditor-collab-relay");
 const execute = promisify(execFile);
 
 export async function createRelay({configuration, input, origin,richLanguage=1,standardInline=false}) {

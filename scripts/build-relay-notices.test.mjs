@@ -28,3 +28,11 @@ test("both candidate profiles record fresh native dependency evidence after rela
   assert.deepEqual(checks[index].artifacts,relayNoticePaths.map(path=>({path,fresh:true,retain:true})));
  }
 });
+
+test("the installed browser matrix requires the release relay from the candidate inventory",()=>{
+ const {checks}=candidateReleasePlan();
+ const inventory=checks.findIndex(stage=>stage.id==="relay-native-dependency-notices");
+ const matrix=checks.findIndex(stage=>stage.id==="installed-editor-browser-matrix");
+ assert.ok(inventory>=0&&matrix>inventory);
+ assert.deepEqual(checks[matrix].args,["scripts/check-editor-browser.mjs","--candidate-relay"]);
+});
