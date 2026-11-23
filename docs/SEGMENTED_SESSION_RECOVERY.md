@@ -23,6 +23,29 @@ root; later generation boundaries cannot change them. Use a dedicated database
 name. An existing old-format or unknown schema refuses without migration,
 clearing records or calling the native creation callback.
 
+A host can adopt an existing original document journal in a **new** segmented
+database. Quiesce the original session, flush it, capture its exact checkpoint,
+and close it. Use the same room, writer, grammar, and history policies. Supply
+the original native restore through the new session's `create` callback so the
+first generation retains the original checkpoint as its root. Keep the
+original database available for recovery. The new active segment can be sealed
+after it receives its first journal entry.
+
+The [installed Chrome rollover drill](qualification/2026-11-23-installed-chrome-shared-journal-rollover.json)
+reopens both generation archives, delivers the second writer's offline edit,
+and checks Undo and Redo across the original generation boundary. The
+storage-lifecycle gate still requires coordinated room and relay cutover,
+backup restoration, and asset retention under the release operating limits.
+
+Rebuild the installed SDK fixture with the optional rollover page, then run
+the drill with Chrome installed on the host.
+
+```sh
+BREDITOR_EDITOR_ROLLOVER=1 node scripts/check-editor-package.mjs
+BREDITOR_EDITOR_CONSUMER="$(node -p 'require("./target/editor-installed-consumer.json").consumer')" \
+  npx playwright test --config experiments/editor-browser-rollover/playwright.config.mjs
+```
+
 ```ts
 import {
   SharedSegmentedPersistentSession,
@@ -177,4 +200,4 @@ browser eviction/quota, process or power-loss durability, physical clipboard,
 IME, screen-reader behavior or the long-session performance envelope. Whole-room
 activation, generation-aware outbox/catalog and participant bindings, independent
 comment rollover, provider closure, protected credentials and deployment fencing
-remain separate requirements. All 13 V1 gates remain open.
+remain separate requirements.

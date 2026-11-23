@@ -1,0 +1,60 @@
+{
+  "passed": true,
+  "rounds": 115,
+  "exactLegacyRoots": 2,
+  "explicitSeals": 2,
+  "exactPeerReopens": 4,
+  "legacyDatabasesReopened": 2,
+  "legacyBytes": [
+    16195464,
+    15700675
+  ],
+  "offlineEditPreserved": true,
+  "preBoundaryUndoAndRedoPreserved": true,
+  "archiveBytes": [
+    18117140,
+    17569789
+  ],
+  "browserVersion": "157.0.8103.80",
+  "format": "breditor/installed-chrome-journal-rollover",
+  "formatVersion": 1,
+  "date": "2026-11-23",
+  "source": {
+    "commit": "991c5e4c93123cb9e31837556cd06a3f757a53d3",
+    "dirty": false,
+    "sha256": "9586e4f432e9628c1e2ababca973ceccf3f8ce4107eec7a0a6281b896fcbea92",
+    "files": 9578,
+    "bytes": 82052842
+  },
+  "archives": [
+    {
+      "name": "@breditor/browser",
+      "version": "0.3.0-alpha.22",
+      "bytes": 261359,
+      "sha256": "b67ad32fba519c349e611778512d4a827b49528d6280139abb44a74216949790"
+    },
+    {
+      "name": "@breditor/experimental-rich-content",
+      "version": "0.3.0-alpha.22",
+      "bytes": 2337732,
+      "sha256": "2769a821f1dac5396c8166663885aa9d6f1288c9bde686b6f8eeee52805258f5"
+    },
+    {
+      "name": "@breditor/collaboration",
+      "version": "0.3.0-alpha.22",
+      "bytes": 5630784,
+      "sha256": "7aef686b5370c121d311d8d517517f2cc0ddc2707555173a23c82f63fa3d6953"
+    },
+    {
+      "name": "@breditor/editor",
+      "version": "0.3.0-alpha.22",
+      "bytes": 83477,
+      "sha256": "ff50188718a1587bc21fda0e0700a2f4de61085ae00d083cf569789d29c713dd"
+    }
+  ],
+  "platform": "darwin",
+  "arch": "arm64",
+  "macOS": "26.6.2",
+  "legacyJournalLimitBytes": 16777216,
+  "scope": "Two independent original document histories in Chrome IndexedDB. Each retained original journal becomes an exact generation root after its writer closes. Both peers retain a pre-cut Undo and Redo and an offline edit, and both original databases reopen from their exact saved bytes."
+}
