@@ -10,6 +10,7 @@ import {IDBFactory,IDBDatabase} from 'fake-indexeddb';
 import {WebSocket as Socket} from 'undici';
 import * as api from '../../../packages/breditor-collaboration/dist/index.js';
 import * as native from '../../../packages/breditor-collaboration/dist/runtime/breditor_shared.js';
+import {NORMAL_SHARED_WASM_SHA256} from '../native-runtime/normal-shared-identity.mjs';
 import {reserveNativeRecovery} from '../../../packages/breditor-collaboration/dist/core.js';
 import {createNativeRelayDelivery,withNativeRelayDelivery} from '../../../packages/breditor-collaboration/dist/relay/native_delivery.js';
 import {createNativeSuggestionDelivery} from '../../../packages/breditor-collaboration/dist/suggestions/native_delivery.js';
@@ -27,7 +28,7 @@ const canonical=v=>Array.isArray(v)?v.map(canonical):v&&typeof v==='object'?Obje
 let initialized;
 export async function nativeSuggestionSession({family=families[0],scope='original',natural=false,owned=false,observer=false,choice='accept',prepare=false,withRevisions=false}={},visit){
  const bytes=readFileSync(new URL('../../../packages/breditor-collaboration/dist/runtime/breditor_shared_bg.wasm',import.meta.url));
- assert.equal(sha(bytes),'165e23dbaef2ab77a6f920a20012e19624422ab2ccb74ec4e01f2146ac8086e0');await(initialized??=native.default({module_or_path:bytes}));
+ assert.equal(sha(bytes), NORMAL_SHARED_WASM_SHA256);await(initialized??=native.default({module_or_path:bytes}));
  const config=JSON.stringify({format:'breditor/shared-rich-profile',formatVersion:3,schema:{name:'example/native-suggestion-delivery',version:1},extensions:[]}),profile=native.SharedRichProfile.from_standard_configuration_json_v3(config),descriptor=JSON.parse(profile.descriptor_json());
  const root=canonical(JSON.parse(readFileSync(new URL('../../../crates/breditor-core/tests/fixtures/rich-local-root.json',import.meta.url)))),document=JSON.stringify({format:'breditor/document',formatVersion:2,schema:descriptor.schema,schemaFingerprint:descriptor.schemaFingerprint,root});
  const directory=mkdtempSync(join(tmpdir(),'breditor-suggestion-native-')),paths=['room.log','profile.json','document.json','auth.json'].map(n=>join(directory,n)),tokens=Object.fromEntries(['alice','bob','carol','functional-owner'].map(n=>[n,randomBytes(32).toString('hex')]));
