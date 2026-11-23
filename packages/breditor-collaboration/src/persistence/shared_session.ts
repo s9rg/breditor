@@ -218,6 +218,7 @@ export class SharedPersistentSession<P extends SharedSelectionPolicy="original">
   while(this.#pending&&!this.#closed){this.#lease.assertLive();const next=this.#pending;this.#pending=undefined;
    try{if(this.#search)await writeSearchRecord(this.#db,[this.#options.room,this.#options.writer],{format:"breditor/shared-search-checkpoint-record",formatVersion:1,history:this.#options.history??"explicit",rangeEditing:this.#options.rangeEditing??"original",selectionEditing:this.#selectionPolicy,richLanguage:this.#options.richLanguage??1,checkpointJson:next.json});else if(this.#selectionPolicy==="document-v1")await writeDocumentSessionCheckpoint(this.#db,[this.#options.room,this.#options.writer],next.json,this.#options.history??"explicit",this.#options.richLanguage??1);else if(this.#options.rangeEditing==="general-v1")await writeSessionCheckpoint(this.#db,[this.#options.room,this.#options.writer],next.json,this.#options.history??"explicit","general-v1",this.#options.richLanguage??1);else await writeSessionCheckpoint(this.#db,[this.#options.room,this.#options.writer],next.json,this.#options.history??"explicit");}
    catch(error){this.#pending??=next;throw error;}
+   // A late commit can advance the closed revision without retaining its journal.
    if(!this.#closed)this.#saved=next.json;
    this.#savedRevision=next.revision;
   }
