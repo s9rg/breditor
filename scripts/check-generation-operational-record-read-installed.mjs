@@ -9,11 +9,14 @@ import {join,resolve,dirname,relative} from 'node:path';
 import {pathToFileURL,fileURLToPath} from 'node:url';
 import {createHash} from 'node:crypto';
 import {sourceEvidence,saveEvidence} from './candidate-release/evidence.mjs';
+import {copySharedRuntimeForActivation} from './candidate-release/shared-runtime-evidence.mjs';
 import {searchConsumerLock,verifySearchConsumerRegistry} from './search-consumer-lock.mjs';
 import {generationOperationalRecordReadWorkload as workload} from './generation-operational-record-read-workload.mjs';
 const {tests,types,assertions,scope}=workload;
 if(process.argv.length!==2)throw Error('No substituted source, runtime or reduced assertions accepted');
 const root=resolve(dirname(fileURLToPath(import.meta.url)),'..'),source=sourceEvidence(root),directory=mkdtempSync(join(realpathSync(tmpdir()),'breditor-generation-operational-record-read-installed-')),consumer=join(directory,'consumer'),archives=join(directory,'archives'),npm=process.env.BREDITOR_NPM??process.env.NPM_BIN??'npm',sha=b=>createHash('sha256').update(b).digest('hex');mkdirSync(consumer);mkdirSync(archives);
+// Relocated fixtures and bundle probes resolve the receipt from this temporary root.
+copySharedRuntimeForActivation(root,directory,source);
 const modules=new Set(),fixtures=new Set(),copied=[],fixtureRoot=join(root,'scripts/fixtures');
 const phase=id=>{saveEvidence(join(directory,'status.json'),{phase:id,source,at:new Date().toISOString()});console.log('PHASE',id,directory);};
 function run(id,command,args){phase(id);try{const log=execFileSync(command,args,{cwd:consumer,encoding:'utf8',timeout:600000,maxBuffer:8*1024*1024});writeFileSync(join(directory,id+'.log'),log);return log;}catch(error){writeFileSync(join(directory,id+'.log'),String(error.stdout??'')+'\n'+String(error.stderr??''));throw error;}}

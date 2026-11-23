@@ -11,6 +11,20 @@ test('both candidate profiles require real reference reads in source, packages a
    const row=find(id);assert.deepEqual(row.args,['scripts/'+script]);assert.deepEqual(row.artifacts,[{path,fresh:true}]);assert.ok(row.timeoutMs>=timeout);for(const dependency of ['collaboration-build','operation-references-contracts','operation-references-type-fence'])assert.ok(plan.checks.indexOf(find(dependency))<plan.checks.indexOf(row));
   }
   for(const id of ['reader-runtime','installed-reader-runtime','restored-graph','installed-restored-graph','operational-native-read','installed-operational-native-read'])find(id);
+  const readerGroups=[
+   'operation-references','original-record-read','generation-record-read',
+   'original-retained-record-read','generation-record-references','original-record-references',
+   'original-operational-record-read','generation-operational-record-read',
+   'operational-history-reference','protected-history-group','fresh-delivery-history',
+  ];
+  const sharedBuild=plan.checks.indexOf(find('paired-shared-runtime'));
+  for(const group of readerGroups){
+   for(const id of [group+'-contracts',group,'installed-'+group]){
+    const row=find(id);
+    assert.equal(row.requiresSharedRuntime,true,id);
+    assert.ok(plan.checks.indexOf(row)>sharedBuild,id);
+   }
+  }
   assert.equal(plan.v1Ready,false);
  }
 });
