@@ -7,11 +7,7 @@ import {RecoveryLease} from '../packages/breditor-collaboration/dist/participant
 import {localParticipantUnitHost} from './fixtures/independent-local-operation/participant.mjs';import {restoredLocalFixture} from './fixtures/restored-local-operation/session.mjs';
 import {insertCleanupText} from './fixtures/owned-core-cleanup/session.mjs';import {pixel,secondAsset} from './fixtures/review-assets/pixels.mjs';
 import {RestoredLocalOperationJournal as Journal,openRestoredLocalJournalForParticipant as openRestoredLocalJournalForParent} from '../packages/breditor-collaboration/dist/restored_local_operation/journal.js';import {openRestoredLocalUploadsForParticipant as openRestoredLocalUploadsForParent} from '../packages/breditor-collaboration/dist/restored_local_operation/participant_assets.js';
-// Trusted fixture instrumentation only: retain the actual returned native source,
-// never replace it with a facade or manufacture a private owner/readiness flag.
-const actualOpen=api.SharedIndependentHistoryPersistentSession.open;let nativeSource;
-api.SharedIndependentHistoryPersistentSession.open=async function(options){const value=await actualOpen.call(this,options);if(options.database.endsWith('-restored-native'))nativeSource=value;return value;};
-const {OperationalRestoredLocalParticipant:Parent}=await import('../packages/breditor-collaboration/dist/restored_local_operation/participant.js');api.SharedIndependentHistoryPersistentSession.open=actualOpen;
+import {OperationalRestoredLocalParticipant as Parent} from '../packages/breditor-collaboration/dist/restored_local_operation/participant.js';
 const runtime=process.env.BREDITOR_RESTORED_LOCAL_PARTICIPANT_RUNTIME??new URL('../target/promoted-shared-web/',import.meta.url).pathname,bytes=async file=>Buffer.from(await file.arrayBuffer());let host;const options=f=>({...f.options,cohort:{parentDatabase:f.value.f.tag+'-restored-parent',uploadsDatabase:f.value.f.tag+'-restored-uploads'}});
 before(async()=>{host=await localParticipantUnitHost({api,rich,Participant:OldParent,runtime,fixture:new URL('../crates/breditor-core/tests/fixtures/rich-local-root.json',import.meta.url)});});after(()=>host?.free());
 
@@ -37,8 +33,29 @@ test('a transient namespace-release failure retries the same real owners',async(
  finally{RecoveryLease.prototype.close=close;await parts?.source.session.discardAndClose();parts?.uploads.close();foreign?.close();await p?.discardAndClose();await f.close();}
 });
 for(const lane of ['document','review'])test(`actual ${lane} changes inside the last grant refuse a stale parent handoff`,async()=>{
- const f=await restoredLocalFixture(host,capture),close=RecoveryLease.prototype.close;let p,parts,foreign,armed=false,fired=false;
- try{const o=options(f);p=await Parent.begin(f.file,{...o,checkAuthority(){if(armed&&!fired){fired=true;if(lane==='document')insertCleanupText(nativeSource.core,'Final parent native mutation ');else nativeSource.core.dispatchReview({kind:'create_thread',data:{anchorJson:nativeSource.core.captureReviewAnchor({kind:'document'}),body:'Final parent review mutation'}});}}});foreign=await rich.RichAssetStore.openRetained(o.cohort.uploadsDatabase);RecoveryLease.prototype.close=async function(){const result=await close.call(this);armed=true;return result;};await assert.rejects(p.intoParts(),error=>error.code==='restored_local_handoff_changed');assert.equal(fired,true);await assert.rejects(foreign.cancel(secondAsset),error=>error.code==='asset_custody_busy');RecoveryLease.prototype.close=close;armed=false;await nativeSource.flush();await p.check();parts=await p.intoParts();assert.notDeepEqual(parts.source.session.exportRecovery(),f.value.live);}
+ const f=await restoredLocalFixture(host,capture),close=RecoveryLease.prototype.close;
+ const session=api.SharedIndependentHistoryPersistentSession.prototype,flush=session.flush,opened=[];
+ let p,parts,foreign,nativeSource,armed=false,fired=false;
+ try{
+  const o=options(f);
+  // Observe the real session's initial flush, after production captures its
+  // static opening intrinsic. Keep every native and storage operation intact.
+  session.flush=async function(){await flush.call(this);opened.push(this);};
+  try{p=await Parent.begin(f.file,{...o,checkAuthority(){if(armed&&!fired){fired=true;if(lane==='document')insertCleanupText(nativeSource.core,'Final parent native mutation ');else nativeSource.core.dispatchReview({kind:'create_thread',data:{anchorJson:nativeSource.core.captureReviewAnchor({kind:'document'}),body:'Final parent review mutation'}});}}});}
+  finally{session.flush=flush;}
+  assert.equal(opened.length,1);
+  [nativeSource]=opened;
+  assert.deepEqual(nativeSource.exportRecovery(),f.value.live);
+  foreign=await rich.RichAssetStore.openRetained(o.cohort.uploadsDatabase);
+  RecoveryLease.prototype.close=async function(){const result=await close.call(this);armed=true;return result;};
+  await assert.rejects(p.intoParts(),error=>error.code==='restored_local_handoff_changed');
+  assert.equal(fired,true);
+  await assert.rejects(foreign.cancel(secondAsset),error=>error.code==='asset_custody_busy');
+  RecoveryLease.prototype.close=close;armed=false;
+  await nativeSource.flush();await p.check();parts=await p.intoParts();
+  assert.equal(parts.source.session,nativeSource);
+  assert.notDeepEqual(parts.source.session.exportRecovery(),f.value.live);
+ }
  finally{RecoveryLease.prototype.close=close;armed=false;await parts?.source.session.discardAndClose();parts?.uploads.close();foreign?.close();await p?.discardAndClose();await f.close();}
 });
 test('a denied final parent-handle close reopens only actual retained storage on retry',async()=>{
