@@ -1,7 +1,7 @@
 import { fileURLToPath } from "node:url";
 import { mergeConfig, type Plugin } from "vite";
 import base from "./vite.browser.config";
-import { instrumentStartupModule } from "./tests/browser/diagnostics/startup_instrumentation";
+import { instrumentStartupModule, startupDiagnosticModuleCount } from "./tests/browser/diagnostics/startup_instrumentation";
 
 const recorder = fileURLToPath(new URL("./tests/browser/diagnostics/startup_recorder.ts", import.meta.url));
 const manifest = new Map<string, unknown>();
@@ -19,7 +19,9 @@ const diagnostic: Plugin = {
   configureServer(server) {
     server.middlewares.use((request, response, next) => {
       if (request.method !== "GET" || request.url !== "/startup-diagnostic-map.json") return next();
-      response.writeHead(manifest.size === 5 ? 200 : 503, { "Content-Type": "application/json", "Cache-Control": "no-store" });
+      response.writeHead(manifest.size === startupDiagnosticModuleCount ? 200 : 503, {
+        "Content-Type": "application/json", "Cache-Control": "no-store",
+      });
       response.end(JSON.stringify({ version: 1, modules: Object.fromEntries(manifest) }));
     });
   },

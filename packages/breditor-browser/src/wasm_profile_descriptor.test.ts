@@ -7,6 +7,7 @@ import {
   isOwnedBrowserCompiledProfileDescriptor,
   MAX_BROWSER_PROFILE_ACTION_STATES,
   MAX_BROWSER_PROFILE_INLINE_FORMAT_SETS,
+  MAX_BROWSER_PROFILE_PROPERTY_STRING_BYTES,
   wasmProfileGenerationIsLive,
   wasmViewMatchesProfileGeneration,
   type WasmCompiledProfileDescriptorView,
@@ -776,6 +777,29 @@ describe("compiled Wasm profile descriptor boundary", () => {
     });
     expect(view.freeCalls).toBe(1);
     expect(generation.freeCalls).toBe(0);
+  });
+
+  it.each([
+    [1, 2048, true],
+    [0, MAX_BROWSER_PROFILE_PROPERTY_STRING_BYTES, true],
+    [-0, 0, true],
+    [-1, 2048, false],
+    [1.5, 2048, false],
+    [1, "2048", false],
+    [2048, 1, false],
+    [1, MAX_BROWSER_PROFILE_PROPERTY_STRING_BYTES + 1, false],
+    [4_294_967_297, 2048, false],
+  ] as const)("checks descriptor string bounds %s to %s", (minimum, maximum, accepted) => {
+    const generation = new Generation();
+    const view = new TwoSetDescriptor(generation);
+    Object.defineProperty(view, "formatPropertyStringMinimumUtf8Bytes", {
+      value: (format: number, property: number) => format < 2 && property === 0 ? minimum : undefined,
+    });
+    Object.defineProperty(view, "formatPropertyStringMaximumUtf8Bytes", {
+      value: (format: number, property: number) => format < 2 && property === 0 ? maximum : undefined,
+    });
+    expect(consumeWasmCompiledProfileDescriptor(generation, view).ok).toBe(accepted);
+    expect(view.freeCalls).toBe(1);
   });
 
   it("requires bounded canonical and uniquely correlated inline-format sets", () => {

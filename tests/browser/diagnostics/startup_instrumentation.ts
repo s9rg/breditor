@@ -28,6 +28,8 @@ const scopes = {
   },
 } as const;
 
+export const startupDiagnosticModuleCount = Object.keys(scopes).length;
+
 export interface StartupRejectionSite {
   readonly stage: string;
   readonly module: string;
