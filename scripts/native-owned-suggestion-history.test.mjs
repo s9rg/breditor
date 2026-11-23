@@ -6,9 +6,10 @@ import * as api from '../packages/breditor-collaboration/dist/index.js';import *
 import {reserveNativeRecovery} from '../packages/breditor-collaboration/dist/core.js';
 import {createNativeRelayDelivery,withNativeRelayDelivery,selectedNativeRelayDelivery} from '../packages/breditor-collaboration/dist/relay/native_delivery.js';
 import {startReviewHost} from './fixtures/relay-host.mjs';import {ReviewWireFixture} from './fixtures/relay-wire.mjs';
+import {NORMAL_SHARED_WASM_SHA256} from './fixtures/native-runtime/normal-shared-identity.mjs';
 const origin='http://127.0.0.1:49785',hash=b=>createHash('sha256').update(b).digest('hex'),busy=e=>e?.code==='native_recovery_busy';
 const executable=new URL('../target/owned-history-relay-native/release/examples/suggestions_functional',import.meta.url).pathname;
-const normal=readFileSync(new URL('../packages/breditor-collaboration/dist/runtime/breditor_shared_bg.wasm',import.meta.url));assert.equal(hash(normal),'165e23dbaef2ab77a6f920a20012e19624422ab2ccb74ec4e01f2146ac8086e0');await wasm.default({module_or_path:normal});
+const normal=readFileSync(new URL('../packages/breditor-collaboration/dist/runtime/breditor_shared_bg.wasm',import.meta.url));assert.equal(hash(normal),NORMAL_SHARED_WASM_SHA256);await wasm.default({module_or_path:normal});
 const configuration=JSON.stringify({format:'breditor/shared-rich-profile',formatVersion:3,schema:{name:'example/native-owned-history',version:1},extensions:[]});
 const canonical=v=>Array.isArray(v)?v.map(canonical):v&&typeof v==='object'?Object.fromEntries(Object.keys(v).sort().map(k=>[k,canonical(v[k])])):v;
 async function fixture(scope,natural,run){
