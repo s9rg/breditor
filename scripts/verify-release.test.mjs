@@ -17,10 +17,13 @@ test("the plan covers each release boundary in a safe build order", () => {
   const checks = releaseChecks({});
   assert.deepEqual(checks.map(({ id }) => id), [
     "gate-tests", "rust-format", "rust-lint", "rust-tests", "rust-docs",
-    "wasm-target-tests", "typescript-tests", "typescript-types",
-    "browser-test-types", "demo-test-types", "package-consumers", "wasm-abi",
+    "wasm-target-tests", "package-consumers", "rich-runtime-build", "shared-runtime-build",
+    "rich-typescript-build", "candidate-sdk-build", "typescript-tests", "typescript-types",
+    "browser-test-types", "demo-test-types", "wasm-abi",
     "demo-production", "production-size", "browser-matrix", "demo-matrix", "diff-whitespace",
   ]);
+  assert.deepEqual(checks.find(check => check.id === "candidate-sdk-build").args,
+    ["run", "build:candidate", "--workspace", "@breditor/collaboration", "--workspace", "@breditor/editor"]);
   assert.equal(checks.find(check => check.id === "demo-matrix").env.BREDITOR_RELEASE_DEMO_PREVIEW, "1");
   for (const id of ["rust-lint", "rust-tests", "rust-docs"]) {
     assert.ok(checks.find((check) => check.id === id).args.includes("--locked"));
@@ -50,7 +53,7 @@ test("all successful stages run sequentially from the repository without a shell
     return { status: 0 };
   }, (message) => reports.push(message)), 0);
   assert.equal(calls, checks.length);
-  assert.match(reports.at(-1), /all 17 gates passed/);
+  assert.match(reports.at(-1), /all 21 gates passed/);
   assert.match(reports.at(-1), /for default packages/);
   assert.match(reports.at(-1), /opt-in nested lists, physical input and nested budget acceptance are not qualified/);
 });
@@ -81,7 +84,7 @@ test("dry-run is explicitly non-executing and rejects unknown options", () => {
   assert.equal(plan.scope, "default-packages");
   assert.equal(plan.experimentalNestedListsQualified, false);
   assert.equal(plan.cwd, repository);
-  assert.equal(plan.checks.length, 17);
+  assert.equal(plan.checks.length, releaseChecks({}).length);
   const rejected = spawnSync(process.execPath, [script, "--skip-tests"], { encoding: "utf8" });
   assert.equal(rejected.status, 2);
   assert.match(rejected.stderr, /unknown argument/);
@@ -106,7 +109,7 @@ test("a symlinked entry point still runs the gate instead of silently exiting", 
     symlinkSync(join(repository, "scripts/verify-release.mjs"), alias);
     const preview = spawnSync(process.execPath, [alias, "--dry-run"], { encoding: "utf8" });
     assert.equal(preview.status, 0);
-    assert.equal(JSON.parse(preview.stdout).checks.length, 17);
+    assert.equal(JSON.parse(preview.stdout).checks.length, releaseChecks({}).length);
   } finally {
     rmSync(temporary, { recursive: true, force: true });
   }
