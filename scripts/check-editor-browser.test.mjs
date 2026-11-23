@@ -1,9 +1,12 @@
 import test from "node:test";
 import assert from "node:assert/strict";
-import {readdirSync,readFileSync,realpathSync} from "node:fs";
+import {createHash} from "node:crypto";
+import {mkdirSync,mkdtempSync,readdirSync,readFileSync,realpathSync,rmSync,writeFileSync} from "node:fs";
+import {tmpdir} from "node:os";
+import {dirname,join} from "node:path";
 import config from "../experiments/editor-browser/playwright.config.mjs";
 import {editorBrowserPort} from "../experiments/editor-browser/port.mjs";
-import {editorBrowserRuns,editorBrowserPlan,installedBrowserEnvironment} from "./check-editor-browser.mjs";
+import {candidateBrowserRelay,editorBrowserRuns,editorBrowserPlan,installedBrowserEnvironment} from "./check-editor-browser.mjs";
 test("the installed consumer and Playwright use the same configurable loopback port",async()=>{
  const previous=process.env.BREDITOR_EDITOR_PORT;
  try{
@@ -92,4 +95,26 @@ test("qualification binds the fresh installation even with an inherited consumer
  assert.equal(result.BREDITOR_EDITOR_PORT,"50852");
  assert.equal(env.BREDITOR_EDITOR_CONSUMER,"/stale-install");
  assert.throws(()=>installedBrowserEnvironment({}),/Missing freshly installed editor consumer/);
+});
+
+test("candidate browser relay requires the inventoried release executable instead of a debug fallback",()=>{
+ const root=mkdtempSync(join(tmpdir(),"breditor-browser-relay-"));
+ try{
+  const target="aarch64-apple-darwin",executable=process.platform==="win32"?"breditor-collab-relay.exe":"breditor-collab-relay";
+  const binary=join(root,"target/owned-history-relay-native",target,"release",executable);
+  const debug=join(root,"target/relay-native/debug",executable);
+  const receipt=join(root,"target/relay-native-notices/breditor_dependency_inventory.json");
+  const bytes=Buffer.from("candidate executable");
+  for(const path of [binary,debug,receipt])mkdirSync(dirname(path),{recursive:true});
+  writeFileSync(debug,bytes);
+  const nativeBuild={target,profile:"release",features:["server"],executableSha256:createHash("sha256").update(bytes).digest("hex")};
+  writeFileSync(receipt,JSON.stringify({nativeBuild}));
+  assert.throws(()=>candidateBrowserRelay(root),{code:"ENOENT"});
+  writeFileSync(binary,bytes);
+  assert.equal(candidateBrowserRelay(root),binary);
+  writeFileSync(binary,"other executable");
+  assert.throws(()=>candidateBrowserRelay(root),/differs from its build inventory/);
+  writeFileSync(receipt,JSON.stringify({nativeBuild:{...nativeBuild,target:"../unrelated"}}));
+  assert.throws(()=>candidateBrowserRelay(root),/Invalid candidate relay build inventory/);
+ }finally{rmSync(root,{recursive:true,force:true});}
 });

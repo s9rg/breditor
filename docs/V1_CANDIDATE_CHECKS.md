@@ -25,6 +25,8 @@ inventories and notice files from the paired Wasm packages and native relay.
 Reviewers can compare the exact files and their recorded hashes across builds.
 When the installed browser matrix passes, the run also retains that stage's
 archive digests alongside its browser test log.
+The matrix uses the release relay from the native dependency stage and verifies
+its executable hash before starting the browser checks.
 
 ## Whole-room activation jobs
 

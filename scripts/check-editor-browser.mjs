@@ -1,8 +1,10 @@
 /** Clean-installed SDK qualification in complete bounded editing/network matrices. Never publishes. */
 import {execFileSync} from "node:child_process";
+import {createHash} from "node:crypto";
 import {readFileSync,readdirSync,realpathSync} from "node:fs";
 import {resolve,dirname} from "node:path";
 import {fileURLToPath} from "node:url";
+import {relayNoticePaths} from "./build-relay-notices.mjs";
 const root=resolve(dirname(fileURLToPath(import.meta.url)),".."),configuration="experiments/editor-browser/playwright.config.mjs";
 /** Every discovered file appears once; all three configured engines remain in each invocation. */
 export function editorBrowserRuns(discovered){
@@ -24,15 +26,32 @@ export function installedBrowserEnvironment(report,environment=process.env){
  if(typeof report?.consumer!=="string"||!report.consumer)throw Error("Missing freshly installed editor consumer");
  return {...environment,BREDITOR_EDITOR_CONSUMER:realpathSync(report.consumer)};
 }
+export function candidateBrowserRelay(repository=root){
+ const {nativeBuild}=JSON.parse(readFileSync(resolve(repository,relayNoticePaths[0]),"utf8"));
+ const {target,profile,features,executableSha256}=nativeBuild??{};
+ if(typeof target!=="string"||!/^[a-zA-Z0-9_]+(?:-[a-zA-Z0-9_]+)+$/.test(target)||
+  profile!=="release"||!Array.isArray(features)||features.length!==1||features[0]!=="server"||
+  typeof executableSha256!=="string"||!/^[a-f0-9]{64}$/.test(executableSha256)){
+  throw Error("Invalid candidate relay build inventory");
+ }
+ const executable=process.platform==="win32"?"breditor-collab-relay.exe":"breditor-collab-relay";
+ const path=resolve(repository,"target/owned-history-relay-native",target,"release",executable);
+ if(createHash("sha256").update(readFileSync(path)).digest("hex")!==executableSha256){
+  throw Error("Candidate browser relay differs from its build inventory");
+ }
+ return path;
+}
 if(process.argv[1]&&realpathSync(process.argv[1])===fileURLToPath(import.meta.url)){
  const args=process.argv.slice(2),plan=editorBrowserPlan();
  if(args.length===1&&args[0]==="--dry-run")console.log(JSON.stringify({executed:false,...plan},null,2));
- else if(!args.length){
+ else if(!args.length||(args.length===1&&args[0]==="--candidate-relay")){
+  const relay=args.length?candidateBrowserRelay():undefined;
   const options={cwd:root,stdio:"inherit",shell:false};
   execFileSync(...plan.build,options);
   const report=JSON.parse(readFileSync(resolve(root,"target/editor-installed-consumer.json"),"utf8"));
   const env=installedBrowserEnvironment(report);
+  if(relay)env.BREDITOR_BROWSER_RELAY_EXE=relay;
   for(const [command,arguments_] of plan.runs)execFileSync(command,arguments_,{...options,env});
  }
- else throw Error("Usage: node scripts/check-editor-browser.mjs [--dry-run]");
+ else throw Error("Usage: node scripts/check-editor-browser.mjs [--dry-run | --candidate-relay]");
 }

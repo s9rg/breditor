@@ -825,7 +825,7 @@ export function candidateReleasePlan({profile="full",environment=process.env}={}
   script("installed-session-backups-browser","check-session-backups-browser.mjs",[],[{path:"target/session-backups-installed-browser.json",fresh:true}]),
   script("installed-asset-backups-browser","check-asset-backups-browser.mjs",[],[{path:"target/asset-backups-installed-browser.json",fresh:true}]),
   script("default-package-release-matrix","verify-release.mjs",[],[],7200000),
-  script("installed-editor-browser-matrix","check-editor-browser.mjs",[],[{path:"target/editor-installed-consumer.json",fresh:true,retain:true}],7200000),
+  script("installed-editor-browser-matrix","check-editor-browser.mjs",["--candidate-relay"],[{path:"target/editor-installed-consumer.json",fresh:true,retain:true}],7200000),
   script("reviewed-v1-readiness","check-v1-readiness.mjs",["--require-ready"]),
  );
  return Object.freeze({profile,qualification:"candidate-checks-not-release-approval",v1Ready:false,deferred:profile==="functional"?deferredFunctionalGates:Object.freeze(deferredFunctionalGates.filter(id=>!["default-package-release-matrix","installed-editor-browser-matrix"].includes(id))),checks:Object.freeze(checks)});
