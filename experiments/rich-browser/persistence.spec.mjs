@@ -21,10 +21,15 @@ test("actual page restart retains the saved rich redo cursor and future exact un
   const editor=window.demo.editor,initial=editor.view().documentJson;
   editor.execute({kind:"setSelection",selection:{kind:"text",anchor:{block:"demo-intro",offset:"0",affinity:"after"},focus:{block:"demo-intro",offset:"0",affinity:"after"}}});
   editor.execute({kind:"insertPlainText",text:"Durable! "});const next=editor.view().documentJson;
-  editor.execute({kind:"undo"});await window.demo.sessions.flush();
-  return {initial,next,redo:editor.view().redoDepth};
+  editor.execute({kind:"undo"});
+  const checkpoint=editor.checkpointJson();
+  const result=await window.demo.autosave.flush();
+  return {initial,next,redo:editor.view().redoDepth,checkpoint,status:result.status};
  });
+ expect(saved.status).toBe("committed");
+ expect(saved.redo).toBe(1);
  await page.reload();await expect(page.locator("#ready")).toHaveText("Ready — real Rust/Wasm editor");
+ expect(await page.evaluate(()=>window.demo.editor.checkpointJson())).toBe(saved.checkpoint);
  expect(await page.evaluate(()=>window.demo.editor.view().documentJson)).toBe(saved.initial);
  expect(await page.evaluate(()=>window.demo.editor.view().redoDepth)).toBe(saved.redo);
  await page.getByRole("button",{name:"Redo",exact:true}).click();

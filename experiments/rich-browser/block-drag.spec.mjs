@@ -3,7 +3,7 @@ import {test,expect} from "@playwright/test";
 const top=page=>page.evaluate(()=>JSON.parse(window.demo.editor.view().documentJson).root.children.map(node=>node.properties["breditor/block-id"]));
 const undoDepth=page=>page.evaluate(()=>window.demo.editor.view().undoDepth);
 const caretIn=(page,block)=>page.evaluate(block=>{const point={block,offset:"0",affinity:"after"};window.demo.editor.execute({kind:"setSelection",selection:{kind:"text",anchor:point,focus:point}});window.demo.editor.focus();},block);
-test.beforeEach(async({page})=>{await page.goto("/demo");await expect(page.locator("#ready")).toHaveText("Ready — real Rust/Wasm editor");});
+test.beforeEach(async({page})=>{await page.goto("/demo",{waitUntil:"commit"});await expect(page.locator("#ready")).toHaveText("Ready — real Rust/Wasm editor");});
 
 test("Alt+Shift+ArrowUp moves the caret's block as one retained-ID Undo step",async({page})=>{
  const initial=await top(page),depth=await undoDepth(page);expect(initial.slice(0,2)).toEqual(["demo-heading","demo-intro"]);
@@ -33,7 +33,7 @@ test("dragging the handle drops one moveBlock before the hovered block",async({p
 test("planner and native admission both refuse invalid moves without publication",async({page})=>{
  const before=await page.evaluate(()=>window.demo.editor.view().revision);
  // A table-cell paragraph cannot be reordered outside its cell under the default sibling policy.
- expect(await page.evaluate(()=>window.demo.extras.at(-1).move("demo-p2",{anchor:"demo-heading",side:"before"}))).toBe(false);
+ expect(await page.evaluate(()=>window.demo.blockDrag.move("demo-p2",{anchor:"demo-heading",side:"before"}))).toBe(false);
  // Rust refuses a cyclic destination, a foreign anchor and a caption source with no partial change.
  for(const data of [{block:"table-block",parent:"demo-cell2",before:null},{block:"demo-intro",parent:null,before:"demo-p2"},{block:"demo-caption",parent:null,before:null}]){
   const code=await page.evaluate(data=>{try{window.demo.editor.execute({kind:"moveBlock",data});return "accepted";}catch(error){return error.code??error.message;}},data);
