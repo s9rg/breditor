@@ -45,7 +45,7 @@ test("restored selection coordinates retain presence, zero offsets, and directio
       const manifest = await mapping.json() as { modules: Record<string, unknown> };
       expect(Object.keys(manifest.modules).sort()).toEqual([
         "wasm_document_json.js", "wasm_engine_bootstrap.js", "wasm_profile_descriptor.js",
-        "wasm_selection_adapter.js", "wasm_session_checkpoint.js",
+        "wasm_projection_adapter.js", "wasm_selection_adapter.js", "wasm_session_checkpoint.js",
       ]);
     }
     else expect(diagnostic).toBeNull();

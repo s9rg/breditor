@@ -4,6 +4,17 @@ import { instrumentStartupModule } from "./startup_instrumentation";
 const id = "/checkout/packages/breditor-browser/dist/wasm_session_checkpoint.js";
 
 describe("startup rejection instrumentation", () => {
+  it("records actual initial projection rejections and ignores provisional defaults", () => {
+    const code = `function consumeSemanticProjectionUnlocked(valid) {
+  let result = projectionFailure("projection.invalid_shape");
+  if (valid) result = { ok: true };
+  else result = projectionFailure("projection.invalid_shape");
+  return result;
+}`;
+    const output = instrumentStartupModule(code, id.replace("wasm_session_checkpoint", "wasm_projection_adapter"), "./recorder")!;
+    expect(output.sites.map(site => site.stage)).toEqual(["projection:consumeSemanticProjectionUnlocked:4"]);
+    expect(output.code).toContain('let result = projectionFailure("projection.invalid_shape");');
+  });
   it("captures descriptor guards, exceptions, cleanup and final admission, but not provisional defaults", () => {
     const source = `function consumeDescriptor(flag, read, release) {
   if (flag === 1) return descriptorFailure();
