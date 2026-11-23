@@ -56,8 +56,10 @@ document.querySelector("#capture-report")!.addEventListener("click", () => {
   }, null, 2);
 });
 
+let startupException = "fixture.wasm_initialization";
 try {
   await initializeWasm();
+  startupException = "fixture.editor_initialization";
   const opened = await openBreditorBrowserEditor({
     host, label: "Manual clipboard editor", wasm: breditorWasm,
     initialDocument: {
@@ -81,9 +83,13 @@ try {
     recorder.observe(editor.getSnapshot());
     editor.subscribe(() => { recorder.observe(editor!.getSnapshot()); refresh(); });
     checks.disabled = false;
-  } else recorder.startupFailed();
+  } else {
+    status.dataset["startupError"] = [opened.error.code, opened.error.causeCode].filter(Boolean).join("/");
+    recorder.startupFailed();
+  }
 } catch {
-  // Startup errors may contain host data. Retain only a fixed failure classification.
+  // Record a fixed stage code without capturing exception messages or document data.
+  status.dataset["startupError"] = startupException;
   recorder.startupFailed();
 }
 refresh();
