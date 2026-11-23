@@ -16,11 +16,11 @@ const root=resolve(dirname(fileURLToPath(import.meta.url)),'..'),source=sourceEv
 const sha=b=>createHash('sha256').update(b).digest('hex'),node=process.execPath,npm=process.env.BREDITOR_NPM??process.env.NPM_BIN??'npm';mkdirSync(archives);mkdirSync(consumer);
 function run(id,command,args,env=process.env){try{const out=execFileSync(command,args,{cwd:consumer,encoding:'utf8',env,timeout:1800000,maxBuffer:12*1024*1024});writeFileSync(join(directory,id+'.log'),out);return out;}catch(error){writeFileSync(join(directory,id+'.log'),String(error.stdout??'')+'\n'+String(error.stderr??''));throw error;}}
 const execFileAsync=promisify(execFile);
-async function runProof(id,args,timeout,env=process.env){
+async function runAcceptance(id,entry){
  console.log('PHASE',id,directory);
  const log=join(directory,id+'.log');
  try{
-  const {stdout}=await execFileAsync(node,args,{cwd:consumer,encoding:'utf8',env,timeout,maxBuffer:12*1024*1024});
+  const {stdout}=await execFileAsync(node,[entry,runtime],{cwd:consumer,encoding:'utf8',timeout:2700000,maxBuffer:12*1024*1024});
   writeFileSync(log,stdout);
   return stdout;
  }catch(error){
@@ -46,6 +46,10 @@ run('types',node,[join(root,'node_modules/typescript/bin/tsc'),'--noEmit','--str
 const unitFiles=["delivery-operation-cohort.test.mjs","delivery-local-operation-cohort.test.mjs","restored-participant.test.mjs","independent-operation-participant.test.mjs","native-input-cohort.test.mjs","native-input-cohort-shape.test.mjs","native-signal-fence.test.mjs"];
 for(const unitFile of unitFiles){const unitSource=readFileSync(join(root,'scripts',unitFile),'utf8');writeFileSync(join(consumer,unitFile),relocate(unitSource,[['../packages/breditor-collaboration/dist/','./node_modules/@breditor/collaboration/dist/'],['../crates/breditor-core/tests/fixtures/rich-local-root.json','./rich-local-root.json'],['../target/promoted-shared-web/','./node_modules/@breditor/collaboration/dist/runtime/']],unitFile));}
 const runtime=join(consumer,'node_modules/@breditor/collaboration/dist/runtime');
+const unitEnvironment={...process.env,BREDITOR_NATIVE_INPUT_COHORT_RUNTIME:runtime,BREDITOR_OPERATION_PARTICIPANT_RUNTIME:runtime,BREDITOR_RESTORED_PARTICIPANT_RUNTIME:runtime};
+console.log('PHASE','contracts',directory);
+const unit=run('contracts',node,['--test',...unitFiles],unitEnvironment);
+assert.match(unit,/^# pass 120$/m);assert.match(unit,/^# fail 0$/m);assert.match(unit,/^# skipped 0$/m);
 const probe=readFileSync(join(root,'scripts/probe-delivery-operation-cohort.mjs'),'utf8');writeFileSync(join(consumer,'probe.mjs'),probe);assert.equal(sha(readFileSync(join(consumer,'probe.mjs'))),sha(probe));writeFileSync(join(consumer,'bundled-probe.mjs'),relocate(probe,[['./fixtures/','./bundled-fixtures/']],'bundled-probe.mjs'));
 const imports="import*as api from'@breditor/collaboration';import*as rich from'@breditor/experimental-rich-content';import{OperationalIndependentLocalParticipant as Legacy}from'./node_modules/@breditor/collaboration/dist/independent_local_operation/participant.js';import{OperationalRestoredLocalParticipant as Snapshot}from'./node_modules/@breditor/collaboration/dist/restored_local_operation/participant.js';import{OperationalFlatLocalParticipant as Flat}from'./node_modules/@breditor/collaboration/dist/flat_local_operation/participant.js';import{OperationalIndependentDeliveryParticipant as Delivery}from'./node_modules/@breditor/collaboration/dist/independent_operation/participant.js';import{RestoredOperationParticipant as Restored}from'./node_modules/@breditor/collaboration/dist/restored_participant/participant.js';import{captureLocalOperationBackup}from'./node_modules/@breditor/collaboration/dist/independent_local_operation/portable_capture.js';import{captureIndependentOperationBackup}from'./node_modules/@breditor/collaboration/dist/independent_operation/portable_capture.js';import{IndependentOperationLineageBackup}from'./node_modules/@breditor/collaboration/dist/independent_operation/lineage_archive.js';import{independentDeliverySource}from'./node_modules/@breditor/collaboration/dist/independent_delivery_source/admission.js';import{operationJournalBinding}from'./node_modules/@breditor/collaboration/dist/independent_operation/cut_journal.js';import{restoredOperationJournalBinding}from'./node_modules/@breditor/collaboration/dist/restored_operation/journal.js';import{handoffDeliveryOperationParticipants}from'./node_modules/@breditor/collaboration/dist/delivery_operation_cohort/cohort.js';";
 const internals="const internals={Legacy,Snapshot,Flat,Delivery,Restored,captureLocalOperationBackup,captureIndependentOperationBackup,IndependentOperationLineageBackup,independentDeliverySource,operationJournalBinding,restoredOperationJournalBinding,handoffDeliveryOperationParticipants};";
@@ -61,15 +65,12 @@ for(const[index,path]of modules.entries()){const namespace=await import(pathToFi
 writeFileSync(join(consumer,'bundled-acceptance.mjs'),"import{api,rich,internals}from'./bundle.mjs';import{probeDeliveryOperationCohort}from'./bundled-probe.mjs';"+invoke);
 // These children read the same immutable package files and each owns its
 // synthetic storage. Await all exits before comparing their reports.
-const unitEnvironment={...process.env,BREDITOR_NATIVE_INPUT_COHORT_RUNTIME:runtime,BREDITOR_OPERATION_PARTICIPANT_RUNTIME:runtime,BREDITOR_RESTORED_PARTICIPANT_RUNTIME:runtime};
 const proofs=await Promise.allSettled([
- runProof('contracts',['--test',...unitFiles],1800000,unitEnvironment),
- runProof('acceptance',['acceptance.mjs',runtime],2700000),
- runProof('bundled-acceptance',['bundled-acceptance.mjs',runtime],2700000),
+ runAcceptance('acceptance','acceptance.mjs'),
+ runAcceptance('bundled-acceptance','bundled-acceptance.mjs'),
 ]);
 for(const proof of proofs)if(proof.status==='rejected')throw proof.reason;
-const [unit,accepted,bundled]=proofs.map(proof=>proof.value);
-assert.match(unit,/^# pass 120$/m);assert.match(unit,/^# fail 0$/m);assert.match(unit,/^# skipped 0$/m);
+const [accepted,bundled]=proofs.map(proof=>proof.value);
 const acceptance=JSON.parse(accepted),bundledAcceptance=JSON.parse(bundled);
 assert.equal(acceptance.passed,true);assert.equal(acceptance.cases,40);assert.equal(acceptance.handoffs,400);
 assert.equal(acceptance.sharedWasmSha256,sha(readFileSync(join(root,'target/promoted-shared-web/breditor_shared_bg.wasm'))));
