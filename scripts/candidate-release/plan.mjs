@@ -24,6 +24,11 @@ const focusedStageIds = {
  "default-matrix": ["default-package-release-matrix"],
  "editor-browser-matrix": ["relay-native-dependency-notices","default-typescript-build","installed-editor-browser-matrix"],
  "dependency-inventories": ["relay-native-dependency-notices","paired-local-runtime","paired-shared-runtime"],
+ "installed-feature-browser": [
+  "default-typescript-build","paired-local-runtime","paired-shared-runtime","rich-browser-build","collaboration-build","editor-build",
+  "installed-search-workflows","installed-placeholder-workflows","installed-fullscreen-workflows","installed-asset-backups",
+  "rich-demo-latency","installed-search-browser","installed-placeholder-browser","installed-fullscreen-browser","installed-asset-backups-browser",
+ ],
 };
 export const candidateCheckProfiles=Object.freeze(["full","functional",...Object.keys(focusedStageIds)]);
 /** Functional success is deliberately not V1 readiness. Full adds existing browser/default

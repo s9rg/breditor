@@ -14,7 +14,8 @@
             "functional",
             "default-matrix",
             "editor-browser-matrix",
-            "dependency-inventories"
+            "dependency-inventories",
+            "installed-feature-browser"
           ]
         },
         "shard": {
@@ -99,7 +100,7 @@
         },
         {
           "name": "Install all three test engines for browser qualification",
-          "if": "${{ (inputs.profile == 'full' && inputs.shard == 'none') || inputs.profile == 'default-matrix' || inputs.profile == 'editor-browser-matrix' }}",
+          "if": "${{ (inputs.profile == 'full' && inputs.shard == 'none') || inputs.profile == 'default-matrix' || inputs.profile == 'editor-browser-matrix' || inputs.profile == 'installed-feature-browser' }}",
           "run": "node node_modules/@playwright/test/cli.js install --with-deps chromium firefox webkit",
           "id": "browsers"
         },
@@ -110,7 +111,7 @@
             "CARGO_NET_OFFLINE": "true",
             "CANDIDATE_SHARD": "${{ inputs.shard }}"
           },
-          "run": "case \"$CANDIDATE_PROFILE\" in\n  full) args=() ;;\n  functional|default-matrix|editor-browser-matrix|dependency-inventories) args=(\"--$CANDIDATE_PROFILE\") ;;\n  *) echo \"Unsupported candidate qualification profile\" >&2; exit 2 ;;\nesac\nif [[ -n ${CANDIDATE_SHARD:-} && $CANDIDATE_SHARD != none ]]; then\n  args+=(--shard \"$CANDIDATE_SHARD\")\nfi\nif [[ ! ${CANDIDATE_EVIDENCE_DEADLINE:-} =~ ^[1-9][0-9]{0,11}$ ]]; then\n  echo \"Missing or invalid candidate evidence deadline\" >&2\n  exit 2\nfi\nremaining=$(( CANDIDATE_EVIDENCE_DEADLINE - $(date +%s) ))\nif (( remaining <= 0 )); then\n  echo \"Candidate deadline elapsed during setup\" >&2\n  exit 124\nfi\ntimeout --signal=TERM --kill-after=2m \"${remaining}s\" node scripts/verify-candidate.mjs \"${args[@]}\"",
+          "run": "case \"$CANDIDATE_PROFILE\" in\n  full) args=() ;;\n  functional|default-matrix|editor-browser-matrix|dependency-inventories|installed-feature-browser) args=(\"--$CANDIDATE_PROFILE\") ;;\n  *) echo \"Unsupported candidate qualification profile\" >&2; exit 2 ;;\nesac\nif [[ -n ${CANDIDATE_SHARD:-} && $CANDIDATE_SHARD != none ]]; then\n  args+=(--shard \"$CANDIDATE_SHARD\")\nfi\nif [[ ! ${CANDIDATE_EVIDENCE_DEADLINE:-} =~ ^[1-9][0-9]{0,11}$ ]]; then\n  echo \"Missing or invalid candidate evidence deadline\" >&2\n  exit 2\nfi\nremaining=$(( CANDIDATE_EVIDENCE_DEADLINE - $(date +%s) ))\nif (( remaining <= 0 )); then\n  echo \"Candidate deadline elapsed during setup\" >&2\n  exit 124\nfi\ntimeout --signal=TERM --kill-after=2m \"${remaining}s\" node scripts/verify-candidate.mjs \"${args[@]}\"",
           "id": "candidate"
         },
         {
