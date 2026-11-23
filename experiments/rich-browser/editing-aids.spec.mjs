@@ -66,7 +66,7 @@ test("show blocks outlines and labels every block kind outside the editable DOM"
  // A click through a label still places the caret in the text below it (the layer is inert to the pointer).
  const label=await page.locator('.breditor-aid-label[data-aid-label="qp"]').boundingBox();
  await page.mouse.click(label.x+label.width/2,label.y+label.height/2);
- expect(await page.evaluate(()=>window.core.view().selection?.focus?.block)).toBe("qp");
+ await expect.poll(()=>page.evaluate(()=>window.core.view().selection?.focus?.block)).toBe("qp");
  // Toggling never changed content, history or the editable DOM.
  await toggle(page,"Show blocks").click();await settle(page);
  expect(await page.locator("[data-breditor-editing-aids] > *").count()).toBe(0);
