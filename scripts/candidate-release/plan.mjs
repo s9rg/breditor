@@ -4,6 +4,7 @@ import {homedir} from "node:os";
 import {resolve,dirname} from "node:path";
 import {fileURLToPath} from "node:url";
 import {relayNoticePaths} from "../build-relay-notices.mjs";
+import {runtimeNoticeFiles} from "../build-runtime-notices.mjs";
 import {candidateRuntimePaths} from "../candidate-runtime-paths.mjs";
 import {metadataRecoveryArtifacts} from '../metadata-recovery-artifacts.mjs';
 import {sharedRuntimeBuildReport} from "./shared-runtime-evidence.mjs";
@@ -31,6 +32,7 @@ export function candidateReleasePlan({profile="full",environment=process.env}={}
  const shared=resolve(repository,"target/historical-source-native"),relay=resolve(repository,"target/owned-history-relay-native"),wasm=resolve(repository,"target/promoted-shared-wasm");
  const executablePath=name=>`target/owned-history-relay-native/release/examples/${name}${process.platform==="win32"?".exe":""}`,executable=name=>resolve(repository,executablePath(name)),stage=(id,command,args,env={},artifacts=[],timeoutMs=1800000)=>Object.freeze({id,command,args:Object.freeze(args),env:Object.freeze({...tools,...env}),artifacts:Object.freeze(artifacts.map(value=>Object.freeze(typeof value==="string"?{path:value}:value))),timeoutMs});
  const script=(id,file,args=[],artifacts=[],timeout)=>stage(id,node,[`scripts/${file}`,...args],{},artifacts,timeout);
+ const retainedRuntimeNotices=directory=>runtimeNoticeFiles.map(file=>({path:`${directory}/${file}`,fresh:true,retain:true}));
  const withSharedRuntime=check=>Object.freeze({...check,requiresSharedRuntime:true});
  const sharedCargo=(id,[command,...args])=>stage(id,cargo,[command,"--manifest-path","crates/breditor-collaboration/Cargo.toml",...args],{CARGO_TARGET_DIR:shared});
  // Relay fixtures spawn real children. Keep independent libtest cases from
@@ -120,8 +122,8 @@ export function candidateReleasePlan({profile="full",environment=process.env}={}
   script("independent-native-consumer","check-collaboration-native-consumer.mjs",[],[{path:"target/collaboration-native-consumer.json",fresh:true}]),
   stage("default-typescript-build",npm,["run","build"]),
   script("capture-default-size-budgets","record-default-size-budgets.mjs",[],[{path:defaultSizeBudgetReport,fresh:true,retain:true}]),
-  script("paired-local-runtime","build-rich-runtime.mjs",[],["packages/breditor-experimental-rich-content/dist/breditor_wasm.js","packages/breditor-experimental-rich-content/dist/breditor_wasm_bg.wasm","packages/breditor-experimental-rich-content/dist/breditor_wasm.d.ts","packages/breditor-experimental-rich-content/dist/breditor_dependency_inventory.json","packages/breditor-experimental-rich-content/dist/THIRD_PARTY_NOTICES.txt","packages/breditor-experimental-rich-content/dist/RUST_COPYRIGHT-library.html"]),
-  script("paired-shared-runtime","build-collaboration-runtime.mjs",["--candidate-receipt"],[{path:sharedRuntimeBuildReport,fresh:true,retain:true},"packages/breditor-collaboration/dist/runtime/breditor_shared.js","packages/breditor-collaboration/dist/runtime/breditor_shared_bg.wasm","packages/breditor-collaboration/dist/runtime/breditor_shared.d.ts","packages/breditor-collaboration/dist/runtime/breditor_dependency_inventory.json","packages/breditor-collaboration/dist/runtime/THIRD_PARTY_NOTICES.txt","packages/breditor-collaboration/dist/runtime/RUST_COPYRIGHT-library.html"]),
+  script("paired-local-runtime","build-rich-runtime.mjs",[],["packages/breditor-experimental-rich-content/dist/breditor_wasm.js","packages/breditor-experimental-rich-content/dist/breditor_wasm_bg.wasm","packages/breditor-experimental-rich-content/dist/breditor_wasm.d.ts",...retainedRuntimeNotices("packages/breditor-experimental-rich-content/dist")]),
+  script("paired-shared-runtime","build-collaboration-runtime.mjs",["--candidate-receipt"],[{path:sharedRuntimeBuildReport,fresh:true,retain:true},"packages/breditor-collaboration/dist/runtime/breditor_shared.js","packages/breditor-collaboration/dist/runtime/breditor_shared_bg.wasm","packages/breditor-collaboration/dist/runtime/breditor_shared.d.ts",...retainedRuntimeNotices("packages/breditor-collaboration/dist/runtime")]),
   script("paired-runtime-download-size","measure-candidate-runtime-size.mjs",[],[{path:candidateRuntimeSizeReport,fresh:true,retain:true}]),
   stage("shared-wasm-lint",cargo,["clippy","--manifest-path","crates/breditor-collaboration/Cargo.toml","--no-default-features","--target","wasm32-unknown-unknown","--locked","--offline","--release","--lib","--","-D","warnings"],{CARGO_TARGET_DIR:wasm,...candidateRuntimePaths(repository,wasm,environment).environment}),
   stage("rich-browser-build",node,["node_modules/typescript/bin/tsc","-p","packages/breditor-experimental-rich-content/tsconfig.json"]),
