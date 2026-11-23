@@ -2,27 +2,38 @@
  * share the existing kernel, without converting protocols or starting a relay. */
 import test,{before,after} from 'node:test';
 import assert from 'node:assert/strict';
-import * as api from '../packages/breditor-collaboration/dist/index.js';
+import {SharedIndependentDeliverySession as Session} from '../packages/breditor-collaboration/dist/independent_delivery/session.js';
 import * as rich from '@breditor/experimental-rich-content';
 import {readFileSync} from 'node:fs';
-import {localParticipantUnitHost} from './fixtures/independent-local-operation/participant.mjs';
-import {portableFixture} from './fixtures/independent-operation/portable.mjs';
-import {restoredLocalFixture} from './fixtures/restored-local-operation/session.mjs';
-import {flatLocalFixture} from './fixtures/flat-local-operation/session.mjs';
 import {environment} from './fixtures/room-participant-inventory/environment.mjs';
-import {attachDelivery,deliveryDraft} from './fixtures/independent-delivery/session.mjs';
-import {recoveryFactory} from './fixtures/independent-delivery-recovery/session.mjs';
 import {insertCleanupText} from './fixtures/owned-core-cleanup/session.mjs';
 import {pixel,secondAsset} from './fixtures/review-assets/pixels.mjs';
 import {internalFailureChain} from '../packages/breditor-collaboration/dist/internal_failure_cause.js';
-const opened=new Map(),open=api.SharedIndependentDeliverySession.open;
-api.SharedIndependentDeliverySession.open=async function(options){const source=await open.call(this,options);opened.set(options.database,source);return source;};
-const {OperationalIndependentDeliveryParticipant:Delivery,reserveOperationalIndependentDeliveryGroup:reserveDelivery}=await import('../packages/breditor-collaboration/dist/independent_operation/participant.js');
-const {RestoredOperationParticipant:Restored,reserveRestoredOperationGroup:reserveRestored}=await import('../packages/breditor-collaboration/dist/restored_participant/participant.js');
+// Observe the genuine native sessions while loading the private source openers.
+const opened=new Map();
+const open=Session.open;
+let Delivery,Restored,reserveDelivery,reserveRestored;
+Session.open=async function(options){
+ const owner=await open.call(this,options);
+ opened.set(options.database,owner);
+ return owner;
+};
+try{
+ ({OperationalIndependentDeliveryParticipant:Delivery,reserveOperationalIndependentDeliveryGroup:reserveDelivery}=await import('../packages/breditor-collaboration/dist/independent_operation/participant.js'));
+ ({RestoredOperationParticipant:Restored,reserveRestoredOperationGroup:reserveRestored}=await import('../packages/breditor-collaboration/dist/restored_participant/participant.js'));
+}finally{
+ Session.open=open;
+}
+const api=await import('../packages/breditor-collaboration/dist/index.js');
+const {localParticipantUnitHost}=await import('./fixtures/independent-local-operation/participant.mjs');
+const {portableFixture}=await import('./fixtures/independent-operation/portable.mjs');
+const {restoredLocalFixture}=await import('./fixtures/restored-local-operation/session.mjs');
+const {flatLocalFixture}=await import('./fixtures/flat-local-operation/session.mjs');
+const {attachDelivery,deliveryDraft}=await import('./fixtures/independent-delivery/session.mjs');
+const {recoveryFactory}=await import('./fixtures/independent-delivery-recovery/session.mjs');
 const {captureIndependentOperationBackup:captureDelivery}=await import('../packages/breditor-collaboration/dist/independent_operation/portable_capture.js');
 const {IndependentOperationLineageBackup:Lineage}=await import('../packages/breditor-collaboration/dist/independent_operation/lineage_archive.js');
 const {restoredOperationJournalBinding}=await import('../packages/breditor-collaboration/dist/restored_operation/journal.js');
-api.SharedIndependentDeliverySession.open=open;
 const {OperationalIndependentLocalParticipant:Legacy}=await import('../packages/breditor-collaboration/dist/independent_local_operation/participant.js');
 const {OperationalRestoredLocalParticipant:Snapshot}=await import('../packages/breditor-collaboration/dist/restored_local_operation/participant.js');
 const {OperationalFlatLocalParticipant:Flat}=await import('../packages/breditor-collaboration/dist/flat_local_operation/participant.js');
