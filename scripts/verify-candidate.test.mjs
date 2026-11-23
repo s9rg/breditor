@@ -413,8 +413,8 @@ test("isolated release matrices preserve the full plan's commands and report the
   assert.equal(run.stdout,"");
  }
 });
-test("candidate shards partition the full plan through native handover with original SDK build prerequisites",()=>{
- const full=candidateReleasePlan(),end=full.checks.findIndex(check=>check.id==="installed-handover-native-activation");
+test("candidate shards partition the full plan through sealed joint recovery with original build prerequisites",()=>{
+ const full=candidateReleasePlan(),end=full.checks.findIndex(check=>check.id==="installed-sealed-joint-process-recovery");
  const byId=new Map(full.checks.map(check=>[check.id,check]));
  const covered=[];
  for(const name of candidateShardIds){
@@ -433,6 +433,14 @@ test("candidate shards partition the full plan through native handover with orig
  ]);
  assert.throws(()=>candidateShardPlan({...full,checks:full.checks.filter(check=>check.id!=="selected-delivery-native-host")},"metadata-handover"),
   /missing a preceding build prerequisite/);
+ const joint=candidateShardPlan(full,"joint-handover-source");
+ assert.deepEqual(joint.shard.prerequisites.slice(-2),["native-suggestion-room-host","native-handover-activation-host-build"]);
+ assert.deepEqual(joint.shard.stages.slice(-2),["joint-handover-cohort-host","joint-handover-native"]);
+ for(const name of ["joint-handover-installed","cold-joint-handover-source","cold-joint-handover-installed","sealed-joint-recovery-source","sealed-joint-recovery-installed"]){
+  const selected=candidateShardPlan(full,name);
+  assert.equal(selected.shard.stages.length,1);
+  assert.deepEqual(selected.shard.prerequisites.slice(-3),[...joint.shard.prerequisites.slice(-2),"joint-handover-cohort-host"]);
+ }
 
  assert.throws(()=>candidateShardPlan({...full,checks:full.checks.filter(check=>check.id!=="collaboration-build")},"local-history"),/diverged/);
  assert.throws(()=>candidateShardPlan({...full,checks:full.checks.filter(check=>check.id!=="paired-shared-runtime")},"local-history"),/missing a preceding build prerequisite/);
