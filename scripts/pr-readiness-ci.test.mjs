@@ -13,7 +13,9 @@ test("the fast PR check uses the proposed merge with read-only permissions", () 
  assert.equal(job["runs-on"], "ubuntu-24.04");
  assert.equal(job["timeout-minutes"], 10);
  const [checkout, node, contracts] = job.steps;
- const [candidateCheckout, candidateNode] = load("candidate-qualification.yml").jobs.qualify.steps;
+ const candidateSteps = load("candidate-qualification.yml").jobs.qualify.steps;
+ const candidateCheckout = candidateSteps.find(step => step.id === "checkout");
+ const candidateNode = candidateSteps.find(step => step.id === "node");
  assert.equal(checkout.uses, candidateCheckout.uses);
  assert.deepEqual(checkout.with, {"persist-credentials": false, "fetch-depth": 1});
  assert.equal(node.uses, candidateNode.uses);
