@@ -5,6 +5,15 @@ import {OperationalRestoredLocalParticipant as SeedParent} from '../../../packag
 import {captureLocalOperationBackup} from '../../../packages/breditor-collaboration/dist/independent_local_operation/portable_capture.js';
 import {captureFlatLocalOperation} from '../../../packages/breditor-collaboration/dist/flat_local_operation/capture.js';
 import {restoredLocalFixture} from '../restored-local-operation/session.mjs';
+
+/** Observe the actual session's initial flush after the opening intrinsic is captured. */
+export async function observeFlatLocalSource(Session,begin){
+ const prototype=Session.prototype,flush=prototype.flush,opened=[];
+ prototype.flush=async function(){await flush.call(this);opened.push(this);};
+ try{return {parent:await begin(),opened};}
+ finally{prototype.flush=flush;}
+}
+
 export async function flatLocalFixture(host,extra={}){
  const original=await restoredLocalFixture(host,captureLocalOperationBackup,extra);let parent,parts,backup;
  try{parent=await SeedParent.begin(original.file,{...original.options,cohort:{parentDatabase:original.value.f.tag+'-flat-seed-parent',uploadsDatabase:original.value.f.tag+'-flat-seed-uploads'}});parts=await parent.intoParts();const live=parts.source.session.exportRecovery(),whole=await parts.uploads.exportBackup(),result=await captureFlatLocalOperation({source:parts.source.session,assets:parts.uploads,...original.value.readOptions});assert.equal(result.kind,'ready');backup=result.backup;assert.deepEqual(backup.live(),live);assert.deepEqual(Buffer.from(await backup.uploads().arrayBuffer()),Buffer.from(await whole.arrayBuffer()));assert.equal(backup.uploads().type,whole.type);await parts.source.session.discardAndClose();parts.uploads.close();parts=undefined;
