@@ -535,3 +535,27 @@ the paused peer reconnects and ends when both documents agree and the other
 peer renders the uploaded image. Relay restart starts when the stopped relay
 is relaunched and ends when both peers are ready and agree. Each sample names
 the browser version and host architecture. Both include test-runner polling.
+
+## Installed shared editor memory sample
+
+The experiment requires the installed consumer produced by
+`node scripts/check-editor-package.mjs` and a local Google Chrome installation.
+
+```sh
+node node_modules/@playwright/test/cli.js test -c experiments/editor-browser-memory/playwright.config.mjs
+```
+
+The experiment edits, synchronizes, and undoes each change across two shared
+owners for 100 rounds. It checks peer convergence on each change and compares
+the exact saved checkpoints after closing both owners and reloading. It reports
+Chrome's heap, backing storage, and DOM counters after explicit garbage
+collection at each checkpoint. The counters apply to this fixture. A total
+process memory budget and a supported document limit require further measurements.
+
+On November 22, 2026, Google Chrome 157.0.8103.80 on an Apple Silicon
+MacBookPro18,1 with macOS 26.6.2 completed the 100 rounds with both exact
+checkpoints recovered. After garbage collection, the backing storage counter
+rose from 0.83 MB at startup to 30.80 MB after 100 rounds, and was 30.82 MB
+after reload. The used JS heap was 3.89 MB at startup and 3.95 MB after
+reload. The retained backing storage needs investigation before approving a
+long-session memory budget.
