@@ -11,12 +11,15 @@ const runs=readdirSync(directory,{withFileTypes:true})
 const lines=["## Candidate qualification","",
  `- Profile ${code(context.get("profile"))} at ${code(context.get("revision"),/^[0-9a-f]{40}$/)}.`];
 
+const shard=context.get("shard")??"none";
+if(shard!=="none")lines.push(`- Selected full-profile shard ${code(shard)}.`);
+
 if(runs.length===1){
  const run=runs[0].name,manifest=join(run,"result.json");
  try{
   const result=JSON.parse(readFileSync(join(directory,manifest),"utf8"));
   if(result.format!=="breditor/candidate-qualification"||result.formatVersion!==1||!Array.isArray(result.stages))throw Error("Unsupported candidate result");
-  if(result.profile!==context.get("profile")||(result.source?.commit&&result.source.commit!==context.get("revision")))throw Error("Candidate does not match the runner context");
+  if(result.profile!==context.get("profile")||(result.shard?.id??"none")!==shard||(result.source?.commit&&result.source.commit!==context.get("revision")))throw Error("Candidate does not match the runner context");
   const passed=result.stages.filter(stage=>stage.status==="passed").length;
   lines.push(`- Candidate result ${code(result.status)} with ${passed} passed ${passed===1?"stage":"stages"}.`);
   const stage=result.stages.at(-1);

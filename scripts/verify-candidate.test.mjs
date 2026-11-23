@@ -5,6 +5,7 @@ import {mkdtempSync,mkdirSync,writeFileSync,readFileSync,existsSync,rmSync,symli
 import {tmpdir} from "node:os";
 import {join} from "node:path";
 import {candidateReleasePlan,repository} from "./candidate-release/plan.mjs";
+import {candidateShardIds,candidateShardPlan} from "./candidate-release/shards.mjs";
 import {fileEvidence,sourceEvidence,saveEvidence} from "./candidate-release/evidence.mjs";
 import {executeCandidateStage} from "./candidate-release/process.mjs";
 import {runCandidateChecks} from "./verify-candidate.mjs";
@@ -395,6 +396,31 @@ test("isolated release matrices preserve the full plan's commands and report the
   const run=spawnSync(process.execPath,[script,...args,"--dry-run"],{encoding:"utf8"});
   assert.equal(run.status,2);
   assert.equal(run.stdout,"");
+ }
+});
+test("candidate shards partition the early full plan with original SDK build prerequisites",()=>{
+ const full=candidateReleasePlan(),end=full.checks.findIndex(check=>check.id==="native-history-read");
+ const byId=new Map(full.checks.map(check=>[check.id,check]));
+ const covered=[];
+ for(const name of candidateShardIds){
+  const selected=candidateShardPlan(full,name);
+  assert.equal(selected.v1Ready,false);
+  assert.deepEqual(selected.deferred,["full-candidate-qualification"]);
+  assert.deepEqual(selected.checks,[...selected.shard.prerequisites,...selected.shard.stages].map(id=>byId.get(id)));
+  assert.equal(new Set(selected.checks.map(check=>check.id)).size,selected.checks.length);
+  if(name!=="native"&&name!=="runtime-packages")assert.ok(selected.shard.prerequisites.includes("paired-shared-runtime"));
+  covered.push(...selected.shard.stages);
+ }
+ assert.deepEqual(covered,full.checks.slice(0,end+1).map(check=>check.id));
+ assert.throws(()=>candidateShardPlan({...full,checks:full.checks.filter(check=>check.id!=="collaboration-build")},"local-history"),/diverged/);
+ assert.throws(()=>candidateShardPlan({...full,checks:full.checks.filter(check=>check.id!=="paired-shared-runtime")},"local-history"),/missing a preceding SDK build/);
+ const script=join(repository,"scripts/verify-candidate.mjs");
+ const run=spawnSync(process.execPath,[script,"--shard","restored-history","--dry-run"],{encoding:"utf8",cwd:tmpdir()});
+ assert.equal(run.status,0,run.stderr);
+ assert.deepEqual(JSON.parse(run.stdout).shard,candidateShardPlan(full,"restored-history").shard);
+ for(const args of [["--shard","all"],["--shard","native","--functional"],["--shard","native","--shard","native"]]){
+  const rejected=spawnSync(process.execPath,[script,...args,"--dry-run"],{encoding:"utf8"});
+  assert.equal(rejected.status,2);
  }
 });
 test("nested default and candidate builds receive the same selected toolchain without a PATH requirement",()=>{
