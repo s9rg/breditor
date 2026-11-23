@@ -13,6 +13,7 @@ import {defaultSizeBudgetReport} from "../record-default-size-budgets.mjs";
 import {richDemoLatencyReport} from "../record-rich-demo-latency.mjs";
 import {candidateRuntimeSizeReport} from "../measure-candidate-runtime-size.mjs";
 import {nativeColdCaseIds,nativeColdReport,nativeColdSelection} from "../native-cold-restart-plan.mjs";
+import {reconciledPacketCaseIds,reconciledPacketReport,reconciledPacketSelection} from "../reconciled-packet-recovery-plan.mjs";
 export const repository=resolve(dirname(fileURLToPath(import.meta.url)),"../..");
 export const deferredFunctionalGates=Object.freeze([
  "default-package-release-matrix","installed-editor-browser-matrix",
@@ -589,8 +590,13 @@ export function candidateReleasePlan({profile="full",environment=process.env}={}
   }),
   stage('reconciled-packet-recovery-plan-contracts',node,['--test','scripts/reconciled-packet-recovery-candidate-plan.test.mjs']),
   script('reconciled-packet-native-host','build-reconciled-packet-native.mjs',[],[{path:'target/reconciled-packet-native-build.json',fresh:true}],1800000),
-  script('reconciled-packet-recovery-source','check-reconciled-packet-recovery-source.mjs',[],[{path:'target/reconciled-packet-recovery-source-qualification.json',fresh:true}],3*7200000+300000),
-  script('installed-reconciled-packet-recovery','check-reconciled-packet-recovery-installed.mjs',[],[{path:'target/reconciled-packet-recovery-installed-consumer.json',fresh:true}],3*7200000+600000),
+  ...reconciledPacketCaseIds.flatMap(id=>{
+   const {timeoutMs}=reconciledPacketSelection(id);
+   return [
+    withSharedRuntime(script('reconciled-packet-recovery-source-'+id,'check-reconciled-packet-recovery-source.mjs',[id],[{path:reconciledPacketReport('source',id),fresh:true,retain:true}],timeoutMs+300000)),
+    withSharedRuntime(script('installed-reconciled-packet-recovery-'+id,'check-reconciled-packet-recovery-installed.mjs',[id],[{path:reconciledPacketReport('installed',id),fresh:true,retain:true}],timeoutMs+600000)),
+   ];
+  }),
   stage('metadata-reconciliation-plan-contracts',node,['--test','scripts/metadata-reconciliation-candidate-plan.test.mjs']),
   stage('metadata-reconciliation-private-types',node,['node_modules/typescript/bin/tsc','--noEmit','--strict','--exactOptionalPropertyTypes','--noUncheckedIndexedAccess','--target','ES2022','--module','NodeNext','--lib','ES2022,DOM','scripts/fixtures/editor-consumer/types-local-metadata-reconciliation.ts']),
   stage('metadata-reconciliation-component-contracts',node,['--test','scripts/local-metadata-reconciliation-contracts.test.mjs']),

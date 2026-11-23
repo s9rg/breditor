@@ -1,5 +1,6 @@
 /** Qualification ranges and their build dependencies from the full candidate plan. */
 import {nativeColdCaseIds} from "../native-cold-restart-plan.mjs";
+import {reconciledPacketCaseIds} from "../reconciled-packet-recovery-plan.mjs";
 const activationHostedBuilds = ["native-suggestion-room-host", "native-handover-activation-host-build"];
 const jointHandoverBuilds = [...activationHostedBuilds, "joint-handover-cohort-host"];
 const localMetadataBuilds = ["native-suggestion-room-host"];
@@ -49,6 +50,10 @@ const boundaries = [
  ...nativeColdCaseIds.flatMap((id,index)=>[
   ["native-cold-restart-"+id+"-source", "native-cold-restart-source-"+id, index===0?[]:["native-cold-restart-native-host"]],
   ["native-cold-restart-"+id+"-installed", "installed-native-cold-restart-"+id, ["native-cold-restart-native-host"]],
+ ]),
+ ...reconciledPacketCaseIds.flatMap((id,index)=>[
+  ["reconciled-packet-"+id+"-source", "reconciled-packet-recovery-source-"+id, index===0?[]:["reconciled-packet-native-host"]],
+  ["reconciled-packet-"+id+"-installed", "installed-reconciled-packet-recovery-"+id, ["reconciled-packet-native-host"]],
  ]),
 ];
 const sdkPrerequisites = [
