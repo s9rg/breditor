@@ -6,6 +6,7 @@ import {tmpdir} from "node:os";
 import {dirname,join} from "node:path";
 import {candidateReleasePlan,repository} from "./candidate-release/plan.mjs";
 import {candidateShardIds,candidateShardPlan} from "./candidate-release/shards.mjs";
+import {metadataFixtureStageIds} from "./candidate-release/metadata-fixture-evidence.mjs";
 import {fileEvidence,sourceEvidence,saveEvidence} from "./candidate-release/evidence.mjs";
 import {executeCandidateStage} from "./candidate-release/process.mjs";
 import {runCandidateChecks} from "./verify-candidate.mjs";
@@ -497,16 +498,20 @@ test("candidate shards partition the full plan through metadata server bytes wit
   assert.deepEqual(selected.shard.prerequisites.slice(-2),["metadata-native-hosts","native-suggestion-room-host"]);
   assert.equal(selected.shard.stages.at(-1),"installed-"+name);
  }
- const metadataRecords=candidateShardPlan(full,"local-metadata-records").shard;
- assert.equal(metadataRecords.prerequisites.includes("native-suggestion-room-host"),false);
- assert.equal(metadataRecords.stages.at(-1),"installed-local-metadata-assets-records");
- for(const name of ["local-metadata-references","local-metadata-availability"]){
+ for(const name of ["local-metadata-records","local-metadata-references","local-metadata-availability"]){
   assert.equal(candidateShardPlan(full,name).shard.prerequisites.at(-1),"native-suggestion-room-host");
  }
  for(const name of ["local-metadata-materialization","recoverable-metadata","metadata-server-bytes"]){
   const selected=candidateShardPlan(full,name);
   assert.deepEqual(selected.shard.prerequisites.slice(-2),["selected-delivery-native-host","native-suggestion-room-host"]);
   assert.equal(selected.shard.stages.at(-1),"installed-"+name);
+ }
+ for(const name of candidateShardIds.slice(candidateShardIds.indexOf("local-metadata-records"))){
+  const {checks,shard}=candidateShardPlan(full,name);
+  const nativeHost=checks.findIndex(check=>check.id==="native-suggestion-room-host");
+  for(const id of shard.stages.filter(id=>metadataFixtureStageIds.includes(id))){
+   assert.ok(nativeHost>=0&&nativeHost<checks.findIndex(check=>check.id===id),id);
+  }
  }
 
  assert.throws(()=>candidateShardPlan({...full,checks:full.checks.filter(check=>check.id!=="collaboration-build")},"local-history"),/diverged/);

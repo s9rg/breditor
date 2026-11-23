@@ -30,7 +30,7 @@ const boundaries = [
  ["sealed-joint-recovery-installed", "installed-sealed-joint-process-recovery", jointHandoverBuilds],
  ["native-suggestion-delivery", "installed-native-suggestion-delivery", ["metadata-native-hosts", "native-suggestion-room-host"]],
  ["native-revision-delivery", "installed-native-revision-delivery", ["metadata-native-hosts", "native-suggestion-room-host"]],
- ["local-metadata-records", "installed-local-metadata-assets-records"],
+ ["local-metadata-records", "installed-local-metadata-assets-records", localMetadataBuilds],
  ["local-metadata-references", "installed-local-metadata-room-references", localMetadataBuilds],
  ["local-metadata-availability", "installed-local-metadata-availability", localMetadataBuilds],
  ["local-metadata-materialization", "installed-local-metadata-materialization", localRecoveryBuilds],
