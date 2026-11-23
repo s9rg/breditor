@@ -1,4 +1,4 @@
-/** Early qualification ranges and their build dependencies from the full candidate plan. */
+/** Qualification ranges and their build dependencies from the full candidate plan. */
 const boundaries = [
  ["native", "independent-native-consumer"],
  ["runtime-packages", "collaboration-build"],
@@ -8,6 +8,16 @@ const boundaries = [
  ["record-readers", "installed-fresh-delivery-history"],
  ["owner-lifecycle", "canonical-source-readers"],
  ["managed-sdk", "native-history-read"],
+ ["segmented-relay", "shared-asset-archive-history", ["editor-build"]],
+ ["participant-recovery", "retained-owner-save-retries", ["editor-build"]],
+ ["physical-room-catalogs", "installed-physical-catalog-v3", ["editor-build"]],
+ ["physical-operation-custody", "installed-relay-quiescence", [
+  "editor-build", "segmented-relay-native-host", "native-room-participant-inventory", "native-server-generation-inventory",
+ ]],
+ ["selected-delivery", "installed-local-review-restore", ["editor-build", "segmented-retained-native-host"]],
+ ["metadata-handover", "installed-handover-native-activation", [
+  "editor-build", "segmented-relay-native-host", "segmented-retained-native-host", "selected-delivery-native-host",
+ ]],
 ];
 const sdkPrerequisites = [
  "default-typescript-build",
@@ -29,10 +39,10 @@ export function candidateShardPlan(plan, id) {
  const index = candidateShardIds.indexOf(id);
  const start = (endIndexes[index - 1] ?? -1) + 1;
  const checks = plan.checks.slice(start, endIndexes[index] + 1);
- const setup = index < 2 ? [] : plan.checks.slice(0, start).filter(check => sdkPrerequisites.includes(check.id));
- if (index >= 2 && (setup.length !== sdkPrerequisites.length ||
-     setup.some((check, position) => check.id !== sdkPrerequisites[position]))) {
-  throw Error("Candidate shard is missing a preceding SDK build");
+ const prerequisites = index < 2 ? [] : [...sdkPrerequisites, ...(boundaries[index][2] ?? [])];
+ const setup = plan.checks.slice(0, start).filter(check => prerequisites.includes(check.id));
+ if (setup.length !== prerequisites.length) {
+  throw Error("Candidate shard is missing a preceding build prerequisite");
  }
  return {
   ...plan,

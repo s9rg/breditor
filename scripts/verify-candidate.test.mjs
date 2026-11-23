@@ -413,8 +413,8 @@ test("isolated release matrices preserve the full plan's commands and report the
   assert.equal(run.stdout,"");
  }
 });
-test("candidate shards partition the early full plan with original SDK build prerequisites",()=>{
- const full=candidateReleasePlan(),end=full.checks.findIndex(check=>check.id==="native-history-read");
+test("candidate shards partition the full plan through native handover with original SDK build prerequisites",()=>{
+ const full=candidateReleasePlan(),end=full.checks.findIndex(check=>check.id==="installed-handover-native-activation");
  const byId=new Map(full.checks.map(check=>[check.id,check]));
  const covered=[];
  for(const name of candidateShardIds){
@@ -427,8 +427,15 @@ test("candidate shards partition the early full plan with original SDK build pre
   covered.push(...selected.shard.stages);
  }
  assert.deepEqual(covered,full.checks.slice(0,end+1).map(check=>check.id));
+ const metadata=candidateShardPlan(full,"metadata-handover");
+ assert.deepEqual(metadata.shard.prerequisites.slice(-4),[
+  "editor-build","segmented-relay-native-host","segmented-retained-native-host","selected-delivery-native-host",
+ ]);
+ assert.throws(()=>candidateShardPlan({...full,checks:full.checks.filter(check=>check.id!=="selected-delivery-native-host")},"metadata-handover"),
+  /missing a preceding build prerequisite/);
+
  assert.throws(()=>candidateShardPlan({...full,checks:full.checks.filter(check=>check.id!=="collaboration-build")},"local-history"),/diverged/);
- assert.throws(()=>candidateShardPlan({...full,checks:full.checks.filter(check=>check.id!=="paired-shared-runtime")},"local-history"),/missing a preceding SDK build/);
+ assert.throws(()=>candidateShardPlan({...full,checks:full.checks.filter(check=>check.id!=="paired-shared-runtime")},"local-history"),/missing a preceding build prerequisite/);
  const script=join(repository,"scripts/verify-candidate.mjs");
  const run=spawnSync(process.execPath,[script,"--shard","restored-history","--dry-run"],{encoding:"utf8",cwd:tmpdir()});
  assert.equal(run.status,0,run.stderr);

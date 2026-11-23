@@ -31,7 +31,13 @@
             "restored-history",
             "record-readers",
             "owner-lifecycle",
-            "managed-sdk"
+            "managed-sdk",
+            "segmented-relay",
+            "participant-recovery",
+            "physical-room-catalogs",
+            "physical-operation-custody",
+            "selected-delivery",
+            "metadata-handover"
           ]
         }
       }
