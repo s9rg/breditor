@@ -1,6 +1,6 @@
 import { defineConfig, devices } from "@playwright/test";
 
-const PORT = Number(process.env.BREDITOR_RELEASE_BROWSER_PORT ?? 4_173);
+const PORT = Number(process.env["BREDITOR_RELEASE_BROWSER_PORT"] ?? 4_173);
 if (!Number.isInteger(PORT) || PORT < 1024 || PORT > 65535) {
   throw new Error("Invalid BREDITOR_RELEASE_BROWSER_PORT");
 }
