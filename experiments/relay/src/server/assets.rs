@@ -6,8 +6,8 @@ use super::{
     http::{account, cors, failure, origin},
 };
 use crate::{
-    Error,
-    assets::{self, MAX_ASSET_BYTES},
+    Error, Result,
+    assets::{self, MAX_ASSET_BYTES, PreparedAsset},
 };
 use axum::{
     body::{Body, to_bytes},
@@ -16,6 +16,7 @@ use axum::{
     response::{IntoResponse, Response},
 };
 use serde_json::json;
+use tokio::sync::OwnedSemaphorePermit;
 
 /// Whole-body deadline for one asset upload: about 1.4 Mbit/s for the 10 MiB maximum.
 const UPLOAD_BODY_TIMEOUT: std::time::Duration = std::time::Duration::from_secs(60);
@@ -71,16 +72,21 @@ pub(super) async fn download(
         Ok(p) => p,
         Err(e) => return cors(failure(&e), allowed),
     };
-    let Ok(_permit) = host.asset_operations.clone().try_acquire_owned() else {
+    let Ok(permit) = host.asset_operations.clone().try_acquire_owned() else {
         return cors(StatusCode::SERVICE_UNAVAILABLE.into_response(), allowed);
     };
-    let result = host.transaction(move |room| store.read(room, &principal, &asset)).await;
+    let result = host
+        .transaction(move |room| {
+            let stored = store.read(room, &principal, &asset)?;
+            Ok((stored, permit))
+        })
+        .await;
     let response = match result {
-        Ok(Some(stored)) => {
+        Ok((Some(stored), _permit)) => {
             ([("content-type", stored.info.mime.as_str())], Body::from(stored.bytes))
                 .into_response()
         }
-        Ok(None) => StatusCode::NOT_FOUND.into_response(),
+        Ok((None, _permit)) => StatusCode::NOT_FOUND.into_response(),
         Err(e) => failure(&e),
     };
     cors(response, allowed)
@@ -105,7 +111,7 @@ pub(super) async fn upload(
     if let Err(e) = host.transaction(move |room| room.editor(&p)).await {
         return cors(failure(&e), allowed);
     }
-    let Ok(_permit) = host.asset_operations.clone().try_acquire_owned() else {
+    let Ok(permit) = host.asset_operations.clone().try_acquire_owned() else {
         return cors(StatusCode::SERVICE_UNAVAILABLE.into_response(), allowed);
     };
     let Some(mime) =
@@ -122,15 +128,19 @@ pub(super) async fn upload(
         Ok(Err(_)) => return cors(StatusCode::PAYLOAD_TOO_LARGE.into_response(), allowed),
         Err(_) => return cors(StatusCode::REQUEST_TIMEOUT.into_response(), allowed),
     };
-    let prepared = tokio::task::spawn_blocking(move || assets::prepare_asset(&asset, &mime, bytes))
-        .await
-        .unwrap_or(Err(Error::NeedsRecovery));
-    let result = match prepared {
-        Ok(prepared) => host.transaction(move |room| store.put(room, &principal, prepared)).await,
-        Err(e) => Err(e),
-    };
+    let (prepared, permit) =
+        match prepare_upload(permit, move || assets::prepare_asset(&asset, &mime, bytes)).await {
+            Ok(value) => value,
+            Err(e) => return cors(failure(&e), allowed),
+        };
+    let result = host
+        .transaction(move |room| {
+            let receipt = store.put(room, &principal, prepared)?;
+            Ok((receipt, permit))
+        })
+        .await;
     let response = match result {
-        Ok(receipt) => {
+        Ok((receipt, _permit)) => {
             if !receipt.duplicate {
                 host.assets_changed.send_modify(|n| *n = n.wrapping_add(1));
             }
@@ -140,4 +150,49 @@ pub(super) async fn upload(
         Err(e) => failure(&e),
     };
     cors(response, allowed)
+}
+
+/// Blocking work can outlive an HTTP waiter. Transfer its slot with the result.
+async fn prepare_upload(
+    permit: OwnedSemaphorePermit,
+    prepare: impl FnOnce() -> Result<PreparedAsset> + Send + 'static,
+) -> Result<(PreparedAsset, OwnedSemaphorePermit)> {
+    tokio::task::spawn_blocking(move || Ok((prepare()?, permit)))
+        .await
+        .map_err(|_| Error::NeedsRecovery)?
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use std::{
+        sync::{Arc, mpsc},
+        time::Duration,
+    };
+    use tokio::{
+        sync::{Semaphore, oneshot},
+        time::timeout,
+    };
+
+    #[tokio::test]
+    async fn cancelling_the_upload_waiter_keeps_the_blocking_decode_slot() {
+        let deadline = Duration::from_secs(5);
+        let slots = Arc::new(Semaphore::new(1));
+        let permit = slots.clone().try_acquire_owned().unwrap();
+        let (started, entered) = oneshot::channel();
+        let (release, blocked) = mpsc::channel();
+        let request = tokio::spawn(prepare_upload(permit, move || {
+            started.send(()).unwrap();
+            blocked.recv_timeout(deadline).unwrap();
+            Err(Error::Contract("test decode finished"))
+        }));
+
+        timeout(deadline, entered).await.unwrap().unwrap();
+        request.abort();
+        assert!(request.await.err().unwrap().is_cancelled());
+        let slot_retained = slots.available_permits() == 0;
+        release.send(()).unwrap();
+        assert!(slot_retained);
+        let _released = timeout(deadline, slots.acquire()).await.unwrap().unwrap();
+    }
 }
