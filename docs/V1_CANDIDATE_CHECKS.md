@@ -61,6 +61,13 @@ relay inventory also records the ELF interpreter, linked libraries and library
 search paths of the exact release binary. These reports support the dependency
 review against the distribution's actual artifacts.
 
+## Installed feature browser checks
+
+Select `installed-feature-browser` to build fresh SDK consumers and run the
+existing search, placeholder, fullscreen and raster backup browser checks,
+along with the three-engine rich-demo latency sample. The consumer checks
+first generate their build and archive receipts in the same checkout.
+
 ## Candidate shards
 
 The manual full profile accepts an optional shard. The named shards cover the

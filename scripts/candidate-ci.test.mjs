@@ -19,7 +19,7 @@ test("candidate qualification is manual-only, read-only and does not supersede e
  assert.deepEqual(job.defaults,{run:{shell:"bash"}});
  const profile=workflow.on.workflow_dispatch.inputs.profile;
  assert.equal(profile.required,true);assert.equal(profile.default,"full");
- assert.equal(profile.type,"choice");assert.deepEqual(profile.options,["full","functional","default-matrix","editor-browser-matrix","dependency-inventories"]);
+ assert.equal(profile.type,"choice");assert.deepEqual(profile.options,["full","functional","default-matrix","editor-browser-matrix","dependency-inventories","installed-feature-browser"]);
  const shard=workflow.on.workflow_dispatch.inputs.shard;
  assert.equal(shard.default,"none");assert.equal(shard.type,"choice");
  assert.deepEqual(shard.options,["none",...candidateShardIds]);
@@ -58,7 +58,7 @@ test("CI installs the exact paired Rust and bindgen versions before offline chec
 
 test("full qualification installs all three engines and the explicit functional profile does not imply readiness",()=>{
  const browsers=named("Install all three test engines for browser qualification");
- assert.equal(browsers.if,"${{ (inputs.profile == 'full' && inputs.shard == 'none') || inputs.profile == 'default-matrix' || inputs.profile == 'editor-browser-matrix' }}");
+ assert.equal(browsers.if,"${{ (inputs.profile == 'full' && inputs.shard == 'none') || inputs.profile == 'default-matrix' || inputs.profile == 'editor-browser-matrix' || inputs.profile == 'installed-feature-browser' }}");
  assert.equal(browsers.run,"node node_modules/@playwright/test/cli.js install --with-deps chromium firefox webkit");
  const candidate=named("Qualify the selected candidate profile");
  assert.deepEqual(candidate.env,{CANDIDATE_PROFILE:"${{ inputs.profile }}",CANDIDATE_SHARD:"${{ inputs.shard }}",CARGO_NET_OFFLINE:"true"});
