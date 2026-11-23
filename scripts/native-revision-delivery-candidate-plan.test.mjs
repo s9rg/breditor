@@ -1,6 +1,10 @@
 import test from 'node:test';import assert from 'node:assert/strict';import {candidateReleasePlan} from './candidate-release/plan.mjs';
 for(const profile of ['functional','full'])test(profile+': native revisions require real host receipts, full source/observer/lifetime coverage and independently installed original packets',()=>{
  const plan=candidateReleasePlan({profile}),byId=new Map(plan.checks.map((row,index)=>[row.id,{...row,index}]));
+ for(const id of ['native-revision-delivery-functional','installed-native-revision-delivery']){
+  assert.equal(byId.get(id).requiresSharedRuntime,true);
+  assert.ok(byId.get('paired-shared-runtime').index<byId.get(id).index);
+ }
  for(const id of ['metadata-native-hosts','native-suggestion-room-host','native-revision-delivery-plan-contracts','native-revision-delivery-private-types','native-revision-delivery-functional','installed-native-revision-delivery','native-suggestion-delivery-functional','held-metadata-functional'])assert.ok(byId.has(id),id);
  assert.ok(byId.get('metadata-native-hosts').index<byId.get('native-revision-delivery-functional').index);assert.ok(byId.get('native-suggestion-room-host').index<byId.get('native-revision-delivery-functional').index);
  assert.deepEqual(byId.get('native-revision-delivery-functional').args,['--test','scripts/native-revision-delivery.test.mjs','scripts/native-revision-observer.test.mjs','scripts/native-revision-failures.test.mjs','scripts/native-revision-lifetime.test.mjs','scripts/native-revision-selected-room.test.mjs','scripts/native-revision-conflict-history.test.mjs']);

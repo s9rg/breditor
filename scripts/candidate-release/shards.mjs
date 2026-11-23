@@ -26,6 +26,8 @@ const boundaries = [
  ["cold-joint-handover-installed", "installed-cold-joint-handover", jointHandoverBuilds],
  ["sealed-joint-recovery-source", "sealed-joint-process-recovery-native", jointHandoverBuilds],
  ["sealed-joint-recovery-installed", "installed-sealed-joint-process-recovery", jointHandoverBuilds],
+ ["native-suggestion-delivery", "installed-native-suggestion-delivery", ["metadata-native-hosts", "native-suggestion-room-host"]],
+ ["native-revision-delivery", "installed-native-revision-delivery", ["metadata-native-hosts", "native-suggestion-room-host"]],
 ];
 const sdkPrerequisites = [
  "default-typescript-build",

@@ -3,6 +3,7 @@
 import test from 'node:test';import assert from 'node:assert/strict';
 import {readFileSync,writeFileSync} from 'node:fs';import {resolve,join} from 'node:path';import {createHash} from 'node:crypto';import {WebSocket as Socket} from 'undici';
 import * as api from '../packages/breditor-collaboration/dist/index.js';import * as native from '../packages/breditor-collaboration/dist/runtime/breditor_shared.js';
+import {NORMAL_SHARED_WASM_SHA256} from './fixtures/native-runtime/normal-shared-identity.mjs';
 import {selectedDeliveryNativeHost} from './fixtures/selected-delivery/native-host.mjs';import {generationSelectedSession} from './fixtures/selected-generation-reconciliation/session.mjs';
 import {withSelectedNativeDeliverySources} from '../packages/breditor-collaboration/dist/physical_room_asset_successor/owner.js';
 import {withNativeRelayDelivery} from '../packages/breditor-collaboration/dist/relay/native_delivery.js';
@@ -17,7 +18,7 @@ async function seedMetadata(session,options){const queue=await session.openSugge
 const sha=b=>createHash('sha256').update(b).digest('hex');
 test('prepared whole-room recovery settles four original suggestion queues and version catalogs before cold seven-family recovery',{timeout:1200000},async()=>{
  const root=resolve(new URL('../',import.meta.url).pathname),normal=readFileSync(new URL('../packages/breditor-collaboration/dist/runtime/breditor_shared_bg.wasm',import.meta.url));
- assert.equal(sha(normal),'165e23dbaef2ab77a6f920a20012e19624422ab2ccb74ec4e01f2146ac8086e0');await native.default({module_or_path:normal});
+ assert.equal(sha(normal), NORMAL_SHARED_WASM_SHA256);await native.default({module_or_path:normal});
  const host=await selectedDeliveryNativeHost(root,{suggestionGrants:true}),first=host.initial,fixture=host.fixture(first),originalFetch=globalThis.fetch,saved=new Map(),requests=[],adapters=[],contexts=[];let session,gate,basis;const expected=[];
  for(const [name,value]of Object.entries({fetch:(url,options={})=>{requests.push(new URL(url).pathname);const headers=new Headers(options.headers);headers.set('Origin','http://127.0.0.1:4187');return originalFetch(url,{...options,headers});},WebSocket:class extends Socket{constructor(url){super(url,{headers:{Origin:'http://127.0.0.1:4187'}});}}})){saved.set(name,Object.getOwnPropertyDescriptor(globalThis,name));Object.defineProperty(globalThis,name,{value,configurable:true});}
  const fixtures={native,manifest:{cases:[first]},controls:{token:path=>host.operatorToken({path})},fixture(item){const value=host.fixture(item),source=value.generationRecoveryState;return {...value,selected:source.participants,afterSelected:source.participants,afterRecoveryState:{origin:source.origin,server:source.server,participants:source.participants}};},profile:value=>native.SharedRichProfile.from_standard_configuration_json_v3(value.configuration)};

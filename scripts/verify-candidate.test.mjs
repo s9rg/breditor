@@ -464,8 +464,8 @@ test("isolated release matrices preserve the full plan's commands and report the
   assert.equal(run.stdout,"");
  }
 });
-test("candidate shards partition the full plan through sealed joint recovery with original build prerequisites",()=>{
- const full=candidateReleasePlan(),end=full.checks.findIndex(check=>check.id==="installed-sealed-joint-process-recovery");
+test("candidate shards partition the full plan through native revision delivery with original build prerequisites",()=>{
+ const full=candidateReleasePlan(),end=full.checks.findIndex(check=>check.id==="installed-native-revision-delivery");
  const byId=new Map(full.checks.map(check=>[check.id,check]));
  const covered=[];
  for(const name of candidateShardIds){
@@ -491,6 +491,11 @@ test("candidate shards partition the full plan through sealed joint recovery wit
   const selected=candidateShardPlan(full,name);
   assert.equal(selected.shard.stages.length,1);
   assert.deepEqual(selected.shard.prerequisites.slice(-3),[...joint.shard.prerequisites.slice(-2),"joint-handover-cohort-host"]);
+ }
+ for(const name of ["native-suggestion-delivery","native-revision-delivery"]){
+  const selected=candidateShardPlan(full,name);
+  assert.deepEqual(selected.shard.prerequisites.slice(-2),["metadata-native-hosts","native-suggestion-room-host"]);
+  assert.equal(selected.shard.stages.at(-1),"installed-"+name);
  }
 
  assert.throws(()=>candidateShardPlan({...full,checks:full.checks.filter(check=>check.id!=="collaboration-build")},"local-history"),/diverged/);

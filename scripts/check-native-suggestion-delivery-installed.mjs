@@ -9,6 +9,8 @@ import {join,dirname,resolve,relative} from 'node:path';
 import {fileURLToPath} from 'node:url';
 import {sourceEvidence,saveEvidence} from './candidate-release/evidence.mjs';
 import {executeCandidateStage} from './candidate-release/process.mjs';
+import {copySharedRuntimeForActivation} from './candidate-release/shared-runtime-evidence.mjs';
+import {historicalSharedWasmSha256} from './fixtures/native-runtime/shared-runtime-receipt.mjs';
 import {searchConsumerLock,verifySearchConsumerRegistry} from './search-consumer-lock.mjs';
 const root=resolve(dirname(fileURLToPath(import.meta.url)),'..');
 if(process.argv.length!==2)throw Error('No reduced native owned-history qualification mode');
@@ -45,16 +47,18 @@ const typeFiles=['types-native-owned-suggestion.ts','types-native-suggestion-del
 const nativeRelative='target/owned-history-relay-native/release/examples/suggestions_functional',nativeSource=join(root,nativeRelative),nativeTarget=join(consumer,nativeRelative);fs.mkdirSync(dirname(nativeTarget),{recursive:true});fs.copyFileSync(nativeSource,nativeTarget);
 const selectedRelative='target/owned-history-relay-native/release/examples/selected_suggestion_delivery_functional';fs.mkdirSync(dirname(join(consumer,selectedRelative)),{recursive:true});fs.copyFileSync(join(root,selectedRelative),join(consumer,selectedRelative));const selectedNativeHostSha256=sha(fs.readFileSync(join(root,selectedRelative)));assert.equal(selectedNativeHostSha256,sha(fs.readFileSync(join(consumer,selectedRelative))));
 const nativeHostSha256=sha(fs.readFileSync(nativeSource));assert.equal(sha(fs.readFileSync(nativeTarget)),nativeHostSha256);
-const normalWasmSha256=sha(fs.readFileSync(join(consumer,'node_modules/@breditor/collaboration/dist/runtime/breditor_shared_bg.wasm')));assert.equal(normalWasmSha256,'165e23dbaef2ab77a6f920a20012e19624422ab2ccb74ec4e01f2146ac8086e0');
+const sharedRuntime=copySharedRuntimeForActivation(root,consumer,source);
+const normalWasmSha256=sha(fs.readFileSync(join(consumer,'node_modules/@breditor/collaboration/dist/runtime/breditor_shared_bg.wasm')));
+assert.equal(normalWasmSha256,sharedRuntime?.wasmSha256??historicalSharedWasmSha256);
 const state={format:'breditor/installed-native-suggestion-delivery-qualification',version:1,complete:false,source,sourceRoot:root,directory,consumer,workspaceLinks:false,registryArtifacts,copied,nativeHostSha256,selectedNativeHostSha256,normalWasmSha256,archives:packed.map(pack=>({name:pack.name,path:join(archives,pack.filename),sha256:sha(fs.readFileSync(join(archives,pack.filename)))})),results:[],startedAt:new Date().toISOString()};
 saveEvidence(directory+'/running.json',state);console.log(JSON.stringify({directory,phase:'execute-original-receipts-under-held-native-owner'}));
 const checks=[
- {id:'native-owned-history',command:process.execPath,args:['--test',...tests.map(name=>'scripts/'+name)],env:{},timeoutMs:1800000},
+ {id:'native-owned-history',command:process.execPath,args:['--test',...tests.map(name=>'scripts/'+name)],env:sharedRuntime?.environment??{},timeoutMs:1800000},
  {id:'ordinary-installed-observer',command:process.execPath,args:['scripts/probe-suggestion-observer-sdk.mjs',join(consumer,'node_modules/@breditor/collaboration/dist/runtime'),nativeTarget],env:{},timeoutMs:180000},
  {id:'strict-installed-private-and-public-types',command:process.execPath,args:[join(root,'node_modules/typescript/bin/tsc'),'--noEmit','--strict','--exactOptionalPropertyTypes','--noUncheckedIndexedAccess','--target','ES2022','--module','NodeNext','--lib','ES2022,DOM',...typeFiles],env:{},timeoutMs:120000},
 ];
 const outcomes=await Promise.allSettled(checks.map(async check=>{
- const logPath=join(directory,check.id+'.log'),result=await executeCandidateStage(check,{root:consumer,logPath}),log=fs.readFileSync(logPath,'utf8'),row={...result,logPath,logSha256:sha(Buffer.from(log))};state.results.push(row);saveEvidence(directory+'/running.json',state);assert.equal(result.status,'passed');
+ const logPath=join(directory,check.id+'.log'),result=await executeCandidateStage(check,{root:consumer,logPath}),log=fs.readFileSync(logPath,'utf8'),row={...result,logPath,logSha256:sha(Buffer.from(log))};state.results.push(row);saveEvidence(directory+'/running.json',state);assert.equal(result.status,'passed',check.id+' failed:\n'+log.slice(-4096));
  if(check.id==='ordinary-installed-observer'){const report=JSON.parse(log);assert.equal(report.passed,true);assert.equal(report.trials,6);assert.equal(report.readerAuthorResumes,0);assert.equal(report.readerDocumentSubmissions,0);}
  if(check.id==='native-owned-history')for(const [name,n]of [['tests',218],['pass',218],['fail',0],['skipped',0],['cancelled',0],['todo',0]])assert.match(log,new RegExp('^# '+name+' '+n+'$','m'));
 }));
