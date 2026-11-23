@@ -42,7 +42,9 @@ export function buildRelayNotices(environment=process.env){
  const upstream=JSON.parse(readFileSync(resolve(repository,"scripts/candidate-dependencies/upstream-notices.json"),"utf8"));
  assert.equal(upstream.format,"breditor/pinned-upstream-notices");
  assert.equal(upstream.formatVersion,1);
+ const cargoLock=readFileSync(resolve(repository,"experiments/relay/Cargo.lock"),"utf8");
  const result=candidateDependencyInventory(metadata,packageName,{
+  cargoLock,
   firstPartyPaths:{
    [packageName]:resolve(repository,"experiments/relay"),
    "breditor-collab-feasibility":resolve(repository,"experiments/collaboration"),
@@ -62,7 +64,7 @@ export function buildRelayNotices(environment=process.env){
   ...result.inventory,
   nativeBuild:{target:host,profile:"release",features:["server"],executableSha256:sha256(readFileSync(built))},
   noticeBundleSha256:sha256(text),
-  cargoLockSha256:sha256(readFileSync(resolve(repository,"experiments/relay/Cargo.lock"))),
+  cargoLockSha256:sha256(cargoLock),
   rust,
  };
  mkdirSync(resolve(repository,"target/relay-native-notices"),{recursive:true});

@@ -12,6 +12,13 @@ test("notice rendering preserves exact texts and exposes gaps without granting r
  const text="Upstream exact copyright 🙂\n\nPermission text.\n",rendered=renderRuntimeNotices({inventory:{root:"root@1",sha256:"1".repeat(64),packages:[{key:"dependency@1",license:"MIT",source:"crates.io"}],gaps:[{package:"missing@1",reason:"no-notice-text-in-cargo-source"}]},noticeTexts:[{package:"dependency@1",path:"src/NOTICE",sha256:"2".repeat(64),text}]});
  assert.ok(rendered.includes(text));assert.match(rendered,/not publication approval/);assert.match(rendered,/missing@1: no-notice-text-in-cargo-source/);assert.match(rendered,/dependency@1 \/ src\/NOTICE/);assert.ok(rendered.includes("1".repeat(64)));
 });
+test("recipient notices include the URL and checksum for the locked MPL source archive",()=>{
+ const archive={package:"dep@1.0.0",url:"https://static.crates.io/crates/dep/dep-1.0.0.crate",sha256:"1".repeat(64)};
+ const rendered=renderRuntimeNotices({inventory:{root:"root@1",sha256:"2".repeat(64),packages:[],gaps:[],
+  mplSourceArchives:[archive]},noticeTexts:[]});
+ for(const value of Object.values(archive))assert.ok(rendered.includes(value));
+ assert.match(rendered,/Source archives for MPL-covered dependencies/);
+});
 test("ambiguous runtime notice CLI options cannot write staged artifacts",()=>{
  const file=join(repository,"scripts/build-runtime-notices.mjs");for(const args of [[],["--approved"],["shared","rich"]]){const r=spawnSync(process.execPath,[file,...args],{cwd:tmpdir(),encoding:"utf8"});assert.equal(r.status,2);assert.equal(r.stdout,"");assert.match(r.stderr,/not release approval/);}
 });
