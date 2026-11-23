@@ -1,6 +1,7 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
 import {candidateReleasePlan} from './candidate-release/plan.mjs';
+import {metadataFixtureStageIds} from './candidate-release/metadata-fixture-evidence.mjs';
 
 for(const profile of ['functional','full'])test(profile+' requires metadata handover contracts, native execution and installed execution',()=>{
  const plan=candidateReleasePlan({profile});
@@ -10,4 +11,6 @@ for(const profile of ['functional','full'])test(profile+' requires metadata hand
  }
  assert.ok(position('metadata-handover-native')<position('installed-metadata-handover'));
  assert.equal(plan.v1Ready,false);
+ assert.ok(metadataFixtureStageIds.includes('metadata-handover-native'));
+ assert.ok(metadataFixtureStageIds.includes('installed-metadata-handover'));
 });
