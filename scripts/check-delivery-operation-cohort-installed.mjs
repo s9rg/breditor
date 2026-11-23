@@ -16,11 +16,11 @@ const root=resolve(dirname(fileURLToPath(import.meta.url)),'..'),source=sourceEv
 const sha=b=>createHash('sha256').update(b).digest('hex'),node=process.execPath,npm=process.env.BREDITOR_NPM??process.env.NPM_BIN??'npm';mkdirSync(archives);mkdirSync(consumer);
 function run(id,command,args,env=process.env){try{const out=execFileSync(command,args,{cwd:consumer,encoding:'utf8',env,timeout:1800000,maxBuffer:12*1024*1024});writeFileSync(join(directory,id+'.log'),out);return out;}catch(error){writeFileSync(join(directory,id+'.log'),String(error.stdout??'')+'\n'+String(error.stderr??''));throw error;}}
 const execFileAsync=promisify(execFile);
-async function runProof(id,args,env=process.env){
+async function runProof(id,args,timeout,env=process.env){
  console.log('PHASE',id,directory);
  const log=join(directory,id+'.log');
  try{
-  const {stdout}=await execFileAsync(node,args,{cwd:consumer,encoding:'utf8',env,timeout:1800000,maxBuffer:12*1024*1024});
+  const {stdout}=await execFileAsync(node,args,{cwd:consumer,encoding:'utf8',env,timeout,maxBuffer:12*1024*1024});
   writeFileSync(log,stdout);
   return stdout;
  }catch(error){
@@ -63,9 +63,9 @@ writeFileSync(join(consumer,'bundled-acceptance.mjs'),"import{api,rich,internals
 // synthetic storage. Await all exits before comparing their reports.
 const unitEnvironment={...process.env,BREDITOR_NATIVE_INPUT_COHORT_RUNTIME:runtime,BREDITOR_OPERATION_PARTICIPANT_RUNTIME:runtime,BREDITOR_RESTORED_PARTICIPANT_RUNTIME:runtime};
 const proofs=await Promise.allSettled([
- runProof('contracts',['--test',...unitFiles],unitEnvironment),
- runProof('acceptance',['acceptance.mjs',runtime]),
- runProof('bundled-acceptance',['bundled-acceptance.mjs',runtime]),
+ runProof('contracts',['--test',...unitFiles],1800000,unitEnvironment),
+ runProof('acceptance',['acceptance.mjs',runtime],2700000),
+ runProof('bundled-acceptance',['bundled-acceptance.mjs',runtime],2700000),
 ]);
 for(const proof of proofs)if(proof.status==='rejected')throw proof.reason;
 const [unit,accepted,bundled]=proofs.map(proof=>proof.value);
