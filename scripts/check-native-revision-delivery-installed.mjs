@@ -60,7 +60,7 @@ const checks=[
  {id:'strict-installed-private-and-public-types',command:process.execPath,args:[join(root,'node_modules/typescript/bin/tsc'),'--noEmit','--strict','--exactOptionalPropertyTypes','--noUncheckedIndexedAccess','--target','ES2022','--module','NodeNext','--lib','ES2022,DOM',...typeFiles],env:{},timeoutMs:120000},
 ];
 const outcomes=await Promise.allSettled(checks.map(async check=>{
- const logPath=join(directory,check.id+'.log'),result=await executeCandidateStage(check,{root:consumer,logPath}),log=fs.readFileSync(logPath,'utf8'),row={...result,logPath,logSha256:sha(Buffer.from(log))};state.results.push(row);saveEvidence(directory+'/running.json',state);assert.equal(result.status,'passed');
+ const logPath=join(directory,check.id+'.log'),result=await executeCandidateStage(check,{root:consumer,logPath}),log=fs.readFileSync(logPath,'utf8'),row={...result,logPath,logSha256:sha(Buffer.from(log))};state.results.push(row);saveEvidence(directory+'/running.json',state);assert.equal(result.status,'passed',check.id+' failed:\n'+log.slice(-4096));
  if(check.id==='ordinary-installed-revisions'){const report=JSON.parse(log);assert.equal(report.passed,true);assert.equal(report.trials,6);assert.equal(report.readerRevisions,6);assert.equal(report.standaloneConflictHistory,6);}
  if(check.id==='ordinary-installed-observer'){const report=JSON.parse(log);assert.equal(report.passed,true);assert.equal(report.trials,6);assert.equal(report.readerAuthorResumes,0);assert.equal(report.readerDocumentSubmissions,0);}
  if(check.id==='native-owned-history')for(const [name,n]of [['tests',394],['pass',394],['fail',0],['skipped',0],['cancelled',0],['todo',0]])assert.match(log,new RegExp('^# '+name+' '+n+'$','m'));
