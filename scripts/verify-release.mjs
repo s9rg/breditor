@@ -25,13 +25,13 @@ export function releaseChecks(environment = process.env) {
       RUSTDOCFLAGS: `${environment.RUSTDOCFLAGS || ""} -D warnings`.trim(),
     }),
     check("wasm-target-tests", "bash", ["scripts/check-wasm-tests.sh"]),
-    check("typescript-tests", npm, ["test"]),
+    // Build the default distributions before workspace tests import them.
+    check("package-consumers", npm, ["run", "smoke:packages"]),
+    check("typescript-tests", npm, ["run", "test", "--workspaces", "--if-present"]),
+    check("diagnostics-tests", npm, ["run", "test:diagnostics"]),
     check("typescript-types", npm, ["run", "typecheck"]),
     check("browser-test-types", npm, ["run", "typecheck:browser"]),
     check("demo-test-types", npm, ["run", "typecheck:demo"]),
-    // This builds/verifies the browser, reference and Wasm packages, including
-    // reproducibility, then tests actual packed consumers outside the repo.
-    check("package-consumers", npm, ["run", "smoke:packages"]),
     check("wasm-abi", "bash", ["scripts/check-wasm-api.sh"]),
     // The package-consumer gate does not rebuild the React production app.
     check("demo-production", npm, ["run", "build", "--workspace", "@breditor/example-react"]),

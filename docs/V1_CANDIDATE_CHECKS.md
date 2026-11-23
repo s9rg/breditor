@@ -48,6 +48,11 @@ Locally, use `node scripts/verify-candidate.mjs --default-matrix` or
 `node scripts/verify-candidate.mjs --editor-browser-matrix`. The results carry
 the selected profile and leave full candidate qualification outstanding.
 
+The default matrix runs workspace TypeScript and diagnostics after it builds
+the default packages. Both complete candidate profiles also run the full
+workspace script suite after the Native executable and fixture producers.
+That suite uses the exact shared runtime receipt from its candidate.
+
 ## Early candidate shards
 
 The manual full profile accepts an optional shard. The first eight shards cover

@@ -373,6 +373,20 @@ test("dry run is cwd-independent and explicitly cannot imply V1 readiness",()=>{
  for(const args of [["--skip-tests"],["--functional","--functional"],["--help","--functional"]]){const bad=spawnSync(process.execPath,[script,...args],{encoding:"utf8"});assert.equal(bad.status,2);assert.equal(bad.stdout,"");}
  const help=spawnSync(process.execPath,[script,"--help"],{encoding:"utf8"});assert.equal(help.status,0);assert.match(help.stdout,/not V1 readiness/);
 });
+test("the full workspace script suite follows the Native producer stages",()=>{
+ for(const profile of ["full","functional"]){
+  const {checks}=candidateReleasePlan({profile});
+  const index=id=>checks.findIndex(check=>check.id===id);
+  const suite=checks[index("typescript-tests-and-script-contracts")];
+  assert.deepEqual(suite.args,["test"]);
+  assert.equal(suite.requiresSharedRuntime,true);
+  for(const id of ["paired-shared-runtime","editor-build","native-room-participant-inventory",
+   "native-complete-image-cohort","selected-delivery-native-host","server-packet-inspection-native-host","functional-native-fixtures"]){
+   assert.ok(index(id)>=0&&index(id)<index(suite.id),id);
+  }
+  assert.ok(index(suite.id)<index("readiness-inventory"));
+ }
+});
 test("isolated release matrices preserve the full plan's commands and report their narrower scope",()=>{
  const script=join(repository,"scripts/verify-candidate.mjs");
  const full=candidateReleasePlan().checks;

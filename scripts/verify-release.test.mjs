@@ -6,19 +6,21 @@ import { join } from "node:path";
 import test from "node:test";
 import { releaseChecks, repository, runReleaseChecks } from "./verify-release.mjs";
 
-test("standard workspace tests include standalone script contracts", () => {
+test("the default verifier selects workspace and diagnostic tests without implicit Native fixtures", () => {
   const {scripts} = JSON.parse(readFileSync(join(repository, "package.json"), "utf8"));
   assert.equal(scripts["test:scripts"], "node --test scripts/*.test.mjs");
   assert.ok(scripts.test.split(" && ").includes("npm run test:scripts"));
-  assert.ok(releaseChecks({}).some(check => check.id === "typescript-tests" && check.args.join(" ") === "test"));
+  const checks = releaseChecks({});
+  assert.deepEqual(checks.find(check => check.id === "typescript-tests").args, ["run", "test", "--workspaces", "--if-present"]);
+  assert.deepEqual(checks.find(check => check.id === "diagnostics-tests").args, ["run", "test:diagnostics"]);
 });
 
 test("the plan covers each release boundary in a safe build order", () => {
   const checks = releaseChecks({});
   assert.deepEqual(checks.map(({ id }) => id), [
     "gate-tests", "rust-format", "rust-lint", "rust-tests", "rust-docs",
-    "wasm-target-tests", "typescript-tests", "typescript-types",
-    "browser-test-types", "demo-test-types", "package-consumers", "wasm-abi",
+    "wasm-target-tests", "package-consumers", "typescript-tests", "diagnostics-tests", "typescript-types",
+    "browser-test-types", "demo-test-types", "wasm-abi",
     "demo-production", "production-size", "browser-matrix", "demo-matrix", "diff-whitespace",
   ]);
   assert.equal(checks.find(check => check.id === "demo-matrix").env.BREDITOR_RELEASE_DEMO_PREVIEW, "1");
@@ -50,7 +52,7 @@ test("all successful stages run sequentially from the repository without a shell
     return { status: 0 };
   }, (message) => reports.push(message)), 0);
   assert.equal(calls, checks.length);
-  assert.match(reports.at(-1), /all 17 gates passed/);
+  assert.match(reports.at(-1), /all 18 gates passed/);
   assert.match(reports.at(-1), /for default packages/);
   assert.match(reports.at(-1), /opt-in nested lists, physical input and nested budget acceptance are not qualified/);
 });
@@ -81,7 +83,7 @@ test("dry-run is explicitly non-executing and rejects unknown options", () => {
   assert.equal(plan.scope, "default-packages");
   assert.equal(plan.experimentalNestedListsQualified, false);
   assert.equal(plan.cwd, repository);
-  assert.equal(plan.checks.length, 17);
+  assert.equal(plan.checks.length, releaseChecks({}).length);
   const rejected = spawnSync(process.execPath, [script, "--skip-tests"], { encoding: "utf8" });
   assert.equal(rejected.status, 2);
   assert.match(rejected.stderr, /unknown argument/);
@@ -106,7 +108,7 @@ test("a symlinked entry point still runs the gate instead of silently exiting", 
     symlinkSync(join(repository, "scripts/verify-release.mjs"), alias);
     const preview = spawnSync(process.execPath, [alias, "--dry-run"], { encoding: "utf8" });
     assert.equal(preview.status, 0);
-    assert.equal(JSON.parse(preview.stdout).checks.length, 17);
+    assert.equal(JSON.parse(preview.stdout).checks.length, releaseChecks({}).length);
   } finally {
     rmSync(temporary, { recursive: true, force: true });
   }
