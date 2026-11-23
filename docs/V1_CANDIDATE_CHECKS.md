@@ -64,10 +64,12 @@ review against the distribution's actual artifacts.
 ## Candidate shards
 
 The manual full profile accepts an optional shard. The named shards cover the
-contiguous native, runtime, SDK and relay stages through installed native
-handover. Each SDK or relay shard first runs the full plan's declared
-prerequisite builds in its own checkout. The result identifies the shard, its prerequisites, its assigned
-stage IDs and the source digest, and retains its logs and reports.
+contiguous native, runtime, SDK and relay stages through installed sealed joint
+recovery. Each SDK or relay shard first runs the full plan's prerequisite
+builds in its own checkout. The joint handover source and installed checks run
+in separate jobs so each has its own time and evidence budget. The result
+identifies the shard, its prerequisites, its assigned stage IDs and the source
+digest, and retains its logs and reports.
 
 Run a shard locally with `node scripts/verify-candidate.mjs --shard <name>`.
 Add `--dry-run` to inspect its checks. Run with the default shard selection

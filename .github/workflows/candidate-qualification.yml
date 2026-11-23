@@ -37,7 +37,13 @@
             "physical-room-catalogs",
             "physical-operation-custody",
             "selected-delivery",
-            "metadata-handover"
+            "metadata-handover",
+            "joint-handover-source",
+            "joint-handover-installed",
+            "cold-joint-handover-source",
+            "cold-joint-handover-installed",
+            "sealed-joint-recovery-source",
+            "sealed-joint-recovery-installed"
           ]
         }
       }

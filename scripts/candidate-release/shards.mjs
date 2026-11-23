@@ -1,4 +1,6 @@
 /** Qualification ranges and their build dependencies from the full candidate plan. */
+const activationHostedBuilds = ["native-suggestion-room-host", "native-handover-activation-host-build"];
+const jointHandoverBuilds = [...activationHostedBuilds, "joint-handover-cohort-host"];
 const boundaries = [
  ["native", "independent-native-consumer"],
  ["runtime-packages", "collaboration-build"],
@@ -18,6 +20,12 @@ const boundaries = [
  ["metadata-handover", "installed-handover-native-activation", [
   "editor-build", "segmented-relay-native-host", "segmented-retained-native-host", "selected-delivery-native-host",
  ]],
+ ["joint-handover-source", "joint-handover-native", activationHostedBuilds],
+ ["joint-handover-installed", "installed-joint-handover", jointHandoverBuilds],
+ ["cold-joint-handover-source", "cold-joint-handover-native", jointHandoverBuilds],
+ ["cold-joint-handover-installed", "installed-cold-joint-handover", jointHandoverBuilds],
+ ["sealed-joint-recovery-source", "sealed-joint-process-recovery-native", jointHandoverBuilds],
+ ["sealed-joint-recovery-installed", "installed-sealed-joint-process-recovery", jointHandoverBuilds],
 ];
 const sdkPrerequisites = [
  "default-typescript-build",
