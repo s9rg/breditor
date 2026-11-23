@@ -33,6 +33,7 @@ test("every external action has an exact upstream commit and checkout retains no
   "actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1",
   "actions/setup-node@949feb2413d6458794dcd2491c4babbbce0c15c1",
   "actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9",
+  "actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9",
  ];
  assert.deepEqual(steps.filter(step=>step.uses).map(step=>step.uses),pinned);
  for(const value of pinned)assert.match(value,/@[0-9a-f]{40}$/);
@@ -74,6 +75,20 @@ test("candidate logs are retained on failure without uploading unrelated target 
  assert.equal(upload.with["include-hidden-files"],false);
  assert.equal(upload.with.overwrite,false);assert.equal(upload.with.archive,true);
  assert.equal(upload.with.name,"candidate-${{ github.sha }}-${{ inputs.profile }}${{ inputs.shard != 'none' && format('-{0}', inputs.shard) || '' }}-${{ github.run_attempt }}");
+});
+
+test("failed browser and demo traces have their own bounded artifact",()=>{
+ const traces=named("Retain failed browser and demo traces");
+ assert.equal(traces.if,"${{ failure() && steps.candidate.outcome == 'failure' }}");
+ assert.deepEqual(traces.with,{
+  name:"candidate-browser-failures-${{ github.sha }}-${{ github.run_attempt }}",
+  path:"target/playwright-results/**/trace.zip\ntarget/playwright-demo-results/**/trace.zip",
+  "if-no-files-found":"ignore",
+  "retention-days":14,
+  "include-hidden-files":false,
+  overwrite:false,
+  archive:true,
+ });
 });
 
 test("every CI command block passes Bash syntax without executing setup, publishing or remote jobs",()=>{
