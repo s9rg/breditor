@@ -1,6 +1,8 @@
 /** Qualification ranges and their build dependencies from the full candidate plan. */
 const activationHostedBuilds = ["native-suggestion-room-host", "native-handover-activation-host-build"];
 const jointHandoverBuilds = [...activationHostedBuilds, "joint-handover-cohort-host"];
+const localMetadataBuilds = ["native-suggestion-room-host"];
+const localRecoveryBuilds = ["selected-delivery-native-host", ...localMetadataBuilds];
 const boundaries = [
  ["native", "independent-native-consumer"],
  ["runtime-packages", "collaboration-build"],
@@ -28,6 +30,12 @@ const boundaries = [
  ["sealed-joint-recovery-installed", "installed-sealed-joint-process-recovery", jointHandoverBuilds],
  ["native-suggestion-delivery", "installed-native-suggestion-delivery", ["metadata-native-hosts", "native-suggestion-room-host"]],
  ["native-revision-delivery", "installed-native-revision-delivery", ["metadata-native-hosts", "native-suggestion-room-host"]],
+ ["local-metadata-records", "installed-local-metadata-assets-records"],
+ ["local-metadata-references", "installed-local-metadata-room-references", localMetadataBuilds],
+ ["local-metadata-availability", "installed-local-metadata-availability", localMetadataBuilds],
+ ["local-metadata-materialization", "installed-local-metadata-materialization", localRecoveryBuilds],
+ ["recoverable-metadata", "installed-recoverable-metadata", localRecoveryBuilds],
+ ["metadata-server-bytes", "installed-metadata-server-bytes", localRecoveryBuilds],
 ];
 const sdkPrerequisites = [
  "default-typescript-build",
