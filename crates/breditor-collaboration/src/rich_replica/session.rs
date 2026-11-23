@@ -140,20 +140,29 @@ impl Journal {
 
     /// Exact retained causal inputs, including blobs whose dependencies have not arrived.
     pub(super) fn retained_updates(&self) -> impl Iterator<Item = &[u8]> {
+        self.retained_updates_through(self.entries.len())
+    }
+
+    pub(super) fn retained_updates_through(
+        &self,
+        admitted_entries: usize,
+    ) -> impl Iterator<Item = &[u8]> {
         let origin = match &self.origin {
             Origin::Seed { .. } => None,
             Origin::Join { updates } => Some(updates.as_slice()),
         };
-        origin.into_iter().chain(self.entries.iter().filter_map(|entry| match entry {
-            Entry::Remote { bytes } => Some(bytes.as_slice()),
-            // A new journal kind must explicitly account for retained causal inputs.
-            Entry::SearchV1 { .. }
-            | Entry::ReviewedHistoryV1 { .. }
-            | Entry::AdoptSuggestionV1 { .. }
-            | Entry::GeneralRangeV1 { .. }
-            | Entry::Local { .. }
-            | Entry::Undo { .. }
-            | Entry::Redo { .. } => None,
+        origin.into_iter().chain(self.entries[..admitted_entries].iter().filter_map(|entry| {
+            match entry {
+                Entry::Remote { bytes } => Some(bytes.as_slice()),
+                // A new journal kind must explicitly account for retained causal inputs.
+                Entry::SearchV1 { .. }
+                | Entry::ReviewedHistoryV1 { .. }
+                | Entry::AdoptSuggestionV1 { .. }
+                | Entry::GeneralRangeV1 { .. }
+                | Entry::Local { .. }
+                | Entry::Undo { .. }
+                | Entry::Redo { .. } => None,
+            }
         }))
     }
 }
@@ -509,53 +518,56 @@ impl RichReplica {
             return Err(Error::Contract("general records require explicit history family"));
         }
         publication(&journal.publication)?;
-        let mut base = journal.clone();
-        base.ui = UiState::default();
-        let mut candidate = Self::base(codec, base)?;
-        candidate.segmented = segmented;
-        if candidate.segmented.is_some() {
-            candidate.undo.enable_staging_group_tracking();
-        }
-        candidate.replay_contract = contract;
-        candidate.reviewed_contract = reviewed;
-        candidate.search_contract = capabilities.search;
-        if let Some(replay_projections) = replay_projections {
-            candidate.replay_projections = replay_projections;
-        }
-        candidate.typing =
-            joins.map(|joins| super::typing_history::TypingHistory { joins, continuation: None });
-        if let Some(history) = &candidate.typing {
+        let mut replay_projections = replay_projections;
+        let mut replay = |codec,
+                          joins: Option<Vec<u32>>,
+                          segmented,
+                          staged_redo_from: Option<usize>,
+                          redo_mismatch: &mut Option<usize>|
+         -> Result<Self, Error> {
+            let mut base = journal.clone();
+            base.ui = UiState::default();
+            let mut candidate = Self::base(codec, base)?;
+            candidate.segmented = segmented;
             if candidate.segmented.is_some() {
-                history.validate_partition(&journal)?;
-            } else {
-                history.validate(&journal)?;
+                candidate.undo.enable_staging_group_tracking();
             }
-        }
-        candidate.restore_segment_boundary(0)?;
+            candidate.replay_contract = contract;
+            candidate.reviewed_contract = reviewed;
+            candidate.search_contract = capabilities.search;
+            if let Some(replay_projections) = replay_projections.take() {
+                candidate.replay_projections = replay_projections;
+            }
+            candidate.typing = joins
+                .map(|joins| super::typing_history::TypingHistory { joins, continuation: None });
+            if let Some(history) = &candidate.typing {
+                if candidate.segmented.is_some() {
+                    history.validate_partition(&journal)?;
+                } else {
+                    history.validate(&journal)?;
+                }
+            }
+            candidate.replay_entries(
+                &journal.entries,
+                leave_open,
+                staged_redo_from,
+                redo_mismatch,
+            )?;
+            Ok(candidate)
+        };
+        let mut redo_mismatch = None;
+        let baseline =
+            replay(codec.clone(), joins.clone(), segmented.clone(), None, &mut redo_mismatch);
+        let mut candidate = match (baseline, redo_mismatch) {
+            (Err(Error::ReplayMismatch), Some(index)) => {
+                replay(codec, joins, segmented, Some(index), &mut None)?
+            }
+            (result, _) => result?,
+        };
         let continuation = candidate
             .segmented
             .as_ref()
             .and_then(super::segmented_history::SegmentedHistory::continuation_entry);
-        for (index, entry) in journal.entries.iter().enumerate() {
-            if continuation == Some(index) {
-                candidate.enable_continued_undo()?;
-            }
-            let joining = |at: usize| {
-                candidate.typing.as_ref().is_some_and(|history| {
-                    u32::try_from(at).is_ok_and(|at| history.joins.binary_search(&at).is_ok())
-                })
-            };
-            let join = joining(index);
-            let keep_open =
-                joining(index + 1) || (leave_open && index + 1 == journal.entries.len());
-            if keep_open && !entry.authored() {
-                return Err(Error::ReplayMismatch);
-            }
-            #[cfg(test)]
-            live_staging_tests::note_replay();
-            candidate.replay(entry, join, keep_open)?;
-            candidate.restore_segment_boundary(index + 1)?;
-        }
         candidate.journal = journal;
         if continuation == Some(candidate.journal.entries.len()) {
             candidate.enable_continued_undo()?;
@@ -566,6 +578,48 @@ impl RichReplica {
         candidate.replay_projections.finish_replay();
         candidate.validate_adoption()?;
         Ok(candidate)
+    }
+
+    fn replay_entries(
+        &mut self,
+        entries: &[Entry],
+        leave_open: bool,
+        staged_redo_from: Option<usize>,
+        redo_mismatch: &mut Option<usize>,
+    ) -> Result<(), Error> {
+        self.restore_segment_boundary(0)?;
+        let continuation = self
+            .segmented
+            .as_ref()
+            .and_then(super::segmented_history::SegmentedHistory::continuation_entry);
+        for (index, entry) in entries.iter().enumerate() {
+            if continuation == Some(index) {
+                self.enable_continued_undo()?;
+            }
+            let joining = |at: usize| {
+                self.typing.as_ref().is_some_and(|history| {
+                    u32::try_from(at).is_ok_and(|at| history.joins.binary_search(&at).is_ok())
+                })
+            };
+            let join = joining(index);
+            let keep_open = joining(index + 1) || (leave_open && index + 1 == entries.len());
+            if keep_open && !entry.authored() {
+                return Err(Error::ReplayMismatch);
+            }
+            #[cfg(test)]
+            live_staging_tests::note_replay();
+            let redo = matches!(entry, Entry::Redo { .. }) && !self.reviewed_contract;
+            if redo && staged_redo_from.is_some_and(|start| index >= start) {
+                self.replay_redo_with_staging(entry, index, join, keep_open)?;
+            } else if let Err(error) = self.replay(entry, join, keep_open) {
+                if redo && matches!(error, Error::ReplayMismatch) {
+                    *redo_mismatch = Some(index);
+                }
+                return Err(error);
+            }
+            self.restore_segment_boundary(index + 1)?;
+        }
+        Ok(())
     }
 
     fn restore_segment_boundary(&mut self, entry: usize) -> Result<(), Error> {
@@ -780,6 +834,27 @@ impl RichReplica {
         self.undo_limit = state.undo_limit();
         self.undo.set_max_undo_steps(self.undo_limit);
         Ok(())
+    }
+
+    /// Redo written after a live fork can include different native text marks.
+    /// Recreate both paths and require the original recorded effects and UI.
+    fn replay_redo_with_staging(
+        &mut self,
+        entry: &Entry,
+        admitted_entries: usize,
+        join: bool,
+        keep_open: bool,
+    ) -> Result<(), Error> {
+        let staged = self.fork_owner_through(false, admitted_entries);
+        match self.replay(entry, join, keep_open) {
+            Err(Error::ReplayMismatch) => {
+                let mut staged = staged.map_err(|_| Error::ReplayMismatch)?;
+                staged.replay(entry, join, keep_open)?;
+                *self = staged;
+                Ok(())
+            }
+            result => result,
+        }
     }
 
     fn replay(&mut self, entry: &Entry, join: bool, keep_open: bool) -> Result<(), Error> {

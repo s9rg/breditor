@@ -381,6 +381,45 @@ fn code_conversion_rejects_implicit_loss_and_owns_observed_format_removal() -> R
 }
 
 #[test]
+fn code_redo_with_offline_peer_text_restores_exact_history() -> Result {
+    let profile = profile()?;
+    let mut document: Value = serde_json::from_str(&input(&profile, false)?)?;
+    let mut intro = element(
+        "breditor/heading",
+        "intro",
+        vec![
+            json!({"kind":"text","text":"SDK heading","formats":[{"type":"breditor/strong","properties":{}}]}),
+        ],
+    );
+    intro["properties"]["breditor/level"] = json!(2);
+    document["root"]["children"] = json!([intro]);
+    let mut a = profile.create(&document.to_string(), "101".into())?;
+    let mut b = profile.join_frame("room".into(), "202".into(), &a.update_frame()?)?;
+
+    a.apply(vec![code("intro", CodeFormatPolicy::RemoveFormats, Some("JavaScript"))])?;
+    b.apply(vec![insert("intro", "Peer ")])?;
+    sync(&mut a, &mut b)?;
+    assert!(a.undo()?);
+    assert!(a.redo()?);
+    assert!(a.document_json().contains("Peer SDK heading"));
+    let saved = a.checkpoint()?;
+    let restored = profile.restore("room", &saved)?;
+    assert_eq!(restored.checkpoint()?, saved);
+    assert_eq!(restored.document_json(), a.document_json());
+
+    let mut forged: Value = serde_json::from_str(&saved)?;
+    let redo = forged["entries"]
+        .as_array_mut()
+        .ok_or("entries")?
+        .iter_mut()
+        .find(|entry| entry["kind"] == "redo")
+        .ok_or("redo")?;
+    redo["expected"]["changes"][0]["timestamp"] = json!(1);
+    assert!(matches!(profile.restore("room", &forged.to_string()), Err(Error::ReplayMismatch)));
+    exact_future(&profile, &mut a)
+}
+
+#[test]
 fn code_kind_language_and_remote_typing_keep_independent_selective_undo() -> Result {
     let profile = profile()?;
     let mut a = profile.create(&input(&profile, true)?, "101".into())?;
