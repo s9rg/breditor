@@ -1,6 +1,6 @@
 import assert from "node:assert/strict";
 import test from "node:test";
-import {relayNoticePaths,selectRelayExecutable} from "./build-relay-notices.mjs";
+import {linuxRelayLinkage,relayNoticePaths,selectRelayExecutable} from "./build-relay-notices.mjs";
 import {candidateReleasePlan} from "./candidate-release/plan.mjs";
 
 test("the relay inventory binds only to the server executable Cargo reported",()=>{
@@ -35,4 +35,18 @@ test("the installed browser matrix requires the release relay from the candidate
  const matrix=checks.findIndex(stage=>stage.id==="installed-editor-browser-matrix");
  assert.ok(inventory>=0&&matrix>inventory);
  assert.deepEqual(checks[matrix].args,["scripts/check-editor-browser.mjs","--candidate-relay"]);
+});
+
+test("Linux relay evidence records the loader, sorted libraries and search paths without running it",()=>{
+ const output=`
+      [Requesting program interpreter: /lib64/ld-linux-x86-64.so.2]
+ 0x0000000000000001 (NEEDED)             Shared library: [libm.so.6]
+ 0x0000000000000001 (NEEDED)             Shared library: [libc.so.6]
+ 0x000000000000001d (RUNPATH)            Library runpath: [$ORIGIN]
+ `;
+ assert.deepEqual(linuxRelayLinkage(output),{format:"elf",interpreter:"/lib64/ld-linux-x86-64.so.2",
+  libraries:["libc.so.6","libm.so.6"],searchPaths:["$ORIGIN"]});
+ assert.deepEqual(linuxRelayLinkage("There is no dynamic section in this file."),
+  {format:"elf",interpreter:null,libraries:[],searchPaths:[]});
+ assert.throws(()=>linuxRelayLinkage(""),/Missing ELF linkage evidence/);
 });

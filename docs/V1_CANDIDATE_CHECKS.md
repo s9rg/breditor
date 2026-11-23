@@ -48,6 +48,12 @@ Locally, use `node scripts/verify-candidate.mjs --default-matrix` or
 `node scripts/verify-candidate.mjs --editor-browser-matrix`. The results carry
 the selected profile and leave full candidate qualification outstanding.
 
+Select `dependency-inventories` to build the rich and shared Wasm notice
+bundles and the native relay inventory in one candidate job. On Linux the
+relay inventory also records the ELF interpreter, linked libraries and library
+search paths of the exact release binary. These reports support the dependency
+review against the distribution's actual artifacts.
+
 ## Early candidate shards
 
 The manual full profile accepts an optional shard. The first eight shards cover
