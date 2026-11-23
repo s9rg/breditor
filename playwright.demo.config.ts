@@ -1,11 +1,11 @@
 import { defineConfig, devices } from "@playwright/test";
 
-const PORT = Number(process.env.BREDITOR_RELEASE_DEMO_PORT ?? 4_174);
+const PORT = Number(process.env["BREDITOR_RELEASE_DEMO_PORT"] ?? 4_174);
 if (!Number.isInteger(PORT) || PORT < 1024 || PORT > 65535) {
   throw new Error("Invalid BREDITOR_RELEASE_DEMO_PORT");
 }
 
-const preview = process.env.BREDITOR_RELEASE_DEMO_PREVIEW === "1";
+const preview = process.env["BREDITOR_RELEASE_DEMO_PREVIEW"] === "1";
 
 export default defineConfig({
   testDir: "./tests/demo",
