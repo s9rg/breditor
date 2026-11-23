@@ -9,5 +9,16 @@ for(const profile of ['functional','full'])test(profile+': original server metad
  for(const name of ['page-contracts','packet-contracts','generation-native','version-native','physical-native','collection-native','packets-native'])assert.ok(native.args.includes('scripts/server-metadata-'+name+'.test.mjs'));
  assert.deepEqual(build.artifacts,[{path:'target/server-metadata-native-build.json',fresh:true},{path:'target/server-metadata-native/release/examples/selected_suggestion_delivery_functional'},{path:'target/server-metadata-native/release/examples/complete_cohort_control_functional'}]);
  assert.deepEqual(installed.artifacts,[{path:'target/server-metadata-installed-consumer.json',fresh:true}]);assert.equal(plan.v1Ready,false);
+ const runtime=rows.get('paired-shared-runtime');
+ for(const id of [
+  'server-metadata-sdk-contracts','installed-server-metadata',
+  'server-native-dependencies-native','installed-server-native-dependencies',
+  'local-metadata-receipt-containment-native','installed-local-metadata-receipt-containment',
+  'local-metadata-packet-recovery-native','installed-local-metadata-packet-recovery',
+ ]){
+  const check=rows.get(id);
+  assert.equal(check?.requiresSharedRuntime,true,id);
+  assert.ok(runtime.index<check.index,id);
+ }
 });
 test('independent package check cannot reduce the original Native cases or public types',()=>{const script=readFileSync(new URL('./check-server-metadata-installed.mjs',import.meta.url),'utf8');for(const text of ["['tests',21],['pass',21]",'workspaceLinks:false','--strict','--exactOptionalPropertyTypes','--noUncheckedIndexedAccess','types-server-metadata.ts','sourceUnchanged:true'])assert.ok(script.includes(text),text);});

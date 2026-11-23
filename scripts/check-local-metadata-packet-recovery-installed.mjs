@@ -9,11 +9,14 @@ import {createHash} from 'node:crypto';
 import {join,dirname,resolve,relative} from 'node:path';
 import {fileURLToPath} from 'node:url';
 import {sourceEvidence,saveEvidence} from './candidate-release/evidence.mjs';
+import {copySharedRuntimeForActivation} from './candidate-release/shared-runtime-evidence.mjs';
+import {historicalSharedWasmSha256} from './fixtures/native-runtime/shared-runtime-receipt.mjs';
 import {searchConsumerLock,verifySearchConsumerRegistry} from './search-consumer-lock.mjs';
 const root=resolve(dirname(fileURLToPath(import.meta.url)),'..');
 if(process.argv.length!==2)throw Error('All original metadata cases and real Native hosts are mandatory');
 const source=sourceEvidence(root),directory=fs.mkdtempSync(join(fs.realpathSync(tmpdir()),'breditor-packet-recovery-installed-')),archives=join(directory,'archives'),consumer=join(directory,'consumer'),sha=value=>createHash('sha256').update(value).digest('hex');
 fs.mkdirSync(archives);fs.mkdirSync(consumer);
+const sharedRuntime=copySharedRuntimeForActivation(root,consumer,source);
 const packages=['breditor-browser','breditor-experimental-rich-content','breditor-collaboration'],mapping=new Map(packages.map(name=>[name,JSON.parse(fs.readFileSync(join(root,'packages',name,'package.json'))).name]));
 const packed=JSON.parse(execFileSync('npm',['pack','--offline','--ignore-scripts','--json','--pack-destination',archives,...packages.map(name=>join(root,'packages',name))],{cwd:root,encoding:'utf8',maxBuffer:8*1024*1024}));
 const producer=JSON.parse(fs.readFileSync(join(root,'package-lock.json'))),locked=searchConsumerLock(producer,packed.map(pack=>({name:pack.name,path:join(archives,pack.filename)})));
@@ -41,14 +44,14 @@ const native=[];
 for(const name of ['selected_suggestion_delivery_functional','complete_cohort_control_functional']){
  const path='target/server-metadata-native/release/examples/'+name,from=join(root,path),to=join(consumer,path);fs.mkdirSync(dirname(to),{recursive:true});fs.copyFileSync(from,to);assert.equal(sha(fs.readFileSync(to)),sha(fs.readFileSync(from)));native.push({path,sha256:sha(fs.readFileSync(from))});
 }
-const wasm=join(consumer,'node_modules/@breditor/collaboration/dist/runtime/breditor_shared_bg.wasm'),normalWasmSha256=sha(fs.readFileSync(wasm));assert.equal(normalWasmSha256,'165e23dbaef2ab77a6f920a20012e19624422ab2ccb74ec4e01f2146ac8086e0');
+const wasm=join(consumer,'node_modules/@breditor/collaboration/dist/runtime/breditor_shared_bg.wasm'),normalWasmSha256=sha(fs.readFileSync(wasm));assert.equal(normalWasmSha256,sharedRuntime?.wasmSha256??historicalSharedWasmSha256);
 const compiler=join(root,'node_modules/typescript/bin/tsc'),compilerSha256=sha(fs.readFileSync(compiler));
-const state={format:'breditor/local-metadata-packet-recovery-installed-consumer',formatVersion:1,complete:false,source,sourceRoot:root,directory,consumer,workspaceLinks:false,registryArtifacts,copied,native,normalWasmSha256,compilerSha256,archives:packed.map(pack=>({name:pack.name,path:join(archives,pack.filename),sha256:sha(fs.readFileSync(join(archives,pack.filename)))})),releaseReady:false,v1GatesOpen:13};
+const state={format:'breditor/local-metadata-packet-recovery-installed-consumer',formatVersion:1,complete:false,source,sourceRoot:root,directory,consumer,workspaceLinks:false,registryArtifacts,copied,native,normalWasmSha256,sharedRuntimeReceiptSha256:sharedRuntime?.sha256??null,compilerSha256,archives:packed.map(pack=>({name:pack.name,path:join(archives,pack.filename),sha256:sha(fs.readFileSync(join(archives,pack.filename)))})),releaseReady:false,v1GatesOpen:13};
 saveEvidence(join(directory,'running.json'),state);console.log(JSON.stringify({directory,phase:'strict-public-types-and-genuine-all-family-receipt-containment'}));
 try{
  const typesLog=execFileSync(process.execPath,[compiler,'--noEmit','--strict','--exactOptionalPropertyTypes','--noUncheckedIndexedAccess','--target','ES2022','--module','NodeNext','--lib','ES2022,DOM',...types],{cwd:consumer,encoding:'utf8',maxBuffer:4*1024*1024,timeout:120000});
  fs.writeFileSync(join(directory,'types.log'),typesLog);
- const log=execFileSync(process.execPath,['--test','--test-concurrency=1',...tests.map(test=>'scripts/'+test)],{cwd:consumer,encoding:'utf8',maxBuffer:8*1024*1024,timeout:7200000});fs.writeFileSync(join(directory,'contracts.log'),log);
+ const log=execFileSync(process.execPath,['--test','--test-concurrency=1',...tests.map(test=>'scripts/'+test)],{cwd:consumer,env:{...process.env,...sharedRuntime?.environment},encoding:'utf8',maxBuffer:8*1024*1024,timeout:7200000});fs.writeFileSync(join(directory,'contracts.log'),log);
  for(const[key,n]of [['tests',24],['pass',24],['fail',0],['skipped',0],['cancelled',0],['todo',0]])assert.match(log,new RegExp('^# '+key+' '+n+'$','m'));
  assert.deepEqual(sourceEvidence(root),source);assert.equal(sha(fs.readFileSync(compiler)),compilerSha256);for(const row of native)assert.equal(sha(fs.readFileSync(join(root,row.path))),row.sha256);
  Object.assign(state,{complete:true,passed:true,tests:24,sourceUnchanged:true,strictPublicTypes:true,log:join(directory,'contracts.log'),logSha256:sha(log),scope:'Exact first-server and lossless local packet-string retention, actual Native dependency reads, server-only intermediate raster download, complete seven-family packet/asset/server-file capture and disk readback. Original managed asset ACKs and all-seven-family original protocol delivery; held original receipt comparison over live, saved, original and restored-input states; omission remains Pending despite checked outboxes. Twelve focused original-fact comparison cases include a Native-valid packet byte variant, cached catalog, changed/missing receipts, server rollback, bindings and actual conflict successor. All twenty-one earlier original catalog/packet checks are also mandatory. No receipt installation, queue settlement, writer grant or whole-room activation claim.'});
