@@ -22,9 +22,10 @@ const boundaries = [
   "editor-build", "segmented-relay-native-host", "native-room-participant-inventory", "native-server-generation-inventory",
  ]],
  ["selected-delivery", "installed-local-review-restore", ["editor-build", "segmented-retained-native-host"]],
- ["metadata-handover", "installed-handover-native-activation", [
+ ["metadata-handover", "handover-native-activation-native", [
   "editor-build", "segmented-relay-native-host", "segmented-retained-native-host", "selected-delivery-native-host",
  ]],
+ ["native-handover-activation-installed", "installed-handover-native-activation", activationHostedBuilds],
  ["joint-handover-source", "joint-handover-native", activationHostedBuilds],
  ["joint-handover-installed", "installed-joint-handover", jointHandoverBuilds],
  ["cold-joint-handover-source", "cold-joint-handover-native", jointHandoverBuilds],
