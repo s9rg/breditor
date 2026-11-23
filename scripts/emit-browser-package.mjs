@@ -23,6 +23,22 @@ const documentedDeclarations = [
   "wasm_command_adapter",
 ];
 
+// These shipping modules are also inputs to the WebKit differential probes.
+// Preserve their emitted bindings and control flow so the source transforms
+// can isolate one behavior without changing the rest of the bundle.
+const diagnosticModules = new Set([
+  "browser_editor.js",
+  "browser_event_router.js",
+  "command_queue.js",
+  "projection.js",
+  "wasm_command_adapter.js",
+  "wasm_document_json.js",
+  "wasm_profile_descriptor.js",
+  "wasm_projection_adapter.js",
+  "wasm_selection_adapter.js",
+  "wasm_session_checkpoint.js",
+]);
+
 function emit(directory, ...flags) {
   execFileSync(process.execPath, [
     compiler, "-p", join(browser, "tsconfig.json"), "--outDir", directory, ...flags,
@@ -35,6 +51,7 @@ function minifyJavaScript(directory) {
     if (entry.isDirectory()) {
       minifyJavaScript(path);
     } else if (entry.isFile() && extname(entry.name) === ".js") {
+      if (directory === output && diagnosticModules.has(entry.name)) continue;
       const { code, errors } = minifySync(path, readFileSync(path, "utf8"), {
         module: true,
         compress: { keepNames: { function: true, class: true } },
