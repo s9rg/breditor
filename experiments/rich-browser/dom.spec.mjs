@@ -57,7 +57,7 @@ test("Enter replaces a selected span with one exact undo unit",async({page})=>{
 });
 
 test("mixed root list conversion retains tables images and every cell body",async({page})=>{
- await page.keyboard.press("Meta+a");const before=await page.evaluate(()=>window.core.documentJson());
+ await page.keyboard.press("ControlOrMeta+a");const before=await page.evaluate(()=>window.core.documentJson());
  await page.getByRole("button",{name:"Bullet list",exact:true}).click();await expect(page.locator(".breditor-rich-surface ul > li")).toHaveCount(2);
  await expect(page.locator("[data-rich-cell]")).toHaveCount(4);await expect(page.locator("figure")).toHaveCount(1);await expect(block(page,"p22")).toHaveText("fourth");
  await page.getByRole("button",{name:"Undo",exact:true}).click();expect(await page.evaluate(()=>window.core.documentJson())).toBe(before);expect(await page.evaluate(()=>window.errors)).toEqual([]);

@@ -38,7 +38,7 @@ async function localize(page){
 const caretAtEnd=(page,block,editor="demo")=>page.evaluate(({block,editor})=>{const target=editor==="demo"?window.demo.editor:window.localized.editor,view=target.view(),root=JSON.parse(view.documentJson).root;let length=0;
  const walk=node=>{if(node.properties?.["breditor/block-id"]===block){length=node.children.reduce((sum,child)=>sum+(child.kind==="text"?child.text.length:0),0);return true;}return node.children?.some(child=>child.kind==="element"&&walk(child));};walk(root);
  const point={block,offset:String(length),affinity:"after"};target.execute({kind:"setSelection",selection:{kind:"text",anchor:point,focus:point}});target.focus();},{block,editor});
-test.beforeEach(async({page})=>{await page.goto("/demo");await expect(page.locator("#ready")).toHaveText("Ready — real Rust/Wasm editor");});
+test.beforeEach(async({page})=>{await page.goto("/demo",{waitUntil:"commit"});await expect(page.locator("#ready")).toHaveText("Ready — real Rust/Wasm editor");});
 
 test("an RTL UI catalog mirrors the chrome and leaves content direction alone",async({page})=>{
  await localize(page);
