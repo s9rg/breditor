@@ -37,7 +37,7 @@ if(saved){try{owner=profile.restoreEditor(saved);core.dispose();}catch(error){co
 const overlay=document.createElement("div");overlay.id="table-resize";overlay.style.position="relative";
 document.getElementById("editor").before(overlay);
 const imageOverlay=document.createElement("div");imageOverlay.id="image-resize";imageOverlay.style.position="relative";overlay.after(imageOverlay);
-let extras=[],shortcutHelp;
+let extras=[],shortcutHelp,blockDrag;
 const shortcutButton=document.createElement("button");
 shortcutButton.type="button";
 shortcutButton.textContent="Keyboard shortcuts";
@@ -58,10 +58,10 @@ function mountExtras(editor){
   mountRichContextMenu(editor,{onError:report}),
   mountRichTableColumnResize(overlay,editor,{commit:richTableColumnResizeCommit(editor),onError:report}),
   mountRichImageResize(imageOverlay,editor,{commit:richImageResizeCommit(editor),onError:report}),
-  mountRichBlockDrag(editor),
  ];
+ blockDrag=mountRichBlockDrag(editor);
  shortcutHelp=mountRichShortcutHelp(editor,{onError:report});
- extras.push(shortcutHelp);
+ extras.push(blockDrag,shortcutHelp);
 }
 const saveState=document.getElementById("saved");
 saveState.setAttribute("role","status");
@@ -114,7 +114,7 @@ document.getElementById("images").addEventListener("change",async event=>{
  try{await insertImageFiles(editor,assetStore,files,{parent:{kind:"document"},before:null});await showAssets();}
  catch(error){report(error);}finally{event.target.value="";}
 });
-window.demo={get editor(){return editor;},get extras(){return extras;},get autosave(){return autosave;},profile,assetStore,sessions};
+window.demo={get editor(){return editor;},get extras(){return extras;},get blockDrag(){return blockDrag;},get autosave(){return autosave;},profile,assetStore,sessions};
 await showAssets();
 document.getElementById("export").addEventListener("click",()=>{
  const blob=new Blob([editor.checkpointJson()],{type:"application/json"}),url=URL.createObjectURL(blob),link=document.createElement("a");link.href=url;link.download="breditor-rich-session.json";link.click();setTimeout(()=>URL.revokeObjectURL(url),0);
