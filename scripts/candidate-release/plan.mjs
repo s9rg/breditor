@@ -20,10 +20,15 @@ export const deferredFunctionalGates=Object.freeze([
  "dependency-license-review","catalog-parity-and-final-rc-approval",
  "pinned-input-rule-historical-readers",
 ]);
+const releaseMatrixStages = {
+ "default-matrix": ["default-package-release-matrix"],
+ "editor-browser-matrix": ["relay-native-dependency-notices","default-typescript-build","installed-editor-browser-matrix"],
+};
+export const candidateCheckProfiles=Object.freeze(["full","functional",...Object.keys(releaseMatrixStages)]);
 /** Functional success is deliberately not V1 readiness. Full adds existing browser/default
  * release checks and the fail-closed readiness ledger; it cannot approve manual gates. */
 export function candidateReleasePlan({profile="full",environment=process.env}={}){
- if(profile!=="functional"&&profile!=="full")throw Error("Choose functional or full candidate verification");
+ if(!candidateCheckProfiles.includes(profile))throw Error("Unknown candidate verification profile");
  const tool=(name,override)=>{const local=resolve(homedir(),`.cargo/bin/${name}`);return override??(existsSync(local)?local:name);};
  const cargo=tool("cargo",environment.BREDITOR_CARGO??environment.CARGO_BIN),rustc=tool("rustc",environment.BREDITOR_RUSTC??environment.RUSTC_BIN??environment.RUSTC),bindgen=tool("wasm-bindgen",environment.BREDITOR_WASM_BINDGEN??environment.WASM_BINDGEN_BIN),runner=tool("wasm-bindgen-test-runner",environment.WASM_BINDGEN_TEST_RUNNER_BIN),npm=environment.BREDITOR_NPM??environment.NPM_BIN??"npm",node=process.execPath;
  // Original scripts and newer candidate builders use distinct documented aliases.
@@ -817,7 +822,7 @@ export function candidateReleasePlan({profile="full",environment=process.env}={}
   script("installed-assets-comments-versions","check-review-assets-installed.mjs",[executable("review_assets_functional")]),
   script("readiness-inventory","check-v1-readiness.mjs",["--json"]),
  ];
- if(profile==="full")checks.push(
+ if(profile!=="functional")checks.push(
   script("rich-demo-latency","record-rich-demo-latency.mjs",[],[{path:richDemoLatencyReport,fresh:true,retain:true}],240000),
   script("installed-search-browser","check-search-browser.mjs",[],[{path:"target/search-installed-browser.json",fresh:true}]),
   script("installed-placeholder-browser","check-placeholder-browser.mjs",[],[{path:"target/placeholder-installed-browser.json",fresh:true}]),
@@ -828,5 +833,14 @@ export function candidateReleasePlan({profile="full",environment=process.env}={}
   script("installed-editor-browser-matrix","check-editor-browser.mjs",["--candidate-relay"],[{path:"target/editor-installed-consumer.json",fresh:true,retain:true}],7200000),
   script("reviewed-v1-readiness","check-v1-readiness.mjs",["--require-ready"]),
  );
+ const matrix=releaseMatrixStages[profile];
+ if(matrix){
+  const selected=checks.filter(check=>matrix.includes(check.id));
+  if(selected.length!==matrix.length||selected.some((check,index)=>check.id!==matrix[index])){
+   throw Error("Release matrix stages diverged from the full candidate plan");
+  }
+  return Object.freeze({profile,qualification:"candidate-checks-not-release-approval",v1Ready:false,
+   deferred:Object.freeze(["full-candidate-qualification"]),checks:Object.freeze(selected)});
+ }
  return Object.freeze({profile,qualification:"candidate-checks-not-release-approval",v1Ready:false,deferred:profile==="functional"?deferredFunctionalGates:Object.freeze(deferredFunctionalGates.filter(id=>!["default-package-release-matrix","installed-editor-browser-matrix"].includes(id))),checks:Object.freeze(checks)});
 }
