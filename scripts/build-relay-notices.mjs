@@ -22,6 +22,15 @@ export function selectRelayExecutable(messages,packageId){
  return binaries[0].executable;
 }
 
+/** Record the operating-system link boundary from the binary's ELF tables. */
+export function linuxRelayLinkage(output){
+ const interpreter=output.match(/\[Requesting program interpreter: ([^\]\r\n]+)\]/)?.[1]??null;
+ const libraries=[...output.matchAll(/\(NEEDED\)\s+Shared library: \[([^\]\r\n]+)\]/g)].map(match=>match[1]).sort();
+ const searchPaths=[...output.matchAll(/\((?:RPATH|RUNPATH)\)\s+Library (?:rpath|runpath): \[([^\]\r\n]*)\]/g)].map(match=>match[1]);
+ assert.ok(interpreter||output.includes("There is no dynamic section"),"Missing ELF linkage evidence");
+ return {format:"elf",interpreter,libraries,searchPaths};
+}
+
 export function buildRelayNotices(environment=process.env){
  const tool=(name,override)=>{
   const local=join(homedir(),".cargo/bin",name);
@@ -59,10 +68,14 @@ export function buildRelayNotices(environment=process.env){
  const messages=run(cargo,["build","--release","--target",host,"--bin",packageName,"--message-format=json",...selected])
   .trim().split("\n").map(line=>JSON.parse(line));
  const built=selectRelayExecutable(messages,metadata.resolve.root);
+ const nativeLinkage=host.includes("-linux-")?linuxRelayLinkage(execFileSync("readelf",["-lW","-dW",built],{
+  cwd:repository,env:{...environment,LC_ALL:"C"},encoding:"utf8",maxBuffer:1024*1024,
+ })):undefined;
  const text=renderRuntimeNotices(result);
  const manifest={
   ...result.inventory,
   nativeBuild:{target:host,profile:"release",features:["server"],executableSha256:sha256(readFileSync(built))},
+  ...(nativeLinkage?{nativeLinkage}:{}),
   noticeBundleSha256:sha256(text),
   cargoLockSha256:sha256(cargoLock),
   rust,

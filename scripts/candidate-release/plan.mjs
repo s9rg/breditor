@@ -20,11 +20,12 @@ export const deferredFunctionalGates=Object.freeze([
  "dependency-license-review","catalog-parity-and-final-rc-approval",
  "pinned-input-rule-historical-readers",
 ]);
-const releaseMatrixStages = {
+const focusedStageIds = {
  "default-matrix": ["default-package-release-matrix"],
  "editor-browser-matrix": ["relay-native-dependency-notices","default-typescript-build","installed-editor-browser-matrix"],
+ "dependency-inventories": ["relay-native-dependency-notices","paired-local-runtime","paired-shared-runtime"],
 };
-export const candidateCheckProfiles=Object.freeze(["full","functional",...Object.keys(releaseMatrixStages)]);
+export const candidateCheckProfiles=Object.freeze(["full","functional",...Object.keys(focusedStageIds)]);
 /** Functional success is deliberately not V1 readiness. Full adds existing browser/default
  * release checks and the fail-closed readiness ledger; it cannot approve manual gates. */
 export function candidateReleasePlan({profile="full",environment=process.env}={}){
@@ -834,11 +835,11 @@ export function candidateReleasePlan({profile="full",environment=process.env}={}
   script("installed-editor-browser-matrix","check-editor-browser.mjs",["--candidate-relay"],[{path:"target/editor-installed-consumer.json",fresh:true,retain:true}],7200000),
   script("reviewed-v1-readiness","check-v1-readiness.mjs",["--require-ready"]),
  );
- const matrix=releaseMatrixStages[profile];
- if(matrix){
-  const selected=checks.filter(check=>matrix.includes(check.id));
-  if(selected.length!==matrix.length||selected.some((check,index)=>check.id!==matrix[index])){
-   throw Error("Release matrix stages diverged from the full candidate plan");
+ const selectedIds=focusedStageIds[profile];
+ if(selectedIds){
+  const selected=checks.filter(check=>selectedIds.includes(check.id));
+  if(selected.length!==selectedIds.length||selected.some((check,index)=>check.id!==selectedIds[index])){
+   throw Error("Focused stage selection diverged from the full candidate plan");
   }
   return Object.freeze({profile,qualification:"candidate-checks-not-release-approval",v1Ready:false,
    deferred:Object.freeze(["full-candidate-qualification"]),checks:Object.freeze(selected)});
