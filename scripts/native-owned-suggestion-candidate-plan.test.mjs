@@ -6,6 +6,10 @@ for(const profile of ['functional','full'])test(profile+': guarded owned-history
  assert.deepEqual(byId.get('native-owned-suggestion-functional').args,['--test','scripts/native-owned-suggestion-history.test.mjs','scripts/native-owned-suggestion-input.test.mjs','scripts/native-owned-suggestion-membership.test.mjs','scripts/metadata-admitted-work.test.mjs']);
  assert.ok(byId.get('native-owned-suggestion-private-types').args.includes('scripts/fixtures/editor-consumer/types-native-owned-suggestion.ts'));
  assert.ok(byId.get('installed-native-owned-suggestion').artifacts.some(row=>row.path==='target/native-owned-suggestion-installed-consumer.json'&&row.fresh));
+ for(const id of ['native-owned-suggestion-functional','installed-native-owned-suggestion']){
+  assert.equal(byId.get(id).requiresSharedRuntime,true);
+  assert.ok(byId.get('paired-shared-runtime').index<byId.get(id).index);
+ }
  for(const id of ['metadata-work-contracts','installed-metadata-work','selected-room-storage-native','installed-selected-room-storage','retained-delivery-work-contracts'])assert.ok(byId.has(id),id);
  assert.ok(byId.get('retained-delivery-work-contracts').args.includes('scripts/native-relay-delivery-sdk.test.mjs'));
 });

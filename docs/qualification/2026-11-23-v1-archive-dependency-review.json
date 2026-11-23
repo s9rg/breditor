@@ -1,0 +1,375 @@
+{
+  "format": "breditor/v1-archive-dependency-review",
+  "formatVersion": 1,
+  "reviewedOn": "2026-11-23",
+  "source": {
+    "commit": "da98a5f0304fbeff5aeb29fa7d2a873ec0a30487",
+    "dirty": false,
+    "sha256": "cdb27b2851b0ce46a2cd6ea713b79a9126de54cbfd4d25f652abd5b6856d8881",
+    "files": 9577,
+    "bytes": 82038023
+  },
+  "scope": "The matching npm archives documented in docs/INTEGRATE_EDITOR.md, their production dependencies, and the Linux x86-64 native relay built with server enabled. The final RC gate rechecks the actual files offered to recipients.",
+  "projectLicense": "MIT OR Apache-2.0",
+  "linuxCandidate": {
+    "run": "https://github.com/s9rg/breditor/actions/runs/45230035404",
+    "environment": {
+      "node": "v22.14.0",
+      "platform": "linux",
+      "arch": "x64"
+    },
+    "resultSha256": "6b474232dd3f9c8e6b39d2c14993471442e2fcdeffbde6cfa0dbd2b8897f2ee9"
+  },
+  "macComparison": {
+    "environment": {
+      "node": "v22.14.0",
+      "platform": "darwin",
+      "arch": "arm64"
+    },
+    "resultSha256": "40c3ef139125c1371f6743b447e645757e244cfed7ef607999923a2e14348423"
+  },
+  "runtimeInventories": {
+    "richWasm": {
+      "candidateBinarySha256": "f6bdb6e06a36159f2c4a0f0c1dab1f2ad65a3f95c5ffbe57ab5ee2a7a5b764f6",
+      "inventoryFileSha256": "e0441560fb3bdbe8e1171f3b61cdaad9ea15d815b59f90efdabd165f2239b557",
+      "normalizedInventorySha256": "e3d904abb48b10548b7245243c970e90e0a8393143b3889b30c6e157662092bf",
+      "noticeBundleSha256": "424bb63bb67db590ca047c3ba17fa1e24431a42f06c172b2528881a74cb5b543",
+      "cargoLockSha256": "70458f69675aba0bfd61f89d8a2136a179a96f8c450c98255d108984171d484c",
+      "packages": 34,
+      "verifiedRegistrySourceArchives": 32,
+      "macInventoryAndNoticeBytesMatch": true,
+      "macWasmSha256": "f100599f39805586d465961161bf751e0bd51e8d524ad2ab653001946347200e"
+    },
+    "sharedWasm": {
+      "candidateBinarySha256": "e26abdec2562e8fb09ee1bb3ffc635a92f34239361d507e89469b4738831b1fd",
+      "inventoryFileSha256": "5f68455f80253aff07ab2457b35a261f4705447d92f03f48564a1bcc2287cdab",
+      "normalizedInventorySha256": "48efb0876f747bd5d5c6056b3125d59c9df5790b0e5c28d1ce16eb62682f9a1d",
+      "noticeBundleSha256": "039b2492059c26318ff9cefe15536b80391b1838d7569435645c47a769d1c539",
+      "cargoLockSha256": "3064fc56391f505018cd09b66c8f7ca4854357aad93a64f6543b8336050a13bc",
+      "packages": 142,
+      "verifiedRegistrySourceArchives": 138,
+      "macInventoryAndNoticeBytesMatch": true,
+      "macWasmSha256": "51622cdaeefabdf13194409343b6b196d3d6594b88845d3ea36a7baca952c142"
+    },
+    "nativeRelay": {
+      "candidateBinarySha256": "b1ccc6d3c6a801c8da07364fc7898d3ebf22ba58a17fd71c452890d49f03665b",
+      "inventoryFileSha256": "faf839b0e05b8dd9101056a5a89228e8edeb22c83fad0aae78733e1b7df1f088",
+      "normalizedInventorySha256": "029b071afdf69d870ef3b2d297fa3f720fb6ca16773249d1e543067f7ede0f67",
+      "noticeBundleSha256": "5451f80058dba561e1141a6d7f1ae0f09deac95947fa43244673773ea6191c9b",
+      "cargoLockSha256": "21f274c54aa04eea54ffcea0a50722c107fc9b637bf768354c9e29fddab452ee",
+      "packages": 196,
+      "verifiedRegistrySourceArchives": 191,
+      "nativeLinkage": {
+        "format": "elf",
+        "interpreter": "/lib64/ld-linux-x86-64.so.2",
+        "libraries": [
+          "ld-linux-x86-64.so.2",
+          "libc.so.6",
+          "libgcc_s.so.1",
+          "libm.so.6"
+        ],
+        "searchPaths": []
+      },
+      "linuxOnlyPackages": [
+        "spin@0.9.9"
+      ],
+      "distribution": "The relay archive includes the executable and its notices. The listed Linux libraries are supplied by the host."
+    }
+  },
+  "rustLibraryNotices": {
+    "release": "1.98.0",
+    "sha256": "68129500b616d5838629e68f55ff3aed5e096dacf60ce9eb41bbe599a563afa6"
+  },
+  "registrySourceVerification": {
+    "extractedFilesCompared": 7672,
+    "extractedArchiveCount": 202,
+    "linuxOnlyArchiveVerifiedAgainstLock": [
+      "spin@0.9.9"
+    ]
+  },
+  "vendoredReplication": {
+    "loroTree": "2ae5e89076cb9b9d48e4ddad6c42e22739a370c0",
+    "loroInternalTree": "de3f0e46981ca50b6d4197a86bde27d89153e178",
+    "license": "MIT",
+    "migrationAndPatchQualification": "docs/LIVE_HISTORY_STAGING.md"
+  },
+  "mplSourceArchives": [
+    {
+      "package": "bitmaps@2.1.0",
+      "url": "https://static.crates.io/crates/bitmaps/bitmaps-2.1.0.crate",
+      "sha256": "031043d04099746d8db04daf1fa424b2bc8bd69d92b25962dcde24da39ab64a2"
+    },
+    {
+      "package": "im@15.1.0",
+      "url": "https://static.crates.io/crates/im/im-15.1.0.crate",
+      "sha256": "d0acd33ff0285af998aaf9b57342af478078f53492322fafc47450e09397e0e9"
+    },
+    {
+      "package": "sized-chunks@0.6.5",
+      "url": "https://static.crates.io/crates/sized-chunks/sized-chunks-0.6.5.crate",
+      "sha256": "16d69225bde7a69b235da73377861095455d298f2b970996eec25ddbb42b3d1e"
+    }
+  ],
+  "upstreamNoticeReview": "docs/qualification/2026-11-22-v1-dependency-notices.json",
+  "browserProductionGraph": {
+    "packageLockSha256": "3b8abae52f9ceabd16ba007a7162518ac86cab138b8871e33d49e0b136e95617",
+    "sbomFormat": "CycloneDX 1.5",
+    "packages": [
+      {
+        "name": "argparse",
+        "version": "3.0.3",
+        "license": "PSF-2.0",
+        "noticeFiles": [
+          {
+            "file": "LICENSE",
+            "sha256": "ab745c5061d1dea43a3885e5b4b6befc7e983954954775c5736debeefcdfd89b"
+          }
+        ]
+      },
+      {
+        "name": "css-tree",
+        "version": "3.2.1",
+        "license": "MIT",
+        "noticeFiles": [
+          {
+            "file": "LICENSE",
+            "sha256": "719a251ceca49c057ea90a1152af6546b767ec88e6d573bb6324454267b32c22"
+          }
+        ]
+      },
+      {
+        "name": "entities",
+        "version": "8.0.0",
+        "license": "BSD-2-Clause",
+        "noticeFiles": [
+          {
+            "file": "LICENSE",
+            "sha256": "cb992345949ccd6e8394b2cd6c465f7b897c864f845937dbf64e8997f389e164"
+          }
+        ]
+      },
+      {
+        "name": "linkify-it",
+        "version": "6.1.0",
+        "license": "MIT",
+        "noticeFiles": [
+          {
+            "file": "LICENSE",
+            "sha256": "95e3f7f0e81e9b4940cdfaa1956aaff5e4dfd2fb1565041e7c78eb9a606f23e3"
+          }
+        ]
+      },
+      {
+        "name": "markdown-it",
+        "version": "15.0.3",
+        "license": "MIT",
+        "noticeFiles": [
+          {
+            "file": "LICENSE",
+            "sha256": "792c48c5a849a15fdf9e37e8bcf9e6d1dd13b32b46c642a748a0a46a9919d473"
+          }
+        ]
+      },
+      {
+        "name": "entities",
+        "version": "8.1.0",
+        "license": "BSD-2-Clause",
+        "noticeFiles": [
+          {
+            "file": "LICENSE",
+            "sha256": "cb992345949ccd6e8394b2cd6c465f7b897c864f845937dbf64e8997f389e164"
+          }
+        ]
+      },
+      {
+        "name": "mdn-data",
+        "version": "2.27.1",
+        "license": "CC0-1.0",
+        "noticeFiles": [
+          {
+            "file": "LICENSE",
+            "sha256": "36ffd9dc085d529a7e60e1276d73ae5a030b020313e6c5408593a6ae2af39673"
+          }
+        ]
+      },
+      {
+        "name": "mdurl",
+        "version": "2.1.0",
+        "license": "MIT",
+        "noticeFiles": [
+          {
+            "file": "LICENSE",
+            "sha256": "6b6a356c4337e2446841f30f3cdf7e7023af8c5260b5e347c0f987b9f6aa2644"
+          }
+        ]
+      },
+      {
+        "name": "parse5",
+        "version": "8.0.1",
+        "license": "MIT",
+        "noticeFiles": [
+          {
+            "file": "LICENSE",
+            "sha256": "8c535800331e1e4439835555b3f9edc7fe9dee2fab0d8bbbd5a982e8b8343d4d"
+          }
+        ]
+      },
+      {
+        "name": "punycode.js",
+        "version": "2.3.1",
+        "license": "MIT",
+        "noticeFiles": [
+          {
+            "file": "LICENSE-MIT.txt",
+            "sha256": "483acb265f182907d1caf6cff9c16c96f31325ed23792832cc5d8b12d5f88c8a"
+          }
+        ]
+      },
+      {
+        "name": "react",
+        "version": "19.2.8",
+        "license": "MIT",
+        "noticeFiles": [
+          {
+            "file": "LICENSE",
+            "sha256": "da6d3703ed11cbe42bd212c725957c98da23cbff1998c05fa4b3d976d1a58e93"
+          }
+        ]
+      },
+      {
+        "name": "react-dom",
+        "version": "19.2.8",
+        "license": "MIT",
+        "noticeFiles": [
+          {
+            "file": "LICENSE",
+            "sha256": "da6d3703ed11cbe42bd212c725957c98da23cbff1998c05fa4b3d976d1a58e93"
+          }
+        ]
+      },
+      {
+        "name": "scheduler",
+        "version": "0.27.0",
+        "license": "MIT",
+        "noticeFiles": [
+          {
+            "file": "LICENSE",
+            "sha256": "da6d3703ed11cbe42bd212c725957c98da23cbff1998c05fa4b3d976d1a58e93"
+          }
+        ]
+      },
+      {
+        "name": "source-map-js",
+        "version": "1.2.4",
+        "license": "BSD-3-Clause",
+        "noticeFiles": [
+          {
+            "file": "LICENSE",
+            "sha256": "6cb0631f71c7749763fd3dd1d5bee52dd1070ec17f2edc1710079ad070bd2fbd"
+          }
+        ]
+      },
+      {
+        "name": "uc.micro",
+        "version": "3.0.0",
+        "license": "MIT",
+        "noticeFiles": [
+          {
+            "file": "LICENSE.txt",
+            "sha256": "483acb265f182907d1caf6cff9c16c96f31325ed23792832cc5d8b12d5f88c8a"
+          }
+        ]
+      }
+    ],
+    "npmAdvisories": {
+      "info": 0,
+      "low": 0,
+      "moderate": 0,
+      "high": 0,
+      "critical": 0,
+      "total": 0
+    },
+    "securityUpdate": "https://github.com/s9rg/breditor/pull/145"
+  },
+  "rustAdvisories": {
+    "service": "https://osv.dev/",
+    "queriedCrateIdentities": 205,
+    "findings": {
+      "bitmaps@2.1.0": [
+        "RUSTSEC-2026-0247"
+      ],
+      "heapless@0.7.17": [
+        "RUSTSEC-2026-0574",
+        "RUSTSEC-2026-0575",
+        "RUSTSEC-2026-0576",
+        "RUSTSEC-2026-0577",
+        "RUSTSEC-2026-0578",
+        "RUSTSEC-2026-0579",
+        "RUSTSEC-2026-0580",
+        "RUSTSEC-2026-0581",
+        "RUSTSEC-2026-0582"
+      ],
+      "heapless@0.8.0": [
+        "RUSTSEC-2026-0574",
+        "RUSTSEC-2026-0575",
+        "RUSTSEC-2026-0576",
+        "RUSTSEC-2026-0577",
+        "RUSTSEC-2026-0578",
+        "RUSTSEC-2026-0579",
+        "RUSTSEC-2026-0580",
+        "RUSTSEC-2026-0581",
+        "RUSTSEC-2026-0582"
+      ],
+      "im@15.1.0": [
+        "RUSTSEC-2023-0126",
+        "RUSTSEC-2026-0248"
+      ],
+      "sized-chunks@0.6.5": [
+        "RUSTSEC-2026-0251",
+        "RUSTSEC-2026-0255"
+      ]
+    },
+    "securityUpdate": "https://github.com/s9rg/breditor/pull/148",
+    "review": [
+      {
+        "packages": [
+          "bitmaps",
+          "im",
+          "sized-chunks"
+        ],
+        "disposition": "Track the upstream maintenance notices with the replication patch. Retain the exact MPL source archives and notice text with the shared SDK and relay distribution evidence.",
+        "source": "https://rustsec.org/advisories/RUSTSEC-2026-0248.html"
+      },
+      {
+        "packages": [
+          "im",
+          "sized-chunks"
+        ],
+        "disposition": "The vendored replication source uses im::HashMap for numeric peer version vectors. It has no OrdSet call site. The stored key/value types in this path have ordinary primitive destructors.",
+        "sources": [
+          "https://rustsec.org/advisories/RUSTSEC-2023-0126.html",
+          "https://rustsec.org/advisories/RUSTSEC-2026-0255.html"
+        ]
+      },
+      {
+        "packages": [
+          "heapless@0.7.17",
+          "heapless@0.8.0"
+        ],
+        "disposition": "Postcard uses the 0.7 byte-vector flavor. Loro Delta uses the 0.8 vector wrapper with internal delta data. These paths do not use the advisory-listed queues, pools, linked lists, deques or index maps. The remaining vector panic-safety finding is tracked with the older upstream dependency lines.",
+        "source": "https://rustsec.org/advisories/RUSTSEC-2026-0577.html"
+      }
+    ],
+    "responseOwner": "Repository maintainers via SECURITY.md"
+  },
+  "linuxReproduction": {
+    "run": "https://github.com/s9rg/breditor/actions/runs/45232213314",
+    "resultSha256": "ee4762cfff17c6c0e1f87a699ec69869be7096cbdae41690a2c5b0ec9a5db6c7",
+    "matchingBytes": [
+      "rich Wasm",
+      "shared Wasm",
+      "Linux x86-64 relay",
+      "dependency inventories and notices"
+    ]
+  }
+}
