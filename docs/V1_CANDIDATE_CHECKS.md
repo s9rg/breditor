@@ -16,6 +16,12 @@ the selected commit and profile, the runner platform, and each step's outcome.
 When the verifier starts, the same artifact includes its existing stage logs
 and candidate result.
 
+The hosted job starts a wall-clock budget before toolchain setup. At five hours
+and 45 minutes, the verifier receives SIGTERM so it can stop its active stage
+and write an interrupted result. The job retains the evidence before the
+six-hour runner limit. A timed-out run fails qualification and keeps the
+stages it reached for diagnosis.
+
 The GitHub Actions job summary identifies failed setup or the last recorded
 candidate stage. It gives the stage log's path within the uploaded artifact
 when available.

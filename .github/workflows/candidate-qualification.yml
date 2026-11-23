@@ -28,6 +28,10 @@
       },
       "steps": [
         {
+          "name": "Reserve time for evidence upload",
+          "run": "echo \"CANDIDATE_EVIDENCE_DEADLINE=$(( $(date +%s) + 345 * 60 ))\" >> \"$GITHUB_ENV\""
+        },
+        {
           "name": "Check out the selected source",
           "uses": "actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1",
           "with": {
@@ -72,7 +76,7 @@
             "CANDIDATE_PROFILE": "${{ inputs.profile }}",
             "CARGO_NET_OFFLINE": "true"
           },
-          "run": "case \"$CANDIDATE_PROFILE\" in\n  full) node scripts/verify-candidate.mjs ;;\n  functional) node scripts/verify-candidate.mjs --functional ;;\n  *) echo \"Unsupported candidate qualification profile\" >&2; exit 2 ;;\nesac",
+          "run": "case \"$CANDIDATE_PROFILE\" in\n  full) args=() ;;\n  functional) args=(--functional) ;;\n  *) echo \"Unsupported candidate qualification profile\" >&2; exit 2 ;;\nesac\nif [[ ! ${CANDIDATE_EVIDENCE_DEADLINE:-} =~ ^[1-9][0-9]{0,11}$ ]]; then\n  echo \"Missing or invalid candidate evidence deadline\" >&2\n  exit 2\nfi\nremaining=$(( CANDIDATE_EVIDENCE_DEADLINE - $(date +%s) ))\nif (( remaining <= 0 )); then\n  echo \"Candidate deadline elapsed during setup\" >&2\n  exit 124\nfi\ntimeout --signal=TERM --kill-after=2m \"${remaining}s\" node scripts/verify-candidate.mjs \"${args[@]}\"",
           "id": "candidate"
         },
         {

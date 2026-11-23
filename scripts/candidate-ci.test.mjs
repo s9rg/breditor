@@ -32,8 +32,8 @@ test("every external action has an exact upstream commit and checkout retains no
  ];
  assert.deepEqual(steps.filter(step=>step.uses).map(step=>step.uses),pinned);
  for(const value of pinned)assert.match(value,/@[0-9a-f]{40}$/);
- assert.equal(steps[0].with["persist-credentials"],false);
- assert.equal(steps[0].with["fetch-depth"],1);
+ assert.equal(named("Check out the selected source").with["persist-credentials"],false);
+ assert.equal(named("Check out the selected source").with["fetch-depth"],1);
  const node=named("Install the baseline Node toolchain");
  assert.equal(node.with["node-version"],"22.14.0");
  assert.equal(node.with["package-manager-cache"],false);
@@ -58,7 +58,6 @@ test("full qualification installs all three engines and the explicit functional 
  assert.equal(browsers.run,"node node_modules/@playwright/test/cli.js install --with-deps chromium firefox webkit");
  const candidate=named("Qualify the selected candidate profile");
  assert.deepEqual(candidate.env,{CANDIDATE_PROFILE:"${{ inputs.profile }}",CARGO_NET_OFFLINE:"true"});
- assert.equal(candidate.run,'case "$CANDIDATE_PROFILE" in\n  full) node scripts/verify-candidate.mjs ;;\n  functional) node scripts/verify-candidate.mjs --functional ;;\n  *) echo "Unsupported candidate qualification profile" >&2; exit 2 ;;\nesac');
  assert.ok(steps.filter(step=>step.run).every(step=>!step.run.includes("${{")));
 });
 
@@ -82,30 +81,56 @@ test("every CI command block passes Bash syntax without executing setup, publish
  }
 });
 
-test("profile dispatch preserves failures and rejects unknown values without shell interpolation",()=>{
- const command=named("Qualify the selected candidate profile").run;
- for(const [profile,expected] of [
-  ["full",["scripts/verify-candidate.mjs"]],
-  ["functional",["scripts/verify-candidate.mjs","--functional"]],
- ]){
-  const result=spawnSync("bash",["-c",'node() { for arg in "$@"; do echo "$arg"; done; }\n'+command],{env:{...process.env,CANDIDATE_PROFILE:profile},encoding:"utf8"});
+test("the evidence deadline is established before setup with fifteen minutes reserved",()=>{
+ const setup=named("Reserve time for evidence upload");
+ assert.equal(steps[0],setup);
+ const cwd=mkdtempSync(join(tmpdir(),"breditor-ci-deadline-"));
+ try{
+  const environment=join(cwd,"environment");
+  const result=spawnSync("bash",["-ec",'date() { echo 1000; }\n'+setup.run],{
+   cwd,encoding:"utf8",env:{...process.env,GITHUB_ENV:environment},
+  });
   assert.equal(result.status,0,result.stderr);
-  assert.deepEqual(result.stdout.trimEnd().split("\n"),expected);
+  assert.equal(readFileSync(environment,"utf8"),"CANDIDATE_EVIDENCE_DEADLINE=21700\n");
+ }finally{rmSync(cwd,{recursive:true,force:true});}
+});
+
+test("profile dispatch honors the deadline and preserves the verifier's exit status",()=>{
+ const command=named("Qualify the selected candidate profile").run;
+ const run=(profile,deadline,status="0")=>spawnSync("bash",["-c",[
+  'date() { echo 1000; }',
+  'timeout() { for arg in "$@"; do echo "$arg"; done; return "$VERIFIER_STATUS"; }',
+  command,
+ ].join("\n")],{env:{...process.env,CANDIDATE_PROFILE:profile,CANDIDATE_EVIDENCE_DEADLINE:deadline,VERIFIER_STATUS:status},encoding:"utf8"});
+ for(const [profile,args] of [["full",[]],["functional",["--functional"]]]){
+  const result=run(profile,"2080");
+  assert.equal(result.status,0,result.stderr);
+  assert.deepEqual(result.stdout.trimEnd().split("\n"),
+   ["--signal=TERM","--kill-after=2m","1080s","node","scripts/verify-candidate.mjs",...args]);
  }
- const failure=spawnSync("bash",["-c","node() { return 19; }\n"+command],{env:{...process.env,CANDIDATE_PROFILE:"full"},encoding:"utf8"});
- assert.equal(failure.status,19,"a failed full qualification cannot fall back to functional");
+ for(const status of [19,124,130])assert.equal(run("full","2080",String(status)).status,status);
  for(const profile of ["","FULL","full; echo injected","$(echo injected)"]){
-  const invalid=spawnSync("bash",["-c",'node() { echo "unexpected candidate invocation"; }\n'+command],{env:{...process.env,CANDIDATE_PROFILE:profile},encoding:"utf8"});
+  const invalid=run(profile,"2080");
   assert.equal(invalid.status,2);
   assert.equal(invalid.stdout,"");
   assert.match(invalid.stderr,/Unsupported candidate qualification profile/);
  }
+ for(const deadline of ["","abc","012","1+2","$(echo injected)"]){
+  const invalid=run("full",deadline);
+  assert.equal(invalid.status,2);
+  assert.equal(invalid.stdout,"");
+  assert.match(invalid.stderr,/Missing or invalid candidate evidence deadline/);
+ }
+ const expired=run("full","1000");
+ assert.equal(expired.status,124);
+ assert.equal(expired.stdout,"");
+ assert.match(expired.stderr,/Candidate deadline elapsed during setup/);
 });
 
 test("a setup failure still has a retained commit and runner outcome report",()=>{
  const row=named("Record qualification setup and stage outcomes");
  const ids=["checkout","node","rust","npm","cargo","browsers","candidate"];
- assert.deepEqual(steps.slice(0,ids.length).map(step=>step.id),ids);
+ assert.deepEqual(steps.slice(1,ids.length+1).map(step=>step.id),ids);
  assert.equal(row.if,"${{ always() }}");
  assert.equal(steps.indexOf(row)+1,steps.indexOf(named("Retain candidate results and failure logs")));
  for(const id of ids)assert.equal(row.env[id.toUpperCase()+"_OUTCOME"],"${{ steps."+id+".outcome }}");
