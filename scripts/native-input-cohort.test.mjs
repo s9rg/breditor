@@ -1,7 +1,7 @@
 /** Genuine mixed native parents, not fake readiness or substituted operations. */
 import test,{before,after} from 'node:test';
 import assert from 'node:assert/strict';
-import * as api from '../packages/breditor-collaboration/dist/index.js';
+import {SharedIndependentHistoryPersistentSession as Session} from '../packages/breditor-collaboration/dist/independent_history/session.js';
 import * as rich from '@breditor/experimental-rich-content';
 import {OperationalIndependentLocalParticipant as OldParent} from '../packages/breditor-collaboration/dist/independent_local_operation/participant.js';
 import {captureLocalOperationBackup as capture} from '../packages/breditor-collaboration/dist/independent_local_operation/portable_capture.js';
@@ -10,18 +10,29 @@ import {insertCleanupText} from './fixtures/owned-core-cleanup/session.mjs';
 import {pixel,secondAsset} from './fixtures/review-assets/pixels.mjs';
 import {RecoveryLease} from '../packages/breditor-collaboration/dist/participant_recovery/lease.js';
 import {environment} from './fixtures/room-participant-inventory/environment.mjs';
-// Retain actual native owners only through fixture instrumentation at creation.
-const opened=new Map(),open=api.SharedIndependentHistoryPersistentSession.open;
-api.SharedIndependentHistoryPersistentSession.open=async function(options){const value=await open.call(this,options);opened.set(options.database,value);return value;};
-const {OperationalRestoredLocalParticipant:Snapshot}=await import('../packages/breditor-collaboration/dist/restored_local_operation/participant.js');
-const {OperationalFlatLocalParticipant:Flat}=await import('../packages/breditor-collaboration/dist/flat_local_operation/participant.js');
+// Load both private openers while the observer is installed. They capture the
+// native method at initialization, and the public barrel also loads them.
+const opened=new Map();
+const open=Session.open;
+let Snapshot,Flat;
+Session.open=async function(options){
+ const owner=await open.call(this,options);
+ opened.set(options.database,owner);
+ return owner;
+};
+try{
+ ({OperationalRestoredLocalParticipant:Snapshot}=await import('../packages/breditor-collaboration/dist/restored_local_operation/participant.js'));
+ ({OperationalFlatLocalParticipant:Flat}=await import('../packages/breditor-collaboration/dist/flat_local_operation/participant.js'));
+}finally{
+ Session.open=open;
+}
+const api=await import('../packages/breditor-collaboration/dist/index.js');
 const {handoffNativeInputParticipants:handoff,reserveNativeInputParticipantGroup:reserveGroup}=await import('../packages/breditor-collaboration/dist/native_input_operation/cohort.js');
 const {prepareOperationalCohort}=await import('../packages/breditor-collaboration/dist/operation_cohort/cohort.js');
 const {RestoredLocalParticipantWitness}=await import('../packages/breditor-collaboration/dist/restored_local_operation/participant_witness.js');
 const {RestoredLocalParticipantUploads}=await import('../packages/breditor-collaboration/dist/restored_local_operation/participant_assets.js');
 const {restoredLocalFixture}=await import('./fixtures/restored-local-operation/session.mjs');
 const {flatLocalFixture}=await import('./fixtures/flat-local-operation/session.mjs');
-api.SharedIndependentHistoryPersistentSession.open=open;
 const runtime=process.env.BREDITOR_NATIVE_INPUT_COHORT_RUNTIME??new URL('../target/promoted-shared-web/',import.meta.url).pathname;
 const bytes=async file=>Buffer.from(await file.arrayBuffer());
 let host;
