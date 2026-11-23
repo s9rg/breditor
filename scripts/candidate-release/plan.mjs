@@ -499,7 +499,10 @@ export function candidateReleasePlan({profile="full",environment=process.env}={}
   stage('handover-native-activation-types',node,['node_modules/typescript/bin/tsc','--noEmit','--strict','--exactOptionalPropertyTypes','--noUncheckedIndexedAccess','--target','ES2022','--module','NodeNext','--lib','ES2022,DOM','scripts/fixtures/editor-consumer/types-handover-activation-coordination.ts']),
   stage('handover-native-activation-host',node,['--test','scripts/native-handover-activation-host.test.mjs','scripts/native-handover-publication-host.test.mjs','scripts/native-sealed-handover-process-recovery.test.mjs','scripts/native-sealed-published-process-recovery.test.mjs'],{},[],600000),
   stage('handover-native-activation-native',node,['--test','scripts/native-handover-activation-coordinated.test.mjs'],{},[],7800000),
-  script('installed-handover-native-activation','check-handover-native-activation-installed.mjs',[],[{path:'target/handover-native-activation-installed-consumer.json',fresh:true}],8400000),
+  script('installed-handover-native-activation','check-handover-native-activation-installed.mjs',[],[
+   {path:'target/handover-native-activation-installed-consumer.json',fresh:true,retain:true},
+   {path:'target/handover-native-activation-installed.log',fresh:true,retain:true},
+  ],8400000),
   stage('joint-handover-plan-contracts',node,['--test','scripts/joint-handover-candidate-plan.test.mjs']),
   stage('joint-handover-types',node,['node_modules/typescript/bin/tsc','--noEmit','--strict','--exactOptionalPropertyTypes','--noUncheckedIndexedAccess','--target','ES2022','--module','NodeNext','--lib','ES2022,DOM,DOM.Iterable','scripts/fixtures/native-joint-activation/types.mts']),
   relayCargo('joint-handover-cohort-host',['build','--features','server','--locked','--offline','--release','--example','complete_cohort_control_functional'],[executablePath('complete_cohort_control_functional')]),

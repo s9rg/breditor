@@ -39,6 +39,7 @@
             "physical-operation-custody",
             "selected-delivery",
             "metadata-handover",
+            "native-handover-activation-installed",
             "joint-handover-source",
             "joint-handover-installed",
             "cold-joint-handover-source",
