@@ -6,10 +6,18 @@ use std::sync::Arc;
 
 impl RichReplica {
     pub(in crate::rich_replica) fn fork_live_owner(&self, leave_open: bool) -> Result<Self, Error> {
+        self.fork_owner_through(leave_open, self.journal.entries.len())
+    }
+
+    pub(in crate::rich_replica) fn fork_owner_through(
+        &self,
+        leave_open: bool,
+        admitted_entries: usize,
+    ) -> Result<Self, Error> {
         let (doc, undo) = self.doc.fork_with_undo_for_staging(&self.undo)?;
         // The native snapshot covers applied operations only. Re-admit EVERY retained input,
         // including unresolved causal imports, before a candidate can publish anything.
-        for bytes in self.journal.retained_updates() {
+        for bytes in self.journal.retained_updates_through(admitted_entries) {
             doc.import(bytes)?;
         }
         if doc.state_vv() != self.doc.state_vv() || doc.oplog_vv() != self.doc.oplog_vv() {
