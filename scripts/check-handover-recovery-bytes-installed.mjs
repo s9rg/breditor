@@ -6,6 +6,8 @@ import {readFileSync,writeFileSync,readdirSync,lstatSync,mkdtempSync,mkdirSync,c
 import {createHash} from 'node:crypto';
 import {join,dirname,resolve,relative} from 'node:path';
 import {fileURLToPath} from 'node:url';
+import {sourceEvidence} from './candidate-release/evidence.mjs';
+import {metadataFixtureEvidence} from './candidate-release/metadata-fixture-evidence.mjs';
 const root=resolve(dirname(fileURLToPath(import.meta.url)),'..');
 if(process.argv.length!==2)throw Error('The complete metadata handover workset is required');
 const producer=root;
@@ -49,9 +51,12 @@ function fixtures(path){for(const entry of readdirSync(join(root,path),{withFile
 fixtures('scripts/fixtures');for(const name of tests)copyScript('scripts/'+name);
 copyScript('scripts/diagnostics/archive-error-chain.mjs');
 const nativeRelative='target/owned-history-relay-native/release/examples/selected_suggestion_delivery_functional',nativeSource=join(root,nativeRelative),nativeTarget=join(consumer,nativeRelative),nativeSha256=sha(readFileSync(nativeSource));mkdirSync(dirname(nativeTarget),{recursive:true});cpSync(nativeSource,nativeTarget);assert.equal(sha(readFileSync(nativeTarget)),nativeSha256);
-const wasm=join(consumer,'node_modules/@breditor/collaboration/dist/runtime/breditor_shared_bg.wasm'),normalWasmSha256=sha(readFileSync(wasm));assert.equal(normalWasmSha256,'165e23dbaef2ab77a6f920a20012e19624422ab2ccb74ec4e01f2146ac8086e0');
+const fixture=metadataFixtureEvidence(root,sourceEvidence(root),consumer);
+if(fixture.nativeHostBuildReceiptSha256)assert.equal(nativeSha256,fixture.nativeHostSha256);
+const wasm=join(consumer,'node_modules/@breditor/collaboration/dist/runtime/breditor_shared_bg.wasm'),normalWasmSha256=sha(readFileSync(wasm));
+assert.equal(normalWasmSha256,fixture.normalWasmSha256);
 const state={format:'breditor/installed-handover-recovery-bytes-development',version:1,complete:false,sourceRoot:root,producer,consumer,directory,sourceInputs:before,copied,workspaceLinks:false,registryArtifacts,matchingPackageDistFiles,nativeSha256,normalWasmSha256,archives:packs.map(row=>({name:row.name,path:join(archives,row.filename),sha256:sha(readFileSync(join(archives,row.filename)))})),startedAt:new Date().toISOString()};
 writeFileSync(join(directory,'running.json'),JSON.stringify(state,null,2));console.log(JSON.stringify({directory,consumer,phase:'execute-actual-handover-recovery-bytes'}));
-const logPath=join(directory,'installed-handover-recovery-bytes.log'),result=await executeCandidateStage({id:'installed-handover-recovery-bytes',command:process.execPath,args:['--test',...tests.map(name=>'scripts/'+name)],env:{},timeoutMs:7800000},{root:consumer,logPath});
+const logPath=join(directory,'installed-handover-recovery-bytes.log'),result=await executeCandidateStage({id:'installed-handover-recovery-bytes',command:process.execPath,args:['--test',...tests.map(name=>'scripts/'+name)],env:fixture.environment,timeoutMs:7800000},{root:consumer,logPath});
 const log=readFileSync(logPath,'utf8');state.result={...result,logPath,logSha256:sha(Buffer.from(log))};writeFileSync(join(directory,'running.json'),JSON.stringify(state,null,2));assert.equal(result.status,'passed');for(const [name,value] of [['tests',expectedCases],['pass',expectedCases],['fail',0],['cancelled',0],['skipped',0]])assert.match(log,new RegExp('^# '+name+' '+value+'$','m'));
 assert.deepEqual(inputs(),before);assert.equal(sha(readFileSync(nativeSource)),nativeSha256);state.complete=true;state.sourceUnchanged=true;state.releaseReady=false;state.v1GatesOpen=13;state.finishedAt=new Date().toISOString();state.scope='Actual sealed successor, seven cold clients, preserved offline and metadata facts, complete packet/server/raster recovery capture under the authenticated path, current native/provider reconciliation and future Undo/Redo. Node storage/locks and image decoding are controlled fixtures. Whole-room activation and physical browser durability require further qualification.';writeFileSync(join(directory,'result.json'),JSON.stringify(state,null,2));writeFileSync(join(root,'target/handover-recovery-bytes-installed-consumer.json'),JSON.stringify(state,null,2));console.log(JSON.stringify({passed:true,tests:expectedCases,directory,sourceUnchanged:true,workspaceLinks:false}));
