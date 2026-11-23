@@ -572,3 +572,9 @@ same checkpoint bytes, and the active owners again held their checkpoint
 copies. The test checks that close releases backing storage on the scale
 of those journals. Live full-frame history and Wasm memory still need
 qualification against the supported operating envelope.
+
+The November 23 repeat on the same Chrome version completed 100 edit/Undo
+rounds on newly packed SDK archives. Backing storage rose from 0.83 MB to
+30.80 MB during the active session and fell to 0.76 MB after both owners
+closed. Reopening restored both saved checkpoints byte-for-byte and brought
+backing storage to 30.82 MB. [Exact archives and measured samples](qualification/2026-11-23-installed-chrome-shared-memory.json)

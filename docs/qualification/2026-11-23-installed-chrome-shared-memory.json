@@ -1,0 +1,156 @@
+{
+  "format": "breditor/installed-shared-memory",
+  "formatVersion": 1,
+  "chromeVersion": "157.0.8103.80",
+  "platform": "darwin",
+  "arch": "arm64",
+  "peers": 2,
+  "editUndoRounds": 100,
+  "samples": [
+    {
+      "phase": 0,
+      "elapsedMs": 17.137833999999202,
+      "heap": {
+        "usedSize": 3853340,
+        "totalSize": 4521984,
+        "embedderHeapUsedSize": 1539112,
+        "backingStorageSize": 825071
+      },
+      "dom": {
+        "documents": 1,
+        "nodes": 1932,
+        "jsEventListeners": 412
+      }
+    },
+    {
+      "phase": 10,
+      "elapsedMs": 2005.4114169999993,
+      "heap": {
+        "usedSize": 4315544,
+        "totalSize": 4784128,
+        "embedderHeapUsedSize": 1548128,
+        "backingStorageSize": 3514685
+      },
+      "dom": {
+        "documents": 1,
+        "nodes": 1900,
+        "jsEventListeners": 412
+      }
+    },
+    {
+      "phase": 25,
+      "elapsedMs": 6894.216917,
+      "heap": {
+        "usedSize": 4356872,
+        "totalSize": 4784128,
+        "embedderHeapUsedSize": 1546384,
+        "backingStorageSize": 7671375
+      },
+      "dom": {
+        "documents": 1,
+        "nodes": 1900,
+        "jsEventListeners": 412
+      }
+    },
+    {
+      "phase": 50,
+      "elapsedMs": 20866.721375,
+      "heap": {
+        "usedSize": 4376472,
+        "totalSize": 5308416,
+        "embedderHeapUsedSize": 1545912,
+        "backingStorageSize": 14945780
+      },
+      "dom": {
+        "documents": 1,
+        "nodes": 1900,
+        "jsEventListeners": 412
+      }
+    },
+    {
+      "phase": 100,
+      "elapsedMs": 72153.27637499999,
+      "heap": {
+        "usedSize": 4492808,
+        "totalSize": 5308416,
+        "embedderHeapUsedSize": 1546168,
+        "backingStorageSize": 30801351
+      },
+      "dom": {
+        "documents": 1,
+        "nodes": 1900,
+        "jsEventListeners": 412
+      }
+    },
+    {
+      "phase": "closed",
+      "elapsedMs": 73581.023292,
+      "heap": {
+        "usedSize": 4460660,
+        "totalSize": 5308416,
+        "embedderHeapUsedSize": 861768,
+        "backingStorageSize": 755659
+      },
+      "dom": {
+        "documents": 1,
+        "nodes": 1878,
+        "jsEventListeners": 18
+      }
+    },
+    {
+      "phase": "reopened",
+      "elapsedMs": 77886.013125,
+      "heap": {
+        "usedSize": 3954292,
+        "totalSize": 4521984,
+        "embedderHeapUsedSize": 1532544,
+        "backingStorageSize": 30818729
+      },
+      "dom": {
+        "documents": 1,
+        "nodes": 1898,
+        "jsEventListeners": 412
+      }
+    }
+  ],
+  "checkpointCodeUnits": 30040753,
+  "releasedBackingStorage": 30045692,
+  "exactReopenedCheckpoints": 2,
+  "date": "2026-11-23",
+  "source": {
+    "commit": "991c5e4c93123cb9e31837556cd06a3f757a53d3",
+    "dirty": false,
+    "sha256": "9586e4f432e9628c1e2ababca973ceccf3f8ce4107eec7a0a6281b896fcbea92",
+    "files": 9578,
+    "bytes": 82052842
+  },
+  "node": "22.14.0",
+  "macOS": "26.6.2",
+  "archives": [
+    {
+      "name": "@breditor/browser",
+      "version": "0.3.0-alpha.22",
+      "bytes": 261359,
+      "sha256": "b67ad32fba519c349e611778512d4a827b49528d6280139abb44a74216949790"
+    },
+    {
+      "name": "@breditor/experimental-rich-content",
+      "version": "0.3.0-alpha.22",
+      "bytes": 2337732,
+      "sha256": "2769a821f1dac5396c8166663885aa9d6f1288c9bde686b6f8eeee52805258f5"
+    },
+    {
+      "name": "@breditor/collaboration",
+      "version": "0.3.0-alpha.22",
+      "bytes": 5630784,
+      "sha256": "7aef686b5370c121d311d8d517517f2cc0ddc2707555173a23c82f63fa3d6953"
+    },
+    {
+      "name": "@breditor/editor",
+      "version": "0.3.0-alpha.22",
+      "bytes": 83477,
+      "sha256": "ff50188718a1587bc21fda0e0700a2f4de61085ae00d083cf569789d29c713dd"
+    }
+  ],
+  "scope": "Two independent installed shared editor owners synchronize full frames. The measurements are Chrome renderer counters after explicit garbage collection. Both persisted checkpoints reopen byte-for-byte."
+}
