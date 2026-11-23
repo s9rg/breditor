@@ -1032,10 +1032,7 @@ function isPositiveU32(value: unknown): value is number {
 }
 
 function isU32(value: unknown): value is number {
-  return typeof value === "number" &&
-    Number.isInteger(value) &&
-    value >= 0 &&
-    value <= 4_294_967_295;
+  return typeof value === "number" && value === (value >>> 0);
 }
 
 function isOptionalSafeInteger(value: unknown): value is number | undefined {
