@@ -18,7 +18,7 @@ test("candidate qualification is manual-only, read-only and does not supersede e
  assert.deepEqual(job.defaults,{run:{shell:"bash"}});
  const profile=workflow.on.workflow_dispatch.inputs.profile;
  assert.equal(profile.required,true);assert.equal(profile.default,"full");
- assert.equal(profile.type,"choice");assert.deepEqual(profile.options,["full","functional"]);
+ assert.equal(profile.type,"choice");assert.deepEqual(profile.options,["full","functional","default-matrix","editor-browser-matrix"]);
  assert.equal(job["runs-on"],"ubuntu-24.04");assert.equal(job["timeout-minutes"],360);
  assert.equal(job.environment,undefined);assert.equal(job.secrets,undefined);
  assert.ok(steps.every(step=>step["continue-on-error"]===undefined));
@@ -53,8 +53,8 @@ test("CI installs the exact paired Rust and bindgen versions before offline chec
 });
 
 test("full qualification installs all three engines and the explicit functional profile does not imply readiness",()=>{
- const browsers=named("Install all three test engines for the full profile");
- assert.equal(browsers.if,"${{ inputs.profile == 'full' }}");
+ const browsers=named("Install all three test engines for browser qualification");
+ assert.equal(browsers.if,"${{ inputs.profile != 'functional' }}");
  assert.equal(browsers.run,"node node_modules/@playwright/test/cli.js install --with-deps chromium firefox webkit");
  const candidate=named("Qualify the selected candidate profile");
  assert.deepEqual(candidate.env,{CANDIDATE_PROFILE:"${{ inputs.profile }}",CARGO_NET_OFFLINE:"true"});
@@ -102,7 +102,8 @@ test("profile dispatch honors the deadline and preserves the verifier's exit sta
   'timeout() { for arg in "$@"; do echo "$arg"; done; return "$VERIFIER_STATUS"; }',
   command,
  ].join("\n")],{env:{...process.env,CANDIDATE_PROFILE:profile,CANDIDATE_EVIDENCE_DEADLINE:deadline,VERIFIER_STATUS:status},encoding:"utf8"});
- for(const [profile,args] of [["full",[]],["functional",["--functional"]]]){
+ for(const [profile,args] of [["full",[]],["functional",["--functional"]],
+  ["default-matrix",["--default-matrix"]],["editor-browser-matrix",["--editor-browser-matrix"]]]){
   const result=run(profile,"2080");
   assert.equal(result.status,0,result.stderr);
   assert.deepEqual(result.stdout.trimEnd().split("\n"),

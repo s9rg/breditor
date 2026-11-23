@@ -4,13 +4,15 @@
     "workflow_dispatch": {
       "inputs": {
         "profile": {
-          "description": "Full includes browser/default-package checks and the fail-closed V1 ledger. Functional alone is not V1 approval.",
+          "description": "Full includes all matrices and the V1 ledger. Each other profile runs a documented subset.",
           "required": true,
           "default": "full",
           "type": "choice",
           "options": [
             "full",
-            "functional"
+            "functional",
+            "default-matrix",
+            "editor-browser-matrix"
           ]
         }
       }
@@ -65,8 +67,8 @@
           "id": "cargo"
         },
         {
-          "name": "Install all three test engines for the full profile",
-          "if": "${{ inputs.profile == 'full' }}",
+          "name": "Install all three test engines for browser qualification",
+          "if": "${{ inputs.profile != 'functional' }}",
           "run": "node node_modules/@playwright/test/cli.js install --with-deps chromium firefox webkit",
           "id": "browsers"
         },
@@ -76,7 +78,7 @@
             "CANDIDATE_PROFILE": "${{ inputs.profile }}",
             "CARGO_NET_OFFLINE": "true"
           },
-          "run": "case \"$CANDIDATE_PROFILE\" in\n  full) args=() ;;\n  functional) args=(--functional) ;;\n  *) echo \"Unsupported candidate qualification profile\" >&2; exit 2 ;;\nesac\nif [[ ! ${CANDIDATE_EVIDENCE_DEADLINE:-} =~ ^[1-9][0-9]{0,11}$ ]]; then\n  echo \"Missing or invalid candidate evidence deadline\" >&2\n  exit 2\nfi\nremaining=$(( CANDIDATE_EVIDENCE_DEADLINE - $(date +%s) ))\nif (( remaining <= 0 )); then\n  echo \"Candidate deadline elapsed during setup\" >&2\n  exit 124\nfi\ntimeout --signal=TERM --kill-after=2m \"${remaining}s\" node scripts/verify-candidate.mjs \"${args[@]}\"",
+          "run": "case \"$CANDIDATE_PROFILE\" in\n  full) args=() ;;\n  functional|default-matrix|editor-browser-matrix) args=(\"--$CANDIDATE_PROFILE\") ;;\n  *) echo \"Unsupported candidate qualification profile\" >&2; exit 2 ;;\nesac\nif [[ ! ${CANDIDATE_EVIDENCE_DEADLINE:-} =~ ^[1-9][0-9]{0,11}$ ]]; then\n  echo \"Missing or invalid candidate evidence deadline\" >&2\n  exit 2\nfi\nremaining=$(( CANDIDATE_EVIDENCE_DEADLINE - $(date +%s) ))\nif (( remaining <= 0 )); then\n  echo \"Candidate deadline elapsed during setup\" >&2\n  exit 124\nfi\ntimeout --signal=TERM --kill-after=2m \"${remaining}s\" node scripts/verify-candidate.mjs \"${args[@]}\"",
           "id": "candidate"
         },
         {

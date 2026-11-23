@@ -372,6 +372,31 @@ test("dry run is cwd-independent and explicitly cannot imply V1 readiness",()=>{
  for(const args of [["--skip-tests"],["--functional","--functional"],["--help","--functional"]]){const bad=spawnSync(process.execPath,[script,...args],{encoding:"utf8"});assert.equal(bad.status,2);assert.equal(bad.stdout,"");}
  const help=spawnSync(process.execPath,[script,"--help"],{encoding:"utf8"});assert.equal(help.status,0);assert.match(help.stdout,/not V1 readiness/);
 });
+test("isolated release matrices preserve the full plan's commands and report their narrower scope",()=>{
+ const script=join(repository,"scripts/verify-candidate.mjs");
+ const full=candidateReleasePlan().checks;
+ for(const [profile,ids] of [
+  ["default-matrix",["default-package-release-matrix"]],
+  ["editor-browser-matrix",["relay-native-dependency-notices","default-typescript-build","installed-editor-browser-matrix"]],
+ ]){
+  const run=spawnSync(process.execPath,[script,`--${profile}`,"--dry-run"],{cwd:tmpdir(),encoding:"utf8"});
+  assert.equal(run.status,0,run.stderr);
+  const selected=JSON.parse(run.stdout);
+  assert.equal(selected.executed,false);
+  assert.equal(selected.profile,profile);
+  assert.equal(selected.v1Ready,false);
+  assert.deepEqual(selected.deferred,["full-candidate-qualification"]);
+  assert.deepEqual(selected.checks,ids.map(id=>full.find(check=>check.id===id)));
+ }
+ for(const args of [
+  ["--functional","--default-matrix"],
+  ["--editor-browser-matrix","--activation-evidence","inputs","reports"],
+ ]){
+  const run=spawnSync(process.execPath,[script,...args,"--dry-run"],{encoding:"utf8"});
+  assert.equal(run.status,2);
+  assert.equal(run.stdout,"");
+ }
+});
 test("nested default and candidate builds receive the same selected toolchain without a PATH requirement",()=>{
  const environment={BREDITOR_CARGO:"/tools with spaces/cargo",BREDITOR_RUSTC:"/tools with spaces/rustc",BREDITOR_WASM_BINDGEN:"/tools with spaces/bindgen",WASM_BINDGEN_TEST_RUNNER_BIN:"/tools with spaces/runner",BREDITOR_NPM:"/tools with spaces/npm"};
  for(const c of candidateReleasePlan({environment}).checks){assert.equal(c.env.CARGO_BIN,environment.BREDITOR_CARGO);assert.equal(c.env.BREDITOR_CARGO,environment.BREDITOR_CARGO);assert.equal(c.env.RUSTC,environment.BREDITOR_RUSTC);assert.equal(c.env.RUSTC_BIN,environment.BREDITOR_RUSTC);assert.equal(c.env.BREDITOR_RUSTC,environment.BREDITOR_RUSTC);assert.equal(c.env.WASM_BINDGEN_BIN,environment.BREDITOR_WASM_BINDGEN);assert.equal(c.env.BREDITOR_WASM_BINDGEN,environment.BREDITOR_WASM_BINDGEN);assert.equal(c.env.WASM_BINDGEN_TEST_RUNNER_BIN,environment.WASM_BINDGEN_TEST_RUNNER_BIN);assert.equal(c.env.NPM_BIN,environment.BREDITOR_NPM);assert.equal(c.env.NODE_BIN,process.execPath);}

@@ -34,6 +34,20 @@ archive digests alongside its browser test log.
 The matrix uses the release relay from the native dependency stage and verifies
 its executable hash before starting the browser checks.
 
+## Independent release matrices
+
+The manual candidate workflow offers `default-matrix` and
+`editor-browser-matrix` profiles. Each runs the same matrix as the full plan
+in its own checkout and can finish even when an earlier full-profile stage
+is still running or fails. The editor browser profile builds the default
+browser distributions and the native relay before testing fresh installed
+SDK archives. It uses the same three desktop browser engines, relay hash
+check and archive evidence as the full plan.
+
+Locally, use `node scripts/verify-candidate.mjs --default-matrix` or
+`node scripts/verify-candidate.mjs --editor-browser-matrix`. The results carry
+the selected profile and leave full candidate qualification outstanding.
+
 ## Whole-room activation jobs
 
 Both candidate profiles build the real relay fixture and run the
