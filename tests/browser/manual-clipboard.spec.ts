@@ -13,7 +13,10 @@ async function openFixture(page: Page): Promise<void> {
     } });
   });
   await page.goto("/manual-clipboard.html");
-  await expect(page.locator("#status")).toHaveText("live · incomplete");
+  const startup = page.locator("#status");
+  await expect(startup).toHaveText(/^(?:live · incomplete|startupFailed · fault-observed)$/u);
+  expect(await startup.getAttribute("data-startup-error"), "Manual clipboard startup code").toBeNull();
+  await expect(startup).toHaveText("live · incomplete");
   await expect(page.getByRole("textbox", { name: "Manual clipboard editor", exact: true })).toHaveText(SAMPLE);
 }
 
@@ -61,6 +64,14 @@ test("manual recorder distinguishes operator evidence, pending dispatch, truncat
   const failed = new ManualClipboardRecorder();
   failed.startupFailed();
   expect(failed.report()).toMatchObject({ outcome: "fault-observed", owner: { phase: "startupFailed" } });
+});
+
+test("manual fixture records the startup stage when Wasm cannot load", async ({ page }) => {
+  await page.route(/\.wasm(?:\?.*)?$/u, route => route.abort());
+  await page.goto("/manual-clipboard.html");
+  const startup = page.locator("#status");
+  await expect(startup).toHaveText("startupFailed · fault-observed");
+  await expect(startup).toHaveAttribute("data-startup-error", "fixture.wasm_initialization");
 });
 
 test("manual fixture reports synthetic events honestly and excludes content and scratch input", async ({ page }) => {
