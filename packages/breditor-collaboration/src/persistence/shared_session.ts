@@ -218,7 +218,8 @@ export class SharedPersistentSession<P extends SharedSelectionPolicy="original">
   while(this.#pending&&!this.#closed){this.#lease.assertLive();const next=this.#pending;this.#pending=undefined;
    try{if(this.#search)await writeSearchRecord(this.#db,[this.#options.room,this.#options.writer],{format:"breditor/shared-search-checkpoint-record",formatVersion:1,history:this.#options.history??"explicit",rangeEditing:this.#options.rangeEditing??"original",selectionEditing:this.#selectionPolicy,richLanguage:this.#options.richLanguage??1,checkpointJson:next.json});else if(this.#selectionPolicy==="document-v1")await writeDocumentSessionCheckpoint(this.#db,[this.#options.room,this.#options.writer],next.json,this.#options.history??"explicit",this.#options.richLanguage??1);else if(this.#options.rangeEditing==="general-v1")await writeSessionCheckpoint(this.#db,[this.#options.room,this.#options.writer],next.json,this.#options.history??"explicit","general-v1",this.#options.richLanguage??1);else await writeSessionCheckpoint(this.#db,[this.#options.room,this.#options.writer],next.json,this.#options.history??"explicit");}
    catch(error){this.#pending??=next;throw error;}
-   this.#saved=next.json;this.#savedRevision=next.revision;
+   if(!this.#closed)this.#saved=next.json;
+   this.#savedRevision=next.revision;
   }
  }
  /** A completed IndexedDB transaction only: neither a relay receipt nor an asset upload. */
@@ -234,7 +235,7 @@ export class SharedPersistentSession<P extends SharedSelectionPolicy="original">
  }
  /** Explicitly abandon unsaved in-memory work without deleting the last durable journal. */
  discardAndClose():Promise<void>{
-  if(this.#closed)return this.#released??Promise.resolve();this.#closed=true;this.#releasePendingWork();this.#unsubscribe();disposeOwnedCore(this.#ownedCore);this.#pending=undefined;this.#db.close();
+  if(this.#closed)return this.#released??Promise.resolve();this.#closed=true;this.#releasePendingWork();this.#unsubscribe();disposeOwnedCore(this.#ownedCore);this.#pending=undefined;this.#saved=undefined;this.#db.close();
   // A transaction already started may still commit after db.close(); do not release the writer early.
   this.#released=(this.#running??Promise.resolve()).then(()=>this.#lease.close()).catch(error=>this.#report(error));this.#notify();return this.#released;
  }
