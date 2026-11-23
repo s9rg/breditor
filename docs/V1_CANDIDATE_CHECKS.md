@@ -61,12 +61,12 @@ relay inventory also records the ELF interpreter, linked libraries and library
 search paths of the exact release binary. These reports support the dependency
 review against the distribution's actual artifacts.
 
-## Early candidate shards
+## Candidate shards
 
-The manual full profile accepts an optional shard. The first eight shards cover
-the contiguous native, runtime and SDK stages through `native-history-read`.
-Each SDK shard runs the full plan's package build prerequisites in its own
-checkout first. The result identifies the shard, its prerequisites, its assigned
+The manual full profile accepts an optional shard. The named shards cover the
+contiguous native, runtime, SDK and relay stages through installed native
+handover. Each SDK or relay shard first runs the full plan's declared
+prerequisite builds in its own checkout. The result identifies the shard, its prerequisites, its assigned
 stage IDs and the source digest, and retains its logs and reports.
 
 Run a shard locally with `node scripts/verify-candidate.mjs --shard <name>`.
