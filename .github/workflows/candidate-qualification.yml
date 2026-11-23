@@ -59,7 +59,17 @@
             "local-metadata-packet-recovery",
             "server-packet-recovery",
             "current-server-packet-reconciliation",
-            "independent-current-reconciliation"
+            "independent-current-reconciliation",
+            "native-cold-restart-auth-source",
+            "native-cold-restart-auth-installed",
+            "native-cold-restart-original-source",
+            "native-cold-restart-original-installed",
+            "native-cold-restart-review-segmented-source",
+            "native-cold-restart-review-segmented-installed",
+            "native-cold-restart-document-segmented-source",
+            "native-cold-restart-document-segmented-installed",
+            "native-cold-restart-both-segmented-source",
+            "native-cold-restart-both-segmented-installed"
           ]
         }
       }

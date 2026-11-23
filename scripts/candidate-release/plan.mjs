@@ -12,6 +12,7 @@ import {nativeSuggestionBuildReport, nativeSuggestionExample, nativeSuggestionEx
 import {defaultSizeBudgetReport} from "../record-default-size-budgets.mjs";
 import {richDemoLatencyReport} from "../record-rich-demo-latency.mjs";
 import {candidateRuntimeSizeReport} from "../measure-candidate-runtime-size.mjs";
+import {nativeColdCaseIds,nativeColdReport,nativeColdSelection} from "../native-cold-restart-plan.mjs";
 export const repository=resolve(dirname(fileURLToPath(import.meta.url)),"../..");
 export const deferredFunctionalGates=Object.freeze([
  "default-package-release-matrix","installed-editor-browser-matrix",
@@ -579,8 +580,13 @@ export function candidateReleasePlan({profile="full",environment=process.env}={}
   withSharedRuntime(script('installed-independent-current-reconciliation','check-independent-current-reconciliation-installed.mjs',[],[{path:'target/independent-current-reconciliation-installed-consumer.json',fresh:true}],7800000)),
   stage('native-cold-restart-plan-contracts',node,['--test','scripts/native-cold-restart-candidate-plan.test.mjs','scripts/native-cold-restart-evidence.test.mjs']),
   script('native-cold-restart-native-host','build-native-cold-restart.mjs',[],[{path:'target/native-cold-restart-native-build.json',fresh:true}],1800000),
-  script('native-cold-restart-source','check-native-cold-restart-source.mjs',[],[{path:'target/native-cold-restart-source-qualification.json',fresh:true}],4*7200000+600000),
-  script('installed-native-cold-restart','check-native-cold-restart-installed.mjs',[],[{path:'target/native-cold-restart-installed-consumer.json',fresh:true}],4*7200000+900000),
+  ...nativeColdCaseIds.flatMap(id=>{
+   const {timeoutMs}=nativeColdSelection(id);
+   return [
+    withSharedRuntime(script('native-cold-restart-source-'+id,'check-native-cold-restart-source.mjs',[id],[{path:nativeColdReport('source',id),fresh:true,retain:true}],timeoutMs+300000)),
+    withSharedRuntime(script('installed-native-cold-restart-'+id,'check-native-cold-restart-installed.mjs',[id],[{path:nativeColdReport('installed',id),fresh:true,retain:true}],timeoutMs+600000)),
+   ];
+  }),
   stage('reconciled-packet-recovery-plan-contracts',node,['--test','scripts/reconciled-packet-recovery-candidate-plan.test.mjs']),
   script('reconciled-packet-native-host','build-reconciled-packet-native.mjs',[],[{path:'target/reconciled-packet-native-build.json',fresh:true}],1800000),
   script('reconciled-packet-recovery-source','check-reconciled-packet-recovery-source.mjs',[],[{path:'target/reconciled-packet-recovery-source-qualification.json',fresh:true}],3*7200000+300000),
