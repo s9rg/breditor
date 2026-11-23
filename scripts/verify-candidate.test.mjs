@@ -3,17 +3,63 @@ import test from "node:test";
 import {execFileSync,spawnSync} from "node:child_process";
 import {mkdtempSync,mkdirSync,writeFileSync,readFileSync,existsSync,rmSync,symlinkSync,utimesSync,statSync} from "node:fs";
 import {tmpdir} from "node:os";
-import {join} from "node:path";
+import {dirname,join} from "node:path";
 import {candidateReleasePlan,repository} from "./candidate-release/plan.mjs";
 import {candidateShardIds,candidateShardPlan} from "./candidate-release/shards.mjs";
 import {fileEvidence,sourceEvidence,saveEvidence} from "./candidate-release/evidence.mjs";
 import {executeCandidateStage} from "./candidate-release/process.mjs";
 import {runCandidateChecks} from "./verify-candidate.mjs";
+import {candidateCoverage} from "./check-candidate-coverage.mjs";
 const temporary=()=>mkdtempSync(join(tmpdir(),"breditor-candidate-contract-"));
 const fixtureCheck=(id="fixture",script="console.log('fixture proof')")=>({id,command:process.execPath,args:["-e",script],env:{},artifacts:[],timeoutMs:4000});
 const plan=checks=>({profile:"functional",deferred:["not-a-v1-certification"],checks});
 const stable=()=>({commit:"1".repeat(40),dirty:true,sha256:"2".repeat(64),files:1,bytes:1});
 function quiet(options={}){return {snapshot:stable,report:()=>{},...options};}
+
+test("candidate coverage requires one clean source, complete selected stages and retained bytes",async()=>{
+ const root=temporary(),git=args=>execFileSync("git",args,{cwd:root,stdio:"ignore"});
+ try{
+  git(["init","-q"]);
+  writeFileSync(join(root,".gitignore"),"target/\ndist/\n");
+  git(["add",".gitignore"]);
+  git(["-c","user.name=Candidate Fixture","-c","user.email=fixture@example.test","commit","-qm","Candidate source"]);
+  const selected=candidateReleasePlan({profile:"dependency-inventories"});
+  const run=await runCandidateChecks(selected,{root,report:()=>{},execute:async(check,{logPath})=>{
+   writeFileSync(logPath,check.id);
+   for(const artifact of check.artifacts){
+    const output=join(root,artifact.path);
+    mkdirSync(dirname(output),{recursive:true});
+    writeFileSync(output,artifact.path);
+    // Permit coarse filesystem timestamp granularity in this synthetic fixture.
+    const now=Date.now()/1000;
+    utimesSync(output,now+2,now+2);
+   }
+   return {status:"passed"};
+  }});
+  assert.equal(run.exitCode,0,run.result.error);
+  const report=candidateCoverage(root,[run.manifest,run.manifest]);
+  assert.equal(report.coveredStages,selected.checks.length);
+  assert.equal(report.complete,false);
+  assert.ok(report.missing.includes("default-package-release-matrix"));
+  assert.ok(!report.missing.includes("reviewed-v1-readiness"));
+
+  const manifest=JSON.parse(readFileSync(run.manifest));
+  const original=structuredClone(manifest);
+  manifest.source.commit="0".repeat(40);
+  saveEvidence(run.manifest,manifest);
+  assert.throws(()=>candidateCoverage(root,[run.manifest]),/Source mismatch/);
+  manifest.source=original.source;
+  manifest.stages.pop();
+  saveEvidence(run.manifest,manifest);
+  assert.throws(()=>candidateCoverage(root,[run.manifest]),/Stage sequence differs/);
+  saveEvidence(run.manifest,original);
+  const retained=original.stages[0].artifacts.find(artifact=>artifact.retainedPath);
+  assert.ok(retained);
+  const retainedPath=join(dirname(run.manifest),retained.retainedPath);
+  writeFileSync(retainedPath,"x".repeat(retained.bytes));
+  assert.throws(()=>candidateCoverage(root,[run.manifest]),/Retained file digest changed/);
+ }finally{rmSync(root,{recursive:true,force:true});}
+});
 
 test('both profiles require bounded native archive integrity and immutable physical catalog source/installed admission',()=>{
  for(const profile of ['functional','full']){const p=candidateReleasePlan({profile}),find=id=>{const row=p.checks.find(c=>c.id===id);assert.ok(row,id);return row;};for(const[id,file]of [['archive-integrity-contracts','archive-integrity.test.mjs'],['physical-room-catalog-contracts','physical-room-catalog-storage.test.mjs']])assert.deepEqual(find(id).args,['--test','scripts/'+file]);assert.ok(find('physical-room-catalog-type-fence').args.includes('scripts/fixtures/editor-consumer/types-physical-room-catalog.ts'));for(const[id,file,path]of [['physical-room-catalog','check-physical-room-catalog-sdk.mjs','target/physical-room-catalog-sdk.json'],['installed-physical-room-catalog','check-physical-room-catalog-installed.mjs','target/physical-room-catalog-installed.json']]){const row=find(id);assert.deepEqual(row.args,['scripts/'+file]);assert.deepEqual(row.artifacts,[{path,fresh:true}]);assert.ok(p.checks.indexOf(find('native-server-generation-inventory'))<p.checks.indexOf(row));assert.ok(p.checks.indexOf(find('collaboration-build'))<p.checks.indexOf(row));}assert.ok(p.checks.indexOf(find('paired-shared-runtime'))<p.checks.indexOf(find('archive-integrity-contracts')));}

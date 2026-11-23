@@ -76,6 +76,14 @@ Add `--dry-run` to inspect its checks. Run with the default shard selection
 `none` for the complete plan. Readiness review and the remaining full-profile
 stages are still required.
 
+In the exact clean candidate checkout, run
+`node scripts/check-candidate-coverage.mjs <result.json>...` over downloaded
+candidate run manifests. Keep each manifest next to its logs and retained
+reports. The coverage report checks the source digest, planned stage sequence
+and retained file hashes. Add `--require-complete` before the
+manifest paths to fail if any engineering stage is missing. The readiness
+ledger remains the final reviewed release gate.
+
 ## Whole-room activation jobs
 
 Both candidate profiles build the real relay fixture and run the
