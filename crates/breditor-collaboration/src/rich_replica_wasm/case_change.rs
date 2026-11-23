@@ -7,6 +7,7 @@ use wasm_bindgen::prelude::*;
 impl RichReplicaProbe {
     /// "1": this owner has the native `change_selection_case` command.
     #[must_use]
+    #[expect(clippy::unused_self, reason = "JavaScript probes capabilities on the owner instance")]
     pub fn case_change_version(&self) -> String {
         "1".into()
     }
