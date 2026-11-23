@@ -1,5 +1,5 @@
 import {NORMAL_SHARED_WASM_SHA256} from "./fixtures/native-runtime/normal-shared-identity.mjs";
-/** Fixed read-runtime regression domain on the unchanged normal Wasm binary.
+/** Fixed read-runtime regression domain on the verified normal Wasm binary.
  * No author restoration, relay activation, platform or full V1 qualification. */
 import assert from 'node:assert/strict';
 import {execFileSync} from 'node:child_process';
