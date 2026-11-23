@@ -450,5 +450,7 @@ and Rust library notices in `target/relay-native-notices/`.
 
 The inventory includes native-target runtime and build dependencies, including
 the vendored replication sources and the raster decoders. The report lists
-missing upstream notice texts. Audit the final platform's system libraries and
+missing upstream notice texts and gives recipients the source archive URL and
+locked checksum for each MPL-covered registry dependency. Keep these source
+instructions with the generated notices when distributing the relay. Audit the final platform's system libraries and
 distribution obligations before approving the dependency and license gate.

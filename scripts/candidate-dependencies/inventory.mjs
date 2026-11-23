@@ -89,6 +89,25 @@ export function registryReleaseSource(directory){
  return {files:files.length,sha256:sha256(JSON.stringify(files))};
 }
 
+/** Describe the exact crates.io source available to recipients of MPL-covered binaries. */
+function mplSourceArchives(packages,cargoLock){
+ const covered=packages.filter(p=>p.source!=="first-party"&&/(?:^|[\s(])MPL-2\.0\+?(?=$|[\s)])/.test(p.license));
+ if(!covered.length)return [];
+ requireValue(typeof cargoLock==="string","MPL source archive lookup requires the selected Cargo.lock");
+ const records=cargoLock.split(/^\[\[package\]\]\r?$/m).slice(1);
+ return covered.map(p=>{
+  requireValue(p.source==="crates.io",`MPL-covered vendored source needs its own source availability record: ${p.key}`);
+  const entries=records.filter(record=>{
+   const lines=record.split(/\r?\n/);
+   return lines.includes(`name = "${p.name}"`)&&lines.includes(`version = "${p.version}"`)&&lines.includes(`source = "${registry}"`);
+  });
+  requireValue(entries.length===1,`Missing or ambiguous locked MPL source archive: ${p.key}`);
+  const checksum=entries[0].match(/^checksum = "([a-f0-9]{64})"\r?$/m)?.[1];
+  requireValue(checksum,`Missing locked MPL source checksum: ${p.key}`);
+  return {package:p.key,url:`https://static.crates.io/crates/${p.name}/${p.name}-${p.version}.crate`,sha256:checksum};
+ });
+}
+
 /** No timestamps or machine-specific paths enter the reproducible inventory digest. */
 export function candidateDependencyInventory(metadata,rootName,options){
  const graph=selectedCargoGraph(metadata,rootName,options),byKey=new Map([...graph.sources.values()].map(value=>[value.key,value])),noticeTexts=[],gaps=[];
@@ -117,6 +136,7 @@ export function candidateDependencyInventory(metadata,rootName,options){
   if(!notices.length)gaps.push({package:p.key,reason:"no-notice-text-in-cargo-source"});
   return {...p,notices};
  });
- const body={format:"breditor/candidate-dependency-inventory",formatVersion:1,root:graph.root,packages,edges:graph.edges,gaps,crateSourceVerification:"not-performed",licenseReview:"not-approved",publicationApproved:false};
+ const sourceArchives=mplSourceArchives(packages,options?.cargoLock);
+ const body={format:"breditor/candidate-dependency-inventory",formatVersion:1,root:graph.root,packages,edges:graph.edges,gaps,...(sourceArchives.length?{mplSourceArchives:sourceArchives}:{}),crateSourceVerification:"not-performed",licenseReview:"not-approved",publicationApproved:false};
  return {inventory:{...body,sha256:sha256(JSON.stringify(body))},noticeTexts};
 }

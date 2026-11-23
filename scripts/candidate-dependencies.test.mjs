@@ -35,6 +35,23 @@ test("reproducible inventory reports missing notice text and never grants approv
   writeFileSync(join(f.root,"dep/LICENSE-MIT"),"Changed copyright\n");assert.notEqual(candidateDependencyInventory(f.metadata,"app",f.options).inventory.sha256,a.inventory.sha256);
  }finally{rmSync(f.root,{recursive:true,force:true});}
 });
+test("MPL source archives identify only the locked registry version reached by the selected graph",()=>{
+ const f=fixture();
+ try{
+  f.metadata.packages.find(p=>p.name==="dep").license="(MPL-2.0+ OR MIT)";
+  f.metadata.packages.find(p=>p.name==="dev").license="MPL-2.0";
+  const checksum="2".repeat(64);
+  const entry=`[[package]]\nname = "dep"\nversion = "1.0.0"\nsource = "${registry}"\nchecksum = "${checksum}"\n`;
+  const inventory=cargoLock=>candidateDependencyInventory(f.metadata,"app",{...f.options,cargoLock}).inventory;
+  assert.deepEqual(inventory(entry+entry.replace("1.0.0","2.0.0")).mplSourceArchives,[{
+   package:"dep@1.0.0",url:"https://static.crates.io/crates/dep/dep-1.0.0.crate",sha256:checksum,
+  }]);
+  assert.notEqual(inventory(entry).sha256,inventory(entry.replace(checksum,"3".repeat(64))).sha256);
+  assert.throws(()=>inventory(undefined),/requires the selected Cargo.lock/);
+  assert.throws(()=>inventory(entry+entry),/ambiguous locked MPL source archive/);
+  assert.throws(()=>inventory(entry.replace(checksum,"abc")),/Missing locked MPL source checksum/);
+ }finally{rmSync(f.root,{recursive:true,force:true});}
+});
 function supplement(f){
  const revision="a".repeat(40),text="Exact upstream MIT copyright\r\nPermission text.\r\n",entry={key:"dep@1.0.0",license:"MIT",revision,pathInVcs:"component",url:`https://raw.githubusercontent.com/example/upstream/${revision}/LICENSE`,text,sha256:createHash("sha256").update(text).digest("hex")};
  writeFileSync(join(f.root,"dep/.cargo_vcs_info.json"),JSON.stringify({git:{sha1:revision},path_in_vcs:"component"}));f.options.upstreamNotices=[entry];return entry;

@@ -22,6 +22,11 @@ export function runtimeNoticePlan(kind,environment=process.env){
 export function renderRuntimeNotices({inventory,noticeTexts}){
  const lines=["Breditor candidate third-party notice inventory","",`Root: ${inventory.root}`,`Inventory SHA-256: ${inventory.sha256}`,"", "Available Cargo source notices and explicitly pinned upstream supplements follow.","This inventory is not publication approval or an exhaustive license-compliance certification.","Registry source verification, source-availability duties and dependency/license review remain release gates.","The separate RUST_COPYRIGHT-library.html retains the pinned toolchain's library notices.",""];
  for(const p of inventory.packages.filter(p=>p.source!=="first-party"))lines.push(`${p.key}: ${p.license} (${p.source})`);
+ if(inventory.mplSourceArchives?.length){
+  lines.push("","Source archives for MPL-covered dependencies","");
+  for(const archive of inventory.mplSourceArchives)lines.push(
+   archive.package,archive.url,`Source archive SHA-256 (Cargo.lock): ${archive.sha256}`,"");
+ }
  lines.push("",`Packages without notice text in their Cargo source: ${inventory.gaps.length}`);
  for(const gap of inventory.gaps)lines.push(`${gap.package}: ${gap.reason}`);
  for(const notice of noticeTexts)lines.push("","=".repeat(72),`${notice.package} / ${notice.path}`,`SHA-256: ${notice.sha256}`,...(notice.origin?[`Source: ${notice.origin.url}`]:[]),"",notice.text);
@@ -37,10 +42,11 @@ export function buildRuntimeNotices(kind,environment=process.env){
  const plan=runtimeNoticePlan(kind,environment),run=(command,args)=>execFileSync(command,args,{cwd:repository,env:environment,encoding:"utf8",maxBuffer:16*1024*1024,shell:false});
  const metadata=JSON.parse(run(plan.cargo,plan.args)),firstPartyPaths={"breditor-core":resolve(repository,"crates/breditor-core"),[plan.rootName]:resolve(repository,kind==="shared"?"crates/breditor-collaboration":"crates/breditor-wasm")};
  const upstream=JSON.parse(readFileSync(resolve(repository,"scripts/candidate-dependencies/upstream-notices.json"),"utf8"));assert.equal(upstream.format,"breditor/pinned-upstream-notices");assert.equal(upstream.formatVersion,1);
- const result=candidateDependencyInventory(metadata,plan.rootName,{firstPartyPaths,upstreamNotices:upstream.entries,vendoredPaths:{loro:resolve(repository,"crates/breditor-collaboration/vendor/loro-1.16.2"),"loro-internal":resolve(repository,"crates/breditor-collaboration/vendor/loro-internal-1.16.2")}});
+ const cargoLock=readFileSync(resolve(repository,plan.lock),"utf8");
+ const result=candidateDependencyInventory(metadata,plan.rootName,{firstPartyPaths,cargoLock,upstreamNotices:upstream.entries,vendoredPaths:{loro:resolve(repository,"crates/breditor-collaboration/vendor/loro-1.16.2"),"loro-internal":resolve(repository,"crates/breditor-collaboration/vendor/loro-internal-1.16.2")}});
  const {copyright,rust}=pinnedRustNotices(plan.rustc,run);
  const text=renderRuntimeNotices(result),binary=readFileSync(join(plan.output,kind==="shared"?"breditor_shared_bg.wasm":"breditor_wasm_bg.wasm"));
- const manifest={...result.inventory,runtime:plan.kind,runtimeWasmSha256:sha256(binary),noticeBundleSha256:sha256(text),cargoLockSha256:sha256(readFileSync(resolve(repository,plan.lock))),rust};
+ const manifest={...result.inventory,runtime:plan.kind,runtimeWasmSha256:sha256(binary),noticeBundleSha256:sha256(text),cargoLockSha256:sha256(cargoLock),rust};
  mkdirSync(plan.output,{recursive:true});
  writeFileSync(join(plan.output,runtimeNoticeFiles[0]),JSON.stringify(manifest,null,2)+"\n");writeFileSync(join(plan.output,runtimeNoticeFiles[1]),text);writeFileSync(join(plan.output,runtimeNoticeFiles[2]),copyright);
  return {kind:plan.kind,packages:manifest.packages.length,edges:manifest.edges.length,noticeTexts:result.noticeTexts.length,missingNoticeTexts:manifest.gaps,inventorySha256:manifest.sha256,licenseReview:manifest.licenseReview,publicationApproved:false};
