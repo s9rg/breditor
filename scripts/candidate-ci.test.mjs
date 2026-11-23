@@ -5,6 +5,7 @@ import test from "node:test";
 import {tmpdir} from "node:os";
 import {join} from "node:path";
 import {fileURLToPath} from "node:url";
+import {candidateShardIds} from "./candidate-release/shards.mjs";
 
 const workflow=JSON.parse(readFileSync(new URL("../.github/workflows/candidate-qualification.yml",import.meta.url),"utf8"));
 const job=workflow.jobs.qualify,steps=job.steps;
@@ -19,6 +20,9 @@ test("candidate qualification is manual-only, read-only and does not supersede e
  const profile=workflow.on.workflow_dispatch.inputs.profile;
  assert.equal(profile.required,true);assert.equal(profile.default,"full");
  assert.equal(profile.type,"choice");assert.deepEqual(profile.options,["full","functional","default-matrix","editor-browser-matrix"]);
+ const shard=workflow.on.workflow_dispatch.inputs.shard;
+ assert.equal(shard.default,"none");assert.equal(shard.type,"choice");
+ assert.deepEqual(shard.options,["none",...candidateShardIds]);
  assert.equal(job["runs-on"],"ubuntu-24.04");assert.equal(job["timeout-minutes"],360);
  assert.equal(job.environment,undefined);assert.equal(job.secrets,undefined);
  assert.ok(steps.every(step=>step["continue-on-error"]===undefined));
@@ -54,10 +58,10 @@ test("CI installs the exact paired Rust and bindgen versions before offline chec
 
 test("full qualification installs all three engines and the explicit functional profile does not imply readiness",()=>{
  const browsers=named("Install all three test engines for browser qualification");
- assert.equal(browsers.if,"${{ inputs.profile != 'functional' }}");
+ assert.equal(browsers.if,"${{ inputs.profile != 'functional' && inputs.shard == 'none' }}");
  assert.equal(browsers.run,"node node_modules/@playwright/test/cli.js install --with-deps chromium firefox webkit");
  const candidate=named("Qualify the selected candidate profile");
- assert.deepEqual(candidate.env,{CANDIDATE_PROFILE:"${{ inputs.profile }}",CARGO_NET_OFFLINE:"true"});
+ assert.deepEqual(candidate.env,{CANDIDATE_PROFILE:"${{ inputs.profile }}",CANDIDATE_SHARD:"${{ inputs.shard }}",CARGO_NET_OFFLINE:"true"});
  assert.ok(steps.filter(step=>step.run).every(step=>!step.run.includes("${{")));
 });
 
@@ -69,7 +73,7 @@ test("candidate logs are retained on failure without uploading unrelated target 
  assert.equal(upload.with["retention-days"],14);
  assert.equal(upload.with["include-hidden-files"],false);
  assert.equal(upload.with.overwrite,false);assert.equal(upload.with.archive,true);
- assert.equal(upload.with.name,"candidate-${{ github.sha }}-${{ inputs.profile }}-${{ github.run_attempt }}");
+ assert.equal(upload.with.name,"candidate-${{ github.sha }}-${{ inputs.profile }}${{ inputs.shard != 'none' && format('-{0}', inputs.shard) || '' }}-${{ github.run_attempt }}");
 });
 
 test("every CI command block passes Bash syntax without executing setup, publishing or remote jobs",()=>{
@@ -97,11 +101,11 @@ test("the evidence deadline is established before setup with fifteen minutes res
 
 test("profile dispatch honors the deadline and preserves the verifier's exit status",()=>{
  const command=named("Qualify the selected candidate profile").run;
- const run=(profile,deadline,status="0")=>spawnSync("bash",["-c",[
+ const run=(profile,deadline,status="0",shard="none")=>spawnSync("bash",["-c",[
   'date() { echo 1000; }',
   'timeout() { for arg in "$@"; do echo "$arg"; done; return "$VERIFIER_STATUS"; }',
   command,
- ].join("\n")],{env:{...process.env,CANDIDATE_PROFILE:profile,CANDIDATE_EVIDENCE_DEADLINE:deadline,VERIFIER_STATUS:status},encoding:"utf8"});
+ ].join("\n")],{env:{...process.env,CANDIDATE_PROFILE:profile,CANDIDATE_SHARD:shard,CANDIDATE_EVIDENCE_DEADLINE:deadline,VERIFIER_STATUS:status},encoding:"utf8"});
  for(const [profile,args] of [["full",[]],["functional",["--functional"]],
   ["default-matrix",["--default-matrix"]],["editor-browser-matrix",["--editor-browser-matrix"]]]){
   const result=run(profile,"2080");
@@ -109,6 +113,10 @@ test("profile dispatch honors the deadline and preserves the verifier's exit sta
   assert.deepEqual(result.stdout.trimEnd().split("\n"),
    ["--signal=TERM","--kill-after=2m","1080s","node","scripts/verify-candidate.mjs",...args]);
  }
+ const shard=run("full","2080","0","local-history");
+ assert.equal(shard.status,0,shard.stderr);
+ assert.deepEqual(shard.stdout.trimEnd().split("\n"),
+  ["--signal=TERM","--kill-after=2m","1080s","node","scripts/verify-candidate.mjs","--shard","local-history"]);
  for(const status of [19,124,130])assert.equal(run("full","2080",String(status)).status,status);
  for(const profile of ["","FULL","full; echo injected","$(echo injected)"]){
   const invalid=run(profile,"2080");
@@ -150,7 +158,7 @@ test("a setup failure still has a retained commit and runner outcome report",()=
   assert.equal(result.status,0,result.stderr);
   const report=readFileSync(join(cwd,"target/v1-candidate-runs/runner-context.tsv"),"utf8");
   assert.deepEqual(Object.fromEntries(report.trimEnd().split("\n").map(line=>line.split("\t"))),{
-   revision:sha,profile:"full",os:"Linux",arch:"X64",checkout:"success",node:"success",rust:"failure",
+   revision:sha,profile:"full",shard:"none",os:"Linux",arch:"X64",checkout:"success",node:"success",rust:"failure",
    npm:"skipped",cargo:"skipped",browsers:"skipped",candidate:"skipped",
   });
   assert.match(readFileSync(summary,"utf8"),/Runner step `rust` reported `failure`/);
@@ -184,5 +192,12 @@ test("candidate summary points to the failed stage log in a downloaded artifact"
   assert.equal(timedOut.status,0,timedOut.stderr);
   assert.match(timedOut.stdout,/Last stage `relay-native` recorded `timeout` and signal `SIGTERM`/);
   assert.doesNotMatch(timedOut.stdout,/exit code null/);
+  writeFileSync(join(directory,"runner-context.tsv"),`revision\t${revision}\nprofile\tfull\nshard\tnative\n`);
+  const mismatch=spawnSync(process.execPath,[executable,directory],{encoding:"utf8"});
+  assert.match(mismatch.stdout,/Could not read a candidate result matching/);
+  writeFileSync(reportPath,JSON.stringify({...report,shard:{id:"native"}}));
+  const matched=spawnSync(process.execPath,[executable,directory],{encoding:"utf8"});
+  assert.match(matched.stdout,/Selected full-profile shard `native`/);
+  assert.match(matched.stdout,/Candidate result `failed`/);
  }finally{rmSync(directory,{recursive:true,force:true});}
 });

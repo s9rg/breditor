@@ -4,6 +4,7 @@ import {resolve,relative} from "node:path";
 import {fileURLToPath} from "node:url";
 import {candidateCheckProfiles,candidateReleasePlan,repository} from "./candidate-release/plan.mjs";
 import {fileEvidence,sourceEvidence,saveEvidence,retainStageArtifact} from "./candidate-release/evidence.mjs";
+import {candidateShardPlan,candidateShardIds} from "./candidate-release/shards.mjs";
 import {executeCandidateStage} from "./candidate-release/process.mjs";
 import {retainCandidateActivationEvidence} from "./candidate-release/activation-evidence.mjs";
 import {activationRuntimeStageIds} from "./candidate-release/activation-shards.mjs";
@@ -14,9 +15,9 @@ import {verifyNativeSuggestionBuild} from "./candidate-release/native-suggestion
 export async function runCandidateChecks(plan,{root=repository,signal,report=console.log,execute=executeCandidateStage,snapshot=sourceEvidence,activationEvidence}={}){
  if(!candidateCheckProfiles.includes(plan.profile)||!Array.isArray(plan.checks)||!plan.checks.length||new Set(plan.checks.map(check=>check.id)).size!==plan.checks.length||plan.checks.some(check=>!/^[a-z][a-z0-9-]*$/.test(check.id)||typeof check.command!=="string"||!check.command||!Array.isArray(check.args)||check.args.some(arg=>typeof arg!=="string")||!Array.isArray(check.artifacts)||!Number.isSafeInteger(check.timeoutMs)||check.timeoutMs<=0))throw Error("Invalid candidate check plan");
  const parent=resolve(root,"target/v1-candidate-runs");mkdirSync(parent,{recursive:true});const directory=mkdtempSync(resolve(parent,"run-")),manifest=resolve(directory,"result.json");let source;
- const result={format:"breditor/candidate-qualification",formatVersion:1,profile:plan.profile,status:"running",v1Ready:false,publicationApproved:false,source:null,environment:{node:process.version,platform:process.platform,arch:process.arch},startedAt:new Date().toISOString(),deferred:plan.deferred,stages:[]};
+ const result={format:"breditor/candidate-qualification",formatVersion:1,profile:plan.profile,...(plan.shard?{shard:plan.shard}:{}),status:"running",v1Ready:false,publicationApproved:false,source:null,environment:{node:process.version,platform:process.platform,arch:process.arch},startedAt:new Date().toISOString(),deferred:plan.deferred,stages:[]};
  const checkSource=()=>{const current=snapshot(root);if(current.sha256!==source.sha256||current.commit!==source.commit)throw Error("Source changed during qualification; rerun against one fixed candidate");};
- saveEvidence(manifest,result);report(`verify-candidate: ${plan.profile}; evidence ${manifest}`);
+ saveEvidence(manifest,result);report(`verify-candidate: ${plan.shard?.id??plan.profile}; evidence ${manifest}`);
  try{
   source=snapshot(root);result.source=source;
   const activation=activationEvidence&&retainCandidateActivationEvidence(root,directory,plan,activationEvidence);
@@ -63,7 +64,7 @@ export async function runCandidateChecks(plan,{root=repository,signal,report=con
  return {exitCode:result.status==="passed"?0:result.status==="interrupted"?130:1,manifest,result};
 }
 export async function main(args){
- if(args.length===1&&args[0]==="--help"){console.log("Usage: node scripts/verify-candidate.mjs [--functional | --default-matrix | --editor-browser-matrix] [--dry-run] [--activation-evidence <inputs> <reports>]\nDefault full includes the existing default-package release/browser matrices and fail-closed reviewed readiness gate. --functional checks current Rust/rich/shared/interchange/review packages only; it is not V1 readiness. The matrix profiles run individual full-profile matrices with their build prerequisites. Evidence and failure logs stay under target/v1-candidate-runs. Never pushes, tags, publishes or deploys.");return 0;}
+ if(args.length===1&&args[0]==="--help"){console.log(`Usage: node scripts/verify-candidate.mjs [--functional | --default-matrix | --editor-browser-matrix] [--dry-run] [--shard <name>] [--activation-evidence <inputs> <reports>]\nDefault full includes the existing default-package release/browser matrices and fail-closed reviewed readiness gate. --functional checks current Rust/rich/shared/interchange/review packages only; it is not V1 readiness. The matrix profiles run individual full-profile matrices with their build prerequisites. For a bounded part of the full profile, choose a shard: ${candidateShardIds.join(", ")}. Evidence and failure logs stay under target/v1-candidate-runs. Never pushes, tags, publishes or deploys.`);return 0;}
  const flags=[...args],activationIndex=flags.indexOf("--activation-evidence");
  let activationEvidence;
  if(activationIndex!==-1){
@@ -73,6 +74,14 @@ export async function main(args){
   }
   activationEvidence={inputs,reports,inputSha256:process.env.BREDITOR_ACTIVATION_INPUT_SHA256};
  }
+ const shardIndex=flags.indexOf("--shard");
+ let shard;
+ if(shardIndex!==-1){
+  [,shard]=flags.splice(shardIndex,2);
+  if(!candidateShardIds.includes(shard)){
+   console.error("verify-candidate: choose a known shard; use --help");return 2;
+  }
+ }
  const profileFlags=flags.filter(flag=>flag!=="--dry-run");
  const profile=profileFlags[0]?.slice(2)??"full";
  const validProfile=!profileFlags.length||(profileFlags.length===1&&profile!=="full"&&profileFlags[0]===`--${profile}`&&candidateCheckProfiles.includes(profile));
@@ -80,7 +89,11 @@ export async function main(args){
  if(activationEvidence&&!["full","functional"].includes(profile)){
   console.error("verify-candidate: activation evidence requires the full or functional profile");return 2;
  }
- const plan=candidateReleasePlan({profile});
+ if(shard&&(profile!=="full"||activationEvidence)){
+  console.error("verify-candidate: a shard requires the full profile without activation evidence");return 2;
+ }
+ const profilePlan=candidateReleasePlan({profile});
+ const plan=shard?candidateShardPlan(profilePlan,shard):profilePlan;
  if(flags.includes("--dry-run")){console.log(JSON.stringify({executed:false,...plan,activationEvidence},null,2));return 0;}
  const controller=new AbortController(),interrupt=()=>controller.abort();process.once("SIGINT",interrupt);process.once("SIGTERM",interrupt);
  try{return (await runCandidateChecks(plan,{signal:controller.signal,activationEvidence})).exitCode;}

@@ -1,5 +1,6 @@
 {
   "name": "Candidate qualification (manual; not a release)",
+  "run-name": "Candidate qualification / ${{ inputs.profile }}${{ inputs.shard != 'none' && format(' / {0}', inputs.shard) || '' }}",
   "on": {
     "workflow_dispatch": {
       "inputs": {
@@ -13,6 +14,23 @@
             "functional",
             "default-matrix",
             "editor-browser-matrix"
+          ]
+        },
+        "shard": {
+          "description": "Optional bounded group from the full profile.",
+          "required": false,
+          "default": "none",
+          "type": "choice",
+          "options": [
+            "none",
+            "native",
+            "runtime-packages",
+            "local-history",
+            "participant-cohorts",
+            "restored-history",
+            "record-readers",
+            "owner-lifecycle",
+            "managed-sdk"
           ]
         }
       }
@@ -68,7 +86,7 @@
         },
         {
           "name": "Install all three test engines for browser qualification",
-          "if": "${{ inputs.profile != 'functional' }}",
+          "if": "${{ inputs.profile != 'functional' && inputs.shard == 'none' }}",
           "run": "node node_modules/@playwright/test/cli.js install --with-deps chromium firefox webkit",
           "id": "browsers"
         },
@@ -76,9 +94,10 @@
           "name": "Qualify the selected candidate profile",
           "env": {
             "CANDIDATE_PROFILE": "${{ inputs.profile }}",
-            "CARGO_NET_OFFLINE": "true"
+            "CARGO_NET_OFFLINE": "true",
+            "CANDIDATE_SHARD": "${{ inputs.shard }}"
           },
-          "run": "case \"$CANDIDATE_PROFILE\" in\n  full) args=() ;;\n  functional|default-matrix|editor-browser-matrix) args=(\"--$CANDIDATE_PROFILE\") ;;\n  *) echo \"Unsupported candidate qualification profile\" >&2; exit 2 ;;\nesac\nif [[ ! ${CANDIDATE_EVIDENCE_DEADLINE:-} =~ ^[1-9][0-9]{0,11}$ ]]; then\n  echo \"Missing or invalid candidate evidence deadline\" >&2\n  exit 2\nfi\nremaining=$(( CANDIDATE_EVIDENCE_DEADLINE - $(date +%s) ))\nif (( remaining <= 0 )); then\n  echo \"Candidate deadline elapsed during setup\" >&2\n  exit 124\nfi\ntimeout --signal=TERM --kill-after=2m \"${remaining}s\" node scripts/verify-candidate.mjs \"${args[@]}\"",
+          "run": "case \"$CANDIDATE_PROFILE\" in\n  full) args=() ;;\n  functional|default-matrix|editor-browser-matrix) args=(\"--$CANDIDATE_PROFILE\") ;;\n  *) echo \"Unsupported candidate qualification profile\" >&2; exit 2 ;;\nesac\nif [[ -n ${CANDIDATE_SHARD:-} && $CANDIDATE_SHARD != none ]]; then\n  args+=(--shard \"$CANDIDATE_SHARD\")\nfi\nif [[ ! ${CANDIDATE_EVIDENCE_DEADLINE:-} =~ ^[1-9][0-9]{0,11}$ ]]; then\n  echo \"Missing or invalid candidate evidence deadline\" >&2\n  exit 2\nfi\nremaining=$(( CANDIDATE_EVIDENCE_DEADLINE - $(date +%s) ))\nif (( remaining <= 0 )); then\n  echo \"Candidate deadline elapsed during setup\" >&2\n  exit 124\nfi\ntimeout --signal=TERM --kill-after=2m \"${remaining}s\" node scripts/verify-candidate.mjs \"${args[@]}\"",
           "id": "candidate"
         },
         {
@@ -92,16 +111,17 @@
             "NPM_OUTCOME": "${{ steps.npm.outcome }}",
             "CARGO_OUTCOME": "${{ steps.cargo.outcome }}",
             "BROWSERS_OUTCOME": "${{ steps.browsers.outcome }}",
-            "CANDIDATE_OUTCOME": "${{ steps.candidate.outcome }}"
+            "CANDIDATE_OUTCOME": "${{ steps.candidate.outcome }}",
+            "CANDIDATE_SHARD": "${{ inputs.shard }}"
           },
-          "run": "mkdir -p target/v1-candidate-runs\nprintf '%s\t%s\n' \\\n  revision \"$GITHUB_SHA\" profile \"$CANDIDATE_PROFILE\" os \"$RUNNER_OS\" arch \"$RUNNER_ARCH\" \\\n  checkout \"${CHECKOUT_OUTCOME:-unavailable}\" node \"${NODE_OUTCOME:-unavailable}\" \\\n  rust \"${RUST_OUTCOME:-unavailable}\" npm \"${NPM_OUTCOME:-unavailable}\" cargo \"${CARGO_OUTCOME:-unavailable}\" \\\n  browsers \"${BROWSERS_OUTCOME:-unavailable}\" candidate \"${CANDIDATE_OUTCOME:-unavailable}\" \\\n  > target/v1-candidate-runs/runner-context.tsv\nif [[ -n \"${GITHUB_STEP_SUMMARY:-}\" ]]; then\n  if [[ -r scripts/summarize-candidate-run.mjs ]] && command -v node >/dev/null; then\n    node scripts/summarize-candidate-run.mjs >> \"$GITHUB_STEP_SUMMARY\"\n  else\n    printf '\\n## Candidate qualification\\n\\nSee runner-context.tsv in the uploaded artifact for setup outcomes.\\n' >> \"$GITHUB_STEP_SUMMARY\"\n  fi\nfi"
+          "run": "mkdir -p target/v1-candidate-runs\nprintf '%s\t%s\n' \\\n  revision \"$GITHUB_SHA\" profile \"$CANDIDATE_PROFILE\" shard \"${CANDIDATE_SHARD:-none}\" os \"$RUNNER_OS\" arch \"$RUNNER_ARCH\" \\\n  checkout \"${CHECKOUT_OUTCOME:-unavailable}\" node \"${NODE_OUTCOME:-unavailable}\" \\\n  rust \"${RUST_OUTCOME:-unavailable}\" npm \"${NPM_OUTCOME:-unavailable}\" cargo \"${CARGO_OUTCOME:-unavailable}\" \\\n  browsers \"${BROWSERS_OUTCOME:-unavailable}\" candidate \"${CANDIDATE_OUTCOME:-unavailable}\" \\\n  > target/v1-candidate-runs/runner-context.tsv\nif [[ -n \"${GITHUB_STEP_SUMMARY:-}\" ]]; then\n  if [[ -r scripts/summarize-candidate-run.mjs ]] && command -v node >/dev/null; then\n    node scripts/summarize-candidate-run.mjs >> \"$GITHUB_STEP_SUMMARY\"\n  else\n    printf '\\n## Candidate qualification\\n\\nSee runner-context.tsv in the uploaded artifact for setup outcomes.\\n' >> \"$GITHUB_STEP_SUMMARY\"\n  fi\nfi"
         },
         {
           "name": "Retain candidate results and failure logs",
           "if": "${{ always() }}",
           "uses": "actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9",
           "with": {
-            "name": "candidate-${{ github.sha }}-${{ inputs.profile }}-${{ github.run_attempt }}",
+            "name": "candidate-${{ github.sha }}-${{ inputs.profile }}${{ inputs.shard != 'none' && format('-{0}', inputs.shard) || '' }}-${{ github.run_attempt }}",
             "path": "target/v1-candidate-runs/",
             "if-no-files-found": "error",
             "retention-days": 14,

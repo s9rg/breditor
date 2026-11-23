@@ -48,6 +48,19 @@ Locally, use `node scripts/verify-candidate.mjs --default-matrix` or
 `node scripts/verify-candidate.mjs --editor-browser-matrix`. The results carry
 the selected profile and leave full candidate qualification outstanding.
 
+## Early candidate shards
+
+The manual full profile accepts an optional shard. The first eight shards cover
+the contiguous native, runtime and SDK stages through `native-history-read`.
+Each SDK shard runs the full plan's package build prerequisites in its own
+checkout first. The result identifies the shard, its prerequisites, its assigned
+stage IDs and the source digest, and retains its logs and reports.
+
+Run a shard locally with `node scripts/verify-candidate.mjs --shard <name>`.
+Add `--dry-run` to inspect its checks. Run with the default shard selection
+`none` for the complete plan. Readiness review and the remaining full-profile
+stages are still required.
+
 ## Whole-room activation jobs
 
 Both candidate profiles build the real relay fixture and run the
