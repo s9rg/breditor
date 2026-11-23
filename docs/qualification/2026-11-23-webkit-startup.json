@@ -1,0 +1,59 @@
+{
+  "format": "breditor/webkit-startup-qualification",
+  "formatVersion": 1,
+  "date": "2026-11-23",
+  "webKitVersion": "26.5",
+  "macOS": "26.6.2",
+  "hostArchitecture": "arm64",
+  "testedSourceCommit": "84507aebadcdd933f83437557bdfd60a13a4001c",
+  "descriptorReproduction": {
+    "error": "engine_bootstrap.invalid_profile_descriptor",
+    "firstRejectedValidator": "readFormatPropertyValueType",
+    "traceSha256": "f68fe4ecc6a39a68bede7fa465e9fa70b7f0277194f42dc157d10b4300f61dc8",
+    "rejections": [
+      {
+        "stage": "descriptor:readFormatPropertyValueType:266",
+        "counters": {
+          "kindTag": "3",
+          "stringMinimum": "1",
+          "stringMaximum": "2048",
+          "integerMinimumType": "0",
+          "integerMaximumType": "0",
+          "stringMinimumType": "1",
+          "stringMaximumType": "1"
+        }
+      },
+      {
+        "stage": "descriptor:readFormatProperties:226",
+        "counters": {}
+      },
+      {
+        "stage": "descriptor:readFormats:203",
+        "counters": {}
+      },
+      {
+        "stage": "descriptor:readDescriptor:136",
+        "counters": {}
+      }
+    ]
+  },
+  "projectionReproduction": {
+    "error": "engine_bootstrap.invalid_initial_projection",
+    "traceSha256": "20e3f0a3f30a0624dba7a9b7f22d6ee8e90ec95c46ebe6ce09c0e8c2a1d7033b"
+  },
+  "qualification": {
+    "ordinaryProduction": {
+      "passedBatches": 20,
+      "restoresPerBatch": 10000,
+      "javascriptSha256": "b11bec522d748d9e149e9b1852c7a385d694fcc203bda84f6fab6a8f1ee1323b",
+      "wasmSha256": "fe2a85b39cf4003d5767307d668fc897b7f9f514ecb45c20c7adbc2e0199c91a"
+    },
+    "startupDiagnostics": {
+      "passedBatches": 20,
+      "restoresPerBatch": 10000,
+      "javascriptSha256": "fbb86c32443e73b71ed7008a7206470b2ab75ec5fdbfb5b570c7a38533c7b8af",
+      "wasmSha256": "fe2a85b39cf4003d5767307d668fc897b7f9f514ecb45c20c7adbc2e0199c91a"
+    }
+  },
+  "scope": "The descriptor validates the unsigned values through an exact round trip, checks order and maximum string-byte count, and releases the consumed handle. The separate initial projection rejection remains open."
+}
