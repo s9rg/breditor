@@ -1,0 +1,124 @@
+{
+  "format": "breditor/installed-shared-journal-boundary",
+  "formatVersion": 1,
+  "chromeVersion": "157.0.8103.80",
+  "platform": "darwin",
+  "arch": "arm64",
+  "samples": [
+    {
+      "round": 1,
+      "checkpointBytes": [
+        139687,
+        195026
+      ],
+      "backingStorageSize": 1095291
+    },
+    {
+      "round": 25,
+      "checkpointBytes": [
+        3491413,
+        3419570
+      ],
+      "backingStorageSize": 7671375
+    },
+    {
+      "round": 50,
+      "checkpointBytes": [
+        7194939,
+        6990647
+      ],
+      "backingStorageSize": 14945780
+    },
+    {
+      "round": 75,
+      "checkpointBytes": [
+        11116296,
+        10779565
+      ],
+      "backingStorageSize": 22655855
+    },
+    {
+      "round": 100,
+      "checkpointBytes": [
+        15255369,
+        14786188
+      ],
+      "backingStorageSize": 30801351
+    },
+    {
+      "round": 108,
+      "checkpointBytes": [
+        16625810,
+        16114242
+      ],
+      "backingStorageSize": 33499782
+    }
+  ],
+  "firstFailure": {
+    "round": 109,
+    "step": "sync after undo",
+    "failure": "feasibility budget exceeded: rich journal bytes",
+    "code": null
+  },
+  "reopen": {
+    "recovered": [
+      true,
+      true
+    ],
+    "checkpointBytes": [
+      16628896,
+      16198027
+    ],
+    "checkpointsMatchLastCompleteRound": [
+      false,
+      false
+    ],
+    "documentsMatchOriginal": [
+      false,
+      false
+    ],
+    "documentsMatchCompletedEdit": [
+      true,
+      true
+    ],
+    "peersConverged": true
+  },
+  "date": "2026-11-23",
+  "source": {
+    "commit": "991c5e4c93123cb9e31837556cd06a3f757a53d3",
+    "dirty": false,
+    "sha256": "9586e4f432e9628c1e2ababca973ceccf3f8ce4107eec7a0a6281b896fcbea92",
+    "files": 9578,
+    "bytes": 82052842
+  },
+  "archives": [
+    {
+      "name": "@breditor/browser",
+      "version": "0.3.0-alpha.22",
+      "bytes": 261359,
+      "sha256": "b67ad32fba519c349e611778512d4a827b49528d6280139abb44a74216949790"
+    },
+    {
+      "name": "@breditor/experimental-rich-content",
+      "version": "0.3.0-alpha.22",
+      "bytes": 2337732,
+      "sha256": "2769a821f1dac5396c8166663885aa9d6f1288c9bde686b6f8eeee52805258f5"
+    },
+    {
+      "name": "@breditor/collaboration",
+      "version": "0.3.0-alpha.22",
+      "bytes": 5630784,
+      "sha256": "7aef686b5370c121d311d8d517517f2cc0ddc2707555173a23c82f63fa3d6953"
+    },
+    {
+      "name": "@breditor/editor",
+      "version": "0.3.0-alpha.22",
+      "bytes": 83477,
+      "sha256": "ff50188718a1587bc21fda0e0700a2f4de61085ae00d083cf569789d29c713dd"
+    }
+  ],
+  "node": "22.14.0",
+  "macOS": "26.6.2",
+  "perJournalLimitBytes": 16777216,
+  "scope": "Two original-profile peers in the installed editor fixture synchronize full frames after each edit and Undo. The native journal rejected synchronization after Undo in round 109. Both sessions reopened on the document from the completed edit in that round. The run records checkpoint byte counts and compares persisted state using digests."
+}
