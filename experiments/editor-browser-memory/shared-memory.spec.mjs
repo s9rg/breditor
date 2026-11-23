@@ -38,7 +38,10 @@ test("measure shared editor memory across edit, peer sync, Undo, and exact recov
     await Promise.all([a.close(),b.close()]);
     return checkpoints;
   });
+  const activeBackingStorage=samples.at(-1).heap.backingStorageSize;
   await measure("closed");
+  const releasedBackingStorage=activeBackingStorage-samples.at(-1).heap.backingStorageSize;
+  const checkpointCodeUnits=saved.reduce((total,checkpoint)=>total+checkpoint.length,0);
   await page.reload();
   await expect(page.locator("#ready")).toHaveText("Ready");
   const reopened=await page.evaluate(()=>{
@@ -50,8 +53,12 @@ test("measure shared editor memory across edit, peer sync, Undo, and exact recov
   const report={
     format:"breditor/installed-shared-memory",formatVersion:1,
     chromeVersion:browser.version(),platform:process.platform,arch:process.arch,
-    peers:2,editUndoRounds:completed,samples,exactReopenedCheckpoints:reopened.checkpoints.length,
+    peers:2,editUndoRounds:completed,samples,checkpointCodeUnits,releasedBackingStorage,
+    exactReopenedCheckpoints:reopened.checkpoints.length,
   };
   await testInfo.attach("shared-editor-memory",{contentType:"application/json",body:JSON.stringify(report,null,2)});
   console.log(JSON.stringify(report));
+  // The isolate counter also includes unrelated buffers. Require a drop large
+  // enough to account for the retired journals without pinning total memory.
+  expect(releasedBackingStorage).toBeGreaterThan(checkpointCodeUnits/2);
 });

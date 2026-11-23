@@ -557,5 +557,18 @@ MacBookPro18,1 with macOS 26.6.2 completed the 100 rounds with both exact
 checkpoints recovered. After garbage collection, the backing storage counter
 rose from 0.83 MB at startup to 30.80 MB after 100 rounds, and was 30.82 MB
 after reload. The used JS heap was 3.89 MB at startup and 3.95 MB after
-reload. The retained backing storage needs investigation before approving a
-long-session memory budget.
+reload.
+
+The follow-up isolated the growth with 25 rounds on the same installed
+browser fixture. Frame reads alone held the backing-storage counter at
+0.82 MB. With local edits and Undo it reached 0.96 MB. With full-frame sync
+between peers it reached 7.66 MB. The original journals kept 50 remote
+records each. Heap snapshots identified two serialized checkpoint strings
+whose lengths matched the journals still held by the persistence owners.
+
+Clearing the terminal owners' cached checkpoint strings reduced the
+counter from 7.66 MB to 0.75 MB at close. Both journals reopened with the
+same checkpoint bytes, and the active owners again held their checkpoint
+copies. The test checks that close releases backing storage on the scale
+of those journals. Live full-frame history and Wasm memory still need
+qualification against the supported operating envelope.
