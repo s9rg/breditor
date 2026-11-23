@@ -64,8 +64,8 @@ review against the distribution's actual artifacts.
 ## Candidate shards
 
 The manual full profile accepts an optional shard. The named shards cover the
-contiguous native, runtime, SDK and relay stages through installed sealed joint
-recovery. Each SDK or relay shard first runs the full plan's prerequisite
+contiguous native, runtime, SDK and relay stages through installed native
+revision delivery. Each SDK or relay shard first runs the full plan's prerequisite
 builds in its own checkout. The joint handover source and installed checks run
 in separate jobs so each has its own time and evidence budget. The result
 identifies the shard, its prerequisites, its assigned stage IDs and the source
