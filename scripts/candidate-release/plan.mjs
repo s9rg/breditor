@@ -286,7 +286,6 @@ export function candidateReleasePlan({profile="full",environment=process.env}={}
   script("canonical-source-readers","check-canonical-source-readers-sdk.mjs",[],[{path:"target/canonical-source-readers-sdk.json",fresh:true}]),
   stage("editor-build",npm,["run","build:candidate","--workspace","@breditor/editor"]),
   script("clean-candidate-sdk-build","check-candidate-sdk-build.mjs",[],[{path:"target/candidate-sdk-build.json",fresh:true}]),
-  stage("typescript-tests-and-script-contracts",npm,["test"]),
   stage("editor-sdk-tests",npm,["run","test:candidate","--workspace","@breditor/editor"]),
   script("managed-core-binding","check-managed-core-binding.mjs",[],[{path:"target/managed-core-binding-source.json",fresh:true}]),
   stage("asset-archive-storage-contracts",node,["--test","scripts/asset-backups.test.mjs"]),
@@ -820,6 +819,8 @@ export function candidateReleasePlan({profile="full",environment=process.env}={}
   script("installed-text-review-and-readers","check-suggestion-text-rebase-installed.mjs",[executable("suggestions_functional"),executable("suggestion_revisions_functional")]),
   script("installed-formatting-review-and-readers","check-suggestion-format-rebase-installed.mjs",[executable("suggestions_functional"),executable("suggestion_revisions_functional")]),
   script("installed-assets-comments-versions","check-review-assets-installed.mjs",[executable("review_assets_functional")]),
+  // The workspace script tests consume source-bound Native executables and fixture reports.
+  withSharedRuntime(stage("typescript-tests-and-script-contracts",npm,["test"],{},[],10800000)),
   script("readiness-inventory","check-v1-readiness.mjs",["--json"]),
  ];
  if(profile!=="functional")checks.push(

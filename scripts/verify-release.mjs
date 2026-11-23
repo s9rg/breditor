@@ -13,11 +13,6 @@ export function releaseChecks(environment = process.env) {
   const cargo = environment.CARGO_BIN || "cargo";
   const npm = environment.NPM_BIN || "npm";
   const node = process.execPath;
-  const candidateTools = {
-    BREDITOR_CARGO: environment.BREDITOR_CARGO || cargo,
-    BREDITOR_RUSTC: environment.BREDITOR_RUSTC || environment.RUSTC_BIN,
-    BREDITOR_WASM_BINDGEN: environment.BREDITOR_WASM_BINDGEN || environment.WASM_BINDGEN_BIN,
-  };
   const check = (id, command, args, env = {}) => Object.freeze({
     id, command, args: Object.freeze(args), env: Object.freeze(env),
   });
@@ -32,12 +27,8 @@ export function releaseChecks(environment = process.env) {
     check("wasm-target-tests", "bash", ["scripts/check-wasm-tests.sh"]),
     // Build the default distributions before workspace tests import them.
     check("package-consumers", npm, ["run", "smoke:packages"]),
-    // The same workspace test entry point also imports the opt-in SDK distributions.
-    check("rich-runtime-build", node, ["scripts/build-rich-runtime.mjs"], candidateTools),
-    check("shared-runtime-build", node, ["scripts/build-collaboration-runtime.mjs"], candidateTools),
-    check("rich-typescript-build", node, ["node_modules/typescript/bin/tsc", "-p", "packages/breditor-experimental-rich-content/tsconfig.json"]),
-    check("candidate-sdk-build", npm, ["run", "build:candidate", "--workspace", "@breditor/collaboration", "--workspace", "@breditor/editor"]),
-    check("typescript-tests", npm, ["test"]),
+    check("typescript-tests", npm, ["run", "test", "--workspaces", "--if-present"]),
+    check("diagnostics-tests", npm, ["run", "test:diagnostics"]),
     check("typescript-types", npm, ["run", "typecheck"]),
     check("browser-test-types", npm, ["run", "typecheck:browser"]),
     check("demo-test-types", npm, ["run", "typecheck:demo"]),

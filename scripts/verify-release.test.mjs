@@ -6,24 +6,23 @@ import { join } from "node:path";
 import test from "node:test";
 import { releaseChecks, repository, runReleaseChecks } from "./verify-release.mjs";
 
-test("standard workspace tests include standalone script contracts", () => {
+test("the default verifier selects workspace and diagnostic tests without implicit Native fixtures", () => {
   const {scripts} = JSON.parse(readFileSync(join(repository, "package.json"), "utf8"));
   assert.equal(scripts["test:scripts"], "node --test scripts/*.test.mjs");
   assert.ok(scripts.test.split(" && ").includes("npm run test:scripts"));
-  assert.ok(releaseChecks({}).some(check => check.id === "typescript-tests" && check.args.join(" ") === "test"));
+  const checks = releaseChecks({});
+  assert.deepEqual(checks.find(check => check.id === "typescript-tests").args, ["run", "test", "--workspaces", "--if-present"]);
+  assert.deepEqual(checks.find(check => check.id === "diagnostics-tests").args, ["run", "test:diagnostics"]);
 });
 
 test("the plan covers each release boundary in a safe build order", () => {
   const checks = releaseChecks({});
   assert.deepEqual(checks.map(({ id }) => id), [
     "gate-tests", "rust-format", "rust-lint", "rust-tests", "rust-docs",
-    "wasm-target-tests", "package-consumers", "rich-runtime-build", "shared-runtime-build",
-    "rich-typescript-build", "candidate-sdk-build", "typescript-tests", "typescript-types",
+    "wasm-target-tests", "package-consumers", "typescript-tests", "diagnostics-tests", "typescript-types",
     "browser-test-types", "demo-test-types", "wasm-abi",
     "demo-production", "production-size", "browser-matrix", "demo-matrix", "diff-whitespace",
   ]);
-  assert.deepEqual(checks.find(check => check.id === "candidate-sdk-build").args,
-    ["run", "build:candidate", "--workspace", "@breditor/collaboration", "--workspace", "@breditor/editor"]);
   assert.equal(checks.find(check => check.id === "demo-matrix").env.BREDITOR_RELEASE_DEMO_PREVIEW, "1");
   for (const id of ["rust-lint", "rust-tests", "rust-docs"]) {
     assert.ok(checks.find((check) => check.id === id).args.includes("--locked"));
@@ -53,7 +52,7 @@ test("all successful stages run sequentially from the repository without a shell
     return { status: 0 };
   }, (message) => reports.push(message)), 0);
   assert.equal(calls, checks.length);
-  assert.match(reports.at(-1), /all 21 gates passed/);
+  assert.match(reports.at(-1), /all 18 gates passed/);
   assert.match(reports.at(-1), /for default packages/);
   assert.match(reports.at(-1), /opt-in nested lists, physical input and nested budget acceptance are not qualified/);
 });
