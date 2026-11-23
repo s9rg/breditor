@@ -52,7 +52,14 @@
             "local-metadata-availability",
             "local-metadata-materialization",
             "recoverable-metadata",
-            "metadata-server-bytes"
+            "metadata-server-bytes",
+            "server-metadata",
+            "server-native-dependencies",
+            "local-metadata-receipt-containment",
+            "local-metadata-packet-recovery",
+            "server-packet-recovery",
+            "current-server-packet-reconciliation",
+            "independent-current-reconciliation"
           ]
         }
       }
