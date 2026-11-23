@@ -92,7 +92,10 @@ test('both profiles require native independent review generations and the unchan
   assert.ok(find('native-review-generations-type-fence').args.includes('scripts/fixtures/editor-consumer/types-review-generations.ts'));
   assert.deepEqual(find('research-review-generations').args,['test','--manifest-path','experiments/collaboration/Cargo.toml','--locked','--offline','--release','--test','review_generation_contracts']);
   assert.ok(p.checks.indexOf(find('shared-native'))<p.checks.indexOf(find('research-review-generations')));
-  assert.ok(p.checks.indexOf(find('collaboration-build'))<p.checks.indexOf(find('installed-native-review-generations')));
+  assert.ok(p.checks.indexOf(find('rich-browser-build'))<p.checks.indexOf(find('collaboration-build')));
+  for(const id of ['native-review-generations','installed-native-review-generations']){
+   assert.ok(p.checks.indexOf(find('collaboration-build'))<p.checks.indexOf(find(id)),id);
+  }
  }
  const installed=readFileSync(join(repository,'scripts/check-review-generations-installed.mjs'),'utf8');
  for(const text of ['probe-segmented-review-native.mjs','types-review-generations.ts','installedProbe.replace(to,from),sourceProbe','sourceUnchanged:true','futureHistoryComparisons:216','observerColdReopens:6','networkCalls:0','verifySearchConsumerRegistry'])assert.ok(installed.includes(text),text);
