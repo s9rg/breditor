@@ -1,7 +1,7 @@
 import { fileURLToPath } from "node:url";
 import { mergeConfig, type Plugin } from "vite";
 import base from "./vite.selection-stress.config";
-import { instrumentStartupModule } from "./tests/browser/diagnostics/startup_instrumentation";
+import { instrumentStartupModule, startupDiagnosticModuleCount } from "./tests/browser/diagnostics/startup_instrumentation";
 
 const recorder = fileURLToPath(new URL("./tests/browser/diagnostics/startup_recorder.ts", import.meta.url));
 const manifest = new Map<string, unknown>();
@@ -18,7 +18,9 @@ const diagnosticPlugin: Plugin = {
     return { code: instrumented.code, map: null };
   },
   generateBundle() {
-    if (manifest.size !== 6) throw new Error(`Expected six boundary diagnostic modules, found ${manifest.size}`);
+    if (manifest.size !== startupDiagnosticModuleCount) {
+      throw new Error(`Expected ${startupDiagnosticModuleCount} boundary diagnostic modules, found ${manifest.size}`);
+    }
     this.emitFile({ type: "asset", fileName: "startup-diagnostic-map.json",
       source: JSON.stringify({ version: 1, modules: Object.fromEntries(manifest) }, null, 2) });
   },
