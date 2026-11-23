@@ -10,7 +10,7 @@ describe("ordinary browser harness dependency discovery", () => {
     const manifest = JSON.parse(readFileSync(new URL("../../../package.json", import.meta.url), "utf8"));
     expect(manifest.scripts["demo:clipboard"]).toContain("vite --config vite.browser.config.ts");
     const playwright = readFileSync(new URL("../../../playwright.config.ts", import.meta.url), "utf8");
-    expect(playwright).toContain("vite --config vite.browser.config.ts");
+    expect(playwright).toContain("node node_modules/vite/bin/vite.js --config vite.browser.config.ts");
   });
 
   it("scans every ordinary HTML entry without recursing into diagnostic builds", () => {
