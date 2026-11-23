@@ -426,6 +426,16 @@ h1 {
   overflow-wrap: anywhere;
 }
 
+.session-backup-picker {
+  display: block;
+}
+
+.session-backup-picker input {
+  display: block;
+  max-inline-size: 100%;
+  margin-block-start: 0.35rem;
+}
+
 .demo-hints {
   display: grid;
   grid-template-columns: repeat(3, minmax(0, 1fr));

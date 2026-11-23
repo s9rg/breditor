@@ -892,6 +892,13 @@ test("the React demo edits, formats, replays, persists, and remains accessible",
   );
   expect(containment.buttonsInside).toBe(true);
   expect(containment.buttonRows).toBeGreaterThan(1);
+  const backupPicker = await page.getByLabel("Open session backup").evaluate((input) => {
+    const bounds = input.getBoundingClientRect();
+    const label = input.closest("label")!.getBoundingClientRect();
+    return { left: bounds.left, right: bounds.right, availableLeft: label.left, availableRight: label.right };
+  });
+  expect(backupPicker.left).toBeGreaterThanOrEqual(backupPicker.availableLeft);
+  expect(backupPicker.right).toBeLessThanOrEqual(backupPicker.availableRight);
 });
 
 test("the React Showcase advertises and routes profile-declared shortcuts", async ({
