@@ -393,6 +393,7 @@ test("isolated release matrices preserve the full plan's commands and report the
  for(const [profile,ids] of [
   ["default-matrix",["default-package-release-matrix"]],
   ["editor-browser-matrix",["relay-native-dependency-notices","default-typescript-build","installed-editor-browser-matrix"]],
+  ["dependency-inventories",["relay-native-dependency-notices","paired-local-runtime","paired-shared-runtime"]],
  ]){
   const run=spawnSync(process.execPath,[script,`--${profile}`,"--dry-run"],{cwd:tmpdir(),encoding:"utf8"});
   assert.equal(run.status,0,run.stderr);
