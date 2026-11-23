@@ -528,14 +528,16 @@ test("selected audit reports retain exact bytes with the stage log",async()=>{
   assert.equal(readFileSync(join(manifest,"..",audit.retainedPath),"utf8"),"{}\n");
  }finally{rmSync(root,{recursive:true,force:true});}
 });
-test("both profiles retain the exact installed editor and interchange reports",()=>{
+test("the candidate retains the exact installed editor, interchange and browser matrix inputs",()=>{
+ const editorReport=[{path:"target/editor-installed-consumer.json",fresh:true,retain:true}];
  for(const profile of ["functional","full"]){
   const {checks}=candidateReleasePlan({profile});
   assert.deepEqual(checks.find(check=>check.id==="installed-editor-pairing")?.artifacts,
-   [{path:"target/editor-installed-consumer.json",fresh:true,retain:true}]);
+   editorReport);
   assert.deepEqual(checks.find(check=>check.id==="installed-rich-interchange")?.artifacts,
    [{path:"target/interchange-installed-consumer.json",fresh:true,retain:true}]);
  }
+ assert.deepEqual(candidateReleasePlan().checks.find(check=>check.id==="installed-editor-browser-matrix")?.artifacts,editorReport);
 });
 
 test("candidate runner prints the stage ID and a single-line evidence failure",async()=>{
