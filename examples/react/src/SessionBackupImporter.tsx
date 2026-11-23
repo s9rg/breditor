@@ -36,7 +36,7 @@ export function SessionBackupImporter({ primaryModifier }: {
         document and saved data stay untouched. Recovery does not autosave: download
         a new backup before closing it. Backups can include deleted text; keep them private.</p>
       {backup === undefined ? (
-        <label>
+        <label className="session-backup-picker">
           Open session backup
           <input type="file" accept=".json,application/json" disabled={reading}
             onChange={(event) => {
