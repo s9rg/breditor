@@ -3,6 +3,8 @@ const activationHostedBuilds = ["native-suggestion-room-host", "native-handover-
 const jointHandoverBuilds = [...activationHostedBuilds, "joint-handover-cohort-host"];
 const localMetadataBuilds = ["native-suggestion-room-host"];
 const localRecoveryBuilds = ["selected-delivery-native-host", ...localMetadataBuilds];
+const serverMetadataBuilds = ["server-metadata-native-host", "server-native-dependencies-host"];
+const serverPacketBuilds = [...serverMetadataBuilds, "server-packet-inspection-native-host"];
 const boundaries = [
  ["native", "independent-native-consumer"],
  ["runtime-packages", "collaboration-build"],
@@ -36,6 +38,13 @@ const boundaries = [
  ["local-metadata-materialization", "installed-local-metadata-materialization", localRecoveryBuilds],
  ["recoverable-metadata", "installed-recoverable-metadata", localRecoveryBuilds],
  ["metadata-server-bytes", "installed-metadata-server-bytes", localRecoveryBuilds],
+ ["server-metadata", "installed-server-metadata"],
+ ["server-native-dependencies", "installed-server-native-dependencies", ["server-metadata-native-host"]],
+ ["local-metadata-receipt-containment", "installed-local-metadata-receipt-containment", ["server-metadata-native-host"]],
+ ["local-metadata-packet-recovery", "installed-local-metadata-packet-recovery", ["server-metadata-native-host"]],
+ ["server-packet-recovery", "installed-server-packet-recovery", serverMetadataBuilds],
+ ["current-server-packet-reconciliation", "installed-current-server-packet-reconciliation", serverPacketBuilds],
+ ["independent-current-reconciliation", "installed-independent-current-reconciliation", serverPacketBuilds],
 ];
 const sdkPrerequisites = [
  "default-typescript-build",

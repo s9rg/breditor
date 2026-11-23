@@ -465,8 +465,8 @@ test("isolated release matrices preserve the full plan's commands and report the
   assert.equal(run.stdout,"");
  }
 });
-test("candidate shards partition the full plan through metadata server bytes with original build prerequisites",()=>{
- const full=candidateReleasePlan(),end=full.checks.findIndex(check=>check.id==="installed-metadata-server-bytes");
+test("candidate shards partition the full plan through independent current reconciliation",()=>{
+ const full=candidateReleasePlan(),end=full.checks.findIndex(check=>check.id==="installed-independent-current-reconciliation");
  const byId=new Map(full.checks.map(check=>[check.id,check]));
  const covered=[];
  for(const name of candidateShardIds){
@@ -511,6 +511,23 @@ test("candidate shards partition the full plan through metadata server bytes wit
   const nativeHost=checks.findIndex(check=>check.id==="native-suggestion-room-host");
   for(const id of shard.stages.filter(id=>metadataFixtureStageIds.includes(id))){
    assert.ok(nativeHost>=0&&nativeHost<checks.findIndex(check=>check.id===id),id);
+  }
+ }
+ const serverMetadataHost="server-metadata-native-host",nativeDependencyHost="server-native-dependencies-host";
+ for(const [name,hosts] of [
+  ["server-metadata",["metadata-reconciliation-root-host",serverMetadataHost]],
+  ["server-native-dependencies",[serverMetadataHost,nativeDependencyHost]],
+  ["local-metadata-receipt-containment",[serverMetadataHost]],
+  ["local-metadata-packet-recovery",[serverMetadataHost]],
+  ["server-packet-recovery",[serverMetadataHost,nativeDependencyHost,"server-packet-inspection-native-host"]],
+  ["current-server-packet-reconciliation",[serverMetadataHost,nativeDependencyHost,"server-packet-inspection-native-host"]],
+  ["independent-current-reconciliation",[serverMetadataHost,nativeDependencyHost,"server-packet-inspection-native-host"]],
+ ]){
+  const {checks,shard}=candidateShardPlan(full,name);
+  assert.equal(shard.stages.at(-1),"installed-"+name);
+  for(const host of hosts){
+   const build=checks.findIndex(check=>check.id===host);
+   assert.ok(build>=0&&build<checks.length-1,host);
   }
  }
 
