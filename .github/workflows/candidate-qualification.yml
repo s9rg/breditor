@@ -46,7 +46,13 @@
             "sealed-joint-recovery-source",
             "sealed-joint-recovery-installed",
             "native-suggestion-delivery",
-            "native-revision-delivery"
+            "native-revision-delivery",
+            "local-metadata-records",
+            "local-metadata-references",
+            "local-metadata-availability",
+            "local-metadata-materialization",
+            "recoverable-metadata",
+            "metadata-server-bytes"
           ]
         }
       }
