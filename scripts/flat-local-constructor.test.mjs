@@ -11,14 +11,11 @@ import {NativeInputParticipantWitness as Witness} from '../packages/breditor-col
 import {FlatLocalOperationJournal as Journal,createFlatLocalJournalFacade as createFacade} from '../packages/breditor-collaboration/dist/flat_local_operation/journal.js';
 import {createRestoredLocalJournalFacade as createSnapshotFacade} from '../packages/breditor-collaboration/dist/restored_local_operation/journal.js';
 import {OperationalIndependentLocalParticipant as OldParent} from '../packages/breditor-collaboration/dist/independent_local_operation/participant.js';
-import {flatLocalFixture} from './fixtures/flat-local-operation/session.mjs';
+import {flatLocalFixture,observeFlatLocalSource} from './fixtures/flat-local-operation/session.mjs';
 import {localParticipantUnitHost} from './fixtures/independent-local-operation/participant.mjs';
 import {insertCleanupText} from './fixtures/owned-core-cleanup/session.mjs';
 import {secondAsset} from './fixtures/review-assets/pixels.mjs';
-const open=api.SharedIndependentHistoryPersistentSession.open;let actualSource;
-api.SharedIndependentHistoryPersistentSession.open=async function(options){const source=await open.call(this,options);if(options.database.endsWith('-flat-source'))actualSource=source;return source;};
-const {OperationalFlatLocalParticipant:Parent}=await import('../packages/breditor-collaboration/dist/flat_local_operation/participant.js');
-api.SharedIndependentHistoryPersistentSession.open=open;
+import {OperationalFlatLocalParticipant as Parent} from '../packages/breditor-collaboration/dist/flat_local_operation/participant.js';
 const runtime=process.env.BREDITOR_FLAT_LOCAL_RUNTIME??new URL('../target/promoted-shared-web/',import.meta.url).pathname;
 let host;
 before(async()=>{host=await localParticipantUnitHost({api,rich,Participant:OldParent,runtime,fixture:new URL('../crates/breditor-core/tests/fixtures/rich-local-root.json',import.meta.url)});});
@@ -38,12 +35,16 @@ test('opening, uploads, final witness and complete parent deny unreturned constr
 });
 for(const lane of['document','review'])test(`handoff wrapper reentry cannot expose owners or hide a final ${lane} mutation`,async()=>{
  const f=await flatLocalFixture(host),freeze=Object.freeze;let parent,parts,foreign,nativeWrappers=0,inputWrappers=0,partWrappers=0,mutated=false;
- try{const selected=options(f);parent=await Parent.begin(f.file,selected);assert.ok(actualSource);foreign=await rich.RichAssetStore.openRetained(selected.cohort.uploadsDatabase);
+ try{const selected=options(f),result=await observeFlatLocalSource(api.SharedIndependentHistoryPersistentSession,()=>Parent.begin(f.file,selected));parent=result.parent;
+  assert.equal(result.opened.length,1);
+  const [actualSource]=result.opened;
+  assert.deepEqual(actualSource.exportRecovery(),f.live);
+  foreign=await rich.RichAssetStore.openRetained(selected.cohort.uploadsDatabase);
   Object.freeze=function(value){if(value&&typeof value==='object'){
    if(Object.getOwnPropertyDescriptor(value,'session')?.get){nativeWrappers++;assert.throws(()=>value.session);}
    if(Object.keys(value).sort().join(',')==='blob,file'&&typeof value.file==='function'){inputWrappers++;assert.throws(()=>value.file());}
    if(Object.getOwnPropertyDescriptor(value,'uploads')?.get){partWrappers++;assert.throws(()=>value.source);assert.throws(()=>value.uploads);assert.throws(()=>value.input);if(!mutated){mutated=true;if(lane==='document')insertCleanupText(actualSource.core,'Final wrapper mutation ');else actualSource.core.dispatchReview({kind:'create_thread',data:{anchorJson:actualSource.core.captureReviewAnchor({kind:'document'}),body:'Final wrapper review mutation'}});}}
   }return freeze(value);};
-  await assert.rejects(parent.intoParts(),error=>error.code==='flat_local_input_handoff_changed');Object.freeze=freeze;assert.equal(mutated,true);assert.equal(nativeWrappers,1);assert.equal(inputWrappers,1);assert.equal(partWrappers,1);await assert.rejects(foreign.cancel(secondAsset),error=>error.code==='asset_custody_busy');await actualSource.flush();await parent.check();parts=await parent.intoParts();await parts.uploads.cancel(secondAsset);assert.notDeepEqual(parts.source.session.exportRecovery(),f.live);
+  await assert.rejects(parent.intoParts(),error=>error.code==='flat_local_input_handoff_changed');Object.freeze=freeze;assert.equal(mutated,true);assert.equal(nativeWrappers,1);assert.equal(inputWrappers,1);assert.equal(partWrappers,1);await assert.rejects(foreign.cancel(secondAsset),error=>error.code==='asset_custody_busy');await actualSource.flush();await parent.check();parts=await parent.intoParts();assert.equal(parts.source.session,actualSource);await parts.uploads.cancel(secondAsset);assert.notDeepEqual(parts.source.session.exportRecovery(),f.live);
  }finally{Object.freeze=freeze;await parts?.source.session.discardAndClose();parts?.uploads.close();foreign?.close();await parent?.discardAndClose();await f.close();}
 });
