@@ -64,6 +64,8 @@ const boundaries = [
  ["selected-room-storage","installed-selected-room-storage",["selected-delivery-native-host"]],
  ["generation-component-reconstruction-source","generation-component-reconstruction",["native-complete-cohort","native-complete-image-cohort"]],
  ["generation-component-reconstruction-installed","installed-generation-component-reconstruction",["native-complete-cohort","native-complete-image-cohort"]],
+ ["generation-native-reconstruction-source","generation-native-reconstruction",["native-complete-cohort","native-complete-image-cohort"]],
+ ["generation-native-reconstruction-installed","installed-generation-native-reconstruction",["native-complete-cohort","native-complete-image-cohort"]],
 ];
 const sdkPrerequisites = [
  "default-typescript-build",
