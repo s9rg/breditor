@@ -44,11 +44,12 @@ function readStoredCuts(
    if(store.keyPath!==null||store.autoIncrement||store.indexNames.length){abort(fail("Changed generation store schema"));return;}
   }
   for(const [index,{readHead,predecessor}] of readers.entries()){
-   const request=heads.get(predecessor?[...key,"continued-from"]:[...key]);
+   // A structured-cloned undefined occupies the exact key and must fail as malformed.
+   const request=heads.getAll(predecessor?[...key,"continued-from"]:[...key],1);
    request.onsuccess=()=>{
     try{
-     const head:unknown=request.result;
-     if(head===undefined)return;
+     if(request.result.length===0)return;
+     const head:unknown=request.result[0];
      if(typeof head!=="string")throw fail("Unknown generation head");
      const parsed=readHead(head);
      if(parsed.identity.room!==key[0]||parsed.identity.writer!==key[1])throw fail("Generation head belongs to a different writer");
@@ -132,19 +133,21 @@ export function writeSegmentedCut(
    const [filesName,headsName]=generationStoreNames;
    const heads=tx.objectStore(headsName),files=tx.objectStore(filesName);
    const write=()=>{
-    const read=heads.get([...key]);
+    const read=heads.getAll([...key],1);
     if(continued){
-     const prior=heads.get([...key,"continued-from"]);
+     const prior=heads.getAll([...key,"continued-from"],1);
      prior.onsuccess=()=>{try{
-      if(prior.result===undefined&&continued.migrating)heads.add(continued.predecessor,[...key,"continued-from"]);
-      else if(prior.result!==continued.predecessor)throw fail("Continued history predecessor differs");
+      if(prior.result.length===0&&continued.migrating)heads.add(continued.predecessor,[...key,"continued-from"]);
+      else if(prior.result[0]!==continued.predecessor)throw fail("Continued history predecessor differs");
      }catch(error){abort(error);}};
     }
     const originalFiles=continued?.migrating?new Set(continued.migrating.map(file=>file.generation)):undefined;
     read.onsuccess=()=>{
      try{
       bootstrap?.check();
-      const actual=read.result===undefined?null:read.result,already=actual===cut.head;
+      const actual:unknown=read.result.length===0?null:read.result[0];
+      if(read.result.length&&typeof actual!=="string")throw fail("Unknown generation head");
+      const already=actual===cut.head;
       if(!already&&actual!==expected)throw fail("Generation head changed since the last acknowledged cut");
       let left=cut.files.length;
       for(const file of cut.files){

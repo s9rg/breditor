@@ -208,6 +208,83 @@ async function generationRows(db){
   transaction.onabort=()=>reject(transaction.error);
  });
 }
+async function verifyHeadAdmission(){
+ const profile=await createSharedProfile(),document=seed(JSON.parse(profile.descriptor_json()));
+ const database=`generation-head-admission-${crypto.randomUUID()}`,key=["room","101"],predecessor=[...key,"continued-from"];
+ let session,db,racingDb,creates=0,replays=0;
+ const options={database,room:key[0],writer:key[1],richLanguage:1,history:"explicit",rangeEditing:"original",selectionEditing:"original",searchHistory:null,reviewedHistory:null,
+  readOnly:false,initialGenerations:{root:"root",active:"one"},
+  create:()=>{creates++;return profile.create(document,key[1]);},
+  restoreSegmented:input=>{replays++;return restoreSharedSegmentedEditor(profile,key[0],input);},
+ };
+ const replayProfile={restore_segmented(...args){replays++;return profile.restore_segmented(...args);},
+  restore_continued_history(...args){replays++;return profile.restore_continued_history(...args);}};
+ const continuedOptions={...options,profile:replayProfile};
+ const heads=(database,mutate)=>new Promise((resolve,reject)=>{
+  const tx=database.transaction("generation_heads","readwrite");mutate(tx.objectStore("generation_heads"));
+  tx.oncomplete=()=>resolve();tx.onabort=()=>reject(tx.error);
+ });
+ const refuses=async operation=>{let error;try{const opened=await operation();await opened.discardAndClose();}catch(caught){error=caught;}return error?.code;};
+ const sameRows=async before=>check(JSON.stringify(await generationRows(db))===JSON.stringify(before),"A refused open must preserve all head and file bytes");
+ const assertMalformed=async (operations,locator)=>{
+  const rows=await generationRows(db),[[keys,values]]=rows;
+  const slot=keys.findIndex(value=>JSON.stringify(value)===JSON.stringify(locator));
+  check(slot!==-1&&values[slot]===undefined,"The selected malformed key must be occupied by a stored undefined value");
+  const before=[creates,replays],codes=[];
+  for(const operation of operations)codes.push(await refuses(operation));
+  await sameRows(rows);
+  check(codes.every(code=>code==="segmented_storage")&&creates===before[0]&&replays===before[1],
+   `Malformed generation keys must refuse before creation or replay (${codes.join(",")}, ${creates-before[0]} creates, ${replays-before[1]} replays)`);
+ };
+ try{
+  session=await SharedSegmentedPersistentSession.open(options);
+  check(!session.recovered&&creates===1,"Genuine absence must invoke exactly one fresh factory");
+  session.core.select(range("intro",0));
+  check(session.core.type("Durable head "),"The fresh owner must write a new exact history");
+  await session.sealGeneration("two");
+  const expected=session.exportRecovery();await session.close();session=undefined;
+  db=await generationDatabase(database,1);
+  const original=await generationRows(db),[[, [head]]]=original;
+  await heads(db,store=>store.put(undefined,key));
+  await assertMalformed([
+   ()=>SharedSegmentedPersistentSession.open(options),
+   ()=>SharedSegmentedPersistentSession.restoreRecovery({...options,recovery:expected,writerRecovery:"host-reacquired"}),
+  ],key);
+  await heads(db,store=>{store.put(head,key);store.add(undefined,predecessor);});
+  const migration={...continuedOptions,expected,nextGeneration:"three"};
+  await assertMalformed([()=>SharedSegmentedPersistentSession.continueHistory(migration)],predecessor);
+  await heads(db,store=>store.delete(predecessor));
+  await sameRows(original);
+  session=await SharedSegmentedPersistentSession.continueHistory(migration);
+  const continued=session.exportContinuedRecovery();
+  await session.close();session=undefined;
+  const retained=await generationRows(db),[[, [current,prior]]]=retained;
+  for(const [locator,value] of [[key,current],[predecessor,prior]]){
+   await heads(db,store=>store.put(undefined,locator));
+   await assertMalformed([()=>SharedSegmentedPersistentSession.openContinued(continuedOptions)],locator);
+   await heads(db,store=>store.put(value,locator));
+  }
+  await sameRows(retained);
+  session=await SharedSegmentedPersistentSession.openContinued(continuedOptions);
+  check(JSON.stringify(session.exportContinuedRecovery())===JSON.stringify(continued),"The original continued cut must reopen exactly after refused attempts");
+  await session.close();session=undefined;
+
+  const racingName=database+"-race";
+  let installedCompetingHead=false;
+  const race=await refuses(()=>SharedSegmentedPersistentSession.open({...options,database:racingName,create:async()=>{
+   // The first read saw genuine absence, then an unrelated IndexedDB writer won the key.
+   racingDb=await generationDatabase(racingName,1);
+   await heads(racingDb,store=>store.add(undefined,key));
+   installedCompetingHead=true;
+   return options.create();
+  }}));
+  check(installedCompetingHead&&race==="segmented_storage","The insert-only write must refuse a competing malformed head");
+  const [[racingKeys,racingValues],[files]]=await generationRows(racingDb);
+  check(JSON.stringify(racingKeys)===JSON.stringify([key])&&racingValues.length===1&&racingValues[0]===undefined&&files.length===0,
+   "The refused first commit must preserve the competing head without leaving immutable files");
+  return {passed:true,malformedHeadRefusals:5,insertOnlyRaceRefusal:true,exactReopen:true};
+ }finally{db?.close();racingDb?.close();await session?.discardAndClose();profile.free();}
+}
 async function verifyRetirement(scenario){
  const upgrade=scenario==="upgrade",hashRejected=scenario==="discard-reject";
  const profile=await createSharedProfile();
@@ -293,7 +370,7 @@ async function verifyRetirement(scenario){
   profile.free();
  }
 }
-const scenario=new URLSearchParams(location.search).get("retirement");
-const result=await (scenario===null?verify():verifyRetirement(scenario))
+const query=new URLSearchParams(location.search),scenario=query.get("retirement");
+const result=await (query.has("headAdmission")?verifyHeadAdmission():scenario===null?verify():verifyRetirement(scenario))
  .catch(error=>({passed:false,reason:String(error).slice(0,250)}));
 document.querySelector("#result").textContent=JSON.stringify(result);
