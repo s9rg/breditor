@@ -17,6 +17,7 @@ export interface RichClipboardInterchangeReport {
  readonly destination?:RichClipboardTextProjection;
 }
 export interface ClipboardInput {readonly fragment:string;readonly plain:string;readonly formats:readonly RichInterchangeFormatReport[]}
+export type RichTextPasteIntent="literal"|"detect-markdown";
 export interface ClipboardExport {readonly html:string;readonly markdown:string;readonly formats:readonly RichInterchangeFormatReport[]}
 export const RICH_CLIPBOARD_MIME="application/x-breditor-rich+json";
 const maximum=1024*1024;
@@ -36,17 +37,33 @@ function result<T>(value:RichInterchangeResult<T>,kind:string):Readonly<{value:T
  if(value?.ok!==true)throw Error(`Clipboard ${kind} conversion was rejected`);
  return{value:value.value,losses:notices(value.losses)};
 }
+function convertInput(source:string,kind:"html"|"markdown",adapter:RichClipboardInterchange,grid:boolean):ClipboardInput {
+ if(!source)throw Error("Clipboard foreign content was empty");
+ const converted=result(adapter[kind==="html"?"importHtml":"importMarkdown"](source,{kind:grid?"grid":"auto"}),kind),transfer=converted.value;
+ if(!transfer||transfer.format!=="breditor/rich-clipboard-transfer"||transfer.formatVersion!==1||!['text','flow','grid'].includes(transfer.kind))throw Error("Clipboard interchange transfer was invalid");
+ return{fragment:string(transfer.structuredJson),plain:string(transfer.plainText),formats:Object.freeze([Object.freeze({kind,losses:converted.losses})])};
+}
+// Require a heading, a blank line and a flat, consistently marked list of at least two items.
+function isHeadingAndList(source:string):boolean {
+ const lines=source.trimEnd().split(/\r\n|[\r\n]/),first=lines[0];
+ if(lines.length<4||!/^ {0,3}#{1,6}[ \t]+[^ \t#]/.test(first??"")||!/^[ \t]*$/.test(lines[1]!))return false;
+ const item=/^( {0,3}[-+*])[ \t]+[^ \t]/,marker=item.exec(lines[2]!)?.[1];
+ return marker!==undefined&&lines.slice(3).every(line=>item.exec(line)?.[1]===marker);
+}
+/** An explicit host action. The ordinary text/plain event path remains literal. */
+export function readClipboardText(source:string,adapter:RichClipboardInterchange|undefined,grid:boolean,intent:RichTextPasteIntent):ClipboardInput {
+ if(intent!=="literal"&&intent!=="detect-markdown")throw new TypeError("Unknown text paste intent");
+ const plain=string(source);
+ if(intent==="detect-markdown"&&adapter&&!grid&&isHeadingAndList(plain))return convertInput(plain,"markdown",adapter,false);
+ return{fragment:"",plain,formats:[]};
+}
 /** Event-scoped data is detached before it can enter an editor queue. No rich failure retries as plain. */
 export function readClipboardInput(data:DataTransfer,adapter:RichClipboardInterchange|undefined,grid:boolean):ClipboardInput {
  const fragment=data.getData(RICH_CLIPBOARD_MIME);
  if(fragment||adapter&&data.types.includes(RICH_CLIPBOARD_MIME)){if(!fragment)throw Error("Clipboard rich content was empty");return{fragment,plain:"",formats:[]};}
  if(adapter){
   const kind=data.types.includes("text/html")?"html":data.types.includes("text/markdown")?"markdown":undefined;
-  if(kind){const source=string(data.getData(kind==="html"?"text/html":"text/markdown"));if(!source)throw Error("Clipboard foreign content was empty");
-   const converted=result(adapter[kind==="html"?"importHtml":"importMarkdown"](source,{kind:grid?"grid":"auto"}),kind),transfer=converted.value;
-   if(!transfer||transfer.format!=="breditor/rich-clipboard-transfer"||transfer.formatVersion!==1||!['text','flow','grid'].includes(transfer.kind))throw Error("Clipboard interchange transfer was invalid");
-   return{fragment:string(transfer.structuredJson),plain:string(transfer.plainText),formats:Object.freeze([Object.freeze({kind,losses:converted.losses})])};
-  }
+  if(kind)return convertInput(string(data.getData(kind==="html"?"text/html":"text/markdown")),kind,adapter,grid);
  }
  return{fragment:"",plain:data.getData("text/plain"),formats:[]};
 }

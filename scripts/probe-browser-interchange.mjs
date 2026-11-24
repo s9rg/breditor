@@ -8,6 +8,8 @@ import {JSDOM} from "jsdom";
 import {IDBFactory} from "fake-indexeddb";
 import {createElement,createRef,act,StrictMode} from "react";
 import {createRoot} from "react-dom/client";
+import {createStandardRichInlinePresentationV1,mountDocumentRichEditor} from "@breditor/experimental-rich-content";
+import {createSharedDocumentEditor,mountSharedDocumentEditor} from "@breditor/collaboration";
 import {initializeLocalRuntime,createLayoutLocalProfileV3,openLocalEditor,openLocalDocumentEditor} from "../packages/breditor-editor/dist/index.js";
 import {initializeSharedRuntime,createLayoutSharedProfileV3,openSharedEditor,openSharedDocumentEditor} from "../packages/breditor-editor/dist/collaboration.js";
 import {BreditorEditor,BreditorDocumentEditor} from "../packages/breditor-editor/dist/react.js";
@@ -33,6 +35,49 @@ export async function probeBrowserInterchange(localDirectory,sharedDirectory){
  let lp,sp;
  try{
   await initializeLocalRuntime(localBytes);await initializeSharedRuntime(sharedBytes);lp=await createLayoutLocalProfileV3();sp=await createLayoutSharedProfileV3();
+  const markdownText="## Release notes\n\n- First item\n- Second item";
+  const ambiguousTexts={unmarked:"Release notes\n\n- First item\n- Second item",single:"## Release notes\n\n- One item",nested:"## Release notes\n\n- First item\n  - Nested item"};
+  for(const shared of [false,true])for(const mode of ["detected","literal","default",...Object.keys(ambiguousTexts),"ordinary-event","without-adapter","read-only","stale"]){
+   const container=host(),reports=[],errors=[],source=coverageSeed(shared?JSON.parse(sp.descriptor_json()):lp.descriptor());
+   const owner=shared?createSharedDocumentEditor(sp.create(source,"101")):lp.createDocumentEditor(source);
+   const convert=createRichInterchange(owner),adapter=mode==="stale"?{...convert,importMarkdown(...args){
+    const value=convert.importMarkdown(...args);
+    if(shared)owner.select(range("z-intro",0));else owner.execute({kind:"setSelection",selection:range("z-intro",0)});
+    return value;
+   }}:convert;
+   const options={core:owner,toolbar:[],selectionEditing:"document-v1",inlinePresentation:createStandardRichInlinePresentationV1(shared?sp.inline_catalog_json():lp.inlineCatalogJson()),
+    ...(mode==="without-adapter"?{}:{clipboardInterchange:adapter}),onInterchange:report=>reports.push(report),onError:error=>errors.push(error)};
+   const dom=shared?mountSharedDocumentEditor(container,options):mountDocumentRichEditor(container,options);
+   try{
+    dom.selectDocument();const before=owner.documentJson(),input=ambiguousTexts[mode]??markdownText;
+    if(mode==="read-only")dom.setReadOnly(true);
+    const beforeCheckpoint=owner.checkpointJson(),pasteRevision=owner.view().revision;
+    if(mode==="ordinary-event")clipboard(window,dom.surface,"paste",{"text/plain":input});
+    else if(mode==="default")dom.pasteText(input);
+    else dom.pasteText(input,mode==="literal"?"literal":"detect-markdown");
+    if(mode==="read-only"||mode==="stale"){
+     assert.equal(owner.documentJson(),before);assert.equal(owner.view().undoDepth,0);assert.deepEqual(reports,[]);
+     if(mode==="stale")assert.ok(errors.some(error=>/older|stale/i.test(String(error))),`${shared}/${mode}: ${errors}`);
+     else{assert.equal(owner.checkpointJson(),beforeCheckpoint);assert.deepEqual(errors,[]);}
+     continue;
+    }
+    assert.deepEqual(errors,[],`${shared}/${mode}: ${errors}`);assert.equal(owner.view().undoDepth,1);
+    const changed=owner.documentJson(),nodes=JSON.parse(changed).root.children;
+    if(mode==="detected"){
+     assert.deepEqual(nodes.map(n=>n.type),["breditor/heading","breditor/bullet-list","breditor/paragraph"]);
+     assert.deepEqual(nodes[2].children,[]); // Native caret host after a trailing list.
+     assert.equal(nodes[0].children[0].text,"Release notes");
+     assert.deepEqual(nodes[1].children.map(n=>n.children[0].children[0].text),["First item","Second item"]);
+     assert.deepEqual(reports.map(r=>[r.sourceRevision,r.formats[0].kind,r.formats[0].losses]),[[pasteRevision,"markdown",[]]]);
+    }else{
+     assert.ok(nodes.every(n=>n.type==="breditor/paragraph"));
+     assert.equal(nodes.map(n=>n.children.map(c=>c.text).join("")).join("\n"),input);
+     assert.deepEqual(reports,[]);
+    }
+    if(shared)owner.undo();else dom.execute({kind:"undo"});assert.equal(owner.documentJson(),before);
+    if(shared)owner.redo();else dom.execute({kind:"redo"});assert.equal(owner.documentJson(),changed);
+   }finally{dom.dispose();container.remove();}
+  }
   for(const shared of [false,true])for(const document of [false,true])for(const natural of [false,true]){
    const source=coverageSeed(shared?JSON.parse(sp.descriptor_json()):lp.descriptor()),settings={richLanguage:3,history:natural?"typing-v1":"explicit",rangeEditing:"general-v1",...(document?{selectionEditing:"document-v1"}:{}),...(shared?{room:"room",writer:"101"}:{})};
    const cases=[{name:"inline",selection:range("q1",1),values:{"text/html":"<b>Foreign 🙂</b>","text/markdown":"ignored", "text/plain":"ignored"},expected:"Foreign 🙂"},

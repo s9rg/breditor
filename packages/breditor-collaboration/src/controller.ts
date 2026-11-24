@@ -15,7 +15,7 @@ import {resolveRichUi,type RichUiLocale,type RichUiOptions} from "@breditor/expe
 import {standardSelectionInlineControls,selectionFormatChanges} from "@breditor/experimental-rich-content/rendering";
 import {richRubyStyles,richInlinePresentationHasRuby} from "@breditor/experimental-rich-content/rendering";
 import {blockLayoutShortcut} from "@breditor/experimental-rich-content/rendering";
-import {requireClipboardInterchange,readClipboardInput,exportClipboard,writeClipboard,clipboardInterchangeReport,clipboardInterchangeStatus,clipboardProjectionText,type RichClipboardInterchange,type RichClipboardInterchangeReport,type RichInterchangeFormatReport} from "@breditor/experimental-rich-content/rendering";
+import {requireClipboardInterchange,readClipboardInput,readClipboardText,exportClipboard,writeClipboard,clipboardInterchangeReport,clipboardInterchangeStatus,clipboardProjectionText,type ClipboardInput,type RichTextPasteIntent,type RichClipboardInterchange,type RichClipboardInterchangeReport,type RichInterchangeFormatReport} from "@breditor/experimental-rich-content/rendering";
 import {RichSearchEvents,type RichSearchHostState,type RichSearchCompletion} from "@breditor/experimental-rich-content/rendering";
 import type {RichSearchQuery,RichSearchReplacement} from "@breditor/experimental-rich-content";
 import type {SharedSearchResults} from "./search_results.js";
@@ -228,6 +228,11 @@ export class SharedDomEditor<P extends SharedSelectionPolicy="original"> {
  selectDocument(this:SharedDomEditor<"document-v1">,revision=this.#options.core.view().revision):void{const core=this.#documentOwner();this.#perform(c=>{core.selectDocument(c.revision);},true,revision);}
  collapseDocumentSelection(this:SharedDomEditor<"document-v1">,side:"before"|"after",revision=this.#options.core.view().revision):void{const core=this.#documentOwner();this.#perform(c=>{core.collapseDocumentSelection(side,c.revision);},true,revision);}
  replaceDocumentPlainText(this:SharedDomEditor<"document-v1">,text:string,revision=this.#options.core.view().revision):void{const core=this.#documentOwner(),paragraph=this.#allocate("p");this.#perform(c=>{core.replaceDocumentPlainText(paragraph,text,c.revision);},true,revision);}
+ /** Apply host-supplied text with a literal default, through the native paste transaction. */
+ pasteText(source:string,intent:RichTextPasteIntent="literal"):void {
+  this.#live();if(this.#model.view.readOnly===true||this.#composition||this.#busy)return;
+  this.#boundary();this.#attempt(()=>this.#pasteInput(grid=>readClipboardText(source,this.#interchange,grid,intent)));
+ }
  pasteDocumentClipboard(this:SharedDomEditor<"document-v1">,clipboardJson:string,revision=this.#options.core.view().revision):void{const core=this.#documentOwner(),prefix=this.#allocate("paste");this.#perform(c=>{core.pasteDocumentClipboard(clipboardJson,prefix,c.revision);},true,revision);}
  view():SharedEditorView<P>{this.#live();return this.#options.core.view();}
  checkpointJson():string{this.#live();return this.#options.core.checkpointJson();}
@@ -362,24 +367,26 @@ export class SharedDomEditor<P extends SharedSelectionPolicy="original"> {
  #paste(event:ClipboardEvent):void{if(this.#model.view.readOnly===true){event.preventDefault();return;}if(!event.clipboardData)return;event.preventDefault();if(this.#composition||this.#busy)return;
   this.#boundary();
   this.#attempt(()=>{const transfer=event.clipboardData!,foreign=this.#interchange&&transfer.types.some(t=>["application/x-breditor-rich+json","text/html","text/markdown"].includes(t)),files=[...transfer.files];if(files.length&&!foreign){this.#files(files);return;}
-   // Clipboard stores are event-scoped. Capture strings before preparing/queuing work,
-   // and never interpret an empty or unsupported transfer as a selection deletion.
-   this.#sync();const revision=this.#model.view.revision,input=readClipboardInput(transfer,this.#interchange,this.#model.view.selection?.kind==="grid"),fragment=input.fragment,plain=input.plain;if(!fragment&&!plain)return;
-   let projection:RichClipboardTextProjection|undefined;
-   this.#perform(c=>{
-    const s=c.model.view.selection,general=c.model.view.rangeEditing==="general-v1";
-    if(s?.kind==="document"&&this.#document){if(fragment)this.#document.pasteDocumentClipboard(fragment,c.allocate("paste"),c.revision);else this.#replaceDocumentInput(c,plain,false);return;}
-    if(!fragment){if(general&&s?.kind==="text")c.core.replaceGeneralRangePlainText(s,plain,c.allocate("range"),c.revision);else if(isStructuralRichLanguage(c.core.richLanguageVersion())&&c.core.supportsAtomEditing()&&selectedFlowAtom(c.model))c.core.replaceAtomPlainText(c.allocate("p"),plain,c.revision);else c.core.type(plain,c.revision);return;}
-    const kind=(JSON.parse(fragment) as {kind:string}).kind,prefix=c.allocate("paste");
-    if(kind==="text"){if(general&&s?.kind==="text")c.core.pasteGeneralInlineClipboard(s,fragment,prefix,c.revision);else c.core.paste(fragment,{kind:"text"},prefix,c.revision);}
-    else if(kind==="grid"&&s?.kind==="grid")c.core.paste(fragment,{kind:"grid"},prefix,c.revision);
-    else if(s?.kind==="text"){
-     const converted=c.core.supportsClipboardTextPolicy()?c.core.projectClipboardText(s,fragment,c.revision):null;
-     if(converted){if(general)c.core.replaceGeneralRangePlainText(s,converted.text,prefix,c.revision);else c.core.replace(s,converted.text,c.revision);projection=converted;}
-     else if(general)c.core.pasteGeneralFlowClipboard(s,fragment,c.allocate("right"),prefix,c.revision);else c.core.pasteAtText(fragment,c.allocate("right"),prefix,c.revision);
-    }
-    else c.core.paste(fragment,{kind:"flow",...positionAfter(c)},prefix,c.revision);
-   },true,revision,false,display=>this.#clipboardComplete("paste",revision,input.formats,projection,display));});
+   this.#pasteInput(grid=>readClipboardInput(transfer,this.#interchange,grid));
+  });
+ }
+ #pasteInput(read:(grid:boolean)=>ClipboardInput):void {
+  this.#sync();const revision=this.#model.view.revision,input=read(this.#model.view.selection?.kind==="grid"),fragment=input.fragment,plain=input.plain;if(!fragment&&!plain)return;
+  let projection:RichClipboardTextProjection|undefined;
+  this.#perform(c=>{
+   const s=c.model.view.selection,general=c.model.view.rangeEditing==="general-v1";
+   if(s?.kind==="document"&&this.#document){if(fragment)this.#document.pasteDocumentClipboard(fragment,c.allocate("paste"),c.revision);else this.#replaceDocumentInput(c,plain,false);return;}
+   if(!fragment){if(general&&s?.kind==="text")c.core.replaceGeneralRangePlainText(s,plain,c.allocate("range"),c.revision);else if(isStructuralRichLanguage(c.core.richLanguageVersion())&&c.core.supportsAtomEditing()&&selectedFlowAtom(c.model))c.core.replaceAtomPlainText(c.allocate("p"),plain,c.revision);else c.core.type(plain,c.revision);return;}
+   const kind=(JSON.parse(fragment) as {kind:string}).kind,prefix=c.allocate("paste");
+   if(kind==="text"){if(general&&s?.kind==="text")c.core.pasteGeneralInlineClipboard(s,fragment,prefix,c.revision);else c.core.paste(fragment,{kind:"text"},prefix,c.revision);}
+   else if(kind==="grid"&&s?.kind==="grid")c.core.paste(fragment,{kind:"grid"},prefix,c.revision);
+   else if(s?.kind==="text"){
+    const converted=c.core.supportsClipboardTextPolicy()?c.core.projectClipboardText(s,fragment,c.revision):null;
+    if(converted){if(general)c.core.replaceGeneralRangePlainText(s,converted.text,prefix,c.revision);else c.core.replace(s,converted.text,c.revision);projection=converted;}
+    else if(general)c.core.pasteGeneralFlowClipboard(s,fragment,c.allocate("right"),prefix,c.revision);else c.core.pasteAtText(fragment,c.allocate("right"),prefix,c.revision);
+   }
+   else c.core.paste(fragment,{kind:"flow",...positionAfter(c)},prefix,c.revision);
+  },true,revision,false,display=>this.#clipboardComplete("paste",revision,input.formats,projection,display));
  }
  #clipboardComplete(operation:RichClipboardInterchangeReport["operation"],revision:string,formats:readonly RichInterchangeFormatReport[],destination?:RichClipboardTextProjection,display=true):void {
   if(this.#disposed)return;

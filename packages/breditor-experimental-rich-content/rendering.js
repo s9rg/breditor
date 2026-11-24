@@ -26,7 +26,7 @@ export {RichSearchEvents} from "./dist/browser/search_host.js";
 export {prepareRichPlaceholder,validatePlaceholderOption,RichPlaceholderPresentation,richPlaceholderStyles} from "./dist/browser/placeholder.js";
 export {requireMarkdownInputRules,requireInputRules,inputRuleSelection,inputRuleTypography,TYPOGRAPHY_RULE_GROUPS,TYPOGRAPHY_DEFAULT_GROUPS,needsInputRuleSets,validateMarkdownInputPolicy,isPlainInputScalar,captureMarkdownInputSource,checkMarkdownInputSource,publishMarkdownInput} from "./dist/browser/input_rule_intent.js";
 export {isStructuralRichLanguage} from "./dist/browser/rich_language.js";
-export {requireClipboardInterchange,readClipboardInput,exportClipboard,writeClipboard,clipboardInterchangeReport,clipboardInterchangeStatus} from "./dist/browser/clipboard_interchange.js";
+export {requireClipboardInterchange,readClipboardInput,readClipboardText,exportClipboard,writeClipboard,clipboardInterchangeReport,clipboardInterchangeStatus} from "./dist/browser/clipboard_interchange.js";
 export {mountRichBlockDragPort,richBlockDragStyles} from "./dist/browser/block_drag.js";
 export {resolveRichBlockMove,resolveRichBlockStep,richBlockDropTargets,richHandleBlock,richSelectionBlock,isMovableBlock} from "./dist/browser/block_move.js";
 // Profile-independent inline presentation helpers, re-exported so DOM-free renderers depend only on this package.
