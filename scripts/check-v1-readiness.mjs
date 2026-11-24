@@ -1,5 +1,5 @@
 /** Reviewed V1 capability ledger guard. Read-only; does not run tests or publish. */
-import {existsSync, readdirSync, readFileSync, realpathSync, statSync} from "node:fs";
+import {lstatSync, readdirSync, readFileSync, realpathSync, statSync} from "node:fs";
 import {dirname, isAbsolute, relative, resolve} from "node:path";
 import {fileURLToPath} from "node:url";
 
@@ -109,11 +109,24 @@ export function validateCatalogCases(catalog, audit) {
   return catalog;
 }
 
-function readCatalogs() {
-  const files = existsSync(catalogDirectory) ? readdirSync(catalogDirectory).sort() : [];
-  const paths = [catalogPath, ...files.filter(name => name.endsWith(".json"))
-    .map(name => resolve(catalogDirectory, name))];
-  return paths.map(path => JSON.parse(readFileSync(path, "utf8")));
+function supplementalCatalogPaths(directory) {
+  let directoryStats;
+  try {
+    directoryStats = lstatSync(directory);
+  } catch (error) {
+    if (error.code === "ENOENT") return [];
+    throw error;
+  }
+  requireValue(directoryStats.isDirectory(), "V1 catalog case directory must be a real directory");
+  return readdirSync(directory).filter(name => name.endsWith(".json")).sort()
+    .map(name => resolve(directory, name));
+}
+
+export function readCatalogs(directory = catalogDirectory) {
+  return [catalogPath, ...supplementalCatalogPaths(directory)].map(path => {
+    requireValue(lstatSync(path).isFile(), `V1 catalog case file must be a regular file: ${path}`);
+    return JSON.parse(readFileSync(path, "utf8"));
+  });
 }
 
 /** Completion is a manually reviewed ledger assertion, never an automated test pass. */

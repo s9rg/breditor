@@ -1,9 +1,10 @@
 import assert from "node:assert/strict";
 import {spawnSync} from "node:child_process";
-import {existsSync, readdirSync, readFileSync} from "node:fs";
+import {existsSync, mkdtempSync, readdirSync, readFileSync, rmSync, symlinkSync} from "node:fs";
+import {tmpdir} from "node:os";
 import {join} from "node:path";
 import test from "node:test";
-import {auditPath, catalogPath, main, repository, summarizeAudit, validateAudit, validateCatalogCases} from "./check-v1-readiness.mjs";
+import {auditPath, catalogPath, main, readCatalogs, repository, summarizeAudit, validateAudit, validateCatalogCases} from "./check-v1-readiness.mjs";
 
 const load = () => JSON.parse(readFileSync(auditPath, "utf8"));
 const loadCatalog = () => JSON.parse(readFileSync(catalogPath, "utf8"));
@@ -58,6 +59,19 @@ test("the catalog requires stable case IDs across separate files", () => {
     /combined catalog cases has duplicate ID/);
   const supplemental = {...catalog, cases: [{...firstCase, id: "new-case-for-audit"}]};
   assert.equal(summarizeAudit(audit, [catalog, supplemental]).catalogCasesDefined, catalog.cases.length + 1);
+});
+
+test("catalog loading refuses symlinked files and directories", () => {
+  const directory = mkdtempSync(join(tmpdir(), "breditor-catalog-"));
+  try {
+    const siblingLink = join(directory, "external");
+    symlinkSync(repository, siblingLink, "dir");
+    assert.throws(() => readCatalogs(siblingLink), /must be a real directory/);
+    symlinkSync(catalogPath, join(directory, "external.json"), "file");
+    assert.throws(() => readCatalogs(directory), /must be a regular file/);
+  } finally {
+    rmSync(directory, {recursive: true, force: true});
+  }
 });
 
 test("catalog definitions reject incomplete cases and unknown references", () => {
