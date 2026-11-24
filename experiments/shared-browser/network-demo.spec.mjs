@@ -314,3 +314,43 @@ test("the pilot supports keyboard sign-in and checkpoint recovery at a narrow vi
  await expect(backup).toBeFocused();
  expect((await new AxeBuilder({page}).analyze()).violations).toEqual([]);
 });
+
+test.describe("Pilot touch controls",()=>{
+ test.use({hasTouch:true,viewport:{width:320,height:740}});
+
+ test("participants can sign in, scroll a table, and reconnect with touch",async({page})=>{
+  await provisionDemo(page,pilotRoot());
+  await routePilot(page);
+  await page.goto("/pilot");
+  expect(await page.evaluate(()=>matchMedia("(any-pointer: coarse)").matches)).toBe(true);
+  const open=page.getByRole("button",{name:"Open editor"});
+  await expect(open).toBeEnabled();
+  const usable=async control=>{
+   await expect(control).toBeVisible();
+   const bounds=await control.boundingBox();
+   expect(bounds.height).toBeGreaterThanOrEqual(44);
+   expect(bounds.width).toBeGreaterThanOrEqual(44);
+  };
+  await usable(open);
+  await page.getByLabel("Participant code").fill(bootstrap.tokens.alice);
+  await open.tap();
+  await ready(page);
+
+  const right=page.getByRole("button",{name:"Scroll table 1 right"});
+  const table=page.getByRole("region",{name:"Table 1",exact:true});
+  await usable(right);
+  expect(await table.evaluate(element=>element.scrollLeft)).toBe(0);
+  await right.tap();
+  await expect.poll(()=>table.evaluate(element=>element.scrollLeft)).toBeGreaterThan(0);
+  expect(await page.evaluate(()=>document.documentElement.scrollWidth)).toBe(320);
+
+  const pause=page.getByRole("button",{name:"Go offline",exact:true});
+  await usable(pause);
+  await usable(page.getByRole("button",{name:"Download checkpoint"}));
+  await usable(page.getByRole("button",{name:"Save and reload"}));
+  await pause.tap();
+  await expect(page.locator("#state-a")).toContainText("offline");
+  await page.getByRole("button",{name:"Reconnect",exact:true}).tap();
+  await ready(page);
+ });
+});

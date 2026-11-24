@@ -29,6 +29,10 @@
   #pilot-verification, #pilot-export-digest, #network-state { overflow-wrap: anywhere; }
   .skip-link { position: absolute; inset: .5rem auto auto .5rem; transform: translateY(-200%); padding: .55rem; background: white; color: #205044; }
   .skip-link:focus { transform: none; }
+  @media (any-pointer: coarse) {
+    .fields :is(button, select, input), .pane > header button, #pilot-reload,
+    input[type="file"]::file-selector-button { min-block-size: 44px; min-inline-size: 44px; }
+  }
 </style>
 <body data-breditor-pilot>
   <a class="skip-link" href="#pilot-main">Skip to pilot workspace</a>
