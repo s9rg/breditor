@@ -149,7 +149,8 @@ Whole-document flow paste always appends one fresh empty paragraph, and the
 export shows its canonical HTML. To keep export, edit and apply stable, the
 source view omits one matching plain empty paragraph before import. Authored
 attributes, preformatted spaces and hard breaks still go through the adapter
-and native admission.
+and native admission. This suffix check recognizes the literal empty
+paragraph spellings. The adapter handles parsing and HTML repair.
 
 When the paste is refused, the panel keeps the edited source and clears the
 consumed review. Review the draft again before retrying.
