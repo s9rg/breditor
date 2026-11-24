@@ -1,0 +1,351 @@
+{
+  "format": "breditor/v1-catalog-cases",
+  "formatVersion": 1,
+  "cases": [
+    {
+      "id": "comment-anchors-follow-document-edits",
+      "version": 1,
+      "feature": "comments",
+      "sources": [
+        "tiptap-catalog",
+        "ckeditor-digest"
+      ],
+      "scenario": "Anchor distinct discussions to a text range, a table grid and an image. With a peer, insert and split text at range boundaries, move the image, then remove the anchored text, a boundary table axis and the image. Cold reopen and replay the history.",
+      "expected": [
+        "Live anchors follow surviving characters and nodes according to the documented affinity and preserve their recorded quote. Removing the entire text target, a required grid axis or the node exposes the corresponding orphaned thread with its original quote and replies.",
+        "No orphan moves to an adjacent text block, row or image. Explicit reattachment records the authorized actor and target, and the restored reader agrees with the live room."
+      ]
+    },
+    {
+      "id": "comment-archive-resolution-and-reopen",
+      "version": 1,
+      "feature": "comments",
+      "sources": [
+        "ckeditor-digest",
+        "tiptap-catalog"
+      ],
+      "scenario": "Create two open threads, resolve the first, retract one reply according to the host policy, and find the thread in the comment archive after changing the underlying document and reloading.",
+      "expected": [
+        "Open and archived filters show the expected thread states. The resolved thread retains its discussion identity, original anchor, attribution and permitted reply history.",
+        "An authorized reopen returns the same thread to the open view. Retraction visibility follows the comment policy and the document's accepted revision is unchanged by these actions."
+      ]
+    },
+    {
+      "id": "comment-threads-outside-editor",
+      "version": 1,
+      "feature": "comments",
+      "sources": [
+        "ckeditor-digest"
+      ],
+      "scenario": "Mount a host discussion panel for one global document discussion and one discussion attached to a host metadata field. Read and reply through the panel with the editor unmounted, then mount the editor and reopen the panel after reload.",
+      "expected": [
+        "Each discussion retains its own stable target, author, replies and resolution state. An authorized user can open the original target from the appropriate reviewing surface.",
+        "The external panel neither creates an implicit text-range anchor nor changes the accepted rich document. The host field discussion never appears under an unrelated field or document."
+      ]
+    },
+    {
+      "id": "comment-only-authority-and-independent-history",
+      "version": 1,
+      "feature": "comments",
+      "sources": [
+        "ckeditor-digest",
+        "tiptap-catalog"
+      ],
+      "scenario": "In an installed shared room, grant one account comment-only access while an editor types. Create and edit a reply, save a second peer's reply, and exercise document Undo and comment Undo separately. Revoke the first account's comment grant and submit a previously prepared reply.",
+      "expected": [
+        "The comment-only account can add the admitted reply but cannot perform a document edit. Each Undo affects only the permitted actor and history lane.",
+        "Revocation refuses the prepared mutation at the authority boundary. It does not add a new message, change the accepted document or remove already authorized replies."
+      ],
+      "untrustedInput": "Submit a reply containing markup-looking text and a claimed author label that differs from the authenticated principal. The server and recovered panel display admitted reply text as text and attribute it only to the verified account."
+    },
+    {
+      "id": "offline-comment-reply-and-conflict-recovery",
+      "version": 1,
+      "feature": "comments",
+      "sources": [
+        "tiptap-catalog",
+        "ckeditor-digest"
+      ],
+      "scenario": "Have two authorized participants edit the same existing message from the same baseline under a host policy allowing both edits. Queue one edit and a new distinct reply offline, hard-restart the client, reconnect and retry the same submissions.",
+      "expected": [
+        "After synchronization, both admitted message versions are attributable, the reply occurs once, and any conflict is visible under the expected thread state.",
+        "A fresh reader and the confirming clients agree on thread state and message version IDs. The original anchor and accepted text are unchanged."
+      ]
+    },
+    {
+      "id": "tracked-changes-attributed-proposals",
+      "version": 1,
+      "feature": "tracked-changes",
+      "sources": [
+        "tiptap-catalog",
+        "ckeditor-digest"
+      ],
+      "scenario": "In suggestion mode, propose a text replacement, a format change, a list restructure and an image replacement. View proposals as a second authenticated account, toggle between accepted and proposed presentations, and attach a discussion to one proposal.",
+      "expected": [
+        "Each proposal shows its author, captured revision and the expected before/after effect. Accepted document content and raster bindings remain unchanged while decisions are pending.",
+        "The discussion retains the designated proposal identity and is visible to authorized reviewers. The accepted-only view omits pending content while the review view reveals the corresponding proposal separately."
+      ]
+    },
+    {
+      "id": "tracked-changes-review-decisions-and-undo",
+      "version": 1,
+      "feature": "tracked-changes",
+      "sources": [
+        "ckeditor-digest",
+        "tiptap-catalog"
+      ],
+      "scenario": "Have two reviewers submit conflicting decisions while a third user edits a disjoint block. Control delivery so Accept wins in the first run and Reject wins in a separate run. After reconnect, retry the recorded winning request and exercise accepting-user history in the first run.",
+      "expected": [
+        "Each run records exactly one decision with verified reviewer attribution. An exact retry returns that result, a conflicting decision adds no effect, and rejection leaves the original document untouched apart from the third user's edit.",
+        "Undo and Redo affect only the accepting user's owned effect, preserving the peer's disjoint change, and the decision remains readable in review history."
+      ]
+    },
+    {
+      "id": "tracked-changes-stale-rebase-and-review-export",
+      "version": 1,
+      "feature": "tracked-changes",
+      "sources": [
+        "ckeditor-digest",
+        "tiptap-catalog"
+      ],
+      "scenario": "Prepare a formatting or text proposal and make a disjoint concurrent edit, then repeat with a conflicting change in the proposal target. Read an accepted-only export and, for a profile that enables it, a review-aware export of the same revision.",
+      "expected": [
+        "The permitted rebase applies over the disjoint change and the conflicting target requires explicit review or revision. A refused rebase leaves accepted content and existing proposal history intact.",
+        "The accepted-only export includes accepted content only. The opt-in review export distinguishes pending, accepted and rejected states, preserves permitted attribution and includes neither private transport credentials nor queued mutation packets."
+      ]
+    },
+    {
+      "id": "external-change-set-review",
+      "version": 1,
+      "feature": "tracked-changes",
+      "sources": [
+        "ckeditor-digest",
+        "ckeditor-ai",
+        "tiptap-compare"
+      ],
+      "scenario": "Present a set of proposed text and formatting differences generated outside the editor. Select one to accept, reject a second and stage a third as a tracked suggestion. Repeat after changing a target in the live document.",
+      "expected": [
+        "Only the explicitly accepted change appears in accepted content. The staged third change has its own reviewable identity and the rejected change has no accepted effect.",
+        "A stale target is identified before publication and unaffected live content remains intact. Diff view rendering does not give external change data editing authority."
+      ],
+      "untrustedInput": "Have the external change source return extra keys, markup-looking proposed text and an out-of-bounds range. Inspect the scoped diff and confirm invalid changes never reach native editing."
+    },
+    {
+      "id": "named-document-snapshot-catalog",
+      "version": 1,
+      "feature": "version-history",
+      "sources": [
+        "tiptap-catalog",
+        "ckeditor-digest",
+        "tiptap-compare"
+      ],
+      "scenario": "Capture named snapshots before and after peer edits, then read a paginated version catalog while another version is published. Repeat an original publication, cold-restart the room and read with a freshly authorized account.",
+      "expected": [
+        "Entries retain stable snapshot IDs, names, verified authors and source revisions. The ongoing page interval remains fixed and a refresh includes the later publication in order.",
+        "Retry exposes the previous entry exactly once and a cold restart reproduces its snapshot. Revoked users cannot use a known version ID to read it from the server."
+      ]
+    },
+    {
+      "id": "automatic-version-snapshots-on-change",
+      "version": 1,
+      "feature": "version-history",
+      "sources": [
+        "tiptap-catalog",
+        "ckeditor-digest"
+      ],
+      "scenario": "Enable the host's automatic version policy with a controlled clock and an installed room. Cross a configured interval without edits, edit and cross another interval, then save a manual named version between intervals and disable automatic capture.",
+      "expected": [
+        "A quiescent interval produces no duplicate snapshot. Each enabled changed interval captures the admitted revision for that interval, coalesces changes according to policy and identifies the capture as automatic.",
+        "The manual version keeps its explicit name and source revision. Disabling automated capture stops new automatic entries without altering already retained snapshots."
+      ]
+    },
+    {
+      "id": "document-snapshot-semantic-compare",
+      "version": 1,
+      "feature": "version-history",
+      "sources": [
+        "tiptap-compare",
+        "ckeditor-digest"
+      ],
+      "scenario": "Compare two snapshots of one document with known text, formatting, table geometry and image-reference changes. Compare two distinct documents with equivalent structure but different internal identifiers, then compare each pair again without a mounted editor.",
+      "expected": [
+        "The same-document comparison identifies the expected text, format, structure and asset-reference differences. Cross-document comparison follows the published matching rule without counting equivalent structure as a change solely because IDs differ.",
+        "Headless comparison gives repeatable ordered results and does not load image bytes or mutate either source or the current room."
+      ]
+    },
+    {
+      "id": "guarded-version-restore-with-current-discussion",
+      "version": 1,
+      "feature": "version-history",
+      "sources": [
+        "tiptap-catalog",
+        "ckeditor-digest"
+      ],
+      "scenario": "Preview an older named snapshot that uses a retained image. Receive a peer publication after preview and attempt Apply, then preview again and restore. Reopen the room and exercise the undoable restore history.",
+      "expected": [
+        "The stale preview refuses without overwriting the peer edit. Applying a fresh preview creates a new attributed edit with fresh identities and the snapshot's immutable asset references.",
+        "Current comment threads and decisions remain current. Orphaned anchors retain their original quote, and missing image bytes are shown as an availability issue without deleting the restored binding."
+      ]
+    },
+    {
+      "id": "ai-writing-quick-actions-and-review",
+      "version": 1,
+      "feature": "ai-and-language-tools",
+      "sources": [
+        "ckeditor-ai",
+        "tiptap-ai-toolkit"
+      ],
+      "scenario": "Use host-provided rewrite and generation actions on an explicit selection and on a block. Capture provider calls, reject one result and accept another. Edit a selected target while a repeat request is pending and try its late result.",
+      "expected": [
+        "Each request contains the exact chosen text, ranges and instruction, with unselected paragraphs, account identity, images and review metadata absent. Provider invocation begins only after the explicit action.",
+        "The preview presents before and after text. Reject and stale-target refusal leave content unchanged, and one accepted rewrite contributes one undoable edit."
+      ],
+      "untrustedInput": "Have a test provider return an oversized result, an invalid object and a late answer after cancellation. Each is refused or discarded before a review or document mutation, according to the documented error."
+    },
+    {
+      "id": "ai-destination-language-translation",
+      "version": 1,
+      "feature": "ai-and-language-tools",
+      "sources": [
+        "ckeditor-ai",
+        "tiptap-catalog"
+      ],
+      "scenario": "Invoke the configured translation tool on a selected section, explicitly choosing a target language, and request separate translations for two paragraphs. Review each suggestion, apply one, reject the other and compare stored text and formatting.",
+      "expected": [
+        "Provider calls are scoped to the chosen text and named target language. The review view pairs each translation with its original text and target.",
+        "Only the accepted scope changes, preserving structure and other formatting required by the translation contract. Reject, cancellation and a stale targeted paragraph leave the rest of the document untouched."
+      ]
+    },
+    {
+      "id": "ai-language-review-and-keyboard-issues",
+      "version": 1,
+      "feature": "ai-and-language-tools",
+      "sources": [
+        "ckeditor-ai",
+        "tiptap-ai-toolkit",
+        "ckeditor-overview"
+      ],
+      "scenario": "Run spelling, grammar and style review against a declared scope containing distinct known issues and multi-unit Unicode characters. Navigate issues using the keyboard, dismiss one, apply one and edit a different issue's target before acting on it.",
+      "expected": [
+        "Only validated issues in scope appear in order, with labels linked to the expected ranges. Highlights are outside the editable content, and a dismissed issue changes no document state.",
+        "Applying the chosen correction is one undoable edit. A changed issue range withdraws its apply action without redirecting the change into nearby text."
+      ],
+      "untrustedInput": "Return one provider issue outside the requested scope, one range splitting a Unicode scalar and one message containing markup-like text. Invalid ranges are omitted and admitted messages display as inert text."
+    },
+    {
+      "id": "ai-chat-context-and-explicit-apply",
+      "version": 1,
+      "feature": "ai-and-language-tools",
+      "sources": [
+        "ckeditor-ai",
+        "tiptap-ai-toolkit"
+      ],
+      "scenario": "In a host-enabled chat surface, ask about a selected excerpt, add a follow-up and request a rewrite. Collapse the conversation before the streaming response finishes, then reopen and review or discard its proposed edit.",
+      "expected": [
+        "The provider receives precisely the context approved for the conversation, and opening or closing chat sends no undisclosed editor or review state. A streamed response stays separate from accepted content.",
+        "Only an explicit reviewed apply changes the captured target. The conversation and document remain usable after a timeout or cancelled response."
+      ]
+    },
+    {
+      "id": "ai-inline-completion-dismissal",
+      "version": 1,
+      "feature": "ai-and-language-tools",
+      "sources": [
+        "tiptap-catalog",
+        "tiptap-ai-toolkit"
+      ],
+      "scenario": "In an opt-in completion profile, type at a caret, wait for a completion preview and dismiss it. Trigger another preview, move the caret or receive a peer edit before it arrives, then request and accept a current preview.",
+      "expected": [
+        "Preview text leaves document content and cursor navigation unchanged. A stale or dismissed preview cannot insert text.",
+        "Explicit acceptance inserts the reviewed text at the current captured target as one undoable action, and observed provider requests carry only the configured prefix or selection scope."
+      ]
+    },
+    {
+      "id": "agent-tool-bounded-reads-and-validation",
+      "version": 1,
+      "feature": "ai-agents-and-server-api",
+      "sources": [
+        "tiptap-ai-toolkit",
+        "ckeditor-ai"
+      ],
+      "scenario": "Use the host agent adapter to page through a bounded document read, inspect a selection and find a query. Test the model call interface using an accepted edit, an unknown tool, an expired read revision and a call with added arguments.",
+      "expected": [
+        "Reads return the declared projection and continuation in document order, with the exact revision, bounded text and no implicit disclosure of comments, credentials or raster bytes.",
+        "Invalid inputs return the documented structured errors. Calls cannot bypass the host's configured tools, native grammar or exact target checks."
+      ],
+      "untrustedInput": "Check one extra property and one out-of-range offset using a controlled model response. Confirm no edit, queued publication or hidden context escapes validation."
+    },
+    {
+      "id": "agent-reviewed-batches-and-shared-suggestions",
+      "version": 1,
+      "feature": "ai-agents-and-server-api",
+      "sources": [
+        "tiptap-ai-toolkit",
+        "ckeditor-ai",
+        "ckeditor-digest"
+      ],
+      "scenario": "Have an agent stage disjoint text and format edits from one document read and preview them in the local review panel. Repeat in a shared editor wired to the suggestion queue and try explicitly proposed changes while direct mode is enabled.",
+      "expected": [
+        "The local edits remain staged until accepted as one native publication and one Undo step. Shared review creates a proposal without changing accepted content, and always-review calls stay reviewable under direct mode.",
+        "Review can be rejected, and overlapping or stale targets are refused without applying part of the staged batch. Once accepted, a peer observes the same admitted change."
+      ]
+    },
+    {
+      "id": "document-server-room-and-reader-authority",
+      "version": 1,
+      "feature": "ai-agents-and-server-api",
+      "sources": [
+        "tiptap-ai-toolkit",
+        "ckeditor-digest"
+      ],
+      "scenario": "Use the opt-in document server in an isolated fixture to create, list, read and archive a room with creator, owner, reader and unauthorized accounts. Compare the canonical reader snapshot with an installed client's current revision, then try archival while that client is connected.",
+      "expected": [
+        "Listing and snapshot visibility follow current room grants. Canonical snapshot content and revision agree with the client after synchronization, and thread reads grant no mutation authority.",
+        "Owner archival refuses while a client is connected and succeeds after disconnect. The room leaves public listing and retained room bytes remain available to the authorized recovery workflow."
+      ],
+      "untrustedInput": "Send requests with mismatched principal credentials, disallowed origin and a body beyond the configured bound. Verify the documented error classes, no room mutation and no secret or internal path in the response."
+    },
+    {
+      "id": "document-server-native-injection",
+      "version": 1,
+      "feature": "ai-agents-and-server-api",
+      "sources": [
+        "tiptap-ai-toolkit",
+        "ckeditor-digest"
+      ],
+      "scenario": "As an enabled service editor, submit an admitted command group against the exact revision read from the server while a client observes the room. Replay the request with its old base, try a command outside the allowlist, then revoke service authority and repeat with a fresh base.",
+      "expected": [
+        "The first group is recorded once, attributed to the verified service writer and converges with the client's canonical document. A cold server restart preserves the accepted group.",
+        "Stale, disallowed and revoked operations produce distinct refusals and create neither a partial group nor an extra change notification."
+      ]
+    },
+    {
+      "id": "signed-webhook-payload-and-replay-window",
+      "version": 1,
+      "feature": "ai-agents-and-server-api",
+      "sources": [
+        "ckeditor-digest",
+        "tiptap-catalog"
+      ],
+      "scenario": "Create an isolated room, publish two edits within one debounce interval, create and resolve a comment and archive the room. Have a test receiver record then fail one delivery so the sender retries it. Verify the raw bytes with a controlled clock and separately try an altered body and an expired timestamp.",
+      "expected": [
+        "The receiver sees the declared event types and a single debounced document change carrying the last revision. Each payload includes only the declared metadata and never doc text, comment body, credentials or secrets.",
+        "The receiver verifies valid timestamped signatures, refuses the altered body and expired timestamp, and observes the same delivery ID on retry so the recorded event is applied once."
+      ]
+    },
+    {
+      "id": "webhook-bounded-retry-and-reconciliation",
+      "version": 1,
+      "feature": "ai-agents-and-server-api",
+      "sources": [
+        "ckeditor-digest",
+        "tiptap-catalog"
+      ],
+      "scenario": "Configure a test endpoint to time out, fail and then acknowledge, while a second endpoint keeps failing. Generate enough events to fill the configured queue and restart with pending retries in the documented in-memory configuration.",
+      "expected": [
+        "Logged attempts follow configured order, retry and capacity limits, with accurate success, abandonment and drop outcomes. Relay edits and reads continue while receivers are unavailable.",
+        "Only an administrator can read the delivery log. After restart the documented in-memory delivery boundary is observable, and the receiver can reconcile missed changes against an authorized canonical snapshot."
+      ]
+    }
+  ]
+}
