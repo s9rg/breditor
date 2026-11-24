@@ -99,7 +99,7 @@ incompatible policies, malformed Unicode, excessive budgets or a wrong checksum
 reject without echoing history. Native backup admission errors use a fixed
 payload-redacted message.
 
-## Database upgrades during startup
+## Database upgrades
 
 A database `versionchange` closes an unpublished opening immediately, including
 while an asynchronous native factory is pending. It unblocks the upgrade and
@@ -108,6 +108,13 @@ rejects the opening with `session_open_versionchange` or
 writer leases release. No old-database editor is published afterward. Once live,
 the existing path instead retires the readable owner and retains recovery
 responsibility until explicit closure.
+
+The installed backup regression also upgrades live document-only and paired
+owners after aborting a staged autosave. It compares the old committed record
+in the upgraded database, then exports the readable unsaved history while the
+retired owner still holds its leases. After explicit disposal, a fresh database
+restores and reopens that exact cut, including the document and comment edits
+and their Undo behavior.
 
 ## Remaining release work
 

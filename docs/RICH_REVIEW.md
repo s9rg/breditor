@@ -1844,9 +1844,12 @@ The optional reference host exposes a separately versioned HTTP path:
 Each request uses fresh account authentication and exact allowed Origin policy.
 Catalog reads/publications and packet downloads require the pinned
 `X-Breditor-Catalog` binding; publishing also rechecks Editor permission after
-body admission. There are at most four active version transfers, a ten-second
-body timeout, a 4 KiB page request and a 4 MiB raw publication limit. Raw HTTP JSON
-avoids escaping a 4 MiB version inside the unchanged 6 MiB socket envelope.
+body admission. The four per-room version slots cover the native permission
+check, body admission, native work, and bytes retained for the HTTP response.
+Authenticated requests at capacity receive HTTP 503. Body admission has a
+ten-second timeout, a 4 KiB page request limit, and a 4 MiB raw publication
+limit. Raw HTTP JSON avoids escaping a 4 MiB version inside the 6 MiB socket
+envelope.
 Credentials and live roles never enter version packets or portable recovery.
 
 The independent `documentVersionsV1` socket capability opts into catalog identity,

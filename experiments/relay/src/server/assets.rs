@@ -3,14 +3,14 @@
 use super::{
     Host,
     continued_assets::HttpRasterStore,
-    http::{account, cors, failure, origin},
+    http::{account, cors, failure, origin, retained_body},
 };
 use crate::{
     Error, Result,
     assets::{self, MAX_ASSET_BYTES, PreparedAsset},
 };
 use axum::{
-    body::{Body, Bytes, to_bytes},
+    body::to_bytes,
     extract::{Path, Request, State},
     http::{HeaderMap, StatusCode},
     response::{IntoResponse, Response},
@@ -20,17 +20,6 @@ use tokio::sync::OwnedSemaphorePermit;
 
 /// Whole-body deadline for one asset upload: about 1.4 Mbit/s for the 10 MiB maximum.
 const UPLOAD_BODY_TIMEOUT: std::time::Duration = std::time::Duration::from_secs(60);
-
-struct AssetDownload {
-    bytes: Vec<u8>,
-    _permit: OwnedSemaphorePermit,
-}
-
-impl AsRef<[u8]> for AssetDownload {
-    fn as_ref(&self) -> &[u8] {
-        &self.bytes
-    }
-}
 
 pub(super) async fn preflight(State(host): State<Host>, headers: HeaderMap) -> Response {
     let Some(allowed) = origin(&host, &headers) else {
@@ -94,9 +83,8 @@ pub(super) async fn download(
         .await;
     let response = match result {
         Ok((Some(stored), permit)) => {
-            // The slot follows the payload while the transport retains it or shares its bytes.
-            let bytes = Bytes::from_owner(AssetDownload { bytes: stored.bytes, _permit: permit });
-            ([("content-type", stored.info.mime.as_str())], Body::from(bytes)).into_response()
+            ([("content-type", stored.info.mime.as_str())], retained_body(stored.bytes, permit))
+                .into_response()
         }
         Ok((None, _permit)) => StatusCode::NOT_FOUND.into_response(),
         Err(e) => failure(&e),
@@ -181,7 +169,10 @@ async fn prepare_upload(
 mod tests {
     use super::*;
     use crate::{Role, room::segment_handover_test_source, server::Authentication};
-    use axum::http::{HeaderValue, Request as HttpRequest};
+    use axum::{
+        body::Body,
+        http::{HeaderValue, Request as HttpRequest},
+    };
     use std::{
         io::Cursor,
         sync::{Arc, mpsc},

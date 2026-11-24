@@ -1,7 +1,7 @@
 //! Fetch original exact immutable packet bytes; digest identity never bypasses reader authorization.
 use super::{
     HeaderMap, Host, IntoResponse, Response, StatusCode, account, binding, bound, cors, failure,
-    origin,
+    origin, retained_body,
 };
 use axum::extract::{Path, State};
 pub(in crate::server) async fn download(
@@ -20,23 +20,23 @@ pub(in crate::server) async fn download(
         Ok(b) => b,
         Err(e) => return cors(failure(&e), allowed),
     };
-    let Ok(_permit) = host.version_operations.clone().try_acquire_owned() else {
+    let Ok(permit) = host.version_operations.clone().try_acquire_owned() else {
         return cors(StatusCode::SERVICE_UNAVAILABLE.into_response(), allowed);
     };
     let result = host
         .transaction(move |room| {
             let descriptor = bound(room, &principal, &binding)?;
-            Ok((descriptor.binding, room.document_version_packet(&principal, &id)?))
+            Ok((descriptor.binding, room.document_version_packet(&principal, &id)?, permit))
         })
         .await;
     let response = match result {
-        Ok((binding, Some(packet))) => {
+        Ok((binding, Some(packet), permit)) => {
             let mut response = (
                 [
                     ("content-type", "application/json"),
                     ("access-control-expose-headers", "X-Breditor-Catalog"),
                 ],
-                packet,
+                retained_body(packet.into_bytes(), permit),
             )
                 .into_response();
             if let Ok(value) = binding.parse() {
@@ -44,7 +44,7 @@ pub(in crate::server) async fn download(
             }
             response
         }
-        Ok((_, None)) => StatusCode::NOT_FOUND.into_response(),
+        Ok((_, None, _permit)) => StatusCode::NOT_FOUND.into_response(),
         Err(error) => failure(&error),
     };
     cors(response, allowed)

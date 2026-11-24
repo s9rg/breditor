@@ -106,8 +106,11 @@ companion `link` elements (a stylesheet `link` reports `unsupported-style`), CSS
 `<!--`/`-->` tokens, legacy HTML 4 doctypes, and no-op values (`font-variant:
 normal`, `vertical-align: baseline`, `background-color: transparent`, native
 `list-style-type` values, `mso-data-placement: same-cell` on `<br>`). Other
-`list-style-type` values report `list-numbering`. Everything else unrecognized,
-including `mso-*` producer properties and the `font` shorthand, keeps its notice.
+`list-style-type` values report `list-numbering`. Unrecognized `mso-*` producer
+properties retain their notices. The `font` shorthand expands before the CSS
+cascade and uses the same bounded conversion as the matching longhand properties.
+The `inherit` and `unset` values use the parent font. System fonts,
+`initial`, `revert` and unrepresented components report `unsupported-style`.
 
 ### Ordered-list numbering (rich V4 owners)
 
@@ -136,6 +139,11 @@ original behavior and notices are unchanged. With a V4 owner:
   | Word for the web `list-style-type` `decimal`, `lower-alpha`/`lower-latin`, `upper-alpha`/`upper-latin`, `lower-roman`, `upper-roman` with `data-leveltext` `%N.`/`%N)` | 1–5 as for HTML | none |
   | Word for the web known style, other or missing level text (`%1.%2.`, `(%1)`) | that style | `list-numbering` |
   | Word for the web other counter style (`georgian`, `disc` on an `ol`) | decimal | `list-numbering` |
+
+  Word for the web's HTML `type` supplies the marker family when neither the
+  item nor its list declares `list-style-type`. An explicit HTML `start` applies
+  to the first item when it has no `data-aria-posinset`. Older owners preserve
+  that start with decimal numbering and report unsupported marker families.
 
   An ambiguous Word desktop letter (`i`, `v`, `x`, `c`, `d`, `l`, `m`) continues
   the open list whose next ordinal and style it matches (`h.`, `i.` is

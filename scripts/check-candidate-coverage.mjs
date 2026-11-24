@@ -7,6 +7,7 @@ import {fileURLToPath} from "node:url";
 import {candidateReleasePlan,repository} from "./candidate-release/plan.mjs";
 import {candidateShardPlan} from "./candidate-release/shards.mjs";
 import {fileEvidence,sourceEvidence} from "./candidate-release/evidence.mjs";
+import {verifyHostedContext} from "./candidate-release/hosted-context.mjs";
 
 function requireRetainedBytes(directory,path,record) {
  const retained=fileEvidence(directory,path);
@@ -14,7 +15,7 @@ function requireRetainedBytes(directory,path,record) {
  assert.equal(retained.sha256,record.sha256,`Retained file digest changed for ${path}`);
 }
 
-export function candidateCoverage(root,manifests) {
+export function candidateCoverage(root,manifests,{requireHosted=false}={}) {
  assert.ok(manifests.length,"Supply at least one retained qualification result.json");
  const source=sourceEvidence(root);
  assert.ok(source.commit&&!source.dirty,"Check out one clean candidate before reviewing its evidence");
@@ -52,7 +53,8 @@ export function candidateCoverage(root,manifests) {
    }
    covered.add(check.id);
   }
-  evidence.push({path:input,profile:receipt.profile,shard:receipt.shard?.id,environment:receipt.environment,sha256:record.sha256});
+  const hosted=requireHosted?{hosted:verifyHostedContext(directory,receipt,plan)}:{};
+  evidence.push({path:input,profile:receipt.profile,shard:receipt.shard?.id,environment:receipt.environment,sha256:record.sha256,...hosted});
  }
  assert.deepEqual(sourceEvidence(root),source,"Candidate source changed during evidence review");
  const required=full.checks.filter(check=>check.id!=="reviewed-v1-readiness").map(check=>check.id);
@@ -64,14 +66,15 @@ export function candidateCoverage(root,manifests) {
 if(process.argv[1]&&realpathSync(process.argv[1])===fileURLToPath(import.meta.url)){
  const args=process.argv.slice(2);
  if(args.length===1&&args[0]==="--help"){
-  console.log("Usage: node scripts/check-candidate-coverage.mjs [--require-complete] <result.json>...");
+  console.log("Usage: node scripts/check-candidate-coverage.mjs [--require-complete] [--require-hosted] <result.json>...");
  }else{
   try{
-   const required=args[0]==="--require-complete",inputs=required?args.slice(1):args;
-   assert.ok(inputs.every(path=>!path.startsWith("--")),"Unknown argument");
-   const report=candidateCoverage(repository,inputs);
+   const flags=args.filter(arg=>arg.startsWith("--"));
+   assert.ok(new Set(flags).size===flags.length&&flags.every((flag,index)=>
+    flag===args[index]&&["--require-complete","--require-hosted"].includes(flag)),"Unknown or repeated argument");
+   const report=candidateCoverage(repository,args.slice(flags.length),{requireHosted:flags.includes("--require-hosted")});
    console.log(JSON.stringify(report,null,2));
-   if(required&&!report.complete)process.exitCode=1;
+   if(flags.includes("--require-complete")&&!report.complete)process.exitCode=1;
   }catch(error){
    console.error(`check-candidate-coverage: ${error.message}`);
    process.exitCode=2;

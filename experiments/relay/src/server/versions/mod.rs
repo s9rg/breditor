@@ -7,7 +7,7 @@ mod list;
 mod publish;
 use super::{
     Host,
-    http::{cors, failure, origin},
+    http::{cors, failure, origin, retained_body},
 };
 use crate::{DocumentVersionsDescriptor, Error, Result, Room};
 pub(super) use account::account;
@@ -21,6 +21,10 @@ pub(super) use download::download;
 pub(super) use list::list;
 pub(super) use publish::publish;
 use std::time::Duration;
+use tokio::sync::OwnedSemaphorePermit;
+
+#[cfg(test)]
+mod tests;
 
 fn binding(headers: &HeaderMap) -> Result<String> {
     headers
@@ -44,10 +48,8 @@ pub(super) async fn body(body: Body, limit: usize) -> std::result::Result<Vec<u8
         Err(_) => Err(StatusCode::REQUEST_TIMEOUT),
     }
 }
-fn json(value: serde_json::Value) -> Response {
-    let encoded = value.to_string();
-    drop(value);
-    ([("content-type", "application/json")], encoded).into_response()
+fn json(bytes: Vec<u8>, permit: OwnedSemaphorePermit) -> Response {
+    ([("content-type", "application/json")], retained_body(bytes, permit)).into_response()
 }
 pub(super) async fn preflight(
     axum::extract::State(host): axum::extract::State<Host>,
