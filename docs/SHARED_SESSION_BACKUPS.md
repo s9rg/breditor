@@ -99,6 +99,11 @@ incompatible policies, malformed Unicode, excessive budgets or a wrong checksum
 reject without echoing history. Native backup admission errors use a fixed
 payload-redacted message.
 
+Cold open distinguishes an absent journal key from an existing malformed
+value. It refuses an occupied key containing `undefined` before any native
+creation callback can run. The installed acceptance test exercises each
+original, document, search, and paired reader family with that stored value.
+
 ## Database upgrades
 
 A database `versionchange` closes an unpublished opening immediately, including
