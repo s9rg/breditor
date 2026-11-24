@@ -119,6 +119,15 @@ browser report. Reviewers can compare the npm archive hashes from the producer
 with the Wasm and behavior recorded by the browser. The session backup browser
 report also records IndexedDB recovery through a page reload.
 
+## SDK type checks
+
+Select `sdk-types` to run the full plan's workspace and promoted rich,
+collaboration and editor type checks in an independent job. It builds the
+default packages and the promoted dependencies first, including the local and
+shared Wasm declarations the editor imports. Use
+`node scripts/verify-candidate.mjs --sdk-types` to run the same stages locally.
+Installed workflows and browser behavior have their own qualification profiles.
+
 ## Candidate shards
 
 The manual full profile accepts an optional shard. The named shards cover the

@@ -57,6 +57,10 @@ const focusedStageIds = {
   "installed-search-workflows","installed-placeholder-workflows","installed-fullscreen-workflows","installed-session-backups","installed-asset-backups",
   "rich-demo-latency","installed-search-browser","installed-placeholder-browser","installed-fullscreen-browser","installed-session-backups-browser","installed-asset-backups-browser",
  ],
+ "sdk-types": [
+  "default-typescript-build","paired-local-runtime","paired-shared-runtime","rich-browser-build","collaboration-build",
+  "workspace-types","rich-browser-types","collaboration-types","editor-types",
+ ],
 };
 export const candidateCheckProfiles=Object.freeze(["full","functional",...Object.keys(focusedStageIds)]);
 /** Functional success is deliberately not V1 readiness. Full adds existing browser/default
