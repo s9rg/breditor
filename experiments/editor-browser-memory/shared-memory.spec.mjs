@@ -12,6 +12,7 @@ function durations(values){
 }
 
 test("measure shared editor memory across edit, peer sync, Undo, and exact recovery",async({page,browser},testInfo)=>{
+  const {rangeEditing}=testInfo.project.metadata;
   const installed=JSON.parse(readFileSync("target/editor-installed-consumer.json","utf8"));
   const consumer=realpathSync(process.env.BREDITOR_EDITOR_CONSUMER??installed.consumer);
   expect(consumer).toBe(realpathSync(installed.consumer));
@@ -27,11 +28,13 @@ test("measure shared editor memory across edit, peer sync, Undo, and exact recov
   const wasm=readFileSync(join(consumer,"node_modules/@breditor/collaboration/dist/runtime/breditor_shared_bg.wasm"));
   const response=page.waitForResponse(resource=>/\/breditor_shared_bg-[^/]+\.wasm$/.test(new URL(resource.url()).pathname));
   const navigating=performance.now();
-  await page.goto("/shared-session.html");
+  await page.goto(`/shared-session.html?ranges=${rangeEditing}`);
   await expect(page.locator("#ready")).toHaveText("Ready");
   const navigationToReadyMs=performance.now()-navigating;
   const browserWasm=await (await response).body();
   expect(sha256(browserWasm)).toBe(sha256(wasm));
+  expect(await page.evaluate(()=>[window.durableSdk.a.rangePolicy(),window.durableSdk.b.rangePolicy()]))
+    .toEqual([rangeEditing,rangeEditing]);
   const original=await page.evaluate(()=>window.durableSdk.a.view().documentJson);
   const fixture={documentSha256:sha256(original),documentBytes:Buffer.byteLength(original),
     topLevelBlocks:JSON.parse(original).root.children.length};
@@ -88,13 +91,14 @@ test("measure shared editor memory across edit, peer sync, Undo, and exact recov
   await expect(page.locator("#ready")).toHaveText("Ready");
   const reopened=await page.evaluate(()=>{
     const {a,b}=window.durableSdk;
-    return {recovered:[a.recovered,b.recovered],checkpoints:[a.checkpointJson(),b.checkpointJson()]};
+    return {recovered:[a.recovered,b.recovered],checkpoints:[a.checkpointJson(),b.checkpointJson()],
+      rangeEditing:[a.rangePolicy(),b.rangePolicy()]};
   });
-  expect(reopened).toEqual({recovered:[true,true],checkpoints:saved});
+  expect(reopened).toEqual({recovered:[true,true],checkpoints:saved,rangeEditing:[rangeEditing,rangeEditing]});
   await measure("reopened");
   expect(archiveDigests()).toEqual(archives);
   const report={
-    format:"breditor/installed-shared-memory",formatVersion:2,
+    format:"breditor/installed-shared-memory",formatVersion:3,rangeEditing,
     chromeVersion:browser.version(),platform:process.platform,arch:process.arch,
     host:{cpu:cpus()[0]?.model,osRelease:release(),osVersion:version()},
     fixture,archives,wasm:{sha256:sha256(browserWasm),bytes:browserWasm.length},navigationToReadyMs,latency,
