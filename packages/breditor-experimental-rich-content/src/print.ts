@@ -122,7 +122,8 @@ export function mountRichPrintPreview(surface:HTMLElement,options:RichPrintPrevi
   surface.setAttribute("aria-description",ui.text("printPreviewLabel"));
   surface.dataset["breditorPrintSize"]=layout.size;surface.dataset["breditorPrintOrientation"]=layout.orientation;surface.dataset["breditorPrintMargin"]=layout.margin;
  };
- apply();surface.setAttribute("data-breditor-print-preview","");
+ // Custom elements can react synchronously to the preview's attribute writes.
+ surface.setAttribute("data-breditor-print-preview","");apply();
  let disposed=false;
  return {
   get layout(){return layout;},
