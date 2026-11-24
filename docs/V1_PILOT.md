@@ -48,6 +48,9 @@ The pilot uses test documents and accounts. Retain the private relay state
 directory and each participant's browser profile throughout the run. Keep
 checkpoint downloads private because they include Undo history.
 
+On narrow screens, wide tables have their own scrolling region and labeled
+scroll buttons. The skip link takes keyboard focus to the pilot workspace.
+
 ## Exercise the handoff
 
 1. Give each participant a part of the handoff to own. Exercise ordinary writing

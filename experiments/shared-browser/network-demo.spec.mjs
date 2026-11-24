@@ -5,6 +5,11 @@ import {readFileSync} from "node:fs";
 import {createHash} from "node:crypto";
 let relay,bootstrap,otherContext;
 async function route(page){await page.route("**/relay-bootstrap.json",r=>r.fulfill({status:200,contentType:"application/json",body:JSON.stringify(bootstrap)}));}
+const pilotRoot=()=>JSON.parse(readFileSync(new URL("./pilot-root.json",import.meta.url),"utf8"));
+const pilotBootstrap=()=>({format:"breditor/first-party-pilot",formatVersion:1,endpoint:bootstrap.endpoint,configuration:bootstrap.configuration});
+const routePilot=(page,config=pilotBootstrap())=>page.route("**/pilot-bootstrap.json",route=>route.fulfill({
+ status:200,contentType:"application/json",body:JSON.stringify(config),
+}));
 async function ready(page){await expect(page.locator("#network-state")).toHaveText("Editors ready");await expect.poll(()=>page.evaluate(()=>Object.values(window.breditorNetworkDemo.peers).every(p=>p.sync.state().status==="ready"))).toBe(true);}
 async function same(page){await expect.poll(()=>page.evaluate(()=>{const{a,b}=window.breditorNetworkDemo.peers;return a.session.core.documentJson()===b.session.core.documentJson();})).toBe(true);}
 async function provisionDemo(page,root){
@@ -176,19 +181,15 @@ test("independent offline writers keep exact journals across a relay and page re
 });
 
 test("the first-party pilot opens independent participants and verifies an offline checkpoint after reload",async({page,browser})=>{
- const seed=JSON.parse(readFileSync(new URL("./pilot-root.json",import.meta.url),"utf8"));
- await provisionDemo(page,seed);
- const pilotConfig={format:"breditor/first-party-pilot",formatVersion:1,endpoint:bootstrap.endpoint,configuration:bootstrap.configuration};
+ await provisionDemo(page,pilotRoot());
+ const pilotConfig=pilotBootstrap();
  const open=async (writer,principal)=>{
   await writer.getByLabel("Participant",{exact:true}).selectOption(principal);
   await writer.getByLabel("Participant code").fill(bootstrap.tokens[principal]);
   await writer.getByRole("button",{name:"Open editor"}).click();
   await expect(writer.getByRole("region",{name:"Shared document"})).toBeVisible();
  };
- const configure=writer=>writer.route("**/pilot-bootstrap.json",route=>route.fulfill({
-  status:200,contentType:"application/json",body:JSON.stringify(pilotConfig),
- }));
- await configure(page);
+ await routePilot(page,pilotConfig);
  await page.route("**/network-demo.mjs",route=>route.abort());
  await page.goto("/pilot");
  await expect(page.locator("#network-state")).toContainText("The pilot runtime could not load");
@@ -212,7 +213,7 @@ test("the first-party pilot opens independent participants and verifies an offli
  await expect(page.locator("#pane-b")).toBeHidden();
  otherContext=await browser.newContext();
  const bob=await otherContext.newPage();
- await configure(bob);
+ await routePilot(bob,pilotConfig);
  await bob.goto("/pilot");
  await open(bob,"bob");
  await ready(bob);
@@ -276,4 +277,40 @@ test("the first-party pilot opens independent participants and verifies an offli
  await ready(page);
  await expect(bob.locator('#b [data-rich-text="pilot-notes"]')).toHaveText("Pilot decision. Add the decisions and results that the next reviewer needs.");
  await expect(page.locator('#a [data-rich-text="pilot-item"]')).toHaveText("Pilot evidence. Verify the handoff");
+});
+
+test("the pilot supports keyboard sign-in and checkpoint recovery at a narrow viewport",async({page,browserName})=>{
+ await provisionDemo(page,pilotRoot());
+ await routePilot(page);
+ await page.setViewportSize({width:320,height:740});
+ await page.goto("/pilot");
+ const open=page.getByRole("button",{name:"Open editor"});
+ await expect(open).toBeEnabled();
+ const tab=browserName==="webkit"&&process.platform==="darwin"?"Alt+Tab":"Tab";
+ const skip=page.getByRole("link",{name:"Skip to pilot workspace"});
+ await page.keyboard.press(tab);
+ await expect(skip).toBeFocused();
+ await expect(skip).toBeInViewport();
+ await page.keyboard.press("Enter");
+ await expect(page.getByRole("main")).toBeFocused();
+ await page.keyboard.press(tab);
+ await expect(page.getByLabel("Participant",{exact:true})).toBeFocused();
+ await page.keyboard.press(tab);
+ const code=page.getByLabel("Participant code");
+ await expect(code).toBeFocused();
+ await page.keyboard.insertText(bootstrap.tokens.alice);
+ await page.keyboard.press("Enter");
+ await ready(page);
+ await expect(page.getByRole("region",{name:"Shared document"})).toBeFocused();
+ await expect(page.getByRole("region",{name:"Table 1",exact:true})).toBeVisible();
+ await expect(page.getByRole("button",{name:"Scroll table 1 right"})).toBeVisible();
+ expect(await page.evaluate(()=>document.documentElement.scrollWidth)).toBe(320);
+ const backup=page.getByLabel("Document checkpoint");
+ for(let step=0;step<40&&!(await backup.evaluate(input=>document.activeElement===input));step++)await page.keyboard.press(tab);
+ await expect(backup).toBeFocused();
+ const checkpoint=await page.evaluate(()=>window.breditorNetworkDemo.peers.a.session.core.checkpointJson());
+ await backup.setInputFiles({name:"checkpoint.json",mimeType:"application/json",buffer:Buffer.from(checkpoint)});
+ await expect(page.locator("#pilot-verification")).toContainText("Exact read-only replay verified");
+ await expect(backup).toBeFocused();
+ expect((await new AxeBuilder({page}).analyze()).violations).toEqual([]);
 });

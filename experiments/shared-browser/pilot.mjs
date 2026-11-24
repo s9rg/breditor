@@ -73,6 +73,7 @@ function enableRecovery(wasm, shared, configuration) {
     preview.hidden = true;
     preview.textContent = "";
     if (!file) return;
+    const hadFocus = document.activeElement === backup;
     verification.textContent = "Checking checkpoint…";
     backup.disabled = true;
     try {
@@ -87,6 +88,7 @@ function enableRecovery(wasm, shared, configuration) {
       showError(verification, "This checkpoint could not be recovered in the pilot.", error);
     } finally {
       backup.disabled = false;
+      if (hadFocus && document.activeElement === document.body) backup.focus({preventScroll: true});
     }
   });
 }
