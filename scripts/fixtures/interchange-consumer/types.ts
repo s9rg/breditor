@@ -1,4 +1,5 @@
 import {createRichInterchange} from "@breditor/interchange";
+import {exportPortableHtml,type PortableHtmlRasterOptions} from "@breditor/interchange/portable-html";
 import type {LocalEditorOptions,LocalDocumentEditorOptions,RichClipboardInterchangeReport} from "@breditor/editor";
 import type {SharedEditorSessionOptions,SharedDocumentEditorSessionOptions} from "@breditor/editor/collaboration";
 import type {BreditorEditorProps,BreditorDocumentEditorProps} from "@breditor/editor/react";
@@ -13,6 +14,8 @@ const documentReact={onInterchange} satisfies Pick<BreditorDocumentEditorProps,"
 const sharedReact={onInterchange} satisfies Pick<BreditorSharedEditorProps,"onInterchange">;
 const sharedDocumentReact={onInterchange} satisfies Pick<BreditorSharedDocumentEditorProps,"onInterchange">;
 void [local,document,shared,sharedDocument,react,documentReact,sharedReact,sharedDocumentReact];
+const rasterOptions:PortableHtmlRasterOptions={loadImage:({asset,generation})=>asset&&generation?new Blob():undefined};
+void exportPortableHtml({},"{}",rasterOptions);
 // Opt-in DOCX entry: installed subpath export and strict consumer types.
 import {exportDocx,docxContentType,type DocxResult,type DocxLossCode} from "@breditor/interchange/docx";
 const docx:DocxResult<Uint8Array>=exportDocx("{}",{image:binding=>binding.asset?undefined:new Uint8Array(),pageSize:"a4"});

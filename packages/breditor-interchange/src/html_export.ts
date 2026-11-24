@@ -1,7 +1,7 @@
 import {Budget,bytes,fail,limits} from "./budget.js";
 import {escapeAttribute as a,escapeText as t,safeUrl} from "./safe_url.js";
 import {nodeText,property,stringProperty,type Element,type Literal,type Node} from "./wire.js";
-import type {InterchangeOptions} from "./types.js";
+import type {ImportedAsset,InterchangeOptions} from "./types.js";
 import {isCanonicalLanguageTagV1} from "./language_tag.js";
 import {isImageLinkHrefV1} from "./image_link_href.js";
 import {mentionUnits} from "./mention.js";
@@ -11,7 +11,8 @@ import {bookmarkIdPrefix,internalLinkOf,isBookmarkName} from "./bookmark.js";
 export class HtmlExport {
   /** `bookmarks`: the source owner is bookmark-capable (V4), so anchors and internal links are
    * exported; otherwise output is the original one. */
-  constructor(readonly b:Budget,readonly options:InterchangeOptions,readonly bookmarks=false){}
+  constructor(readonly b:Budget,readonly options:InterchangeOptions,readonly bookmarks=false,
+    readonly preparedImage?:(binding:ImportedAsset)=>string|undefined){}
   #visited=0;
   #visit():void{if(++this.#visited>limits.outputNodes)fail("resource-limit");}
   inline(nodes:readonly Node[]):string{
@@ -95,7 +96,8 @@ export class HtmlExport {
     }).join("");
   }
   imageUrl(node:Element):string|undefined {
-    let raw;try{raw=this.options.exportImage?.(Object.freeze({asset:stringProperty(node,"asset-id"),generation:stringProperty(node,"asset-generation")}));}catch{fail("asset-policy");}
+    const prepared=this.preparedImage?.(imageBinding(node));if(prepared!==undefined)return prepared;
+    let raw;try{raw=this.options.exportImage?.(imageBinding(node));}catch{fail("asset-policy");}
     if(typeof raw!=="string"){this.b.loss("image-reference");return undefined;}
     const safe=safeUrl(raw);if(!safe){this.b.loss("image-reference");return undefined;}return safe;
   }
@@ -135,8 +137,12 @@ export function imageLink(node:Element):{href:string;newWindow:boolean;open:stri
   if(!isImageLinkHrefV1(href)||newWindow!==undefined&&newWindow!==true||property(node,"decorative")!==false)fail("native-admission");
   return {href,newWindow:newWindow===true,open:`<a href="${a(href)}"${newWindow===true?' target="_blank" rel="noopener noreferrer"':""}>`};
 }
-export function exportHtmlRoot(nodes:Node[],b:Budget,options:InterchangeOptions,kind:"text"|"flow"|"grid",bookmarks=false):string {
-  const writer=new HtmlExport(b,options,bookmarks),wrapper=nodes[0];
+export function imageBinding(node:Element):ImportedAsset {
+  return Object.freeze({asset:stringProperty(node,"asset-id"),generation:stringProperty(node,"asset-generation")});
+}
+export function exportHtmlRoot(nodes:Node[],b:Budget,options:InterchangeOptions,kind:"text"|"flow"|"grid",bookmarks=false,
+  preparedImage?:(binding:ImportedAsset)=>string|undefined):string {
+  const writer=new HtmlExport(b,options,bookmarks,preparedImage),wrapper=nodes[0];
   if(kind==="text"&&(nodes.length!==1||wrapper?.kind!=="element"||wrapper.type!=="breditor/paragraph"))fail("native-admission");
   if(kind==="text"&&wrapper?.kind==="element"&&Object.keys(wrapper.properties).some(k=>k!=="breditor/block-id"))b.loss("block-structure");
   const result=kind==="text"&&wrapper?.kind==="element"?`<span style="white-space:pre-wrap">${writer.inline(wrapper.children)}</span>`:writer.blocks(nodes);if(result.length>limits.outputBytes||bytes(result)>limits.outputBytes)fail("resource-limit");return result;

@@ -20,6 +20,10 @@
     "./xml": {
       "types": "./dist/xml.d.ts",
       "import": "./dist/xml.js"
+    },
+    "./portable-html": {
+      "types": "./dist/portable_html.d.ts",
+      "import": "./dist/portable_html.js"
     }
   },
   "files": [
@@ -33,6 +37,12 @@
     "css-tree": "3.2.1",
     "markdown-it": "15.0.3",
     "parse5": "8.0.1"
+  },
+  "peerDependencies": {
+    "@breditor/experimental-rich-content": "0.3.0-alpha.22"
+  },
+  "peerDependenciesMeta": {
+    "@breditor/experimental-rich-content": {"optional": true}
   },
   "scripts": {
     "build": "tsc -p tsconfig.json",
