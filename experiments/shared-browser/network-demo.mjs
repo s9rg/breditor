@@ -56,7 +56,7 @@ export async function openNetworkDemo(bootstrap,chosen,{
   if(peer.offline)peer.assets.setOnline(false);
   peer.presence=new SharedPresence(peer.session.core,{onError:report});peer.presence.subscribe(()=>update(peer));
   const insert=async(files,position,revision)=>{await insertSharedImageFiles(peer.session.core,peer.cache,files,position,revision);update(peer);if(!peer.offline)await peer.assets.flush();update(peer);};
-  peer.mounted=mountSharedEditor(document.querySelector(`#${key}`),{core:peer.session.core,label:`Network ${principal}`,image:{asset:"asset",alt:"Shared diagram"},resolveAsset:binding=>binding.asset==="asset"||binding.asset==="alternate-asset"?placeholder:peer.assets.resolve(binding.asset),onFiles:insert,onError:report,onChange:()=>update(peer)});
+  peer.mounted=mountSharedEditor(document.querySelector(`#${key}`),{core:peer.session.core,label:`Network ${principal}`,scrollableTables:pilot,image:{asset:"asset",alt:"Shared diagram"},resolveAsset:binding=>binding.asset==="asset"||binding.asset==="alternate-asset"?placeholder:peer.assets.resolve(binding.asset),onFiles:insert,onError:report,onChange:()=>update(peer)});
   peer.overlay=new SharedPresenceOverlay({editor:peer.mounted,presence:peer.presence});
   peer.sync=new SharedRelaySync(peer.session.core,{identity,getToken,persistLocal:()=>peer.session.flush(),presence:peer.presence,autoConnect:false,onAssetsChanged:()=>peer.mounted.refreshAssets(),onState:()=>update(peer),onError:report});
   document.querySelector(`#connect-${key}`).addEventListener("click",async event=>{
