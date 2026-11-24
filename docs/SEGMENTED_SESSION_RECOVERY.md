@@ -33,7 +33,8 @@ after it receives its first journal entry.
 
 The [initial installed Chrome drill](qualification/2026-11-23-installed-chrome-shared-journal-rollover.json)
 reopened both archives and checked history across the original journal
-boundary. The current drill keeps one Undo and two Redo items from that
+boundary. The [two-seal regression](qualification/2026-11-23-installed-chrome-journal-two-seals.json)
+keeps a pre-cut Undo and two Redo items from that
 original cut and adds two explicit seals per writer. After a byte-exact
 cold reopen, the peers resend the exact pre-cut frame and verify that its
 second delivery leaves the full checkpoint unchanged. The drill traverses
