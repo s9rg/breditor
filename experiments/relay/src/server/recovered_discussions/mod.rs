@@ -19,6 +19,7 @@ pub(super) use read::{discover, download};
 use serde::Serialize;
 
 const CONTENT_TYPE: &str = "application/vnd.breditor.recovered-discussion+json";
+const ENTRY_CONTENT_TYPE: &str = "application/json";
 
 struct Access {
     principal: String,
@@ -60,14 +61,18 @@ fn decode_sha256(text: &str) -> Result<[u8; 32]> {
     Ok(value)
 }
 
-fn entry_response(entry: impl Serialize) -> Response {
-    match serde_json::to_string(&serde_json::json!({
+fn entry_bytes(entry: impl Serialize) -> Result<Vec<u8>> {
+    Ok(serde_json::to_vec(&serde_json::json!({
         "format": "breditor/relay-recovered-discussion",
         "formatVersion": 1,
         "entry": entry,
-    })) {
-        Ok(value) => ([("content-type", "application/json")], value).into_response(),
-        Err(error) => failure(&error.into()),
+    }))?)
+}
+
+fn entry_response(entry: impl Serialize) -> Response {
+    match entry_bytes(entry) {
+        Ok(bytes) => ([("content-type", ENTRY_CONTENT_TYPE)], bytes).into_response(),
+        Err(error) => failure(&error),
     }
 }
 
