@@ -32,6 +32,7 @@ const replacements=[
  ['"../packages/breditor-editor/dist/index.js"','"@breditor/editor"'],['"../packages/breditor-editor/dist/collaboration.js"','"@breditor/editor/collaboration"'],
  ['"../packages/breditor-editor/dist/react.js"','"@breditor/editor/react"'],['"../packages/breditor-editor/dist/shared_react.js"','"@breditor/editor/collaboration/react"'],
  ['"../packages/breditor-interchange/dist/index.js"','"@breditor/interchange"'],['"./fixtures/editor-consumer/coverage-seed.mjs"','"./coverage-seed.mjs"'],
+ ['"../packages/breditor-interchange/dist/xml.js"','"@breditor/interchange/xml"'],
  ['new URL("../packages/breditor-experimental-rich-content/dist/breditor_wasm_bg.wasm",import.meta.url)','new URL(import.meta.resolve("@breditor/experimental-rich-content/wasm-binary"))'],
  ['new URL("../packages/breditor-collaboration/dist/runtime/breditor_shared_bg.wasm",import.meta.url)','new URL(import.meta.resolve("@breditor/collaboration/wasm-binary"))'],
  ['"../packages/breditor-interchange/tests/fixtures/word.html"','"./word.html"']
@@ -40,7 +41,7 @@ for(const [before,after]of replacements){assert.equal(probe.split(before).length
 writeFileSync(join(consumer,"probe.mjs"),probe);cpSync(join(root,"scripts/fixtures/editor-consumer/coverage-seed.mjs"),join(consumer,"coverage-seed.mjs"));cpSync(join(root,"packages/breditor-interchange/tests/fixtures/word.html"),join(consumer,"word.html"));
 const result=JSON.parse(execFileSync(process.execPath,["probe.mjs",join(consumer,"node_modules/@breditor/experimental-rich-content/dist"),join(consumer,"node_modules/@breditor/collaboration/dist/runtime")],{cwd:consumer,encoding:"utf8",timeout:360000,maxBuffer:1024*1024}));assert.equal(result.passed,true);
 const modules={};
-for(const [name,entry] of [["default","default-entry.ts"],["interchange","interchange-entry.ts"],["docx","docx-entry.ts"]]){
+for(const [name,entry] of [["default","default-entry.ts"],["interchange","interchange-entry.ts"],["docx","docx-entry.ts"],["xml","xml-entry.ts"]]){
  const bundle=await build({configFile:false,root:consumer,logLevel:"error",build:{target:"es2022",write:false,minify:false,lib:{entry:join(consumer,entry),formats:["es"],fileName:name}}});
  const outputs=(Array.isArray(bundle)?bundle:[bundle]).flatMap(b=>b.output);
  modules[name]=outputs.filter(o=>o.type==="chunk").flatMap(o=>Object.keys(o.modules));
@@ -49,6 +50,9 @@ for(const [name,entry] of [["default","default-entry.ts"],["interchange","interc
 const foreign=id=>/node_modules\/(?:parse5|markdown-it|css-tree)\//.test(id);assert.ok(!modules.default.some(foreign),"Default editor must not import the foreign parser graph");for(const name of ["parse5","markdown-it","css-tree"])assert.ok(modules.interchange.some(id=>id.includes(`/node_modules/${name}/`)),`Explicit adapter bundle must include ${name}`);
 const docxForeignParserModules=modules.docx.filter(foreign).length;
 assert.equal(docxForeignParserModules,0,"The installed DOCX entry must not import the HTML or Markdown parser graph");
+const xmlForeignParserModules=modules.xml.filter(foreign).length;
+assert.equal(xmlForeignParserModules,0,"The installed XML entry must not import the HTML or Markdown parser graph");
+assert.equal(result.xmlExports,2,"Expected XML export from cold-restored native local and shared editors");
 assert.deepEqual(installedArchiveDigests(archives,packs,names),archiveEvidence,"Installed archives changed during qualification");
-const report={format:"breditor/interchange-installed-consumer",formatVersion:1,passed:true,consumer,archives:archiveEvidence.map((archive,i)=>({...archive,path:paths[i]})),installedInterchangeLicenses:true,strictConsumerTypes:true,workspaceLinks:false,defaultForeignParserModules:modules.default.filter(foreign).length,optInForeignParserModules:modules.interchange.filter(foreign).length,docxForeignParserModules,installedDocxExport:true,functionalProbe:{...result,scope:"Installed archives with bare package imports and bundled paired Wasm; compiled managed SDK/React synthetic DOM/clipboard/IDB/locks. Not OS clipboard, captured Office applications, cross-browser, IME, accessibility or release qualification."}};
+const report={format:"breditor/interchange-installed-consumer",formatVersion:1,passed:true,consumer,archives:archiveEvidence.map((archive,i)=>({...archive,path:paths[i]})),installedInterchangeLicenses:true,strictConsumerTypes:true,workspaceLinks:false,defaultForeignParserModules:modules.default.filter(foreign).length,optInForeignParserModules:modules.interchange.filter(foreign).length,docxForeignParserModules,xmlForeignParserModules,installedDocxExport:true,functionalProbe:{...result,scope:"Installed archives with bare package imports and bundled paired Wasm; compiled managed SDK/React synthetic DOM/clipboard/IDB/locks. Not OS clipboard, captured Office applications, cross-browser, IME, accessibility or release qualification."}};
 writeFileSync(join(root,"target/interchange-installed-consumer.json"),JSON.stringify(report,null,2)+"\n");console.log(JSON.stringify(report,null,2));

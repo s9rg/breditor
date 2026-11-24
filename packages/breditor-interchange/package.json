@@ -16,6 +16,10 @@
     "./docx": {
       "types": "./dist/docx.d.ts",
       "import": "./dist/docx.js"
+    },
+    "./xml": {
+      "types": "./dist/xml.d.ts",
+      "import": "./dist/xml.js"
     }
   },
   "files": [
