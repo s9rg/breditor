@@ -8,14 +8,13 @@ import {compileStandardRichProfileV1,compileStandardStructuralRichProfileV2,comp
 import {SharedRichEditor,createSharedDocumentEditor} from "../packages/breditor-collaboration/dist/core.js";
 import {restoreSharedGeneralEditor,restoreSharedDocumentEditor,restoreSharedTypingEditor,restoreSharedReviewedEditor,restoreSharedSearchEditor} from "../packages/breditor-collaboration/dist/profile.js";
 import {paragraph,range} from "./fixtures/editor-consumer/coverage-seed.mjs";
+import {loadHistoricalInputRuleRuntimes} from "./input-rule-historical-references.mjs";
 
-const expected={local:"223162260274b7e05bc50985bfc5f121d7b935466c6aa4bdc5423eafbe0a5572",shared:"ec92c59007ac71822025747547a5324d8b6c42602b0e838e8c5512a261059921"};
 const reviewed={binding:"a".repeat(64),principal:"alice",effectWriter:"303"};
 const localFactories=[compileStandardRichProfileV1,compileStandardStructuralRichProfileV2,compileStandardLayoutRichProfileV3];
 const sharedFactories=["from_standard_configuration_json_v1","from_standard_configuration_json_v2","from_standard_configuration_json_v3"];
-async function load(directory,name,digest){
+async function load(directory,name){
  const bytes=readFileSync(resolve(directory,`${name}_bg.wasm`)),sha256=createHash("sha256").update(bytes).digest("hex");
- if(digest)assert.equal(sha256,digest,"The independent earlier reader must not be replaced by a new build");
  const module=await import(pathToFileURL(resolve(directory,`${name}.js`)));await module.default({module_or_path:bytes});return{module,sha256};
 }
 function seed(binding,text){return JSON.stringify({format:"breditor/document",formatVersion:2,schema:binding.schema,schemaFingerprint:binding.schemaFingerprint,root:{kind:"element",type:"breditor/document",entityId:null,properties:{"breditor/document-id":"room"},children:[paragraph("body",text),paragraph("other","untouched")]}});}
@@ -24,7 +23,8 @@ function cases(language){return [["#"," ",""],["-"," ",""],["7."," ",""],["**猫
 function type(owner,natural,key,namespace="fresh",clock="100",revision=owner.view().revision){return natural?owner.insertTypingTextWithMarkdownRules(key,clock,namespace,revision):owner.insertPlainTextWithMarkdownRules(key,namespace,revision);}
 function sharedRestore(p,saved,scope,natural,owned,search){return search?restoreSharedSearchEditor(p,"room",saved):owned?restoreSharedReviewedEditor(p,"room",saved):scope==="document-v1"?restoreSharedDocumentEditor(p,"room",saved,natural?"typing-v1":"explicit"):scope==="general-v1"?restoreSharedGeneralEditor(p,"room",saved,natural?"typing-v1":"explicit"):natural?restoreSharedTypingEditor(p,"room",saved):p.restore("room",saved);}
 export async function probeInputRulesSdk(localDirectory,sharedDirectory,oldLocalDirectory,oldSharedDirectory){
- const local=await load(localDirectory,"breditor_wasm"),shared=await load(sharedDirectory,"breditor_shared"),oldLocal=await load(oldLocalDirectory,"breditor_wasm",expected.local),oldShared=await load(oldSharedDirectory,"breditor_shared",expected.shared);
+ const [oldLocal,oldShared]=await loadHistoricalInputRuleRuntimes([oldLocalDirectory,oldSharedDirectory]);
+ const local=await load(localDirectory,"breditor_wasm"),shared=await load(sharedDirectory,"breditor_shared");
  assert.notEqual(local.sha256,oldLocal.sha256);assert.notEqual(shared.sha256,oldShared.sha256);
  let localCases=0,sharedCases=0,exactEarlierRestores=0,exactFutureCheckpoints=0,earlierCapabilityRefusals=0,finalOnlyPublications=0,reentrantRefusals=0,acceptedLiteralRefusals=0,queuedRemotes=0,rawBoundaryRefusals=0;
  for(const language of [1,2,3]){
