@@ -39,7 +39,16 @@
   },
   "projectionReproduction": {
     "error": "engine_bootstrap.invalid_initial_projection",
-    "traceSha256": "20e3f0a3f30a0624dba7a9b7f22d6ee8e90ec95c46ebe6ce09c0e8c2a1d7033b"
+    "scenario": "The selection restore stress fixture rejected its initial document seed in batch 12, before the restore loop.",
+    "traceSha256": "20e3f0a3f30a0624dba7a9b7f22d6ee8e90ec95c46ebe6ce09c0e8c2a1d7033b",
+    "diagnosticEvents": [],
+    "diagnosticModules": [
+      "wasm_document_json.js",
+      "wasm_engine_bootstrap.js",
+      "wasm_profile_descriptor.js",
+      "wasm_selection_adapter.js",
+      "wasm_session_checkpoint.js"
+    ]
   },
   "qualification": {
     "ordinaryProduction": {

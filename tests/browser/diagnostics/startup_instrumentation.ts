@@ -76,6 +76,7 @@ export function instrumentStartupModule(code: string, id: string, recorderImport
       detail = ', { requestedIndex, nodeIndex, expectedKindTag: expectedKind === "text" ? 1 : expectedKind === "children" ? 2 : 0 }';
     }
     if (scope === "readActionStates") detail = ', { index, count }';
+    if (scope === "readSemanticProjection") detail = ', { nodeCount, rootIndex }';
     if (scope === "readInputContract") {
       detail = ', { kindTag: kind === "none" ? 1 : kind === "typed" ? 2 : 0, version, versionType: version === undefined ? 0 : typeof version === "number" ? 1 : 2, nameType: name === undefined ? 0 : typeof name === "string" ? 1 : 2, nameQualifiedRecheck: isQualifiedName(name) ? 1 : 0, versionValidRecheck: isPositiveU32(version) ? 1 : 0 }';
     }
