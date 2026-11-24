@@ -85,6 +85,10 @@ HTML repair, final traversal, CSS rules and Markdown tokens are bounded before
 publication. Full-document parsing retains authored body styles as well as
 ordinary clipboard fragments. Simple stylesheet selectors and inline CSS
 become closed native formats/layout fields; unsupported CSS has explicit notices.
+Font shorthand uses the same bounded family, size, weight, style and line-height
+conversion as the longhand properties. Shorthand resets and `!important` apply
+in the declaration cascade. System font keywords and unsupported components,
+such as small caps and condensed faces, generate loss notices.
 
 The named version-one Markdown dialect uses CommonMark parsing with tables,
 strikethrough, parsed task markers and sanitized raw HTML. It disables automatic
@@ -251,8 +255,8 @@ to that HTML with `markdown-feature`; DOCX writes `w:bookmarkStart`/`w:bookmarkE
 [RICH_LANGUAGE_V4.md](RICH_LANGUAGE_V4.md#slice-8-bookmarks-and-internal-links-audit-gap-document-utilities).
 
 Remaining gaps: real captured clipboard dumps per producer/platform/version,
-Word for the web non-decimal formats (reported, rendered as decimal), CSS
-`font` shorthand, Excel/Sheets hidden rows and columns (still rejected), cell
+Word for the web non-decimal formats (reported, rendered as decimal),
+Excel/Sheets hidden rows and columns (still rejected), cell
 vertical alignment, and Word VML-only images without an `<img>` fallback.
 
 ## Enable browser clipboard conversion

@@ -1,5 +1,6 @@
-import {generate,parse,type Declaration} from "css-tree";
+import {generate,parse} from "css-tree";
 import {Budget,ConversionFailure,bytes,fail} from "./budget.js";
+import {declarationValues} from "./html_style.js";
 import {attribute,isElement,plainText,type HtmlElement,type HtmlNode} from "./html_tree.js";
 interface Value {value:string;important:boolean}
 interface Selector {tag:string|undefined;id:string|undefined;classes:string[];specificity:number}
@@ -27,7 +28,10 @@ export class Stylesheets {
           if(item.type==="CDO"||item.type==="CDC")return;
           if(item.type!=="Rule"||item.prelude?.type!=="SelectorList"){b.loss("unsupported-style");return;}
           const declarations=new Map<string,Value>();item.block.children.forEach(d=>{
-            if(d.type!=="Declaration"){b.loss("unsupported-style");return;}if(++this.#declarations>8192)fail("resource-limit");const declaration=d as Declaration,name=declaration.property.toLowerCase(),prior=declarations.get(name);if(!prior?.important||declaration.important)declarations.set(name,{value:generate(declaration.value),important:Boolean(declaration.important)});
+            if(d.type!=="Declaration"){b.loss("unsupported-style");return;}if(++this.#declarations>8192)fail("resource-limit");
+            for(const [name,value]of declarationValues(d)){
+              if(!declarations.get(name)?.important||d.important)declarations.set(name,{value,important:Boolean(d.important)});
+            }
           });
           item.prelude.children.forEach(s=>{const parsed=selector(generate(s));if(!parsed){b.loss("unsupported-style");return;}if(this.#rules.length>=256)fail("resource-limit");this.#rules.push({selector:parsed,declarations,order:this.#rules.length});});
         });
