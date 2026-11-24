@@ -707,6 +707,76 @@ fn document_json_is_lossless_canonical_and_tracks_content_replay_not_selection()
 
 #[cfg_attr(target_arch = "wasm32", wasm_bindgen_test)]
 #[cfg_attr(not(target_arch = "wasm32"), test)]
+fn v010_checkpoint_retains_canonical_history_across_native_and_wasm_readers() -> TestResult {
+    let checkpoint = include_str!("fixtures/v0.1.0/history.json").trim_end_matches('\n');
+    let historical: Value = serde_json::from_str(checkpoint)?;
+    let mut engine = require_engine(&mut BreditorEngine::from_session_checkpoint_json(checkpoint))?;
+    assert_eq!(require_string(engine.session_checkpoint_json())?, checkpoint);
+
+    let plain = |text| serde_json::json!({"kind":"text","text":text,"formats":[]});
+    let strong = |text| {
+        serde_json::json!({
+            "kind":"text","text":text,"formats":[{"type":"breditor/strong","properties":{}}]
+        })
+    };
+    let children = [
+        serde_json::json!([plain("start")]),
+        serde_json::json!([plain("start 🦀")]),
+        serde_json::json!([plain("start 🦀"), strong(" café")]),
+        serde_json::json!([plain("start 🦀"), strong(" café 末")]),
+    ];
+    let verify_cursor = |engine: &BreditorEngine, cursor: usize| -> TestResult {
+        let observation = engine.observation();
+        assert_eq!(observation.snapshot_lineage(), "release-v010-wire-compatibility");
+        assert_eq!(observation.undo_depth(), u32::try_from(cursor)?);
+        assert_eq!(observation.redo_depth(), u32::try_from(children.len() - cursor - 1)?);
+        let state: Value = serde_json::from_str(&require_string(engine.state_json())?)?;
+        assert_eq!(state["document"]["root"]["children"][0]["children"], children[cursor]);
+        let (selection, pending) = if cursor == 0 {
+            (&historical["historyBase"]["selection"], &historical["historyBase"]["pendingFormats"])
+        } else {
+            let entry = &historical["entries"][cursor - 1];
+            (&entry["resultSelection"], &entry["resultPendingFormats"])
+        };
+        assert_eq!(&state["selection"], selection);
+        assert_eq!(&state["pendingFormats"], pending);
+        Ok(())
+    };
+
+    verify_cursor(&engine, 2)?;
+    assert_eq!(engine.redo(&engine.observation(), false).status(), "committed");
+    verify_cursor(&engine, 3)?;
+    for cursor in (0..3).rev() {
+        assert_eq!(engine.undo(&engine.observation(), false).status(), "committed");
+        verify_cursor(&engine, cursor)?;
+    }
+    for cursor in 1..=3 {
+        assert_eq!(engine.redo(&engine.observation(), false).status(), "committed");
+        verify_cursor(&engine, cursor)?;
+    }
+    Ok(())
+}
+
+#[cfg_attr(target_arch = "wasm32", wasm_bindgen_test)]
+#[cfg_attr(not(target_arch = "wasm32"), test)]
+fn v010_checkpoint_reader_rejects_an_unknown_version_and_a_foreign_schema() -> TestResult {
+    let checkpoint = include_str!("fixtures/v0.1.0/history.json");
+    let future = checkpoint.replacen(r#""formatVersion":1"#, r#""formatVersion":99"#, 1);
+    let wrong_schema =
+        checkpoint.replacen(r#""name":"breditor/base""#, r#""name":"example/foreign""#, 1);
+    for (invalid, code) in
+        [(future, "codec.unsupported_format_version"), (wrong_schema, "codec.schema_mismatch")]
+    {
+        assert_ne!(invalid, checkpoint);
+        let mut result = BreditorEngine::from_session_checkpoint_json(&invalid);
+        assert_engine_error(&result, code, "🦀")?;
+        assert!(result.take_engine().is_none());
+    }
+    Ok(())
+}
+
+#[cfg_attr(target_arch = "wasm32", wasm_bindgen_test)]
+#[cfg_attr(not(target_arch = "wasm32"), test)]
 fn document_json_rejects_stale_history_and_foreign_observations_without_content_leakage()
 -> TestResult {
     const PRIVATE_TEXT: &str = "private-document-egress-payload";
