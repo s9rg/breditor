@@ -26,11 +26,32 @@ const matchedFontParts = [
   ["font-width-css3", "font-stretch"], ["line-height", "line-height"],
   ["font-size", "font-size"], ["font-family", "font-family"],
 ] as const;
+const decorationLonghands = [
+  ["text-decoration-line", "none"], ["text-decoration-style", "solid"],
+  ["text-decoration-color", "currentcolor"], ["text-decoration-thickness", "auto"],
+] as const;
 
 /** Expand before the cascade so shorthand and longhand share ordering and !important. */
 export function declarationValues({property,value}:Declaration): Array<[string,string]> {
   const name=property.toLowerCase(), source=generate(value);
   const unexpanded: Array<[string,string]> = [[name,source]];
+  if(name==="text-decoration"&&value.type==="Value"){
+    const matched=lexer.matchProperty(name,value);
+    if(matched.error!==null)return unexpanded;
+    const keyword=source.toLowerCase();
+    if(["inherit","initial","unset","revert","revert-layer"].includes(keyword)){
+      return decorationLonghands.map(([key])=>[key,keyword]);
+    }
+    const parts=new Map<string,string[]>();
+    for(const node of value.children){
+      const key=decorationLonghands.find(([part])=>matched.isProperty(node,part))?.[0];
+      if(key===undefined)return unexpanded;
+      const items=parts.get(key)??[];
+      items.push(generate(node));
+      parts.set(key,items);
+    }
+    return decorationLonghands.map(([key,reset])=>[key,parts.get(key)?.join(" ")??reset]);
+  }
   if(name!=="font"||value.type!=="Value")return unexpanded;
   if(["inherit","unset"].includes(source.toLowerCase())){
     return fontLonghands.map(([key])=>[key,"inherit"]);
@@ -90,6 +111,7 @@ export function styleFor(node:HtmlElement,parent:StyleState,b:Budget,css:Map<str
   if(rawDir){if(typeof direction[rawDir]==="number")state.layout["breditor/block-direction"]=direction[rawDir];else b.loss("unsupported-attribute");}
   const centered=node.tagName==="center";
   if(centered)state.layout["breditor/block-align"]=align["center"]!;
+  let decorationLoss=false;
   for(const [name,source]of css){
     const value=source.trim().toLowerCase();
     if(value==="inherit"||centered&&name==="text-align"&&value==="unset"){
@@ -118,9 +140,16 @@ export function styleFor(node:HtmlElement,parent:StyleState,b:Budget,css:Map<str
       case "mso-data-placement":if(node.tagName!=="br"||value!=="same-cell")b.loss("unsupported-style");break;
       case "font-style":if(value==="italic"||value==="oblique")set("italic");else if(value==="normal")remove("italic");else b.loss("unsupported-style");break;
       case "text-decoration":case "text-decoration-line":{
-        const words=value.split(/\s+/);if(words.includes("none")){remove("underline");remove("strike");}
+        // CSS-wide resets can leave decoration painted by an ancestor.
+        const words=value.split(/\s+/);
+        if(words.includes("none")){remove("underline");remove("strike");}
         if(words.includes("underline"))set("underline");if(words.includes("line-through"))set("strike");
-        if(words.some(v=>!["none","underline","line-through"].includes(v)))b.loss("unsupported-style");break;
+        if(words.some(v=>!["none","underline","line-through"].includes(v)))decorationLoss=true;break;
+      }
+      case "text-decoration-style":case "text-decoration-color":case "text-decoration-thickness":{
+        const reset=decorationLonghands.find(([key])=>key===name)?.[1];
+        if(value!==reset&&value!=="initial"&&value!=="unset")decorationLoss=true;
+        break;
       }
       // Transparent paints nothing; an inherited highlight still shows through, so keep it.
       case "color":case "background-color":{if(name==="background-color"&&value==="transparent")break;const n=rgb(value);if(n!==null){set(name==="color"?"text-color":"background-color",{"breditor-inline/rgb24":n});if(name==="background-color"&&!["span","mark","font","b","strong","i","em","u","s","a"].includes(node.tagName))b.loss("style-approximation");}else b.loss("unsupported-style");break;}
@@ -147,5 +176,6 @@ export function styleFor(node:HtmlElement,parent:StyleState,b:Budget,css:Map<str
       default:b.loss("unsupported-style");
     }
   }
+  if(decorationLoss)b.loss("unsupported-style");
   return state;
 }
