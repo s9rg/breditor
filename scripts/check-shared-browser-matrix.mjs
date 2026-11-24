@@ -2,7 +2,7 @@
 import assert from "node:assert/strict";
 import {execFileSync} from "node:child_process";
 import {createHash} from "node:crypto";
-import {mkdirSync,readFileSync,readdirSync,writeFileSync} from "node:fs";
+import {mkdirSync,readFileSync,readdirSync,rmSync,writeFileSync} from "node:fs";
 import {basename,resolve,dirname} from "node:path";
 import {fileURLToPath} from "node:url";
 import {nativeComparisonDriver} from "../experiments/collaboration/browser/compare-exports.mjs";
@@ -10,6 +10,7 @@ import {nativeAdmissionDriver} from "../experiments/shared-browser/native-relay.
 import config from "../experiments/shared-browser/playwright.config.mjs";
 import {candidateBrowserRelay} from "./check-editor-browser.mjs";
 import {sharedBrowserRuns} from "./shared-browser-runs.mjs";
+import {sharedBrowserBatchProjects,validateSharedBrowserReport} from "./candidate-release/shared-browser-report.mjs";
 
 const args=process.argv.slice(2);
 const candidate=args.length===1&&args[0]==="--candidate-relay";
@@ -31,6 +32,7 @@ for(const run of runs){
  const command=["test","--config","experiments/shared-browser/playwright.config.mjs",...run.projects.map(project=>"--project="+project),...run.patterns];
  if(candidate){
   mkdirSync(outputDirectory,{recursive:true});
+  rmSync(reportPath,{force:true});
   command.push("--output="+output,"--reporter=line,json");
  }
  execFileSync(process.execPath,["node_modules/@playwright/test/cli.js",...command],{
@@ -38,10 +40,7 @@ for(const run of runs){
  });
  if(candidate){
   const report=JSON.parse(readFileSync(reportPath,"utf8"));
-  const {expected,skipped,unexpected,flaky}=report.stats;
-  if(!Number.isSafeInteger(expected)||expected<1||skipped!==0||unexpected!==0||flaky!==0){
-   throw Error("Shared browser batch did not pass every case: "+suite);
-  }
+  validateSharedBrowserReport(report,sharedBrowserBatchProjects(run,discovered,config.projects));
   reports.push({suite,projects:run.projects,report});
  }
 }
