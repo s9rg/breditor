@@ -1,0 +1,120 @@
+[
+  {
+    "generation": "earlier",
+    "runtime": "local",
+    "report": "docs/qualification/2026-10-18-native-input-rules.json",
+    "files": [
+      {
+        "path": "breditor_wasm.js",
+        "bytes": 170822,
+        "sha256": "49f3bfa4abb9e0c0ee556345cb51f7054b88a2420a553236ef02cfe7b15d277d"
+      },
+      {
+        "path": "breditor_wasm.d.ts",
+        "bytes": 93876,
+        "sha256": "f06d110e144f0f853beceb197adcfe6af84af8990476f92c6dfebc3591afe593"
+      },
+      {
+        "path": "breditor_wasm_bg.wasm",
+        "bytes": 5849604,
+        "sha256": "223162260274b7e05bc50985bfc5f121d7b935466c6aa4bdc5423eafbe0a5572"
+      },
+      {
+        "path": "breditor_wasm_bg.wasm.d.ts",
+        "bytes": 28005,
+        "sha256": "025960ad793ce59ddd84952fbd69a595321ef4b93b45314398ace962538bace5"
+      },
+      {
+        "path": "snippets/breditor-wasm-f24fc87645faed5a/inline0.js",
+        "bytes": 240,
+        "sha256": "c734f62ce43b5fee47e095fd5b4e94deb2a0c92c0e8a5eb621a6a510e6d17826"
+      }
+    ]
+  },
+  {
+    "generation": "earlier",
+    "runtime": "shared",
+    "report": "docs/qualification/2026-10-18-native-input-rules.json",
+    "files": [
+      {
+        "path": "breditor_shared.js",
+        "bytes": 161244,
+        "sha256": "ad28624ece0ce1cf6ca80d9c04b7151b29677e40babd9a71fc6c470e78fc1c01"
+      },
+      {
+        "path": "breditor_shared.d.ts",
+        "bytes": 61111,
+        "sha256": "7da2084f61ee7fc94b4826e3489fb65fb3ca8cfe4698ccf4ae546c94e9a4a6e0"
+      },
+      {
+        "path": "breditor_shared_bg.wasm",
+        "bytes": 12805807,
+        "sha256": "ec92c59007ac71822025747547a5324d8b6c42602b0e838e8c5512a261059921"
+      },
+      {
+        "path": "breditor_shared_bg.wasm.d.ts",
+        "bytes": 24034,
+        "sha256": "6f6ac1c66cebedf38a6e98875197d417ae198c82b22c0e03cad804ddcd52c499"
+      }
+    ]
+  },
+  {
+    "generation": "programmatic",
+    "runtime": "local",
+    "report": "docs/qualification/2026-10-18-exclusive-input-rules-sdk.json",
+    "files": [
+      {
+        "path": "breditor_wasm.d.ts",
+        "bytes": 94764,
+        "sha256": "f9fe4af40e7df08736da67060cb433c2c62e6032a7cf1db0c39daa6cba874d1d"
+      },
+      {
+        "path": "breditor_wasm.js",
+        "bytes": 172639,
+        "sha256": "8d22f36e2ceaf7c06b0da9fb5de7196c26680c9e5ff4986b3e1d8ecc5167c298"
+      },
+      {
+        "path": "breditor_wasm_bg.wasm",
+        "bytes": 5878930,
+        "sha256": "2a71b94024f397879b8233efd7a0bc5ce20c5c2086e18682902aee2f12871eef"
+      },
+      {
+        "path": "breditor_wasm_bg.wasm.d.ts",
+        "bytes": 28342,
+        "sha256": "c6c06bba2db9f2d6633f063c60bc3eb233164e0a9dfe97e62cde3e702f38d477"
+      },
+      {
+        "path": "snippets/breditor-wasm-f24fc87645faed5a/inline0.js",
+        "bytes": 240,
+        "sha256": "c734f62ce43b5fee47e095fd5b4e94deb2a0c92c0e8a5eb621a6a510e6d17826"
+      }
+    ]
+  },
+  {
+    "generation": "programmatic",
+    "runtime": "shared",
+    "report": "docs/qualification/2026-10-18-exclusive-input-rules-sdk.json",
+    "files": [
+      {
+        "path": "breditor_shared.d.ts",
+        "bytes": 62051,
+        "sha256": "8eb10f66d61e2c436a01de334a2e56aa4f9c40803d2f396e7769af5c6562db16"
+      },
+      {
+        "path": "breditor_shared.js",
+        "bytes": 163913,
+        "sha256": "665477e26f9531714927d248a15b9749249db983fb91b42c9b7b65096cc1be11"
+      },
+      {
+        "path": "breditor_shared_bg.wasm",
+        "bytes": 12887224,
+        "sha256": "c6aeff4eccdc77321e6517d9740849c25f967de7bdcdb0d4755a3f99aeff3e8a"
+      },
+      {
+        "path": "breditor_shared_bg.wasm.d.ts",
+        "bytes": 24433,
+        "sha256": "0205337703cbd5972778d888d07dbaaf13d2d55fff5d83cf67730f4be0cd48b9"
+      }
+    ]
+  }
+]

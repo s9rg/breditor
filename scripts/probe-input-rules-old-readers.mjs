@@ -1,18 +1,17 @@
 /** New native rules must recover in the pinned pre-feature actual application/local Wasm. */
 import assert from "node:assert/strict";
 import {execFileSync} from "node:child_process";
-import {readFileSync,realpathSync} from "node:fs";
+import {realpathSync} from "node:fs";
 import {createHash} from "node:crypto";
-import {resolve} from "node:path";
-import {fileURLToPath,pathToFileURL} from "node:url";
+import {fileURLToPath} from "node:url";
 import {compileStandardLayoutRichProfileV3} from "../packages/breditor-experimental-rich-content/index.js";
 import {SharedRichEditor,createSharedDocumentEditor} from "../packages/breditor-collaboration/dist/core.js";
 import {restoreSharedGeneralEditor,restoreSharedDocumentEditor,restoreSharedTypingEditor,restoreSharedReviewedEditor,restoreSharedSearchEditor} from "../packages/breditor-collaboration/dist/profile.js";
-const expected={local:"223162260274b7e05bc50985bfc5f121d7b935466c6aa4bdc5423eafbe0a5572",shared:"ec92c59007ac71822025747547a5324d8b6c42602b0e838e8c5512a261059921"};
-async function load(directory,name,digest){const bytes=readFileSync(resolve(directory,`${name}_bg.wasm`)),sha256=createHash("sha256").update(bytes).digest("hex");assert.equal(sha256,digest,"This probe requires the exact pre-input-rule binary, not a freshly generated substitute");const module=await import(pathToFileURL(resolve(directory,`${name}.js`)));await module.default({module_or_path:bytes});return{module,sha256};}
+import {loadHistoricalInputRuleRuntimes} from "./input-rule-historical-references.mjs";
 function fixture(executable){const bytes=execFileSync(executable,[],{maxBuffer:64*1024*1024,timeout:240000});return{data:JSON.parse(bytes),bytes:bytes.length,sha256:createHash("sha256").update(bytes).digest("hex")};}
 export async function probeInputRulesOldReaders(localDirectory,sharedDirectory,localExecutable,sharedExecutable){
- const local=await load(localDirectory,"breditor_wasm",expected.local),shared=await load(sharedDirectory,"breditor_shared",expected.shared),a=fixture(localExecutable),b=fixture(sharedExecutable);let localRestores=0,sharedRestores=0,exactFutureCheckpoints=0;
+ const [local,shared]=await loadHistoricalInputRuleRuntimes([localDirectory,sharedDirectory]);
+ const a=fixture(localExecutable),b=fixture(sharedExecutable);let localRestores=0,sharedRestores=0,exactFutureCheckpoints=0;
  assert.equal(a.data.format,"breditor/input-rules-native-local-checkpoints");assert.equal(b.data.format,"breditor/input-rules-native-shared-checkpoints");
  const profile=compileStandardLayoutRichProfileV3(local.module,a.data.bootstrap);
  try{for(const row of a.data.trials){const owner=row.natural?profile.restoreTypingEditor(row.checkpoint):profile.restoreEditor(row.checkpoint);try{assert.equal(owner.checkpointJson(),row.checkpoint);localRestores++;for(const step of row.history){owner.execute({kind:step.command});assert.equal(owner.checkpointJson(),step.checkpoint);exactFutureCheckpoints++;}}finally{owner.dispose();}}}finally{profile.dispose();}

@@ -502,6 +502,20 @@ runtime pairs and writes its separate full-reference report. Missing references
 never select the portable scope automatically. `--reuse-runtimes` is a separately
 recorded development mode; neither candidate profile selects it.
 
+
+The historical proof checks the retained Wasm, generated JavaScript,
+declarations, and local snippets against the exact digests in the
+[pre-feature record](qualification/2026-10-18-native-input-rules.json)
+and [programmatic-only record](qualification/2026-10-18-exclusive-input-rules-sdk.json).
+The installed check verifies the four references before building the producer
+or installing a consumer. Historical probes initialize private copies of
+the verified files and retain the matched file identities in the UI proof.
+The default installed check reads the two pairs from
+`target/input-rule-old-readers-40e4983/{local,shared}` and
+`target/input-rules-runtime-yrJqQX/{local,shared}`.
+A missing file or digest mismatch stops the historical proof with the
+failing path. The current-runtime-only mode remains a separate qualification.
+
 Existing-list task conversion, backward adjacent-list joining and conventional
 code Enter are implemented (see above) with native, causal, Wasm and real-key
 browser tests; the deliberately literal cases listed there remain literal. Final input, browser,
