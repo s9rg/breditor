@@ -7,18 +7,21 @@ import {execFileSync} from 'node:child_process';
 import {createHash} from 'node:crypto';
 import {join,dirname,resolve,relative} from 'node:path';
 import {fileURLToPath} from 'node:url';
-import {sourceEvidence,saveEvidence} from './candidate-release/evidence.mjs';
+import {fileEvidence,sourceEvidence,saveEvidence} from './candidate-release/evidence.mjs';
+import {copySharedRuntimeForActivation,sharedRuntimeForActivation} from './candidate-release/shared-runtime-evidence.mjs';
+import {historicalSharedWasmSha256,pinnedSharedRuntimeReceipt} from './fixtures/native-runtime/shared-runtime-receipt.mjs';
 import {executeCandidateStage} from './candidate-release/process.mjs';
 import {searchConsumerLock,verifySearchConsumerRegistry} from './search-consumer-lock.mjs';
 const root=resolve(dirname(fileURLToPath(import.meta.url)),'..');
 if(process.argv.length!==2)throw Error('No reduced held metadata qualification mode');
 const source=sourceEvidence(root),directory=fs.mkdtempSync(join(fs.realpathSync(tmpdir()),'breditor-held-metadata-installed-')),archives=join(directory,'archives'),consumer=join(directory,'consumer');
 fs.mkdirSync(archives);fs.mkdirSync(consumer);
+const runtime=copySharedRuntimeForActivation(root,consumer,source);
 const sha=b=>createHash('sha256').update(b).digest('hex'),packages=['breditor-browser','breditor-experimental-rich-content','breditor-collaboration'];
 const mapping=new Map(packages.map(folder=>[folder,JSON.parse(fs.readFileSync(join(root,'packages',folder,'package.json'))).name]));
 const version=JSON.parse(fs.readFileSync(join(root,'packages/breditor-collaboration/package.json'))).version;
 for(const folder of packages)assert.equal(JSON.parse(fs.readFileSync(join(root,'packages',folder,'package.json'))).version,version);
-const packed=JSON.parse(execFileSync('npm',['pack','--ignore-scripts','--json','--pack-destination',archives,...packages.map(folder=>join(root,'packages',folder))],{cwd:root,encoding:'utf8',maxBuffer:8*1024*1024}));
+const packed=JSON.parse(execFileSync('npm',['pack','--offline','--ignore-scripts','--json','--pack-destination',archives,...packages.map(folder=>join(root,'packages',folder))],{cwd:root,encoding:'utf8',maxBuffer:8*1024*1024}));
 const producer=JSON.parse(fs.readFileSync(join(root,'package-lock.json'))),locked=searchConsumerLock(producer,packed.map(pack=>({name:pack.name,path:join(archives,pack.filename)})));
 locked.manifest.dependencies.undici=producer.packages['node_modules/undici'].version;
 fs.writeFileSync(join(consumer,'package.json'),JSON.stringify(locked.manifest));fs.writeFileSync(join(consumer,'package-lock.json'),JSON.stringify(locked.lock));
@@ -47,11 +50,24 @@ for(const name of ['selected_delivery_functional']){
  const path='target/owned-history-relay-native/release/examples/'+name,source=join(root,path),target=join(consumer,path);fs.mkdirSync(dirname(target),{recursive:true});fs.copyFileSync(source,target);
  nativeHosts[name]={path,sha256:sha(fs.readFileSync(source))};assert.equal(sha(fs.readFileSync(target)),nativeHosts[name].sha256);
 }
-const normalWasmSha256=sha(fs.readFileSync(join(consumer,'node_modules/@breditor/collaboration/dist/runtime/breditor_shared_bg.wasm')));assert.equal(normalWasmSha256,'165e23dbaef2ab77a6f920a20012e19624422ab2ccb74ec4e01f2146ac8086e0');
-const state={format:'breditor/installed-held-metadata-qualification',version:1,complete:false,source,sourceRoot:root,directory,consumer,workspaceLinks:false,registryArtifacts,copied,nativeHosts,normalWasmSha256,archives:packed.map(pack=>({name:pack.name,path:join(archives,pack.filename),sha256:sha(fs.readFileSync(join(archives,pack.filename)))})),results:[],startedAt:new Date().toISOString()};
+const runtimeDirectory='node_modules/@breditor/collaboration/dist/runtime/';
+const normalWasmSha256=runtime?.wasmSha256??historicalSharedWasmSha256;
+function verifyInstalledRuntime(){
+ assert.equal(fileEvidence(consumer,runtimeDirectory+'breditor_shared_bg.wasm').sha256,normalWasmSha256);
+ if(!runtime)return;
+ const {report}=pinnedSharedRuntimeReceipt(consumer,runtime.sha256);
+ assert.deepEqual(report.source,source);
+ for(const {name,bytes,sha256} of report.files){
+  const actual=fileEvidence(consumer,runtimeDirectory+name);
+  assert.equal(actual.bytes,bytes,name);
+  assert.equal(actual.sha256,sha256,name);
+ }
+}
+verifyInstalledRuntime();
+const state={format:'breditor/installed-held-metadata-qualification',version:1,complete:false,source,sourceRoot:root,directory,consumer,workspaceLinks:false,registryArtifacts,copied,nativeHosts,normalWasmSha256,sharedRuntimeReceiptSha256:runtime?.sha256??null,archives:packed.map(pack=>({name:pack.name,path:join(archives,pack.filename),sha256:sha(fs.readFileSync(join(archives,pack.filename)))})),results:[],startedAt:new Date().toISOString()};
 saveEvidence(directory+'/running.json',state);console.log(JSON.stringify({directory,phase:'prepare-original-compound-metadata-through-real-room-recovery'}));
 const checks=[
- {id:'held-metadata',command:process.execPath,args:['--test',...tests.map(name=>'scripts/'+name)],env:{},timeoutMs:1800000},
+ {id:'held-metadata',command:process.execPath,args:['--test',...tests.map(name=>'scripts/'+name)],env:runtime?.environment??{},timeoutMs:1800000},
  {id:'strict-installed-private-and-public-types',command:process.execPath,args:[join(root,'node_modules/typescript/bin/tsc'),'--noEmit','--strict','--exactOptionalPropertyTypes','--noUncheckedIndexedAccess','--target','ES2022','--module','NodeNext','--lib','ES2022,DOM',typeFile],env:{},timeoutMs:120000},
 ];
 const outcomes=await Promise.allSettled(checks.map(async check=>{
@@ -59,6 +75,8 @@ const outcomes=await Promise.allSettled(checks.map(async check=>{
  if(check.id==='held-metadata')for(const [name,n]of [['tests',81],['pass',81],['fail',0],['skipped',0],['cancelled',0],['todo',0]])assert.match(log,new RegExp('^# '+name+' '+n+'$','m'));
 }));
 for(const value of outcomes)if(value.status==='rejected'){saveEvidence(directory+'/failed.json',{...state,error:String(value.reason)});throw value.reason;}
+verifyInstalledRuntime();
+if(runtime)assert.equal(sharedRuntimeForActivation(root,source).sha256,runtime.sha256);
 assert.deepEqual(sourceEvidence(root),source);for(const host of Object.values(nativeHosts))assert.equal(sha(fs.readFileSync(join(root,host.path))),host.sha256);
 Object.assign(state,{complete:true,sourceUnchanged:true,tests:81,actualConstructorHistoryPolicies:60,actualLifetimeCases:20,actualSevenFamilyRoomCases:1,metadataSourcesPreparedAndVersionPublished:4,releaseReady:false,v1GatesOpen:13,finishedAt:new Date().toISOString(),scope:'Exact no-write preparation of original atomic version, suggestion and revision children under held editing. Ordinary store jobs receive no recovery grant. Late lock callbacks drain; no old callbacks or credentials are revived. The actual seven-family room test prepares and publishes versions for all four already-bound sources, preserves pending proposal/revision packets, and cold-reopens all histories. Suggestion/revision delivery, three local-lane metadata bindings and joint activation remain required.'});
 saveEvidence(directory+'/result.json',state);saveEvidence(join(root,'target/held-metadata-installed-consumer.json'),state);console.log(JSON.stringify({passed:true,directory,tests:81,workspaceLinks:false,sourceUnchanged:true}));
