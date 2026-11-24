@@ -7,6 +7,7 @@ import {basename,join} from "node:path";
 import {fileURLToPath} from "node:url";
 import {candidateBrowserRelay} from "./check-editor-browser.mjs";
 import {saveEvidence} from "./candidate-release/evidence.mjs";
+import {validateApplicationNetworkReport} from "./candidate-release/application-network-report.mjs";
 
 const root=fileURLToPath(new URL("../",import.meta.url));
 const readJson=path=>JSON.parse(readFileSync(path,"utf8"));
@@ -41,23 +42,7 @@ execFileSync(process.execPath,["node_modules/@playwright/test/cli.js","test","--
  cwd:root,env:{...process.env,BREDITOR_BROWSER_RELAY_EXE:relay,PLAYWRIGHT_JSON_OUTPUT_FILE:rawReport},stdio:"inherit",
 });
 const report=readJson(rawReport);
-const {expected,skipped,unexpected,flaky}=report.stats;
-assert.ok(Number.isSafeInteger(expected)&&expected>0);
-assert.deepEqual({skipped,unexpected,flaky},{skipped:0,unexpected:0,flaky:0});
-const pilotCases=[
- "the first-party pilot opens independent participants and verifies an offline checkpoint after reload",
- "the pilot supports keyboard sign-in and checkpoint recovery at a narrow viewport",
-];
-const pilotSpecs=report.suites.filter(suite=>suite.file==="network-demo.spec.mjs").flatMap(suite=>suite.specs??[]);
-for(const title of pilotCases){
- const spec=pilotSpecs.find(spec=>spec.title===title);
- assert.ok(spec,`Missing application network pilot case: ${title}`);
- const engines=spec.tests.map(test=>{
-  assert.deepEqual(test.results.map(result=>result.status),["passed"],title);
-  return test.projectName.replace(/^webkit-[0-9]+$/,"webkit");
- }).sort();
- assert.deepEqual(engines,["chromium","firefox","webkit"],title);
-}
+validateApplicationNetworkReport(report);
 assert.deepEqual(measureInputs(),inputs,"Installed application network inputs changed during qualification");
 saveEvidence(join(root,"target/shared-application-browser-report.json"),{
  format:"breditor/installed-application-network",formatVersion:1,inputs,report,
