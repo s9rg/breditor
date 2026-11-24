@@ -9,13 +9,16 @@ function milliseconds(values){
 }
 
 test("record repeatable rich editor demo timings",async({page,browser,browserName},info)=>{
- const wasmResponse=page.waitForResponse(response=>
-  new URL(response.url()).pathname==="/breditor_wasm_bg.wasm"&&response.ok());
+ const runtimeResponse=path=>page.waitForResponse(response=>
+  new URL(response.url()).pathname===path&&response.ok());
+ const wasmResponse=runtimeResponse("/breditor_wasm_bg.wasm");
+ const glueResponse=runtimeResponse("/wasm.js");
  const started=performance.now();
  await page.goto("/demo");
  await expect(page.locator("#ready")).toContainText("Ready");
  const readyMs=performance.now()-started;
- const wasmSha256=createHash("sha256").update(await (await wasmResponse).body()).digest("hex");
+ const sha256=async response=>createHash("sha256").update(await (await response).body()).digest("hex");
+ const [wasmSha256,glueSha256]=await Promise.all([sha256(wasmResponse),sha256(glueResponse)]);
  const measurements=await page.evaluate(()=>{
   const utf8Bytes=text=>new TextEncoder().encode(text).length;
   const {editor}=window.demo;
@@ -75,7 +78,7 @@ test("record repeatable rich editor demo timings",async({page,browser,browserNam
   browser:browserName,browserVersion:browser.version(),platform:process.platform,arch:process.arch,node:process.version,
   host:{cpu:processors[0]?.model ?? "unknown",logicalCpus:processors.length,
    memoryBytes:totalmem(),osRelease:release(),osVersion:version()},
-  wasmSha256,fixture:{...measurements.fixture,
+  wasmSha256,glueSha256,fixture:{...measurements.fixture,
    documentSha256:createHash("sha256").update(measurements.documentJson).digest("hex")},
   readyMs,commands:Object.fromEntries(Object.entries(measurements.samples).map(([name,values])=>[name,milliseconds(values)])),
   clipboard:{method:"synthetic-plain-text-paste-event",bytes:measurements.pasteBytes,...milliseconds(measurements.paste)},

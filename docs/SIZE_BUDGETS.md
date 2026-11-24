@@ -527,10 +527,10 @@ The browser report records cold page readiness, 25 warm calls each for text
 insertion, Undo and Redo, and 25 synthetic plain-text pastes on the same demo
 document. The retained matrix names the browser engines, host CPU and OS,
 document digest, byte length and top-level block count. It records the source
-digest and checks the Wasm bytes loaded by all three browsers against the generated
-runtime. The command samples measure dispatch and synchronous rendering. Use
-these measurements as a scoped baseline when selecting broader V1 latency
-budgets.
+digest and checks the Wasm binary and glue loaded by all three browsers
+against the generated runtime. The command samples measure dispatch and
+synchronous rendering. Use these measurements as a scoped baseline when
+selecting broader V1 latency budgets.
 
 The installed editor browser matrix also records two wall-clock samples for
 its two-peer task, table, code, and raster fixture. Offline replay starts when
