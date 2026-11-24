@@ -39,6 +39,7 @@ export function resolveRichPrintLayout(options:RichPrintOptions|RichPrintLayout=
 
 const scope="[data-breditor-rich]";
 const rule=(selectors:readonly string[],body:string):string=>`${selectors.map(selector=>`${scope} ${selector}`).join(",")}{${body}}`;
+const pageRule=(layout:RichPrintLayout):string=>`@page{size:${layout.size} ${layout.orientation};margin:${layout.marginMm}mm}`;
 /**
  * Print stylesheet for a live editor root or static output (`[data-breditor-rich]`). Deterministic: the
  * same options always produce the same string. It sets `@page` size and margins and, under `@media print`:
@@ -48,9 +49,11 @@ const rule=(selectors:readonly string[],body:string):string=>`${selectors.map(se
  * editing chrome. Content order and text are never changed.
  */
 export function richPrintStyles(options:RichPrintOptions|RichPrintLayout={}):string{
- const layout=resolveRichPrintLayout(options);
- const avoidInside="break-inside:avoid;page-break-inside:avoid";
- return `@page{size:${layout.size} ${layout.orientation};margin:${layout.marginMm}mm}@media print{${[
+ return pageRule(resolveRichPrintLayout(options))+printRules;
+}
+
+const avoidInside="break-inside:avoid;page-break-inside:avoid";
+const printRules=`@media print{${[
   rule([".breditor-rich-toolbar",".breditor-rich-status","button[data-select-node]","button[data-select-cell]","[data-breditor-block-drag]"],"display:none!important"),
   rule([".breditor-rich-surface"],"border:0!important;padding:0!important;margin:0!important;box-shadow:none!important;min-height:0!important;max-width:none!important;width:auto!important;background:none!important"),
   rule(["[data-node-selected]","[data-selected]"],"outline:none!important;box-shadow:none!important"),
@@ -64,7 +67,6 @@ export function richPrintStyles(options:RichPrintOptions|RichPrintLayout={}):str
   rule(["img"],"max-width:100%;height:auto"),
   rule(["pre"],"white-space:pre-wrap;overflow-wrap:anywhere;overflow:visible"),
  ].join("")}}`;
-}
 
 /**
  * Screen-only preview styles for an element carrying `data-breditor-print-preview`: the element is sized to
@@ -81,7 +83,7 @@ function previewStyles(layout:RichPrintLayout,selector:string):string{
  return `@media screen{${selector}{box-sizing:content-box!important;width:${layout.contentWidthMm}mm!important;max-width:none!important;padding:${layout.marginMm}mm!important;margin-left:auto;margin-right:auto;background-color:#fff;background-image:repeating-linear-gradient(to bottom,transparent 0,transparent calc(${height} - 1px),#d0457a calc(${height} - 1px),#d0457a ${height})!important;background-origin:content-box!important;background-clip:content-box!important;background-size:100% ${height}!important;background-repeat:repeat-y!important}}`;
 }
 
-/** A mounted preview. `update` swaps the layout; `dispose` restores the element and removes the stylesheet. */
+/** A mounted preview. `update` swaps the layout; `dispose` restores the element and removes its stylesheets. */
 export interface RichPrintPreview {readonly layout:RichPrintLayout;update(options:RichPrintOptions):RichPrintLayout;dispose():void}
 export interface RichPrintPreviewOptions extends RichPrintOptions {
  /** Chrome catalog for the preview description (`printPreviewLabel`). */
@@ -91,8 +93,8 @@ export interface RichPrintPreviewOptions extends RichPrintOptions {
 }
 /**
  * Opt-in print preview on an editing surface (or a static wrapper). It adds `data-breditor-print-preview`,
- * an `aria-description` from the catalog and one stylesheet (preview guides plus, by default, the print
- * styles). Screen styles match the surface's current layout. Editing continues normally while mounted.
+ * an `aria-description` from the catalog and styles in the surface's tree. Page size and margins are
+ * placed in the owner document. Screen styles match the surface's current layout.
  */
 export function mountRichPrintPreview(surface:HTMLElement,options:RichPrintPreviewOptions={}):RichPrintPreview{
  if(!surface||typeof surface.setAttribute!=="function")throw new TypeError("Print preview needs an HTMLElement");
@@ -101,21 +103,27 @@ export function mountRichPrintPreview(surface:HTMLElement,options:RichPrintPrevi
  const ui=resolveRichUi(uiOption);
  let layout=resolveRichPrintLayout(rest);
  if(surface.hasAttribute("data-breditor-print-preview"))throw Error("A print preview is already mounted on this element");
- const document=surface.ownerDocument,style=document.createElement("style");style.dataset["breditorPrintPreview"]="";
+ const document=surface.ownerDocument,documentStyles=document.head??document.documentElement;
+ const root=surface.getRootNode(),shadow=root.nodeType===11&&"host" in root?root as ShadowRoot:undefined;
+ const style=document.createElement("style");style.dataset["breditorPrintPreview"]="";
+ const pageStyle=shadow&&print?document.createElement("style"):undefined;
  const previous=surface.getAttribute("aria-description");
  const apply=():void=>{
   const selector=`[data-breditor-print-preview][data-breditor-print-size="${layout.size}"][data-breditor-print-orientation="${layout.orientation}"][data-breditor-print-margin="${layout.margin}"]`;
-  style.textContent=previewStyles(layout,selector)+(print?richPrintStyles(layout):"");
+  style.textContent=previewStyles(layout,selector)+(print?(shadow?printRules:pageRule(layout)+printRules):"");
+  if(pageStyle)pageStyle.textContent=pageRule(layout);
   surface.setAttribute("aria-description",ui.text("printPreviewLabel"));
   surface.dataset["breditorPrintSize"]=layout.size;surface.dataset["breditorPrintOrientation"]=layout.orientation;surface.dataset["breditorPrintMargin"]=layout.margin;
  };
- (document.head??document.documentElement).append(style);surface.setAttribute("data-breditor-print-preview","");apply();
+ (shadow??documentStyles).append(style);
+ if(pageStyle)documentStyles.append(pageStyle);
+ surface.setAttribute("data-breditor-print-preview","");apply();
  let disposed=false;
  return {
   get layout(){return layout;},
   update(next:RichPrintOptions):RichPrintLayout{if(disposed)throw Error("The print preview was disposed");layout=resolveRichPrintLayout(next);apply();return layout;},
   dispose():void{
-   if(disposed)return;disposed=true;style.remove();
+   if(disposed)return;disposed=true;style.remove();pageStyle?.remove();
    for(const name of ["data-breditor-print-preview","data-breditor-print-size","data-breditor-print-orientation","data-breditor-print-margin"])surface.removeAttribute(name);
    if(previous===null)surface.removeAttribute("aria-description");else surface.setAttribute("aria-description",previous);
   },
