@@ -51,3 +51,53 @@ test("demo exports the live rich document as a valid Word package without networ
  const again=await page.evaluate(async()=>{const {exportDocxWithImages}=await import("/interchange/docx.js");const r=await exportDocxWithImages(window.demo.editor.view().documentJson,{title:"Breditor rich content demo",loadImage:()=>undefined});const s=await exportDocxWithImages(window.demo.editor.view().documentJson,{title:"Breditor rich content demo",loadImage:()=>undefined});return r.ok&&s.ok&&r.value.length===s.value.length&&r.value.every((b,i)=>b===s.value[i])?r.losses.map(l=>l.code):null;});
  expect(again).toEqual(["image-reference"]);
 });
+
+test("DOCX keeps descending decimal markers from a restored native V4 document",async({page})=>{
+ await page.goto("/");
+ await expect(page.locator("#status")).toHaveText("Ready");
+ const exported=await page.evaluate(async()=>{
+  const {compileStandardRichProfileV4}=await import("/rich.js");
+  const {exportDocx}=await import("/interchange/docx.js");
+  const profile=compileStandardRichProfileV4(window.rich.wasm,JSON.stringify({
+   format:"breditor/profile-bootstrap",formatVersion:9,schema:{name:"example/docx-numbering",version:4},extensions:[],
+  }));
+  const element=(type,properties,children)=>({kind:"element",type:`breditor/${type}`,entityId:null,properties,children});
+  const items=["Five","Four","Three"].map((text,index)=>element("list-item",{"breditor/block-id":`item-${index}`},[
+   element("paragraph",{"breditor/block-id":`text-${index}`},[{kind:"text",text,formats:[]}]),
+  ]));
+  const {schema,schemaFingerprint}=profile.descriptor();
+  const owner=profile.createEditor(JSON.stringify({format:"breditor/document",formatVersion:2,schema,schemaFingerprint,
+   root:element("document",{"breditor/document-id":"numbering"},[
+    element("ordered-list",{"breditor/block-id":"list","breditor/start":1},items),
+   ]),
+  }));
+  try{
+   owner.execute({kind:"setListNumbering",data:{list:"list",style:"decimal",reversed:true,start:5}});
+   const checkpoint=owner.checkpointJson();
+   const restored=profile.restoreEditor(checkpoint);
+   try{
+    const result=exportDocx(restored.documentJson());
+    if(!result.ok)throw Error(result.error);
+    return {bytes:Array.from(result.value),losses:result.losses,exact:restored.checkpointJson()===checkpoint};
+   }finally{restored.dispose();}
+  }finally{owner.dispose();profile.dispose();}
+ });
+ expect(exported.exact).toBe(true);
+ expect(exported.losses).toEqual([{code:"list-numbering",count:1,effect:"loss"}]);
+ const files=unzip(Uint8Array.from(exported.bytes)),decoder=new TextDecoder("utf-8",{fatal:true});
+ const markers=await page.evaluate(([documentXml,numberingXml])=>{
+  const parser=new DOMParser(),ns="http://schemas.openxmlformats.org/wordprocessingml/2006/main";
+  const document=parser.parseFromString(documentXml,"application/xml");
+  const numbering=parser.parseFromString(numberingXml,"application/xml");
+  if(document.querySelector("parsererror")||numbering.querySelector("parsererror"))throw Error("Invalid Word XML");
+  const all=(root,name)=>[...root.getElementsByTagNameNS(ns,name)];
+  const starts=new Map(all(numbering,"num").map(num=>[
+   num.getAttributeNS(ns,"numId"),all(num,"startOverride")[0]?.getAttributeNS(ns,"val"),
+  ]));
+  return all(document,"p").map(paragraph=>{
+   const id=all(paragraph,"numId")[0]?.getAttributeNS(ns,"val");
+   return [all(paragraph,"t")[0]?.textContent,starts.get(id)];
+  });
+ },[decoder.decode(files.get("word/document.xml")),decoder.decode(files.get("word/numbering.xml"))]);
+ expect(markers).toEqual([["Five","5"],["Four","4"],["Three","3"]]);
+});

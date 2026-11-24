@@ -9,6 +9,7 @@ import {candidateShardPlan} from "./candidate-release/shards.mjs";
 import {fileEvidence,sourceEvidence} from "./candidate-release/evidence.mjs";
 import {verifyHostedContext} from "./candidate-release/hosted-context.mjs";
 import {candidateStageReceipts} from "./candidate-release/runtime-stage-policy.mjs";
+import {verifyDirectStageEvidence} from "./candidate-release/direct-stage-evidence.mjs";
 import {verifyRichBrowserStage} from "./candidate-release/rich-browser-report.mjs";
 import {
  sharedRuntimeBuildFormat,sharedRuntimeBuildReport,sharedRuntimeReceiptVariable,
@@ -36,7 +37,7 @@ export function candidateCoverage(root,manifests,{requireHosted=false}={}) {
  assert.ok(manifests.length,"Supply at least one retained qualification result.json");
  const source=sourceEvidence(root);
  assert.ok(source.commit&&!source.dirty,"Check out one clean candidate before reviewing its evidence");
- const full=candidateReleasePlan(),covered=new Set(),evidence=[];
+ const full=candidateReleasePlan({environment:{}}),covered=new Set(),evidence=[];
  for(const input of manifests){
   const path=resolve(input),directory=dirname(path);
   const record=fileEvidence(directory,basename(path));
@@ -50,17 +51,19 @@ export function candidateCoverage(root,manifests,{requireHosted=false}={}) {
   assert.equal(receipt.selectedChecksPassed,true,`Missing completed-stage result in ${input}`);
   assert.ok(receipt.activationQualification===undefined,
    "Candidate coverage requires directly executed stages. Review adopted workers with qualify-activation-shard verify");
-  const plan=receipt.shard?candidateShardPlan(full,receipt.shard.id):candidateReleasePlan({profile:receipt.profile});
+  const plan=receipt.shard?candidateShardPlan(full,receipt.shard.id):candidateReleasePlan({profile:receipt.profile,environment:{}});
   assert.equal(receipt.profile,plan.profile);
   assert.deepEqual(receipt.shard,plan.shard);
   assert.deepEqual(receipt.stages.map(stage=>stage.id),plan.checks.map(check=>check.id),
    `Stage sequence differs from the candidate plan in ${input}`);
-  let sharedRuntimeSha256;
+  let sharedRuntimeSha256,recordedCheckout;
   for(const [index,check] of plan.checks.entries()){
    const stage=receipt.stages[index], log=`${String(index+1).padStart(2,"0")}-${check.id}.log`;
    assert.equal(stage.status,"passed",`Stage did not pass in ${input}: ${check.id}`);
    assert.ok(stage.execution===undefined,`Candidate coverage requires direct execution for ${check.id}`);
-   assert.equal(basename(stage.log.path),log);
+   const checkout=verifyDirectStageEvidence(check,stage,{log,platform:receipt.environment?.platform,repository,requireHosted});
+   assert.ok(recordedCheckout===undefined||recordedCheckout===checkout,`Recorded checkout differs for ${check.id}`);
+   recordedCheckout=checkout;
    requireRetainedBytes(directory,log,stage.log);
    assert.deepEqual(stage.artifacts.map(artifact=>artifact.path),check.artifacts.map(artifact=>artifact.path));
    for(const [artifactIndex,artifact] of check.artifacts.entries()){

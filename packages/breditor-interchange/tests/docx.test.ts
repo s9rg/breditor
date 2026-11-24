@@ -53,7 +53,7 @@ function everyNode():string {
       el("list-item",{},[p(t("one")),p(t("one continued")),el("ordered-list",{start:3,"list-style":4},[el("list-item",{},[p(t("iii"))]),el("list-item",{},[p(t("iv"))])])]),
       el("list-item",{},[p(t("two"))]),
     ]),
-    el("ordered-list",{start:5,"list-reversed":true},[el("list-item",{},[p(t("five"))]),el("list-item",{},[p(t("four"))])]),
+    el("ordered-list",{start:5,"list-reversed":true},[el("list-item",{},[p(t("five"))]),el("list-item",{},[p(t("four"))]),el("list-item",{},[p(t("three"))])]),
     el("task-list",{},[el("task-item",{checked:true},[p(t("done"))]),el("task-item",{checked:false},[p(t("todo"))])]),
     el("table",{"table-id":"t","columns":[{id:"a",width:100},{id:"b",width:200},{id:"c",width:50}],merges:[
       {id:"m1",lamport:"1",writer:"1",counter:"1",rows:["r1","r2","r3"],columns:["a","b","c"],"first-row":"r2","last-row":"r3","first-column":"a","last-column":"b"},
@@ -150,7 +150,11 @@ describe("DOCX export (@breditor/interchange/docx)",()=>{
     expect(numOf("one")).toMatchObject({ilvl:"0",format:"bullet",text:"•"});expect(numOf("two")!.numId).toBe(numOf("one")!.numId);
     expect(numOf("one continued")).toBeUndefined();expect(all(findParagraph(document,"one continued"),"w:ind")[0]!.attributes["w:left"]).toBe("720");
     expect(numOf("iii")).toMatchObject({ilvl:"1",format:"lowerRoman",text:"%2.",start:"3"});expect(numOf("iv")!.numId).toBe(numOf("iii")!.numId);
-    expect(numOf("five")).toMatchObject({ilvl:"0",format:"decimal",start:"5"});
+    const descending=[numOf("five"),numOf("four"),numOf("three")];
+    expect(descending.map(num=>[num?.ilvl,num?.format,num?.start])).toEqual([
+      ["0","decimal","5"],["0","decimal","4"],["0","decimal","3"],
+    ]);
+    expect(new Set(descending.map(num=>num?.numId)).size).toBe(3);
     expect(numOf("done")).toMatchObject({format:"bullet",text:"☒"});expect(numOf("todo")).toMatchObject({format:"bullet",text:"☐"});
     // Table: grid widths in twips, header row, horizontal + vertical merge, covered text kept in the merged cell, caption above.
     const table=all(document,"w:tbl")[0]!;

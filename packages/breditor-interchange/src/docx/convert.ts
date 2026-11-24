@@ -307,23 +307,28 @@ export class DocxWriter {
   #list(node:JsonElement,ctx:Ctx,depth:number):string {
     let level=ctx.listLevel+1;if(level>8){level=8;this.losses.add("list-numbering");}
     let numId:number|null=null,open:number|null=null,done:number|null=null;
+    let reverseStart:number|undefined;
     if(node.type==="breditor/ordered-list"){
       let start=prop(node,"start"),style=prop(node,"list-style");const reversed=prop(node,"list-reversed");
       if(start===undefined)start=1;
       if(typeof start!=="number"||!Number.isSafeInteger(start)||start<0){this.losses.add("unsupported-attribute");start=1;}
       if((start as number)>2147483647){this.losses.add("list-numbering");start=2147483647;}
       if(style!==undefined&&!intIn(style,1,5)){this.losses.add("unsupported-attribute");style=undefined;}
-      if(reversed===true)this.losses.add("list-numbering");else if(reversed!==undefined)this.losses.add("unsupported-attribute");
       const kind=(["decimal","lowerLetter","upperLetter","lowerRoman","upperRoman"] as const)[((style as number|undefined)??1)-1]!;
-      numId=this.#num(kind,level,start as number);
+      if(reversed===true){
+        this.losses.add("list-numbering");
+        // Word increments list instances. A separate restart per item keeps the visible ordinals.
+        if(kind==="decimal"&&(start as number)>=node.children.length-1)reverseStart=start as number;
+      }else if(reversed!==undefined)this.losses.add("unsupported-attribute");
+      if(reverseStart===undefined)numId=this.#num(kind,level,start as number);
     }else if(node.type==="breditor/bullet-list")numId=this.#num("bullet",level,null);
     let out="";
-    for(const raw of node.children){
+    for(const [index,raw] of node.children.entries()){
       const item=checkNode(raw);this.#visit();
       if(item.kind!=="element"||!["breditor/list-item","breditor/task-item"].includes(item.type)){
         this.losses.add("unsupported-element");out+=this.blocks([item],{...ctx,listLevel:level,item:null},depth+1);continue;
       }
-      let id=numId;
+      let id=reverseStart===undefined?numId:this.#num("decimal",level,reverseStart-index);
       if(item.type==="breditor/task-item"||node.type==="breditor/task-list"){
         const checked=prop(item,"checked")===true;
         // The checkbox becomes a static ☐/☒ list marker (not an interactive content control).
