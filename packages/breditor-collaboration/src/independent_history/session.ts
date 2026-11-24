@@ -152,18 +152,24 @@ export class SharedIndependentHistoryPersistentSession<P extends SharedSelection
  #recovery():SharedIndependentHistoryRecovery{const capture=this.#capture();return{format:'breditor/shared-independent-history-recovery',formatVersion:1,identity:structuredClone(this.#identity),documentCheckpoint:capture.documentCheckpoint,reviewCheckpoint:capture.reviewCheckpoint,versions:Object.freeze([...capture.versions])};}
  exportRecovery():SharedIndependentHistoryRecovery{this.#live();if(this.#companion)throw new SharedEditorError('independent_delivery_recovery_required','Export the whole delivery cut, not an incomplete local-only history');return this.#recovery();}
  save():void{this.#live();if(this.#storageChanged)throw new SharedEditorError('independent_history_versionchange','The paired database changed');const capture=this.#capture(true);if(same(this.#saved,capture)&&!this.#pending&&!this.#attempt&&!this.#running&&!this.#failure)return;this.#pending=capture;this.#failure=undefined;this.#notify();this.#start();}
- #start():void{if(this.#closed||this.#failure||this.#running||!this.#pending&&!this.#attempt)return;this.#running=this.#drain().catch(error=>this.#failed(error)).finally(()=>{this.#running=undefined;if(!this.#failure)this.#start();});}
+ #start():void{
+  if(this.#closed||this.#storageChanged||this.#failure||this.#running||!this.#pending&&!this.#attempt)return;
+  this.#running=this.#drain().catch(error=>{if(!this.#closed&&!this.#storageChanged)this.#failed(error);}).finally(()=>{this.#running=undefined;if(!this.#failure)this.#start();});
+ }
  async #drain():Promise<void>{
   const persistence=this.#localDriver?.persistence??this.#companion?.persistence;
-  while(!this.#closed&&(this.#attempt||this.#pending)){
+  while(!this.#closed&&!this.#storageChanged&&(this.#attempt||this.#pending)){
    this.#documentLease.assertLive();this.#reviewLease.assertLive();
    if(!this.#attempt){const capture=this.#pending!;this.#pending=undefined;if(same(this.#saved,capture))continue;this.#attempt={capture,cut:undefined};}
-   const attempt=this.#attempt;attempt.cut??=await this.#makeCut(attempt.capture);this.#checkPersistence();
-   if(persistence){await persistence.prepare(this.#savedHead,attempt.cut);this.#checkPersistence();}
+   const attempt=this.#attempt;attempt.cut??=await this.#makeCut(attempt.capture);
+   if(this.#closed||this.#storageChanged)return;
+   this.#checkPersistence();
+   if(persistence){await persistence.prepare(this.#savedHead,attempt.cut);if(this.#closed||this.#storageChanged)return;this.#checkPersistence();}
    await writeIndependentHistoryCut(this.#db,[this.#identity.native.room,this.#identity.native.writer],this.#savedHead,attempt.cut,this.#localDriver??this.#companion,this.#checkPersistence,this.#bootstrapSignal,this.#persistenceSignal,this.#bootstrapDestination);
    if(this.#closed){this.#attempt=undefined;return;}this.#checkPersistence();
-   if(persistence){await persistence.acknowledge(attempt.cut);this.#checkPersistence();}
+   if(persistence){if(this.#storageChanged)return;await persistence.acknowledge(attempt.cut);if(this.#closed)return;this.#checkPersistence();}
    this.#savedHead=attempt.cut.head;this.#saved=attempt.capture;this.#attempt=undefined;
+   if(this.#storageChanged)return;
    if(attempt.capture.companion!==null)this.#companion?.acknowledged(attempt.capture.companion);this.#notify();
   }
  }
