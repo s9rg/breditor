@@ -88,12 +88,19 @@ export function styleFor(node:HtmlElement,parent:StyleState,b:Budget,css:Map<str
   const rawAlign=attribute(node,"align"),rawDir=attribute(node,"dir");
   if(rawAlign){if(typeof align[rawAlign]==="number")state.layout["breditor/block-align"]=align[rawAlign];else b.loss("unsupported-attribute");}
   if(rawDir){if(typeof direction[rawDir]==="number")state.layout["breditor/block-direction"]=direction[rawDir];else b.loss("unsupported-attribute");}
+  const centered=node.tagName==="center";
+  if(centered)state.layout["breditor/block-align"]=align["center"]!;
   for(const [name,source]of css){
     const value=source.trim().toLowerCase();
-    if(value==="inherit"){
+    if(value==="inherit"||centered&&name==="text-align"&&value==="unset"){
       // Font longhands override the element's intrinsic emphasis and weight.
       if(name==="font-weight"&&!parent.formats.has("breditor/strong"))remove("strong");
       if(name==="font-style"&&!parent.formats.has("breditor-inline/italic"))remove("italic");
+      if(centered&&name==="text-align"){
+        const inherited=parent.layout["breditor/block-align"];
+        if(inherited===undefined)delete state.layout["breditor/block-align"];
+        else state.layout["breditor/block-align"]=inherited;
+      }
       continue;
     }
     switch(name){
@@ -128,7 +135,7 @@ export function styleFor(node:HtmlElement,parent:StyleState,b:Budget,css:Map<str
         if(family){set("font-family",{"breditor-inline/family":family});if(!["system-ui","sans-serif","serif","monospace"].includes(first))b.loss("style-approximation");}else b.loss("unsupported-style");break;
       }
       case "white-space":if(["pre","pre-wrap","break-spaces"].includes(value)){state.whiteSpace="pre";if(value==="break-spaces")b.loss("style-approximation");}else if(value==="pre-line")state.whiteSpace="pre-line";else if(value==="normal"||value==="nowrap"){state.whiteSpace="normal";if(value==="nowrap")b.loss("style-approximation");}else b.loss("unsupported-style");break;
-      case "text-align":if(typeof align[value]==="number")state.layout["breditor/block-align"]=align[value];else b.loss("unsupported-style");break;
+      case "text-align":if(typeof align[value]==="number")state.layout["breditor/block-align"]=align[value];else if(centered&&value==="initial")state.layout["breditor/block-align"]=align["start"]!;else b.loss("unsupported-style");break;
       case "direction":if(typeof direction[value]==="number")state.layout["breditor/block-direction"]=direction[value];else b.loss("unsupported-style");break;
       case "line-height":{const percent=/^\d+(?:\.\d+)?%?$/.test(value)?Number.parseFloat(value)*(value.endsWith("%")?1:100):NaN;if(percent>=100&&percent<=300){state.layout["breditor/line-height-percent"]=Math.round(percent);if(!Number.isInteger(percent))b.loss("style-approximation");}else if(value==="normal")delete state.layout["breditor/line-height-percent"];else b.loss("unsupported-style");break;}
       case "margin-inline-start":{const n=/^\d+(?:\.\d+)?em$/.test(value)?Number.parseFloat(value)/2:NaN;if(Number.isInteger(n)&&n>=0&&n<=12)state.layout["breditor/block-indent"]=n;else b.loss("unsupported-style");break;}

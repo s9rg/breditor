@@ -298,7 +298,7 @@ export class HtmlConversion {
       // V4: forced breaks declared on a content block become page breaks around its output.
       const breaks=this.#blockBreaks(node),mark=output.length;
       const next=this.style(node,state),tag=node.tagName;
-      if(containers.has(tag)){if(tag==="center")next.layout["breditor/block-align"]=2;output.push(...this.flow(node.childNodes,next,insideTable));}
+      if(containers.has(tag))output.push(...this.flow(node.childNodes,next,insideTable));
       else if(tag==="p"||/^h[1-6]$/.test(tag)){const anchors=this.#anchorCandidates(node),start=output.length;output.push(...this.prose(node.childNodes,next,tag==="p"?undefined:Number(tag[1])));this.#adoptAnchors(anchors,output,start);}
       else if(tag==="ul"||tag==="ol")output.push(...this.#list(node,next,insideTable));
       else if(tag==="blockquote"){const body=this.flow(node.childNodes,next,insideTable);output.push(element(this.b,"blockquote",body.length?body:[element(this.b,"paragraph")]));}
