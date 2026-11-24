@@ -26,6 +26,69 @@ function readJournal(db){return new Promise((resolve,reject)=>{
  const tx=db.transaction("journals","readonly"),request=tx.objectStore("journals").get(["room","101"]);
  tx.oncomplete=()=>resolve(request.result);tx.onabort=()=>reject(tx.error);
 });}
+export async function recoverPairedPreflightUpgrades(wasm){
+ const profile=wasm.SharedRichProfile.from_standard_configuration_json_v3(JSON.stringify(configuration));
+ const cases=[];
+ try{for(const existing of [false,true]){
+  const database=`installed-paired-preflight-${crypto.randomUUID()}`,p=policy(profile,"paired-local",false,database);
+  const lockNames=[`breditor:shared-writer:${JSON.stringify([p.options.room,p.options.writer])}`,
+   `breditor:review-writer:${JSON.stringify([p.options.room,p.options.review.actor])}`];
+  const held=async()=>{const {held}=await navigator.locks.query();return held.filter(row=>lockNames.includes(row.name)).length;};
+  let owner,inspection,upgraded,opening,nativeCalls=0,backupJson,exact,committed;
+  const deliver=deferred(),preflight=deferred(),getAll=IDBObjectStore.prototype.getAll;
+  try{
+   if(existing){
+    owner=await p.open(p.options);
+    const point={block:"z-intro",offset:"1",affinity:"after"};
+    owner.core.select({kind:"text",anchor:point,focus:point});
+    check(owner.core.type("Before preflight 🙂"),"The saved native document must have an edit");
+    const anchorJson=owner.core.captureReviewAnchor({kind:"document"});
+    check(owner.core.dispatchReview({kind:"create_thread",data:{anchorJson,body:"Before preflight comment"}}).kind==="committed","The saved native review must have a comment");
+    await owner.flush();
+    exact=p.snapshot(owner);backupJson=await owner.exportBackup();
+    inspection=await journalDatabase(database);committed=await readJournal(inspection);inspection.close();inspection=undefined;
+    await owner.close();owner=undefined;
+   }
+   IDBObjectStore.prototype.getAll=function(...args){
+    const request=getAll.apply(this,args),tx=this.transaction;
+    if(this.name==="journals"&&tx.db.name===database){
+     request.addEventListener("success",()=>{
+      const complete=tx.oncomplete;
+      tx.oncomplete=event=>{
+       preflight.resolve(event.type);
+       // Delay only delivery of the successful read, after the native transaction has settled.
+       void deliver.promise.then(()=>complete.call(tx,event));
+      };
+     },{once:true});
+    }
+    return request;
+   };
+   opening=p.open({...p.options,create:()=>{nativeCalls++;return p.options.create();},restore:(...args)=>{nativeCalls++;return p.options.restore(...args);}}).then(async opened=>{await opened.discardAndClose();return null;},error=>error.code??error.name);
+   check(await Promise.race([preflight.promise,opening])==="complete","The original journal lookup must actually complete before the upgrade");
+   check(await held()===2,"Both real writer leases must span the held startup read");
+   upgraded=await journalDatabase(database,2);
+   check(upgraded.version===2&&upgraded.objectStoreNames.contains("upgrade-marker"),"The selected underlying IndexedDB must upgrade before native admission");
+   check(await held()===2,"An unpublished owner must hold both leases until startup settles");
+   deliver.resolve();
+   const result=await opening;
+   check(result==="review_open_versionchange",`Expected the paired database upgrade refusal, received ${result}`);
+   check(await held()===0,"A refused startup must release both writer leases");
+   same(await readJournal(upgraded),committed,"Refusal must preserve the exact prior journal or genuine absence");
+   if(existing){
+    const targetOptions={...p.options,database:database+"-reopened"};
+    owner=await p.importBackup({...targetOptions,backupJson,writerRecovery:"host-reacquired"});
+    check(owner.recovered&&p.snapshot(owner)===exact,"After release, the original paired cut must recover byte-for-byte");
+    await owner.close();owner=undefined;
+    owner=await p.open(targetOptions);
+    check(owner.recovered&&p.snapshot(owner)===exact,"The recovered pair must reopen byte-for-byte");
+    check(owner.core.undo()&&owner.core.undoReview().kind==="committed","Recovered document and review histories must remain reversible");
+   }
+   cases.push({existing,upgraded:true,nativeCalls,exactReadback:true});
+  }finally{IDBObjectStore.prototype.getAll=getAll;deliver.resolve();inspection?.close();upgraded?.close();await opening;await owner?.discardAndClose();}
+ }}finally{profile.free();}
+ check(cases.every(row=>row.nativeCalls===0),`Upgrade refusal must precede both native factories, got ${cases.map(row=>row.nativeCalls).join("/")} fresh/replay calls`);
+ return cases;
+}
 export async function recoverDiscardedOriginalWrites(wasm){
  const profile=wasm.SharedRichProfile.from_standard_configuration_json_v3(JSON.stringify(configuration));
  const cases=[];
