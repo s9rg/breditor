@@ -186,7 +186,10 @@ candidate run manifests. Keep each manifest next to its logs and retained
 reports. The coverage report checks the source digest, planned stage sequence
 and retained file hashes. Direct stages that use a paired shared runtime must
 name the same build receipt from their run, including the execution input
-recorded by the runner. Candidate coverage requires directly executed stages.
+recorded by the runner. Coverage also verifies each direct stage’s command,
+arguments and successful process exit. It compares absolute arguments inside
+the checkout by repository-relative path and uses the recorded tool paths
+for the plan’s tool roles. Candidate coverage requires directly executed stages.
 Use the separate activation shard verifier for adopted worker reports.
 Add `--require-complete` before the
 manifest paths to fail if any engineering stage is missing. The functional
@@ -196,7 +199,8 @@ before the readiness ledger passes.
 For hosted receipts, verify each downloaded ZIP against its artifact digest
 in GitHub and confirm the corresponding workflow attempt succeeded. Add
 `--require-hosted` to validate the recorded runner identity, revision,
-profile, shard and setup outcomes alongside each result. Keep
+profile, shard, setup outcomes and expected tool executable names alongside
+each result. Keep
 `runner-context.tsv` in the artifact directory above each `run-*` directory.
 Compare the reported repository, run ID and attempt with the GitHub listing
 for the same downloaded artifact. The coverage report also records the context

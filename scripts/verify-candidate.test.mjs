@@ -4,7 +4,7 @@ import {execFileSync,spawnSync} from "node:child_process";
 import {createHash} from "node:crypto";
 import {mkdtempSync,mkdirSync,writeFileSync,readFileSync,existsSync,rmSync,symlinkSync,utimesSync,statSync} from "node:fs";
 import {tmpdir} from "node:os";
-import {basename,dirname,join} from "node:path";
+import {basename,dirname,join,sep} from "node:path";
 import {candidateCheckProfiles,candidateReleasePlan,repository} from "./candidate-release/plan.mjs";
 import {candidateShardIds,candidateShardPlan} from "./candidate-release/shards.mjs";
 import {metadataFixtureStageIds} from "./candidate-release/metadata-fixture-evidence.mjs";
@@ -30,7 +30,9 @@ test("candidate coverage requires one clean source, complete selected stages and
   writeFileSync(join(root,".gitignore"),"target/\ndist/\n");
   git(["add",".gitignore"]);
   git(["-c","user.name=Candidate Fixture","-c","user.email=fixture@example.test","commit","-qm","Candidate source"]);
-  const selected=candidateReleasePlan({profile:"portable-relay-recovery"});
+  const fullFixture=candidateReleasePlan({profile:"portable-relay-recovery",environment:{BREDITOR_NPM:join(root,"build tools","npm")}});
+  const selected={...fullFixture,checks:fullFixture.checks.map(check=>({...check,args:check.args.map(argument=>
+   argument.startsWith(repository+sep)?root+argument.slice(repository.length):argument)}))};
   const run=await runCandidateChecks(selected,{root,report:()=>{},execute:async(check,{logPath})=>{
    writeFileSync(logPath,check.id);
    for(const artifact of check.artifacts){
@@ -52,7 +54,7 @@ test("candidate coverage requires one clean source, complete selected stages and
     const now=Date.now()/1000;
     utimesSync(join(root,sharedRuntimeBuildReport),now+2,now+2);
    }
-   return {status:"passed"};
+   return {status:"passed",exitCode:0,signal:null};
   }});
   assert.equal(run.exitCode,0,run.result.error);
   const report=candidateCoverage(root,[run.manifest,run.manifest]);
@@ -136,7 +138,30 @@ test("candidate coverage requires one clean source, complete selected stages and
   writeFileSync(contextPath,context({...runner,profile:browserPlan.profile,browsers:"success"}));
   assert.equal(verifyHostedContext(dirname(run.manifest),browserReceipt,browserPlan).runId,runner.runId);
   manifest.environment=original.environment;
+  const firstStage=manifest.stages[0],originalCommand=firstStage.command;
+  firstStage.command="true";
+  saveEvidence(run.manifest,manifest);
+  assert.throws(()=>candidateCoverage(root,[run.manifest]),/Stage command differs from the plan for default-typescript-build/);
+  const originalNpm=firstStage.env.NPM_BIN;
+  firstStage.env.NPM_BIN="true";
+  saveEvidence(run.manifest,manifest);
+  assert.throws(()=>candidateCoverage(root,[run.manifest],{requireHosted:true}),/Unexpected hosted tool for default-typescript-build/);
+  firstStage.env.NPM_BIN=originalNpm;
+  firstStage.command=originalCommand;
+  firstStage.exitCode=1;
+  saveEvidence(run.manifest,manifest);
+  assert.throws(()=>candidateCoverage(root,[run.manifest]),/Stage process did not exit successfully/);
+  firstStage.exitCode=0;
+  firstStage.signal="SIGTERM";
+  saveEvidence(run.manifest,manifest);
+  assert.throws(()=>candidateCoverage(root,[run.manifest]),/Stage process did not exit successfully/);
+  firstStage.signal=null;
   const runtimeStage=manifest.stages.find(stage=>stage.id==="portable-relay-relocation");
+  const originalArgument=runtimeStage.args[1];
+  runtimeStage.args[1]=join(root,"target","other-relay");
+  saveEvidence(run.manifest,manifest);
+  assert.throws(()=>candidateCoverage(root,[run.manifest]),/Stage arguments differ from the plan for portable-relay-relocation/);
+  runtimeStage.args[1]=originalArgument;
   const originalRuntime=runtimeStage.sharedRuntimeReceiptSha256;
   runtimeStage.sharedRuntimeReceiptSha256="0".repeat(64);
   saveEvidence(run.manifest,manifest);
