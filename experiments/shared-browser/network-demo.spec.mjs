@@ -390,6 +390,13 @@ test("a failed pilot save keeps the retired workspace available for exact backup
   upgrade.onsuccess=()=>{upgrade.result.close();resolve();};
   upgrade.onerror=()=>reject(upgrade.error);
  }));
+ const backup=page.getByRole("button",{name:"Download checkpoint"});
+ await expect(page.locator("#network-state")).toContainText("Local storage changed. Use Download checkpoint before leaving.");
+ await expect(backup).toBeFocused();
+ await expect(page.locator("#a")).toHaveJSProperty("inert",true);
+ await expect(page.locator("#connect-a")).toBeDisabled();
+ await expect(page.locator("#upload-a")).toBeDisabled();
+ await expect(page.locator("#files-a")).toBeDisabled();
  await page.getByRole("button",{name:"Save and reload"}).click();
  await expect(page.locator("#network-state")).toContainText("Local save did not finish");
  await page.evaluate(async()=>{
@@ -408,7 +415,6 @@ test("a failed pilot save keeps the retired workspace available for exact backup
  await expect(page.locator("#connect-a")).toBeDisabled();
  await expect(page.locator("#upload-a")).toBeDisabled();
  await expect(page.locator("#files-a")).toBeDisabled();
- const backup=page.getByRole("button",{name:"Download checkpoint"});
  await expect(backup).toBeFocused();
  const download=page.waitForEvent("download");
  await backup.press("Enter");

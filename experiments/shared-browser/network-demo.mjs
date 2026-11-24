@@ -7,7 +7,7 @@ await init();
 const app={peers:{},errors:[],ready:false,closed:false};window.breditorNetworkDemo=app;
 const status=document.querySelector("#network-state"),report=error=>{const message=error?.code??String(error);app.errors.push(message);status.textContent=message;};
 const reportPeerError=(peer,error)=>{if(!app.closed&&!peer.closing)report(error);};
-window.addEventListener("pagehide",()=>{app.closed=true;for(const peer of Object.values(app.peers)){peer.closing=true;peer.overlay?.dispose();peer.sync?.dispose();peer.presence?.dispose();peer.assets?.dispose();peer.session?.discardAndClose();peer.cache?.close();}},{once:true});
+window.addEventListener("pagehide",()=>{app.closed=true;for(const peer of Object.values(app.peers)){retirePeer(peer);peer.session?.discardAndClose();peer.cache?.close();}},{once:true});
 async function credentials(database,key,value){
  const db=await new Promise((resolve,reject)=>{const r=indexedDB.open(database,1);r.onupgradeneeded=()=>r.result.createObjectStore("identities");r.onsuccess=()=>resolve(r.result);r.onerror=()=>reject(r.error);});
  try{return await new Promise((resolve,reject)=>{const tx=db.transaction("identities",value?"readwrite":"readonly"),s=tx.objectStore("identities"),r=value?s.put(value,key):s.get(key);let result;r.onsuccess=()=>{result=r.result;};tx.oncomplete=()=>resolve(result);tx.onabort=()=>reject(tx.error);});}finally{db.close();}
@@ -25,7 +25,7 @@ async function show(peer){
 const update=peer=>{void show(peer).catch(error=>reportPeerError(peer,error));};
 /** Mount the selected accounts using the shared demo controls. Pilot mode supplies one code. */
 export async function openNetworkDemo(bootstrap,chosen,{
- pilot=false,tokenFor=principal=>bootstrap.tokens[principal],codeSha256,paused=false,onPause=()=>{},
+ pilot=false,tokenFor=principal=>bootstrap.tokens[principal],codeSha256,paused=false,onPause=()=>{},onJournalRetired,
 }={}){
  if(chosen&&!["alice","bob"].includes(chosen))throw Error("Choose peer=alice or peer=bob");
  if(pilot&&(!chosen||!codeSha256||!/^[a-f0-9]{64}$/.test(codeSha256)))throw Error("Choose one pilot participant and code");
@@ -42,6 +42,13 @@ export async function openNetworkDemo(bootstrap,chosen,{
   if(pilot)document.querySelector(`#pane-${key}`).hidden=false;
   const peer={key,principal,paint:0,offline:paused,closing:false,session:undefined,cache:undefined,sync:undefined,presence:undefined,assets:undefined,mounted:undefined,overlay:undefined};app.peers[key]=peer;
   const onError=error=>reportPeerError(peer,error);
+  const onJournalError=error=>{
+   if(pilot&&onJournalRetired&&app.ready&&!app.closed&&!peer.closing&&error?.code==="session_versionchange"){
+    report(error);
+    retirePeer(peer);
+    onJournalRetired(peer,error);
+   }else onError(error);
+  };
   const getToken=()=>tokenFor(principal),identityKey=[bootstrap.endpoint,principal];
   const openSession=async()=>{
    const saved=await credentials(identityDb,identityKey);
@@ -53,7 +60,7 @@ export async function openNetworkDemo(bootstrap,chosen,{
     identity=registration.identity;
    }
    peer.identity=identity;
-   return SharedPersistentSession.open({database:`${namespace}-journals-v12`,room:identity.room,writer:identity.writer,create:()=>{if(!registration)throw Error("Exact saved writer journal is missing; refusing a new history");return profile.join_frame(identity.room,identity.writer,registration.frame);},restore:journal=>profile.restore(identity.room,journal),onState:()=>update(peer),onError});
+   return SharedPersistentSession.open({database:`${namespace}-journals-v12`,room:identity.room,writer:identity.writer,create:()=>{if(!registration)throw Error("Exact saved writer journal is missing; refusing a new history");return profile.join_frame(identity.room,identity.writer,registration.frame);},restore:journal=>profile.restore(identity.room,journal),onState:()=>update(peer),onError:onJournalError});
   };
   // Give the second tab the first tab's writer and the usual live journal lease check.
   // Keep the registration lock until the first exact local journal has been committed.
@@ -123,9 +130,14 @@ export async function openNetworkDemo(bootstrap,chosen,{
  return app;
 }
 
-async function closePeer(peer,save){
+function retirePeer(peer){
+ if(peer.closing)return;
  peer.closing=true;
  peer.overlay?.dispose();peer.sync?.dispose();peer.presence?.dispose();peer.assets?.dispose();
+}
+
+async function closePeer(peer,save){
+ retirePeer(peer);
  if(save)await peer.session?.close();else await peer.session?.discardAndClose();
  peer.mounted?.dispose();peer.cache?.close();
 }

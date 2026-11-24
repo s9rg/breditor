@@ -93,6 +93,17 @@ function enableRecovery(wasm, shared, configuration) {
   });
 }
 
+function offerCheckpointRecovery(peer, message, error) {
+  showError(status, message, error);
+  document.querySelector(`#${peer.key}`).inert = true;
+  for (const action of ["connect", "upload", "files"]) {
+    document.querySelector(`#${action}-${peer.key}`).disabled = true;
+  }
+  const save = document.querySelector(`#save-${peer.key}`);
+  const nextControl = save.disabled ? reload : save;
+  nextControl.focus({preventScroll: true});
+}
+
 function enableWorkspaceActions(app, peer, downloadNetworkCheckpoint) {
   const save = document.querySelector(`#save-${peer.key}`);
   save.textContent = "Download checkpoint";
@@ -114,14 +125,8 @@ function enableWorkspaceActions(app, peer, downloadNetworkCheckpoint) {
       await app.close();
       location.reload();
     } catch (error) {
-      showError(status, "Local save did not finish. Use Download checkpoint before leaving.", error);
-      document.querySelector(`#${peer.key}`).inert = true;
-      for (const action of ["connect", "upload", "files"]) {
-        document.querySelector(`#${action}-${peer.key}`).disabled = true;
-      }
       reload.disabled = false;
-      const nextControl = save.disabled ? reload : save;
-      nextControl.focus({preventScroll: true});
+      offerCheckpointRecovery(peer, "Local save did not finish. Use Download checkpoint before leaving.", error);
     }
   });
   workspace.hidden = false;
@@ -159,6 +164,8 @@ async function startPilot(bootstrap) {
         codeSha256: await digest(new TextEncoder().encode(token)),
         paused: sessionStorage.getItem(pauseKey) === "1",
         onPause: paused => sessionStorage.setItem(pauseKey, paused ? "1" : "0"),
+        onJournalRetired: (peer, error) =>
+          offerCheckpointRecovery(peer, "Local storage changed. Use Download checkpoint before leaving.", error),
       });
       const peer = Object.values(app.peers)[0];
       form.hidden = true;
