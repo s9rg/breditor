@@ -26,6 +26,10 @@ for(const filename of ["LICENSE-MIT","LICENSE-APACHE"]){
   `Installed interchange ${filename} differs from the canonical license`);
 }
 run(process.execPath,["docx-runtime.mjs"],consumer);
+cpSync(join(root,"crates/breditor-core/tests/fixtures/pre-v4"),join(consumer,"pre-v4"),{recursive:true});
+const historicalRichReaders=JSON.parse(execFileSync(process.execPath,["historical-rich-readers.mjs"],{cwd:consumer,encoding:"utf8",timeout:10000}));
+assert.equal(historicalRichReaders.passed,true);
+assert.deepEqual(historicalRichReaders.fixtures.map(({language,historySteps,crossProfileRefusals})=>[language,historySteps,crossProfileRefusals]),[[1,11,3],[2,11,3],[3,11,3]]);
 // These are generated test artifacts, not modified product source. Only import/resource paths change.
 let probe=readFileSync(join(root,"scripts/probe-browser-interchange.mjs"),"utf8");
 const replacements=[
@@ -40,6 +44,7 @@ const replacements=[
 for(const [before,after]of replacements){assert.equal(probe.split(before).length,2,`Expected one exact resource mapping: ${before}`);probe=probe.replace(before,after);}assert.ok(!probe.includes("../packages/"));
 writeFileSync(join(consumer,"probe.mjs"),probe);cpSync(join(root,"scripts/fixtures/editor-consumer/coverage-seed.mjs"),join(consumer,"coverage-seed.mjs"));cpSync(join(root,"packages/breditor-interchange/tests/fixtures/word.html"),join(consumer,"word.html"));
 const result=JSON.parse(execFileSync(process.execPath,["probe.mjs",join(consumer,"node_modules/@breditor/experimental-rich-content/dist"),join(consumer,"node_modules/@breditor/collaboration/dist/runtime")],{cwd:consumer,encoding:"utf8",timeout:360000,maxBuffer:1024*1024}));assert.equal(result.passed,true);
+assert.equal(historicalRichReaders.wasmSha256,result.localWasmSha256);
 const modules={};
 for(const [name,entry] of [["default","default-entry.ts"],["interchange","interchange-entry.ts"],["docx","docx-entry.ts"],["xml","xml-entry.ts"]]){
  const bundle=await build({configFile:false,root:consumer,logLevel:"error",build:{target:"es2022",write:false,minify:false,lib:{entry:join(consumer,entry),formats:["es"],fileName:name}}});
@@ -54,5 +59,6 @@ const xmlForeignParserModules=modules.xml.filter(foreign).length;
 assert.equal(xmlForeignParserModules,0,"The installed XML entry must not import the HTML or Markdown parser graph");
 assert.equal(result.xmlExports,2,"Expected XML export from cold-restored native local and shared editors");
 assert.deepEqual(installedArchiveDigests(archives,packs,names),archiveEvidence,"Installed archives changed during qualification");
-const report={format:"breditor/interchange-installed-consumer",formatVersion:1,passed:true,consumer,archives:archiveEvidence.map((archive,i)=>({...archive,path:paths[i]})),installedInterchangeLicenses:true,strictConsumerTypes:true,workspaceLinks:false,defaultForeignParserModules:modules.default.filter(foreign).length,optInForeignParserModules:modules.interchange.filter(foreign).length,docxForeignParserModules,xmlForeignParserModules,installedDocxExport:true,functionalProbe:{...result,scope:"Installed archives with bare package imports and bundled paired Wasm; compiled managed SDK/React synthetic DOM/clipboard/IDB/locks. Not OS clipboard, captured Office applications, cross-browser, IME, accessibility or release qualification."}};
+const report={format:"breditor/interchange-installed-consumer",formatVersion:1,passed:true,consumer,archives:archiveEvidence.map((archive,i)=>({...archive,path:paths[i]})),installedInterchangeLicenses:true,strictConsumerTypes:true,workspaceLinks:false,defaultForeignParserModules:modules.default.filter(foreign).length,optInForeignParserModules:modules.interchange.filter(foreign).length,docxForeignParserModules,xmlForeignParserModules,installedDocxExport:true,historicalRichReaders,functionalProbe:{...result,scope:"Installed archives with bare package imports and bundled paired Wasm; compiled managed SDK/React synthetic DOM/clipboard/IDB/locks. Not OS clipboard, captured Office applications, cross-browser, IME, accessibility or release qualification."}};
+mkdirSync(join(root,"target"),{recursive:true});
 writeFileSync(join(root,"target/interchange-installed-consumer.json"),JSON.stringify(report,null,2)+"\n");console.log(JSON.stringify(report,null,2));
