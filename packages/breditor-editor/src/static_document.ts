@@ -309,8 +309,11 @@ const own=(value:Record<string,unknown>,key:string):unknown=>Object.hasOwn(value
 const utf8Length=(value:string):number=>encoder.encode(value).length;
 const clamp=(value:number|undefined,fallback:number,maximum:number):number=>value===undefined?fallback:Number.isSafeInteger(value)&&value>0?Math.min(value,maximum):fallback;
 
-/** Escape text content. `<`, `>` and `&` cover every text-state transition, including `</script>`. */
-export function escapeHtmlText(value:string):string {return value.replace(/[&<>]/g,c=>c==="&"?"&amp;":c==="<"?"&lt;":"&gt;");}
+const htmlTextEscapes={"&":"&amp;","<":"&lt;",">":"&gt;","\r":"&#13;"} as const;
+/** Escape text content and preserve carriage returns through the HTML parser. */
+export function escapeHtmlText(value:string):string {
+ return value.replace(/[&<>\r]/g,character=>htmlTextEscapes[character as keyof typeof htmlTextEscapes]);
+}
 /** Escape a double-quoted attribute value. */
 export function escapeHtmlAttribute(value:string):string {return value.replace(/[&<>"']/g,c=>c==="&"?"&amp;":c==="<"?"&lt;":c===">"?"&gt;":c==='"'?"&quot;":"&#39;");}
 

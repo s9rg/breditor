@@ -73,6 +73,14 @@ describe("static document renderer (Node, no DOM, no Wasm)",()=>{
   expect(alt).toContain('alt="x&quot; onerror=&quot;alert(1)"');noActiveMarkup(alt);
  });
 
+ it("preserves carriage returns in static paragraph and code text",()=>{
+  const sample="alpha\rbeta\ngamma\r\ndelta";
+  const escaped="alpha&#13;beta\ngamma&#13;\ndelta";
+  const html=render([p("line",[text(sample)]),el("code-block",{"block-id":"code"},[text(sample)])]);
+  expect(html).toContain(`>${escaped}</p>`);
+  expect(html).toContain(`<code>${escaped}</code>`);
+ });
+
  it("renders links only through the shared safe link policy",()=>{
   for(const href of ["javascript:alert(1)","JaVaScRiPt:alert(1)"," https://example.com","data:text/html,<script>alert(1)</script>","vbscript:x","https://user:pw@example.com/","//example.com/x","/relative","https:\\\\example.com","http://exa mple.com","file:///etc/passwd","https://%65xample.com"]){
    const html=render([p("x",[text("t",[link(href)])])]);
