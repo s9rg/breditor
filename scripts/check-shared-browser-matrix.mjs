@@ -2,7 +2,8 @@
 import assert from "node:assert/strict";
 import {execFileSync} from "node:child_process";
 import {createHash} from "node:crypto";
-import {mkdirSync,readFileSync,readdirSync,rmSync,writeFileSync} from "node:fs";
+import {mkdirSync,mkdtempSync,readFileSync,readdirSync,rmSync,statSync,writeFileSync} from "node:fs";
+import {tmpdir} from "node:os";
 import {basename,resolve,dirname} from "node:path";
 import {fileURLToPath} from "node:url";
 import {nativeComparisonDriver} from "../experiments/collaboration/browser/compare-exports.mjs";
@@ -10,7 +11,7 @@ import {nativeAdmissionDriver} from "../experiments/shared-browser/native-relay.
 import config from "../experiments/shared-browser/playwright.config.mjs";
 import {candidateBrowserRelay} from "./check-editor-browser.mjs";
 import {sharedBrowserRuns} from "./shared-browser-runs.mjs";
-import {sharedBrowserBatchProjects,validateSharedBrowserReport} from "./candidate-release/shared-browser-report.mjs";
+import {sharedBrowserBatchProjects,validateSharedBrowserDiscovery} from "./candidate-release/shared-browser-report.mjs";
 
 const args=process.argv.slice(2);
 const candidate=args.length===1&&args[0]==="--candidate-relay";
@@ -25,11 +26,24 @@ const nativeFixtureHashes=()=>[nativeAdmissionDriver,nativeComparisonDriver].map
  name:basename(path),sha256:createHash("sha256").update(readFileSync(path)).digest("hex"),
 }));
 const nativeFixtures=candidate?nativeFixtureHashes():undefined;
+function discoverCases(command){
+ const directory=mkdtempSync(resolve(tmpdir(),"breditor-shared-browser-discovery-"));
+ try{
+  const report=resolve(directory,"cases.json");
+  execFileSync(process.execPath,["node_modules/@playwright/test/cli.js",...command,"--list","--reporter=json"],{
+   cwd:root,env:{...env,PLAYWRIGHT_JSON_OUTPUT_FILE:report},stdio:["ignore","ignore","inherit"],
+  });
+  const info=statSync(report);
+  assert.ok(info.isFile()&&info.size<=32*1024*1024,"Expected a bounded shared browser discovery report");
+  return JSON.parse(readFileSync(report,"utf8"));
+ }finally{rmSync(directory,{recursive:true,force:true});}
+}
 console.log("Shared WebKit uses fresh per-file processes; every discovered spec runs once, without retries or relaxed assertions");
 for(const run of runs){
  const suite=run.specs[0]??"chromium-firefox";
  const output=resolve(outputDirectory,suite),reportPath=resolve(outputDirectory,suite+".json");
  const command=["test","--config","experiments/shared-browser/playwright.config.mjs",...run.projects.map(project=>"--project="+project),...run.patterns];
+ const discovery=candidate?discoverCases(command):undefined;
  if(candidate){
   mkdirSync(outputDirectory,{recursive:true});
   rmSync(reportPath,{force:true});
@@ -40,8 +54,8 @@ for(const run of runs){
  });
  if(candidate){
   const report=JSON.parse(readFileSync(reportPath,"utf8"));
-  validateSharedBrowserReport(report,sharedBrowserBatchProjects(run,discovered,config.projects));
-  reports.push({suite,projects:run.projects,report});
+  const discoveredCases=validateSharedBrowserDiscovery(discovery,report,sharedBrowserBatchProjects(run,discovered,config.projects));
+  reports.push({suite,projects:run.projects,discoveredCases,report});
  }
 }
 if(candidate){

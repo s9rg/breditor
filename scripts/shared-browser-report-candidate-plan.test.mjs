@@ -1,6 +1,6 @@
 import assert from "node:assert/strict";
 import {test} from "node:test";
-import {sharedBrowserBatchProjects,validateSharedBrowserReport} from "./candidate-release/shared-browser-report.mjs";
+import {sharedBrowserBatchProjects,validateSharedBrowserDiscovery,validateSharedBrowserReport} from "./candidate-release/shared-browser-report.mjs";
 import {sharedBrowserRuns} from "./shared-browser-runs.mjs";
 
 const files=["editing.spec.mjs","relay.spec.mjs"];
@@ -53,4 +53,26 @@ test("the shared toolbar entry admits its existing helper-registered cases",()=>
  const expected=new Map([["standard-toolbar.spec.mjs",["chromium","firefox"]]]),recorded=report(expected);
  for(const spec of recorded.suites[0].suites[0].specs)spec.file="../rich-browser/standard-toolbar-checks.mjs";
  validateSharedBrowserReport(recorded,expected);
+});
+
+test("discovery refuses a case omitted from both engines within an otherwise complete file",()=>{
+ const expected=sharedBrowserBatchProjects(runs[0],files,projects);
+ const incomplete=report(expected),complete=structuredClone(incomplete);
+ const parent=complete.suites[0].suites[0];
+ for(const spec of [...parent.specs])parent.specs.push({...spec,id:`another-${spec.id}`,title:"additional source case",line:2});
+ complete.stats.expected+=2;
+ const discovery=structuredClone(complete);
+ for(const file of discovery.suites)for(const suite of file.suites)for(const spec of suite.specs)spec.tests[0].results=[];
+ assert.equal(validateSharedBrowserDiscovery(discovery,complete,expected).length,6);
+ validateSharedBrowserReport(incomplete,expected);
+ assert.throws(()=>validateSharedBrowserDiscovery(discovery,incomplete,expected),/differ from the discovered case inventory/);
+});
+
+test("discovery binds the selected WebKit group and retains the imported toolbar case",()=>{
+ const expected=new Map([["standard-toolbar.spec.mjs",["webkit-4"]]]),recorded=report(expected);
+ const [spec]=recorded.suites[0].suites[0].specs;
+ spec.file="../rich-browser/standard-toolbar-checks.mjs";
+ const discovery=structuredClone(recorded);
+ discovery.suites[0].suites[0].specs[0].tests[0].results=[];
+ assert.deepEqual(validateSharedBrowserDiscovery(discovery,recorded,expected),[["standard-toolbar.spec.mjs",spec.id,"webkit-4"]]);
 });
