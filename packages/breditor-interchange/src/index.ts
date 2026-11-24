@@ -1,13 +1,15 @@
 export type * from "./types.js";
+export {htmlPageMetadataLimits,type HtmlPageMetadata} from "./html_page.js";
 export {limits as interchangeLimits} from "./budget.js";
 /** Conversion grammar revision, independent of native document/history/synchronization protocols. */
 export const interchangeContractV1=Object.freeze({version:1,html:"bounded-semantic-html-v1",markdown:"commonmark-tables-strike-tasks-and-sanitized-html-v1",markdownAutolinks:"opt-in-gfm-autolink-literals-autolink-v1",cellPartitionVersion:1} as const);
-import {Budget,ConversionFailure,fail,sourceWithinBudget} from "./budget.js";
+import {Budget,bytes,ConversionFailure,fail,limits,sourceWithinBudget} from "./budget.js";
 import {importHtmlContent} from "./html_import.js";
 import {exportHtmlRoot} from "./html_export.js";
+import {htmlPageOpening,type HtmlPageMetadata} from "./html_page.js";
 import {exportMarkdownRoot,markdownHtml} from "./markdown.js";
 import type {Node} from "./wire.js";
-import type {ClipboardTransfer,InterchangeImportOptions,InterchangeOptions,InterchangeOwner,InterchangeResult,RichInterchange} from "./types.js";
+import type {ClipboardTransfer,InterchangeImportOptions,InterchangeOptions,InterchangeOwner,InterchangeResult,InterchangeLoss,RichInterchange} from "./types.js";
 /** Separate explicit dependency: importing/mounting the editor never enables foreign clipboard admission. */
 export function createRichInterchange(owner:InterchangeOwner,options:InterchangeOptions={}):RichInterchange {
   const admit=owner.admitClipboardRoot,validate=owner.validateClipboard;
@@ -31,4 +33,19 @@ export function createRichInterchange(owner:InterchangeOwner,options:Interchange
     exportHtml:(source:string)=>run(b=>{const sourceContent=exportSource(source);return exportHtmlRoot(sourceContent.nodes,b,policy,sourceContent.kind,capabilities.bookmarks);}),
     exportMarkdown:(source:string)=>run(b=>{const content=exportSource(source);if(content.kind==="text")b.loss("block-structure");return exportMarkdownRoot(content.nodes,b,policy,capabilities.bookmarks);}),
   });
+}
+
+/** Serialize an admitted clipboard snapshot as a complete page with host-supplied metadata. */
+export function exportHtmlPage(owner:InterchangeOwner,clipboardJson:string,metadata:HtmlPageMetadata,
+  options:Pick<InterchangeOptions,"exportImage">={}):InterchangeResult<string> {
+  let losses:readonly InterchangeLoss[]=Object.freeze([]);
+  try{
+    const opening=htmlPageOpening(metadata);
+    const fragment=createRichInterchange(owner,options).exportHtml(clipboardJson);
+    if(!fragment.ok)return fragment;
+    losses=fragment.losses;
+    const value=opening+fragment.value+"</body></html>";
+    if(value.length>limits.outputBytes||bytes(value)>limits.outputBytes)fail("resource-limit");
+    return Object.freeze({ok:true,value,losses});
+  }catch(error){return Object.freeze({ok:false,error:error instanceof ConversionFailure?error.code:"native-admission",losses});}
 }

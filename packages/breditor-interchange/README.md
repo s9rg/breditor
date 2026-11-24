@@ -53,6 +53,21 @@ URL. Missing mappings preserve available alt/caption text and report
 `image-reference`; no network fallback occurs. Host policy exceptions reject
 conversion without exposing their messages.
 
+### Complete HTML page export
+
+Call `exportHtmlPage(core, clipboardJson, metadata, options?)` to wrap the
+same admitted body that `exportHtml` emits. Pass the host's title and
+optional description, language and direction. The exporter validates the
+language tag and permits `ltr`, `rtl` or `auto` for direction. Title and
+description are limited to 1 KiB and 4 KiB of UTF-8 before escaping. The
+complete page is limited to 1 MiB.
+
+The head contains the UTF-8 declaration, escaped title and optional escaped
+description. The body uses the ordinary HTML converter's allowed markup,
+inline styles, and explicit `exportImage` publication policy. The host
+supplies metadata separately from the native clipboard snapshot. The
+exporter neither edits the source nor adopts source head directives.
+
 ### Portable HTML with host-owned raster bytes
 
 In a browser, `@breditor/interchange/portable-html` can embed raster images

@@ -29,3 +29,8 @@ void (xmlContractV1.version satisfies 1);
 const documentXml=exportDocumentXml(owner);
 if(documentXml.ok)void (documentXml.value satisfies string);
 void (documentXmlContractV1.version satisfies 1);
+
+import {exportHtmlPage,type HtmlPageMetadata} from "@breditor/interchange";
+const pageMetadata:HtmlPageMetadata={title:"Native page",language:"pt-BR",direction:"ltr"};
+const page=exportHtmlPage(owner,"{}",pageMetadata);
+if(page.ok)void (page.value satisfies string);
