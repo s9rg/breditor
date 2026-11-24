@@ -246,7 +246,9 @@ reentrantly; a display callback failure cannot rewind an accepted native edit.
 Decorations map admitted block IDs and UTF-16 intervals into transient DOM
 ranges. They are painted outside the editable DOM, never inserted as text or
 formatting. Freshness is checked before paint; composition, busy/closed owners
-and stale results clear it. Scroll, resize and surface mutation update paint.
+and stale results clear it. Scroll, resize, surface mutation, and fullscreen
+transitions update paint. The layer follows a fullscreen editor ancestor and
+returns to the document body on exit.
 Only visible rectangles are painted, with a separate 8,192-rectangle cap and an
 explicit clipping notice. This presentation bound does not truncate native
 results or Replace All. Navigation keeps control focus; closing returns focus

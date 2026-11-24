@@ -3,7 +3,7 @@
  * (transient DOM ranges measured from block id + UTF-16 offsets, fixed-position markers in a separate layer).
  * Nothing is inserted into, wrapped around or styled inside the editable surface.
  */
-import {endpoint} from "./search_overlay.js";
+import {endpoint,placeViewportOverlay} from "./search_overlay.js";
 import type {RichAiHostState} from "./ai_tools_host.js";
 export interface RichAiHighlight {readonly key:string;readonly block:string;readonly start:number;readonly end:number;readonly active:boolean}
 const paintLimit=8192;
@@ -15,10 +15,11 @@ export class RichAiHighlightOverlay {
  constructor(surface:HTMLElement,state:()=>RichAiHostState){
   this.#surface=surface;this.#state=state;const document=surface.ownerDocument,window=document.defaultView;if(!window)throw Error("Issue highlights require a live document");this.#window=window;
   const realm=window as unknown as {AbortController:typeof AbortController;ResizeObserver?:typeof ResizeObserver;MutationObserver?:typeof MutationObserver};this.#abort=new realm.AbortController();
-  this.element=document.createElement("div");this.element.dataset["languageOverlay"]="";this.element.setAttribute("aria-hidden","true");this.element.style.cssText="position:fixed;inset:0;pointer-events:none;z-index:10;overflow:hidden";document.body.append(this.element);
+  this.element=document.createElement("div");this.element.dataset["languageOverlay"]="";this.element.setAttribute("aria-hidden","true");this.element.style.cssText="position:fixed;inset:0;pointer-events:none;z-index:10;overflow:hidden";placeViewportOverlay(surface,this.element);
   this.#resize=realm.ResizeObserver?new realm.ResizeObserver(()=>this.refresh()):undefined;this.#resize?.observe(surface);
   this.#mutation=realm.MutationObserver?new realm.MutationObserver(()=>this.refresh()):undefined;this.#mutation?.observe(surface,{childList:true,subtree:true,characterData:true,attributes:true});
   window.addEventListener("scroll",()=>this.refresh(),{signal:this.#abort.signal,capture:true});window.addEventListener("resize",()=>this.refresh(),{signal:this.#abort.signal});
+  document.addEventListener("fullscreenchange",()=>{placeViewportOverlay(surface,this.element);this.refresh();},{signal:this.#abort.signal});
  }
  /** Replace the painted set. The caller supplies only issues it has already verified against the current text. */
  set(highlights:readonly RichAiHighlight[]):void{this.#highlights=highlights;if(!highlights.length)this.element.replaceChildren();else this.refresh();}
