@@ -42,7 +42,7 @@ export function resolveRichPrintLayout(options:RichPrintOptions|RichPrintLayout=
  if(!richPrintOrientations.includes(orientation))throw new TypeError("Print orientation must be portrait or landscape");
  if(!richPrintMargins.includes(margin))throw new TypeError("Print margin must be narrow, normal or wide");
  const {runningHeader,pageNumbers}=options;
- if(runningHeader!==undefined&&(typeof runningHeader!=="string"||runningHeader.length>240||/[\u0000-\u001f\u007f\ud800-\udfff]/u.test(runningHeader))){
+ if(runningHeader!==undefined&&(typeof runningHeader!=="string"||runningHeader.length>240||/[\u0000-\u001f\u007f-\u009f\u2028\u2029\ud800-\udfff]/u.test(runningHeader))){
   throw new TypeError("The running header needs one line of Unicode text, up to 240 UTF-16 code units");
  }
  if(pageNumbers!==undefined&&typeof pageNumbers!=="boolean")throw new TypeError("Print pageNumbers must be a Boolean");

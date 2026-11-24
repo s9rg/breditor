@@ -135,7 +135,8 @@ describe("opt-in print presentation",()=>{
   expect(printed).not.toContain('</style>');
   expect(richPrintStyles(resolveRichPrintLayout(options))).toBe(printed);
   expect(richPrintStyles({runningHeader:"",pageNumbers:false})).toBe(richPrintStyles());
-  for(const bad of [{runningHeader:"first\nsecond"},{runningHeader:"\ud800"},{runningHeader:"x".repeat(241)},{pageNumbers:"yes"}]){
+  for(const bad of [{runningHeader:"first\nsecond"},{runningHeader:"first\u0085second"},{runningHeader:"first\u2028second"},
+   {runningHeader:"first\u2029second"},{runningHeader:"\ud800"},{runningHeader:"x".repeat(241)},{pageNumbers:"yes"}]){
    expect(()=>resolveRichPrintLayout(bad as never)).toThrow(TypeError);
   }
  });
@@ -150,8 +151,12 @@ describe("opt-in print presentation",()=>{
   expect(style.textContent).toContain('@media screen{[data-breditor-print-preview][data-breditor-print-size="Letter"][data-breditor-print-orientation="portrait"][data-breditor-print-margin="normal"]{');
   expect(style.textContent?.endsWith(richPrintStyles({size:"Letter"}))).toBe(true);
   expect(()=>mountRichPrintPreview(surface)).toThrow("already mounted");
-  expect(preview.update({orientation:"landscape"}).pageWidthMm).toBe(297);
+  expect(preview.update({orientation:"landscape",runningHeader:"Changed title",pageNumbers:true}).pageWidthMm).toBe(297);
   expect(style.textContent).toContain("size:A4 landscape");expect(preview.layout.orientation).toBe("landscape");
+  expect(style.textContent).toContain('@top-center{content:"Changed title";');
+  expect(style.textContent).toContain('@bottom-center{content:counter(page) " / " counter(pages);');
+  preview.update({orientation:"landscape"});
+  expect(style.textContent).not.toMatch(/@top-center|@bottom-center/);
   expect(()=>preview.update({size:"B5"} as never)).toThrow(TypeError);
   expect(surface.innerHTML).toBe(before);
   preview.dispose();preview.dispose();

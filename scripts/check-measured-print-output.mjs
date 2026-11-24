@@ -111,7 +111,8 @@ try {
     assert.equal(pages.length,screen.measured.pages.length,scenario);
     for(const [index,text] of pages.entries()){
       assert.equal(text.replace(/\s+/g," ").split(runningHeader).length,2,`Expected one running header on ${scenario} page ${index+1}`);
-      assert.match(text,new RegExp(`\\b${index+1}\\s*/\\s*${pages.length}\\b`),`${scenario} page counter`);
+      const counters=[...text.matchAll(/\b(\d+)\s*\/\s*(\d+)\b/g)].map(match=>[Number(match[1]),Number(match[2])]);
+      assert.deepEqual(counters,[[index+1,pages.length]],`${scenario} page counter`);
     }
     assert.ok(forcedIndex>0);
     assert.ok(pages[0].includes("BeforeForcedBreak"));
