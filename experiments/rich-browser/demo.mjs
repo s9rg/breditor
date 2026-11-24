@@ -143,6 +143,8 @@ document.getElementById("import").addEventListener("change",async event=>{
   const checkpoint=await file.text();
   const previous=await autosave.flush();
   if(previous.status!=="committed")throw Error("Retry the current save before restoring a different session.");
+  // Flush only covers edits already made when it starts.
+  if(autosave.getStatus().dirty)throw Error("The current session changed while saving. Choose the backup again to restore it.");
   let restored;
   try{restored=profile.restoreEditor(checkpoint);}
   catch{throw Error("Could not read this session backup. Choose a file from Export exact local session.");}

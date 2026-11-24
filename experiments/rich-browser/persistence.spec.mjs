@@ -109,3 +109,63 @@ test("actual page restart retains the saved rich redo cursor and future exact un
  await page.getByRole("button",{name:"Undo",exact:true}).click();
  expect(await page.evaluate(()=>window.demo.editor.view().documentJson)).toBe(saved.initial);
 });
+
+test("restoring a local backup preserves a newer edit made during the pre-restore save", async ({page}) => {
+ await page.goto("/demo");
+ await expect(page.locator("#ready")).toHaveText("Ready — real Rust/Wasm editor");
+ const backup = await page.evaluate(async () => {
+  const {editor, autosave, sessions} = window.demo;
+  if ((await autosave.flush()).status !== "committed") throw Error("The demo seed was not saved");
+  const checkpoint = editor.checkpointJson();
+  const save = sessions.save.bind(sessions), flush = autosave.flush;
+  let started, waiting, release;
+  const reachedSave = new Promise(resolve => {started = resolve;});
+  const reachedFlush = new Promise(resolve => {waiting = resolve;});
+  const held = new Promise(resolve => {release = resolve;});
+  sessions.save = async checkpoint => {
+   sessions.save = save;
+   started();
+   await held;
+   return save(checkpoint);
+  };
+  autosave.flush = () => {
+   autosave.flush = flush;
+   const result = flush();
+   waiting();
+   return result;
+  };
+  window.restoreRace = {ready: Promise.all([reachedSave, reachedFlush]), release};
+  const point = {block: "demo-intro", offset: "0", affinity: "after"};
+  editor.execute({kind: "setSelection", selection: {kind: "text", anchor: point, focus: point}});
+  editor.execute({kind: "insertPlainText", text: "First edit. "});
+  return checkpoint;
+ });
+ const input = page.getByLabel("Restore session");
+ const file = {name: "session.json", mimeType: "application/json", buffer: Buffer.from(backup)};
+ await input.setInputFiles(file);
+ await page.evaluate(() => window.restoreRace.ready);
+ const newer = await page.evaluate(() => {
+  const editor = window.demo.editor;
+  editor.execute({kind: "insertPlainText", text: "Newer edit. "});
+  const checkpoint = editor.checkpointJson();
+  window.restoreRace.release();
+  return checkpoint;
+ });
+ await expect(input).toBeEnabled();
+ expect(await page.evaluate(checkpoint => window.demo.editor.checkpointJson() === checkpoint, newer), "The newer checkpoint remains mounted").toBe(true);
+ await expect(page.locator("#notice")).toContainText("The current session changed while saving");
+ expect(await page.evaluate(async () => {
+  const saved = await window.demo.autosave.flush();
+  return {status: saved.status, checkpoint: await window.demo.sessions.load()};
+ })).toEqual({status: "committed", checkpoint: newer});
+
+ await input.setInputFiles(file);
+ await expect(page.locator("#notice")).toHaveText("Restored the exact local content and undo/redo branch.");
+ expect(await page.evaluate(async () => {
+  const saved = await window.demo.autosave.flush();
+  return {status: saved.status, checkpoint: await window.demo.sessions.load()};
+ })).toEqual({status: "committed", checkpoint: backup});
+ await page.reload();
+ await expect(page.locator("#ready")).toHaveText("Ready — real Rust/Wasm editor");
+ expect(await page.evaluate(() => window.demo.editor.checkpointJson())).toBe(backup);
+});
