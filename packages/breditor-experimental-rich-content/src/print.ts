@@ -103,20 +103,26 @@ export function mountRichPrintPreview(surface:HTMLElement,options:RichPrintPrevi
  const ui=resolveRichUi(uiOption);
  let layout=resolveRichPrintLayout(rest);
  if(surface.hasAttribute("data-breditor-print-preview"))throw Error("A print preview is already mounted on this element");
- const document=surface.ownerDocument,documentStyles=document.head??document.documentElement;
- const root=surface.getRootNode(),shadow=root.nodeType===11&&"host" in root?root as ShadowRoot:undefined;
+ const document=surface.ownerDocument;
  const style=document.createElement("style");style.dataset["breditorPrintPreview"]="";
- const pageStyle=shadow&&print?document.createElement("style"):undefined;
- const previous=surface.getAttribute("aria-description");
+ const pageStyle=print?document.createElement("style"):undefined;
+ const attributes=["aria-description","data-breditor-print-preview","data-breditor-print-size","data-breditor-print-orientation","data-breditor-print-margin"];
+ const previous=attributes.map(name=>[name,surface.getAttribute(name)] as const);
  const apply=():void=>{
+  const ownerDocument=surface.ownerDocument,documentStyles=ownerDocument.head??ownerDocument.documentElement;
+  const root=surface.getRootNode(),shadow=root.nodeType===11&&"host" in root?root as ShadowRoot:undefined;
+  const styleRoot=shadow??documentStyles;
   const selector=`[data-breditor-print-preview][data-breditor-print-size="${layout.size}"][data-breditor-print-orientation="${layout.orientation}"][data-breditor-print-margin="${layout.margin}"]`;
   style.textContent=previewStyles(layout,selector)+(print?(shadow?printRules:pageRule(layout)+printRules):"");
-  if(pageStyle)pageStyle.textContent=pageRule(layout);
+  if(style.parentNode!==styleRoot)styleRoot.append(style);
+  if(pageStyle&&shadow){
+   pageStyle.textContent=pageRule(layout);
+   if(pageStyle.parentNode!==documentStyles)documentStyles.append(pageStyle);
+  }else pageStyle?.remove();
   surface.setAttribute("aria-description",ui.text("printPreviewLabel"));
   surface.dataset["breditorPrintSize"]=layout.size;surface.dataset["breditorPrintOrientation"]=layout.orientation;surface.dataset["breditorPrintMargin"]=layout.margin;
  };
- (shadow??documentStyles).append(style);
- if(pageStyle)documentStyles.append(pageStyle);
+ // Custom elements can react synchronously to the preview's attribute writes.
  surface.setAttribute("data-breditor-print-preview","");apply();
  let disposed=false;
  return {
@@ -124,8 +130,9 @@ export function mountRichPrintPreview(surface:HTMLElement,options:RichPrintPrevi
   update(next:RichPrintOptions):RichPrintLayout{if(disposed)throw Error("The print preview was disposed");layout=resolveRichPrintLayout(next);apply();return layout;},
   dispose():void{
    if(disposed)return;disposed=true;style.remove();pageStyle?.remove();
-   for(const name of ["data-breditor-print-preview","data-breditor-print-size","data-breditor-print-orientation","data-breditor-print-margin"])surface.removeAttribute(name);
-   if(previous===null)surface.removeAttribute("aria-description");else surface.setAttribute("aria-description",previous);
+   for(const [name,value]of previous){
+    if(value===null)surface.removeAttribute(name);else surface.setAttribute(name,value);
+   }
   },
  };
 }

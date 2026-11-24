@@ -152,6 +152,28 @@ describe("opt-in print presentation",()=>{
   expect(screenOnly).not.toContain("@page");
   local.dispose();surface.remove();
  });
+ it("claims a surface before its attribute callback can mount another preview",()=>{
+  let attempted=false,refusal="";
+  const nested:ReturnType<typeof mountRichPrintPreview>[]=[];
+  class PreviewSurface extends HTMLElement{
+   static observedAttributes=["aria-description"];
+   attributeChangedCallback(){
+    if(attempted)return;
+    attempted=true;
+    try{nested.push(mountRichPrintPreview(this,{print:false}));}
+    catch(error){refusal=String(error);}
+   }
+  }
+  customElements.define("test-reentrant-print-preview",PreviewSurface);
+  const surface=document.createElement("test-reentrant-print-preview");document.body.append(surface);
+  const preview=mountRichPrintPreview(surface,{print:false});
+  try{
+   expect(refusal).toContain("already mounted");
+   expect(nested).toHaveLength(0);
+   expect(document.head.querySelectorAll("style[data-breditor-print-preview]")).toHaveLength(1);
+  }finally{for(const nestedPreview of nested)nestedPreview.dispose();preview.dispose();surface.remove();}
+  expect(document.head.querySelectorAll("style[data-breditor-print-preview]")).toHaveLength(0);
+ });
 });
 
 describe("explicit V4 Wasm factory boundary for page breaks",()=>{
