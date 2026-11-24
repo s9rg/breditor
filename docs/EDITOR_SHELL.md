@@ -108,7 +108,8 @@ Keyboard (APG menubar pattern; Left/Right swap under right-to-left chrome):
 | Menu item | Left / Right | Open the adjacent menu on its first item |
 | Menu item | letter(s) | Typeahead (500 ms buffer) |
 | Menu item | Escape | Close onto its menu bar item |
-| Anywhere | Tab | Close the menu and let focus move on |
+| Menu bar item or closed menu control | Tab | Close the menu and let focus move on |
+| Open field form | Tab / Shift+Tab | Move focus using the form's native tab order |
 
 Running an item closes the menu after the control returned focus to the editor;
 a refused field form keeps the menu open. Inside a field form the widget keeps
