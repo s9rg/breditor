@@ -140,6 +140,11 @@ original behavior and notices are unchanged. With a V4 owner:
   | Word for the web known style, other or missing level text (`%1.%2.`, `(%1)`) | that style | `list-numbering` |
   | Word for the web other counter style (`georgian`, `disc` on an `ol`) | decimal | `list-numbering` |
 
+  Word for the web's HTML `type` supplies the marker family when neither the
+  item nor its list declares `list-style-type`. An explicit HTML `start` applies
+  to the first item when it has no `data-aria-posinset`. Older owners preserve
+  that start with decimal numbering and report unsupported marker families.
+
   An ambiguous Word desktop letter (`i`, `v`, `x`, `c`, `d`, `l`, `m`) continues
   the open list whose next ordinal and style it matches (`h.`, `i.` is
   lower-alpha 8–9; `i.`, `ii.` is lower-roman 1–2); a lone `i.` opens

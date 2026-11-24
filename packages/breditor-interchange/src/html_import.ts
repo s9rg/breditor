@@ -534,22 +534,39 @@ export class HtmlConversion {
     if(!this.#safe(list))return[];
     const listState=this.style(list,outer),ordered=list.tagName==="ol",items:FlatItem[]=[];
     const v4=this.capabilities.listNumbering;
+    const listCss=this.css(list).get("list-style-type")?.trim().toLowerCase();
+    const typeHint=attribute(list,"type");
+    const htmlStyle=typeHint===undefined?undefined:htmlListTypes.get(typeHint);
+    const supportedType=ordered&&v4?htmlStyle!==undefined:typeHint===(ordered?"1":"disc");
+    const rawStart=ordered?attribute(list,"start"):undefined;
     // Numbering-capable owners judge each item's own style below; others report the list's non-decimal style once more.
-    if(!v4){const css=this.css(list).get("list-style-type")?.trim().toLowerCase();if(ordered&&css!==undefined&&css!=="decimal"&&cssListStyles.has(css))this.b.loss("list-numbering");}
-    if(attribute(list,"type")!==undefined&&attribute(list,"type")!==(ordered?"1":"disc")||attribute(list,"reversed")!==undefined)this.b.loss("list-numbering");
+    if(!v4&&ordered&&listCss!==undefined&&listCss!=="decimal"&&cssListStyles.has(listCss))this.b.loss("list-numbering");
+    if(typeHint!==undefined&&!supportedType||attribute(list,"reversed")!==undefined)this.b.loss("list-numbering");
     for(const li of list.childNodes){
       if(!isElement(li))continue;if(this.#hidden(li))fail("unsupported-content");
       // V1–V3 lists number in decimal only. Unless both the CSS list style and Word's level text
       // (`%1.` / `%1)`) prove a plain decimal ordinal, the letter/roman/compound format is reported.
-      // Numbering-capable owners keep decimal, lower/upper alpha and roman CSS styles under the same level-text proof
+      // Numbering-capable owners keep decimal, lower/upper alpha and roman styles under the same level-text proof
       // (an unproven level text keeps the style but is reported); an item's own list-style-type is then consumed.
       let style:number|undefined;
       if(ordered){
-        const type=(this.css(li).get("list-style-type")??this.css(list).get("list-style-type"))?.trim().toLowerCase(),code=v4&&type!==undefined?cssListStyles.get(type):undefined;
-        style=code===1?undefined:code;if(code!==undefined&&this.css(li).has("list-style-type"))this.#listStyleConsumed.add(li);
-        if((v4?code===undefined:type!=="decimal")||!/^%[1-9][.)]?$/.test(attribute(li,"data-leveltext")??""))this.b.loss("list-numbering");
+        const itemCss=this.css(li).get("list-style-type")?.trim().toLowerCase();
+        const css=itemCss??listCss;
+        const code=css===undefined?htmlStyle:cssListStyles.get(css);
+        style=v4&&code!==1?code:undefined;
+        if(v4&&code!==undefined&&itemCss!==undefined)this.#listStyleConsumed.add(li);
+        if((v4?code===undefined:code!==1)||!/^%[1-9][.)]?$/.test(attribute(li,"data-leveltext")??""))this.b.loss("list-numbering");
       }
-      const position=Number(attribute(li,"data-aria-posinset")),numbers=ordered&&Number.isSafeInteger(position)&&position>=1&&position<=1_000_000_000?[position]:[];
+      const aria=attribute(li,"data-aria-posinset"),position=Number(aria);
+      const numbers=ordered&&Number.isSafeInteger(position)&&position>=1&&position<=1_000_000_000?[position]:[];
+      // The producer's per-item ordinal wins. HTML start supplies only the
+      // first ordinal when the wrapper has no position for that item.
+      if(ordered&&items.length===0&&aria===undefined&&rawStart!==undefined){
+        const start=Number(rawStart);
+        if(!Number.isSafeInteger(start)||start>1_000_000_000)fail("unsupported-content");
+        if(start<1)this.b.loss("list-numbering");
+        numbers.push(Math.max(1,start));
+      }
       items.push({level:Number(attribute(li,"data-aria-level")),group:`aria:${attribute(li,"data-listid")??""}`,ordered,numbers,...(v4&&ordered?{styles:[style]}:{}),body:()=>{
         const body=this.flow(li.childNodes,this.style(li,listState,flatListAttributes));
         if(!body.length||!['breditor/paragraph','breditor/heading'].includes(body[0]!.type))body.unshift(element(this.b,"paragraph"));return body;

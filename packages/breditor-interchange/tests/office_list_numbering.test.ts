@@ -68,6 +68,35 @@ describe("Word desktop mso-list numbering",()=>{
  });
 });
 describe("Word for the web data-leveltext numbering",()=>{
+ it("keeps the explicit HTML numbering hints when Word omits CSS and item positions",()=>{
+  const source='<ol type="A" start="7"><li data-aria-level="1" data-leveltext="%1.">Seven</li><li data-aria-level="1" data-leveltext="%1.">Eight</li></ol>';
+  const adapter=staging(true),v4=adapter.importHtml(source);
+  expect(lists(root(v4))).toEqual(["ol start=7 upper-alpha","  Seven","  Eight"]);
+  expect(count(v4,"list-numbering")).toBe(0);
+  const html=adapter.exportHtml(json(v4));if(!html.ok)throw Error(html.error);
+  const tag=html.value.match(/^<ol[^>]+>/)?.[0];
+  expect(tag).toContain('start="7"');expect(tag).toContain('type="A"');
+  expect(lists(root(adapter.importHtml(html.value)))).toEqual(lists(root(v4)));
+
+  const legacy=staging(false).importHtml(source);
+  expect(lists(root(legacy))).toEqual(["ol start=7","  Seven","  Eight"]);
+  expect(count(legacy,"list-numbering")).toBe(3);
+ });
+ it("prefers Word item positions and CSS numbering to HTML hints",()=>{
+  const source='<ol start="7" type="A" style="list-style-type:lower-roman"><li data-aria-level="1" data-leveltext="%1." data-aria-posinset="4">Four</li><li data-aria-level="1" data-leveltext="%1.">Five</li></ol>';
+  const v4=staging(true).importHtml(source);
+  expect(lists(root(v4))).toEqual(["ol start=4 lower-roman","  Four","  Five"]);
+  expect(count(v4,"list-numbering")).toBe(0);
+ });
+ it("applies the ordinary HTML start bounds to Word's missing-position fallback",()=>{
+  const source=(start:string)=>`<ol type="1" start="${start}"><li data-aria-level="1" data-leveltext="%1.">Item</li></ol>`;
+  const adapter=staging(true),zero=adapter.importHtml(source("0"));
+  expect(lists(root(zero))).toEqual(["ol start=1","  Item"]);
+  expect(count(zero,"list-numbering")).toBe(1);
+  for(const start of ["bad","1000000001"]){
+   expect(adapter.importHtml(source(start))).toMatchObject({ok:false,error:"unsupported-content"});
+  }
+ });
  it("maps lettered and roman list-style-type with %N. level text to V4 styles without a notice",()=>{
   for(const [css,name] of [["lower-alpha","lower-alpha"],["lower-latin","lower-alpha"],["upper-alpha","upper-alpha"],["lower-roman","lower-roman"],["upper-roman","upper-roman"]] as const){
    const v4=staging(true).importHtml(online(css,"%1.",["Alpha","Beta"]));
