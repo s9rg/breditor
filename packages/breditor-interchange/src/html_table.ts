@@ -27,7 +27,7 @@ export function importTable(c:HtmlConversion,node:HtmlElement,state:StyleState):
     if(groupSpan!==undefined)c.b.loss("table-geometry");
     for(const child of children){
       if(child.tagName!=="col")fail("malformed-table");if(c.excluded(child))fail("unsupported-content");
-      c.style(child,state);addWidth(attribute(child,"span"),widthHint(child,groupWidth??null));
+      c.style(child,state);addWidth(attribute(child,"span"),widthHint(child,groupWidth));
     }
   };
   for(const n of node.childNodes){
