@@ -10,6 +10,6 @@ export default {
   globalTimeout: 360_000,
   projects: [
     {name: "chrome", use: chrome, metadata: {rangeEditing: "original"}},
-    {name: "chrome-general-ranges", use: chrome, metadata: {rangeEditing: "general-v1"}},
+    {name: "chrome-general-ranges", use: chrome, testMatch: "shared-memory.spec.mjs", metadata: {rangeEditing: "general-v1"}},
   ],
 };
