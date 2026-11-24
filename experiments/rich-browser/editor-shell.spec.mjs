@@ -74,6 +74,37 @@ test("menu bar disabled state follows Rust action state and the pointer toggles 
  expect(await page.evaluate(()=>window.errors)).toEqual([]);
 });
 
+for(const presentation of ["menu bar","context menu"]){
+ test(`${presentation}: Tab reaches the Link URL and Enter applies without a pointer`,async({page})=>{
+  await page.evaluate(presentation=>{
+   const {api}=window.shell;
+   if(presentation==="menu bar")api.mountRichMenuBar(window.editor,{menus:[{id:"format",controls:["link"]}]});
+   else api.mountRichContextMenu(window.editor,{controls:["link"]});
+   window.shell.select("p",0,5);
+  },presentation);
+  if(presentation==="menu bar"){
+   await page.keyboard.press("Alt+F9");
+   await page.keyboard.press("ArrowDown");
+  }else await page.keyboard.press("Shift+F10");
+  const menu=page.getByRole("menu",{name:presentation==="menu bar"?"Format":"Editor actions"});
+  await expect(menu.getByRole("menuitem",{name:"Link formatting"})).toBeFocused();
+  await page.keyboard.press("Enter");
+  const url=menu.getByRole("textbox",{name:"Link URL"});
+  await expect(url).toBeVisible();
+  await page.keyboard.press("Tab");
+  await expect(url).toBeFocused();
+  await page.keyboard.type("https://example.test/keyboard");
+  const before=await page.evaluate(()=>window.shell.depth());
+  await page.keyboard.press("Enter");
+  const link=page.locator('[data-rich-text="p"] a');
+  await expect(link).toHaveText("Hello");
+  await expect(link).toHaveAttribute("href","https://example.test/keyboard");
+  await expect(menu).toBeHidden();
+  expect(await page.evaluate(()=>({depth:window.shell.depth(),active:window.shell.active(),errors:window.errors})))
+   .toEqual({depth:before+1,active:"surface",errors:[]});
+ });
+}
+
 test("Alt+0 opens the modal shortcut help built from the active registry; Escape returns to the text",async({page})=>{
  await page.evaluate(()=>{window.shell.help=window.shell.api.mountRichShortcutHelp(window.editor,{platform:"other"});window.shell.api.mountRichSelectionToolbar(window.editor);window.shell.select("tail",2);});
  await page.keyboard.press("Alt+Digit0");

@@ -159,7 +159,11 @@ export function mountRichMenuBar(host:RichContextUiHost,options:RichMenuBarOptio
    const owner=built.findIndex(menu=>menu.popup.contains(target));if(owner<0)return;
    const menu=built[owner]!,list=items(menu),index=list.indexOf(target);
    if(event.key==="Escape"){event.preventDefault();closeMenu("top");return;}
-   if(event.key==="Tab"){closeMenu("none");return;}
+   if(event.key==="Tab"){
+    // The summary and fields in an open borrowed form need their native tab sequence.
+    if(!target.closest("details[open]"))closeMenu("none");
+    return;
+   }
    // Keys inside a borrowed field form (inputs, selects, its Apply button) keep their own meaning.
    if(index<0)return;
    const go=(item:HTMLElement|undefined)=>{event.preventDefault();item?.focus({preventScroll:true});};
