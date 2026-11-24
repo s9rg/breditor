@@ -46,6 +46,35 @@ test("candidate coverage requires one clean source, complete selected stages and
 
   const manifest=JSON.parse(readFileSync(run.manifest));
   const original=structuredClone(manifest);
+  assert.throws(()=>candidateCoverage(root,[run.manifest],{requireHosted:true}),/runner-context.tsv/);
+
+  manifest.environment={...manifest.environment,platform:"linux",arch:"x64"};
+  saveEvidence(run.manifest,manifest);
+  const contextPath=join(dirname(dirname(run.manifest)),"runner-context.tsv");
+  const runner={
+   format:"1",repository:"s9rg/breditor",workflow:"s9rg/breditor/.github/workflows/candidate-qualification.yml@refs/heads/main",
+   event:"workflow_dispatch",runId:"123",runAttempt:"2",revision:manifest.source.commit,
+   profile:manifest.profile,shard:"none",os:"Linux",arch:"X64",checkout:"success",node:"success",
+   rust:"success",npm:"success",cargo:"success",browsers:"skipped",candidate:"success",
+  };
+  const context=value=>Object.entries(value).map(([key,value])=>key+"\t"+value).join("\n")+"\n";
+  writeFileSync(contextPath,context(runner));
+  const hosted=candidateCoverage(root,[run.manifest],{requireHosted:true}).evidence[0].hosted;
+  assert.deepEqual(hosted,{repository:runner.repository,workflow:runner.workflow,runId:runner.runId,
+   runAttempt:runner.runAttempt,contextSha256:fileEvidence(dirname(contextPath),"runner-context.tsv").sha256});
+  for(const [patch,message] of [
+   [{revision:"0".repeat(40)},/revision differs/],
+   [{profile:"full"},/profile differs/],
+   [{shard:"native"},/shard differs/],
+   [{candidate:"failure"},/candidate did not succeed/],
+   [{workflow:runner.workflow.replace("candidate-qualification.yml","unrelated.yml")},/different workflow/],
+  ]){
+   writeFileSync(contextPath,context({...runner,...patch}));
+   assert.throws(()=>candidateCoverage(root,[run.manifest],{requireHosted:true}),message);
+  }
+  writeFileSync(contextPath,context(runner)+"runAttempt\t3\n");
+  assert.throws(()=>candidateCoverage(root,[run.manifest],{requireHosted:true}),/duplicate hosted runner context fields/);
+  manifest.environment=original.environment;
   manifest.source.commit="0".repeat(40);
   saveEvidence(run.manifest,manifest);
   assert.throws(()=>candidateCoverage(root,[run.manifest]),/Source mismatch/);
