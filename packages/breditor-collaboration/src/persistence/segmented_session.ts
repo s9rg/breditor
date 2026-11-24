@@ -342,7 +342,7 @@ export class SharedSegmentedPersistentSession<P extends SharedSelectionPolicy=Sh
   });
  }
  save():void{this.#live();if(this.#storageChanged)throw generationVersionChange();this.#recordReadEpoch=Object.freeze({});const capture=this.#capture();this.#checkCapture(capture);if(same(this.#saved,capture)&&!this.#attempt&&!this.#pending&&!this.#running&&!this.#failure)return;this.#pending=capture;this.#failure=undefined;this.#notify();this.#start();}
- #start():void{if(this.#running||this.#closed||this.#storageChanged||this.#failure||!this.#attempt&&!this.#pending)return;this.#running=this.#drain().catch(error=>{if(!this.#storageChanged)this.#failed(error);}).finally(()=>{this.#running=undefined;if(!this.#failure)this.#start();});}
+ #start():void{if(this.#running||this.#closed||this.#storageChanged||this.#failure||!this.#attempt&&!this.#pending)return;this.#running=this.#drain().catch(error=>{if(!this.#closed&&!this.#storageChanged)this.#failed(error);}).finally(()=>{this.#running=undefined;if(!this.#failure)this.#start();});}
  async #drain():Promise<void>{while(!this.#closed&&!this.#storageChanged&&(this.#attempt||this.#pending)){
   this.#documentLease.assertLive();this.#reviewLease?.assertLive();
   if(!this.#attempt){const capture=this.#pending!;this.#pending=undefined;if(same(this.#saved,capture))continue;this.#attempt={capture,cut:undefined};}

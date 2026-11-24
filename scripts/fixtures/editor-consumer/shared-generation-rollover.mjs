@@ -208,7 +208,8 @@ async function generationRows(db){
   transaction.onabort=()=>reject(transaction.error);
  });
 }
-async function verifyRetirement(upgrade){
+async function verifyRetirement(scenario){
+ const upgrade=scenario==="upgrade",hashRejected=scenario==="discard-reject";
  const profile=await createSharedProfile();
  const document=seed(JSON.parse(profile.descriptor_json()));
  const database=`generation-retirement-${crypto.randomUUID()}`,writer="101",actor="retired-review",errors=[];
@@ -225,8 +226,8 @@ async function verifyRetirement(upgrade){
  };
  const settle=operation=>Promise.resolve().then(operation).then(()=>null,error=>error?.code??error?.name);
  const digest=SubtleCrypto.prototype.digest,transaction=IDBDatabase.prototype.transaction;
- let release,started,session,restored,db;
- const reached=new Promise(resolve=>{started=resolve;}),held=new Promise(resolve=>{release=resolve;});
+ let release,rejectHash,started,session,restored,db;
+ const reached=new Promise(resolve=>{started=resolve;}),held=new Promise((resolve,reject)=>{release=resolve;rejectHash=reject;});
  let obsoleteAttempts=0,retired=false;
  try{
   session=await SharedSegmentedPersistentSession.open(options);
@@ -258,14 +259,19 @@ async function verifyRetirement(upgrade){
   const retiredAttempt=await settle(()=>session.core.type("Forbidden"));
   check(retiredAttempt===(upgrade?"retired":"disposed"),`The retired owner must refuse mutations, received ${retiredAttempt}`);
   check(await ownsBoth()===2,"Both actual leases must be held while hashing is pending");
-  release();
+  if(hashRejected)rejectHash(new DOMException("Controlled digest rejection","OperationError"));
+  else release();
   if(upgrade){
    check(await pending==="segmented_versionchange","Late hashing must preserve the database upgrade diagnostic");
    check(await settle(()=>session.retry())==="segmented_versionchange","Retry must retain the version-change code");
    check(JSON.stringify(session.exportRecovery())===JSON.stringify(unsaved),"Both complete unsaved histories must remain readable");
    check(await ownsBoth()===2,"Retired history must keep both leases until discard");
    await session.discardAndClose();
-  }else{await pending;db=await generationDatabase(database,1);}
+  }else{
+   await pending;
+   check(session.state().status==="closed"&&session.state().error===null,"Discard must keep the terminal state free of late save errors");
+   db=await generationDatabase(database,1);
+  }
   check(obsoleteAttempts===0,`A retired save attempted ${obsoleteAttempts} obsolete writes`);
   check(JSON.stringify(await generationRows(db))===before,"Retirement must preserve every durable head and file byte");
   check(await ownsBoth()===0,"Discard must release both actual leases");
@@ -279,7 +285,7 @@ async function verifyRetirement(upgrade){
    check(restored.core.redo()&&restored.core.documentJson()===edited,"The uncommitted edit must Redo exactly after restore");
    await restored.close();
   }
-  return {passed:true,upgrade,obsoleteAttempts,unchangedRows:true,exactReadAndRestore:upgrade};
+  return {passed:true,upgrade,hashRejected,obsoleteAttempts,unchangedRows:true,exactReadAndRestore:upgrade};
  }finally{
   SubtleCrypto.prototype.digest=digest;IDBDatabase.prototype.transaction=transaction;
   release();db?.close();
@@ -288,6 +294,6 @@ async function verifyRetirement(upgrade){
  }
 }
 const scenario=new URLSearchParams(location.search).get("retirement");
-const result=await (scenario===null?verify():verifyRetirement(scenario==="upgrade"))
+const result=await (scenario===null?verify():verifyRetirement(scenario))
  .catch(error=>({passed:false,reason:String(error).slice(0,250)}));
 document.querySelector("#result").textContent=JSON.stringify(result);
