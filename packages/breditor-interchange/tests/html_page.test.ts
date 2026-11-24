@@ -1,5 +1,5 @@
 import {describe,expect,it} from "vitest";
-import {createRichInterchange,exportHtmlPage,type InterchangeOwner} from "../src/index.js";
+import {createRichInterchange,exportHtmlPage,importHtmlPage,type InterchangeOwner} from "../src/index.js";
 
 function fixture(){
   // Writer staging. The browser suite separately proves actual cold native restore.
@@ -45,5 +45,41 @@ describe("complete HTML page export",()=>{
     expect(absent.losses).toEqual([{code:"image-reference",count:1,effect:"loss"}]);
     const published=exportHtmlPage(t.owner,admitted.value.structuredJson,{title:"Title"},{exportImage:binding=>binding.asset==="owned"?"https://example.test/a.png":undefined});
     expect(published.ok&&published.value).toContain('<img src="https://example.test/a.png" alt="Figure">');
+  });
+});
+
+
+describe("explicit full HTML page import",()=>{
+  it("reads supported head fields separately and preserves the admitted body CSS",()=>{
+    const {owner}=fixture();
+    const page=importHtmlPage(owner,'<!doctype html><html lang="pt-br" dir="RTL"><head><meta charset="utf-8">'+
+      '<title>News &amp; events 📝</title><meta name="description" content="First"><meta name="description" content="Second">'+
+      '<base href="https://example.test/"><meta http-equiv="refresh" content="0"><link rel="stylesheet" href="/outside.css">'+
+      '<style>p{font-size:20px}</style></head><body><p>Body</p></body></html>');
+    if(!page.ok)throw Error(page.error);
+    expect(page.value.metadata).toEqual({title:"News & events 📝",description:"First",language:"pt-BR",direction:"rtl"});
+    expect(page.value.body.kind).toBe("flow");
+    expect(page.losses).toEqual([{code:"removed-content",effect:"loss",count:3},{code:"unsupported-style",effect:"loss",count:1}]);
+    const paragraph=JSON.parse(page.value.body.structuredJson).document.root.children[0];
+    expect(paragraph.properties["breditor/block-direction"]).toBeUndefined();
+    expect(paragraph.children[0].formats).toEqual([{type:"breditor-inline/text-size",properties:{"breditor-inline/pixels":20}}]);
+  });
+  it("rejects oversized metadata before native admission and reports invalid optional values",()=>{
+    const {owner}=fixture();
+    const oversized='<title>'+("点").repeat(342)+'</title><p>Body</p>';
+    expect(importHtmlPage({...owner,admitClipboardRoot:()=>{throw Error("native was called");}},oversized)).toEqual({ok:false,error:"resource-limit",losses:[]});
+    expect(importHtmlPage(owner,'<html lang="x-local" dir="down"><body><p>Body</p></body></html>')).toMatchObject({
+      ok:true,value:{metadata:{title:""}},losses:[{code:"unsupported-attribute",count:2,effect:"loss"}],
+    });
+  });
+  it("keeps ordinary fragment import's inherited body alignment and separate notice behavior",()=>{
+    const {owner,adapter}=fixture(),source='<html dir="rtl"><head><base href="https://example.test/"></head><body><p>Body</p></body></html>';
+    const page=importHtmlPage(owner,source),fragment=adapter.importHtml(source);
+    if(!page.ok||!fragment.ok)throw Error("Expected both bounded HTML conversion modes");
+    const paragraph=(result:{structuredJson:string})=>JSON.parse(result.structuredJson).document.root.children[0];
+    expect(paragraph(page.value.body).properties["breditor/block-direction"]).toBeUndefined();
+    expect(paragraph(fragment.value).properties["breditor/block-direction"]).toBe(2);
+    expect(fragment.losses).toEqual([]);
+    expect(page.losses).toEqual([{code:"removed-content",count:1,effect:"loss"}]);
   });
 });
