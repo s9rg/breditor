@@ -91,7 +91,9 @@
             "metadata-work",
             "selected-room-storage",
             "generation-component-reconstruction-source",
-            "generation-component-reconstruction-installed"
+            "generation-component-reconstruction-installed",
+            "generation-native-reconstruction-source",
+            "generation-native-reconstruction-installed"
           ]
         }
       }
