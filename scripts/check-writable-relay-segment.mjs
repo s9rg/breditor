@@ -13,7 +13,7 @@ import {pixel, proposalAsset, proposalPixel, secondAsset, secondPixel, recovered
 import {lostReplyUpload, unavailableAsset, unavailableUpload, UnavailableUploadImage} from './fixtures/physical-recovery-control/unavailable-upload.mjs';
 import {assertOlderAuthorityRefused, startSegmentHandoverHost} from './fixtures/relay-segment-handover-host.mjs';
 import {verifyContinuedRasterServing} from './fixtures/relay-continued-raster-serving.mjs';
-import {advanceRelocatedHistories, readNativeHistoryCapacity, verifyRelocatedMaintenanceRetries} from './fixtures/relay-segment-maintenance.mjs';
+import {advanceRelocatedHistories, readStorageCostCut, storageCost, verifyRelocatedMaintenanceRetries} from './fixtures/relay-segment-maintenance.mjs';
 import {captureParticipant, checkRecoveredAlternate, checkRetainedSelected, proposalAlias, reopenParticipant, withWrongReviewReceipt} from './fixtures/relay-segment-participant.mjs';
 import {captureClientRaster, resumeClientRaster} from './fixtures/relay-segment-client-raster.mjs';
 import {recoveredText, reviewRecoveredText} from './fixtures/relay-segment-recovered-text.mjs';
@@ -955,6 +955,14 @@ async function run(mode, {distribution, rich}, executable, parent, journalKind, 
     }
     const accepted = session.core.documentJson();
     assert.equal(session.core.undo(), true);
+    if (maintenance) {
+      await document.flush();
+      const {costs} = maintenance.state;
+      const undo = storageCost('documentUndo', costs.at(-1).after, await readStorageCostCut(host, token));
+      assert.equal(undo.delta.walRecords, 1);
+      assert.ok(undo.delta.retainedWalBytes > 0);
+      costs.push(undo);
+    }
     assert.equal(session.core.undoReview().kind, 'committed');
     await document.flush();
     await review.flush();
@@ -963,7 +971,12 @@ async function run(mode, {distribution, rich}, executable, parent, journalKind, 
       assert.ok(maintenance.sockets.every(socket => socket.readyState === Socket.OPEN));
       assert.equal(document.state().pending, false);
       assert.equal(review.state().pending, false);
-      const current = await readNativeHistoryCapacity(host, token);
+      const cut = await readStorageCostCut(host, token), current = cut.history;
+      const {costs} = maintenance.state;
+      const undo = storageCost('reviewUndo', costs.at(-1).after, cut);
+      assert.equal(undo.delta.walRecords, 1);
+      assert.ok(undo.delta.retainedWalBytes > 0);
+      costs.push(undo);
       const previous = maintenance.state.nativeAfterMaintenance;
       assert.equal(current.document.activeEntries.used, previous.document.activeEntries.used + 1);
       assert.equal(current.review.activeEvents.used, previous.review.activeEvents.used + 1);
@@ -1020,6 +1033,7 @@ async function run(mode, {distribution, rich}, executable, parent, journalKind, 
       await queued.arrayBuffer();
       assert.equal((await portableUploads.get(unavailableAsset)).status, 'pending');
     }
+    const queuedRasterCut = maintenance ? await readStorageCostCut(host, token) : undefined;
     const clientUploadReceipts = await resumeClientRaster(
       richApi, api, parent, address, origin, token, uploads[0], portableUploads, restoredRoot,
     );
@@ -1029,6 +1043,20 @@ async function run(mode, {distribution, rich}, executable, parent, journalKind, 
       assert.deepEqual(Buffer.from(await uploaded.arrayBuffer()), unavailableUpload);
       relocationEvidence.clientOnlyUploadDeferredThroughColdRestart = true;
       relocationEvidence.selectedQueueRasterStagedThroughColdRestart = true;
+    }
+    if (maintenance) {
+      const uploaded = await readStorageCostCut(host, token);
+      const queue = storageCost('resumeClientUploadQueue', queuedRasterCut, uploaded);
+      assert.equal(queue.delta.walRecords, 0);
+      assert.equal(queue.delta.rasters, 1);
+      assert.equal(queue.delta.rasterBytes, unavailableUpload.length);
+      assert.deepEqual(uploaded.history, queuedRasterCut.history);
+      const retry = await fetch(deferredUrl, {method: 'PUT', headers: {...headers, 'Content-Type': 'image/png'}, body: unavailableUpload});
+      assert.equal(retry.status, 200);
+      assert.equal((await retry.json()).duplicate, true);
+      const repeated = await readStorageCostCut(host, token);
+      assert.deepEqual(repeated, uploaded);
+      maintenance.state.costs.push(queue, storageCost('retryExactRaster', uploaded, repeated));
     }
     portableUploads = undefined;
     const cancelledUploadReceipts = await resumeClientRaster(

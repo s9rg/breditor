@@ -40,6 +40,37 @@ export async function readNativeHistoryCapacity(host, token) {
   return report;
 }
 
+/** Bracket the native read with durable capacity reads to bind both counters to one fixture cut. */
+export async function readStorageCostCut(host, token) {
+  const storage = await accepted(host, token, capacity);
+  const history = await readNativeHistoryCapacity(host, token);
+  assert.deepEqual(await accepted(host, token, capacity), storage);
+  return {storage, history};
+}
+
+export function storageCost(operation, before, after) {
+  const from = before.storage, to = after.storage;
+  const walRecords = Number(BigInt(to.log.nextSequence) - BigInt(from.log.nextSequence));
+  assert.ok(Number.isSafeInteger(walRecords) && walRecords >= 0);
+  const native = Object.fromEntries(['document', 'review', 'suggestionEffect'].map(name => {
+    const a = before.history[name], b = after.history[name];
+    return [name, {
+      checkpointBytes: b.checkpointBytes.used - a.checkpointBytes.used,
+      activeBytes: b.activeBytes.used - a.activeBytes.used,
+      generationFiles: b.generationFiles.used - a.generationFiles.used,
+    }];
+  }));
+  return {operation, before, after, delta: {
+    walRecords,
+    retainedWalBytes: from.log.retained.framedBytesRemaining - to.log.retained.framedBytesRemaining,
+    activeWalBytes: from.log.active.framedBytesRemaining - to.log.active.framedBytesRemaining,
+    walSlots: from.log.rotation.continuationFilesRemaining - to.log.rotation.continuationFilesRemaining,
+    rasters: from.rasters.assetsRemaining - to.rasters.assetsRemaining,
+    rasterBytes: from.rasters.payloadBytesRemaining - to.rasters.payloadBytesRemaining,
+    native,
+  }};
+}
+
 function advancedLane(before, after) {
   assert.equal(before.family, 'segmented-v1');
   assert.equal(after.family, 'continued-v2');
@@ -71,8 +102,7 @@ async function selectContinuation(host, token, intent) {
 }
 
 export async function advanceRelocatedHistories(host, token, readerToken) {
-  const before = await accepted(host, token, capacity);
-  const beforeNative = await readNativeHistoryCapacity(host, token);
+  const {storage: before, history: beforeNative} = await readStorageCostCut(host, token);
   const intents = [
     native('document', {kind: 'continueDocument', next: 'portable-doc-two'}),
     native('review', {kind: 'continueReview', next: 'portable-review-two'}),
@@ -97,6 +127,7 @@ export async function advanceRelocatedHistories(host, token, readerToken) {
   ];
   const receipts = [];
   const selections = [];
+  const costs = [];
   const staleReview = await selectContinuation(host, token, intents[1]);
   assert.deepEqual(staleReview.capacityBefore, beforeNative);
   let expectedNative = beforeNative;
@@ -130,6 +161,8 @@ export async function advanceRelocatedHistories(host, token, readerToken) {
     const afterAppend = await accepted(host, token, capacity);
     assert.equal(afterAppend.log.active.framedBytesRemaining,
       beforeAppend.log.active.framedBytesRemaining - plan.selection.append.framedBytes);
+    costs.push(storageCost(intent.boundary.kind,
+      {storage: beforeAppend, history: expectedNative}, {storage: afterAppend, history: observedNative}));
     if (index === 0) {
       assert.deepEqual(await host.maintenance('owner', token, apply(staleReview.selection)), {
         kind: 'maintenance', error: 'relay contract: native history selection is stale',
@@ -178,6 +211,8 @@ export async function advanceRelocatedHistories(host, token, readerToken) {
   assert.equal(rotated.log.nextSequence, continued.log.nextSequence);
   assert.deepEqual(rotated.log.terminalDigest, continued.log.terminalDigest);
   assert.equal(rotated.log.rotation.continuationFilesRemaining, continued.log.rotation.continuationFilesRemaining - 1);
+  costs.push(storageCost('rotateWal',
+    {storage: continued, history: expectedNative}, {storage: rotated, history: expectedNative}));
   assert.deepEqual(await host.maintenance('reader', readerToken, checkpoint), denied);
   assert.deepEqual(await host.maintenance('reader', readerToken, pack), denied);
   const selected = await accepted(host, token, checkpoint);
@@ -192,7 +227,7 @@ export async function advanceRelocatedHistories(host, token, readerToken) {
   assert.deepEqual(archived, {generation: pack.generation, storedBytes: packed.storedBytes, duplicate: false});
   assert.deepEqual(await accepted(host, token, capacity), rotated);
   assert.deepEqual(await readNativeHistoryCapacity(host, token), expectedNative);
-  return {intents, selections, receipts, rotation, packed, archived,
+  return {intents, selections, receipts, rotation, packed, archived, costs,
     nativeAfterMaintenance: expectedNative};
 }
 
@@ -239,5 +274,6 @@ export async function verifyRelocatedMaintenanceRetries(host, token, state, nati
     relocatedSealedWalArchives: 1,
     sealedWalColdRetries: 2,
     walPhysicalBytesReclaimed: state.packed.originalBytes - state.packed.storedBytes,
+    storageOperationCosts: state.costs,
   };
 }
