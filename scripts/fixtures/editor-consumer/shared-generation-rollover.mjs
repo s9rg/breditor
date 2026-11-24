@@ -208,6 +208,79 @@ async function generationRows(db,stores=["generation_heads","generation_files"])
   transaction.onabort=()=>reject(transaction.error);
  });
 }
+async function verifyIndependentHeadAdmission(){
+ const profile=await createSharedProfile(),document=seed(JSON.parse(profile.descriptor_json()));
+ const key=["room","101"],database=`independent-head-admission-${crypto.randomUUID()}`,actor="independent-head-comments";
+ const Session=SharedIndependentHistoryPersistentSession;
+ let owner,db,raceDb,creates=0,replays=0;
+ const options={database,room:key[0],writer:key[1],richLanguage:1,history:"explicit",rangeEditing:"original",selectionEditing:"original",searchHistory:null,reviewedHistory:null,
+  readOnly:false,review:{actor,principal:"alice",access:"comment"},
+  documentHistory:{kind:"segmented-v1",initialGenerations:{root:"root",active:"one"},restoreSegmented:checkpoint=>{replays++;return restoreSharedSegmentedEditor(profile,key[0],checkpoint);}},
+  reviewHistory:{kind:"segmented-v1",initialGenerations:{root:"root",active:"one"}},
+  create:()=>{creates++;return profile.create(document,key[1]);},
+ };
+ const stores=["history_heads","history_files"];
+ const rows=database=>generationRows(database,stores);
+ const ownsBoth=async()=>{
+  const {held}=await navigator.locks.query(),names=new Set(held.map(lock=>lock.name));
+  return [`breditor:shared-writer:${JSON.stringify(key)}`,`breditor:review-writer:${JSON.stringify([key[0],actor])}`].filter(name=>names.has(name)).length;
+ };
+ const put=(database,value)=>new Promise((resolve,reject)=>{
+  const tx=database.transaction("history_heads","readwrite");tx.objectStore("history_heads").put(value,key);
+  tx.oncomplete=()=>resolve();tx.onabort=()=>reject(tx.error);
+ });
+ const refuses=async operation=>{try{const opened=await operation();await opened.discardAndClose();return null;}catch(error){return error.code??error.name;}};
+ try{
+  owner=await Session.open(options);
+  check(!owner.recovered&&creates===1&&await ownsBoth()===2,"A genuinely absent key must create a native owner holding both real leases");
+  owner.core.select(range("intro",0));
+  check(owner.core.type("Independent retained "),"An exact independent document must commit");
+  const anchorJson=owner.core.captureReviewAnchor({kind:"document"});
+  check(owner.core.dispatchReview({kind:"create_thread",data:{anchorJson,body:"Independent retained comment"}}).kind==="committed","The independent review must commit");
+  await owner.sealDocumentGeneration("two");
+  const exact=owner.exportRecovery();await owner.close();owner=undefined;
+  db=await generationDatabase(database,1);
+  const original=await rows(db),[[, [head]]]=original;
+  await put(db,undefined);
+  const occupied=await rows(db),[[keys,values]]=occupied;
+  check(JSON.stringify(keys)===JSON.stringify([key])&&values.length===1&&values[0]===undefined,"The key must contain an actual structured-cloned undefined value");
+  const outcomes=[];
+  for(const attempt of [()=>Session.open(options),()=>Session.restoreRecovery(options,exact,"host-reacquired")]){
+   outcomes.push(await refuses(attempt));
+   check(await ownsBoth()===0,"Malformed-head refusal must release both writer leases");
+   check(JSON.stringify(await rows(db))===JSON.stringify(occupied),"Malformed-head refusal must preserve exact head and both lanes' files");
+  }
+  check(outcomes.every(code=>code==="independent_history_storage")&&creates===1&&replays===0,
+   `Occupied malformed heads must refuse before native creation or replay, got ${outcomes.join("/")} and ${creates-1}/${replays} factory calls`);
+  await put(db,head);
+  check(JSON.stringify(await rows(db))===JSON.stringify(original),"The exact original cut must remain recoverable");
+  owner=await Session.open(options);
+  check(owner.recovered&&JSON.stringify(owner.exportRecovery())===JSON.stringify(exact),"A cold reopen must preserve both independent histories byte-for-byte");
+  check(owner.core.undo()&&owner.core.undoReview().kind==="committed","Both recovered lanes must remain reversible");
+  await owner.close();owner=undefined;
+
+  const raceDatabase=database+"-race";
+  const add=IDBObjectStore.prototype.add;
+  let race,fileWriteAttempts=0;
+  try{
+   IDBObjectStore.prototype.add=function(...args){
+    if(this.name==="history_files"&&this.transaction.db.name===raceDatabase)fileWriteAttempts++;
+    return add.apply(this,args);
+   };
+   race=await refuses(()=>Session.open({...options,database:raceDatabase,create:async()=>{
+    raceDb=await generationDatabase(raceDatabase,1);
+    await put(raceDb,undefined);
+    return options.create();
+   }}));
+  }finally{IDBObjectStore.prototype.add=add;}
+  check(raceDb&&race==="independent_history_storage","The insert-only path must refuse an occupied head created after the empty read");
+  const [[raceKeys,raceValues],[files]]=await rows(raceDb);
+  check(JSON.stringify(raceKeys)===JSON.stringify([key])&&raceValues.length===1&&raceValues[0]===undefined&&files.length===0&&fileWriteAttempts===0,
+   "The concurrent malformed row must survive and refuse before issuing any immutable file writes");
+  check(await ownsBoth()===0,"The competing insert refusal must release both leases");
+  return {passed:true,malformedHeadRefusals:2,insertOnlyRaceRefusal:true,exactRecoveredLanes:2};
+ }finally{db?.close();raceDb?.close();await owner?.discardAndClose();profile.free();}
+}
 async function verifyIndependentUpgrade(rejectDigest){
  const profile=await createSharedProfile(),document=seed(JSON.parse(profile.descriptor_json()));
  const database=`independent-history-upgrade-${crypto.randomUUID()}`,writer="101",actor="upgrade-comments",errors=[];
@@ -443,7 +516,7 @@ async function verifyRetirement(scenario){
  }
 }
 const query=new URLSearchParams(location.search),scenario=query.get("retirement");
-const result=await (query.has("independentUpgrade")?verifyIndependentUpgrade(query.get("independentUpgrade")==="rejected"):
+const result=await (query.has("independentHead")?verifyIndependentHeadAdmission():query.has("independentUpgrade")?verifyIndependentUpgrade(query.get("independentUpgrade")==="rejected"):
  query.has("headAdmission")?verifyHeadAdmission():scenario===null?verify():verifyRetirement(scenario))
  .catch(error=>({passed:false,reason:String(error).slice(0,250)}));
 document.querySelector("#result").textContent=JSON.stringify(result);

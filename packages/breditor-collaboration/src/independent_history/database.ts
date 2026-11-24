@@ -61,9 +61,14 @@ export async function readPairedHistoryCut<Head extends PairedHead>(
 ):Promise<(IndependentHistoryCut&{documentCheckpoint:string;reviewCheckpoint:string;record:Head})|null>{
  const {names:[filesName,headsName],readHead}=store;
  const stored=await new Promise<IndependentHistoryCut|null>((resolve,reject)=>{
-  const tx=db.transaction([filesName,headsName],'readonly'),request=tx.objectStore(headsName).get([...key]);let result:{head:string;files:IndependentHistoryFile[]}|null=null,failure:unknown;
+  const tx=db.transaction([filesName,headsName],'readonly'),request=tx.objectStore(headsName).getAll([...key],1);let result:{head:string;files:IndependentHistoryFile[]}|null=null,failure:unknown;
   const abort=(error:unknown)=>{failure=error;tx.abort();};
-  request.onsuccess=()=>{try{if(request.result===undefined)return;const head=readHead(request.result);if(head.identity.native.room!==key[0]||head.identity.native.writer!==key[1])throw fail('Stored paired head belongs to another writer');const files:IndependentHistoryFile[]=[];result={head:request.result,files};for(const reference of references(head)){const file=tx.objectStore(filesName).get([...key,reference.lane,reference.generation]);file.onsuccess=()=>{try{if(typeof file.result!=='string')throw fail('Referenced native history file is absent');const decoded=JSON.parse(file.result) as IndependentHistoryFile;if(!decoded||Object.keys(decoded).sort().join(',')!=='generation,json,kind,lane,sha256'||JSON.stringify(decoded)!==file.result||decoded.lane!==reference.lane||decoded.generation!==reference.generation||decoded.sha256!==reference.sha256||decoded.kind!==reference.kind||typeof decoded.json!=='string')throw fail('Referenced native file identity differs');files.push(decoded);}catch(error){abort(error);}};}}catch(error){abort(error);}};
+  request.onsuccess=()=>{try{
+   if(!request.result.length)return;
+   const encoded=request.result[0];
+   if(typeof encoded!=='string')throw fail('Unknown stored paired head');
+   const head=readHead(encoded);if(head.identity.native.room!==key[0]||head.identity.native.writer!==key[1])throw fail('Stored paired head belongs to another writer');const files:IndependentHistoryFile[]=[];result={head:encoded,files};for(const reference of references(head)){const file=tx.objectStore(filesName).get([...key,reference.lane,reference.generation]);file.onsuccess=()=>{try{if(typeof file.result!=='string')throw fail('Referenced native history file is absent');const decoded=JSON.parse(file.result) as IndependentHistoryFile;if(!decoded||Object.keys(decoded).sort().join(',')!=='generation,json,kind,lane,sha256'||JSON.stringify(decoded)!==file.result||decoded.lane!==reference.lane||decoded.generation!==reference.generation||decoded.sha256!==reference.sha256||decoded.kind!==reference.kind||typeof decoded.json!=='string')throw fail('Referenced native file identity differs');files.push(decoded);}catch(error){abort(error);}};}
+  }catch(error){abort(error);}};
   settleOwnedTransaction(tx,()=>result,()=>failure??tx.error??fail('Paired-history read aborted'),resolve,reject);
  });
  if(!stored)return null;const record=readHead(stored.head),documentCheckpoint=store.join(record,'document',stored.files),reviewCheckpoint=store.join(record,'review',stored.files),checked=await store.makeCut(documentCheckpoint,reviewCheckpoint,record);
@@ -88,11 +93,12 @@ export function writePairedHistoryCut(
    active.oncomplete=()=>{settled();resolve();};active.onabort=()=>{settled();reject(failure??active.error??fail('Paired-history commit aborted'));};
    checkCurrent?.();if(signal?.aborted||lifetimeSignal?.aborted||failure)throw failure??aborted();
    const write=()=>{
-    const heads=active.objectStore(headsName),files=active.objectStore(filesName),request=heads.get([...key]);
+    const heads=active.objectStore(headsName),files=active.objectStore(filesName),request=heads.getAll([...key],1);
     request.onsuccess=()=>{
      try{
       checkCurrent?.();
-      const actual=request.result===undefined?null:request.result,already=actual===cut.head;
+      const actual=request.result.length?request.result[0]:null,already=actual===cut.head;
+      if(request.result.length&&typeof actual!=='string')throw fail('Unknown stored paired head');
       if(!already&&actual!==expected)throw fail('Paired head changed since its last acknowledgement');
       let left=cut.files.length;
       const publish=()=>{
