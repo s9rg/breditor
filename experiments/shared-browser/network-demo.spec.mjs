@@ -265,7 +265,12 @@ test("the first-party pilot opens independent participants and verifies an offli
  const expectedHash=createHash("sha256").update(downloadBytes).digest("hex");
  await expect(page.getByLabel("Downloaded checkpoint digest")).toContainText(expectedHash);
  const restore=page.getByLabel("Document checkpoint");
- await page.context().setOffline(true);
+ // WebKit's context-wide offline emulation also refuses local fixture file reads.
+ // The relay is already disconnected. Block HTTP requests while reading the actual download.
+ const recoveryRequests=[];
+ const externalHttp=/^https?:\/\//;
+ const blockRecoveryRequest=route=>{recoveryRequests.push(route.request().url());return route.abort();};
+ await page.route(externalHttp,blockRecoveryRequest);
  await restore.setInputFiles(await file.path());
  await expect(page.locator("#pilot-verification")).toContainText(`Exact read-only replay verified. Undo 1. Redo 0. SHA-256 ${expectedHash}`);
  const recovered=page.getByRole("region",{name:"Recovered document",exact:true});
@@ -284,7 +289,8 @@ test("the first-party pilot opens independent participants and verifies an offli
  await expect(page.locator("#pilot-verification")).toContainText("could not be recovered");
  await expect(recovered).toBeHidden();
 
- await page.context().setOffline(false);
+ await page.unroute(externalHttp,blockRecoveryRequest);
+ expect(recoveryRequests).toEqual([]);
  await page.getByRole("button",{name:"Reconnect",exact:true}).click();
  await ready(page);
  await expect(bob.locator('#b [data-rich-text="pilot-notes"]')).toHaveText("Pilot decision. Add the decisions and results that the next reviewer needs.");
