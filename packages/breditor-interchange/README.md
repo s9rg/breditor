@@ -400,6 +400,53 @@ offline, repeats those checks, verifies consumer types and checks production
 bundle parser separation. These functional checks do not qualify OS clipboard
 applications, broad browser reliability or release readiness.
 
+## XML export (`@breditor/interchange/xml`)
+
+Pass the native editor owner and its clipboard JSON to `exportXml`. After
+opening a saved checkpoint, select the whole document with `selectDocument()`
+and read the transfer with `copyDocument()`. The local transfer exposes
+`structuredJson`, and the shared transfer exposes `richJson`. The owner
+validates the record before the exporter reads its content.
+
+```ts
+import {exportXml} from "@breditor/interchange/xml";
+
+core.selectDocument();
+const clipboard = core.copyDocument();
+if (clipboard) {
+  const output = exportXml(core, clipboard.structuredJson);
+  if (output.ok) {
+    const xml = new Blob([output.value], {type: "application/xml;charset=utf-8"});
+    // Save or publish xml from the host application.
+  }
+}
+```
+
+Version 1 uses the XML namespace `urn:breditor:interchange:xml:1`. The schema
+preserves node and text order, inline formats, and typed properties, including
+admitted image asset and generation identifiers.
+
+Whole-document copy produces Breditor's normalized clipboard projection. Its
+root uses the neutral clipboard document ID and its tables represent the
+current semantic geometry. The native checkpoint remains the format for the
+exact document identity, schema binding, and history.
+
+- `document` has `version="1"`, the clipboard `kind` of `text`, `flow`, or
+  `grid`, and one root `element`.
+- `element` has a native `type`, an optional `entity-id`, zero or more
+  `property` children, and then its ordered `element` or `run` children.
+- `run` contains its `format` children followed by one `value` element
+  containing the Unicode text. Each `format` has a native `type` and its
+  `property` children.
+- `property` has a native `name` and contains one JSON value as XML text.
+  Parse it as JSON to recover the original type.
+
+The exporter writes UTF-8 XML 1.0 with escaped content. Repeated exports of the
+same admitted record have identical bytes. The host resolves image asset bytes
+and applies its publication policy. Text scalars unavailable in XML 1.0 become
+replacement characters and are counted in `removed-content`. A source over
+1 MiB or an export over 4 MiB returns `resource-limit`.
+
 ## DOCX export (`@breditor/interchange/docx`)
 
 A separate entry point exports a native rich document (an editor view's

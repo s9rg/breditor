@@ -385,10 +385,10 @@
     },
     {
       "id":"document-conversion","area":"Extended parity","status":"partial",
-      "summary":"Word, PDF and other office document conversion",
-      "current":"A dependency-free deterministic DOCX exporter (@breditor/interchange/docx, STORE-only zip, fixed timestamps) maps headings, inline formats, links, lists incl. V4 numbering, quotes, code, rules, page breaks, tables with merges and captions, host-supplied images and bookmarks, reporting every unrepresentable feature as a loss. DOCX import, PDF/ODT and opening in Word/LibreOffice are not qualified.",
+      "summary":"Word, XML, PDF and other document conversion",
+      "current":"A dependency-free deterministic DOCX exporter (@breditor/interchange/docx, STORE-only zip, fixed timestamps) maps headings, inline formats, links, lists incl. V4 numbering, quotes, code, rules, page breaks, tables with merges and captions, host-supplied images and bookmarks, reporting every unrepresentable feature as a loss. The XML v1 exporter (@breditor/interchange/xml) serializes the native clipboard projection with ordered nodes, typed properties and asset bindings. Installed local and shared SDK checks parse exact XML from restored checkpoints. DOCX import, PDF/ODT and opening in Word/LibreOffice remain qualification gaps.",
       "acceptance":"Qualify self-hostable conversion adapters, including a versioned XML export. Set fidelity targets, preserve document and asset bindings and report unsupported content.",
-      "evidence":["packages/breditor-collaboration/src/index.ts","docs/DOCUMENT_CONVERSION.md","packages/breditor-interchange/src/docx.ts"],
+      "evidence":["packages/breditor-collaboration/src/index.ts","docs/DOCUMENT_CONVERSION.md","packages/breditor-interchange/src/docx.ts","packages/breditor-interchange/src/xml.ts","scripts/probe-browser-interchange.mjs"],
       "sources":["tiptap-catalog","ckeditor-overview","ckeditor-license","tiptap-conversion"]
     },
     {
