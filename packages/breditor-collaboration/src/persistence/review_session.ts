@@ -240,8 +240,19 @@ export class SharedReviewPersistentSession<P extends SharedSelectionPolicy=Share
   while(this.#pending&&!this.#closed&&!this.#storageChanged){
    this.#documentLease.assertLive();this.#reviewLease.assertLive();
    const next=this.#pending;this.#pending=undefined;
-   try{if(next.format==="breditor/shared-search-review-checkpoint-record")await writeSearchReviewRecord(this.#db,[this.#options.room,this.#options.writer],next);else if(next.format==="breditor/shared-reviewed-review-checkpoint-record")await writeReviewedReviewRecord(this.#db,[this.#options.room,this.#options.writer],next);else if(next.format==="breditor/shared-review-observer-checkpoint-record")await writeReviewObserverRecord(this.#db,[this.#options.room,this.#options.writer],next);else if(next.format==="breditor/shared-review-relay-checkpoint-record")await writeReviewRelayRecord(this.#db,[this.#options.room,this.#options.writer],next);else await writeReviewRecord(this.#db,[this.#options.room,this.#options.writer],next);}
-   catch(error){if(!this.#closed)this.#pending??=next;throw error;}
+   const key=[this.#options.room,this.#options.writer] as const;
+   const insertOnly=!this.recovered&&this.#saved===undefined;
+   try{
+    if(next.format==="breditor/shared-search-review-checkpoint-record")await writeSearchReviewRecord(this.#db,key,next,insertOnly);
+    else if(next.format==="breditor/shared-reviewed-review-checkpoint-record")await writeReviewedReviewRecord(this.#db,key,next,insertOnly);
+    else if(next.format==="breditor/shared-review-observer-checkpoint-record")await writeReviewObserverRecord(this.#db,key,next,insertOnly);
+    else if(next.format==="breditor/shared-review-relay-checkpoint-record")await writeReviewRelayRecord(this.#db,key,next,insertOnly);
+    else await writeReviewRecord(this.#db,key,next,insertOnly);
+   }catch(error){
+    if(!this.#closed)this.#pending??=next;
+    if(insertOnly&&error instanceof Error&&error.name==="ConstraintError")throw new SharedEditorError("session_destination_exists","A journal was created while the shared session was opening");
+    throw error;
+   }
    // Closing waits for this write before releasing the leases. It does not need a new cached copy.
    if(this.#closed)return;
    this.#saved=JSON.stringify(next);

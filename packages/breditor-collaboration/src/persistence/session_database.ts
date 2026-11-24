@@ -76,22 +76,22 @@ function readStoredSessionCheckpoint(db:IDBDatabase,key:readonly[string,string],
  });
 }
 /** Commit only a closed document-family record after validating its declared storage identity. */
-export function writeDocumentSessionCheckpoint(db:IDBDatabase,key:readonly[string,string],value:string,history:SharedHistoryPolicy,language:1|2|3|4=1):Promise<void>{
+export function writeDocumentSessionCheckpoint(db:IDBDatabase,key:readonly[string,string],value:string,history:SharedHistoryPolicy,language:1|2|3|4=1,insertOnly=false):Promise<void>{
  try{checkDocumentCheckpoint(value,key[0],key[1],language,history);}catch(error){return Promise.reject(error);}
  return new Promise((resolve,reject)=>{
   const tx=db.transaction("journals","readwrite");tx.oncomplete=()=>resolve();tx.onabort=()=>reject(tx.error??new SharedEditorError("session_write","Shared document journal transaction did not complete"));
-  try{tx.objectStore("journals").put({format:"breditor/shared-document-checkpoint-record",formatVersion:1,history,richLanguage:language,checkpointJson:value},[...key]);}catch(error){tx.abort();reject(error);}
+  try{tx.objectStore("journals")[insertOnly?"add":"put"]({format:"breditor/shared-document-checkpoint-record",formatVersion:1,history,richLanguage:language,checkpointJson:value},[...key]);}catch(error){tx.abort();reject(error);}
  });
 }
 /** Explicit sessions keep byte-identical legacy values; grouping uses a declared storage discriminator. */
-export function writeSessionCheckpoint(db:IDBDatabase,key:readonly[string,string],value:string,history:SharedHistoryPolicy,rangeEditing:SharedRangePolicy="original",language:1|2|3|4=1):Promise<void>{
+export function writeSessionCheckpoint(db:IDBDatabase,key:readonly[string,string],value:string,history:SharedHistoryPolicy,rangeEditing:SharedRangePolicy="original",language:1|2|3|4=1,insertOnly=false):Promise<void>{
  if(rangeEditing!=="original"&&rangeEditing!=="general-v1")return Promise.reject(new SharedEditorError("session_range","Unknown range policy"));
- if(rangeEditing==="original"&&history==="explicit")return writeCheckpoint(db,key,value);
+ if(rangeEditing==="original"&&history==="explicit")return writeCheckpoint(db,key,value,insertOnly);
  if(history!=="typing-v1"&&!(rangeEditing==="general-v1"&&history==="explicit"))return Promise.reject(new SharedEditorError("session_history","Unknown history policy"));
  if(rangeEditing==="general-v1"){try{checkCheckpoint(value,key[0],key[1],language,history,rangeEditing);}catch(error){return Promise.reject(error);}}
  return new Promise((resolve,reject)=>{
   const tx=db.transaction("journals","readwrite");tx.oncomplete=()=>resolve();tx.onabort=()=>reject(tx.error??new SharedEditorError("session_write","Shared journal transaction did not complete"));
-  try{tx.objectStore("journals").put(rangeEditing==="general-v1"?{format:"breditor/shared-general-checkpoint-record",formatVersion:1,history,richLanguage:language,checkpointJson:value}:{format:"breditor/shared-typing-checkpoint-record",formatVersion:1,checkpointJson:value},[...key]);}catch(error){tx.abort();reject(error);}
+  try{tx.objectStore("journals")[insertOnly?"add":"put"](rangeEditing==="general-v1"?{format:"breditor/shared-general-checkpoint-record",formatVersion:1,history,richLanguage:language,checkpointJson:value}:{format:"breditor/shared-typing-checkpoint-record",formatVersion:1,checkpointJson:value},[...key]);}catch(error){tx.abort();reject(error);}
  });
 }
 export function readCheckpoint(db:IDBDatabase,key:readonly[string,string]):Promise<string|null>{
@@ -106,10 +106,10 @@ export function readCheckpoint(db:IDBDatabase,key:readonly[string,string]):Promi
   settleOwnedTransaction(tx,()=>result,()=>tx.error??new SharedEditorError("session_read","Cannot read the exact shared journal"),resolve,reject);
  });
 }
-export function writeCheckpoint(db:IDBDatabase,key:readonly[string,string],value:string):Promise<void>{
+export function writeCheckpoint(db:IDBDatabase,key:readonly[string,string],value:string,insertOnly=false):Promise<void>{
  return new Promise((resolve,reject)=>{
   const tx=db.transaction("journals","readwrite");
   tx.oncomplete=()=>resolve();tx.onabort=()=>reject(tx.error??new SharedEditorError("session_write","Shared journal transaction did not complete"));
-  try{tx.objectStore("journals").put(value,[...key]);}catch(error){tx.abort();reject(error);}
+  try{tx.objectStore("journals")[insertOnly?"add":"put"](value,[...key]);}catch(error){tx.abort();reject(error);}
  });
 }
