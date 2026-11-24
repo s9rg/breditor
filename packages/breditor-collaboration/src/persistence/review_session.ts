@@ -170,6 +170,7 @@ export class SharedReviewPersistentSession<P extends SharedSelectionPolicy=Share
    if(options.relay&&(options.relay.room!==options.room||options.relay.documentWriter!==options.writer||options.relay.actor!==options.review.actor||options.relay.principal!==options.review.principal||saved&&("relay" in saved&&saved.relay?JSON.stringify(reviewStorageIdentity(saved.relay))!==JSON.stringify(options.relay):true)))throw new SharedEditorError("review_relay_identity","Stored relay binding does not match this explicitly paired session");
    if(saved&&(saved.reviewActor!==options.review.actor||saved.principal!==options.review.principal||saved.history!==options.history||saved.rangeEditing!==options.rangeEditing||saved.selectionEditing!==options.selectionEditing||saved.richLanguage!==options.richLanguage))throw new SharedEditorError("review_session_identity","Stored review identity/policies do not match the explicitly leased session");
    const selected:SharedReviewSessionPolicy<Q>={history:options.history,rangeEditing:options.rangeEditing,selectionEditing:options.selectionEditing,richLanguage:options.richLanguage};
+   opening.assertCurrent();
    nativeBackupAdmission=!!backup;
    raw=opening.admit(await(saved?restoreSaved.call(options,saved.documentCheckpointJson,Object.freeze(selected)):options.create()));
    const editor={...options.editor,...(reviewed?{reviewedHistory:reviewed}:{}),...(search?{searchHistory:"search-v1" as const}:{}),...(options.onError&&!options.editor?.onError?{onError:options.onError}:{})};
