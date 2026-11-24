@@ -186,7 +186,7 @@ export function mountRichContextMenu(host:RichContextUiHost,options:RichContextM
   },{signal});
   element.addEventListener("keydown",event=>{
    if(event.isComposing)return;
-   if(event.key==="Tab"&&(event.target as HTMLElement).closest("details[open]"))return;
+   if(event.key==="Tab"&&element.contains((event.target as HTMLElement).closest("details[open]")))return;
    if(event.key==="Escape"||event.key==="Tab"){event.preventDefault();close(true);return;}
    rove(event,views,"ArrowDown","ArrowUp");
   },{signal});

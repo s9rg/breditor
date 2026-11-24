@@ -161,7 +161,7 @@ export function mountRichMenuBar(host:RichContextUiHost,options:RichMenuBarOptio
    if(event.key==="Escape"){event.preventDefault();closeMenu("top");return;}
    if(event.key==="Tab"){
     // The summary and fields in an open borrowed form need their native tab sequence.
-    if(!target.closest("details[open]"))closeMenu("none");
+    if(!menu.popup.contains(target.closest("details[open]")))closeMenu("none");
     return;
    }
    // Keys inside a borrowed field form (inputs, selects, its Apply button) keep their own meaning.

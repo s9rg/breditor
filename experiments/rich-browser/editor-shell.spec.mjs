@@ -74,20 +74,32 @@ test("menu bar disabled state follows Rust action state and the pointer toggles 
  expect(await page.evaluate(()=>window.errors)).toEqual([]);
 });
 
+async function openKeyboardLinkMenu(page,presentation,inHostDisclosure=false){
+ await page.evaluate(({presentation,inHostDisclosure})=>{
+  const {api}=window.shell;
+  if(inHostDisclosure){
+   const host=window.editor.surface.closest("main"),disclosure=document.createElement("details"),summary=document.createElement("summary");
+   summary.textContent="Host editor";
+   disclosure.open=true;
+   host.before(disclosure);
+   disclosure.append(summary,host);
+  }
+  if(presentation==="menu bar")api.mountRichMenuBar(window.editor,{menus:[{id:"format",controls:["link"]}]});
+  else api.mountRichContextMenu(window.editor,{controls:["link"]});
+  window.shell.select("p",0,5);
+ },{presentation,inHostDisclosure});
+ if(presentation==="menu bar"){
+  await page.keyboard.press("Alt+F9");
+  await page.keyboard.press("ArrowDown");
+ }else await page.keyboard.press("Shift+F10");
+ const menu=page.getByRole("menu",{name:presentation==="menu bar"?"Format":"Editor actions"});
+ await expect(menu.getByRole("menuitem",{name:"Link formatting"})).toBeFocused();
+ return menu;
+}
+
 for(const presentation of ["menu bar","context menu"]){
  test(`${presentation}: Tab reaches the Link URL and Enter applies without a pointer`,async({page})=>{
-  await page.evaluate(presentation=>{
-   const {api}=window.shell;
-   if(presentation==="menu bar")api.mountRichMenuBar(window.editor,{menus:[{id:"format",controls:["link"]}]});
-   else api.mountRichContextMenu(window.editor,{controls:["link"]});
-   window.shell.select("p",0,5);
-  },presentation);
-  if(presentation==="menu bar"){
-   await page.keyboard.press("Alt+F9");
-   await page.keyboard.press("ArrowDown");
-  }else await page.keyboard.press("Shift+F10");
-  const menu=page.getByRole("menu",{name:presentation==="menu bar"?"Format":"Editor actions"});
-  await expect(menu.getByRole("menuitem",{name:"Link formatting"})).toBeFocused();
+  const menu=await openKeyboardLinkMenu(page,presentation);
   await page.keyboard.press("Enter");
   const url=menu.getByRole("textbox",{name:"Link URL"});
   await expect(url).toBeVisible();
@@ -102,6 +114,18 @@ for(const presentation of ["menu bar","context menu"]){
   await expect(menu).toBeHidden();
   expect(await page.evaluate(()=>({depth:window.shell.depth(),active:window.shell.active(),errors:window.errors})))
    .toEqual({depth:before+1,active:"surface",errors:[]});
+ });
+
+ test(`${presentation}: Tab dismisses a closed control inside an open host disclosure`,async({page})=>{
+  const menu=await openKeyboardLinkMenu(page,presentation,true);
+  // Observe dismissal during keydown, before native Tab can move focus out and close the menu later.
+  await menu.evaluate(node=>document.addEventListener("keydown",event=>{
+   if(event.key==="Tab")window.shell.dismissedOnTab=node.hidden;
+  },{once:true}));
+  await page.keyboard.press("Tab");
+  expect(await page.evaluate(()=>window.shell.dismissedOnTab)).toBe(true);
+  await expect(menu).toBeHidden();
+  if(presentation==="context menu")expect(await page.evaluate(()=>window.shell.active())).toBe("surface");
  });
 }
 
