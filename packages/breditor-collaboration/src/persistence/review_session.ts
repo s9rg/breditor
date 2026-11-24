@@ -25,12 +25,12 @@ import {backupDestinationExists,insertBackupRecord} from "../backups/database.js
 import {requireBackupRecovery} from "../backups/identity.js";
 import type {SharedBackupIdentity,SharedBackupRecovery} from "../backups/types.js";
 import type {SharedReviewBackupOptions,SharedReviewedReviewBackupOptions,SharedSearchReviewBackupOptions} from "../backups/review_options.js";
-import {openSessionDatabase} from "./session_database.js";
-import {checkReviewRecord,readReviewRecord,writeReviewRecord,type ReviewCheckpointRecord} from "./review_database.js";
-import {checkReviewRelayRecord,readReviewRelayRecord,writeReviewRelayRecord,type ReviewRelayCheckpointRecord} from "./review_relay_database.js";
-import {checkReviewObserverRecord,readReviewObserverRecord,writeReviewObserverRecord,type ReviewObserverCheckpointRecord} from "./review_observer_database.js";
-import {checkReviewedReviewRecord,readReviewedReviewRecord,writeReviewedReviewRecord,type ReviewedReviewCheckpointRecord} from "./reviewed_review_database.js";
-import {checkSearchReviewRecord,readSearchReviewRecord,writeSearchReviewRecord,type SearchReviewCheckpointRecord} from "./search_review_database.js";
+import {openSessionDatabase,writeAdmittedSessionRecord} from "./session_database.js";
+import {checkReviewRecord,readReviewRecord,type ReviewCheckpointRecord} from "./review_database.js";
+import {checkReviewRelayRecord,readReviewRelayRecord,type ReviewRelayCheckpointRecord} from "./review_relay_database.js";
+import {checkReviewObserverRecord,readReviewObserverRecord,type ReviewObserverCheckpointRecord} from "./review_observer_database.js";
+import {checkReviewedReviewRecord,readReviewedReviewRecord,type ReviewedReviewCheckpointRecord} from "./reviewed_review_database.js";
+import {checkSearchReviewRecord,readSearchReviewRecord,type SearchReviewCheckpointRecord} from "./search_review_database.js";
 import {reviewedHistoryIdentity,sameReviewedHistory} from "../reviewed_history_validation.js";
 import type {SharedReviewedHistoryIdentity} from "../reviewed_history_types.js";
 import {reviewProgress,reviewStorageIdentity} from "../relay/review_validation.js";
@@ -45,6 +45,7 @@ import type {SharedReviewRelayStorageIdentity,SharedReviewRelayProgress} from ".
 import {admitPairedVersions,checkPairedNativeProgress} from "./review_record_admission.js";
 export type SharedPairedCheckpointRecord=ReviewCheckpointRecord|ReviewRelayCheckpointRecord|ReviewObserverCheckpointRecord|ReviewedReviewCheckpointRecord|SearchReviewCheckpointRecord;
 type PairedRecord=SharedPairedCheckpointRecord;
+type PendingPair={key:readonly [string,string];record:PairedRecord;encoded:string};
 export interface SharedReviewSessionPolicy<P extends SharedSelectionPolicy=SharedSelectionPolicy> {history:SharedHistoryPolicy;rangeEditing:SharedRangePolicy;selectionEditing:P;richLanguage:1|2|3|4}
 /** Explicit paired recovery. Factories run only after both document and review writers are leased. */
 export interface SharedReviewSessionOptions<P extends SharedSelectionPolicy=SharedSelectionPolicy> extends SharedReviewSessionPolicy<P> {
@@ -84,7 +85,7 @@ export class SharedReviewPersistentSession<P extends SharedSelectionPolicy=Share
  readonly #actorBinding:StoppedActorBinding;
  readonly #ownedCore:SharedRichEditor<P>;
  readonly #db:IDBDatabase;readonly #documentLease:SharedWriterLease;readonly #reviewLease:ReviewWriterLease;readonly #options:SessionOptions<P>;
- #versions=new Map<string,string>();#unsubscribe:(()=>void)[]=[];#pending:PairedRecord|undefined;#running:Promise<void>|undefined;
+ #versions=new Map<string,string>();#unsubscribe:(()=>void)[]=[];#pending:PendingPair|undefined;#running:Promise<void>|undefined;
  #relayProgress:SharedReviewRelayProgress={cursor:null,accepted:null,sequence:null};#durableRelayProgress:SharedReviewRelayProgress={cursor:null,accepted:null,sequence:null};
  #saved:string|undefined;#failure:unknown;#closed=false;#retiring=false;#storageChanged=false;#closedRevisions:{documentRevision:string;reviewRevision:string}|undefined;#closing:Promise<void>|undefined;#released:Promise<void>|undefined;
  #recordReadEpoch:object=Object.freeze({});readonly #recordReaders=new Set<object>();
@@ -113,7 +114,7 @@ export class SharedReviewPersistentSession<P extends SharedSelectionPolicy=Share
   const check=()=>{current();authority();current();};
   const readStored=()=>{const key:[string,string]=[owner.#options.room,owner.#options.writer];return owner.#options.searchHistory?readSearchReviewRecord(owner.#db,key):owner.#options.reviewedHistory?readReviewedReviewRecord(owner.#db,key):owner.#options.relay?.reviewEditing==='read_only'?readReviewObserverRecord(owner.#db,key):owner.#options.relay?readReviewRelayRecord(owner.#db,key):readReviewRecord(owner.#db,key);};
   const identity=(record:PairedRecord)=>JSON.stringify(Object.fromEntries(['format','formatVersion','history','rangeEditing','selectionEditing','richLanguage','reviewActor','principal','relay','reviewedHistory'].filter(key=>Object.hasOwn(record,key)).map(key=>[key,(record as unknown as Record<string,unknown>)[key]])));
-  try{observation=observeIndependentRecoveryAbort(signal,held);check();const live=owner.#recordValue(nativeRead.checkpointJson.call(core),nativeRead.reviewCheckpoint.call(core));owner.#checkRecord(live);check();const committed=await readStored();check();if(!committed)throw fail('missing');if(identity(committed)!==identity(live))throw fail('identity');const json=JSON.stringify(committed);result=createPairedRecordRead({format:'breditor/persistent-paired-record-read',formatVersion:1,scope:'original-paired-committed-pending-live',committed,pending:pending??null,live},{check,current,verify:async()=>{check();const actual=await readStored();check();if(JSON.stringify(actual)!==json)throw fail('changed');},release});result.check();complete=true;return result;}
+  try{observation=observeIndependentRecoveryAbort(signal,held);check();const live=owner.#recordValue(nativeRead.checkpointJson.call(core),nativeRead.reviewCheckpoint.call(core));owner.#checkRecord(live);check();const committed=await readStored();check();if(!committed)throw fail('missing');if(identity(committed)!==identity(live))throw fail('identity');const json=JSON.stringify(committed);result=createPairedRecordRead({format:'breditor/persistent-paired-record-read',formatVersion:1,scope:'original-paired-committed-pending-live',committed,pending:pending?.record??null,live},{check,current,verify:async()=>{check();const actual=await readStored();check();if(JSON.stringify(actual)!==json)throw fail('changed');},release});result.check();complete=true;return result;}
   finally{if(!complete){result?.dispose();release();}}
  };}
  static async open<Q extends SharedSelectionPolicy>(input:SharedReviewSessionOptions<Q>):Promise<SharedReviewPersistentSession<Q>>{
@@ -205,7 +206,13 @@ export class SharedReviewPersistentSession<P extends SharedSelectionPolicy=Share
   const relay={...this.#options.relay},progress=structuredClone(this.#relayProgress);
   return relay.reviewEditing==="read_only"?{format:"breditor/shared-review-observer-checkpoint-record",...base,relay:{...relay,reviewEditing:"read_only"},progress}:{format:"breditor/shared-review-relay-checkpoint-record",...base,relay,progress};
  }
- #checkRecord(record:PairedRecord):void{if(record.format==="breditor/shared-search-review-checkpoint-record")checkSearchReviewRecord(record,[this.#options.room,this.#options.writer]);else if(record.format==="breditor/shared-reviewed-review-checkpoint-record")checkReviewedReviewRecord(record,[this.#options.room,this.#options.writer]);else if(record.format==="breditor/shared-review-observer-checkpoint-record")checkReviewObserverRecord(record,[this.#options.room,this.#options.writer]);else if(record.format==="breditor/shared-review-relay-checkpoint-record")checkReviewRelayRecord(record,[this.#options.room,this.#options.writer]);else checkReviewRecord(record,[this.#options.room,this.#options.writer]);}
+ #checkRecord(record:PairedRecord,key:readonly [string,string]=[this.#options.room,this.#options.writer]):void{
+  if(record.format==="breditor/shared-search-review-checkpoint-record")checkSearchReviewRecord(record,key);
+  else if(record.format==="breditor/shared-reviewed-review-checkpoint-record")checkReviewedReviewRecord(record,key);
+  else if(record.format==="breditor/shared-review-observer-checkpoint-record")checkReviewObserverRecord(record,key);
+  else if(record.format==="breditor/shared-review-relay-checkpoint-record")checkReviewRelayRecord(record,key);
+  else checkReviewRecord(record,key);
+ }
  #validateNativeProgress(progress:SharedReviewRelayProgress):void{checkPairedNativeProgress(this.#boundCore(),this.#options.relay,this.#options.review.principal,progress);}
  /** Exact readable paired export, including after a failed save/close; it grants no live permissions. */
  exportRecovery():PairedRecord{this.#live();return this.#record();}
@@ -228,9 +235,10 @@ export class SharedReviewPersistentSession<P extends SharedSelectionPolicy=Share
  save():void{
   this.#live();if(this.#storageChanged)throw versionChangeError();
   this.#recordReadEpoch=Object.freeze({});if(this.#options.relay?.reviewEditing==="read_only")this.#validateNativeProgress(this.#relayProgress);
-  const record=this.#record();this.#checkRecord(record);const encoded=JSON.stringify(record);
+  const record=this.#record(),key=[this.#options.room,this.#options.writer] as const;
+  this.#checkRecord(record,key);const encoded=JSON.stringify(record);
   if(encoded===this.#saved&&!this.#pending&&!this.#running&&!this.#failure)return;
-  this.#pending=record;this.#failure=undefined;this.#start();
+  this.#pending={record,key,encoded};this.#failure=undefined;this.#start();
  }
  #start():void{
   if(this.#running||this.#closed||!this.#pending)return;
@@ -240,14 +248,9 @@ export class SharedReviewPersistentSession<P extends SharedSelectionPolicy=Share
   while(this.#pending&&!this.#closed&&!this.#storageChanged){
    this.#documentLease.assertLive();this.#reviewLease.assertLive();
    const next=this.#pending;this.#pending=undefined;
-   const key=[this.#options.room,this.#options.writer] as const;
    const insertOnly=!this.recovered&&this.#saved===undefined;
    try{
-    if(next.format==="breditor/shared-search-review-checkpoint-record")await writeSearchReviewRecord(this.#db,key,next,insertOnly);
-    else if(next.format==="breditor/shared-reviewed-review-checkpoint-record")await writeReviewedReviewRecord(this.#db,key,next,insertOnly);
-    else if(next.format==="breditor/shared-review-observer-checkpoint-record")await writeReviewObserverRecord(this.#db,key,next,insertOnly);
-    else if(next.format==="breditor/shared-review-relay-checkpoint-record")await writeReviewRelayRecord(this.#db,key,next,insertOnly);
-    else await writeReviewRecord(this.#db,key,next,insertOnly);
+    await writeAdmittedSessionRecord(this.#db,next.key,next.record,insertOnly,next.record.format);
    }catch(error){
     if(!this.#closed)this.#pending??=next;
     if(insertOnly&&error instanceof Error&&error.name==="ConstraintError")throw new SharedEditorError("session_destination_exists","A journal was created while the shared session was opening");
@@ -255,8 +258,8 @@ export class SharedReviewPersistentSession<P extends SharedSelectionPolicy=Share
    }
    // Closing waits for this write before releasing the leases. It does not need a new cached copy.
    if(this.#closed)return;
-   this.#saved=JSON.stringify(next);
-   if("progress" in next&&next.progress)this.#durableRelayProgress=structuredClone(next.progress);
+   this.#saved=next.encoded;
+   if("progress" in next.record&&next.record.progress)this.#durableRelayProgress=structuredClone(next.record.progress);
   }
  }
  async flush():Promise<void>{this.#live();while(this.#running){await this.#running;if(this.#failure)throw this.#failure;}if(this.#failure)throw this.#failure;}
