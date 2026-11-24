@@ -594,3 +594,25 @@ Undo samples time synchronous shared-core calls. The frame exchange takes place
 within the page. This workload establishes observed history cost. The supported
 operating envelope still needs separate measurement and review.
 [Archive hashes, browser Wasm, and measurements](qualification/2026-11-24-installed-chrome-shared-history-latency.json)
+
+The shared memory benchmark runs the same two-peer sequence with both the
+original range policy and the SDK's opt-in `general-v1` policy. Each project
+uses fresh browser storage and checks the declared policy before editing and
+after exact recovery. Run the two policy samples by adding
+`shared-memory.spec.mjs` to the command above.
+
+The original policy retains exact incoming frames in its journal, including
+cumulative frames that add no new operations. Live staging reimports retained
+inputs and validates checkpoint budgets. The explicit `general-v1` policy
+retains newly admitted deltas when all dependencies are available and skips
+fully known frames. Persistence still exports and validates a complete
+checkpoint when a native publication is saved. Each project reopens the
+checkpoint format for its selected range policy.
+
+In the [installed Chrome comparison](qualification/2026-11-24-installed-chrome-shared-range-policy-latency.json),
+both policies completed 100 rounds and reopened both checkpoints byte-for-byte.
+Across rounds 51–100, the original policy measured 223.6 ms p95 typing,
+228.1 ms p95 Undo, and 399.5 ms p95 direct frame exchange. The `general-v1`
+policy measured 32.2, 32.2, and 19.7 ms respectively. The combined checkpoints
+contained 30,040,753 and 703,624 code units respectively. These measurements
+cover the two-peer, 2,825-byte document and direct frame exchange on one host.
