@@ -1,0 +1,308 @@
+{
+  "format": "breditor/v1-catalog-cases",
+  "formatVersion": 1,
+  "cases": [
+    {
+      "id": "coauthor-mixed-rich-content",
+      "version": 1,
+      "feature": "shared-editing",
+      "sources": [
+        "tiptap-catalog",
+        "ckeditor-digest"
+      ],
+      "scenario": "Open the same room from two independent browser contexts and accounts. Concurrently edit overlapping text, move a list item, edit a table cell and insert an uploaded raster. Delay relay delivery and reconnect one peer before adding a fresh reader.",
+      "expected": [
+        "Once admitted changes have settled, the authoring clients and fresh reader agree on the normalized document tree, text, referenced asset checksum and replica replay frontier.",
+        "An asset appears as available only after its bytes resolve. Recoverable pending and rejected operations are visible under the documented protocol."
+      ]
+    },
+    {
+      "id": "shared-author-local-undo-redo",
+      "version": 1,
+      "feature": "shared-editing",
+      "sources": [
+        "tiptap-catalog",
+        "ckeditor-digest"
+      ],
+      "scenario": "Have one author format a range and another insert text and move its containing block. Undo and redo the format as the first author while observing both peers and the room after relay restart.",
+      "expected": [
+        "The first author's undo reverses the selected contribution under the documented conflict policy while preserving the second author's admitted changes. Redo reapplies the eligible format change once.",
+        "All peers converge after each history action. Restart and replay preserve the same document and the remaining author-local history."
+      ]
+    },
+    {
+      "id": "asynchronous-collaboration-local-storage",
+      "version": 1,
+      "feature": "offline-recovery",
+      "sources": [
+        "tiptap-offline",
+        "ckeditor-digest"
+      ],
+      "scenario": "Disconnect a registered room owner, make two edits and a comment, and mark one edit undone. Close the browser after local durability is confirmed, reopen offline, and reconnect after a second author has edited the room.",
+      "expected": [
+        "Offline reopen reconstructs the exact durable document and review state, pending operation IDs and available undo and redo entries recorded before close.",
+        "Reconnect admits each eligible pending operation once and converges with the connected author. A later fresh reader observes the same durable room."
+      ]
+    },
+    {
+      "id": "relay-recovery-after-acknowledgment-loss",
+      "version": 1,
+      "feature": "offline-recovery",
+      "sources": [
+        "tiptap-offline",
+        "ckeditor-digest"
+      ],
+      "scenario": "Interrupt the relay after it durably records a text edit, comment and raster upload but before the client receives its acknowledgments. Restart the relay and reconnect the original client with those operations still queued.",
+      "expected": [
+        "The relay recovers the admitted document and review records and the original raster bytes. Readers observe the same content and asset checksum as at the durable commit.",
+        "Retry settles the original pending operation IDs once, without duplicating text, comments or asset references. Unacknowledged operations remain recoverable until their outcome is known."
+      ]
+    },
+    {
+      "id": "portable-room-restore",
+      "version": 1,
+      "feature": "offline-recovery",
+      "sources": [
+        "tiptap-offline",
+        "ckeditor-digest"
+      ],
+      "scenario": "Prepare a room archive with document and review history, raster data and queued offline work. Restore into a fresh authorized target, reconnect an offline author with its original identity, and attempt the same restore into an occupied target.",
+      "expected": [
+        "The fresh target recovers the archived terminal document and review cuts, raster checksums and eligible history. The offline author reconnects with its queued edits under the restored room's supported identity contract.",
+        "An occupied target keeps its original data and has no partial archive import when the restore is refused."
+      ]
+    },
+    {
+      "id": "durable-history-at-storage-rollover",
+      "version": 1,
+      "feature": "offline-recovery",
+      "sources": [
+        "tiptap-offline",
+        "ckeditor-digest"
+      ],
+      "scenario": "Before rollover, record each author's Undo/Redo frontier across several distinguishable edits, with a Redo branch and a pending peer edit. Cross one documented generation boundary, restart the relay and reconnect the peer. Compare with the same edits without rollover.",
+      "expected": [
+        "The predecessor and terminal cuts have the expected ancestry. Restart and compaction preserve the full pre-cut Undo/Redo frontier and outstanding peer work.",
+        "Traverse both directions through every retained prior history step. The resulting author-visible states equal the control sequence and peers converge at each settled step. Inputs beyond supported limits refuse visibly while retaining the last durable cut."
+      ]
+    },
+    {
+      "id": "coauthor-caret-selection-presence",
+      "version": 1,
+      "feature": "presence",
+      "sources": [
+        "tiptap-catalog",
+        "ckeditor-digest"
+      ],
+      "scenario": "Place a peer caret in formatted mixed-direction text, then show a range across a node and a table-grid selection. From another peer, insert text before the anchor, scroll the viewport and move one selected block.",
+      "expected": [
+        "The overlay identifies the authenticated peer and resolves admitted anchors using the documented reassociation rules. Its visible position follows the reference selection as layout and scroll change.",
+        "The overlay remains distinct from the editable selection and supports reading or hiding presence under the documented accessibility controls. Presence changes leave document bytes and history unchanged."
+      ]
+    },
+    {
+      "id": "presence-expiry-and-session-fencing",
+      "version": 1,
+      "feature": "presence",
+      "sources": [
+        "tiptap-catalog",
+        "ckeditor-digest"
+      ],
+      "scenario": "Display presence for two authorized peers, disconnect one without a clean close, then reconnect that account in a new session and deliver a delayed presence update from the earlier session.",
+      "expected": [
+        "The disconnected overlay disappears within the configured lease or expiry window, and the active retry appears under the correct identity.",
+        "The delayed update cannot revive or replace the old overlay. The other peer's presence, document history and durable storage remain unchanged."
+      ]
+    },
+    {
+      "id": "room-role-promotion-and-revocation",
+      "version": 1,
+      "feature": "roles-and-auth",
+      "sources": [
+        "ckeditor-digest"
+      ],
+      "scenario": "Join a room as Reader, promote the account through an authorized host action, submit an edit as Editor, then revoke the role while the client is still connected. Exercise UI, API and queued submissions on either side of the change.",
+      "expected": [
+        "Authorized writes succeed only within the appropriate role generation. The current UI role and server write decisions reflect the latest acknowledged role change.",
+        "After revocation, old credentials and queued authoring intents receive a stable denial. The previously committed edit remains present and denied edits do not change the durable frontier."
+      ]
+    },
+    {
+      "id": "room-member-list-and-permissions",
+      "version": 1,
+      "feature": "roles-and-auth",
+      "sources": [
+        "ckeditor-digest"
+      ],
+      "scenario": "Seed a room with a Reader, an Editor and a host administrator plus an unrelated account in a separate room. Open the member and permission view as each identity and use the authorized host path to remove one member.",
+      "expected": [
+        "The visible membership and role fields match the requesting identity's permission grants. The list discloses only authorized rooms and accounts.",
+        "The removal is reflected in the relevant views and access decisions after refresh and reconnect. Non-administrative attempts leave membership unchanged."
+      ]
+    },
+    {
+      "id": "private-relay-deployment",
+      "version": 1,
+      "feature": "roles-and-auth",
+      "sources": [
+        "ckeditor-digest"
+      ],
+      "scenario": "Deploy the documented relay and persistent store behind a controlled private TLS endpoint with an external identity provider. Route two separate rooms under different tenant identities and restart the host and relay independently.",
+      "expected": [
+        "Authorized clients can connect, synchronize and recover under the documented private endpoint and storage configuration. Room routing, assets, event streams and durable data remain tenant-scoped.",
+        "Deployment logs and archived data omit credential values. Host restart uses the expected protected authority and store paths, and unauthenticated requests receive the documented denial."
+      ]
+    },
+    {
+      "id": "hosted-relay-connection-contract",
+      "version": 1,
+      "feature": "roles-and-auth",
+      "sources": [
+        "ckeditor-digest"
+      ],
+      "scenario": "Configure an application to use an explicitly supplied managed relay endpoint with scoped credentials. Open the same room on two clients, expire a credential and reauthenticate through the supported host flow.",
+      "expected": [
+        "The supplied endpoint serves the authorized room and sync resumes from the expected checkpoint. Wrong-room credentials and expired credentials cannot read or write room data.",
+        "Endpoint, authentication and storage responsibilities are observable in the deployment contract. Persistence and reconnect preserve the same admitted content and room identity across the credential change."
+      ]
+    },
+    {
+      "id": "read-only-across-editor-inputs",
+      "version": 1,
+      "feature": "read-only-mode",
+      "sources": [
+        "ckeditor-digest"
+      ],
+      "scenario": "Open local and shared editors in read-only mode with text selection and a checked task. Attempt typing, formatting via toolbar and API, undo, composition, task toggling, Cut and asynchronous insertion. Exercise copy and remote updates.",
+      "expected": [
+        "Authoring actions and pending styles leave the canonical document and local history unchanged. Cut preserves source content under the documented read-only clipboard policy.",
+        "Selection and copy remain available, and admitted remote changes stay visible and durable on the read-only peer."
+      ]
+    },
+    {
+      "id": "live-read-only-transition-fences-input",
+      "version": 1,
+      "feature": "read-only-mode",
+      "sources": [
+        "ckeditor-digest"
+      ],
+      "scenario": "Queue an asynchronous insertion while editable, switch to read-only before it completes, then unlock and issue a fresh action. Reopen using the host's explicit initial mode setting.",
+      "expected": [
+        "The old action is rejected even if it completes after unlocking. The fresh action succeeds once under the new editing mode.",
+        "The transitions produce no undo entries. Reopen receives the host-supplied mode, and restores the same content and history."
+      ]
+    },
+    {
+      "id": "protected-region-selection-and-history",
+      "version": 1,
+      "feature": "restricted-editing",
+      "sources": [
+        "ckeditor-restricted-editing",
+        "tiptap-content-protection"
+      ],
+      "scenario": "Configure two editable regions with protected content between them. Navigate by keyboard, edit inside one region, attempt formatting and deletion across both regions, then undo after the edited region is protected.",
+      "expected": [
+        "Keyboard navigation reaches each editable region with a clear focus state. An admitted contained edit preserves the surrounding protected content.",
+        "A cross-region or history operation affecting protected content is rejected atomically, keeps the current state and history frontier, and leaves a usable selection."
+      ]
+    },
+    {
+      "id": "restricted-inline-exceptions",
+      "version": 1,
+      "feature": "restricted-editing",
+      "sources": [
+        "ckeditor-restricted-editing",
+        "tiptap-content-protection"
+      ],
+      "scenario": "Under a host policy that admits an inline editable exception, replace the editable placeholder inside a protected sentence. Try a selection spanning the exception boundary and a move that would detach the exception from its protected owner.",
+      "expected": [
+        "The admitted edit changes only the exception and preserves surrounding text, marks and owner identity. The host policy is reapplied as documented after reopen.",
+        "An action that crosses a protected boundary leaves both regions and the undo stack unchanged, with a documented visible refusal."
+      ]
+    },
+    {
+      "id": "restricted-region-relay-enforcement",
+      "version": 1,
+      "feature": "restricted-editing",
+      "sources": [
+        "ckeditor-restricted-editing",
+        "tiptap-content-protection"
+      ],
+      "scenario": "Connect two accounts with different region grants to the same room. Submit a permitted edit from each and a protected-region edit using a client whose local policy is stale. Reconnect both peers.",
+      "expected": [
+        "The authoritative room admits changes only for the current grants and preserves eligible edits from both accounts. The stale client receives a refusal and reconciles to the current shared state.",
+        "Protection follows the documented room authority across reconnect and replay. The denied edit never enters the durable or replicated history."
+      ]
+    },
+    {
+      "id": "autosave-checkpoint-order-and-reopen",
+      "version": 1,
+      "feature": "autosave",
+      "sources": [
+        "ckeditor-autosave"
+      ],
+      "scenario": "Use an instrumented host storage adapter to hold the first save while issuing two further edits. Flush, dispose the editor, then reopen the resulting autosave from a new session.",
+      "expected": [
+        "The adapter observes serialized writes and saves the newest acknowledged checkpoint. Status shows pending until the requested latest generation is durable.",
+        "The new session restores the expected document, selection and supported undo and redo history from that checkpoint."
+      ]
+    },
+    {
+      "id": "autosave-failure-retry-and-writer-ownership",
+      "version": 1,
+      "feature": "autosave",
+      "sources": [
+        "ckeditor-autosave"
+      ],
+      "scenario": "Open the same autosave key in two tabs under the documented single-writer host contract. Fail the active writer's save, edit again, retry, then transfer writer ownership and reload.",
+      "expected": [
+        "A failing write leaves the prior durable checkpoint intact and reports that newer work is unsaved. Retry writes the documented latest checkpoint and clears the error only after success.",
+        "The second tab has no simultaneous write authority. The supported ownership transfer obtains a new writer generation and reloads the last acknowledged contents."
+      ]
+    },
+    {
+      "id": "strict-csp-for-editor-and-wasm",
+      "version": 1,
+      "feature": "security-and-crash-recovery",
+      "sources": [
+        "ckeditor-csp",
+        "ckeditor-digest"
+      ],
+      "scenario": "Serve the installed editor, workers and Wasm from documented origins under the strict deployment policy on qualified browsers. Open, edit, save and reopen. Include an HTML input with a disallowed remote image reference.",
+      "expected": [
+        "Core operations complete under the declared directives and the console records the expected policy behavior for the supported Wasm loading path.",
+        "The disallowed resource is blocked without an unexpected network request. The deployment instructions identify any required browser-specific Wasm directive and the exact associated origin."
+      ],
+      "untrustedInput": "Use a controlled disallowed resource URL in pasted content. Verify admission, live or static output, restore and export respect the configured policy while retaining allowed text."
+    },
+    {
+      "id": "trusted-types-editor-rendering",
+      "version": 1,
+      "feature": "security-and-crash-recovery",
+      "sources": [
+        "ckeditor-csp",
+        "ckeditor-digest"
+      ],
+      "scenario": "Enable enforcement of the supported Trusted Types configuration on a browser that implements it. Open the installed editor and exercise toolbar rendering, paste, static render and reopen using the documented policy integration.",
+      "expected": [
+        "Supported editor operations work with the declared policy and no unexpected type violations. Host-owned policy boundaries constrain the HTML sinks covered by the integration.",
+        "Disallowed markup remains inactive throughout paste, render, export and restored-session rendering, and permitted content survives."
+      ],
+      "untrustedInput": "Paste a versioned fixture containing an excluded active element and blocked external reference. Record policy enforcement, observable output and absence of unapproved requests."
+    },
+    {
+      "id": "opt-in-editor-crash-restart",
+      "version": 1,
+      "feature": "security-and-crash-recovery",
+      "sources": [
+        "ckeditor-csp",
+        "ckeditor-digest"
+      ],
+      "scenario": "With restart enabled, save a known checkpoint, make an unsaved edit, inject a controlled renderer or worker failure, and let the host recreate the editor. Repeat with the newest stored checkpoint truncated.",
+      "expected": [
+        "Recovery starts from the last verified durable checkpoint, reports the status of the unsaved edit, and retains acknowledged content and supported history. A fresh edit succeeds after restart.",
+        "A truncated checkpoint is surfaced as a recovery error and preserved for diagnosis. Restart uses only a verified recovery source and does not retry indefinitely."
+      ]
+    }
+  ]
+}
