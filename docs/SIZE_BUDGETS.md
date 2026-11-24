@@ -530,7 +530,9 @@ document digest, byte length and top-level block count. It records the source
 digest and checks the Wasm binary and glue loaded by all three browsers
 against the generated runtime. The command samples measure dispatch and
 synchronous rendering. Use these measurements as a scoped baseline when
-selecting broader V1 latency budgets.
+selecting broader V1 latency budgets. The [November 23 matrix](qualification/2026-11-23-rich-demo-latency-provenance.json)
+retains a clean-source sample on Apple M1 Pro across Chromium, Firefox and
+WebKit.
 
 The installed editor browser matrix also records two wall-clock samples for
 its two-peer task, table, code, and raster fixture. Offline replay starts when
