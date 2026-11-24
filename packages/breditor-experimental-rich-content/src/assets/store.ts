@@ -3,7 +3,7 @@ import {ingestFile} from "./ingest_file.js";
 import {uploadAsset} from "./upload_queue.js";
 import {assetInfo, type AssetInfo, type AssetLimits, type AssetRecord, type AssetUploader} from "./types.js";
 import {checkedAssetLimits} from "./limits.js";
-import {exportAssetBackup,encodeAssetArchiveSnapshot} from "./archive/export_backup.js";
+import {exportAssetBackup,encodeAssetArchiveSnapshot,validateRetainedAssetArchive} from "./archive/export_backup.js";
 import {importAssetBackup} from "./archive/import_backup.js";
 import {insertAssetArchive} from "./archive/database.js";
 import {captureAssetArchiveSnapshot} from "./archive/database.js";
@@ -61,7 +61,7 @@ export class RichAssetStore {
   /** Existing complete retained storage only. Fully admit all bytes without initializing or uploading. */
   static async openRetained(name:string,options:RichAssetOptions={}):Promise<RichAssetStore>{
     const selected={...options,limits:checkedAssetLimits(options.limits)},factory=globalThis.indexedDB,retained=await openRetainedAssetDatabase(name);let store:RichAssetStore|undefined;
-    try{retained.assertCurrent();store=new RichAssetStore(retained.db,name,selected,factory);await store.exportBackup();retained.assertCurrent();store.#live();return store;}
+    try{retained.assertCurrent();store=new RichAssetStore(retained.db,name,selected,factory);await validateRetainedAssetArchive(retained.db,store.limits);retained.assertCurrent();store.#live();return store;}
     catch(error){store?.close();retained.db.close();throw error;}
   }
 
