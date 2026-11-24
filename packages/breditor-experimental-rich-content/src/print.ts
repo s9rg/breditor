@@ -73,8 +73,12 @@ export function richPrintStyles(options:RichPrintOptions|RichPrintLayout={}):str
  * print scaling, so the printed pagination can differ.
  */
 export function richPrintPreviewStyles(options:RichPrintOptions|RichPrintLayout={}):string{
- const layout=resolveRichPrintLayout(options),height=`${layout.contentHeightMm}mm`;
- return `@media screen{[data-breditor-print-preview]{box-sizing:content-box!important;width:${layout.contentWidthMm}mm!important;max-width:none!important;padding:${layout.marginMm}mm!important;margin-left:auto;margin-right:auto;background-color:#fff;background-image:repeating-linear-gradient(to bottom,transparent 0,transparent calc(${height} - 1px),#d0457a calc(${height} - 1px),#d0457a ${height})!important;background-origin:content-box!important;background-clip:content-box!important;background-size:100% ${height}!important;background-repeat:repeat-y!important}}`;
+ return previewStyles(resolveRichPrintLayout(options),"[data-breditor-print-preview]");
+}
+
+function previewStyles(layout:RichPrintLayout,selector:string):string{
+ const height=`${layout.contentHeightMm}mm`;
+ return `@media screen{${selector}{box-sizing:content-box!important;width:${layout.contentWidthMm}mm!important;max-width:none!important;padding:${layout.marginMm}mm!important;margin-left:auto;margin-right:auto;background-color:#fff;background-image:repeating-linear-gradient(to bottom,transparent 0,transparent calc(${height} - 1px),#d0457a calc(${height} - 1px),#d0457a ${height})!important;background-origin:content-box!important;background-clip:content-box!important;background-size:100% ${height}!important;background-repeat:repeat-y!important}}`;
 }
 
 /** A mounted preview. `update` swaps the layout; `dispose` restores the element and removes the stylesheet. */
@@ -88,7 +92,7 @@ export interface RichPrintPreviewOptions extends RichPrintOptions {
 /**
  * Opt-in print preview on an editing surface (or a static wrapper). It adds `data-breditor-print-preview`,
  * an `aria-description` from the catalog and one stylesheet (preview guides plus, by default, the print
- * styles). It never edits document content or the Rust owner; editing continues normally while mounted.
+ * styles). Screen styles match the surface's current layout. Editing continues normally while mounted.
  */
 export function mountRichPrintPreview(surface:HTMLElement,options:RichPrintPreviewOptions={}):RichPrintPreview{
  if(!surface||typeof surface.setAttribute!=="function")throw new TypeError("Print preview needs an HTMLElement");
@@ -100,7 +104,8 @@ export function mountRichPrintPreview(surface:HTMLElement,options:RichPrintPrevi
  const document=surface.ownerDocument,style=document.createElement("style");style.dataset["breditorPrintPreview"]="";
  const previous=surface.getAttribute("aria-description");
  const apply=():void=>{
-  style.textContent=richPrintPreviewStyles(layout)+(print?richPrintStyles(layout):"");
+  const selector=`[data-breditor-print-preview][data-breditor-print-size="${layout.size}"][data-breditor-print-orientation="${layout.orientation}"][data-breditor-print-margin="${layout.margin}"]`;
+  style.textContent=previewStyles(layout,selector)+(print?richPrintStyles(layout):"");
   surface.setAttribute("aria-description",ui.text("printPreviewLabel"));
   surface.dataset["breditorPrintSize"]=layout.size;surface.dataset["breditorPrintOrientation"]=layout.orientation;surface.dataset["breditorPrintMargin"]=layout.margin;
  };
