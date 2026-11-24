@@ -12,10 +12,16 @@ import {candidateStageReceipts} from "./candidate-release/runtime-stage-policy.m
 import {verifyNativeSuggestionBuild} from "./candidate-release/native-suggestion-build-evidence.mjs";
 import {verifyRichBrowserStage} from "./candidate-release/rich-browser-report.mjs";
 
+function hostedRunIdentity(environment){
+ const {GITHUB_ACTIONS:hosted,GITHUB_RUN_ID:runId,GITHUB_RUN_ATTEMPT:runAttempt}=environment;
+ if(hosted==="true"&&[runId,runAttempt].every(value=>/^[1-9][0-9]{0,19}$/u.test(value)))return {runId,runAttempt};
+}
+
 export async function runCandidateChecks(plan,{root=repository,signal,report=console.log,execute=executeCandidateStage,snapshot=sourceEvidence,activationEvidence}={}){
  if(!candidateCheckProfiles.includes(plan.profile)||!Array.isArray(plan.checks)||!plan.checks.length||new Set(plan.checks.map(check=>check.id)).size!==plan.checks.length||plan.checks.some(check=>!/^[a-z][a-z0-9-]*$/.test(check.id)||typeof check.command!=="string"||!check.command||!Array.isArray(check.args)||check.args.some(arg=>typeof arg!=="string")||!Array.isArray(check.artifacts)||!Number.isSafeInteger(check.timeoutMs)||check.timeoutMs<=0))throw Error("Invalid candidate check plan");
  const parent=resolve(root,"target/v1-candidate-runs");mkdirSync(parent,{recursive:true});const directory=mkdtempSync(resolve(parent,"run-")),manifest=resolve(directory,"result.json");let source;
- const result={format:"breditor/candidate-qualification",formatVersion:1,profile:plan.profile,...(plan.shard?{shard:plan.shard}:{}),status:"running",v1Ready:false,publicationApproved:false,source:null,environment:{node:process.version,platform:process.platform,arch:process.arch},startedAt:new Date().toISOString(),deferred:plan.deferred,stages:[]};
+ const hostedRun=hostedRunIdentity(process.env);
+ const result={format:"breditor/candidate-qualification",formatVersion:1,profile:plan.profile,...(plan.shard?{shard:plan.shard}:{}),...(hostedRun?{hostedRun}:{}),status:"running",v1Ready:false,publicationApproved:false,source:null,environment:{node:process.version,platform:process.platform,arch:process.arch},startedAt:new Date().toISOString(),deferred:plan.deferred,stages:[]};
  const checkSource=()=>{const current=snapshot(root);if(current.sha256!==source.sha256||current.commit!==source.commit)throw Error("Source changed during qualification; rerun against one fixed candidate");};
  saveEvidence(manifest,result);report(`verify-candidate: ${plan.shard?.id??plan.profile}; evidence ${manifest}`);
  try{

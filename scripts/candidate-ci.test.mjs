@@ -1,11 +1,12 @@
 import assert from "node:assert/strict";
 import {spawnSync} from "node:child_process";
-import {copyFileSync,mkdirSync,mkdtempSync,readFileSync,rmSync,symlinkSync,truncateSync,writeFileSync} from "node:fs";
+import {copyFileSync,mkdirSync,mkdtempSync,readFileSync,rmSync,symlinkSync,truncateSync,utimesSync,writeFileSync} from "node:fs";
 import test from "node:test";
 import {tmpdir} from "node:os";
 import {join} from "node:path";
 import {fileURLToPath} from "node:url";
 import {candidateShardIds} from "./candidate-release/shards.mjs";
+import {candidateReleasePlan} from "./candidate-release/plan.mjs";
 import {retainCandidateBrowserReports} from "./retain-candidate-browser-reports.mjs";
 
 const workflow=JSON.parse(readFileSync(new URL("../.github/workflows/candidate-qualification.yml",import.meta.url),"utf8"));
@@ -78,24 +79,57 @@ test("candidate logs are retained on failure without uploading unrelated target 
  assert.equal(upload.with.name,"candidate-${{ github.sha }}-${{ inputs.profile }}${{ inputs.shard != 'none' && format('-{0}', inputs.shard) || '' }}-${{ github.run_attempt }}");
 });
 
-test("failure evidence preserves exact bounded browser reports even without traces",()=>{
+const browserStageStarted=Date.parse("2026-10-01T01:00:00.000Z"),browserStageFinished=browserStageStarted+10_000;
+const browserStageTime=(path,time=browserStageStarted)=>utimesSync(path,time/1000,time/1000);
+
+function seedBrowserFailure(root,profile,stageId){
+ const directory=join(root,"target/v1-candidate-runs"),path=join(directory,"run-current/result.json");
+ mkdirSync(join(directory,"run-current"),{recursive:true});
+ const revision="1".repeat(40),runId="42",runAttempt="3";
+ const context={format:"1",repository:"s9rg/breditor",workflow:"s9rg/breditor/.github/workflows/candidate-qualification.yml@refs/heads/main",
+  event:"workflow_dispatch",revision,profile,shard:"none",runId,runAttempt,os:"Linux",arch:"X64",checkout:"success",
+  node:"success",rust:"success",npm:"success",cargo:"success",browsers:"success",candidate:"failure"};
+ writeFileSync(join(directory,"runner-context.tsv"),Object.entries(context).map(([key,value])=>`${key}\t${value}\n`).join(""));
+ const plan=candidateReleasePlan({profile,environment:{}}),index=plan.checks.findIndex(check=>check.id===stageId);
+ assert.ok(index>=0);
+ const stages=plan.checks.slice(0,index+1).map(check=>({id:check.id,status:"passed"}));
+ Object.assign(stages.at(-1),{status:"failed",startedAt:new Date(browserStageStarted).toISOString(),finishedAt:new Date(browserStageFinished).toISOString()});
+ const manifest={format:"breditor/candidate-qualification",formatVersion:1,source:{commit:revision},profile,status:"failed",
+  hostedRun:{runId,runAttempt},stages};
+ writeFileSync(path,JSON.stringify(manifest));
+ return {path,manifest};
+}
+
+test("failure evidence preserves only exact bounded reports from the selected browser stage",()=>{
  const root=mkdtempSync(join(tmpdir(),"breditor-browser-reports-"));
  try{
+  seedBrowserFailure(root,"shared-browser-matrix","shared-browser-matrix");
   mkdirSync(join(root,"experiments/shared-browser"),{recursive:true});
   mkdirSync(join(root,"target/shared-browser-results"),{recursive:true});
-  writeFileSync(join(root,"experiments/shared-browser/example.spec.mjs"),"");
-  const paths=["target/shared-application-browser-playwright.json","target/shared-browser-results/example.spec.mjs.json"];
-  for(const path of paths)writeFileSync(join(root,path),'{"stats":{"unexpected":1}}');
-  const oversized="target/rich-browser-webkit-report.json";
+  const scoped=name=>`target/shared-browser-results/${name}.spec.mjs.json`;
+  for(const name of ["example","stale","later","link","oversized"])writeFileSync(join(root,`experiments/shared-browser/${name}.spec.mjs`),"");
+  const current=scoped("example"),stale=scoped("stale"),later=scoped("later");
+  for(const path of [current,stale,later,"target/shared-application-browser-playwright.json"]){
+   writeFileSync(join(root,path),'{"stats":{"unexpected":1}}');
+   browserStageTime(join(root,path));
+  }
+  browserStageTime(join(root,stale),browserStageStarted-1000);
+  browserStageTime(join(root,later),browserStageFinished+1000);
+  const oversized=scoped("oversized");
   writeFileSync(join(root,oversized),"");
   truncateSync(join(root,oversized),8*1024*1024+1);
-  const link="target/rich-browser-firefox-report.json";
-  symlinkSync(join(root,paths[0]),join(root,link));
+  browserStageTime(join(root,oversized));
+  const link=scoped("link");
+  symlinkSync(join(root,current),join(root,link));
   writeFileSync(join(root,"target/shared-browser-results/unregistered.spec.mjs.json"),'{"private":true}');
 
   const proof=retainCandidateBrowserReports(root);
-  assert.deepEqual(proof.reports.map(report=>report.path),paths);
-  assert.deepEqual(proof.omitted,[{path:link,reason:"non-regular-or-outside-workspace"},{path:oversized,reason:"size-bound"}]);
+  assert.deepEqual(proof.reports.map(report=>report.path),[current]);
+  assert.equal(proof.manifest,"run-current/result.json");
+  assert.equal(proof.stage,"shared-browser-matrix");
+  assert.deepEqual(proof.omitted,[{path:later,reason:"outside-browser-stage-window"},
+   {path:link,reason:"non-regular-or-outside-workspace"},{path:oversized,reason:"size-bound"},
+   {path:stale,reason:"outside-browser-stage-window"}]);
   for(const report of proof.reports)assert.deepEqual(
    readFileSync(join(root,"target/v1-candidate-runs",report.retainedPath)),readFileSync(join(root,report.path)));
   assert.deepEqual(JSON.parse(readFileSync(join(root,"target/v1-candidate-runs/browser-failure-reports.json"),"utf8")),proof);
@@ -105,24 +139,53 @@ test("failure evidence preserves exact bounded browser reports even without trac
 test("browser failure reports stop at the total artifact budget",()=>{
  const root=mkdtempSync(join(tmpdir(),"breditor-browser-report-budget-"));
  try{
+  seedBrowserFailure(root,"shared-browser-matrix","shared-browser-matrix");
   mkdirSync(join(root,"experiments/shared-browser"),{recursive:true});
   mkdirSync(join(root,"target/shared-browser-results"),{recursive:true});
   const maximumFileBytes=8*1024*1024;
-  for(const name of [
-   "rich-browser-chromium-report.json","rich-browser-firefox-report.json",
-   "rich-browser-webkit-report.json","shared-application-browser-playwright.json",
-  ]){
-   const path=join(root,"target",name);
+  for(const name of ["a","b","c","d"])writeFileSync(join(root,`experiments/shared-browser/${name}.spec.mjs`),"");
+  for(const name of ["chromium-firefox.json","a.spec.mjs.json","b.spec.mjs.json","c.spec.mjs.json"]){
+   const path=join(root,"target/shared-browser-results",name);
    writeFileSync(path,"");
    truncateSync(path,maximumFileBytes);
+   browserStageTime(path);
   }
-  const omitted="target/shared-browser-results/chromium-firefox.json";
+  const omitted="target/shared-browser-results/d.spec.mjs.json";
   writeFileSync(join(root,omitted),"{}");
+  browserStageTime(join(root,omitted));
 
   const proof=retainCandidateBrowserReports(root);
   assert.equal(proof.reports.length,4);
   assert.equal(proof.reports.reduce((total,report)=>total+report.bytes,0),4*maximumFileBytes);
   assert.deepEqual(proof.omitted,[{path:omitted,reason:"size-bound"}]);
+ }finally{rmSync(root,{recursive:true,force:true});}
+});
+
+test("browser failure retention refuses a different attempt, stage sequence or ambiguous manifest",()=>{
+ const root=mkdtempSync(join(tmpdir(),"breditor-browser-diagnostic-selection-"));
+ try{
+  const {path,manifest}=seedBrowserFailure(root,"installed-application-network","installed-application-network-matrix");
+  const raw=join(root,"target/shared-application-browser-playwright.json");
+  writeFileSync(raw,"{}");
+  browserStageTime(raw);
+  const selected=structuredClone(manifest);
+  for(const mutate of [
+   changed=>delete changed.hostedRun,
+   changed=>changed.hostedRun.runAttempt="2",
+   changed=>changed.stages.shift(),
+  ]){
+   const changed=structuredClone(selected);
+   mutate(changed);
+   writeFileSync(path,JSON.stringify(changed));
+   assert.deepEqual(retainCandidateBrowserReports(root).reports,[]);
+  }
+  writeFileSync(path,JSON.stringify(selected));
+  const competing=join(root,"target/v1-candidate-runs/run-duplicate");
+  mkdirSync(competing);
+  writeFileSync(join(competing,"result.json"),JSON.stringify(selected));
+  assert.deepEqual(retainCandidateBrowserReports(root).reports,[]);
+  rmSync(competing,{recursive:true,force:true});
+  assert.equal(retainCandidateBrowserReports(root).reports.length,1);
  }finally{rmSync(root,{recursive:true,force:true});}
 });
 
