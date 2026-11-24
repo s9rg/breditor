@@ -218,7 +218,11 @@ export class SharedPersistentSession<P extends SharedSelectionPolicy="original">
  }
  #start():void{
   if(this.#running||this.#closed||!this.#pending)return;
-  this.#running=this.#drain().catch(error=>{if(!this.#storageChanged)this.#failed(error);}).finally(()=>{this.#running=undefined;this.#notify();if(!this.#failure)this.#start();});
+  this.#running=this.#drain().catch(error=>{if(!this.#closed&&!this.#storageChanged)this.#failed(error);}).finally(()=>{
+   this.#running=undefined;
+   if(this.#closed)return;
+   this.#notify();if(!this.#failure)this.#start();
+  });
  }
  async #drain():Promise<void>{
   while(this.#pending&&!this.#closed&&!this.#storageChanged){
@@ -228,7 +232,7 @@ export class SharedPersistentSession<P extends SharedSelectionPolicy="original">
     const kind=this.#search?"search":this.#selectionPolicy==="document-v1"?"document":"original";
     await writeAdmittedSessionRecord(this.#db,next.key,next.record,insertOnly,kind);
    }catch(error){
-    this.#pending??=next;
+    if(!this.#closed)this.#pending??=next;
     if(insertOnly&&error instanceof Error&&error.name==="ConstraintError")throw new SharedEditorError("session_destination_exists","A journal was created while the shared session was opening");
     throw error;
    }
