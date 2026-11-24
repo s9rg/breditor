@@ -10,6 +10,7 @@ import {probeSuggestionSyncSdk} from "./probe-suggestion-sync-sdk.mjs";
 import {probeSuggestionObserverSdk} from "./probe-suggestion-observer-sdk.mjs";
 import {probeSuggestionRevisionsSdk} from "./probe-suggestion-revisions-sdk.mjs";
 import {probeReviewAssetsMatrix} from "./probe-review-assets-matrix.mjs";
+import {installedArchiveDigests} from "./installed-archive-digests.mjs";
 
 export async function checkOwnedReviewInstalled(executable,{includeObserver=false,includeControls=false,revisionExecutable,formatRebase=false,textRebase=false,assetWorkflow=false}={}){
  if(formatRebase&&(!revisionExecutable||!includeControls))throw Error("Formatting rebase qualification requires the revision fixture and paired controls");
@@ -20,7 +21,8 @@ export async function checkOwnedReviewInstalled(executable,{includeObserver=fals
  mkdirSync(archives);mkdirSync(consumer);writeFileSync(join(consumer,"package.json"),JSON.stringify({name:"breditor-owned-review-consumer",private:true,type:"module"}));
  const packages=["@breditor/browser","@breditor/experimental-rich-content","@breditor/collaboration","@breditor/editor"];
  const packed=JSON.parse(execFileSync("npm",["pack","--ignore-scripts","--json","--pack-destination",archives,...packages.flatMap(name=>["--workspace",name])],{cwd:root,encoding:"utf8"}));
- const paths=packed.map(pack=>join(archives,pack.filename));
+ const archiveEvidence=installedArchiveDigests(archives,packed,packages);
+ const paths=archiveEvidence.map(({filename})=>join(archives,filename));
  execFileSync("npm",["install","--offline","--ignore-scripts","--no-audit","--no-fund","--package-lock=false",...paths,...(includeControls?["react@19.2.8","react-dom@19.2.8","@types/react@19.2.18"]:[])],{cwd:consumer,stdio:["ignore","ignore","pipe"]});
  const specifiers=[...packages,"@breditor/editor/collaboration","@breditor/collaboration/wasm",...(includeControls?["@breditor/editor/collaboration/react","react","react-dom/client"]:[])],resolved=JSON.parse(execFileSync(process.execPath,["--input-type=module","-e",`console.log(JSON.stringify(${JSON.stringify(specifiers)}.map(name=>import.meta.resolve(name))))`],{cwd:consumer,encoding:"utf8"})),installed=resolved.slice(0,packages.length).map(url=>realpathSync(fileURLToPath(url)));
  for(const file of installed)assert.ok(file.startsWith(realpathSync(consumer)+sep),"Production dependencies must resolve in the clean installed consumer");
@@ -39,7 +41,8 @@ export async function checkOwnedReviewInstalled(executable,{includeObserver=fals
  const observer=includeObserver?await probeSuggestionObserverSdk(wasmDirectory,resolve(executable),{sdkDirectory,sdkModule,controls:includeControls}):undefined;
  const revisions=revisionExecutable?await probeSuggestionRevisionsSdk(wasmDirectory,resolve(revisionExecutable),{sdkModule,formatRebase,textRebase,...reactOptions}):undefined;
  const textBoundary=textRebase?await(await import("./probe-suggestion-text-rebase-boundary.mjs")).probeTextRebaseBoundary(wasmDirectory):undefined;
- const report={...result,format:"breditor/owned-review-installed-probe",consumer,archives:paths,installedProductionModules:installed,publicEntry:fileURLToPath(sdkModule),strictInstalledTypes:true,packagedWasm:true,...(includeControls?{installedReactModules:resolved.slice(6)}:{}),...(observer?{observer}:{}),...(revisions?{revisions}:{}),...(textBoundary?{textBoundary}:{}),scope:result.scope.replace("Actual application Wasm","Clean-installed local package archives, installed editor/collaboration exports and packaged application Wasm")+(observer?" An additional installed permanent-observer matrix covers non-authoring Readers.":"")+(revisions?" A separate installed immutable-revision matrix uses only the opt-in revision host.":"")};
+ assert.deepEqual(installedArchiveDigests(archives,packed,packages),archiveEvidence,"Installed review archives changed during qualification");
+ const report={...result,format:"breditor/owned-review-installed-probe",consumer,archives:paths,archiveEvidence,installedProductionModules:installed,publicEntry:fileURLToPath(sdkModule),strictInstalledTypes:true,packagedWasm:true,...(includeControls?{installedReactModules:resolved.slice(6)}:{}),...(observer?{observer}:{}),...(revisions?{revisions}:{}),...(textBoundary?{textBoundary}:{}),scope:result.scope.replace("Actual application Wasm","Clean-installed local package archives, installed editor/collaboration exports and packaged application Wasm")+(observer?" An additional installed permanent-observer matrix covers non-authoring Readers.":"")+(revisions?" A separate installed immutable-revision matrix uses only the opt-in revision host.":"")};
  writeFileSync(join(temporary,"result.json"),JSON.stringify(report,null,2));return report;
 }
 if(process.argv[1]&&realpathSync(process.argv[1])===fileURLToPath(import.meta.url)){

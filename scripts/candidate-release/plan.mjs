@@ -38,6 +38,11 @@ const focusedStageIds = {
   "functional-native-fixtures","portable-relay-relocation","portable-relay-legacy-handover",
  ],
  "dependency-inventories": ["relay-native-dependency-notices","paired-local-runtime","paired-shared-runtime"],
+ "installed-distribution-workflows": [
+  "default-typescript-build","paired-local-runtime","paired-shared-runtime","rich-browser-build","collaboration-build",
+  "installed-rich-interchange","functional-native-fixtures","installed-everyday-mixed-workflows",
+  "installed-text-review-and-readers","installed-formatting-review-and-readers","installed-assets-comments-versions",
+ ],
  "installed-feature-browser": [
   "default-typescript-build","paired-local-runtime","paired-shared-runtime","rich-browser-build","collaboration-build","editor-build",
   "installed-search-workflows","installed-placeholder-workflows","installed-fullscreen-workflows","installed-session-backups","installed-asset-backups",
@@ -852,7 +857,7 @@ export function candidateReleasePlan({profile="full",environment=process.env}={}
   withSharedRuntime(stage("portable-relay-legacy-handover",node,[
    "scripts/check-writable-relay-segment.mjs",executable("relay_segment_functional"),"--participant-carried-alternate",
   ],{BREDITOR_NPM:npm},[{path:"target/qualified-carried-participant-alternate.json",fresh:true,retain:true}])),
-  script("installed-everyday-mixed-workflows","check-editor-mixed-workflows.mjs",["--reuse-installed",executable("transport_v2_functional")],[{path:"target/editor-mixed-workflows.json",fresh:true}]),
+  script("installed-everyday-mixed-workflows","check-editor-mixed-workflows.mjs",["--reuse-installed",executable("transport_v2_functional")],[{path:"target/editor-mixed-workflows.json",fresh:true,retain:true}]),
   script("installed-text-review-and-readers","check-suggestion-text-rebase-installed.mjs",[executable("suggestions_functional"),executable("suggestion_revisions_functional")]),
   script("installed-formatting-review-and-readers","check-suggestion-format-rebase-installed.mjs",[executable("suggestions_functional"),executable("suggestion_revisions_functional")]),
   script("installed-assets-comments-versions","check-review-assets-installed.mjs",[executable("review_assets_functional")]),
