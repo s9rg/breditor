@@ -100,10 +100,10 @@ neither axis leaves the domain, so the ratio only moves by rounding and the
 1 px floor. `clampRichImageDimension` and `scaleRichImageSize` expose the same
 policy.
 
-An image without display dimensions starts from its decoded intrinsic size
-(the slider announces it as "original size"); until the bitmap has decoded its
-slider is `aria-disabled` and nothing can be dragged. The first resize writes
-an explicit size.
+An image without display dimensions starts from its decoded intrinsic size,
+scaled proportionally to fit within the display limit when needed. The slider
+announces this starting size as "original size". Until the bitmap decodes the
+slider is `aria-disabled`. The first resize writes an explicit size.
 
 ### Cancellation
 

@@ -31,6 +31,43 @@ test("the corner slider steps the image size through one resize command per key"
  expect(await imageSize(page)).toEqual([340,150]);expect(await page.locator(".breditor-rich-surface").innerHTML()).toBe(document);
 });
 
+test("the first proportional resize of an oversized image preserves its decoded ratio",async({page})=>{
+ const initial=await page.evaluate(async()=>{
+  const api=await import("/rich.js"),{profile,editor:demo}=window.demo;
+  const documentJson=JSON.parse(demo.view().documentJson);
+  const findImage=node=>node.type==="breditor/image"?node:node.children?.map(findImage).find(Boolean);
+  const image=findImage(documentJson.root);
+  delete image.properties["breditor/width"];delete image.properties["breditor/height"];
+  const readSize=editor=>{
+   const {properties}=findImage(JSON.parse(editor.view().documentJson).root);
+   return [properties["breditor/width"]??null,properties["breditor/height"]??null];
+  };
+  const canvas=document.createElement("canvas");canvas.width=5000;canvas.height=2500;
+  canvas.getContext("2d").fillRect(0,0,canvas.width,canvas.height);
+  const bitmap=canvas.toDataURL("image/png");
+  const host=document.createElement("section"),overlay=document.createElement("div");
+  overlay.id="oversized-resize";document.body.append(host,overlay);
+  const core=profile.createEditor(JSON.stringify(documentJson));
+  const editor=api.mountRichEditor(host,{core,resolveAsset:()=>bitmap});
+  const resize=api.mountRichImageResize(overlay,editor,{commit:api.richImageResizeCommit(editor)});
+  const decoded=host.querySelector("img");await decoded.decode();resize.refresh();
+  window.oversizedResize={editor,resize,readSize};
+  return {decoded:[decoded.naturalWidth,decoded.naturalHeight],size:readSize(editor),depth:editor.view().undoDepth};
+ });
+ expect(initial).toEqual({decoded:[5000,2500],size:[null,null],depth:0});
+ const control=page.locator("#oversized-resize").getByRole("slider");
+ const originalLabel=await control.getAttribute("aria-valuetext");
+ await control.focus();await page.keyboard.press("ArrowLeft");
+ const after=await page.evaluate(()=>{
+  const {editor,resize,readSize}=window.oversizedResize;
+  const resized=readSize(editor),depth=editor.view().undoDepth;
+  editor.execute({kind:"undo"});const undone=readSize(editor);
+  resize.dispose();editor.dispose();
+  return {resized,depth,undone};
+ });
+ expect({...after,originalLabel}).toEqual({resized:[4088,2044],depth:1,undone:[null,null],originalLabel:"4096 by 2048 pixels (original size)"});
+});
+
 test("a corner drag previews in the overlay and commits one aspect-preserving resize on release",async({page})=>{
  const before=await undoDepth(page),{x,y}=await corner(page);
  await page.mouse.move(x,y);await page.mouse.down();await page.mouse.move(x-30,y-4,{steps:3});await page.mouse.move(x-60,y-5,{steps:3});
