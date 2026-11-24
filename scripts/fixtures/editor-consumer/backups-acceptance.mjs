@@ -26,6 +26,66 @@ function readJournal(db){return new Promise((resolve,reject)=>{
  const tx=db.transaction("journals","readonly"),request=tx.objectStore("journals").get(["room","101"]);
  tx.oncomplete=()=>resolve(request.result);tx.onabort=()=>reject(tx.error);
 });}
+export async function recoverDiscardedOriginalWrites(wasm){
+ const profile=wasm.SharedRichProfile.from_standard_configuration_json_v3(JSON.stringify(configuration));
+ const cases=[];
+ try{for(const rollback of [true,false]){
+  const database=`installed-original-discard-${crypto.randomUUID()}`,p=policy(profile,"original",false,database),states=[],errors=[];
+  const lockName=`breditor:shared-writer:${JSON.stringify([p.options.room,p.options.writer])}`;
+  const available=()=>navigator.locks.request(lockName,{ifAvailable:true},lock=>!!lock);
+  let source,restored,inspection,discarded;
+  const deliver=deferred(),terminal=deferred();
+  try{
+   source=await p.open({...p.options,onState:state=>states.push(state),onError:error=>errors.push(error)});
+   const point={block:"z-intro",offset:"1",affinity:"after"};
+   source.core.select({kind:"text",anchor:point,focus:point});
+   check(source.core.type("Durable cut 🙂"),"The earlier edit must enter native history");
+   await source.flush();
+   const durable=p.snapshot(source),revision=source.state().revision;
+   inspection=await journalDatabase(database);
+   same(await readJournal(inspection),durable,"The previous cut must already be durable");
+   const prototype=Object.getPrototypeOf(inspection.transaction("journals").objectStore("journals")),put=prototype.put;
+   prototype.put=function(...args){
+    const request=put.apply(this,args),tx=this.transaction;
+    if(this.name!=="journals"||tx.db.name!==database)return request;
+    const name=rollback?"onabort":"oncomplete",observe=tx[name];
+    tx[name]=event=>{
+     terminal.resolve(event.type);
+     // Hold only the SDK's notification. The native transaction itself settles.
+     void deliver.promise.then(()=>observe.call(tx,event));
+    };
+    if(rollback)request.addEventListener("success",()=>tx.abort(),{once:true});
+    return request;
+   };
+   let latest,latestRevision;
+   try{
+    check(source.core.type("In-flight cut 🙂"),"The distinct cut must start a journal write");
+    latest=p.snapshot(source);latestRevision=source.core.view().revision;
+    check(latest!==durable&&latestRevision!==revision,"The in-flight cut and revision must differ from the durable cut");
+    states.length=0;
+    discarded=source.discardAndClose();
+   }finally{prototype.put=put;}
+   await refuses(()=>source.core.type("Forbidden edit"),"disposed");
+   await refuses(()=>source.save(),"session_closed");
+   check(await terminal.promise===(rollback?"abort":"complete"),"The selected write must reach its native terminal event");
+   check(!await available(),"Discard must hold the writer until the started write settles in the SDK");
+   const expected=rollback?durable:latest,expectedRevision=rollback?revision:latestRevision;
+   same(await readJournal(inspection),expected,"The selected IndexedDB outcome must retain the exact durable cut");
+   deliver.resolve();await discarded;
+   same(states,[{status:"closed",revision,error:null}],"Only explicit discard may notify the abandoned owner");
+   same(errors,[],"A late write rejection may not report through the discarded owner");
+   same(source.state(),{status:"closed",revision:expectedRevision,error:null},"The closed owner must retain the last truly committed revision");
+   check(await available(),"The writer lease must release after settlement");
+   restored=await p.open(p.options);
+   check(restored.recovered&&p.snapshot(restored)===expected,"A fresh native owner must replay the exact durable cut");
+   const document=restored.core.documentJson();
+   check(restored.core.undo()&&restored.core.documentJson()!==document,"The latest durable edit must remain undoable");
+   check(restored.core.redo()&&restored.core.documentJson()===document,"The redo must restore the same document");
+   cases.push({outcome:rollback?"abort":"complete",exactReopen:true});
+  }finally{deliver.resolve();inspection?.close();await Promise.all([source?.discardAndClose(),restored?.discardAndClose()]);}
+ }}finally{profile.free();}
+ return cases;
+}
 export async function recoverFreshOpenRaces(wasm){
  const profile=wasm.SharedRichProfile.from_standard_configuration_json_v3(JSON.stringify(configuration));
  const prefix=`installed-fresh-open-${crypto.randomUUID()}`;
