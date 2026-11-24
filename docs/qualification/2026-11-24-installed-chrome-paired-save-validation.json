@@ -1,0 +1,402 @@
+{
+  "format": "breditor/installed-chrome-paired-save-validation",
+  "formatVersion": 1,
+  "baseCommit": "8bcfa3e160a040e29451ea10bf12b8d8ee23b593",
+  "baselineCollaborationProducer": "b50e387aeb40b4fbe01dde53a5b189ba341a46ec",
+  "measuredCandidate": {
+    "commit": "e583385c14171702a78e0971feaf31008a10118a",
+    "dirty": false,
+    "sha256": "7a1bde77e61a5b1f818c6a5e75c31d4cc091e6c367500fa6727659f3ad9f4642",
+    "files": 9667,
+    "bytes": 82888555
+  },
+  "browserVersion": "158.0.8127.37",
+  "host": "Apple M1 Pro, macOS 26.6.2",
+  "fixtureProof": [
+    {
+      "path": "scripts/fixtures/paired-save-measurement/index.html",
+      "sha256": "daa9c49340a84e5ba95a03cde91ff6fdb3cdca7bd36244612e021a84b6f30edc"
+    },
+    {
+      "path": "scripts/fixtures/paired-save-measurement/measure.mjs",
+      "sha256": "c4efb6a2a96d4ae0be8a1f2c1b7aa53568477b5fd593a43d8c21f7d01dbf711d"
+    },
+    {
+      "path": "scripts/fixtures/editor-consumer/fullscreen-seed.mjs",
+      "sha256": "7682a9a3b4297b8062fc2f11c140e5af466b501751ea89d3fb3d51fc24207602"
+    },
+    {
+      "path": "scripts/fixtures/editor-consumer/coverage-seed.mjs",
+      "sha256": "08c88631e83e1d2ee285cea413bd518d5cdb5b8d9670ae7cc52af4094c7fa2d5"
+    }
+  ],
+  "runtimeSha256": "8f39c742c461006c90e209e0287f7db137574843f316ccddbe2aaa141ca00401",
+  "candidateFullReportSha256": "fc2c6f1534be4debe6dcbb30d4106cdf6ebe24df29d303cda3765f373596c3a3",
+  "baselineFullReportSha256": "0cf410efb3eb1304ab43ba5361bd440ca83b9e46394e9c2cde786dea91bb3835",
+  "workload": "Fresh offline installed local paired SDK. Alternate eight document and eight review publications after two unmeasured warm-up edits. The exact pair includes both native histories and ten immutable named versions.",
+  "counting": "JavaScript instrumentation counts whole paired-record stringify and UTF-8 encode calls and JSON parses of native document or review checkpoints. Timings include the corresponding native editing command and are observations from one browser session per SDK.",
+  "before": {
+    "archives": [
+      {
+        "sha256": "1199d14fe5b3d5b2e0318642a9bbf9f5b84773e97265597f72e190be43869ae0",
+        "name": "@breditor/browser"
+      },
+      {
+        "sha256": "aca2b4008760a9d7e9bd5d035e73922bb51e9afc4c2558394531bde96e02e3b2",
+        "name": "@breditor/experimental-rich-content"
+      },
+      {
+        "sha256": "bddb631dccf3ac4cb86ca87eb1f1ab1838efa1234abcd9918a6f71f0cb48d627",
+        "name": "@breditor/collaboration"
+      }
+    ],
+    "samples": [
+      {
+        "lane": "document",
+        "serializations": 8,
+        "encodes": 4,
+        "parses": 8,
+        "pairedBytes": 1432146,
+        "publishMs": 126,
+        "commitMs": 140.69999992847443
+      },
+      {
+        "lane": "review",
+        "serializations": 4,
+        "encodes": 2,
+        "parses": 4,
+        "pairedBytes": 1432985,
+        "publishMs": 23,
+        "commitMs": 26.800000071525574
+      },
+      {
+        "lane": "document",
+        "serializations": 8,
+        "encodes": 4,
+        "parses": 8,
+        "pairedBytes": 1436500,
+        "publishMs": 123.19999992847443,
+        "commitMs": 139.19999992847443
+      },
+      {
+        "lane": "review",
+        "serializations": 4,
+        "encodes": 2,
+        "parses": 4,
+        "pairedBytes": 1437339,
+        "publishMs": 23.200000047683716,
+        "commitMs": 26.200000047683716
+      },
+      {
+        "lane": "document",
+        "serializations": 8,
+        "encodes": 4,
+        "parses": 8,
+        "pairedBytes": 1440854,
+        "publishMs": 121.19999992847443,
+        "commitMs": 135
+      },
+      {
+        "lane": "review",
+        "serializations": 4,
+        "encodes": 2,
+        "parses": 4,
+        "pairedBytes": 1441693,
+        "publishMs": 22.899999976158142,
+        "commitMs": 27.799999952316284
+      },
+      {
+        "lane": "document",
+        "serializations": 8,
+        "encodes": 4,
+        "parses": 8,
+        "pairedBytes": 1445208,
+        "publishMs": 123.10000002384186,
+        "commitMs": 136.89999997615814
+      },
+      {
+        "lane": "review",
+        "serializations": 4,
+        "encodes": 2,
+        "parses": 4,
+        "pairedBytes": 1446047,
+        "publishMs": 23.600000023841858,
+        "commitMs": 27.600000023841858
+      },
+      {
+        "lane": "document",
+        "serializations": 8,
+        "encodes": 4,
+        "parses": 8,
+        "pairedBytes": 1449565,
+        "publishMs": 122.5,
+        "commitMs": 136.20000004768372
+      },
+      {
+        "lane": "review",
+        "serializations": 4,
+        "encodes": 2,
+        "parses": 4,
+        "pairedBytes": 1450404,
+        "publishMs": 23.100000023841858,
+        "commitMs": 26.299999952316284
+      },
+      {
+        "lane": "document",
+        "serializations": 8,
+        "encodes": 4,
+        "parses": 8,
+        "pairedBytes": 1453927,
+        "publishMs": 120.5,
+        "commitMs": 134
+      },
+      {
+        "lane": "review",
+        "serializations": 4,
+        "encodes": 2,
+        "parses": 4,
+        "pairedBytes": 1454767,
+        "publishMs": 23,
+        "commitMs": 26.700000047683716
+      },
+      {
+        "lane": "document",
+        "serializations": 8,
+        "encodes": 4,
+        "parses": 8,
+        "pairedBytes": 1458291,
+        "publishMs": 123.89999997615814,
+        "commitMs": 137.19999992847443
+      },
+      {
+        "lane": "review",
+        "serializations": 4,
+        "encodes": 2,
+        "parses": 4,
+        "pairedBytes": 1459131,
+        "publishMs": 23.40000009536743,
+        "commitMs": 26.5
+      },
+      {
+        "lane": "document",
+        "serializations": 8,
+        "encodes": 4,
+        "parses": 8,
+        "pairedBytes": 1462654,
+        "publishMs": 122.90000009536743,
+        "commitMs": 139.40000009536743
+      },
+      {
+        "lane": "review",
+        "serializations": 4,
+        "encodes": 2,
+        "parses": 4,
+        "pairedBytes": 1463494,
+        "publishMs": 25.200000047683716,
+        "commitMs": 29.600000023841858
+      }
+    ],
+    "median": {
+      "document": {
+        "serializations": 8.0,
+        "encodes": 4.0,
+        "parses": 8.0,
+        "pairedBytes": 1447386.5,
+        "publishMs": 123.0,
+        "commitMs": 137.05
+      },
+      "review": {
+        "serializations": 4.0,
+        "encodes": 2.0,
+        "parses": 4.0,
+        "pairedBytes": 1448225.5,
+        "publishMs": 23.15,
+        "commitMs": 26.75
+      }
+    }
+  },
+  "after": {
+    "archives": [
+      {
+        "name": "@breditor/browser",
+        "sha256": "1199d14fe5b3d5b2e0318642a9bbf9f5b84773e97265597f72e190be43869ae0"
+      },
+      {
+        "name": "@breditor/experimental-rich-content",
+        "sha256": "aca2b4008760a9d7e9bd5d035e73922bb51e9afc4c2558394531bde96e02e3b2"
+      },
+      {
+        "name": "@breditor/collaboration",
+        "sha256": "e666938e10899e7a038f5a97d676fb76f75bfd97b5bf1c7a52ef5194c60da274"
+      }
+    ],
+    "samples": [
+      {
+        "lane": "document",
+        "serializations": 4,
+        "encodes": 2,
+        "parses": 4,
+        "pairedBytes": 1432146,
+        "publishMs": 118.10000002384186,
+        "commitMs": 123.80000007152557
+      },
+      {
+        "lane": "review",
+        "serializations": 2,
+        "encodes": 1,
+        "parses": 2,
+        "pairedBytes": 1432985,
+        "publishMs": 16.199999928474426,
+        "commitMs": 18.899999976158142
+      },
+      {
+        "lane": "document",
+        "serializations": 4,
+        "encodes": 2,
+        "parses": 4,
+        "pairedBytes": 1436500,
+        "publishMs": 119.10000002384186,
+        "commitMs": 126.69999992847443
+      },
+      {
+        "lane": "review",
+        "serializations": 2,
+        "encodes": 1,
+        "parses": 2,
+        "pairedBytes": 1437339,
+        "publishMs": 18,
+        "commitMs": 25.5
+      },
+      {
+        "lane": "document",
+        "serializations": 4,
+        "encodes": 2,
+        "parses": 4,
+        "pairedBytes": 1440854,
+        "publishMs": 118.60000002384186,
+        "commitMs": 126.40000009536743
+      },
+      {
+        "lane": "review",
+        "serializations": 2,
+        "encodes": 1,
+        "parses": 2,
+        "pairedBytes": 1441693,
+        "publishMs": 16.09999990463257,
+        "commitMs": 22.299999952316284
+      },
+      {
+        "lane": "document",
+        "serializations": 4,
+        "encodes": 2,
+        "parses": 4,
+        "pairedBytes": 1445208,
+        "publishMs": 113.79999995231628,
+        "commitMs": 130.39999997615814
+      },
+      {
+        "lane": "review",
+        "serializations": 2,
+        "encodes": 1,
+        "parses": 2,
+        "pairedBytes": 1446047,
+        "publishMs": 16.899999976158142,
+        "commitMs": 24.100000023841858
+      },
+      {
+        "lane": "document",
+        "serializations": 4,
+        "encodes": 2,
+        "parses": 4,
+        "pairedBytes": 1449565,
+        "publishMs": 113.20000004768372,
+        "commitMs": 120.20000004768372
+      },
+      {
+        "lane": "review",
+        "serializations": 2,
+        "encodes": 1,
+        "parses": 2,
+        "pairedBytes": 1450404,
+        "publishMs": 16,
+        "commitMs": 17.699999928474426
+      },
+      {
+        "lane": "document",
+        "serializations": 4,
+        "encodes": 2,
+        "parses": 4,
+        "pairedBytes": 1453927,
+        "publishMs": 114.5,
+        "commitMs": 119.20000004768372
+      },
+      {
+        "lane": "review",
+        "serializations": 2,
+        "encodes": 1,
+        "parses": 2,
+        "pairedBytes": 1454767,
+        "publishMs": 16,
+        "commitMs": 22.799999952316284
+      },
+      {
+        "lane": "document",
+        "serializations": 4,
+        "encodes": 2,
+        "parses": 4,
+        "pairedBytes": 1458291,
+        "publishMs": 127,
+        "commitMs": 141
+      },
+      {
+        "lane": "review",
+        "serializations": 2,
+        "encodes": 1,
+        "parses": 2,
+        "pairedBytes": 1459131,
+        "publishMs": 18.600000023841858,
+        "commitMs": 22.899999976158142
+      },
+      {
+        "lane": "document",
+        "serializations": 4,
+        "encodes": 2,
+        "parses": 4,
+        "pairedBytes": 1462654,
+        "publishMs": 119.30000007152557,
+        "commitMs": 132.20000004768372
+      },
+      {
+        "lane": "review",
+        "serializations": 2,
+        "encodes": 1,
+        "parses": 2,
+        "pairedBytes": 1463494,
+        "publishMs": 16.399999976158142,
+        "commitMs": 24.700000047683716
+      }
+    ],
+    "median": {
+      "document": {
+        "serializations": 4.0,
+        "encodes": 2.0,
+        "parses": 4.0,
+        "pairedBytes": 1447386.5,
+        "publishMs": 118.35,
+        "commitMs": 126.55
+      },
+      "review": {
+        "serializations": 2.0,
+        "encodes": 1.0,
+        "parses": 2.0,
+        "pairedBytes": 1448225.5,
+        "publishMs": 16.3,
+        "commitMs": 22.85
+      }
+    }
+  },
+  "exactCommittedAndReopenedRecordSha256": "5ec8e0cc3f7b51425b7102340cc0c85c7ff387637bfd64c05b3d85f53dd4d7f8",
+  "writerLeaseRefusedSecondOwner": true,
+  "documentAndReviewUndoRedo": true,
+  "scope": "Both archive installations consumed the same browser and rich-content archives and shared Wasm. The baseline collaboration archive came from the earlier reviewed producer, whose paired validators and worker match the batch-eight base. This measurement covers one local paired document and comment workload without authenticated network transport or a startup/latency budget."
+}

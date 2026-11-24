@@ -626,6 +626,25 @@ synchronous publication went from 33.1 ms to 31.2 ms across 15 samples, and
 both peers reopened with identical checkpoint bytes in each build.
 [Measurement and archive hashes](qualification/2026-11-24-installed-chrome-shared-save-validation.json)
 
+A separate [installed paired-save measurement](qualification/2026-11-24-installed-chrome-paired-save-validation.json)
+used 1.43–1.46 MB records with document and comment histories and ten named
+versions. Each measured comment publication went from four to two whole-record
+serializations, two to one whole-record UTF-8 checks, and four to two native
+journal parses. The document publications followed the same halving across two
+save captures. Median synchronous publication went from 123.0 to 118.4 ms for
+documents and 23.2 to 16.3 ms for comments in eight samples per lane. The same
+durable record reopened byte-for-byte in both builds, and both Undo and Redo
+still worked for the document and comments. A pending save retains one encoded
+JSON string through commit or retry. These observations cover one installed
+Chrome workload and establish no retained-memory or end-to-end performance bound.
+
+After compiling the browser and collaboration packages, run the opt-in
+measurement with Google Chrome installed.
+
+```sh
+node scripts/measure-paired-session-save.mjs
+```
+
 The [paired-session close regression](qualification/2026-11-24-installed-chrome-closed-paired-memory.json)
 measures a live document, one discussion, and fourteen named versions. It also
 discards a second owner after starting a write for a fifteenth version. The
