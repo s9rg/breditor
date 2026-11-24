@@ -189,5 +189,111 @@ async function verify(){
   peer.free();
  }
 }
-const result=await verify().catch(error=>({passed:false,reason:String(error).slice(0,250)}));
+function generationDatabase(name,version){
+ return new Promise((resolve,reject)=>{
+  const request=indexedDB.open(name,version);
+  request.onsuccess=()=>resolve(request.result);
+  request.onerror=()=>reject(request.error);
+  request.onblocked=()=>reject(Error("Generation database upgrade was blocked"));
+ });
+}
+async function generationRows(db){
+ return new Promise((resolve,reject)=>{
+  const stores=["generation_heads","generation_files"],transaction=db.transaction(stores,"readonly");
+  const rows=stores.map(name=>{
+   const store=transaction.objectStore(name);
+   return [store.getAllKeys(),store.getAll()];
+  });
+  transaction.oncomplete=()=>resolve(rows.map(store=>store.map(request=>request.result)));
+  transaction.onabort=()=>reject(transaction.error);
+ });
+}
+async function verifyRetirement(scenario){
+ const upgrade=scenario==="upgrade",hashRejected=scenario==="discard-reject";
+ const profile=await createSharedProfile();
+ const document=seed(JSON.parse(profile.descriptor_json()));
+ const database=`generation-retirement-${crypto.randomUUID()}`,writer="101",actor="retired-review",errors=[];
+ const options={database,room:"room",writer,richLanguage:1,history:"explicit",rangeEditing:"original",
+  selectionEditing:"original",searchHistory:null,reviewedHistory:null,readOnly:false,
+  initialGenerations:{root:"root",active:"one"},review:{actor,principal:"alice",access:"comment"},
+  create:()=>profile.create(document,writer),restoreSegmented:input=>restoreSharedSegmentedEditor(profile,"room",input),
+  onError:error=>errors.push(error?.code??error?.name),
+ };
+ const ownsBoth=async()=>{
+  const {held}=await navigator.locks.query(),names=new Set(held.map(lock=>lock.name));
+  return [`breditor:shared-writer:${JSON.stringify(["room",writer])}`,
+   `breditor:review-writer:${JSON.stringify(["room",actor])}`].filter(name=>names.has(name)).length;
+ };
+ const settle=operation=>Promise.resolve().then(operation).then(()=>null,error=>error?.code??error?.name);
+ const digest=SubtleCrypto.prototype.digest,transaction=IDBDatabase.prototype.transaction;
+ let release,rejectHash,started,session,restored,db;
+ const reached=new Promise(resolve=>{started=resolve;}),held=new Promise((resolve,reject)=>{release=resolve;rejectHash=reject;});
+ let obsoleteAttempts=0,retired=false;
+ try{
+  session=await SharedSegmentedPersistentSession.open(options);
+  session.core.select(range("deep-head",0));
+  check(session.core.type("Durable "),"The seed edit must commit");
+  await session.sealGeneration("two");
+  db=await generationDatabase(database,1);
+  const before=JSON.stringify(await generationRows(db));db.close();db=undefined;
+  IDBDatabase.prototype.transaction=function(...args){
+   if(retired&&this.name===database&&this.version===1&&args[1]==="readwrite")obsoleteAttempts++;
+   return transaction.apply(this,args);
+  };
+  SubtleCrypto.prototype.digest=function(...args){
+   SubtleCrypto.prototype.digest=digest;
+   started();
+   return held.then(()=>digest.apply(this,args));
+  };
+  check(session.core.type("Offline "),"The newer edit must commit in memory");
+  await reached;
+  const edited=session.core.documentJson();
+  check(session.core.undo(),"The uncommitted Redo must be retained");
+  const anchorJson=session.core.captureReviewAnchor({kind:"document"});
+  check(session.core.dispatchReview({kind:"create_thread",data:{anchorJson,body:"Unsaved discussion"}}).kind==="committed",
+   "The concurrent discussion must remain pending");
+  const unsaved=structuredClone(session.exportRecovery());
+  const pending=upgrade?settle(()=>session.flush()):session.discardAndClose();
+  if(upgrade)db=await generationDatabase(database,2);
+  retired=true;
+  const retiredAttempt=await settle(()=>session.core.type("Forbidden"));
+  check(retiredAttempt===(upgrade?"retired":"disposed"),`The retired owner must refuse mutations, received ${retiredAttempt}`);
+  check(await ownsBoth()===2,"Both actual leases must be held while hashing is pending");
+  if(hashRejected)rejectHash(new DOMException("Controlled digest rejection","OperationError"));
+  else release();
+  if(upgrade){
+   check(await pending==="segmented_versionchange","Late hashing must preserve the database upgrade diagnostic");
+   check(await settle(()=>session.retry())==="segmented_versionchange","Retry must retain the version-change code");
+   check(JSON.stringify(session.exportRecovery())===JSON.stringify(unsaved),"Both complete unsaved histories must remain readable");
+   check(await ownsBoth()===2,"Retired history must keep both leases until discard");
+   await session.discardAndClose();
+  }else{
+   await pending;
+   check(session.state().status==="closed"&&session.state().error===null,"Discard must keep the terminal state free of late save errors");
+   db=await generationDatabase(database,1);
+  }
+  check(obsoleteAttempts===0,`A retired save attempted ${obsoleteAttempts} obsolete writes`);
+  check(JSON.stringify(await generationRows(db))===before,"Retirement must preserve every durable head and file byte");
+  check(await ownsBoth()===0,"Discard must release both actual leases");
+  check(JSON.stringify(errors)===JSON.stringify(upgrade?["segmented_versionchange"]:[]),
+   `Unexpected save diagnostics ${JSON.stringify(errors)}`);
+  if(upgrade){
+   restored=await SharedSegmentedPersistentSession.restoreRecovery({
+    ...options,database:database+"-restored",writerRecovery:"host-reacquired",recovery:unsaved,
+   });
+   check(restored.recovered&&JSON.stringify(restored.exportRecovery())===JSON.stringify(unsaved),"Restore must replay both unsaved histories byte-for-byte");
+   check(restored.core.redo()&&restored.core.documentJson()===edited,"The uncommitted edit must Redo exactly after restore");
+   await restored.close();
+  }
+  return {passed:true,upgrade,hashRejected,obsoleteAttempts,unchangedRows:true,exactReadAndRestore:upgrade};
+ }finally{
+  SubtleCrypto.prototype.digest=digest;IDBDatabase.prototype.transaction=transaction;
+  release();db?.close();
+  await Promise.all([session?.discardAndClose(),restored?.discardAndClose()]);
+  profile.free();
+ }
+}
+const scenario=new URLSearchParams(location.search).get("retirement");
+const result=await (scenario===null?verify():verifyRetirement(scenario))
+ .catch(error=>({passed:false,reason:String(error).slice(0,250)}));
 document.querySelector("#result").textContent=JSON.stringify(result);
