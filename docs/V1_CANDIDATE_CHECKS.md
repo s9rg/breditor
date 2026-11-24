@@ -193,7 +193,10 @@ candidate run manifests. Keep each manifest next to its logs and retained
 reports. The coverage report checks the source digest, planned stage sequence
 and retained file hashes. Direct stages that use a paired shared runtime must
 name the same build receipt from their run, including the execution input
-recorded by the runner. Coverage also verifies each direct stage’s command,
+recorded by the runner. Direct Native fixture consumers must name the Native
+host build receipt digest from their earlier producer stage. That comparison
+uses the digest in the manifest even for archives that omit the producer
+receipt bytes. Coverage also verifies each direct stage’s command,
 arguments, planned proof settings and successful process exit. It compares
 absolute argument and planned environment paths inside the checkout by
 repository-relative path and uses the recorded tool paths for the plan’s tool
