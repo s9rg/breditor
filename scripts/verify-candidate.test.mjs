@@ -86,7 +86,7 @@ test("both profiles run real portable relay relocation and legacy handover from 
   ]){
    const {check,index}=locate(id);
    assert.deepEqual(check.args,["scripts/check-writable-relay-segment.mjs",join(repository,artifact),option]);
-   assert.deepEqual(check.artifacts,[{path:"target/"+report,fresh:true}]);
+   assert.deepEqual(check.artifacts,[{path:"target/"+report,fresh:true,retain:true}]);
    assert.equal(check.requiresSharedRuntime,true);
    assert.equal(check.env.BREDITOR_NPM,"npm-fixture");
    for(const prerequisite of ["paired-shared-runtime","collaboration-build","functional-native-fixtures"]){
@@ -445,6 +445,10 @@ test("isolated release matrices preserve the full plan's commands and report the
    "relay-native-dependency-notices","default-typescript-build","paired-local-runtime","rich-browser-build",
    "shared-browser-wasm-build","shared-browser-wasm-bindgen","shared-browser-native-fixtures","shared-browser-vector",
    "shared-browser-raster-fixtures","shared-browser-typescript-build","shared-browser-matrix",
+  ]],
+  ["portable-relay-recovery",[
+   "default-typescript-build","paired-local-runtime","paired-shared-runtime","rich-browser-build","collaboration-build",
+   "functional-native-fixtures","portable-relay-relocation","portable-relay-legacy-handover",
   ]],
   ["dependency-inventories",["relay-native-dependency-notices","paired-local-runtime","paired-shared-runtime"]],
   ["installed-feature-browser",[

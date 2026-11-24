@@ -118,7 +118,11 @@ ledger remains the final reviewed release gate.
 
 ## Whole-room activation jobs
 
-Both candidate profiles build the real relay fixture and run the
+Select `portable-relay-recovery` to run both relocation checks in a dedicated
+candidate job. The workflow retains both reports, including the candidate,
+relay, shared runtime and clean-installed archive hashes.
+
+Both complete candidate profiles build the real relay fixture and run the
 `portable-relay-relocation` and `portable-relay-legacy-handover` checks.
 Each check uses the same relay executable with the workspace SDK and a fresh
 offline-installed SDK. The candidate runner requires fresh reports bound to

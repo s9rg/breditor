@@ -33,6 +33,10 @@ const focusedStageIds = {
   "shared-browser-wasm-build","shared-browser-wasm-bindgen","shared-browser-native-fixtures","shared-browser-vector",
   "shared-browser-raster-fixtures","shared-browser-typescript-build","shared-browser-matrix",
  ],
+ "portable-relay-recovery": [
+  "default-typescript-build","paired-local-runtime","paired-shared-runtime","rich-browser-build","collaboration-build",
+  "functional-native-fixtures","portable-relay-relocation","portable-relay-legacy-handover",
+ ],
  "dependency-inventories": ["relay-native-dependency-notices","paired-local-runtime","paired-shared-runtime"],
  "installed-feature-browser": [
   "default-typescript-build","paired-local-runtime","paired-shared-runtime","rich-browser-build","collaboration-build","editor-build",
@@ -844,10 +848,10 @@ export function candidateReleasePlan({profile="full",environment=process.env}={}
   relayCargo("functional-native-fixtures",["build","--features","server","--locked","--offline","--release","--example","transport_v2_functional","--example","suggestions_functional","--example","suggestion_revisions_functional","--example","review_assets_functional","--example","relay_segment_functional"],["transport_v2_functional","suggestions_functional","suggestion_revisions_functional","review_assets_functional","relay_segment_functional"].map(executablePath)),
   withSharedRuntime(stage("portable-relay-relocation",node,[
    "scripts/check-writable-relay-segment.mjs",executable("relay_segment_functional"),"--participant-portable-seal",
-  ],{BREDITOR_EXPECT_DISCUSSION_TRANSCRIPT:"native",BREDITOR_NPM:npm},[{path:"target/qualified-portable-relocation.json",fresh:true}])),
+  ],{BREDITOR_EXPECT_DISCUSSION_TRANSCRIPT:"native",BREDITOR_NPM:npm},[{path:"target/qualified-portable-relocation.json",fresh:true,retain:true}])),
   withSharedRuntime(stage("portable-relay-legacy-handover",node,[
    "scripts/check-writable-relay-segment.mjs",executable("relay_segment_functional"),"--participant-carried-alternate",
-  ],{BREDITOR_NPM:npm},[{path:"target/qualified-carried-participant-alternate.json",fresh:true}])),
+  ],{BREDITOR_NPM:npm},[{path:"target/qualified-carried-participant-alternate.json",fresh:true,retain:true}])),
   script("installed-everyday-mixed-workflows","check-editor-mixed-workflows.mjs",["--reuse-installed",executable("transport_v2_functional")],[{path:"target/editor-mixed-workflows.json",fresh:true}]),
   script("installed-text-review-and-readers","check-suggestion-text-rebase-installed.mjs",[executable("suggestions_functional"),executable("suggestion_revisions_functional")]),
   script("installed-formatting-review-and-readers","check-suggestion-format-rebase-installed.mjs",[executable("suggestions_functional"),executable("suggestion_revisions_functional")]),
