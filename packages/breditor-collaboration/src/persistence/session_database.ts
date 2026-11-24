@@ -1,6 +1,7 @@
 import {settleOwnedTransaction} from "./settle_owned_transaction.js";
 import {SharedEditorError} from "../core.js";
 import type {SharedHistoryPolicy,SharedRangePolicy} from "../types.js";
+import type {SharedBackupIdentity} from "../backups/types.js";
 export const MAX_CHECKPOINT_BYTES=16*1024*1024;
 /** Versioned exact journals only. Asset bytes and relay acknowledgement state are separate stores. */
 export function openSessionDatabase(name:string):Promise<IDBDatabase>{
@@ -78,10 +79,7 @@ function readStoredSessionCheckpoint(db:IDBDatabase,key:readonly[string,string],
 /** Commit only a closed document-family record after validating its declared storage identity. */
 export function writeDocumentSessionCheckpoint(db:IDBDatabase,key:readonly[string,string],value:string,history:SharedHistoryPolicy,language:1|2|3|4=1,insertOnly=false):Promise<void>{
  try{checkDocumentCheckpoint(value,key[0],key[1],language,history);}catch(error){return Promise.reject(error);}
- return new Promise((resolve,reject)=>{
-  const tx=db.transaction("journals","readwrite");tx.oncomplete=()=>resolve();tx.onabort=()=>reject(tx.error??new SharedEditorError("session_write","Shared document journal transaction did not complete"));
-  try{tx.objectStore("journals")[insertOnly?"add":"put"]({format:"breditor/shared-document-checkpoint-record",formatVersion:1,history,richLanguage:language,checkpointJson:value},[...key]);}catch(error){tx.abort();reject(error);}
- });
+ return writeAdmittedSessionRecord(db,key,sessionJournalRecord(value,{room:key[0],writer:key[1],history,richLanguage:language,selectionEditing:"document-v1",rangeEditing:"general-v1",searchHistory:null}),insertOnly,"document");
 }
 /** Explicit sessions keep byte-identical legacy values; grouping uses a declared storage discriminator. */
 export function writeSessionCheckpoint(db:IDBDatabase,key:readonly[string,string],value:string,history:SharedHistoryPolicy,rangeEditing:SharedRangePolicy="original",language:1|2|3|4=1,insertOnly=false):Promise<void>{
@@ -89,10 +87,7 @@ export function writeSessionCheckpoint(db:IDBDatabase,key:readonly[string,string
  if(rangeEditing==="original"&&history==="explicit")return writeCheckpoint(db,key,value,insertOnly);
  if(history!=="typing-v1"&&!(rangeEditing==="general-v1"&&history==="explicit"))return Promise.reject(new SharedEditorError("session_history","Unknown history policy"));
  if(rangeEditing==="general-v1"){try{checkCheckpoint(value,key[0],key[1],language,history,rangeEditing);}catch(error){return Promise.reject(error);}}
- return new Promise((resolve,reject)=>{
-  const tx=db.transaction("journals","readwrite");tx.oncomplete=()=>resolve();tx.onabort=()=>reject(tx.error??new SharedEditorError("session_write","Shared journal transaction did not complete"));
-  try{tx.objectStore("journals")[insertOnly?"add":"put"](rangeEditing==="general-v1"?{format:"breditor/shared-general-checkpoint-record",formatVersion:1,history,richLanguage:language,checkpointJson:value}:{format:"breditor/shared-typing-checkpoint-record",formatVersion:1,checkpointJson:value},[...key]);}catch(error){tx.abort();reject(error);}
- });
+ return writeAdmittedSessionRecord(db,key,sessionJournalRecord(value,{room:key[0],writer:key[1],history,richLanguage:language,selectionEditing:"original",rangeEditing,searchHistory:null}),insertOnly);
 }
 export function readCheckpoint(db:IDBDatabase,key:readonly[string,string]):Promise<string|null>{
  return new Promise((resolve,reject)=>{
@@ -107,9 +102,29 @@ export function readCheckpoint(db:IDBDatabase,key:readonly[string,string]):Promi
  });
 }
 export function writeCheckpoint(db:IDBDatabase,key:readonly[string,string],value:string,insertOnly=false):Promise<void>{
+ return writeAdmittedSessionRecord(db,key,value,insertOnly);
+}
+
+/** Encode an admitted native checkpoint without reading or copying its payload. */
+export function sessionJournalRecord(checkpointJson:string,identity:SharedBackupIdentity):unknown{
+ if(identity.searchHistory)return {format:"breditor/shared-search-checkpoint-record",formatVersion:1,history:identity.history,rangeEditing:identity.rangeEditing,selectionEditing:identity.selectionEditing,richLanguage:identity.richLanguage,checkpointJson};
+ if(identity.selectionEditing==="document-v1")return {format:"breditor/shared-document-checkpoint-record",formatVersion:1,history:identity.history,richLanguage:identity.richLanguage,checkpointJson};
+ if(identity.rangeEditing==="general-v1")return {format:"breditor/shared-general-checkpoint-record",formatVersion:1,history:identity.history,richLanguage:identity.richLanguage,checkpointJson};
+ return identity.history==="explicit"?checkpointJson:{format:"breditor/shared-typing-checkpoint-record",formatVersion:1,checkpointJson};
+}
+
+const writeFailure={
+ original:["session_write","Shared journal transaction did not complete"],
+ document:["session_write","Shared document journal transaction did not complete"],
+ search:["search_record_write","Search transaction did not complete"],
+} as const;
+
+/** Commit a private, already admitted storage record. The caller owns journal admission. */
+export function writeAdmittedSessionRecord(db:IDBDatabase,key:readonly[string,string],record:unknown,insertOnly=false,kind:keyof typeof writeFailure="original"):Promise<void>{
  return new Promise((resolve,reject)=>{
+  const [code,message]=writeFailure[kind];
   const tx=db.transaction("journals","readwrite");
-  tx.oncomplete=()=>resolve();tx.onabort=()=>reject(tx.error??new SharedEditorError("session_write","Shared journal transaction did not complete"));
-  try{tx.objectStore("journals")[insertOnly?"add":"put"](value,[...key]);}catch(error){tx.abort();reject(error);}
+  tx.oncomplete=()=>resolve();tx.onabort=()=>reject(tx.error??new SharedEditorError(code,message));
+  try{tx.objectStore("journals")[insertOnly?"add":"put"](record,[...key]);}catch(error){tx.abort();reject(error);}
  });
 }
