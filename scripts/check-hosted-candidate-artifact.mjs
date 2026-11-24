@@ -52,8 +52,11 @@ function githubArtifactBinding(repository,run,artifact,source,{profile,shard,hos
 
 export async function verifyHostedCandidateArtifact(root,{repository,artifactMetadata,runMetadata,archive,manifest}){
  assert.match(repository,repositoryName,"Specify the expected GitHub repository as owner/name");
+ const result=resolve(manifest),runDirectory=basename(dirname(result));
+ assert.equal(basename(result),"result.json","Expected the candidate result.json name");
+ assert.match(runDirectory,/^run-[a-z0-9]+$/i,"Expected the generated run directory for the archived manifest");
  const artifact=readMetadata(artifactMetadata),run=readMetadata(runMetadata);
- const coverage=candidateCoverage(root,[manifest],{requireHosted:true});
+ const coverage=candidateCoverage(root,[result],{requireHosted:true});
  const [evidence]=coverage.evidence;
  githubArtifactBinding(repository,run,artifact,coverage.source,evidence);
 
@@ -61,7 +64,7 @@ export async function verifyHostedCandidateArtifact(root,{repository,artifactMet
  assert.ok(stat.isFile()&&stat.size>0&&stat.size===artifact.size_in_bytes,"Downloaded ZIP size differs from GitHub artifact metadata");
  assert.equal(await archiveDigest(path),artifact.digest,"Downloaded ZIP digest differs from GitHub artifact metadata");
  const entries=execFileSync("unzip",["-Z1",path],{encoding:"utf8",maxBuffer:1024*1024}).split("\n");
- const resultEntry=`${basename(dirname(resolve(manifest)))}/result.json`;
+ const resultEntry=`${runDirectory}/result.json`;
  for(const [entry,expected,limit] of [
   ["runner-context.tsv",evidence.hosted.contextSha256,8192],
   [resultEntry,evidence.sha256,32*1024*1024],

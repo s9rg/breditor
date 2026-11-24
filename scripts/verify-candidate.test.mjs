@@ -85,6 +85,8 @@ test("candidate coverage requires one clean source, complete selected stages and
   saveEvidence(artifactMetadata,artifact);
   saveEvidence(runMetadata,githubRun);
   assert.deepEqual((await verify()).githubArtifact,{id:artifact.id,name:artifact.name,digest:artifact.digest});
+  await assert.rejects(verify({manifest:join(dirname(run.manifest),"renamed.json")}),/candidate result.json name/);
+  await assert.rejects(verify({manifest:join(artifactRoot,"unexpected","result.json")}),/generated run directory/);
   await assert.rejects(verify({repository:"someone/breditor"}),/different repository/);
   saveEvidence(runMetadata,{...githubRun,run_attempt:1});
   await assert.rejects(verify(),/run attempt differs/);
