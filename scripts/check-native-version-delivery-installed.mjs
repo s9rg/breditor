@@ -7,9 +7,8 @@ import {execFileSync} from 'node:child_process';
 import {createHash} from 'node:crypto';
 import {join,dirname,resolve,relative} from 'node:path';
 import {fileURLToPath} from 'node:url';
-import {fileEvidence,sourceEvidence,saveEvidence} from './candidate-release/evidence.mjs';
-import {copySharedRuntimeForActivation,sharedRuntimeForActivation} from './candidate-release/shared-runtime-evidence.mjs';
-import {historicalSharedWasmSha256,pinnedSharedRuntimeReceipt} from './fixtures/native-runtime/shared-runtime-receipt.mjs';
+import {sourceEvidence,saveEvidence} from './candidate-release/evidence.mjs';
+import {copySharedRuntimeForActivation,sharedRuntimeForActivation,verifyInstalledSharedRuntime} from './candidate-release/shared-runtime-evidence.mjs';
 import {executeCandidateStage} from './candidate-release/process.mjs';
 import {searchConsumerLock,verifySearchConsumerRegistry} from './search-consumer-lock.mjs';
 const root=resolve(dirname(fileURLToPath(import.meta.url)),'..');
@@ -51,19 +50,7 @@ for(const name of ['segmented_relay_functional','selected_delivery_functional'])
  nativeHosts[name]={path,sha256:sha(fs.readFileSync(source))};assert.equal(sha(fs.readFileSync(target)),nativeHosts[name].sha256);
 }
 const runtimeDirectory='node_modules/@breditor/collaboration/dist/runtime/';
-const normalWasmSha256=runtime?.wasmSha256??historicalSharedWasmSha256;
-function verifyInstalledRuntime(){
- assert.equal(fileEvidence(consumer,runtimeDirectory+'breditor_shared_bg.wasm').sha256,normalWasmSha256);
- if(!runtime)return;
- const {report}=pinnedSharedRuntimeReceipt(consumer,runtime.sha256);
- assert.deepEqual(report.source,source);
- for(const {name,bytes,sha256} of report.files){
-  const actual=fileEvidence(consumer,runtimeDirectory+name);
-  assert.equal(actual.bytes,bytes,name);
-  assert.equal(actual.sha256,sha256,name);
- }
-}
-verifyInstalledRuntime();
+const normalWasmSha256=verifyInstalledSharedRuntime(consumer,runtimeDirectory,source,runtime);
 const state={format:'breditor/installed-native-version-delivery-qualification',version:1,complete:false,source,sourceRoot:root,directory,consumer,workspaceLinks:false,registryArtifacts,copied,nativeHosts,normalWasmSha256,sharedRuntimeReceiptSha256:runtime?.sha256??null,archives:packed.map(pack=>({name:pack.name,path:join(archives,pack.filename),sha256:sha(fs.readFileSync(join(archives,pack.filename)))})),results:[],startedAt:new Date().toISOString()};
 saveEvidence(directory+'/running.json',state);console.log(JSON.stringify({directory,phase:'execute-original-version-records-through-real-room-recovery'}));
 const checks=[
@@ -75,7 +62,7 @@ const outcomes=await Promise.allSettled(checks.map(async check=>{
  if(check.id==='native-version-delivery')for(const [name,n]of [['tests',73],['pass',73],['fail',0],['skipped',0],['cancelled',0],['todo',0]])assert.match(log,new RegExp('^# '+name+' '+n+'$','m'));
 }));
 for(const value of outcomes)if(value.status==='rejected'){saveEvidence(directory+'/failed.json',{...state,error:String(value.reason)});throw value.reason;}
-verifyInstalledRuntime();
+verifyInstalledSharedRuntime(consumer,runtimeDirectory,source,runtime);
 if(runtime)assert.equal(sharedRuntimeForActivation(root,source).sha256,runtime.sha256);
 assert.deepEqual(sourceEvidence(root),source);for(const host of Object.values(nativeHosts))assert.equal(sha(fs.readFileSync(join(root,host.path))),host.sha256);
 Object.assign(state,{complete:true,sourceUnchanged:true,tests:73,actualNativeVersionPolicies:48,actualFailureCases:24,actualSevenFamilyRoomCases:1,releaseReady:false,v1GatesOpen:13,finishedAt:new Date().toISOString(),scope:'Original authenticated immutable version publication, real durable receipts, lazy packet loading and failed/lost-reply recovery under exact native/source custody. Direct six constructor-family policies plus original catalog delivery in actual seven-family selected room recovery and future cold document/comment Undo/Redo. This does not close all-family metadata settlement, provider/client/assets reconciliation or whole-room activation.'});

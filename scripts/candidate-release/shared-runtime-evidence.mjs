@@ -4,7 +4,7 @@ import {constants, copyFileSync, existsSync, mkdirSync} from "node:fs";
 import {dirname, join} from "node:path";
 import {fileEvidence, saveEvidence, sourceEvidence} from "./evidence.mjs";
 import {
- pinnedSharedRuntimeReceipt, sharedRuntimeBuildFormat, sharedRuntimeBuildReport, sharedRuntimeReceiptVariable,
+ historicalSharedWasmSha256, pinnedSharedRuntimeReceipt, sharedRuntimeBuildFormat, sharedRuntimeBuildReport, sharedRuntimeReceiptVariable,
 } from "../fixtures/native-runtime/shared-runtime-receipt.mjs";
 
 export {sharedRuntimeBuildReport};
@@ -73,4 +73,22 @@ export function copySharedRuntimeForActivation(root, consumer, source) {
  copyFileSync(path, destination, constants.COPYFILE_EXCL);
  assert.equal(pinnedSharedRuntimeReceipt(consumer, runtime.sha256).wasmSha256, runtime.wasmSha256);
  return runtime;
+}
+
+
+/** Verify the normal runtime unpacked into a fresh SDK consumer. */
+export function verifyInstalledSharedRuntime(consumer, directory, source, runtime) {
+ if (!runtime) {
+  assert.equal(fileEvidence(consumer, join(directory, "breditor_shared_bg.wasm")).sha256, historicalSharedWasmSha256);
+  return historicalSharedWasmSha256;
+ }
+ const {report, wasmSha256} = pinnedSharedRuntimeReceipt(consumer, runtime.sha256);
+ assert.equal(wasmSha256, runtime.wasmSha256);
+ assert.deepEqual(report.source, source);
+ for (const {name, bytes, sha256} of report.files) {
+  const file = fileEvidence(consumer, join(directory, name));
+  assert.equal(file.bytes, bytes, name);
+  assert.equal(file.sha256, sha256, name);
+ }
+ return wasmSha256;
 }

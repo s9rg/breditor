@@ -83,7 +83,9 @@
             "metadata-reconciliation-source",
             "metadata-reconciliation-installed",
             "native-version-delivery",
-            "held-metadata"
+            "held-metadata",
+            "metadata-work",
+            "selected-room-storage"
           ]
         }
       }

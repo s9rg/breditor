@@ -60,6 +60,8 @@ const boundaries = [
  ["metadata-reconciliation-installed","installed-metadata-reconciliation",[...localMetadataBuilds,"metadata-reconciliation-companion-hosts"]],
  ["native-version-delivery","installed-native-version-delivery",["segmented-relay-native-host","selected-delivery-native-host"]],
  ["held-metadata","installed-held-metadata",["selected-delivery-native-host"]],
+ ["metadata-work","installed-metadata-work",["editor-build","metadata-native-hosts"]],
+ ["selected-room-storage","installed-selected-room-storage",["selected-delivery-native-host"]],
 ];
 const sdkPrerequisites = [
  "default-typescript-build",
