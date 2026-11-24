@@ -118,28 +118,30 @@ feature index, digest and about 90 feature pages).
   defaults to the top; text language emits `lang` only, while CKEditor also sets
   `dir`.
 
-### Exclusions awaiting approval
+### Confirmed V1 catalog scope
 
-The catalog-coverage gate needs each intentional difference approved. Proposed:
+V1 includes every capability in the proposed scope review:
 
-- **Never store executable or arbitrary markup:** General HTML Support, HTML
-  embed, full-page HTML and generic `<span style>` text styles.
-- **No implicit remote fetches or inlined uploads:** insert image by URL without
-  a policy, Base64 upload, and vendor file managers (CKBox, CKFinder, Uploadcare,
-  image optimizer).
-- **Different data formats and parsing:** XML data output, and automatic
-  Markdown detection on plain-text paste.
-- **Out of scope:** email layouts and export with inline styles, whiteboard, and
-  nested tables.
-- **Flow editor, not paginated:** measured pagination is not done; see
-  [PAGINATION_AND_PRINT.md](PAGINATION_AND_PRINT.md).
+- General HTML Support, arbitrary HTML embeds, full-page HTML, and generic
+  inline `<span style>` formatting.
+- Implicit remote image loads, insertion by URL, Base64 uploads, and vendor
+  asset integrations covering CKBox, CKFinder, Uploadcare, and image
+  optimization.
+- XML export and automatic Markdown detection on plain-text paste.
+- Email layouts and inline-style export, whiteboards, and nested tables.
+- Measured page layout and pagination. See
+  [pagination and print](PAGINATION_AND_PRINT.md).
+
+Give each capability a versioned acceptance case. The cases for HTML,
+embeds, uploads, and remote resources must cover how untrusted content
+is handled through import, rendering, recovery, and export.
 
 ### Recommended next order
 
 1. **Shared V4 interchange** so shared import and export report the V4 features.
    This is the last shared V4 gap (Enter on a collapsed shared summary is done).
-2. **Approve or reject the exclusions above**, then write per-capability
-   acceptance cases (catalog-coverage gate).
+2. **Write per-capability acceptance cases** for the confirmed V1 catalog
+   scope.
 3. **Automate release CI** over every distributed feature, now that shared
    qualification runs again.
 4. **Qualification gates** as before: physical input, assistive technology and
