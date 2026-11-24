@@ -84,7 +84,8 @@ test("candidate coverage requires one clean source, complete selected stages and
 
   const artifactRoot=dirname(contextPath),archive=join(artifactRoot,"candidate.zip");
   const artifactMetadata=join(artifactRoot,"artifact.json"),runMetadata=join(artifactRoot,"run-attempt.json");
-  const makeArchive=path=>execFileSync("zip",["-q",path,"runner-context.tsv",`${basename(dirname(run.manifest))}/result.json`],
+  const runDirectory=basename(dirname(run.manifest));
+  const makeArchive=path=>execFileSync("zip",["-qr",path,"runner-context.tsv",runDirectory],
    {cwd:artifactRoot});
   const zipEvidence=path=>({size_in_bytes:statSync(path).size,
    digest:"sha256:"+createHash("sha256").update(readFileSync(path)).digest("hex")});
@@ -116,6 +117,23 @@ test("candidate coverage requires one clean source, complete selected stages and
   saveEvidence(run.manifest,manifest);
   saveEvidence(artifactMetadata,{...artifact,...zipEvidence(differentArchive)});
   await assert.rejects(verify({archive:differentArchive}),/selected checkout evidence differ.*result.json/);
+
+  const missingLog=join(artifactRoot,"missing-log.zip");
+  makeArchive(missingLog);
+  execFileSync("zip",["-dq",missingLog,`${runDirectory}/01-default-typescript-build.log`]);
+  saveEvidence(artifactMetadata,{...artifact,...zipEvidence(missingLog)});
+  await assert.rejects(verify({archive:missingLog}),/ZIP must contain exactly one .*default-typescript-build.log/);
+
+  const changedReport=join(artifactRoot,"changed-report.zip");
+  const archivedReport=join(dirname(run.manifest),manifest.stages.find(stage=>stage.id==="paired-shared-runtime").artifacts
+   .find(artifact=>artifact.path===sharedRuntimeBuildReport).retainedPath);
+  const originalReport=readFileSync(archivedReport),changedBytes=Buffer.from(originalReport);
+  changedBytes[0]^=1;
+  writeFileSync(archivedReport,changedBytes);
+  makeArchive(changedReport);
+  writeFileSync(archivedReport,originalReport);
+  saveEvidence(artifactMetadata,{...artifact,...zipEvidence(changedReport)});
+  await assert.rejects(verify({archive:changedReport}),/selected checkout evidence differ.*normal-shared-runtime-build.json/);
 
   for(const [patch,message] of [
    [{revision:"0".repeat(40)},/revision differs/],
