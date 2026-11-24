@@ -1,0 +1,217 @@
+{
+  "format": "breditor/v1-catalog-cases",
+  "formatVersion": 1,
+  "cases": [
+    {
+      "id": "general-html-support",
+      "version": 1,
+      "feature": "html-source-and-email",
+      "sources": ["ckeditor-general-html"],
+      "scenario": "Configure support for article, aside and custom data attributes. Import nested sections with classes, IDs and ordinary rich text through paste and source editing, edit the text, then reopen and export.",
+      "expected": [
+        "The configured element hierarchy and permitted attributes survive text edits, Undo/Redo and the HTML round trip.",
+        "The loss report identifies unsupported tags and attributes while preserving their permitted content where possible."
+      ],
+      "untrustedInput": "Include an executable element, an event attribute and a denied external reference beside the allowed markup. Verify the denied features are reported and remain inactive across the content lifecycle."
+    },
+    {
+      "id": "arbitrary-html-embed",
+      "version": 1,
+      "feature": "widgets-and-embeds",
+      "sources": ["ckeditor-html-embed"],
+      "scenario": "Insert a self-contained HTML snippet with a layout and a button as one editable embed. Preview it, replace it with an updated snippet, Undo/Redo, reopen the document and export.",
+      "expected": [
+        "The embed remains a distinct block and retains its editable source and placement.",
+        "The exported representation preserves the embed according to the documented export contract. Rendering it in the supported target maintains the declared isolation."
+      ],
+      "untrustedInput": "Use a harmless test snippet that attempts to access parent-editor state and request a controlled resource. Import, preview, restore and export preserve the host boundary and honor the resource policy."
+    },
+    {
+      "id": "full-page-html",
+      "version": 1,
+      "feature": "html-source-and-email",
+      "sources": ["ckeditor-full-page-html"],
+      "scenario": "Import an HTML document with a doctype, language and direction, a title, a description, a stylesheet and an editable body. Edit title and body, reopen, then export as a complete document.",
+      "expected": [
+        "The exported page has one document wrapper and retains each admitted head field and body edit.",
+        "Fragment export emits the body fragment, and full-page import reports unsupported metadata explicitly."
+      ],
+      "untrustedInput": "Include a base URL, a refresh directive and a disallowed stylesheet URL. Confirm the host page never adopts these directives and the supported export applies the declared metadata and resource policy."
+    },
+    {
+      "id": "generic-inline-span-styles",
+      "version": 1,
+      "feature": "html-interchange",
+      "sources": ["ckeditor-general-html"],
+      "scenario": "Admit several CSS properties by policy, including letter-spacing, small caps and a border on a span. Import overlapping bold and styled text, split the styled run, change one property, then Undo/Redo and round-trip.",
+      "expected": [
+        "The selected range retains the effective values of all admitted properties after edits, restore and export.",
+        "An unadmitted property produces a loss diagnostic while admitted declarations in the same span are kept."
+      ],
+      "untrustedInput": "Include a resource-bearing CSS declaration and CSS that would affect surrounding host UI if applied outside the span. Verify policy handling through import, editing, restore and export."
+    },
+    {
+      "id": "implicit-remote-image-loads",
+      "version": 1,
+      "feature": "advanced-images",
+      "sources": ["ckeditor-image-inserting", "ckeditor-image-upload"],
+      "scenario": "Open an imported document with allowed and denied remote image references under a host-configured resource policy. Repeat with the default profile, cold reopen and static publication. Record requests to controlled origins.",
+      "expected": [
+        "The configured profile displays an admitted remote image without a separate insert action. The default and denied cases use the documented placeholder or refusal behavior.",
+        "HTML export retains an allowed remote reference where the export policy permits it and reports omitted references."
+      ],
+      "untrustedInput": "Include a denied origin and a redirect to a denied destination. Assert that import, live/static rendering, restore and exported HTML in the supported consumer context issue no request to a denied destination."
+    },
+    {
+      "id": "image-insertion-by-url",
+      "version": 1,
+      "feature": "advanced-images",
+      "sources": ["ckeditor-image-inserting"],
+      "scenario": "Use the insert-image-by-URL action with a controlled image URL and alt text. Inspect the saved image reference, Undo/Redo insertion, reopen and export.",
+      "expected": [
+        "The admitted image displays with its alt text and placement, the command produces one history step, and the documented reference or retained asset survives restore and export.",
+        "A cancelled or refused fetch leaves the document, history and asset queue at their previous state."
+      ],
+      "untrustedInput": "Exercise a denied destination, a redirect outside the allowlist and a response whose bytes disagree with its declared media type. Verify that none is committed or retried outside the same admission policy."
+    },
+    {
+      "id": "base64-image-upload",
+      "version": 1,
+      "feature": "advanced-images",
+      "sources": ["ckeditor-base64-upload"],
+      "scenario": "Configure Base64 image handling, insert a small PNG via file selection and paste a supported data URL. Save, reopen, export as HTML and import the export.",
+      "expected": [
+        "Each admitted image renders from the original decoded bytes, including after reopen and portable HTML round-trip without a network request.",
+        "The size and decoded image type are checked before insertion and any published data URL uses the validated media type."
+      ],
+      "untrustedInput": "Try malformed Base64, oversize input and non-raster data advertised as a raster type. Verify an observable refusal with no partial document or asset publication and no emitted unvalidated reference."
+    },
+    {
+      "id": "ckbox-assets",
+      "version": 1,
+      "feature": "advanced-images",
+      "sources": ["ckeditor-image-upload"],
+      "scenario": "In a configured CKBox integration, upload a local image, browse authorized folders, insert an existing asset with alt text, then reopen and export after refreshing the provider session.",
+      "expected": [
+        "The selected asset and its stable identity remain attached after reopen, and export resolves admitted image references according to host policy.",
+        "Cancellation or an expired session produces an actionable failure without a partial insertion."
+      ],
+      "untrustedInput": "Return a denied origin or an asset outside the permitted folder from the test provider. Verify refusal during selection and on restore, with credentials absent from stored documents and exported HTML."
+    },
+    {
+      "id": "ckfinder-assets",
+      "version": 1,
+      "feature": "advanced-images",
+      "sources": ["ckeditor-image-upload"],
+      "scenario": "Connect to a configured CKFinder connector, upload from paste or drop, and select an existing image using the file manager. Save and reopen after the connector goes offline, then recover and export.",
+      "expected": [
+        "The eligible uploads and picker insertion become ordinary undoable image edits, and the saved reference restores under the documented online and offline behavior.",
+        "Connector errors allow recovery without duplicate images or leaked credentials."
+      ],
+      "untrustedInput": "Supply an unexpected file type and a picker result from an unapproved connector or folder. Confirm neither becomes a rendered, stored or exported image reference."
+    },
+    {
+      "id": "uploadcare-assets",
+      "version": 1,
+      "feature": "advanced-images",
+      "sources": ["ckeditor-image-upload"],
+      "scenario": "Configure an Uploadcare project. Upload a file, select an existing asset through the picker, apply a supported crop, then reopen and export after the provider session changes.",
+      "expected": [
+        "The selected asset identity and admitted crop persist and render consistently, and export chooses the approved asset rendition.",
+        "Upload cancellation and expired authorization leave an accurate recoverable state."
+      ],
+      "untrustedInput": "Return an unrecognized project, rendition or delivery origin. Verify the policy holds in picker results, live display, restore and output and keeps tokens out of document data."
+    },
+    {
+      "id": "image-optimization",
+      "version": 1,
+      "feature": "advanced-images",
+      "sources": ["ckeditor-image-upload"],
+      "scenario": "Configure an image optimization provider, insert a large admitted raster, request two supported widths and render live and static views at matching viewport sizes.",
+      "expected": [
+        "The correct optimized variants are selected and smaller encoded bytes are observed for the smaller fixture rendition. Alt text, aspect ratio and original asset identity remain available.",
+        "After restore and provider recovery, the original can still be resolved. Export includes only the variants selected by the export policy."
+      ],
+      "untrustedInput": "Return a disallowed rendition URL and a response outside the image bounds. Confirm the trusted fallback remains available and rejected variants are absent from output."
+    },
+    {
+      "id": "xml-export",
+      "version": 1,
+      "feature": "document-conversion",
+      "sources": ["ckeditor-digest"],
+      "scenario": "Export a saved document containing multilingual text with XML metacharacters, formats, nested lists, a table and an approved image reference. Parse the result with an independent XML parser.",
+      "expected": [
+        "The XML is well-formed and matches the published versioned schema. Parsed values preserve escaped text, document order and the represented structure.",
+        "Unsupported features produce explicit losses, and repeated exports of the same revision are deterministic."
+      ]
+    },
+    {
+      "id": "detect-markdown-on-plain-text-paste",
+      "version": 1,
+      "feature": "markdown",
+      "sources": ["ckeditor-paste-markdown"],
+      "scenario": "Paste equivalent inputs with only text/plain set: unmistakable Markdown with a heading and list, a plain sentence with literal punctuation and an ambiguous sample. Repeat with detection disabled and an explicit paste-as-text action.",
+      "expected": [
+        "Enabled detection converts the clear Markdown into native structure in one undoable paste. Ambiguous input follows the documented fallback and literal input keeps its text and punctuation.",
+        "Disabled detection and explicit paste-as-text preserve the original text."
+      ]
+    },
+    {
+      "id": "email-layouts",
+      "version": 1,
+      "feature": "html-source-and-email",
+      "sources": ["ckeditor-email-editing"],
+      "scenario": "Import and edit a two-column newsletter with a header, layout table, CTA link and image. Save, reopen, export and compare the output in the supported email targets.",
+      "expected": [
+        "The layout and reading order survive editing, recovery and email export. Layout tables retain presentation semantics and ordinary data tables retain their headers.",
+        "Unsupported email markup produces a loss diagnostic before publication."
+      ],
+      "untrustedInput": "Put a blocked resource and an active element in the newsletter fixture. Verify that the editing preview, recovered template and email output follow the email content policy."
+    },
+    {
+      "id": "export-inline-styles",
+      "version": 1,
+      "feature": "html-source-and-email",
+      "sources": ["ckeditor-inline-style-export"],
+      "scenario": "Export a controlled document and stylesheet with competing declarations, inherited typography and a table cell style. Parse the output and open it without the input stylesheet.",
+      "expected": [
+        "The intended precedence and inherited visual styles survive as inline declarations on the appropriate elements. Two exports of the same inputs produce the same result.",
+        "Unsupported rules produce explicit diagnostics and export leaves the source revision unchanged."
+      ],
+      "untrustedInput": "Supply CSS with an unapproved external resource and a rule outside the configured export scope. Verify inlining retains only policy-approved declarations, including after restoring the source document."
+    },
+    {
+      "id": "whiteboards",
+      "version": 1,
+      "feature": "widgets-and-embeds",
+      "sources": ["tiptap-whiteboard"],
+      "scenario": "Create a board with sticky notes, shapes, an arrow and a pen stroke. Move and edit objects, pan and zoom, Undo/Redo, reopen the persisted board and export a supported representation.",
+      "expected": [
+        "Object geometry, stacking, text and arrow attachment types survive restore and export. Pan and zoom leave saved object positions intact.",
+        "Moving an object retains its connections and Undo/Redo reconstructs the exact earlier board."
+      ]
+    },
+    {
+      "id": "nested-tables",
+      "version": 1,
+      "feature": "advanced-tables",
+      "sources": ["ckeditor-tables"],
+      "scenario": "Insert a 2-by-2 table inside a cell of an outer table, edit a nested cell, navigate in and out with the keyboard, copy and paste the outer table, and check Undo/Redo, restore and HTML interchange.",
+      "expected": [
+        "The inner and outer cell grids retain their own identities and order after copy and restore, with fresh IDs in the pasted copy. Commands aimed at an inner cell use the inner grid.",
+        "HTML round-trip retains both table hierarchies and the importer reports input outside the documented nesting bounds."
+      ]
+    },
+    {
+      "id": "measured-pagination",
+      "version": 1,
+      "feature": "pagination",
+      "sources": ["tiptap-pages", "ckeditor-pagination"],
+      "scenario": "Use fixed fonts and page settings with a document containing flowing paragraphs, a multi-page table, a raster and an explicit break. Insert text that forces a page change, resize the image, Undo and compare preview with the supported print/export path.",
+      "expected": [
+        "Measured page count and numbered boundaries respond to the changed content and page settings. The forced break, running headers and table continuation follow the declared layout rules.",
+        "Preview and supported export agree within the documented tolerance for the same fonts and settings. Cold reopen recreates the layout while keeping canonical content and history independent of measured geometry."
+      ]
+    }
+  ]
+}

@@ -132,16 +132,29 @@ V1 includes every capability in the proposed scope review:
 - Measured page layout and pagination. See
   [pagination and print](PAGINATION_AND_PRINT.md).
 
-Give each capability a versioned acceptance case. The cases for HTML,
-embeds, uploads, and remote resources must cover how untrusted content
-is handled through import, rendering, recovery, and export.
+The [versioned acceptance cases](v1-catalog-cases.json) define 18 scenarios
+for these capabilities, linked to the grouped audit and primary comparison
+sources. The scope is confirmed and the scenarios are draft qualification
+criteria. The catalog gate stays open while the remaining upstream entries
+are mapped and any intentional differences are reviewed.
+
+Related cases are grouped in JSON files under `docs/v1-catalog-cases/`.
+`npm run audit:v1` validates the case definitions and their source and feature
+references, and reports the number of cases defined. Use the case ID and
+version when recording a fixture or result. For cases
+with an untrusted-input scenario, exercise the boundary at import, live and
+static rendering, cold restore, and export in the supported consumer. Record
+the actual requests, asset references or output alongside the observable
+result. Qualification should name the installed package versions, enabled
+profile and environment. Provider doubles can exercise failure paths, while
+provider integration results should identify the actual test environment.
 
 ### Recommended next order
 
 1. **Shared V4 interchange** so shared import and export report the V4 features.
    This is the last shared V4 gap (Enter on a collapsed shared summary is done).
-2. **Write per-capability acceptance cases** for the confirmed V1 catalog
-   scope.
+2. **Expand the versioned acceptance cases** across the remaining Tiptap
+   and CKEditor catalog entries.
 3. **Automate release CI** over every distributed feature, now that shared
    qualification runs again.
 4. **Qualification gates** as before: physical input, assistive technology and
