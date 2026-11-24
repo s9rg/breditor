@@ -18,8 +18,11 @@ import {exportDocx,docxContentType,type DocxResult,type DocxLossCode} from "@bre
 const docx:DocxResult<Uint8Array>=exportDocx("{}",{image:binding=>binding.asset?undefined:new Uint8Array(),pageSize:"a4"});
 const docxLoss:DocxLossCode|undefined=docx.losses[0]?.code;
 void [docx,docxLoss,docxContentType satisfies string];
-import {exportXml,xmlContractV1} from "@breditor/interchange/xml";
+import {documentXmlContractV1,exportDocumentXml,exportXml,xmlContractV1} from "@breditor/interchange/xml";
 declare const owner: Parameters<NonNullable<LocalDocumentEditorOptions["clipboardInterchange"]>>[0];
 const xml=exportXml(owner,"{}");
 if(xml.ok)void (xml.value satisfies string);
 void (xmlContractV1.version satisfies 1);
+const documentXml=exportDocumentXml(owner);
+if(documentXml.ok)void (documentXml.value satisfies string);
+void (documentXmlContractV1.version satisfies 1);

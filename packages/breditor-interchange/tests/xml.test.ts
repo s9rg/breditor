@@ -1,6 +1,6 @@
 import {describe, expect, it, vi} from "vitest";
 import {interchangeLimits} from "../src/index.js";
-import {exportXml, xmlContractV1} from "../src/xml.js";
+import {documentXmlContractV1, exportDocumentXml, exportXml, xmlContractV1} from "../src/xml.js";
 import type {InterchangeOwner} from "../src/types.js";
 import {all, parseXml} from "./docx_support.js";
 
@@ -51,5 +51,21 @@ describe("versioned XML export", () => {
     ]);
     const {owner, structuredJson} = fixture([root]);
     expect(exportXml(owner, structuredJson)).toEqual({ok: false, error: "resource-limit", losses: []});
+  });
+
+  it("exports native document identity and schema under the separate document namespace", () => {
+    const document = {format:"breditor/document",formatVersion:2,schema:{name:'example/<&"',version:3},
+      schemaFingerprint:`sha256:${"0".repeat(64)}`,root:element("breditor/document",[],{"breditor/document-id":"room<&"})};
+    const documentJson=vi.fn(()=>JSON.stringify(document));
+    const output=exportDocumentXml({documentJson});
+    if(!output.ok)throw Error(output.error);
+    expect(documentJson).toHaveBeenCalledTimes(1);
+    const parsed=parseXml(output.value);
+    expect(parsed.attributes).toEqual({"xmlns:breditor":documentXmlContractV1.namespace,version:"1",
+      "document-format-version":"2","schema-name":document.schema.name,"schema-version":"3","schema-fingerprint":document.schemaFingerprint});
+    expect(all(parsed,"breditor:property")[0]?.children).toEqual(['"room<&"']);
+    expect(output.losses).toEqual([]);
+    expect(exportDocumentXml({documentJson:()=>JSON.stringify({...document,schemaFingerprint:document.schemaFingerprint+"\n"})})).toMatchObject({ok:false,error:"native-admission"});
+    expect(exportDocumentXml({documentJson:()=>JSON.stringify({document})})).toMatchObject({ok:false,error:"native-admission"});
   });
 });

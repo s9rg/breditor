@@ -58,6 +58,7 @@ assert.equal(docxForeignParserModules,0,"The installed DOCX entry must not impor
 const xmlForeignParserModules=modules.xml.filter(foreign).length;
 assert.equal(xmlForeignParserModules,0,"The installed XML entry must not import the HTML or Markdown parser graph");
 assert.equal(result.xmlExports,2,"Expected XML export from cold-restored native local and shared editors");
+assert.equal(result.documentXmlExports,2,"Expected source-bound XML from cold-restored native local and shared editors");
 assert.deepEqual(installedArchiveDigests(archives,packs,names),archiveEvidence,"Installed archives changed during qualification");
 const report={format:"breditor/interchange-installed-consumer",formatVersion:1,passed:true,consumer,archives:archiveEvidence.map((archive,i)=>({...archive,path:paths[i]})),installedInterchangeLicenses:true,strictConsumerTypes:true,workspaceLinks:false,defaultForeignParserModules:modules.default.filter(foreign).length,optInForeignParserModules:modules.interchange.filter(foreign).length,docxForeignParserModules,xmlForeignParserModules,installedDocxExport:true,historicalRichReaders,functionalProbe:{...result,scope:"Installed archives with bare package imports and bundled paired Wasm; compiled managed SDK/React synthetic DOM/clipboard/IDB/locks. Not OS clipboard, captured Office applications, cross-browser, IME, accessibility or release qualification."}};
 mkdirSync(join(root,"target"),{recursive:true});
