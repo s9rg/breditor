@@ -7,9 +7,8 @@ import {fileEvidence,sourceEvidence,saveEvidence,retainStageArtifact} from "./ca
 import {candidateShardPlan,candidateShardIds} from "./candidate-release/shards.mjs";
 import {executeCandidateStage} from "./candidate-release/process.mjs";
 import {retainCandidateActivationEvidence} from "./candidate-release/activation-evidence.mjs";
-import {activationRuntimeStageIds} from "./candidate-release/activation-shards.mjs";
 import {sharedRuntimeForActivation} from "./candidate-release/shared-runtime-evidence.mjs";
-import {metadataFixtureStageIds} from "./candidate-release/metadata-fixture-evidence.mjs";
+import {candidateStageReceipts} from "./candidate-release/runtime-stage-policy.mjs";
 import {verifyNativeSuggestionBuild} from "./candidate-release/native-suggestion-build-evidence.mjs";
 
 export async function runCandidateChecks(plan,{root=repository,signal,report=console.log,execute=executeCandidateStage,snapshot=sourceEvidence,activationEvidence}={}){
@@ -30,8 +29,8 @@ export async function runCandidateChecks(plan,{root=repository,signal,report=con
    if(retained)Object.assign(entry,retained);
    else{
     let execution=check;
-    const nativeFixture=activationRuntimeStageIds.includes(check.id)||metadataFixtureStageIds.includes(check.id);
-    const runtime=nativeFixture||check.requiresSharedRuntime===true?sharedRuntimeForActivation(root,source):undefined;
+    const {nativeFixture,sharedRuntime}=candidateStageReceipts(check);
+    const runtime=sharedRuntime?sharedRuntimeForActivation(root,source):undefined;
     if(runtime){
      if(nativeFixture)entry.nativeHostBuildReceiptSha256=verifyNativeSuggestionBuild(root,source).sha256;
      entry.sharedRuntimeReceiptSha256=runtime.sha256;
