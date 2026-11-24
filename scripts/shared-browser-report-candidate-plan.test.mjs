@@ -36,10 +36,21 @@ test("successful summary counters do not conceal omitted files, missing projects
  const repeated=report(expected);
  repeated.suites.push(repeated.suites[0]);
  assert.throws(()=>validateSharedBrowserReport(repeated,expected),/unexpected or repeated file/);
+ const displaced=report(expected);
+ for(const spec of displaced.suites[0].suites[0].specs)spec.file=files[1];
+ assert.throws(()=>validateSharedBrowserReport(displaced,expected),/registered outside its entry file/);
+ for(const spec of displaced.suites[0].suites[0].specs)spec.file="../rich-browser/standard-toolbar-checks.mjs";
+ assert.throws(()=>validateSharedBrowserReport(displaced,expected),/registered outside its entry file/);
  const skipped=report(expected);
  skipped.suites[0].suites[0].specs[0].tests[0].results[0].status="skipped";
  assert.throws(()=>validateSharedBrowserReport(skipped,expected),/Missing passing/);
  const mismatched=report(expected);
  mismatched.stats.expected++;
  assert.throws(()=>validateSharedBrowserReport(mismatched,expected),/count differs/);
+});
+
+test("the shared toolbar entry admits its existing helper-registered cases",()=>{
+ const expected=new Map([["standard-toolbar.spec.mjs",["chromium","firefox"]]]),recorded=report(expected);
+ for(const spec of recorded.suites[0].suites[0].specs)spec.file="../rich-browser/standard-toolbar-checks.mjs";
+ validateSharedBrowserReport(recorded,expected);
 });

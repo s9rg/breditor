@@ -25,8 +25,11 @@ export function validateSharedBrowserReport(report,expected){
    const titles=[...parents,suite.title];
    suites.push(...(suite.suites??[]).map(child=>[child,titles]));
    for(const spec of suite.specs??[]){
+    // The toolbar entry point registers cases through the shared rich-browser helper.
+    assert.ok(spec.file===file||(file==="standard-toolbar.spec.mjs"&&spec.file==="../rich-browser/standard-toolbar-checks.mjs"),
+     `Shared browser case was registered outside its entry file ${file}`);
     assert.ok(typeof spec.id==="string"&&spec.id&&!specs.has(spec.id)&&typeof spec.title==="string"&&
-     typeof spec.file==="string"&&Number.isSafeInteger(spec.line)&&Number.isSafeInteger(spec.column),
+     Number.isSafeInteger(spec.line)&&Number.isSafeInteger(spec.column),
     `Invalid or repeated shared browser spec in ${file}`);
     specs.add(spec.id);
     // Playwright emits separate spec IDs for the same source case in each project.
