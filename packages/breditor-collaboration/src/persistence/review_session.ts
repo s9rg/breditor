@@ -236,7 +236,18 @@ export class SharedReviewPersistentSession<P extends SharedSelectionPolicy=Share
   if(this.#running||this.#closed||!this.#pending)return;
   this.#running=this.#drain().catch(error=>{if(!this.#storageChanged)this.#failed(error);}).finally(()=>{this.#running=undefined;if(!this.#failure)this.#start();});
  }
- async #drain():Promise<void>{while(this.#pending&&!this.#closed&&!this.#storageChanged){this.#documentLease.assertLive();this.#reviewLease.assertLive();const next=this.#pending;this.#pending=undefined;try{if(next.format==="breditor/shared-search-review-checkpoint-record")await writeSearchReviewRecord(this.#db,[this.#options.room,this.#options.writer],next);else if(next.format==="breditor/shared-reviewed-review-checkpoint-record")await writeReviewedReviewRecord(this.#db,[this.#options.room,this.#options.writer],next);else if(next.format==="breditor/shared-review-observer-checkpoint-record")await writeReviewObserverRecord(this.#db,[this.#options.room,this.#options.writer],next);else if(next.format==="breditor/shared-review-relay-checkpoint-record")await writeReviewRelayRecord(this.#db,[this.#options.room,this.#options.writer],next);else await writeReviewRecord(this.#db,[this.#options.room,this.#options.writer],next);}catch(error){this.#pending??=next;throw error;}this.#saved=JSON.stringify(next);if("progress" in next&&next.progress)this.#durableRelayProgress=structuredClone(next.progress);}}
+ async #drain():Promise<void>{
+  while(this.#pending&&!this.#closed&&!this.#storageChanged){
+   this.#documentLease.assertLive();this.#reviewLease.assertLive();
+   const next=this.#pending;this.#pending=undefined;
+   try{if(next.format==="breditor/shared-search-review-checkpoint-record")await writeSearchReviewRecord(this.#db,[this.#options.room,this.#options.writer],next);else if(next.format==="breditor/shared-reviewed-review-checkpoint-record")await writeReviewedReviewRecord(this.#db,[this.#options.room,this.#options.writer],next);else if(next.format==="breditor/shared-review-observer-checkpoint-record")await writeReviewObserverRecord(this.#db,[this.#options.room,this.#options.writer],next);else if(next.format==="breditor/shared-review-relay-checkpoint-record")await writeReviewRelayRecord(this.#db,[this.#options.room,this.#options.writer],next);else await writeReviewRecord(this.#db,[this.#options.room,this.#options.writer],next);}
+   catch(error){if(!this.#closed)this.#pending??=next;throw error;}
+   // Closing waits for this write before releasing the leases. It does not need a new cached copy.
+   if(this.#closed)return;
+   this.#saved=JSON.stringify(next);
+   if("progress" in next&&next.progress)this.#durableRelayProgress=structuredClone(next.progress);
+  }
+ }
  async flush():Promise<void>{this.#live();while(this.#running){await this.#running;if(this.#failure)throw this.#failure;}if(this.#failure)throw this.#failure;}
  async retry():Promise<void>{this.#live();if(this.#running)await this.#running;this.save();await this.flush();}
  /** Capture and retain one immutable named snapshot; publication and packet persistence are host-local. */
@@ -248,7 +259,7 @@ export class SharedReviewPersistentSession<P extends SharedSelectionPolicy=Share
  /** Retire synchronously; a failed final write retains both readable histories and both leases for retry. */
  close():Promise<void>{if(this.#closed)return this.#released??Promise.resolve();if(this.#closing)return this.#closing;this.#retiring=true;retireOwnedCore(this.#ownedCore);this.#closing=Promise.resolve().then(async()=>{if(this.#closed){await this.#released;return;}this.save();await this.flush();await this.discardAndClose();}).finally(()=>{this.#closing=undefined;});return this.#closing;}
  /** Explicitly abandon unsaved in-memory pairs; the previous committed record is not deleted. */
- discardAndClose():Promise<void>{if(this.#closed)return this.#released??Promise.resolve();const snapshot=managedCoreRetainedRevisions(this.#ownedCore);this.#closedRevisions={documentRevision:snapshot.documentRevision,reviewRevision:snapshot.reviewRevision};this.#closed=true;this.#releasePendingWork();retireOwnedCore(this.#ownedCore);for(const off of this.#unsubscribe)off();this.#unsubscribe=[];disposeOwnedCore(this.#ownedCore);this.#pending=undefined;this.#db.close();this.#released=(this.#running??Promise.resolve()).then(async()=>{try{await this.#reviewLease.close();}finally{await this.#documentLease.close();}});return this.#released;}
+ discardAndClose():Promise<void>{if(this.#closed)return this.#released??Promise.resolve();const snapshot=managedCoreRetainedRevisions(this.#ownedCore);this.#closedRevisions={documentRevision:snapshot.documentRevision,reviewRevision:snapshot.reviewRevision};this.#closed=true;this.#releasePendingWork();retireOwnedCore(this.#ownedCore);for(const off of this.#unsubscribe)off();this.#unsubscribe=[];disposeOwnedCore(this.#ownedCore);this.#pending=undefined;this.#saved=undefined;this.#versions.clear();this.#db.close();this.#released=(this.#running??Promise.resolve()).then(async()=>{try{await this.#reviewLease.close();}finally{await this.#documentLease.close();}});return this.#released;}
 }
 /** Exact actual original paired rows plus pending/LIVE data. This performs no
  * save or native replay and does not freeze editing or acquire an author. Source
