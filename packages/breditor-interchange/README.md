@@ -503,3 +503,37 @@ if (result.ok) download(new Blob([result.value], {type: docxContentType}));
 
 See [docs/DOCUMENT_CONVERSION.md](../../docs/DOCUMENT_CONVERSION.md) for the
 fidelity map, loss codes, bounds, licensing and non-goals.
+
+### Prepare a portable Base64 HTML import
+
+The browser subpath `@breditor/interchange/portable-html-import` prepares
+portable HTML for an explicitly selected whole document on a local or shared
+native Document V1 owner. The caller supplies the observed revision. Eligible
+`img` sources use the literal `data:image/png;base64,…`,
+`data:image/jpeg;base64,…`, or `data:image/webp;base64,…` shape. Their
+Base64 payload is canonical, within the portable raster bounds, and checked
+by the same MIME, dimension, decode and SHA-256 rules as stored rasters.
+Ordinary external image references use the converter's alt/caption fallback.
+
+```ts
+import {preparePortableHtmlImport} from "@breditor/interchange/portable-html-import";
+
+const prepared = await preparePortableHtmlImport(core, sourceHtml, observedRevision);
+if (prepared.ok) {
+  const retained = await hostImageRegistry.retainPortableBatch(prepared.value.rasters);
+  const published = prepared.value.publish(retained, freshPastePrefix);
+  if (!published.ok) {
+    // Report the refusal and reconcile any unused host-owned retained bytes.
+  }
+}
+```
+
+The caller keeps storage custody. Preparation performs no storage or network
+work and exposes rasters only after the whole input has been checked. The
+binding array must identify every prepared SHA-256 asset once with its
+host-provided generation. Publication is synchronous and uses the captured
+revision through the existing whole-document native paste, with one Undo step
+on success. Native paste allocates fresh document-local image generations.
+A failed publication can leave caller-retained blobs unreferenced for the host
+to reconcile. The ordinary HTML clipboard adapter continues to use its explicit
+reference lookup policy.

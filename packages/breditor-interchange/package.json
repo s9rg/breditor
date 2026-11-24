@@ -24,6 +24,10 @@
     "./portable-html": {
       "types": "./dist/portable_html.d.ts",
       "import": "./dist/portable_html.js"
+    },
+    "./portable-html-import": {
+      "types": "./dist/portable_html_import.d.ts",
+      "import": "./dist/portable_html_import.js"
     }
   },
   "files": [
