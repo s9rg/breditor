@@ -17,6 +17,7 @@ add("/relay-app-fixture.mjs",resolve(root,"experiments/shared-browser/relay-app-
 add("/raster-fixtures.json",resolve(root,"target/relay-raster-fixtures.json"),"application/json");
 add("/network-demo.mjs",resolve(root,"experiments/shared-browser/network-demo.mjs"));
 add("/pilot.mjs",resolve(root,"experiments/shared-browser/pilot.mjs"));
+add("/pilot-session-report.mjs",resolve(root,"experiments/shared-browser/pilot-session-report.mjs"));
 if(application)add("/pilot-static.js",resolve(installed,"node_modules/@breditor/editor/dist/static_document.js"));
 else {
  const {rolldown}=await import("rolldown");

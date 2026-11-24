@@ -34,7 +34,7 @@
   .skip-link { position: absolute; inset: .5rem auto auto .5rem; transform: translateY(-200%); padding: .55rem; background: white; color: #205044; }
   .skip-link:focus { transform: none; }
   @media (any-pointer: coarse) {
-    .fields :is(button, select, input), .pane > header button, #pilot-reload,
+    .fields :is(button, select, input), .pane > header button, #pilot-reload, #pilot-session-report,
     input[type="file"]::file-selector-button { min-block-size: 44px; min-inline-size: 44px; }
   }
 </style>
@@ -67,6 +67,7 @@
     <section id="pilot-workspace" class="panel editors" aria-label="Shared document" hidden>
       {{networkPanes}}
       <button id="pilot-reload" type="button">Save and reload</button>
+      <button id="pilot-session-report" type="button">Download session report</button>
       <output id="pilot-export-digest" aria-label="Downloaded checkpoint digest"></output>
     </section>
     <section class="panel" aria-labelledby="pilot-recovery-heading">

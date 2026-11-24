@@ -242,7 +242,20 @@ test("the first-party pilot opens independent participants and verifies an offli
  await expect(page.locator('#a [data-rich-text="pilot-item"]')).toHaveText("Verify the handoff");
  const checkpoint=await page.evaluate(()=>window.breditorNetworkDemo.peers.a.session.core.checkpointJson());
 
+ await page.evaluate(()=>{
+  const digest=crypto.subtle.digest.bind(crypto.subtle);
+  let release;
+  const blocked=new Promise(resolve=>{release=resolve;});
+  crypto.subtle.digest=async(...args)=>{await blocked;return digest(...args);};
+  window.releaseCheckpointDigest=()=>{crypto.subtle.digest=digest;release();};
+ });
+ const beforeReloadDownload=page.waitForEvent("download");
+ await page.getByRole("button",{name:"Download checkpoint"}).click();
+ const beforeReloadFile=await beforeReloadDownload;
+ expect(readFileSync(await beforeReloadFile.path())).toEqual(Buffer.from(checkpoint,"utf8"));
  await page.getByRole("button",{name:"Save and reload"}).click();
+ await expect(page.getByRole("button",{name:"Download checkpoint"})).toBeDisabled();
+ await page.evaluate(()=>window.releaseCheckpointDigest());
  await expect(page.getByRole("button",{name:"Open editor"})).toBeEnabled();
  await expect(page.getByLabel("Participant code")).toHaveValue("");
  await expect(page.getByLabel("Participant",{exact:true})).toHaveValue("alice");
@@ -295,6 +308,40 @@ test("the first-party pilot opens independent participants and verifies an offli
  await ready(page);
  await expect(bob.locator('#b [data-rich-text="pilot-notes"]')).toHaveText("Pilot decision. Add the decisions and results that the next reviewer needs.");
  await expect(page.locator('#a [data-rich-text="pilot-item"]')).toHaveText("Pilot evidence. Verify the handoff");
+ const reportDownload=page.waitForEvent("download");
+ await page.getByRole("button",{name:"Download session report"}).click();
+ const reportFile=await reportDownload;
+ expect(reportFile.suggestedFilename()).toBe("breditor-pilot-session-alice.json");
+ const reportText=readFileSync(await reportFile.path(),"utf8");
+ expect(reportText).not.toContain(bootstrap.tokens.alice);
+ expect(reportText).not.toContain(bootstrap.tokens.bob);
+ expect(reportText).not.toContain(createHash("sha256").update(bootstrap.tokens.alice).digest("hex"));
+ expect(reportText).not.toContain("Pilot decision.");
+ expect(reportText).not.toContain(bootstrap.endpoint);
+ const report=JSON.parse(reportText);
+ expect(report).toEqual({format:"breditor/first-party-pilot-session-report",formatVersion:1,participant:"alice",
+  openedAt:expect.any(String),collectedAt:expect.any(String),browser:expect.any(String),
+  counts:{opens:2,disconnects:1,reconnectRequests:1,savedReloads:1,checkpointDownloads:2,verifiedRecoveries:1,retiredJournals:0},
+  downloadedSha256:expectedHash,recoveredSha256:expectedHash});
+ expect(Date.parse(report.collectedAt)).toBeGreaterThanOrEqual(Date.parse(report.openedAt));
+
+ const priorRelay=relay;
+ try{
+  await page.evaluate(()=>window.breditorNetworkDemo.close());
+  await page.unroute("**/pilot-bootstrap.json");
+  await provisionDemo(page,pilotRoot());
+  expect(bootstrap.endpoint).not.toBe(pilotConfig.endpoint);
+  await routePilot(page);
+  await page.goto("/pilot");
+  await open(page,"alice");
+  await ready(page);
+  const resetDownload=page.waitForEvent("download");
+  await page.getByRole("button",{name:"Download session report"}).click();
+  const resetFile=await resetDownload;
+  expect(JSON.parse(readFileSync(await resetFile.path(),"utf8"))).toMatchObject({participant:"alice",
+   counts:{opens:1,disconnects:0,reconnectRequests:0,savedReloads:0,checkpointDownloads:0,verifiedRecoveries:0,retiredJournals:0},
+   downloadedSha256:null,recoveredSha256:null});
+ }finally{await priorRelay.dispose();}
 });
 
 test("simultaneous pilot sign-in in the same browser profile reuses one writer",async({page})=>{
