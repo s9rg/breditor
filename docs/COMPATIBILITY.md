@@ -14,6 +14,33 @@ model 14 / journal 15 (local bootstrap format 9, shared configuration format 4).
 These explicit bindings must not be confused with
 the default ABI 5 or the older document/session wire families.
 
+### Reader and package evidence
+
+- **Source API and packaged modules.** Use the matching package entry points and
+  peer versions documented in [Integrate Breditor](INTEGRATE_EDITOR.md). Installed
+  consumer tests verify the corresponding JavaScript and TypeScript surfaces.
+- **Wasm ABI.** The default browser package pairs with the exact generated module
+  and ABI specified by that release. The default ABI 5 module still exposes the
+  explicit Session Checkpoint V1 factory for base documents. The [frozen
+  checkpoint](../crates/breditor-wasm/tests/fixtures/v0.1.0/README.md) was emitted
+  by the released ABI 2 module. Native and Wasm boundary tests restore it
+  byte-for-byte, traverse its full Undo/Redo history and reject an unknown
+  checkpoint version and a foreign schema.
+- **Document schema.** The base Document V1 schema and the fingerprinted rich
+  language profiles have distinct admission boundaries. Select the original
+  language and fingerprint when reopening saved content.
+- **History and journals.** A local checkpoint and a shared replay journal carry
+  different contracts. Verify the retained history against the original profile,
+  history policy and writer transport. See
+  [Opt-in rich and shared recovery](#opt-in-rich-and-shared-recovery).
+- **Raster assets.** [Raster archive V1](RICH_ASSET_BACKUPS.md) carries its own
+  framing, byte hashes, upload state and epoch data. Its restore policy is
+  separate from loading a document or journal with asset references.
+
+The fixture qualifies default checkpoint compatibility. V1 SDK surface review,
+shared upgrade and rollback routes, and the historical input-rule reader
+qualification have separate evidence requirements.
+
 ### Rich language releases
 
 Rich languages 1–4 are all supported, explicitly selected languages. Each is
