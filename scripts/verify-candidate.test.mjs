@@ -148,7 +148,7 @@ test("candidate coverage requires one clean source, complete selected stages and
   runtimeStage.env[sharedRuntimeReceiptVariable]=originalRuntime;
   runtimeStage.execution="activation-shard";
   saveEvidence(run.manifest,manifest);
-  assert.throws(()=>candidateCoverage(root,[run.manifest]),/Unexpected external execution for portable-relay-relocation/);
+  assert.throws(()=>candidateCoverage(root,[run.manifest]),/Candidate coverage requires direct execution for portable-relay-relocation/);
   delete runtimeStage.execution;
   manifest.source.commit="0".repeat(40);
   saveEvidence(run.manifest,manifest);

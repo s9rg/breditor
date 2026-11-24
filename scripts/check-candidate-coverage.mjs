@@ -8,7 +8,6 @@ import {candidateReleasePlan,repository} from "./candidate-release/plan.mjs";
 import {candidateShardPlan} from "./candidate-release/shards.mjs";
 import {fileEvidence,sourceEvidence} from "./candidate-release/evidence.mjs";
 import {verifyHostedContext} from "./candidate-release/hosted-context.mjs";
-import {activationStageIds} from "./candidate-release/activation-shards.mjs";
 import {candidateStageReceipts} from "./candidate-release/runtime-stage-policy.mjs";
 import {
  sharedRuntimeBuildFormat,sharedRuntimeBuildReport,sharedRuntimeReceiptVariable,
@@ -48,6 +47,8 @@ export function candidateCoverage(root,manifests,{requireHosted=false}={}) {
   assert.deepEqual(receipt.source,source,`Source mismatch in ${input}`);
   assert.equal(receipt.status,"passed",`Qualification did not pass in ${input}`);
   assert.equal(receipt.selectedChecksPassed,true,`Missing completed-stage result in ${input}`);
+  assert.ok(receipt.activationQualification===undefined,
+   "Candidate coverage requires directly executed stages. Review adopted workers with qualify-activation-shard verify");
   const plan=receipt.shard?candidateShardPlan(full,receipt.shard.id):candidateReleasePlan({profile:receipt.profile});
   assert.equal(receipt.profile,plan.profile);
   assert.deepEqual(receipt.shard,plan.shard);
@@ -57,6 +58,7 @@ export function candidateCoverage(root,manifests,{requireHosted=false}={}) {
   for(const [index,check] of plan.checks.entries()){
    const stage=receipt.stages[index], log=`${String(index+1).padStart(2,"0")}-${check.id}.log`;
    assert.equal(stage.status,"passed",`Stage did not pass in ${input}: ${check.id}`);
+   assert.ok(stage.execution===undefined,`Candidate coverage requires direct execution for ${check.id}`);
    assert.equal(basename(stage.log.path),log);
    requireRetainedBytes(directory,log,stage.log);
    assert.deepEqual(stage.artifacts.map(artifact=>artifact.path),check.artifacts.map(artifact=>artifact.path));
@@ -70,13 +72,7 @@ export function candidateCoverage(root,manifests,{requireHosted=false}={}) {
     requireRetainedBytes(directory,retained,observed);
    }
    if(check.id==="paired-shared-runtime")sharedRuntimeSha256=verifyRuntimeProducer(directory,stage,source);
-   // Imported activation workers have their own separately verified bundle and
-   // runtime identity. Direct stages must use this run's preceding build.
-   if(stage.execution!==undefined){
-    assert.ok(stage.execution==="activation-shard"&&activationStageIds.includes(check.id)&&
-     stage.worker?.stage===check.id&&receipt.activationQualification,
-     `Unexpected external execution for ${check.id}`);
-   }else if(candidateStageReceipts(check).sharedRuntime){
+   if(candidateStageReceipts(check).sharedRuntime){
     assert.ok(sharedRuntimeSha256,`No preceding paired shared-runtime receipt for ${check.id}`);
     assert.equal(stage.sharedRuntimeReceiptSha256,sharedRuntimeSha256,`Shared-runtime receipt differs for ${check.id}`);
     assert.equal(stage.env?.[sharedRuntimeReceiptVariable],sharedRuntimeSha256,`Shared-runtime execution input differs for ${check.id}`);
