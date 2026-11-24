@@ -138,7 +138,10 @@ sources. The scope is confirmed and the scenarios are draft qualification
 criteria. The catalog gate stays open while the remaining upstream entries
 are mapped and any intentional differences are reviewed.
 
-Use the case ID and version when recording a fixture or result. For cases
+Related cases are grouped in JSON files under `docs/v1-catalog-cases/`.
+`npm run audit:v1` validates the case definitions and their source and feature
+references, and reports the number of cases defined. Use the case ID and
+version when recording a fixture or result. For cases
 with an untrusted-input scenario, exercise the boundary at import, live and
 static rendering, cold restore, and export in the supported consumer. Record
 the actual requests, asset references or output alongside the observable

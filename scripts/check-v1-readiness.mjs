@@ -1,11 +1,12 @@
 /** Reviewed V1 capability ledger guard. Read-only; does not run tests or publish. */
-import {readFileSync, realpathSync, statSync} from "node:fs";
+import {existsSync, readdirSync, readFileSync, realpathSync, statSync} from "node:fs";
 import {dirname, isAbsolute, relative, resolve} from "node:path";
 import {fileURLToPath} from "node:url";
 
 export const repository = resolve(dirname(fileURLToPath(import.meta.url)), "..");
 export const auditPath = resolve(repository, "docs/v1-readiness.json");
 export const catalogPath = resolve(repository, "docs/v1-catalog-cases.json");
+const catalogDirectory = resolve(repository, "docs/v1-catalog-cases");
 const featureStates = new Set(["implemented", "partial", "missing"]);
 const gateStates = new Set(["open", "passed"]);
 const requiredReleaseGates = [
@@ -108,10 +109,18 @@ export function validateCatalogCases(catalog, audit) {
   return catalog;
 }
 
+function readCatalogs() {
+  const files = existsSync(catalogDirectory) ? readdirSync(catalogDirectory).sort() : [];
+  const paths = [catalogPath, ...files.filter(name => name.endsWith(".json"))
+    .map(name => resolve(catalogDirectory, name))];
+  return paths.map(path => JSON.parse(readFileSync(path, "utf8")));
+}
+
 /** Completion is a manually reviewed ledger assertion, never an automated test pass. */
-export function summarizeAudit(audit) {
+export function summarizeAudit(audit, catalogs = readCatalogs()) {
   validateAudit(audit);
-  const {cases} = validateCatalogCases(JSON.parse(readFileSync(catalogPath, "utf8")), audit);
+  const cases = catalogs.flatMap(catalog => validateCatalogCases(catalog, audit).cases);
+  uniqueRows(cases, "combined catalog cases");
   const counts = {implemented: 0, partial: 0, missing: 0};
   for (const row of audit.features) counts[row.status] += 1;
   const featureGaps = audit.features.filter(row => row.status !== "implemented");

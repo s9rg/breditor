@@ -1,12 +1,16 @@
 import assert from "node:assert/strict";
 import {spawnSync} from "node:child_process";
-import {readFileSync} from "node:fs";
+import {existsSync, readdirSync, readFileSync} from "node:fs";
 import {join} from "node:path";
 import test from "node:test";
 import {auditPath, catalogPath, main, repository, summarizeAudit, validateAudit, validateCatalogCases} from "./check-v1-readiness.mjs";
 
 const load = () => JSON.parse(readFileSync(auditPath, "utf8"));
 const loadCatalog = () => JSON.parse(readFileSync(catalogPath, "utf8"));
+const catalogDir = join(repository, "docs/v1-catalog-cases");
+const loadSupplementalCases = () => (existsSync(catalogDir) ? readdirSync(catalogDir) : [])
+  .filter(name => name.endsWith(".json"))
+  .flatMap(name => JSON.parse(readFileSync(join(catalogDir, name), "utf8")).cases);
 
 test("the checked-in audit has resolvable sources and evidence without claiming readiness", () => {
   const audit = load();
@@ -40,9 +44,20 @@ test("the catalog defines versioned scenarios for the confirmed V1 scope", () =>
   for (const id of ["xml-export", "detect-markdown-on-plain-text-paste", "whiteboards", "nested-tables", "measured-pagination"]) {
     assert.ok(cases.has(id), `Missing case for ${id}`);
   }
+  const allCases = [...catalog.cases, ...loadSupplementalCases()];
   const result = summarizeAudit(audit);
-  assert.equal(result.catalogCasesDefined, cases.size);
-  assert.equal(result.catalogFeatureGroupsWithCases, new Set(catalog.cases.map(row => row.feature)).size);
+  assert.equal(result.catalogCasesDefined, allCases.length);
+  assert.equal(result.catalogFeatureGroupsWithCases, new Set(allCases.map(row => row.feature)).size);
+});
+
+test("the catalog requires stable case IDs across separate files", () => {
+  const audit = load();
+  const catalog = loadCatalog();
+  const firstCase = catalog.cases[0];
+  assert.throws(() => summarizeAudit(audit, [catalog, {...catalog, cases: [firstCase]}]),
+    /combined catalog cases has duplicate ID/);
+  const supplemental = {...catalog, cases: [{...firstCase, id: "new-case-for-audit"}]};
+  assert.equal(summarizeAudit(audit, [catalog, supplemental]).catalogCasesDefined, catalog.cases.length + 1);
 });
 
 test("catalog definitions reject incomplete cases and unknown references", () => {
@@ -128,7 +143,7 @@ test("CLI is cwd-independent, read-only and machine readable; the readiness gate
   assert.equal(report.status, 0, report.stderr);
   const summary = JSON.parse(report.stdout);
   assert.equal(summary.ledgerComplete, false);
-  assert.equal(summary.catalogCasesDefined, loadCatalog().cases.length);
+  assert.equal(summary.catalogCasesDefined, loadCatalog().cases.length + loadSupplementalCases().length);
   const gate = spawnSync(process.execPath, [script, "--json", "--require-ready"], {cwd: "/tmp", encoding: "utf8"});
   assert.equal(gate.status, 1, gate.stderr);
   assert.equal(JSON.parse(gate.stdout).testsExecuted, false);
