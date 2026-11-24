@@ -39,7 +39,9 @@ export async function runCandidateChecks(plan,{root=repository,signal,report=con
      execution={...check,env:entry.env};
      saveEvidence(manifest,result);
     }
-    const outcome=await execute(execution,{root,logPath,signal});Object.assign(entry,outcome);
+    const outcome=await execute(execution,{root,logPath,signal,reportProgress:({elapsedSeconds,logBytes})=>
+     report(`verify-candidate: ${check.id} still running after ${elapsedSeconds}s (${logBytes} log bytes)`),
+    });Object.assign(entry,outcome);
     entry.log=fileEvidence(root,relative(root,logPath));
     if(entry.status==="passed"&&runtime){
      if(sharedRuntimeForActivation(root,source).sha256!==runtime.sha256)throw Error("Shared runtime build receipt changed during qualification");
