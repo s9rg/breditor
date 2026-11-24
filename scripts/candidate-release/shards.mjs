@@ -66,6 +66,8 @@ const boundaries = [
  ["generation-component-reconstruction-installed","installed-generation-component-reconstruction",["native-complete-cohort","native-complete-image-cohort"]],
  ["generation-native-reconstruction-source","generation-native-reconstruction",["native-complete-cohort","native-complete-image-cohort"]],
  ["generation-native-reconstruction-installed","installed-generation-native-reconstruction",["native-complete-cohort","native-complete-image-cohort"]],
+ ["generation-native-execution-source","generation-native-execution"],
+ ["generation-native-execution-installed","installed-generation-native-execution"],
 ];
 const sdkPrerequisites = [
  "default-typescript-build",

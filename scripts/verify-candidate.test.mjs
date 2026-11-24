@@ -567,8 +567,8 @@ test("candidate engineering coverage can be collected before reviewed readiness"
  ]);
 });
 
-test("candidate shards partition the full plan through installed Native generation reconstruction",()=>{
- const full=candidateReleasePlan(),end=full.checks.findIndex(check=>check.id==="installed-generation-native-reconstruction");
+test("candidate shards partition the full plan through installed Native generation execution",()=>{
+ const full=candidateReleasePlan(),end=full.checks.findIndex(check=>check.id==="installed-generation-native-execution");
  const byId=new Map(full.checks.map(check=>[check.id,check]));
  const covered=[];
  for(const name of candidateShardIds){

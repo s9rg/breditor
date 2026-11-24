@@ -94,7 +94,9 @@
             "generation-component-reconstruction-source",
             "generation-component-reconstruction-installed",
             "generation-native-reconstruction-source",
-            "generation-native-reconstruction-installed"
+            "generation-native-reconstruction-installed",
+            "generation-native-execution-source",
+            "generation-native-execution-installed"
           ]
         }
       }
