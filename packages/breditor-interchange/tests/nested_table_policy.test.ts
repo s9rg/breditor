@@ -18,6 +18,10 @@ describe("nested-table policy",()=>{
     const test=staging(),value=test.adapter.importMarkdown("<table><tr><td><table><tr><td>Inner</td></tr></table></td></tr></table>");
     expect(value).toMatchObject({ok:false,error:"unsupported-content"});expect(test.calls).toBe(0);
   });
+  it("rejects a nested table in caption flow before native admission",()=>{
+    const test=staging(),value=test.adapter.importHtml("<table><caption><blockquote><table><tr><td>Inner</td></tr></table></blockquote></caption><tr><td>Outer</td></tr></table>");
+    expect(value).toMatchObject({ok:false,error:"unsupported-content"});expect(test.calls).toBe(0);
+  });
   it("still admits sibling (non-nested) tables",()=>{
     const value=staging().adapter.importHtml('<table><tr><td>A</td></tr></table><table><tr><td>B</td></tr></table>');
     expect(value.ok).toBe(true);

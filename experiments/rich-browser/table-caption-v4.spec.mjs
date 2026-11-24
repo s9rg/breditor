@@ -158,3 +158,25 @@ test("interchange maps <caption> for the V4 owner only",async({page})=>{
  expect(result).toEqual({v4:[table],losses:[],html:true,markdownLosses:["markdown-feature"],back:[table],pasted:"flow",
   v3:[{type:"paragraph",children:["Sales ","2026"]},{type:"table",children:[{type:"table-row",children:[{type:"table-cell",children:[{type:"paragraph",children:["A"]}]}]}]}],v3losses:[["block-structure",1]]});
 });
+
+test("V3 and V4 reject tables nested inside HTML captions",async({page})=>{
+ const result=await page.evaluate(()=>{
+  const t=window.dt;
+  const inner="<table><tr><td>Inner</td></tr></table>";
+  const source=caption=>`<table><caption>${caption}</caption><tr><td>Outer</td></tr></table>`;
+  const v3Profile=t.api.compileStandardLayoutRichProfileV3(window.rich.wasm,t.bootstrap(8,4));
+  const old=t.open(v3Profile,undefined);
+  try{
+   return [old,t.core].map(owner=>{
+    const adapter=t.createRichInterchange(owner),before=owner.checkpointJson();
+    const direct=adapter.importHtml(source(inner));
+    const wrapped=adapter.importHtml(source(`<blockquote>${inner}</blockquote>`));
+    const markdown=adapter.importMarkdown(source(inner));
+    const outcome=value=>value.ok?JSON.parse(value.value.structuredJson).document.root.children.map(node=>node.type):value.error;
+    return {direct:outcome(direct),wrapped:outcome(wrapped),markdown:outcome(markdown),unchanged:owner.checkpointJson()===before};
+   });
+  }finally{old.dispose();v3Profile.dispose();}
+ });
+ const refused={direct:"unsupported-content",wrapped:"unsupported-content",markdown:"unsupported-content",unchanged:true};
+ expect(result).toEqual([refused,refused]);
+});
