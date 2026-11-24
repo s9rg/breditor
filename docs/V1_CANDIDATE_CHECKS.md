@@ -203,7 +203,8 @@ For hosted receipts, verify each downloaded ZIP against its artifact digest
 in GitHub and confirm the corresponding workflow attempt succeeded. Add
 `--require-hosted` to validate the recorded runner identity, revision,
 profile, shard, setup outcomes and expected tool executable names alongside
-each result. Keep
+each result. The Node version must match the exact pin in the candidate
+checkout's qualification workflow. Keep
 `runner-context.tsv` in the artifact directory above each `run-*` directory.
 Compare the reported repository, run ID and attempt with the GitHub listing
 for the same downloaded artifact. The coverage report also records the context
