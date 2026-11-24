@@ -88,8 +88,10 @@ collaboration and editor packages and runs the same first-party pilot,
 history and presentation assertions against the candidate Native relay.
 Qualification and retained review require each selected file and a passing
 result for every reported source case on each assigned browser project.
-The retained report includes the Playwright results, archive, shared Wasm,
-relay and fixture digests. The workflow retains failed Playwright traces.
+The retained report includes the Playwright results and input digests. Coverage
+review matches the archive, relay and fixture digests to the prior producer
+stages in the same run. The shared Wasm digest comes from the browser runner’s
+installed runtime check. The workflow retains failed Playwright traces.
 
 ## Dependency inventories
 

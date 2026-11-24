@@ -51,15 +51,45 @@ test("retained installed application reports are reviewed even when their file h
  const directory=mkdtempSync(join(tmpdir(),"breditor-application-coverage-"));
  t.after(()=>rmSync(directory,{recursive:true,force:true}));
  const id="installed-application-network-matrix",path="target/shared-application-browser-report.json";
- const retainedPath=`artifacts/${id}/${path}`;
- const filename=join(directory,retainedPath);
- mkdirSync(dirname(filename),{recursive:true});
- const retain=report=>{
-  writeFileSync(filename,JSON.stringify({format:"breditor/installed-application-network",formatVersion:1,report}));
-  return {id,artifacts:[{...fileEvidence(directory,retainedPath),path,retainedPath}]};
+ const retain=(id,path,value)=>{
+  const retainedPath=`artifacts/${id}/${path}`,filename=join(directory,retainedPath);
+  mkdirSync(dirname(filename),{recursive:true});
+  writeFileSync(filename,JSON.stringify(value));
+  return {id,status:"passed",artifacts:[{...fileEvidence(directory,retainedPath),path,retainedPath}]};
  };
- verifyApplicationNetworkStage(directory,retain(testReport()));
+ const inputs={archives:[{name:"@breditor/browser",filename:"breditor-browser.tgz",sha256:"1".repeat(64)}],
+  relaySha256:"2".repeat(64),vectorSha256:"3".repeat(64),rasterFixturesSha256:"4".repeat(64)};
+ const preceding=[
+  retain("installed-editor-pairing","target/editor-installed-consumer.json",{archiveEvidence:inputs.archives}),
+  retain("relay-native-dependency-notices","target/relay-native-notices/breditor_dependency_inventory.json",{
+   nativeBuild:{executableSha256:inputs.relaySha256},
+  }),
+  {id:"shared-browser-vector",status:"passed",artifacts:[{path:"target/collaboration-feasibility-web/native-vector.json",sha256:inputs.vectorSha256}]},
+  {id:"shared-browser-raster-fixtures",status:"passed",artifacts:[{path:"target/relay-raster-fixtures.json",sha256:inputs.rasterFixturesSha256}]},
+ ];
+ const evidence=(report,claimed=inputs)=>retain(id,path,{format:"breditor/installed-application-network",formatVersion:1,inputs:claimed,report});
+ verifyApplicationNetworkStage(directory,evidence(testReport()),preceding);
  const omitted=testReport();
  omitFirefoxCase(omitted);
- assert.throws(()=>verifyApplicationNetworkStage(directory,retain(omitted)),/wrong project set in inline-presentation.spec.mjs/);
+ assert.throws(()=>verifyApplicationNetworkStage(directory,evidence(omitted),preceding),/wrong project set in inline-presentation.spec.mjs/);
+ for(const [change,error] of [
+  [claimed=>claimed.archives[0].sha256="0".repeat(64),/archives differ from the installed SDK producer/],
+  [claimed=>claimed.relaySha256="0".repeat(64),/relay differs from the inventoried Native build/],
+  [claimed=>claimed.vectorSha256="0".repeat(64),/vector differs from its producer/],
+  [claimed=>claimed.rasterFixturesSha256="0".repeat(64),/raster fixtures differ from their producer/],
+ ]){
+  const claimed=structuredClone(inputs);change(claimed);
+  assert.throws(()=>verifyApplicationNetworkStage(directory,evidence(testReport(),claimed),preceding),error);
+ }
+ assert.throws(()=>verifyApplicationNetworkStage(directory,evidence(testReport()),preceding.slice(1)),/Missing preceding application network input/);
+ const missingRelay=[...preceding];
+ missingRelay[1]=retain("relay-native-dependency-notices","target/relay-native-notices/breditor_dependency_inventory.json",{nativeBuild:{}});
+ assert.throws(()=>verifyApplicationNetworkStage(directory,evidence(testReport(),{...inputs,relaySha256:undefined}),missingRelay),
+  /Missing valid application network relay digest/);
+ for(const archives of [[],[inputs.archives[0],inputs.archives[0]],[{...inputs.archives[0],sha256:"wrong"}]]){
+  const sharedClaim=[...preceding];
+  sharedClaim[0]=retain("installed-editor-pairing","target/editor-installed-consumer.json",{archiveEvidence:archives});
+  assert.throws(()=>verifyApplicationNetworkStage(directory,evidence(testReport(),{...inputs,archives}),sharedClaim),
+   /Missing valid, unique application network archive identities/);
+ }
 });
