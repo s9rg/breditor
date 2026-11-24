@@ -29,9 +29,8 @@ function pinnedNodeVersion(root){
  return `v${version}`;
 }
 
-export function verifyHostedContext(candidateRoot,directory,receipt,plan){
- assert.match(basename(directory),/^run-[a-z0-9]+$/i,"Hosted results must remain in their downloaded run directory");
- const root=dirname(directory),context=fileEvidence(root,contextFile);
+export function readHostedRunnerContext(root){
+ const context=fileEvidence(root,contextFile);
  assert.ok(context.bytes<=8192,"Hosted runner context exceeds its size bound");
  const bytes=readFileSync(join(root,contextFile));
  assert.equal(createHash("sha256").update(bytes).digest("hex"),context.sha256,"Hosted runner context changed while reading");
@@ -46,6 +45,12 @@ export function verifyHostedContext(candidateRoot,directory,receipt,plan){
   "Hosted runner context names a different workflow");
  assert.equal(value.event,"workflow_dispatch");
  for(const field of ["runId","runAttempt"])assert.match(value[field],/^[1-9][0-9]{0,19}$/,`Invalid hosted ${field}`);
+ return {context:value,sha256:context.sha256};
+}
+
+export function verifyHostedContext(candidateRoot,directory,receipt,plan){
+ assert.match(basename(directory),/^run-[a-z0-9]+$/i,"Hosted results must remain in their downloaded run directory");
+ const {context:value,sha256}=readHostedRunnerContext(dirname(directory));
  assert.equal(value.revision,receipt.source.commit,"Hosted runner revision differs from the receipt");
  assert.equal(value.profile,receipt.profile,"Hosted runner profile differs from the receipt");
  assert.equal(value.shard,receipt.shard?.id??"none","Hosted runner shard differs from the receipt");
@@ -56,5 +61,5 @@ export function verifyHostedContext(candidateRoot,directory,receipt,plan){
  const expectedBrowserSetup=plan.checks.some(check=>browserStages.has(check.id))?"success":"skipped";
  assert.equal(value.browsers,expectedBrowserSetup,"Hosted browser setup differs from the selected qualification");
  return {repository:value.repository,workflow:value.workflow,runId:value.runId,
-  runAttempt:value.runAttempt,contextSha256:context.sha256};
+  runAttempt:value.runAttempt,contextSha256:sha256};
 }

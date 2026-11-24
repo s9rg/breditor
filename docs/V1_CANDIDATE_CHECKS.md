@@ -23,10 +23,11 @@ six-hour runner limit. A timed-out run fails qualification and keeps the
 stages it reached for diagnosis.
 
 When qualification fails, the candidate artifact also retains bounded raw
-Playwright JSON from the rich, shared and installed application network
-matrices when those reports exist. The browser failure index lists the copied
-paths, digests and omissions. This preserves structured evidence even when all
-browser tests finished and a later report check failed before retaining them.
+Playwright JSON from the failed rich, shared or installed application network
+stage. The collector matches the manifest to the hosted run and attempt, then
+copies only that stage’s report paths written during its recorded time window.
+The failure index lists the selected manifest, stage, copied paths, digests
+and omissions. Historical failure indexes may lack that run and stage binding.
 
 The GitHub Actions job summary identifies failed setup or the last recorded
 candidate stage. It gives the stage log's path within the uploaded artifact
