@@ -130,9 +130,10 @@ executables against the candidate build receipt.
 
 Native generation reconstruction has separate source and installed shards.
 Each builds the Native cohort prerequisites and uses a shared-runtime receipt
-from its candidate checkout. The installed shard verifies the unpacked runtime
-before and after its unchanged installed and bundled contract runs. The
-workflow retains both shards’ result reports.
+from its candidate checkout. Both shards verify the source and bytes of the
+Native cohort reports before and after their contract runs. The installed shard
+also checks the unpacked runtime against the receipt. The workflow retains both
+result reports.
 
 Run a shard locally with `node scripts/verify-candidate.mjs --shard <name>`.
 Add `--dry-run` to inspect its checks. Run with the default shard selection
