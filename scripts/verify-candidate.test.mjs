@@ -1,9 +1,10 @@
 import assert from "node:assert/strict";
 import test from "node:test";
 import {execFileSync,spawnSync} from "node:child_process";
+import {createHash} from "node:crypto";
 import {mkdtempSync,mkdirSync,writeFileSync,readFileSync,existsSync,rmSync,symlinkSync,utimesSync,statSync} from "node:fs";
 import {tmpdir} from "node:os";
-import {dirname,join} from "node:path";
+import {basename,dirname,join} from "node:path";
 import {candidateCheckProfiles,candidateReleasePlan,repository} from "./candidate-release/plan.mjs";
 import {candidateShardIds,candidateShardPlan} from "./candidate-release/shards.mjs";
 import {metadataFixtureStageIds} from "./candidate-release/metadata-fixture-evidence.mjs";
@@ -11,6 +12,7 @@ import {fileEvidence,sourceEvidence,saveEvidence} from "./candidate-release/evid
 import {executeCandidateStage} from "./candidate-release/process.mjs";
 import {runCandidateChecks} from "./verify-candidate.mjs";
 import {candidateCoverage} from "./check-candidate-coverage.mjs";
+import {verifyHostedCandidateArtifact} from "./check-hosted-candidate-artifact.mjs";
 import {verifyHostedContext} from "./candidate-release/hosted-context.mjs";
 import {validateApplicationNetworkReport} from "./candidate-release/application-network-report.mjs";
 const temporary=()=>mkdtempSync(join(tmpdir(),"breditor-candidate-contract-"));
@@ -64,6 +66,42 @@ test("candidate coverage requires one clean source, complete selected stages and
   const hosted=candidateCoverage(root,[run.manifest],{requireHosted:true}).evidence[0].hosted;
   assert.deepEqual(hosted,{repository:runner.repository,workflow:runner.workflow,runId:runner.runId,
    runAttempt:runner.runAttempt,contextSha256:fileEvidence(dirname(contextPath),"runner-context.tsv").sha256});
+
+  const artifactRoot=dirname(contextPath),archive=join(artifactRoot,"candidate.zip");
+  const artifactMetadata=join(artifactRoot,"artifact.json"),runMetadata=join(artifactRoot,"run-attempt.json");
+  const makeArchive=path=>execFileSync("zip",["-q",path,"runner-context.tsv",`${basename(dirname(run.manifest))}/result.json`],
+   {cwd:artifactRoot});
+  const zipEvidence=path=>({size_in_bytes:statSync(path).size,
+   digest:"sha256:"+createHash("sha256").update(readFileSync(path)).digest("hex")});
+  makeArchive(archive);
+  const runRepository={id:42,full_name:runner.repository};
+  const githubRun={id:123,run_attempt:2,repository:runRepository,head_repository:runRepository,head_sha:runner.revision,
+   path:".github/workflows/candidate-qualification.yml",event:"workflow_dispatch",status:"completed",conclusion:"success"};
+  const artifact={id:789,expired:false,url:"https://api.github.com/repos/s9rg/breditor/actions/artifacts/789",
+   name:`candidate-${runner.revision}-${runner.profile}-2`,...zipEvidence(archive),
+   workflow_run:{id:123,repository_id:42,head_repository_id:42,head_sha:runner.revision}};
+  const verify=patch=>verifyHostedCandidateArtifact(root,{repository:runner.repository,artifactMetadata,
+   runMetadata,archive,manifest:run.manifest,...patch});
+  saveEvidence(artifactMetadata,artifact);
+  saveEvidence(runMetadata,githubRun);
+  assert.deepEqual((await verify()).githubArtifact,{id:artifact.id,name:artifact.name,digest:artifact.digest});
+  await assert.rejects(verify({manifest:join(dirname(run.manifest),"renamed.json")}),/candidate result.json name/);
+  await assert.rejects(verify({manifest:join(artifactRoot,"unexpected","result.json")}),/generated run directory/);
+  await assert.rejects(verify({repository:"someone/breditor"}),/different repository/);
+  saveEvidence(runMetadata,{...githubRun,run_attempt:1});
+  await assert.rejects(verify(),/run attempt differs/);
+  saveEvidence(runMetadata,{...githubRun,conclusion:"failure"});
+  await assert.rejects(verify(),/did not succeed/);
+  saveEvidence(runMetadata,githubRun);
+  saveEvidence(artifactMetadata,{...artifact,digest:"sha256:"+"0".repeat(64)});
+  await assert.rejects(verify(),/Downloaded ZIP digest differs/);
+  const differentArchive=join(artifactRoot,"different.zip");
+  saveEvidence(run.manifest,{...manifest,extra:"different archived bytes"});
+  makeArchive(differentArchive);
+  saveEvidence(run.manifest,manifest);
+  saveEvidence(artifactMetadata,{...artifact,...zipEvidence(differentArchive)});
+  await assert.rejects(verify({archive:differentArchive}),/selected checkout evidence differ.*result.json/);
+
   for(const [patch,message] of [
    [{revision:"0".repeat(40)},/revision differs/],
    [{profile:"full"},/profile differs/],
