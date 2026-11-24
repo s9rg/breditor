@@ -395,7 +395,7 @@ export class HtmlConversion {
     if(typeof binding.asset!=="string"||typeof binding.generation!=="string")fail("asset-policy");
     const missing=rawAlt===undefined||rawAlt!==""&&!rawAlt.trim(),alt=missing?"Image":rawAlt!;if(missing)this.b.loss("image-alt");
     const props:Record<string,unknown>={"breditor/image-id":this.b.id(),"breditor/asset-id":binding.asset,"breditor/asset-generation":binding.generation,"breditor/decorative":alt==="","breditor/alt-text":alt};
-    const rawWidth=attribute(node,"width")??this.css(node).get("width"),rawHeight=attribute(node,"height")??this.css(node).get("height"),width=pixels(rawWidth),height=pixels(rawHeight);
+    const css=this.css(node),rawWidth=css.get("width")??attribute(node,"width"),rawHeight=css.get("height")??attribute(node,"height"),width=pixels(rawWidth),height=pixels(rawHeight);
     if(rawWidth!==undefined||rawHeight!==undefined){if(width!==null&&height!==null&&width>=1&&width<=4096&&height>=1&&height<=4096){props["breditor/width"]=Math.round(width);props["breditor/height"]=Math.round(height);if(!Number.isInteger(width)||!Number.isInteger(height))this.b.loss("image-size");}else this.b.loss("image-size");}
     if(this.capabilities.imageLinks)this.#imageLink(props,state);
     return element(this.b,"image",[],props);

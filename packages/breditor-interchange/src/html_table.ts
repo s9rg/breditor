@@ -12,7 +12,7 @@ export function importTable(c:HtmlConversion,node:HtmlElement,state:StyleState):
   // V4 owners keep the first <caption> as the table's caption paragraph (see `tableCaption`).
   let caption:Element|undefined,captioned=false;
   let group=0;
-  const addColumns=(parent:HtmlElement)=>{for(const n of parent.childNodes){if(!isElement(n))continue;if(n.tagName!=="col")fail("malformed-table");if(c.excluded(n))fail("unsupported-content");c.style(n,state);const count=span(attribute(n,"span"),limits.columns);if(colWidths.length+count>limits.columns)fail("resource-limit");const raw=attribute(n,"width")??c.css(n).get("width"),width=pixels(raw);if(raw!==undefined&&width===null)c.b.loss("table-width");for(let i=0;i<count;i++)colWidths.push(width);}};
+  const addColumns=(parent:HtmlElement)=>{for(const n of parent.childNodes){if(!isElement(n))continue;if(n.tagName!=="col")fail("malformed-table");if(c.excluded(n))fail("unsupported-content");c.style(n,state);const count=span(attribute(n,"span"),limits.columns);if(colWidths.length+count>limits.columns)fail("resource-limit");const raw=c.css(n).get("width")??attribute(n,"width"),width=pixels(raw);if(raw!==undefined&&width===null)c.b.loss("table-width");for(let i=0;i<count;i++)colWidths.push(width);}};
   for(const n of node.childNodes){
     if(!isElement(n)){if(plainText(n).trim())fail("malformed-table");continue;}
     if(c.excluded(n))fail("unsupported-content");
@@ -51,7 +51,7 @@ export function importTable(c:HtmlConversion,node:HtmlElement,state:StyleState):
         const body=c.flow(cell.childNodes,cellStyle,true);if(!body.length)body.push(element(c.b,"paragraph"));
         for(let y=r;y<r+rs;y++)for(let x=column;x<column+cs;x++)grid[y]![x]={body:y===r&&x===column?body:[element(c.b,"paragraph")],header:cell.tagName==="th"};
       }
-      const rawWidth=attribute(cell,"width")??c.css(cell).get("width"),width=pixels(rawWidth);
+      const rawWidth=c.css(cell).get("width")??attribute(cell,"width"),width=pixels(rawWidth);
       if(width!==null&&cs===1&&colWidths[column]===undefined)colWidths[column]=width;else if(rawWidth!==undefined&&(width===null||cs>1))c.b.loss("table-width");
       if(rs>1||cs>1)merges.push({r,c:column,rs,cs});column+=cs;
     }
@@ -62,7 +62,7 @@ export function importTable(c:HtmlConversion,node:HtmlElement,state:StyleState):
     let value=grid[r]![x];if(!value){value={header:false,body:[element(c.b,"paragraph")]};c.b.loss("table-geometry");}
     return element(c.b,"table-cell",value.body,{"breditor/column-id":column,"breditor/header":value.header});
   }),{"breditor/row-id":rowIds[r]}));
-  const rawTableWidth=attribute(node,"width")??c.css(node).get("width"),tableWidth=pixels(rawTableWidth);
+  const rawTableWidth=c.css(node).get("width")??attribute(node,"width"),tableWidth=pixels(rawTableWidth);
   if(rawTableWidth!==undefined&&tableWidth===null)c.b.loss("table-width");
   const nativeColumns=columns.map((id,i)=>{const source=colWidths[i]??(tableWidth===null?120:tableWidth/columns.length),width=Math.min(4096,Math.max(32,Math.round(source)));if(source!==width)c.b.loss("table-width");return{id,width};});
   const records=merges.map((m,i)=>({id:c.b.id(),lamport:"1",writer:"1",counter:String(i+1),rows:rowIds,columns,"first-row":rowIds[m.r],"last-row":rowIds[m.r+m.rs-1],"first-column":columns[m.c],"last-column":columns[m.c+m.cs-1]})).sort((a,b)=>a.id<b.id?-1:a.id>b.id?1:0);
