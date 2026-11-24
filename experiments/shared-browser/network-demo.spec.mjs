@@ -284,6 +284,52 @@ test("the first-party pilot opens independent participants and verifies an offli
  await expect(page.locator('#a [data-rich-text="pilot-item"]')).toHaveText("Pilot evidence. Verify the handoff");
 });
 
+test("simultaneous pilot sign-in in the same browser profile reuses one writer",async({page})=>{
+ await provisionDemo(page,pilotRoot());
+ const twin=await page.context().newPage(),tabs=[page,twin];
+ let registrations=0;
+ for(const tab of tabs){
+  tab.on("websocket",socket=>socket.on("framesent",({payload})=>{
+   if(JSON.parse(payload.toString()).request?.kind==="register")registrations++;
+  }));
+ }
+ const button=tab=>tab.getByRole("button",{name:"Open editor"});
+ const documentRegion=tab=>tab.getByRole("region",{name:"Shared document"});
+ await Promise.all(tabs.map(async tab=>{
+  await routePilot(tab);
+  await tab.goto("/pilot");
+  await tab.getByLabel("Participant code").fill(bootstrap.tokens.alice);
+ }));
+ await Promise.all(tabs.map(tab=>button(tab).click()));
+ await expect.poll(async()=>{
+  const statuses=await Promise.all(tabs.map(tab=>tab.locator("#network-state").textContent()));
+  return statuses.map(state=>state.includes("could not open")?"refused":state).sort();
+ }).toEqual(["Editors ready","refused"]);
+ const winner=await documentRegion(page).isVisible()?page:twin;
+ const retry=winner===page?twin:page;
+ await ready(winner);
+ await expect(documentRegion(retry)).toBeHidden();
+ expect(registrations).toBe(1);
+
+ const snapshot=tab=>tab.evaluate(()=>{
+  const {identity,session}=window.breditorNetworkDemo.peers.a;
+  return {writer:identity.writer,document:session.core.documentJson(),undo:session.core.view().undoDepth};
+ });
+ await winner.evaluate(async()=>{
+  const {session}=window.breditorNetworkDemo.peers.a;
+  session.core.dispatch({commands:[{kind:"insert_text",data:{block:"pilot-notes",offset:0,text:"One writer. "}}]});
+  await session.flush();
+ });
+ const saved=await snapshot(winner);
+ expect(saved.undo).toBe(1);
+ await winner.evaluate(()=>window.breditorNetworkDemo.close());
+ await retry.getByLabel("Participant code").fill(bootstrap.tokens.alice);
+ await button(retry).click();
+ await ready(retry);
+ expect(await snapshot(retry)).toEqual(saved);
+ expect(registrations).toBe(1);
+});
+
 test("the pilot supports keyboard sign-in and checkpoint recovery at a narrow viewport",async({page,browserName})=>{
  await provisionDemo(page,pilotRoot());
  await routePilot(page);

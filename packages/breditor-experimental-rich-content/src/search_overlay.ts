@@ -2,6 +2,25 @@
 import type {RichSearchResults} from "./core.js";
 import type {RichSearchHost} from "./search_host.js";
 const paintLimit=8192;
+/** @internal Join the editor's fullscreen layer while keeping markers outside editable content. */
+export function placeViewportOverlay(surface:HTMLElement,overlay:HTMLElement):void{
+ const document=surface.ownerDocument,view=document.defaultView;
+ let parent:Element|ShadowRoot=document.body??document.documentElement;
+ let current:Element=surface,childShadow:ShadowRoot|undefined;
+ for(;;){
+  const root=current.getRootNode();
+  const shadow=view&&root instanceof view.ShadowRoot?root:undefined;
+  const full=root===document?document.fullscreenElement:shadow?.fullscreenElement;
+  if(full){
+   // An unslotted fullscreen host renders its shadow tree, not appended light DOM.
+   if(full!==surface&&full.contains(current))parent=full===current&&childShadow?childShadow:full;
+   break;
+  }
+  if(!shadow)break;
+  childShadow=shadow;current=shadow.host;
+ }
+ if(overlay.parentNode!==parent)parent.append(overlay);
+}
 /** @internal Also used by the language-check overlay (same block/UTF-16 to DOM mapping). */
 export function endpoint(block:HTMLElement,offset:string):[Node,number]|null{
  let left=Number(offset);if(!Number.isSafeInteger(left)||left<0)return null;
@@ -19,10 +38,11 @@ export class RichSearchOverlay<R extends RichSearchResults=RichSearchResults> {
  constructor(host:RichSearchHost<R>,onPaint?:(clipped:boolean)=>void){
   this.#host=host;this.#onPaint=onPaint;const document=host.surface.ownerDocument,window=document.defaultView;if(!window)throw Error("Search decorations require a live document");this.#window=window;
   const realm=window as unknown as {AbortController:typeof AbortController;ResizeObserver?:typeof ResizeObserver;MutationObserver?:typeof MutationObserver};this.#abort=new realm.AbortController();
-  this.element=document.createElement("div");this.element.dataset["richSearchOverlay"]="";this.element.setAttribute("aria-hidden","true");this.element.style.cssText="position:fixed;inset:0;pointer-events:none;z-index:10;overflow:hidden";document.body.append(this.element);
+  this.element=document.createElement("div");this.element.dataset["richSearchOverlay"]="";this.element.setAttribute("aria-hidden","true");this.element.style.cssText="position:fixed;inset:0;pointer-events:none;z-index:10;overflow:hidden";placeViewportOverlay(host.surface,this.element);
   this.#resize=realm.ResizeObserver?new realm.ResizeObserver(()=>this.refresh()):undefined;this.#resize?.observe(host.surface);
   this.#mutation=realm.MutationObserver?new realm.MutationObserver(()=>this.refresh()):undefined;this.#mutation?.observe(host.surface,{childList:true,subtree:true,characterData:true,attributes:true});
   window.addEventListener("scroll",()=>this.refresh(),{signal:this.#abort.signal,capture:true});window.addEventListener("resize",()=>this.refresh(),{signal:this.#abort.signal});
+  document.addEventListener("fullscreenchange",()=>{placeViewportOverlay(host.surface,this.element);this.refresh();},{signal:this.#abort.signal});
  }
  set(results:R|undefined,active:string|null):void{this.#results=results;this.#active=active;if(!results)this.#clear();else this.refresh();}
  refresh():void{if(this.#closed||this.#frame!==undefined)return;this.#frame=this.#window.requestAnimationFrame(()=>{this.#frame=undefined;this.#paint();});}

@@ -63,8 +63,8 @@ export interface RichEditingAids {
 export const richEditingAidsStyles=`[data-breditor-editing-aids]{position:fixed;inset:0;pointer-events:none;overflow:hidden;z-index:10;contain:strict}[data-breditor-editing-aids] .breditor-aid-block{position:absolute;box-sizing:border-box;border:1px dashed #7c9a8f;border-radius:2px}[data-breditor-editing-aids] .breditor-aid-label{position:absolute;box-sizing:border-box;font:600 9px/12px system-ui,sans-serif;color:#fff;background:#5d7d72;padding:0 3px;white-space:nowrap;opacity:.85;border-radius:0 0 0 3px}[data-breditor-editing-aids] .breditor-aid-label[data-aid-side=start]{border-radius:0 0 3px 0}[data-breditor-editing-aids] .breditor-aid-char{position:absolute;display:flex;align-items:center;justify-content:center;color:#6f8c82;font-family:system-ui,sans-serif;line-height:1;white-space:pre}[data-breditor-editing-aids] .breditor-aid-char[data-aid-kind=nbsp]{color:#b05a1a}[data-breditor-editing-aids] .breditor-aid-char[data-aid-kind=blockEnd],[data-breditor-editing-aids] .breditor-aid-char[data-aid-kind=hardBreak]{justify-content:flex-start}:is([data-breditor-rich],[data-breditor-shared]) [${richFocusedBlockAttribute}]{box-shadow:inset 3px 0 0 #9cc9b9}@media print{[data-breditor-editing-aids]{display:none!important}:is([data-breditor-rich],[data-breditor-shared]) [${richFocusedBlockAttribute}]{box-shadow:none!important}}`;
 
 const characters:Readonly<Record<string,RichInvisibleKind>>=Object.freeze({" ":"space"," ":"nbsp"," ":"nbsp","\t":"tab","\n":"hardBreak"});
-/** Characters measured per paint, a bound independent of the marker limit (off-screen nodes are skipped cheaply). */
-const MEASURE_BUDGET=200_000;
+/** UTF-16 units inspected per paint, independent of the marker limit. */
+const CHARACTER_SCAN_LIMIT=200_000;
 const mounted=new WeakSet<HTMLElement>();
 const bool=(value:unknown,name:string,fallback:boolean):boolean=>{if(value===undefined)return fallback;if(typeof value!=="boolean")throw new TypeError(`${name} must be a Boolean`);return value;};
 
@@ -94,6 +94,7 @@ export function mountRichEditingAids(host:RichEditingAidsHost|HTMLElement,option
  const shortcuts=bool(options.shortcuts,"shortcuts",true),inject=bool(options.injectStyles,"injectStyles",true);
  const kinds=new Set<RichInvisibleKind>(options.kinds??richInvisibleKinds);
  for(const kind of kinds)if(!richInvisibleKinds.includes(kind))throw new TypeError(`Unknown invisible-character kind ${JSON.stringify(kind)}`);
+ const scanCharacters=[...kinds].some(kind=>kind!=="blockEnd");
  const glyphs:Record<RichInvisibleKind,string>={...richInvisibleGlyphs};
  if(options.glyphs!==undefined){
   if(options.glyphs===null||typeof options.glyphs!=="object")throw new TypeError("glyphs must be an object");
@@ -149,7 +150,7 @@ export function mountRichEditingAids(host:RichEditingAidsHost|HTMLElement,option
     fragment.append(label);count++;
    }
    if(settings.invisibles&&!composing){
-    let budget=MEASURE_BUDGET;const range=document.createRange();
+    let budget=CHARACTER_SCAN_LIMIT;const range=document.createRange();
     const glyph=(kind:RichInvisibleKind,left:number,top:number,width:number,height:number):void=>{
      if(count>=limit||!kinds.has(kind)||height<=0)return;
      if(left+width<clip.left||left>clip.right||top+height<clip.top||top>clip.bottom)return;
@@ -163,10 +164,12 @@ export function mountRichEditingAids(host:RichEditingAidsHost|HTMLElement,option
      let last:{node:Text;offset:number}|undefined;
      for(let node=walker.nextNode() as Text|null;node;node=walker.nextNode() as Text|null){
       const text=node.data;if(!text.length)continue;last={node,offset:text.length};
+      if(!scanCharacters)continue;
       range.selectNodeContents(node);if(!visible(range.getBoundingClientRect()))continue;
       for(let index=0;index<text.length;index++){
+       if(budget===0||count>=limit)break outer;
+       budget--;
        const kind=characters[text[index]!];if(!kind||!kinds.has(kind))continue;
-       if(--budget<=0||count>=limit)break outer;
        range.setStart(node,index);range.setEnd(node,index+1);
        const rect=[...range.getClientRects()].find(item=>item.height>0);if(!rect)continue;
        if(kind==="hardBreak"){const width=rect.height*0.7;glyph(kind,rtl?rect.right-width:rect.left,rect.top,width,rect.height);}

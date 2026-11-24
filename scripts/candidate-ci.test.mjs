@@ -1,11 +1,12 @@
 import assert from "node:assert/strict";
 import {spawnSync} from "node:child_process";
-import {copyFileSync,mkdirSync,mkdtempSync,readFileSync,rmSync,writeFileSync} from "node:fs";
+import {copyFileSync,mkdirSync,mkdtempSync,readFileSync,rmSync,symlinkSync,truncateSync,writeFileSync} from "node:fs";
 import test from "node:test";
 import {tmpdir} from "node:os";
 import {join} from "node:path";
 import {fileURLToPath} from "node:url";
 import {candidateShardIds} from "./candidate-release/shards.mjs";
+import {retainCandidateBrowserReports} from "./retain-candidate-browser-reports.mjs";
 
 const workflow=JSON.parse(readFileSync(new URL("../.github/workflows/candidate-qualification.yml",import.meta.url),"utf8"));
 const job=workflow.jobs.qualify,steps=job.steps;
@@ -75,6 +76,54 @@ test("candidate logs are retained on failure without uploading unrelated target 
  assert.equal(upload.with["include-hidden-files"],false);
  assert.equal(upload.with.overwrite,false);assert.equal(upload.with.archive,true);
  assert.equal(upload.with.name,"candidate-${{ github.sha }}-${{ inputs.profile }}${{ inputs.shard != 'none' && format('-{0}', inputs.shard) || '' }}-${{ github.run_attempt }}");
+});
+
+test("failure evidence preserves exact bounded browser reports even without traces",()=>{
+ const root=mkdtempSync(join(tmpdir(),"breditor-browser-reports-"));
+ try{
+  mkdirSync(join(root,"experiments/shared-browser"),{recursive:true});
+  mkdirSync(join(root,"target/shared-browser-results"),{recursive:true});
+  writeFileSync(join(root,"experiments/shared-browser/example.spec.mjs"),"");
+  const paths=["target/shared-application-browser-playwright.json","target/shared-browser-results/example.spec.mjs.json"];
+  for(const path of paths)writeFileSync(join(root,path),'{"stats":{"unexpected":1}}');
+  const oversized="target/rich-browser-webkit-report.json";
+  writeFileSync(join(root,oversized),"");
+  truncateSync(join(root,oversized),8*1024*1024+1);
+  const link="target/rich-browser-firefox-report.json";
+  symlinkSync(join(root,paths[0]),join(root,link));
+  writeFileSync(join(root,"target/shared-browser-results/unregistered.spec.mjs.json"),'{"private":true}');
+
+  const proof=retainCandidateBrowserReports(root);
+  assert.deepEqual(proof.reports.map(report=>report.path),paths);
+  assert.deepEqual(proof.omitted,[{path:link,reason:"non-regular-or-outside-workspace"},{path:oversized,reason:"size-bound"}]);
+  for(const report of proof.reports)assert.deepEqual(
+   readFileSync(join(root,"target/v1-candidate-runs",report.retainedPath)),readFileSync(join(root,report.path)));
+  assert.deepEqual(JSON.parse(readFileSync(join(root,"target/v1-candidate-runs/browser-failure-reports.json"),"utf8")),proof);
+ }finally{rmSync(root,{recursive:true,force:true});}
+});
+
+test("browser failure reports stop at the total artifact budget",()=>{
+ const root=mkdtempSync(join(tmpdir(),"breditor-browser-report-budget-"));
+ try{
+  mkdirSync(join(root,"experiments/shared-browser"),{recursive:true});
+  mkdirSync(join(root,"target/shared-browser-results"),{recursive:true});
+  const maximumFileBytes=8*1024*1024;
+  for(const name of [
+   "rich-browser-chromium-report.json","rich-browser-firefox-report.json",
+   "rich-browser-webkit-report.json","shared-application-browser-playwright.json",
+  ]){
+   const path=join(root,"target",name);
+   writeFileSync(path,"");
+   truncateSync(path,maximumFileBytes);
+  }
+  const omitted="target/shared-browser-results/chromium-firefox.json";
+  writeFileSync(join(root,omitted),"{}");
+
+  const proof=retainCandidateBrowserReports(root);
+  assert.equal(proof.reports.length,4);
+  assert.equal(proof.reports.reduce((total,report)=>total+report.bytes,0),4*maximumFileBytes);
+  assert.deepEqual(proof.omitted,[{path:omitted,reason:"size-bound"}]);
+ }finally{rmSync(root,{recursive:true,force:true});}
 });
 
 test("failed browser and demo traces have their own bounded artifact",()=>{
@@ -161,7 +210,11 @@ test("a setup failure still has a retained commit and runner outcome report",()=
  const ids=["checkout","node","rust","npm","cargo","browsers","candidate"];
  assert.deepEqual(steps.slice(1,ids.length+1).map(step=>step.id),ids);
  assert.equal(row.if,"${{ always() }}");
- assert.equal(steps.indexOf(row)+1,steps.indexOf(named("Retain candidate results and failure logs")));
+ const diagnostics=named("Copy structured browser diagnostics after qualification failure");
+ assert.equal(steps.indexOf(row)+1,steps.indexOf(diagnostics));
+ assert.equal(steps.indexOf(diagnostics)+1,steps.indexOf(named("Retain candidate results and failure logs")));
+ assert.equal(diagnostics.if,"${{ failure() && steps.candidate.outcome == 'failure' }}");
+ assert.equal(diagnostics.run,"node scripts/retain-candidate-browser-reports.mjs");
  for(const id of ids)assert.equal(row.env[id.toUpperCase()+"_OUTCOME"],"${{ steps."+id+".outcome }}");
  const cwd=mkdtempSync(join(tmpdir(),"breditor-ci-setup-report-"));
  try{

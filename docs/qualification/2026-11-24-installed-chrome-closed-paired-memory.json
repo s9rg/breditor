@@ -1,0 +1,41 @@
+{
+  "format": "breditor/chrome-closed-paired-session-memory",
+  "formatVersion": 1,
+  "date": "2026-11-24",
+  "fixtureCommit": "4d23c85d43096572964fa78e2bbb9e62c6825b68",
+  "chromeVersion": "158.0.8127.37",
+  "host": {
+    "platform": "darwin",
+    "arch": "arm64",
+    "cpu": "Apple M1 Pro",
+    "macOS": "26.6.2"
+  },
+  "wasmSha256": "8f39c742c461006c90e209e0287f7db137574843f316ccddbe2aaa141ca00401",
+  "baseline": {
+    "archiveSourceCommit": "b09dc475fba6632903d78e9a438039d340e9e2f8",
+    "archiveSha256": "a0ed9422649deac8b190413a6f7f06191c22298d907bdfc672eb9c446f8fe65f",
+    "reportSha256": "c720b85283227af0f3dcbd55a07844f75950dc48b32253ecf8c6bf42fb5e591a"
+  },
+  "candidate": {
+    "archiveSourceCommit": "4d23c85d43096572964fa78e2bbb9e62c6825b68",
+    "archiveSha256": "b5692d35a86ee9917714147b8f1bb0e4ea0550cb42fd4bed56f2fe154bea89ea",
+    "reportSha256": "58437d1a559aaeb103d47d0a2fc1bea019cc931d6900d11683887aa9b832a189"
+  },
+  "observations": [
+    {
+      "close": "graceful",
+      "exactRecoveryBytes": 3464312,
+      "exactRecoverySha256": "00ea77213ec7bfc26e4ad5cf2d07ae72494d00c11cbb894512b1bdb1a8bc4b9e",
+      "baselineRetainedByClosedOwnerBytes": 10302625,
+      "candidateRetainedByClosedOwnerBytes": 226827
+    },
+    {
+      "close": "with a started write",
+      "exactRecoveryBytes": 3695202,
+      "exactRecoverySha256": "f49066df207b79ff715f8efb22dae2894d94e44343b3ad854a46e94fb553150a",
+      "baselineRetainedByClosedOwnerBytes": 10993278,
+      "candidateRetainedByClosedOwnerBytes": 230907
+    }
+  ],
+  "scope": "Installed Chrome paired owners with one discussion, fourteen saved versions, and a fifteenth version for discard with an already started write. Measurements compare garbage-collected JavaScript used heap and backing storage before and after dropping the closed handle. Both cases recovered exact records in both runs. The baseline failed both retention assertions."
+}
