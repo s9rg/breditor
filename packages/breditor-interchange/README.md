@@ -68,6 +68,23 @@ inline styles, and explicit `exportImage` publication policy. The host
 supplies metadata separately from the native clipboard snapshot. The
 exporter neither edits the source nor adopts source head directives.
 
+### Complete HTML page import
+
+Call `importHtmlPage(core, sourceHtml, options?)` for an admitted native flow
+transfer in `value.body` and editable host metadata in `value.metadata`.
+The metadata uses the same title, description, language and direction
+contract as `exportHtmlPage`. The first title and description are admitted,
+and an absent title becomes the empty string. The host can edit these
+fields and store them alongside its native checkpoint.
+
+The parsed page's root language and direction become host metadata. A body
+element's authored language and direction can still enter the native body
+where the ordinary converter represents them. Existing bounded stylesheet
+support remains available for the admitted body. External stylesheets,
+directives such as base and refresh, and other unsupported head content
+are dropped with a conversion notice. Page import uses the same inert
+parser and explicit host image lookup as fragment import.
+
 ### Portable HTML with host-owned raster bytes
 
 In a browser, `@breditor/interchange/portable-html` can embed raster images

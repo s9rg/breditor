@@ -35,7 +35,10 @@ const documentXml=exportDocumentXml(owner);
 if(documentXml.ok)void (documentXml.value satisfies string);
 void (documentXmlContractV1.version satisfies 1);
 
-import {exportHtmlPage,type HtmlPageMetadata} from "@breditor/interchange";
+import {exportHtmlPage,importHtmlPage,type HtmlPageMetadata} from "@breditor/interchange";
 const pageMetadata:HtmlPageMetadata={title:"Native page",language:"pt-BR",direction:"ltr"};
 const page=exportHtmlPage(owner,"{}",pageMetadata);
 if(page.ok)void (page.value satisfies string);
+
+const importedPage=importHtmlPage(owner,"<title>Native page</title><p>Body</p>");
+if(importedPage.ok)void (importedPage.value.metadata satisfies HtmlPageMetadata);

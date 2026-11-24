@@ -610,7 +610,10 @@ function trailingInterchangeNewline(nodes:readonly HtmlNode[]):HtmlElement|undef
   return undefined;
 }
 export function importHtmlContent(source:string,b:Budget,options:InterchangeOptions,capabilities:ImportCapabilities={listNumbering:false}):{root:string;kind:"text"|"flow"} {
-  const sourceNodes=htmlTree(source,b),converter=new HtmlConversion(b,options,new Stylesheets(sourceNodes,b),capabilities,trailingInterchangeNewline(sourceNodes)),body=converter.pageBreakRoot(converter.flow(sourceNodes));
+  return importHtmlTree(htmlTree(source,b),b,options,capabilities);
+}
+export function importHtmlTree(sourceNodes:HtmlNode[],b:Budget,options:InterchangeOptions,capabilities:ImportCapabilities):{root:string;kind:"text"|"flow"} {
+  const converter=new HtmlConversion(b,options,new Stylesheets(sourceNodes,b),capabilities,trailingInterchangeNewline(sourceNodes)),body=converter.pageBreakRoot(converter.flow(sourceNodes));
   const containsBlock=(n:HtmlNode):boolean=>isElement(n)&&(blocks.has(n.tagName)||n.childNodes.some(containsBlock));
   const inline=!sourceNodes.some(containsBlock)&&body.length===1&&body[0]!.type==="breditor/paragraph"&&Object.keys(body[0]!.properties).every(k=>k==="breditor/block-id")&&body[0]!.children.length>0&&body[0]!.children.every(n=>n.kind==="text");
   return{root:rootJson(b,body),kind:inline?"text":"flow"};
