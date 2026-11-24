@@ -57,8 +57,10 @@ conversion without exposing their messages.
 
 HTML conversion uses inert parse5 and css-tree data, not browser DOM parsing.
 Simple tag/class/ID stylesheet selectors and inline declarations have bounded
-specificity, source-order and important handling. Recognized values become
-closed native fields; arbitrary CSS is never emitted. Word list metadata is
+specificity, source-order and important handling. Winning CSS dimensions take
+precedence over HTML size attributes on images, tables, columns and cells.
+Dimensions outside the native subset produce a size or width notice. Recognized
+values become closed native fields. Word list metadata is
 converted into actual list structure, not retained as markup or pasted markers.
 
 ### Producer clipboard shapes

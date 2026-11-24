@@ -45,6 +45,34 @@ test("V4 reports image links while V3 stays exact and refuses them",async({page}
  expect(result).toEqual({v4:1,v3:null,refused:true,documentRefused:true,unchanged:true,supports:[false,true]});
 });
 
+test("HTML geometry uses the CSS winner over image and table size attributes",async({page})=>{
+ const result=await page.evaluate(()=>{
+  const t=window.il;
+  const html='<style>img.sized{width:225px!important;height:135px}col.sized{width:160px!important}td.sized{width:170px}table.sized{width:400px}</style>'+
+   '<img class="sized" src="pic.png" alt="Styled" width="120" height="80" style="width:240px;height:145px">'+
+   '<img src="pic.png" alt="Attribute" width="80" height="60">'+
+   '<img src="pic.png" alt="Percentage" width="80" height="60" style="width:50%">'+
+   '<table class="sized" width="200"><colgroup><col class="sized" width="96" style="width:172px"></colgroup><tr><td>Column</td><td>Table fallback</td></tr></table>'+
+   '<table><tr><td class="sized" width="95">Cell</td></tr></table>';
+  const v3=t.api.compileStandardLayoutRichProfileV3(window.rich.wasm,t.bootstrap(8,4)),old=t.open(v3);
+  try{
+   return [old,t.core].map(core=>{
+    const before=core.checkpointJson(),adapter=t.createRichInterchange(core,{
+     resolveImage:({src})=>["pic.png","https://example.test/pic.png"].includes(src)?{asset:"asset",generation:"g1"}:undefined,
+     exportImage:()=>"https://example.test/pic.png",
+    });
+    const shape=value=>JSON.parse(value.value.structuredJson).document.root.children.map(({type,properties:p})=>
+     type==="breditor/image"?[p["breditor/width"]??null,p["breditor/height"]??null]:p["breditor/columns"].map(c=>c.width));
+    const imported=adapter.importHtml(html),exported=adapter.exportHtml(imported.value.structuredJson);
+    return {size:shape(imported),losses:imported.losses,back:shape(adapter.importHtml(exported.value)),unchanged:core.checkpointJson()===before};
+   });
+  }finally{old.dispose();v3.dispose();}
+ });
+ const geometry=[[225,145],[80,60],[null,null],[160,200],[170]];
+ const expected={size:geometry,losses:[{code:"image-size",count:1,effect:"loss"}],back:geometry,unchanged:true};
+ expect(result).toEqual([expected,expected]);
+});
+
 test("the V4 Image link toolbar control sets a link that wraps only the image, with exact Undo/Redo/restore",async({page})=>{
  await page.getByRole("button",{name:"Select image",exact:true}).click();
  await expect(page.locator("figure[data-node-selected]")).toHaveCount(1);
