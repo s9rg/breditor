@@ -35,6 +35,14 @@ test("installed generation admission refuses existing malformed heads before nat
  expect(report,report.reason).toEqual({passed:true,malformedHeadRefusals:5,insertOnlyRaceRefusal:true,exactReopen:true});
 });
 
+test("installed independent history refuses an occupied undefined head before native creation or replay",async({page})=>{
+ await page.goto("/shared-generation-rollover.html?independentHead=1");
+ const result=page.locator("#result");
+ await expect(result).toContainText('"passed"',{timeout:15000});
+ const report=JSON.parse(await result.textContent());
+ expect(report,report.reason).toEqual({passed:true,malformedHeadRefusals:2,insertOnlyRaceRefusal:true,exactRecoveredLanes:2});
+});
+
 for(const rejectDigest of [false,true])test(`installed independent history retires a ${rejectDigest?"rejected":"completed"} save digest during upgrade`,async({page})=>{
  await page.goto(`/shared-generation-rollover.html?independentUpgrade=${rejectDigest?"rejected":"resolved"}`);
  const result=page.locator("#result");
