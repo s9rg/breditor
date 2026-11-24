@@ -113,10 +113,11 @@ separate procedures.
 Select `installed-feature-browser` to build fresh SDK consumers and run the
 search, placeholder, fullscreen, session backup and raster backup browser
 checks, along with the three-engine rich-demo latency sample. The consumer
-checks first generate their build and archive receipts in the same checkout.
-The session backup check uses a fresh installed consumer. The run retains
-its producer report with npm archive hashes and its browser report with
-Wasm and IndexedDB recovery evidence through a page reload.
+checks generate their build and archive receipts in the same checkout.
+The run retains each primary installed consumer report and its corresponding
+browser report. Reviewers can compare the npm archive hashes from the producer
+with the Wasm and behavior recorded by the browser. The session backup browser
+report also records IndexedDB recovery through a page reload.
 
 ## Candidate shards
 
