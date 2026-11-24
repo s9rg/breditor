@@ -4,7 +4,7 @@ import {IDBFactory,IDBObjectStore} from "fake-indexeddb";
 import {RichAssetStore,RichAssetReconciliation} from "../packages/breditor-experimental-rich-content/index.js";
 import {openDatabase} from "../packages/breditor-experimental-rich-content/dist/browser/assets/database.js";
 import {equalAssetBytes} from "../packages/breditor-experimental-rich-content/dist/browser/assets/reconciliation/equal_bytes.js";
-import {pixel,pixelAsset,secondPixel,secondAsset,ReviewFixtureImage} from "./fixtures/review-assets/pixels.mjs";
+import {pixel,pixelAsset,secondPixel,secondAsset,proposalPixel,proposalAsset,ReviewFixtureImage} from "./fixtures/review-assets/pixels.mjs";
 import {assetLockHost} from './fixtures/asset-custody/locks.mjs';
 const originals=new Map(["indexedDB","Image","navigator"].map(n=>[n,Object.getOwnPropertyDescriptor(globalThis,n)]));
 let held;
@@ -22,6 +22,28 @@ test("whole asset reconciliation retains both exact files, current-only bytes an
 
 test("transaction byte equality covers empty, word-aligned and trailing-byte buffers exactly",()=>{
  for(let length=0;length<130;length++){const a=Uint8Array.from({length},(_,i)=>(i*53+length)&255),b=a.slice();assert.equal(equalAssetBytes(a.buffer,b.buffer),true);assert.equal(equalAssetBytes(a.buffer,new ArrayBuffer(length+1)),false);for(let i=0;i<length;i++){b[i]^=1;assert.equal(equalAssetBytes(a.buffer,b.buffer),false);b[i]^=1;}}
+});
+
+test("applying a retained decision writes only the new raster and changed queue row",async()=>{
+ const target=await RichAssetStore.open("target"),source=await RichAssetStore.open("source");
+ const put=IDBObjectStore.prototype.put,writes=[];
+ let attempt;
+ try{
+  await target.ingest(blob(pixel));await target.ingest(blob(secondPixel));await target.cancel(secondAsset);
+  await source.ingest(blob(pixel));await source.ingest(blob(proposalPixel));await source.flush(async()=>"selected-receipt");
+  const unchanged=await target.get(secondAsset);
+  attempt=await target.beginReconciliation(await source.exportBackup(),options());
+  IDBObjectStore.prototype.put=function(...args){
+   const request=put.apply(this,args);
+   if(this.name==="assets"&&this.transaction.db.name==="target")writes.push(args[0].asset);
+   return request;
+  };
+  await attempt.commit([{asset:pixelAsset,keep:"original"}]);
+  assert.deepEqual(writes.sort(),[pixelAsset,proposalAsset].sort());
+  assert.deepEqual(await target.get(secondAsset),unchanged);
+  assert.equal((await target.get(pixelAsset)).storageRef,"selected-receipt");
+  await attempt.commit([{asset:pixelAsset,keep:"original"}]);assert.equal(writes.length,2);
+ }finally{IDBObjectStore.prototype.put=put;await attempt?.close();target.close();source.close();}
 });
 
 for(const keep of ["current","original"])test(`conflicting receipt/counter state requires exact explicit ${keep} choice and preserves the losing file`,async()=>{

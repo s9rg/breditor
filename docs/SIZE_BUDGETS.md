@@ -695,3 +695,25 @@ measurement.
 node scripts/check-asset-backups-installed.mjs --reuse-runtime
 node scripts/measure-retained-asset-open.mjs
 ```
+
+## Installed retained asset reconciliation writes
+
+The installed Chrome 158 fixture reconciled 12 local PNGs with an incoming
+archive containing one new PNG and one explicit upload queue conflict. The
+previous build submitted 13 raster rows carrying 19,494,940 bytes to IndexedDB.
+The fixed build submitted two rows carrying 2,999,138 bytes, saving 16,495,802
+logical raster payload bytes on the first apply. Both builds issued zero raster
+writes when retrying after a cold reopen.
+
+The transaction still compares the full retained target and keeps both
+input archives. Both builds produced identical union, queue and native
+checkpoint digests. Cold restore validated all 13 raster identities and
+replayed native Undo and Redo. The count covers raster payloads passed to
+IndexedDB and excludes metadata, browser implementation overhead and physical
+disk I/O.
+[Measurement and archive hashes](qualification/2026-11-24-installed-chrome-asset-reconciliation-writes.json)
+
+```sh
+node scripts/check-asset-backups-installed.mjs --reuse-runtime
+node scripts/measure-retained-asset-open.mjs --reconciliation-writes
+```
