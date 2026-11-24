@@ -1,0 +1,135 @@
+{
+  "format": "breditor/installed-chrome-asset-metadata-memory",
+  "formatVersion": 1,
+  "host": {
+    "browser": "158.0.8127.37",
+    "platform": "macOS 26.6.2",
+    "processor": "Apple M1 Pro",
+    "arch": "arm64"
+  },
+  "fixture": {
+    "assets": 28,
+    "mime": "image/png",
+    "width": 720,
+    "height": 720,
+    "retainedBytes": 49966325,
+    "background": "Canvas PNGs with deterministic opaque per-pixel RGB"
+  },
+  "method": "Fresh offline package installs; sample Chrome Runtime.getHeapUsage during each RichAssetStore.list after explicit garbage collection; record bytes in each actual IndexedDB result and compare exact ordered metadata.",
+  "bulk": {
+    "archives": [
+      {
+        "file": "breditor-browser-0.3.0-alpha.22.tgz",
+        "sha256": "1199d14fe5b3d5b2e0318642a9bbf9f5b84773e97265597f72e190be43869ae0"
+      },
+      {
+        "file": "breditor-editor-0.3.0-alpha.22.tgz",
+        "sha256": "ff50188718a1587bc21fda0e0700a2f4de61085ae00d083cf569789d29c713dd"
+      },
+      {
+        "file": "breditor-experimental-rich-content-0.3.0-alpha.22.tgz",
+        "sha256": "41bef48450af2d2ddc3e8d5b159205bf0d4ed836627690b992d393cfdd12016a"
+      },
+      {
+        "file": "breditor-collaboration-0.3.0-alpha.22.tgz",
+        "sha256": "84eac53fb33e729345b73e493177bcc0025c8bd6371ae64b4f317eeaa557ec04"
+      }
+    ],
+    "measurements": [
+      {
+        "elapsedMs": 36.8,
+        "peakRequestBytes": 49966325,
+        "requests": 1,
+        "peakBackingStorageGrowth": 49966340
+      },
+      {
+        "elapsedMs": 37.8,
+        "peakRequestBytes": 49966325,
+        "requests": 1,
+        "peakBackingStorageGrowth": 49966325
+      },
+      {
+        "elapsedMs": 30.5,
+        "peakRequestBytes": 49966325,
+        "requests": 1,
+        "peakBackingStorageGrowth": 49966325
+      },
+      {
+        "elapsedMs": 31.7,
+        "peakRequestBytes": 49966325,
+        "requests": 1,
+        "peakBackingStorageGrowth": 49966325
+      },
+      {
+        "elapsedMs": 31.2,
+        "peakRequestBytes": 49966325,
+        "requests": 1,
+        "peakBackingStorageGrowth": 49966325
+      },
+      {
+        "elapsedMs": 31.6,
+        "peakRequestBytes": 49966325,
+        "requests": 1,
+        "peakBackingStorageGrowth": 49966325
+      }
+    ]
+  },
+  "cursor": {
+    "archives": [
+      {
+        "file": "breditor-browser-0.3.0-alpha.22.tgz",
+        "sha256": "1199d14fe5b3d5b2e0318642a9bbf9f5b84773e97265597f72e190be43869ae0"
+      },
+      {
+        "file": "breditor-editor-0.3.0-alpha.22.tgz",
+        "sha256": "ff50188718a1587bc21fda0e0700a2f4de61085ae00d083cf569789d29c713dd"
+      },
+      {
+        "file": "breditor-experimental-rich-content-0.3.0-alpha.22.tgz",
+        "sha256": "1228f93250dc4f150a2788e5631b73d5b74033f247408a57e30da927f4ab0b47"
+      },
+      {
+        "file": "breditor-collaboration-0.3.0-alpha.22.tgz",
+        "sha256": "84eac53fb33e729345b73e493177bcc0025c8bd6371ae64b4f317eeaa557ec04"
+      }
+    ],
+    "measurements": [
+      {
+        "elapsedMs": 38.6,
+        "peakRequestBytes": 1784665,
+        "requests": 28,
+        "peakBackingStorageGrowth": 32121349
+      },
+      {
+        "elapsedMs": 35,
+        "peakRequestBytes": 1784665,
+        "requests": 28,
+        "peakBackingStorageGrowth": 32121331
+      },
+      {
+        "elapsedMs": 34.9,
+        "peakRequestBytes": 1784665,
+        "requests": 28,
+        "peakBackingStorageGrowth": 30336787
+      },
+      {
+        "elapsedMs": 34.6,
+        "peakRequestBytes": 1784665,
+        "requests": 28,
+        "peakBackingStorageGrowth": 32121331
+      },
+      {
+        "elapsedMs": 33.9,
+        "peakRequestBytes": 1784665,
+        "requests": 28,
+        "peakBackingStorageGrowth": 30336787
+      },
+      {
+        "elapsedMs": 31.5,
+        "peakRequestBytes": 1784665,
+        "requests": 28,
+        "peakBackingStorageGrowth": 32121331
+      }
+    ]
+  }
+}

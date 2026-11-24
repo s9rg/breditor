@@ -182,8 +182,15 @@ export class RichAssetStore {
   async list(): Promise<readonly AssetInfo[]> {
     this.#live();
     return transact(this.#db, "readonly", (tx, result) => {
-      const request = tx.objectStore("assets").getAll();
-      request.onsuccess = () => result((request.result as AssetRecord[]).map(assetInfo));
+      const metadata: AssetInfo[] = [];
+      const request = tx.objectStore("assets").openCursor();
+      request.onsuccess = () => {
+        const cursor = request.result;
+        if (!cursor) { result(metadata); return; }
+        // Keep metadata in primary-key order without materializing an array of raster payloads.
+        metadata.push(assetInfo(cursor.value as AssetRecord));
+        cursor.continue();
+      };
     });
   }
   async blob(asset: string): Promise<Blob | undefined> {
