@@ -56,6 +56,8 @@ const boundaries = [
   ["reconciled-packet-"+id+"-source", "reconciled-packet-recovery-source-"+id, index===0?[]:["reconciled-packet-native-host"]],
   ["reconciled-packet-"+id+"-installed", "installed-reconciled-packet-recovery-"+id, ["reconciled-packet-native-host"]],
  ]),
+ ["metadata-reconciliation-source","metadata-reconciliation-native",localMetadataBuilds],
+ ["metadata-reconciliation-installed","installed-metadata-reconciliation",[...localMetadataBuilds,"metadata-reconciliation-companion-hosts"]],
 ];
 const sdkPrerequisites = [
  "default-typescript-build",

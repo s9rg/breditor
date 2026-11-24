@@ -465,8 +465,8 @@ test("isolated release matrices preserve the full plan's commands and report the
   assert.equal(run.stdout,"");
  }
 });
-test("candidate shards partition the full plan through reconciled packet recovery",()=>{
- const full=candidateReleasePlan(),end=full.checks.findIndex(check=>check.id==="installed-reconciled-packet-recovery-compatibility");
+test("candidate shards partition the full plan through installed metadata reconciliation",()=>{
+ const full=candidateReleasePlan(),end=full.checks.findIndex(check=>check.id==="installed-metadata-reconciliation");
  const byId=new Map(full.checks.map(check=>[check.id,check]));
  const covered=[];
  for(const name of candidateShardIds){
