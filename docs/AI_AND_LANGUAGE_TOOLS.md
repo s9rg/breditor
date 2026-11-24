@@ -136,8 +136,9 @@ range.
 
 - **Overlay.** Issues are painted with the search-decoration approach: transient
   DOM ranges measured from block id + UTF-16 offsets, drawn as fixed-position,
-  `aria-hidden`, pointer-transparent markers in a separate layer appended to the
-  document body. The editing surface's DOM is never wrapped, styled or mutated.
+  `aria-hidden`, pointer-transparent markers in a separate layer. The layer
+  follows the editor's fullscreen ancestor or mounts under the document body.
+  The editing surface's DOM is never wrapped, styled or mutated.
   Only visible rectangles are painted; composition, busy owners and stale issues
   clear the paint.
 - **Keyboard list.** Issues form a list of buttons with one tab stop
