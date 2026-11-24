@@ -19,8 +19,22 @@ count source entries with a case definition. To qualify a case, record the
 case version, candidate artifacts, actual observations and any accepted
 deviation in the release evidence.
 
-The release review still owns the disposition of differences. The current
-block-level bookmark anchors, trailing table captions and independent text
-language and direction fields are documented in the
-[release plan](V1_RELEASE_PLAN.md#what-the-review-found). The draft cases
-expose these differences to review.
+## Catalog review disposition
+
+All 253 pinned entries have versioned acceptance cases under the confirmed V1
+scope. The release plan and the case definitions preserve the three recorded
+differences as parity work:
+
+- Block-level bookmark anchors cover one anchor per block. V1 still needs
+  distinct inline targets within one paragraph under
+  `inline-bookmark-position@1`.
+- The trailing table caption has fixed presentation today. V1 still needs
+  supported host configuration for placement above or below in editing and
+  published views under `table-caption-edit-and-placement@2`.
+- Text part language carries the run's language today. V1 still needs per-run
+  direction alongside language without altering the selected paragraph or UI
+  locale under `text-part-language-and-direction@1`.
+
+The catalog review records zero approved exclusions or deviations. These
+capabilities stay in scope. Implementation and behavioral qualification are
+tracked in the readiness ledger's feature groups and remaining release gates.

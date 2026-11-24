@@ -135,9 +135,9 @@ V1 includes every capability in the proposed scope review:
 The [versioned acceptance cases](v1-catalog-cases.json) define 18 scenarios
 for these capabilities, linked to the grouped audit and primary comparison
 sources. The scope is confirmed and the scenarios are draft qualification
-criteria. The [pinned comparison index](V1_CATALOG_BASELINE.md) tracks which
-cases are attached to upstream entries. The catalog gate stays open while
-intentional differences are reviewed.
+criteria. The [pinned comparison index](V1_CATALOG_BASELINE.md) tracks the
+case versions for every upstream entry and records the three observed
+differences as in-scope parity work.
 
 Related cases are grouped in JSON files under `docs/v1-catalog-cases/`.
 `npm run audit:v1` validates the case definitions and their source and feature
@@ -154,8 +154,8 @@ provider integration results should identify the actual test environment.
 
 1. **Shared V4 interchange** so shared import and export report the V4 features.
    This is the last shared V4 gap (Enter on a collapsed shared summary is done).
-2. **Review the pinned case mappings and intentional differences** against
-   the Tiptap catalog and CKEditor feature digest.
+2. **Implement and qualify the mapped acceptance cases** against the pinned
+   Tiptap and CKEditor baselines.
 3. **Automate release CI** over every distributed feature, now that shared
    qualification runs again.
 4. **Qualification gates** as before: physical input, assistive technology and
