@@ -583,3 +583,14 @@ rounds on newly packed SDK archives. Backing storage rose from 0.83 MB to
 30.80 MB during the active session and fell to 0.76 MB after both owners
 closed. Reopening restored both saved checkpoints byte-for-byte and brought
 backing storage to 30.82 MB. [Exact archives and measured samples](qualification/2026-11-23-installed-chrome-shared-memory.json)
+
+The November 24 run on Google Chrome 158.0.8127.37 and Apple M1 Pro measured
+the same two-peer, 2,825-byte document through 100 edit/Undo rounds. Navigation
+to the fixture's ready state took 330 ms. Across rounds 1–10 and 51–100, p95
+typing rose from 39.7 to 219.3 ms, Undo from 40.5 to 228.6 ms, and direct peer
+frame exchange from 62.1 to 398.4 ms. The document stayed the same size after
+each Undo, while both histories grew and reopened byte-for-byte. The typing and
+Undo samples time synchronous shared-core calls. The frame exchange takes place
+within the page. This workload establishes observed history cost. The supported
+operating envelope still needs separate measurement and review.
+[Archive hashes, browser Wasm, and measurements](qualification/2026-11-24-installed-chrome-shared-history-latency.json)

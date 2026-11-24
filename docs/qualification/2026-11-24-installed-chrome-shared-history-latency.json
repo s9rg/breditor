@@ -1,0 +1,245 @@
+{
+  "format": "breditor/installed-shared-history-latency",
+  "formatVersion": 1,
+  "date": "2026-11-24",
+  "fixtureCommit": "222998cbf051030b51c8c7979a1b4bf53d02c386",
+  "archiveSourceCommit": "b09dc475fba6632903d78e9a438039d340e9e2f8",
+  "macOS": "26.6.2",
+  "result": {
+    "status": "passed",
+    "durationMs": 72277,
+    "retries": 0,
+    "measurementsSha256": "1ab552842c687bfc7ba1a1d2bf332b3fc8c3d03508f6c5964f9c74744c915e51"
+  },
+  "scope": "Playwright navigation to the installed Chrome fixture's ready state. Typing and Undo time synchronous shared-core API calls in the mounted editor. Frame sync uses direct peer exchange in the same page. Memory counters cover the Chrome isolate. This sample does not define supported workload limits or relay or operating-system input latency.",
+  "measurements": {
+    "format": "breditor/installed-shared-memory",
+    "formatVersion": 2,
+    "chromeVersion": "158.0.8127.37",
+    "platform": "darwin",
+    "arch": "arm64",
+    "host": {
+      "cpu": "Apple M1 Pro",
+      "osRelease": "25.6.0",
+      "osVersion": "Darwin Kernel Version 25.6.0: Fri Jul 31 19:18:49 PDT 2026; root:xnu-12377.161.14~5/RELEASE_ARM64_T6000"
+    },
+    "fixture": {
+      "documentSha256": "d395e33e14975713d414b75922457566d305e53b89947acd28fad239ef90aa36",
+      "documentBytes": 2825,
+      "topLevelBlocks": 3
+    },
+    "archives": [
+      {
+        "filename": "breditor-browser-0.3.0-alpha.22.tgz",
+        "sha256": "1199d14fe5b3d5b2e0318642a9bbf9f5b84773e97265597f72e190be43869ae0"
+      },
+      {
+        "filename": "breditor-experimental-rich-content-0.3.0-alpha.22.tgz",
+        "sha256": "41bef48450af2d2ddc3e8d5b159205bf0d4ed836627690b992d393cfdd12016a"
+      },
+      {
+        "filename": "breditor-collaboration-0.3.0-alpha.22.tgz",
+        "sha256": "a0ed9422649deac8b190413a6f7f06191c22298d907bdfc672eb9c446f8fe65f"
+      },
+      {
+        "filename": "breditor-editor-0.3.0-alpha.22.tgz",
+        "sha256": "ff50188718a1587bc21fda0e0700a2f4de61085ae00d083cf569789d29c713dd"
+      }
+    ],
+    "wasm": {
+      "sha256": "8f39c742c461006c90e209e0287f7db137574843f316ccddbe2aaa141ca00401",
+      "bytes": 14567299
+    },
+    "navigationToReadyMs": 330.46629100000007,
+    "latency": [
+      {
+        "firstRound": 1,
+        "lastRound": 10,
+        "typing": {
+          "samples": 10,
+          "p50Ms": 31.300000071525574,
+          "p95Ms": 39.700000047683716
+        },
+        "undo": {
+          "samples": 10,
+          "p50Ms": 30.5,
+          "p95Ms": 40.5
+        },
+        "frameSync": {
+          "samples": 10,
+          "p50Ms": 43.40000009536743,
+          "p95Ms": 62.10000002384186
+        }
+      },
+      {
+        "firstRound": 11,
+        "lastRound": 25,
+        "typing": {
+          "samples": 15,
+          "p50Ms": 53.60000002384186,
+          "p95Ms": 66.39999997615814
+        },
+        "undo": {
+          "samples": 15,
+          "p50Ms": 53.700000047683716,
+          "p95Ms": 68.10000002384186
+        },
+        "frameSync": {
+          "samples": 15,
+          "p50Ms": 86,
+          "p95Ms": 109.29999995231628
+        }
+      },
+      {
+        "firstRound": 26,
+        "lastRound": 50,
+        "typing": {
+          "samples": 25,
+          "p50Ms": 89.29999995231628,
+          "p95Ms": 111.89999997615814
+        },
+        "undo": {
+          "samples": 25,
+          "p50Ms": 89.79999995231628,
+          "p95Ms": 109
+        },
+        "frameSync": {
+          "samples": 25,
+          "p50Ms": 151.79999995231628,
+          "p95Ms": 188.70000004768372
+        }
+      },
+      {
+        "firstRound": 51,
+        "lastRound": 100,
+        "typing": {
+          "samples": 50,
+          "p50Ms": 168.09999990463257,
+          "p95Ms": 219.29999995231628
+        },
+        "undo": {
+          "samples": 50,
+          "p50Ms": 173.29999995231628,
+          "p95Ms": 228.60000002384186
+        },
+        "frameSync": {
+          "samples": 50,
+          "p50Ms": 293,
+          "p95Ms": 398.39999997615814
+        }
+      }
+    ],
+    "peers": 2,
+    "editUndoRounds": 100,
+    "samples": [
+      {
+        "phase": 0,
+        "elapsedMs": 8.452832999999828,
+        "heap": {
+          "usedSize": 3912084,
+          "totalSize": 4521984,
+          "embedderHeapUsedSize": 1538944,
+          "backingStorageSize": 828241
+        },
+        "dom": {
+          "documents": 1,
+          "nodes": 1937,
+          "jsEventListeners": 412
+        }
+      },
+      {
+        "phase": 10,
+        "elapsedMs": 1760.696875,
+        "heap": {
+          "usedSize": 4567344,
+          "totalSize": 4784128,
+          "embedderHeapUsedSize": 1587128,
+          "backingStorageSize": 3523382
+        },
+        "dom": {
+          "documents": 1,
+          "nodes": 1905,
+          "jsEventListeners": 412
+        }
+      },
+      {
+        "phase": 25,
+        "elapsedMs": 6247.908208000001,
+        "heap": {
+          "usedSize": 4618680,
+          "totalSize": 5308416,
+          "embedderHeapUsedSize": 1551256,
+          "backingStorageSize": 7680072
+        },
+        "dom": {
+          "documents": 1,
+          "nodes": 1905,
+          "jsEventListeners": 412
+        }
+      },
+      {
+        "phase": 50,
+        "elapsedMs": 18883.81775,
+        "heap": {
+          "usedSize": 4630436,
+          "totalSize": 5570560,
+          "embedderHeapUsedSize": 1550032,
+          "backingStorageSize": 14954477
+        },
+        "dom": {
+          "documents": 1,
+          "nodes": 1905,
+          "jsEventListeners": 412
+        }
+      },
+      {
+        "phase": 100,
+        "elapsedMs": 66770.79250000001,
+        "heap": {
+          "usedSize": 4748212,
+          "totalSize": 5570560,
+          "embedderHeapUsedSize": 1550280,
+          "backingStorageSize": 30810048
+        },
+        "dom": {
+          "documents": 1,
+          "nodes": 1905,
+          "jsEventListeners": 412
+        }
+      },
+      {
+        "phase": "closed",
+        "elapsedMs": 67903.95575000001,
+        "heap": {
+          "usedSize": 4708968,
+          "totalSize": 5570560,
+          "embedderHeapUsedSize": 866336,
+          "backingStorageSize": 764356
+        },
+        "dom": {
+          "documents": 1,
+          "nodes": 1883,
+          "jsEventListeners": 18
+        }
+      },
+      {
+        "phase": "reopened",
+        "elapsedMs": 71588.828458,
+        "heap": {
+          "usedSize": 4179520,
+          "totalSize": 5308416,
+          "embedderHeapUsedSize": 1535328,
+          "backingStorageSize": 30827348
+        },
+        "dom": {
+          "documents": 1,
+          "nodes": 1903,
+          "jsEventListeners": 412
+        }
+      }
+    ],
+    "checkpointCodeUnits": 30040753,
+    "releasedBackingStorage": 30045692,
+    "exactReopenedCheckpoints": 2
+  }
+}
