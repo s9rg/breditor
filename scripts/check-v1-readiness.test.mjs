@@ -1,6 +1,6 @@
 import assert from "node:assert/strict";
 import {spawnSync} from "node:child_process";
-import {existsSync, mkdtempSync, readdirSync, readFileSync, rmSync, symlinkSync} from "node:fs";
+import {cpSync, existsSync, mkdirSync, mkdtempSync, readdirSync, readFileSync, rmSync, symlinkSync, writeFileSync} from "node:fs";
 import {tmpdir} from "node:os";
 import {join} from "node:path";
 import test from "node:test";
@@ -157,6 +157,38 @@ test("pre-RC review allows only final approval to remain open", () => {
   remainingGate.status = "passed";
   audit.features[0].status = "partial";
   assert.equal(summarizeAudit(audit).preRcLedgerComplete, false);
+});
+
+test("the pre-RC CLI succeeds when the strict ledger still requires final approval", () => {
+  const root = mkdtempSync(join(tmpdir(), "breditor-pre-rc-"));
+  try {
+    const script = join(root, "scripts/check-v1-readiness.mjs");
+    mkdirSync(join(root, "scripts"));
+    mkdirSync(join(root, "docs"));
+    cpSync(join(repository, "scripts/check-v1-readiness.mjs"), script);
+    cpSync(catalogPath, join(root, "docs/v1-catalog-cases.json"));
+    cpSync(catalogDir, join(root, "docs/v1-catalog-cases"), {recursive: true});
+    cpSync(upstreamCatalogPath, join(root, "docs/v1-catalog-upstream.json"));
+    const audit = load();
+    for (const row of [...audit.features, ...audit.gates]) row.evidence = ["docs/v1-catalog-cases.json"];
+    for (const row of audit.features) row.status = "implemented";
+    for (const row of audit.gates) row.status = row.id === "final-rc" ? "open" : "passed";
+    const ledger = join(root, "docs/v1-readiness.json");
+    const bytes = JSON.stringify(audit);
+    writeFileSync(ledger, bytes);
+
+    for (const [flag, status] of [["--require-pre-rc", 0], ["--require-ready", 1]]) {
+      const result = spawnSync(process.execPath, [script, "--json", flag], {cwd: root, encoding: "utf8"});
+      assert.equal(result.status, status, result.stderr);
+      const report = JSON.parse(result.stdout);
+      assert.equal(report.preRcLedgerComplete, true);
+      assert.equal(report.ledgerComplete, false);
+      assert.deepEqual(report.openGates.map(row => row.id), ["final-rc"]);
+    }
+    assert.equal(readFileSync(ledger, "utf8"), bytes);
+  } finally {
+    rmSync(root, {recursive: true, force: true});
+  }
 });
 
 test("even a fully reviewed ledger explicitly does not execute behavioral tests", () => {
