@@ -53,6 +53,31 @@ URL. Missing mappings preserve available alt/caption text and report
 `image-reference`; no network fallback occurs. Host policy exceptions reject
 conversion without exposing their messages.
 
+### Portable HTML with host-owned raster bytes
+
+In a browser, `@breditor/interchange/portable-html` can embed raster images
+from an admitted clipboard snapshot. Supply the same native owner and an
+explicit `loadImage({asset, generation})` resolver for immutable `Blob` bytes
+already held by the host. It validates the transfer before reading bytes and
+calls the resolver once per exact binding.
+
+```ts
+import {exportPortableHtml} from "@breditor/interchange/portable-html";
+
+const output = await exportPortableHtml(core, clipboard.structuredJson, {
+  loadImage: binding => hostImageRegistry.getBlob(binding),
+});
+```
+
+The separate exporter uses the browser raster admission checks for PNG, JPEG
+and WebP, including declared MIME, actual decode, and content-addressed asset
+identity. It allows 64 distinct bindings, 512 KiB of supplied bytes total, and
+up to 4096 pixels per side and 8 Mi pixels per image. The HTML output is still
+bounded to 1 MiB. A missing or rejected raster falls back to its alt and caption
+with `image-reference`. The exporter does not fetch or upload bytes. The host
+chooses which bindings to publish. Ordinary HTML export remains URL-based,
+and installing this subpath leaves clipboard and image import unchanged.
+
 ## Formatting and notices
 
 HTML conversion uses inert parse5 and css-tree data, not browser DOM parsing.
