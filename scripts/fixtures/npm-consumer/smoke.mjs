@@ -72,9 +72,67 @@ const browserRequire = createRequire(browserEntry);
 assertInsideConsumer(realpathSync(browserRequire.resolve("parse5")), "parse5");
 
 const wasmUrl = import.meta.resolve("@breditor/wasm/wasm");
-initSync({ module: readFileSync(fileURLToPath(wasmUrl)) });
+const wasmBytes = readFileSync(fileURLToPath(wasmUrl));
+initSync({ module: wasmBytes });
 assert.equal(breditorWasmAbiVersion(), "5");
 assert.equal(breditorVersion(), "0.3.0-alpha.22");
+
+const wasmModule = await WebAssembly.compile(wasmBytes);
+await checkOverlappingInitializers(wasmModule, "async");
+await checkOverlappingInitializers(wasmModule, "sync");
+
+async function checkOverlappingInitializers(module, firstKind) {
+  // A separate module evaluation starts with no runtime and shares the same
+  // installed Wasm bytes. The promise controls completion without timing.
+  const entry = new URL(import.meta.resolve("@breditor/wasm"));
+  entry.searchParams.set("concurrent-initialization", firstKind);
+  const {default: initialize, initSync: initializeSync, BreditorEngine} = await import(entry.href);
+  const pending = Promise.withResolvers();
+  const late = initialize({module_or_path: pending.promise});
+  const first = firstKind === "sync"
+    ? initializeSync({module})
+    : await initialize({module_or_path: module});
+
+  const documentJson = JSON.stringify({
+    format: "breditor/document",
+    formatVersion: 1,
+    schema: {name: "breditor/base", version: 1},
+    root: {
+      kind: "element", type: "breditor/document", entityId: null, properties: {},
+      children: [{
+        kind: "element", type: "breditor/paragraph", entityId: null, properties: {},
+        children: [{kind: "text", text: "Live runtime 🙂", formats: []}],
+      }],
+    },
+  });
+  const result = BreditorEngine.fromDocumentJson(`concurrent-${firstKind}`, documentJson, 10);
+  const engine = result.takeEngine();
+  result.free();
+  assert.ok(engine, `${firstKind}: expected a live engine before the delayed initializer`);
+  const before = readCheckpoint(engine);
+
+  pending.resolve(module);
+  assert.ok(await late === first, `${firstKind}: delayed initialization replaced the live Wasm runtime`);
+  try {
+    assert.equal(readCheckpoint(engine), before);
+    assert.ok(initializeSync({module}) === first);
+    assert.ok(await initialize({module_or_path: module}) === first);
+  } finally {
+    engine.free();
+  }
+}
+
+function readCheckpoint(engine) {
+  const result = engine.sessionCheckpointJson();
+  try {
+    assert.equal(result.status, "value");
+    const checkpoint = result.takeValue();
+    assert.equal(typeof checkpoint, "string");
+    return checkpoint;
+  } finally {
+    result.free();
+  }
+}
 
 function resolvedConsumerModule(specifier) {
   const resolved = realpathSync(fileURLToPath(import.meta.resolve(specifier)));

@@ -60,9 +60,12 @@ concurrency ≤ 16, deadline 0.1–60 s; ≤ 16 endpoints, 1–10 attempts).
   needs the account to be listed in `creators` (it becomes the owner), injection
   needs the account in `injectors` **and** current Editor access, the delivery
   log needs `administrators`.
-- At most `concurrentOperations` API calls run at once (`503 busy` otherwise);
-  each room transaction is bounded by `deadlineMillis` (`503
-  deadline_exceeded`). Bodies above `maxRequestBytes` get `413`.
+- REST writes authenticate and acquire an operation slot before reading the
+  body. Admitted bodies above `maxRequestBytes` get `413`. Reads that exceed
+  `deadlineMillis` get `408 request_timeout` before starting a room mutation. At most
+  `concurrentOperations` API calls hold slots (`503 busy` otherwise).
+  Room transactions use a separate `deadlineMillis` budget
+  (`503 deadline_exceeded`).
 - Errors are `{ "kind": "error", "code": … }` with the relay's stable codes
   (`permission_denied`, `invalid_request`, `group_rejected`,
   `storage_unavailable`, …) plus `not_found`, `room_exists`, `room_in_use`,
@@ -165,8 +168,9 @@ POST /documents/v1/rooms/notes/injections
   ordinary writer registrations, so the per-account writer budget (32 for a
   non-owner) bounds a room's lifetime injection count at roughly 8,000 —
   a documented reference budget, not a compaction scheme.
-- An outcome is unknown only if the deadline expires after admission began;
-  re-read the snapshot (a retry with the old revision is refused as stale).
+- A body-read timeout ends the request before command admission. A room
+  transaction timeout can leave admission uncertain. Re-read the snapshot.
+  A retry with the old revision is refused as stale if admission succeeded.
 
 ## Webhooks
 

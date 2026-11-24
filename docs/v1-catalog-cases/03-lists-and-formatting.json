@@ -1,0 +1,338 @@
+{
+  "format": "breditor/v1-catalog-cases",
+  "formatVersion": 1,
+  "cases": [
+    {
+      "id": "bullet-list-nesting",
+      "version": 1,
+      "feature": "nested-lists",
+      "sources": [
+        "tiptap-catalog",
+        "ckeditor-digest"
+      ],
+      "scenario": "Create a three-item bullet list with a link in the middle item. Indent a consecutive pair, add a third level, then outdent the innermost item using both keyboard and toolbar commands.",
+      "expected": [
+        "The editor exposes the resulting hierarchy as nested lists, and each moved item keeps its text, link, order and selection offset.",
+        "An indent without an eligible predecessor leaves the document and history unchanged. Undo and redo retrace the admitted moves in order."
+      ]
+    },
+    {
+      "id": "ordered-list-conversion",
+      "version": 1,
+      "feature": "nested-lists",
+      "sources": [
+        "tiptap-catalog",
+        "ckeditor-digest"
+      ],
+      "scenario": "Convert a selected run of bullet items to an ordered list between two unrelated blocks. Toggle the run back to paragraphs, then restore the list with undo and reopen the saved document.",
+      "expected": [
+        "The selected items gain sequential markers in selection order. Each child list retains its type, nesting and content.",
+        "The adjacent blocks preserve their structure and identities, and the reopened document retains the restored list and its undo and redo history."
+      ]
+    },
+    {
+      "id": "list-item-keymap",
+      "version": 1,
+      "feature": "nested-lists",
+      "sources": [
+        "tiptap-catalog",
+        "tiptap-starter",
+        "ckeditor-digest"
+      ],
+      "scenario": "Split a formatted list item with Enter, join the results with Backspace, then use Tab and Shift+Tab on an item at its first and last legal nesting levels. Repeat with an empty final item.",
+      "expected": [
+        "The split and join preserve text, inline formatting and descendant order, and land the caret at the expected split or join boundary.",
+        "Keyboard actions honor level limits. Leaving a list through its empty final item places the caret in the resulting paragraph."
+      ]
+    },
+    {
+      "id": "task-checkbox-input",
+      "version": 1,
+      "feature": "task-lists",
+      "sources": [
+        "tiptap-catalog",
+        "ckeditor-digest"
+      ],
+      "scenario": "Insert a task list containing a parent and a nested child. Toggle the parent by pointer and the child by keyboard. Read the document, copy it to another supported editor, then try toggling in read-only mode.",
+      "expected": [
+        "Each checkbox has an accessible name and independent checked state. The copied list preserves both checked states and the parent-child relationship.",
+        "Each editable toggle is an undoable change. The read-only control conveys checked state and rejects attempts to change it."
+      ]
+    },
+    {
+      "id": "shared-task-state-and-list-movement",
+      "version": 1,
+      "feature": "task-lists",
+      "sources": [
+        "tiptap-catalog",
+        "ckeditor-digest"
+      ],
+      "scenario": "While one replica is offline, change the checked state of a task and move the same task beneath another item from the connected replica. Reconnect, undo the checked-state edit at its author, then reopen both peers.",
+      "expected": [
+        "The replicas converge on one task at the new location with the admitted checked state. The task identity and its children remain stable.",
+        "Author-local undo restores the earlier checked state while retaining the other person's move, and both peers recover the same tree."
+      ]
+    },
+    {
+      "id": "ordered-list-start-and-continuation",
+      "version": 1,
+      "feature": "list-properties",
+      "sources": [
+        "tiptap-catalog",
+        "ckeditor-list-properties"
+      ],
+      "scenario": "Set an ordered list to start at 4. Split it with a paragraph, continue numbering in the tail, then explicitly restart the tail at 1. Export and reimport the result with a fresh editor.",
+      "expected": [
+        "The first run starts at 4, the continued run starts at its computed next value, and the explicit restart overrides continuation.",
+        "The visible markers and exported numbering semantics agree. Invalid starts produce a reported refusal or documented loss, and preserve the prior native numbering."
+      ]
+    },
+    {
+      "id": "reversed-and-styled-numbering",
+      "version": 1,
+      "feature": "list-properties",
+      "sources": [
+        "tiptap-catalog",
+        "ckeditor-list-properties"
+      ],
+      "scenario": "Create a three-item upper-Roman list with an explicit start of 8 and enable reverse counting. Insert an item in the middle, undo, and compare local, shared and static output.",
+      "expected": [
+        "The original markers are VIII, VII and VI. The insertion extends the descending sequence without changing its start or style.",
+        "Local, shared and static output agree on markers, and undo restores the original sequence and numbering settings."
+      ]
+    },
+    {
+      "id": "bullet-marker-styles",
+      "version": 1,
+      "feature": "list-properties",
+      "sources": [
+        "ckeditor-list-properties"
+      ],
+      "scenario": "Use different allowed bullet markers at two nesting levels, then switch the child marker style. Copy and paste the list into a fresh editor before saving and exporting.",
+      "expected": [
+        "Changing the child style preserves the parent marker and item structure. The admitted markers survive copy, reopen and HTML export.",
+        "Values outside the documented marker set follow the same refusal or loss-reporting policy on toolbar, import and restore paths."
+      ]
+    },
+    {
+      "id": "advanced-numbering-and-item-overrides",
+      "version": 1,
+      "feature": "list-properties",
+      "sources": [
+        "ckeditor-list-properties",
+        "ckeditor-multilevel-lists"
+      ],
+      "scenario": "Set an ordered list to a supported zero-padded counter style and assign a different explicit ordinal to its second item. Reorder the item and test marker output in the editor and interchange.",
+      "expected": [
+        "The displayed sequence follows the documented style, override and reorder rules, and the override remains attached to its intended item.",
+        "The stored profile retains the values exactly. Export preserves supported semantics and identifies any target format that cannot represent them."
+      ]
+    },
+    {
+      "id": "multi-block-list-item-editing",
+      "version": 1,
+      "feature": "list-structure-advanced",
+      "sources": [
+        "ckeditor-digest",
+        "ckeditor-multilevel-lists"
+      ],
+      "scenario": "Create a list item with a heading, paragraph, nested list and trailing paragraph. Join an empty neighboring item into the multi-block item, split a later empty paragraph back out, and repeat with an equivalent task item.",
+      "expected": [
+        "The structural commands change only the intended item boundary and preserve all blocks in order, including the paragraph after the child list.",
+        "Undo restores the original item boundaries and checkbox state, and supported interchange preserves the list hierarchy and block order."
+      ]
+    },
+    {
+      "id": "skip-level-list-items",
+      "version": 1,
+      "feature": "list-structure-advanced",
+      "sources": [
+        "ckeditor-digest",
+        "ckeditor-multilevel-lists"
+      ],
+      "scenario": "Import a list with an item that skips an intermediate nesting level. Indent and outdent around the gap, save, reopen, and export to HTML and a target with limited nesting support.",
+      "expected": [
+        "The model preserves the admitted depth gap and its descendant order. The UI, keyboard navigation and assistive technology expose only authored items.",
+        "Allowed export and import preserve the original depth gap. The limited target reports the specific approximation or unsupported structure."
+      ]
+    },
+    {
+      "id": "stored-legal-multilevel-numbering",
+      "version": 1,
+      "feature": "list-structure-advanced",
+      "sources": [
+        "ckeditor-multilevel-lists"
+      ],
+      "scenario": "Create a legal numbered list with expected second-level markers 2.1 and 2.2 and a third-level marker 2.2.1. Move the 2.2 subtree beneath a different parent, reopen in another client, and export.",
+      "expected": [
+        "The affected descendants' markers are recomputed from their new parent. Unaffected branches retain their legal numbering.",
+        "Clients recover the same numbering configuration and marker sequence, and supported portable export retains the configuration independently of local presentation options."
+      ]
+    },
+    {
+      "id": "block-alignment-and-mixed-selection",
+      "version": 1,
+      "feature": "block-layout",
+      "sources": [
+        "tiptap-catalog",
+        "ckeditor-digest"
+      ],
+      "scenario": "Select two eligible blocks with different alignments. Apply center and then justify from the keyboard-accessible control, save, and inspect the restored editing view and static output.",
+      "expected": [
+        "The control reports mixed state before the edit, then reports the value applied to both blocks. Adjacent ineligible content retains its layout.",
+        "The first Undo restores center alignment on both blocks. The second restores the distinct starting values. The resulting alignment is identical after restore and HTML interchange."
+      ]
+    },
+    {
+      "id": "direction-aware-block-indent",
+      "version": 1,
+      "feature": "block-layout",
+      "sources": [
+        "ckeditor-overview",
+        "ckeditor-digest"
+      ],
+      "scenario": "Indent a left-to-right paragraph and a right-to-left paragraph containing mixed-script text. Change one direction, outdent it, and compare alignment, caret order and exported layout.",
+      "expected": [
+        "Indent is applied to the paragraph's logical start edge, and changing direction updates that edge while preserving logical text order, selection and inline marks.",
+        "Indent controls stop at documented minimum and maximum levels. Round-trip retains the admitted direction and indentation."
+      ]
+    },
+    {
+      "id": "block-line-height",
+      "version": 1,
+      "feature": "block-layout",
+      "sources": [
+        "tiptap-catalog",
+        "ckeditor-digest"
+      ],
+      "scenario": "Apply two admitted line heights to otherwise identical multiline paragraphs in local and shared editors, then reset one paragraph to the inherited value and export.",
+      "expected": [
+        "With font and viewport fixed, adjacent baselines measurably reflect each selected line height. Reset uses the documented inherited spacing.",
+        "Remote edits and reopen preserve the exact admitted value. Unsupported imported values receive a diagnostic and preserve valid text and layout fields."
+      ]
+    },
+    {
+      "id": "markdown-typing-autoformat",
+      "version": 1,
+      "feature": "input-rules",
+      "sources": [
+        "tiptap-extension",
+        "tiptap-catalog",
+        "ckeditor-digest"
+      ],
+      "scenario": "With the Markdown typing profile enabled, type approved heading, quote, code, list and inline-format markers one at a time. Include lookalike sequences in code and in the middle of a paragraph.",
+      "expected": [
+        "Each eligible marker produces the documented native block or mark. Each excluded marker remains literal.",
+        "Undo first rolls back the conversion to the literal typed text. Undoing the preceding input follows the configured typing history."
+      ]
+    },
+    {
+      "id": "input-rules-compose-paste-and-replay",
+      "version": 1,
+      "feature": "input-rules",
+      "sources": [
+        "tiptap-extension",
+        "ckeditor-digest"
+      ],
+      "scenario": "Type an eligible rule at a caret, then insert the same characters via composition, a literal-text paste and a remote edit already admitted by a replica using the disabled rules profile. Reopen each replica after synchronization.",
+      "expected": [
+        "Only the eligible local typing path fires the rule. Composition and literal insertion retain the intended characters, and applying a remote edit does not run a local input rule on its contents.",
+        "Peers converge once per admitted operation. Reopening does not run the rules again, and replay preserves the source edit and conversion history."
+      ]
+    },
+    {
+      "id": "list-continuation-input-rules",
+      "version": 1,
+      "feature": "input-rules",
+      "sources": [
+        "tiptap-catalog",
+        "ckeditor-digest"
+      ],
+      "scenario": "Type an approved marker after a matching list, type another after an unlike list, and enter a task marker inside an existing bullet item. Compare changes in local and shared editors.",
+      "expected": [
+        "A matching continuation joins according to the active rule set, while the unlike list and its neighbors keep their identities and structure.",
+        "A permitted task conversion retains the existing item text and descendants. Undo restores the literal marker and prior structure in the same edit path."
+      ]
+    },
+    {
+      "id": "locale-aware-typography",
+      "version": 1,
+      "feature": "text-transformations",
+      "sources": [
+        "tiptap-typography",
+        "ckeditor-text-transformation"
+      ],
+      "scenario": "In English and French profiles, type quoted text, contractions, an ellipsis, spaced dashes, fractions and arrows. Repeat with one rule disabled and with mixed-direction text around the caret.",
+      "expected": [
+        "The profile emits the specified Unicode code points for each admitted replacement, including required nonbreaking spaces. Disabled rules and out-of-context tokens remain literal.",
+        "Formatting and selection offsets map correctly around each replacement. One undo restores the original typed characters and redo restores the replacement."
+      ]
+    },
+    {
+      "id": "configured-text-replacement-rules",
+      "version": 1,
+      "feature": "text-transformations",
+      "sources": [
+        "tiptap-typography",
+        "ckeditor-text-transformation"
+      ],
+      "scenario": "Set a host-configured replacement for an approved trigger, disable a built-in rule, and type both sequences with and without the configured boundary. Try to enable a conflicting rule and open the confirmed profile on a second replica.",
+      "expected": [
+        "Eligible input uses the configured output. Disabled or boundary-excluded sequences remain literal and conflicting configurations have a documented deterministic outcome.",
+        "Undo restores the exact input, and the peer presents the admitted change without recomputing it from its own rule options."
+      ]
+    },
+    {
+      "id": "special-character-picker",
+      "version": 1,
+      "feature": "formatting-productivity",
+      "sources": [
+        "ckeditor-special-characters"
+      ],
+      "scenario": "Use the keyboard to open the picker, locate a character by name and by Unicode code point, then insert it into selected formatted text. Repeat using a host-provided character group.",
+      "expected": [
+        "The picker identifies and inserts the actual Unicode character, including on narrow screens and with keyboard-only navigation. Insertion respects the current formatting and selection.",
+        "Undo restores the previous text and marks. Closing without a selection leaves document history unchanged and returns focus to the editor."
+      ]
+    },
+    {
+      "id": "unicode-case-change",
+      "version": 1,
+      "feature": "formatting-productivity",
+      "sources": [
+        "ckeditor-case-change"
+      ],
+      "scenario": "Apply upper, lower and title case to a selection with German sharp S, Greek sigma and Turkish dotted and dotless I, surrounded by independently marked text. Repeat with and without the explicit Turkish locale in a shared session.",
+      "expected": [
+        "The output follows the chosen locale and case mode, and remaps the selection and format boundaries when the Unicode length changes.",
+        "Peers converge on the same text and untouched neighboring marks. A single undo restores the original characters and exact format boundaries."
+      ]
+    },
+    {
+      "id": "single-and-continuous-format-painter",
+      "version": 1,
+      "feature": "formatting-productivity",
+      "sources": [
+        "ckeditor-format-painter"
+      ],
+      "scenario": "Capture admitted inline formatting from a source selection and paint a destination once. Enable continuous painting for two additional selections, then cancel and change the selection again.",
+      "expected": [
+        "Each destination gains the admitted source formats while retaining its own text, structure and unrelated semantics. Single-use painting disarms after one application.",
+        "Continuous mode applies until cancellation, and each completed application is independently undoable."
+      ]
+    },
+    {
+      "id": "named-formatting-presets",
+      "version": 1,
+      "feature": "formatting-productivity",
+      "sources": [
+        "ckeditor-digest"
+      ],
+      "scenario": "Configure a named formatting preset for two admitted styles and an ineligible selection. Apply it from the named picker, inspect its active state and export and reopen the result.",
+      "expected": [
+        "Applying the named preset gives the selected eligible content the configured appearance and preserves the text. Ineligible content has a documented scoped refusal or remains unchanged.",
+        "Undo reverses the preset application as one edit, and the selected representation restores consistently under the documented host preset and interchange contract."
+      ]
+    }
+  ]
+}

@@ -88,9 +88,9 @@ qualification gates are still open.
 
 ### What the review found
 
-Catalogs reviewed: Tiptap 3.35 (96 entries in the docs catalog, plus Pages,
-Conversion, AI Toolkit, Compare and Composable Docs) and CKEditor 5 v49.1 (the
-feature index, digest and about 90 feature pages).
+This round reviewed Tiptap 3.35 and CKEditor 5 v49.1, including the CKEditor
+feature index, digest and detail pages. The [pinned baseline](V1_CATALOG_BASELINE.md)
+defines the entry counts used by the current comparison index.
 
 - **No row moves to `implemented`.** Shared import and export still use the
   V1–V3 conversions (V4 features are not reported by shared interchange), V4 is
@@ -118,28 +118,44 @@ feature index, digest and about 90 feature pages).
   defaults to the top; text language emits `lang` only, while CKEditor also sets
   `dir`.
 
-### Exclusions awaiting approval
+### Confirmed V1 catalog scope
 
-The catalog-coverage gate needs each intentional difference approved. Proposed:
+V1 includes every capability in the proposed scope review:
 
-- **Never store executable or arbitrary markup:** General HTML Support, HTML
-  embed, full-page HTML and generic `<span style>` text styles.
-- **No implicit remote fetches or inlined uploads:** insert image by URL without
-  a policy, Base64 upload, and vendor file managers (CKBox, CKFinder, Uploadcare,
-  image optimizer).
-- **Different data formats and parsing:** XML data output, and automatic
-  Markdown detection on plain-text paste.
-- **Out of scope:** email layouts and export with inline styles, whiteboard, and
-  nested tables.
-- **Flow editor, not paginated:** measured pagination is not done; see
-  [PAGINATION_AND_PRINT.md](PAGINATION_AND_PRINT.md).
+- General HTML Support, arbitrary HTML embeds, full-page HTML, and generic
+  inline `<span style>` formatting.
+- Implicit remote image loads, insertion by URL, Base64 uploads, and vendor
+  asset integrations covering CKBox, CKFinder, Uploadcare, and image
+  optimization.
+- XML export and automatic Markdown detection on plain-text paste.
+- Email layouts and inline-style export, whiteboards, and nested tables.
+- Measured page layout and pagination. See
+  [pagination and print](PAGINATION_AND_PRINT.md).
+
+The [versioned acceptance cases](v1-catalog-cases.json) define 18 scenarios
+for these capabilities, linked to the grouped audit and primary comparison
+sources. The scope is confirmed and the scenarios are draft qualification
+criteria. The [pinned comparison index](V1_CATALOG_BASELINE.md) tracks the
+case versions for every upstream entry and records the three observed
+differences as in-scope parity work.
+
+Related cases are grouped in JSON files under `docs/v1-catalog-cases/`.
+`npm run audit:v1` validates the case definitions and their source and feature
+references, and reports the number of cases defined. Use the case ID and
+version when recording a fixture or result. For cases
+with an untrusted-input scenario, exercise the boundary at import, live and
+static rendering, cold restore, and export in the supported consumer. Record
+the actual requests, asset references or output alongside the observable
+result. Qualification should name the installed package versions, enabled
+profile and environment. Provider doubles can exercise failure paths, while
+provider integration results should identify the actual test environment.
 
 ### Recommended next order
 
 1. **Shared V4 interchange** so shared import and export report the V4 features.
    This is the last shared V4 gap (Enter on a collapsed shared summary is done).
-2. **Approve or reject the exclusions above**, then write per-capability
-   acceptance cases (catalog-coverage gate).
+2. **Implement and qualify the mapped acceptance cases** against the pinned
+   Tiptap and CKEditor baselines.
 3. **Automate release CI** over every distributed feature, now that shared
    qualification runs again.
 4. **Qualification gates** as before: physical input, assistive technology and

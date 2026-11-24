@@ -1,0 +1,172 @@
+{
+  "format": "breditor/rich-demo-latency-matrix",
+  "formatVersion": 2,
+  "date": "2026-11-23",
+  "macOS": "26.6.2",
+  "source": {
+    "commit": "52cb72eb48ab3cc36a52532241b4df13ec4c82e7",
+    "dirty": false,
+    "sha256": "a9cc5c540867ad175b0f81b3741d4ae519a3176a811a1f9b21a37116ab950799",
+    "files": 9602,
+    "bytes": 82392969
+  },
+  "wasm": {
+    "path": "packages/breditor-experimental-rich-content/dist/breditor_wasm_bg.wasm",
+    "bytes": 6407346,
+    "sha256": "f100599f39805586d465961161bf751e0bd51e8d524ad2ab653001946347200e",
+    "modifiedAtMs": 1795494812255.1794
+  },
+  "glue": {
+    "path": "packages/breditor-experimental-rich-content/dist/breditor_wasm.js",
+    "bytes": 195774,
+    "sha256": "debd390552918e4c9dad0930d4bd944fc11cc4583820177816bd57a16c3e8e6d",
+    "modifiedAtMs": 1795494812248.9502
+  },
+  "measurements": [
+    {
+      "format": "breditor/rich-demo-latency",
+      "formatVersion": 2,
+      "browser": "chromium",
+      "browserVersion": "151.0.7922.34",
+      "platform": "darwin",
+      "arch": "arm64",
+      "node": "v22.14.0",
+      "host": {
+        "cpu": "Apple M1 Pro",
+        "logicalCpus": 10,
+        "memoryBytes": 34359738368,
+        "osRelease": "25.6.0",
+        "osVersion": "Darwin Kernel Version 25.6.0: Fri Jul 31 19:18:49 PDT 2026; root:xnu-12377.161.14~5/RELEASE_ARM64_T6000"
+      },
+      "wasmSha256": "f100599f39805586d465961161bf751e0bd51e8d524ad2ab653001946347200e",
+      "glueSha256": "debd390552918e4c9dad0930d4bd944fc11cc4583820177816bd57a16c3e8e6d",
+      "fixture": {
+        "documentBytes": 3903,
+        "topLevelBlocks": 4,
+        "documentSha256": "b8c2fb5ce3f36ea98e82b941a6c62d4c0e722bb7c104eafbd1a0de646e7636bd"
+      },
+      "readyMs": 468.52304200000003,
+      "commands": {
+        "insert": {
+          "samples": 25,
+          "p50": 1.6999999284744263,
+          "p95": 2.200000047683716
+        },
+        "undo": {
+          "samples": 25,
+          "p50": 1.6999999284744263,
+          "p95": 2.4000000953674316
+        },
+        "redo": {
+          "samples": 25,
+          "p50": 1.600000023841858,
+          "p95": 1.899999976158142
+        }
+      },
+      "clipboard": {
+        "method": "synthetic-plain-text-paste-event",
+        "bytes": 1000,
+        "samples": 25,
+        "p50": 2,
+        "p95": 3.100000023841858
+      }
+    },
+    {
+      "format": "breditor/rich-demo-latency",
+      "formatVersion": 2,
+      "browser": "firefox",
+      "browserVersion": "153.0",
+      "platform": "darwin",
+      "arch": "arm64",
+      "node": "v22.14.0",
+      "host": {
+        "cpu": "Apple M1 Pro",
+        "logicalCpus": 10,
+        "memoryBytes": 34359738368,
+        "osRelease": "25.6.0",
+        "osVersion": "Darwin Kernel Version 25.6.0: Fri Jul 31 19:18:49 PDT 2026; root:xnu-12377.161.14~5/RELEASE_ARM64_T6000"
+      },
+      "wasmSha256": "f100599f39805586d465961161bf751e0bd51e8d524ad2ab653001946347200e",
+      "glueSha256": "debd390552918e4c9dad0930d4bd944fc11cc4583820177816bd57a16c3e8e6d",
+      "fixture": {
+        "documentBytes": 3903,
+        "topLevelBlocks": 4,
+        "documentSha256": "b8c2fb5ce3f36ea98e82b941a6c62d4c0e722bb7c104eafbd1a0de646e7636bd"
+      },
+      "readyMs": 1185.5381660000003,
+      "commands": {
+        "insert": {
+          "samples": 25,
+          "p50": 6,
+          "p95": 10
+        },
+        "undo": {
+          "samples": 25,
+          "p50": 7,
+          "p95": 11
+        },
+        "redo": {
+          "samples": 25,
+          "p50": 6,
+          "p95": 12
+        }
+      },
+      "clipboard": {
+        "method": "synthetic-plain-text-paste-event",
+        "bytes": 1000,
+        "samples": 25,
+        "p50": 7,
+        "p95": 11
+      }
+    },
+    {
+      "format": "breditor/rich-demo-latency",
+      "formatVersion": 2,
+      "browser": "webkit",
+      "browserVersion": "26.5",
+      "platform": "darwin",
+      "arch": "arm64",
+      "node": "v22.14.0",
+      "host": {
+        "cpu": "Apple M1 Pro",
+        "logicalCpus": 10,
+        "memoryBytes": 34359738368,
+        "osRelease": "25.6.0",
+        "osVersion": "Darwin Kernel Version 25.6.0: Fri Jul 31 19:18:49 PDT 2026; root:xnu-12377.161.14~5/RELEASE_ARM64_T6000"
+      },
+      "wasmSha256": "f100599f39805586d465961161bf751e0bd51e8d524ad2ab653001946347200e",
+      "glueSha256": "debd390552918e4c9dad0930d4bd944fc11cc4583820177816bd57a16c3e8e6d",
+      "fixture": {
+        "documentBytes": 3903,
+        "topLevelBlocks": 4,
+        "documentSha256": "b8c2fb5ce3f36ea98e82b941a6c62d4c0e722bb7c104eafbd1a0de646e7636bd"
+      },
+      "readyMs": 598.6263749999998,
+      "commands": {
+        "insert": {
+          "samples": 25,
+          "p50": 3,
+          "p95": 4
+        },
+        "undo": {
+          "samples": 25,
+          "p50": 3,
+          "p95": 4
+        },
+        "redo": {
+          "samples": 25,
+          "p50": 3,
+          "p95": 4
+        }
+      },
+      "clipboard": {
+        "method": "synthetic-plain-text-paste-event",
+        "bytes": 1000,
+        "samples": 25,
+        "p50": 3,
+        "p95": 4
+      }
+    }
+  ],
+  "scope": "One fresh demo navigation per engine on the named local host plus 25 samples per command and synthetic paste. The browser reads the same generated Wasm binary, glue and demo document in each engine. Long-session memory, multi-peer reconnect and release operating budgets are separate."
+}

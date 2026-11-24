@@ -36,12 +36,22 @@ async fn a_saturated_relocated_relay_cold_reopens_and_accepts_offline_undo() -> 
     let mut target = bundle.restore(&path, "reloc-wal-1", POLICY)?;
     let room = target.components_mut().0;
     for next in 2..=64 {
-        room.grant("owner", "saved-reader", Some(Role::Reader))?;
+        // Give both WALs selected for packing enough repeated records to
+        // cover the format's fixed overhead.
+        let grants = if next <= 3 { 8 } else { 1 };
+        for _ in 0..grants {
+            room.grant("owner", "saved-reader", Some(Role::Reader))?;
+        }
         room.rotate_log_generation("owner", &format!("reloc-wal-{next}"))?;
     }
     let checkpoint = room.materialize_relay_checkpoint("owner")?;
-    assert!(room.pack_sealed_wal("owner", "reloc-wal-1")?.packed);
-    assert!(room.pack_sealed_wal("owner", "reloc-wal-2")?.packed);
+    for generation in ["reloc-wal-1", "reloc-wal-2"] {
+        let packing = room.pack_sealed_wal("owner", generation)?;
+        assert!(
+            packing.packed && packing.stored_bytes < packing.original_bytes,
+            "expected {generation} to pack: {packing:?}"
+        );
+    }
     room.archive_sealed_wal("owner", &checkpoint, "reloc-wal-1")?;
     room.archive_sealed_wal("owner", &checkpoint, "reloc-wal-3")?;
     assert_eq!(room.log_generation_descriptor("owner")?.sealed, 63);

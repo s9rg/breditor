@@ -76,9 +76,12 @@ review against the distribution's actual artifacts.
 ## Installed feature browser checks
 
 Select `installed-feature-browser` to build fresh SDK consumers and run the
-existing search, placeholder, fullscreen and raster backup browser checks,
-along with the three-engine rich-demo latency sample. The consumer checks
-first generate their build and archive receipts in the same checkout.
+search, placeholder, fullscreen, session backup and raster backup browser
+checks, along with the three-engine rich-demo latency sample. The consumer
+checks first generate their build and archive receipts in the same checkout.
+The session backup check uses a fresh installed consumer. The run retains
+its producer report with npm archive hashes and its browser report with
+Wasm and IndexedDB recovery evidence through a page reload.
 
 ## Candidate shards
 
@@ -113,12 +116,17 @@ In the exact clean candidate checkout, run
 candidate run manifests. Keep each manifest next to its logs and retained
 reports. The coverage report checks the source digest, planned stage sequence
 and retained file hashes. Add `--require-complete` before the
-manifest paths to fail if any engineering stage is missing. The readiness
-ledger remains the final reviewed release gate.
+manifest paths to fail if any engineering stage is missing. The functional
+and focused profiles together can supply all engineering stage evidence
+before the readiness ledger passes.
 
 ## Whole-room activation jobs
 
-Both candidate profiles build the real relay fixture and run the
+Select `portable-relay-recovery` to run both relocation checks in a dedicated
+candidate job. The workflow retains both reports, including the candidate,
+relay, shared runtime and clean-installed archive hashes.
+
+Both complete candidate profiles build the real relay fixture and run the
 `portable-relay-relocation` and `portable-relay-legacy-handover` checks.
 Each check uses the same relay executable with the workspace SDK and a fresh
 offline-installed SDK. The candidate runner requires fresh reports bound to

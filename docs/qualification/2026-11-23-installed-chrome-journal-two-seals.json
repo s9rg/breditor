@@ -1,0 +1,63 @@
+{
+  "format": "breditor/installed-chrome-journal-rollover-regression",
+  "formatVersion": 1,
+  "date": "2026-11-23",
+  "fixtureCommit": "1b3892b938ec39facd4fdea47c3634b357939f77",
+  "archiveBaseline": "2026-11-23-installed-chrome-shared-journal-rollover.json",
+  "archiveSourceCommit": "991c5e4c93123cb9e31837556cd06a3f757a53d3",
+  "archives": [
+    {
+      "name": "@breditor/browser",
+      "version": "0.3.0-alpha.22",
+      "bytes": 261359,
+      "sha256": "b67ad32fba519c349e611778512d4a827b49528d6280139abb44a74216949790"
+    },
+    {
+      "name": "@breditor/experimental-rich-content",
+      "version": "0.3.0-alpha.22",
+      "bytes": 2337732,
+      "sha256": "2769a821f1dac5396c8166663885aa9d6f1288c9bde686b6f8eeee52805258f5"
+    },
+    {
+      "name": "@breditor/collaboration",
+      "version": "0.3.0-alpha.22",
+      "bytes": 5630784,
+      "sha256": "7aef686b5370c121d311d8d517517f2cc0ddc2707555173a23c82f63fa3d6953"
+    },
+    {
+      "name": "@breditor/editor",
+      "version": "0.3.0-alpha.22",
+      "bytes": 83477,
+      "sha256": "ff50188718a1587bc21fda0e0700a2f4de61085ae00d083cf569789d29c713dd"
+    }
+  ],
+  "exactInstalledFiles": 3452,
+  "environment": {
+    "platform": "darwin",
+    "arch": "arm64",
+    "macOS": "26.6.2"
+  },
+  "elapsedMs": 180352,
+  "reportSha256": "a79348d4590efbfc6316d1c6fe6c6dca4dc0e5a55e0f598c2f3c4a7c7a3287c3",
+  "observed": {
+    "passed": true,
+    "rounds": 115,
+    "exactLegacyRoots": 2,
+    "explicitSeals": 4,
+    "exactPeerReopens": 6,
+    "legacyDatabasesReopened": 2,
+    "legacyBytes": [
+      16206396,
+      15700675
+    ],
+    "offlineEditPreserved": true,
+    "preCutRedoItemsRestored": 2,
+    "preBoundaryUndoAndRedoPreserved": true,
+    "archiveBytes": [
+      18687883,
+      17951030
+    ],
+    "browserVersion": "158.0.8127.37"
+  },
+  "scope": "Local segmented IndexedDB sessions on the retained installed alpha archives. The untouched pre-cut Redo and the exact offline frame survive two explicit seals per writer. Repeating the identical frame changes neither the document nor the complete checkpoint."
+}

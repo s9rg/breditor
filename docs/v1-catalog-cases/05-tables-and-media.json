@@ -1,0 +1,375 @@
+{
+  "format": "breditor/v1-catalog-cases",
+  "formatVersion": 1,
+  "cases": [
+    {
+      "id": "table-create-delete-and-restore",
+      "version": 1,
+      "feature": "table-commands",
+      "sources": [
+        "tiptap-table",
+        "ckeditor-tables"
+      ],
+      "scenario": "Insert a 3×4 table between two paragraphs through the normal editor UI, fill several cells, then delete the table. Traverse Undo and Redo in both an installed local editor and a shared editor.",
+      "expected": [
+        "Insertion creates exactly 3 rows and 4 columns with a reachable first cell. Deletion leaves the adjacent paragraphs and their text order intact.",
+        "Undo of deletion restores the same row, column and cell identities and authored contents. Reopening the document preserves the restored table topology."
+      ]
+    },
+    {
+      "id": "table-row-column-insert-delete-move",
+      "version": 1,
+      "feature": "table-commands",
+      "sources": [
+        "tiptap-table",
+        "tiptap-source-table",
+        "ckeditor-tables"
+      ],
+      "scenario": "Label every cell in a 3×3 table distinctly. Insert a row before a selected row, insert a column after a selected column, move an existing row and column, then delete a selected row and column.",
+      "expected": [
+        "The final grid matches the expected positions of every retained label, and unaffected cells retain their identities and content. Every row and column remains rectangular under the editor's table model.",
+        "Each structural command is individually undoable. Run the sequence with a collaborator editing a retained cell and verify that converged history preserves their text."
+      ]
+    },
+    {
+      "id": "table-row-and-column-headers",
+      "version": 1,
+      "feature": "table-commands",
+      "sources": [
+        "tiptap-table",
+        "ckeditor-tables"
+      ],
+      "scenario": "Turn the first row and first column into headers in a table with unique data values. Toggle one header axis off, then export the final table and inspect its accessible structure.",
+      "expected": [
+        "The enabled row or column headers appear as semantic headers in live and exported output with the published association semantics. The corner cell and remaining data cells match the expected roles.",
+        "Changing header roles preserves cell text, including formatted spans. Undo and HTML reimport preserve the resulting header configuration."
+      ]
+    },
+    {
+      "id": "table-merge-split-and-cell-content",
+      "version": 1,
+      "feature": "table-commands",
+      "sources": [
+        "tiptap-table",
+        "tiptap-source-table",
+        "ckeditor-tables"
+      ],
+      "scenario": "Merge a 2×2 cell selection containing distinguishable paragraphs, a list and inline formats. Verify the merged spans, split the cell, and Undo through both commands.",
+      "expected": [
+        "The merged cell has the expected row and column spans, with prior cell content retained in the published order. Split restores a rectangular grid and distributes or retains rich content according to the documented model.",
+        "Undo of the merge restores the original contents in their original cells. An attempted merge with an incompatible selection leaves the document and history unchanged."
+      ]
+    },
+    {
+      "id": "table-tab-navigation-and-cell-bodies",
+      "version": 1,
+      "feature": "table-commands",
+      "sources": [
+        "tiptap-table",
+        "ckeditor-tables"
+      ],
+      "scenario": "Use Tab and Shift+Tab to traverse a table that includes a header, a spanned cell and a cell with two paragraphs. Exercise the boundary at the last cell using the installed editor's advertised keyboard behavior.",
+      "expected": [
+        "Traversal reaches each exposed cell once in the expected grid order, and Enter inside the multi-paragraph cell follows the published in-cell editing behavior.",
+        "At the last cell, the documented exit or append action occurs exactly once and leaves keyboard focus in a predictable location."
+      ]
+    },
+    {
+      "id": "table-column-resize",
+      "version": 1,
+      "feature": "advanced-tables",
+      "sources": [
+        "tiptap-table",
+        "ckeditor-tables"
+      ],
+      "scenario": "Use pointer and keyboard controls to change a selected column width in the editor, including a profile with right-to-left direction and a shared table edited from a second client.",
+      "expected": [
+        "The exposed control identifies the column and width, the preview moves in the expected direction, and each committed input produces the documented bounded width as a single history action.",
+        "Cell contents and unaffected row identities are preserved. Other clients and a reopened document show the committed width, and Undo restores the previous width."
+      ]
+    },
+    {
+      "id": "table-horizontal-scroll",
+      "version": 1,
+      "feature": "advanced-tables",
+      "sources": [
+        "ckeditor-tables",
+        "ckeditor-digest"
+      ],
+      "scenario": "Open a wide table in a narrow editor with surrounding prose. Reach the table by keyboard, scroll horizontally, edit a far-edge cell to trigger a redraw, then leave the table.",
+      "expected": [
+        "The table viewport scrolls without shifting the page or preventing keyboard access to the cells. The supported controls expose a perceivable scroll state and the focused cell is brought into view.",
+        "A redraw of the same table preserves the documented viewport state. Exported content retains the table and cell order."
+      ]
+    },
+    {
+      "id": "table-caption-edit-and-placement",
+      "version": 2,
+      "feature": "advanced-tables",
+      "sources": [
+        "ckeditor-table-caption",
+        "ckeditor-tables"
+      ],
+      "scenario": "Import one upstream fixture with a table inside a figure and a sibling figcaption, and another with a caption inside the table. Edit each caption, copy and reopen its table, and compare editing and published views with host configurations for above-table and below-table placement.",
+      "expected": [
+        "Both upstream HTML forms import as a table with its semantic caption association. Export and reimport preserve the association, caption text and formatting. The caption follows the host placement in both views without changing canonical document content or history.",
+        "Removing the caption preserves the table and its grid. Undo restores the prior caption and formatting without creating a second visible caption."
+      ]
+    },
+    {
+      "id": "table-and-cell-style-controls",
+      "version": 1,
+      "feature": "advanced-tables",
+      "sources": [
+        "ckeditor-tables",
+        "ckeditor-digest"
+      ],
+      "scenario": "Apply table width, border and background styles, then apply padding and horizontal and vertical alignment to a selection of distinct cells. Change one selected value and remove another before exporting.",
+      "expected": [
+        "Styles are scoped to the table or addressed cells. Changing one value or clearing another preserves other supported values and neighboring cells.",
+        "Live view, restored data and HTML output agree on each admitted style. Unsupported source styles are reported under the documented loss policy."
+      ],
+      "untrustedInput": "Import table style declarations with a controlled unapproved resource reference. Confirm the declared table style policy holds in rendering, recovery and export."
+    },
+    {
+      "id": "layout-table-presentation",
+      "version": 1,
+      "feature": "advanced-tables",
+      "sources": [
+        "ckeditor-tables",
+        "ckeditor-digest"
+      ],
+      "scenario": "Create a two-column layout table holding prose and an image alongside a conventional data table with a header row. Reorder content in one layout cell, reopen and export HTML.",
+      "expected": [
+        "The layout retains both columns and the edited reading order with the documented presentation semantics. The data table retains its distinct navigation and header semantics.",
+        "Round-trip interchange preserves each table's declared purpose and content or reports a targeted unsupported feature."
+      ]
+    },
+    {
+      "id": "local-raster-ingest-and-retained-bytes",
+      "version": 1,
+      "feature": "raster-images",
+      "sources": [
+        "tiptap-image",
+        "ckeditor-image-upload"
+      ],
+      "scenario": "Insert test PNG, JPEG and WebP files using each supported file picker, paste and drop path. Replace one image, delete another and reopen the saved document and retained asset store.",
+      "expected": [
+        "Every admitted image resolves to decodable retained bytes with the expected width and height. The replaced image acquires the documented binding while the unchanged images retain their earlier bytes.",
+        "Undo of replacement or deletion can still resolve the earlier bytes. A fresh restore of an admitted asset backup resolves the same references and bytes."
+      ],
+      "untrustedInput": "Include an unsupported file and a file whose media type disagrees with its bytes. Verify refused files commit neither document nodes nor ready asset entries."
+    },
+    {
+      "id": "raster-alt-decorative-and-caption",
+      "version": 1,
+      "feature": "raster-images",
+      "sources": [
+        "tiptap-image",
+        "ckeditor-digest"
+      ],
+      "scenario": "Insert a block image with distinct alt text and a visible caption, edit the caption to include emphasis, then mark the image decorative and reopen and export the document.",
+      "expected": [
+        "The caption and alt text serve separate roles. Supported output exposes meaningful alt text for an informative image and the documented decorative state after toggling.",
+        "The rich caption and its association survive round-trip. Undo of the decorative toggle restores the prior accessibility state."
+      ]
+    },
+    {
+      "id": "raster-offline-upload-recovery",
+      "version": 1,
+      "feature": "raster-images",
+      "sources": [
+        "tiptap-image",
+        "ckeditor-image-upload"
+      ],
+      "scenario": "Add an image while offline in a shared room, save and reopen while its upload is pending. Reconnect and hold the original upload acknowledgment after the request starts. Replace the image, finish the replacement upload, then release the old acknowledgment.",
+      "expected": [
+        "The active local reference displays from retained bytes while offline, and the document and asset save indicators reflect the independently observed states.",
+        "After the late acknowledgment, inspect both queue epochs and the active asset reference. The acknowledged original upload stays obsolete, peers resolve the replacement bytes and a cold reopen restores the same bindings."
+      ]
+    },
+    {
+      "id": "image-resize-pointer-and-keyboard",
+      "version": 1,
+      "feature": "advanced-images",
+      "sources": [
+        "tiptap-image",
+        "ckeditor-digest"
+      ],
+      "scenario": "Resize a block raster through corner and edge gestures and the keyboard controls in both writing directions. Record announced or displayed dimensions before and after each input.",
+      "expected": [
+        "Corner movement follows the advertised aspect-ratio rule. Each edge and keyboard control applies its documented dimension change and bounds, and preserves asset identity, caption and alternative text.",
+        "Undo, Redo and cold reopen recover the prior and committed dimensions. Export reflects the supported rendered size."
+      ]
+    },
+    {
+      "id": "image-inline-break-and-wrap-layouts",
+      "version": 1,
+      "feature": "advanced-images",
+      "sources": [
+        "tiptap-image",
+        "ckeditor-digest"
+      ],
+      "scenario": "Insert an image within a paragraph and move it through the documented inline, separate block and text-wrap styles at narrow and wide editor widths. Undo the last style change and export.",
+      "expected": [
+        "The live layout matches the declared style at each width and keeps adjacent text in the same logical reading order. Switching layout preserves approved image metadata under the documented conversion rules.",
+        "Cold reopen and HTML interchange reproduce admitted layouts. Unsupported source wrapping or placement yields a targeted diagnostic."
+      ]
+    },
+    {
+      "id": "image-responsive-source-selection",
+      "version": 1,
+      "feature": "advanced-images",
+      "sources": [
+        "tiptap-image",
+        "ckeditor-digest"
+      ],
+      "scenario": "Publish an image with already provisioned approved small and large renditions. Open controlled narrow and wide viewports at two device pixel ratios, then inspect selected source and fallback behavior.",
+      "expected": [
+        "Supported HTML exposes the configured responsive candidates and selects a valid rendition for each documented device class. The fallback uses the intended source and preserves intrinsic layout and alternative text.",
+        "The saved image keeps its asset identity across sources. Generation of new optimized asset bytes is tracked by the separate image optimization scenario."
+      ],
+      "untrustedInput": "Supply a denied candidate in a responsive image source set. Verify the denied source is omitted or rejected and is never requested by the supported output consumer."
+    },
+    {
+      "id": "image-link-edit-and-export",
+      "version": 1,
+      "feature": "advanced-images",
+      "sources": [
+        "ckeditor-image-linking",
+        "ckeditor-overview"
+      ],
+      "scenario": "Attach a link to a block image, change its destination and new-window option, remove it, then Undo and inspect the restored link in semantic HTML.",
+      "expected": [
+        "The link targets the intended image and retains its caption and alternative text. Live editing interactions follow the published inert-link behavior, while output carries the approved destination and target attributes.",
+        "The paired link operation is individually undoable, and HTML round-trip preserves the supported target semantics."
+      ],
+      "untrustedInput": "Attempt to apply or import a destination refused by the link policy. Verify no navigable forbidden destination remains after save, restore or export."
+    },
+    {
+      "id": "details-summary-and-body-editing",
+      "version": 1,
+      "feature": "widgets-and-embeds",
+      "sources": [
+        "tiptap-details"
+      ],
+      "scenario": "Create a collapsible section with a summary, formatted content and a nested section. Toggle the open state, use the keyboard to edit inside the body, then convert the outer section back to flow content.",
+      "expected": [
+        "The summary and body are separately editable via the documented keyboard actions. Expanding, collapsing and unwrapping retain the contents and nested section according to their supported semantics.",
+        "Undo and cold reopen restore summary, body and recorded open state. HTML and Markdown interchange preserve each admitted part or report a targeted loss."
+      ]
+    },
+    {
+      "id": "media-embed-provider-and-fallback",
+      "version": 1,
+      "feature": "widgets-and-embeds",
+      "sources": [
+        "tiptap-catalog",
+        "ckeditor-digest"
+      ],
+      "scenario": "Insert an approved media provider reference using its URL and render the document in an editor and the supported published view. Resize the preview where supported, then repeat with a non-previewable provider result.",
+      "expected": [
+        "The normalized provider reference and the advertised media dimensions survive Undo, recovery and export. A non-previewable item has an understandable placeholder or link and its reference remains editable.",
+        "The editor and published view admit only the documented provider output and respect host resource policy."
+      ],
+      "untrustedInput": "Include a denied provider origin and a provider response with a disallowed resource. Verify import, preview, recovery and publication do not load or activate the refused content."
+    },
+    {
+      "id": "native-audio-and-video-controls",
+      "version": 1,
+      "feature": "widgets-and-embeds",
+      "sources": [
+        "tiptap-catalog",
+        "ckeditor-digest"
+      ],
+      "scenario": "Import an admitted audio file and an admitted video with a poster and caption track, then exercise playback using the documented keyboard controls in the supported viewing surface.",
+      "expected": [
+        "The admitted media source and metadata survive restore and supported export. Playback controls are reachable by keyboard, and audio, poster and captions resolve according to host policy.",
+        "When a resource is unavailable, the document retains an editable reference and exposes the documented fallback."
+      ],
+      "untrustedInput": "Include a denied poster or caption-track resource and verify that display and export apply the same resource policy."
+    },
+    {
+      "id": "emoji-insertion-and-grapheme-editing",
+      "version": 1,
+      "feature": "widgets-and-embeds",
+      "sources": [
+        "tiptap-catalog"
+      ],
+      "scenario": "Find and insert an emoji using the picker or supported shortcode interface. Repeat with a multi-code-point emoji, move the caret past it and delete it with one documented grapheme editing action.",
+      "expected": [
+        "The expected Unicode sequence is stored and copied, and the live insertion remains editable using the documented caret and selection behavior.",
+        "Undo reinstates the complete sequence. Unsupported or disabled shortcode recognition keeps the original input according to the configured rule."
+      ]
+    },
+    {
+      "id": "inline-and-block-math",
+      "version": 1,
+      "feature": "widgets-and-embeds",
+      "sources": [
+        "tiptap-mathematics",
+        "ckeditor-digest"
+      ],
+      "scenario": "Insert an inline formula between words and a multi-line display formula, edit their source and save. Reload, copy and export both while preserving their distinct placements.",
+      "expected": [
+        "The accepted formula source remains editable, selected ranges keep their surrounding text and output provides a usable mathematical presentation or an accessible fallback.",
+        "Malformed math follows the documented diagnostic path without discarding the original editable source."
+      ],
+      "untrustedInput": "Use a formula that requests a denied external resource under the configured policy. Check that the editor and supported output create no such request."
+    },
+    {
+      "id": "diagram-source-and-rendered-output",
+      "version": 1,
+      "feature": "widgets-and-embeds",
+      "sources": [
+        "tiptap-catalog",
+        "ckeditor-digest"
+      ],
+      "scenario": "Insert a diagram from valid published diagram syntax, change a node label, then reopen and check both the authored source and generated view.",
+      "expected": [
+        "The rendered diagram reflects the accepted source after editing and reopen. A syntax failure produces the documented diagnostic and leaves the source available for correction.",
+        "Supported export preserves the diagram in the declared editable or static representation and reports any relevant loss."
+      ],
+      "untrustedInput": "Include a denied external resource or active attribute in diagram input. Verify the editor preview and output follow the declared diagram isolation and resource policy."
+    },
+    {
+      "id": "ruby-reading-editing-and-history",
+      "version": 1,
+      "feature": "ruby-annotations",
+      "sources": [
+        "tiptap-ruby"
+      ],
+      "scenario": "Add a reading to selected Japanese base text, replace it at a caret inside the group, type adjacent text and remove the reading using the editor controls.",
+      "expected": [
+        "The reading is associated with the selected base group and remains outside the editable base-text caret offsets. Newly typed adjacent text does not inherit the reading.",
+        "Each add, replacement and removal is individually undoable. A shared participant and a reopened compatible checkpoint see the same restored reading."
+      ]
+    },
+    {
+      "id": "ruby-html-and-document-interchange",
+      "version": 1,
+      "feature": "ruby-annotations",
+      "sources": [
+        "tiptap-ruby"
+      ],
+      "scenario": "Round-trip a ruby annotation through live and static HTML and exercise the documented Markdown and DOCX paths. Import a fixture with an extra reading position or nested annotation.",
+      "expected": [
+        "The admitted base and reading round-trip independently. Supported output retains semantic ruby or carries the documented fallback.",
+        "Unsupported source constructs produce a specific diagnostic or use an approved representation without merging separate readings or losing base text silently."
+      ]
+    },
+    {
+      "id": "code-highlighting-language-matrix",
+      "version": 1,
+      "feature": "code-syntax-highlighting",
+      "sources": [
+        "tiptap-code-highlight"
+      ],
+      "scenario": "Open code blocks labeled JavaScript, TypeScript, JSON, Python and Rust plus one unsupported label. Inspect live highlights and opt-in static output before and after changing a known label.",
+      "expected": [
+        "The live CSS Custom Highlight ranges match the expected tokens and add no token elements to the editing DOM. Opt-in static output uses the documented token attributes, and an unsupported label or browser renders readable plain code.",
+        "After a token edit and cold reopen, recomputed ranges match the final text. Highlighting leaves source text, selection offsets and saved content intact, and static HTML preserves the escaped code."
+      ]
+    }
+  ]
+}

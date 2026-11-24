@@ -1,11 +1,17 @@
 import assert from "node:assert/strict";
 import {spawnSync} from "node:child_process";
-import {readFileSync} from "node:fs";
+import {existsSync, mkdtempSync, readdirSync, readFileSync, rmSync, symlinkSync} from "node:fs";
+import {tmpdir} from "node:os";
 import {join} from "node:path";
 import test from "node:test";
-import {auditPath, main, repository, summarizeAudit, validateAudit} from "./check-v1-readiness.mjs";
+import {auditPath, catalogPath, main, readCatalogs, repository, summarizeAudit, summarizeUpstreamCatalog, upstreamCatalogPath, validateAudit, validateCatalogCases} from "./check-v1-readiness.mjs";
 
 const load = () => JSON.parse(readFileSync(auditPath, "utf8"));
+const loadCatalog = () => JSON.parse(readFileSync(catalogPath, "utf8"));
+const catalogDir = join(repository, "docs/v1-catalog-cases");
+const loadSupplementalCases = () => (existsSync(catalogDir) ? readdirSync(catalogDir) : [])
+  .filter(name => name.endsWith(".json"))
+  .flatMap(name => JSON.parse(readFileSync(join(catalogDir, name), "utf8")).cases);
 
 test("the checked-in audit has resolvable sources and evidence without claiming readiness", () => {
   const audit = load();
@@ -21,6 +27,66 @@ test("the checked-in audit has resolvable sources and evidence without claiming 
   );
   assert.ok(result.featureGaps.some(row => row.id === "basic-inline-formatting"));
   assert.ok(result.openGates.some(row => row.id === "browser-reliability"));
+});
+
+test("the catalog defines versioned scenarios for the confirmed V1 scope", () => {
+  const audit = load();
+  const catalog = loadCatalog();
+  assert.equal(validateCatalogCases(catalog, audit), catalog);
+  const cases = new Map(catalog.cases.map(row => [row.id, row]));
+  const untrustedInputCases = [
+    "general-html-support", "arbitrary-html-embed", "full-page-html", "generic-inline-span-styles",
+    "implicit-remote-image-loads", "image-insertion-by-url", "base64-image-upload", "ckbox-assets",
+    "ckfinder-assets", "uploadcare-assets", "image-optimization", "email-layouts", "export-inline-styles",
+  ];
+  for (const id of untrustedInputCases) {
+    assert.ok(cases.get(id)?.untrustedInput, `Missing untrusted-input case for ${id}`);
+  }
+  for (const id of ["xml-export", "detect-markdown-on-plain-text-paste", "whiteboards", "nested-tables", "measured-pagination"]) {
+    assert.ok(cases.has(id), `Missing case for ${id}`);
+  }
+  const allCases = [...catalog.cases, ...loadSupplementalCases()];
+  const result = summarizeAudit(audit);
+  assert.equal(result.catalogCasesDefined, allCases.length);
+  assert.equal(result.catalogFeatureGroupsWithCases, new Set(allCases.map(row => row.feature)).size);
+});
+
+test("the catalog requires stable case IDs across separate files", () => {
+  const audit = load();
+  const catalog = loadCatalog();
+  const firstCase = catalog.cases[0];
+  assert.throws(() => summarizeAudit(audit, [catalog, {...catalog, cases: [firstCase]}]),
+    /combined catalog cases has duplicate ID/);
+  const supplemental = {...catalog, cases: [{...firstCase, id: "new-case-for-audit"}]};
+  assert.equal(summarizeAudit(audit, [catalog, supplemental]).catalogCasesDefined, catalog.cases.length + 1);
+});
+
+test("catalog loading refuses symlinked files and directories", () => {
+  const directory = mkdtempSync(join(tmpdir(), "breditor-catalog-"));
+  try {
+    const siblingLink = join(directory, "external");
+    symlinkSync(repository, siblingLink, "dir");
+    assert.throws(() => readCatalogs(siblingLink), /must be a real directory/);
+    symlinkSync(catalogPath, join(directory, "external.json"), "file");
+    assert.throws(() => readCatalogs(directory), /must be a regular file/);
+  } finally {
+    rmSync(directory, {recursive: true, force: true});
+  }
+});
+
+test("catalog definitions reject incomplete cases and unknown references", () => {
+  const audit = load();
+  for (const [patch, message] of [
+    [{version: 0}, /positive case version/],
+    [{feature: "unknown-feature"}, /unknown feature group/],
+    [{sources: ["unknown-source"]}, /unknown comparison sources/],
+    [{expected: []}, /expected observations/],
+    [{untrustedInput: ""}, /blank untrusted-input scenario/],
+  ]) {
+    const catalog = loadCatalog();
+    Object.assign(catalog.cases[0], patch);
+    assert.throws(() => validateCatalogCases(catalog, audit), message);
+  }
 });
 
 for (const [name, mutate] of [
@@ -89,11 +155,38 @@ test("CLI is cwd-independent, read-only and machine readable; the readiness gate
   const before = readFileSync(auditPath, "utf8");
   const report = spawnSync(process.execPath, [script, "--json"], {cwd: "/tmp", encoding: "utf8"});
   assert.equal(report.status, 0, report.stderr);
-  assert.equal(JSON.parse(report.stdout).ledgerComplete, false);
+  const summary = JSON.parse(report.stdout);
+  assert.equal(summary.ledgerComplete, false);
+  assert.equal(summary.catalogCasesDefined, loadCatalog().cases.length + loadSupplementalCases().length);
   const gate = spawnSync(process.execPath, [script, "--json", "--require-ready"], {cwd: "/tmp", encoding: "utf8"});
   assert.equal(gate.status, 1, gate.stderr);
   assert.equal(JSON.parse(gate.stdout).testsExecuted, false);
   assert.equal(readFileSync(auditPath, "utf8"), before);
+});
+
+test("pinned upstream entries reference the combined catalog", () => {
+  const index = JSON.parse(readFileSync(upstreamCatalogPath, "utf8"));
+  const cases = [...loadCatalog().cases, ...loadSupplementalCases()];
+  const summary = summarizeUpstreamCatalog(index, cases);
+  assert.deepEqual(summary.map(row => [row.id, row.entries, row.unmapped.length]), [
+    ["tiptap", 93, 0],
+    ["ckeditor5", 160, 0],
+  ]);
+  const [tiptap, ckeditor] = index.catalogs;
+  assert.throws(() => summarizeUpstreamCatalog({...index, catalogs: [tiptap]}, cases),
+    /include both comparison catalogs/);
+  const differentSource = {...tiptap, source: tiptap.source.replace("ueberdosis/tiptap-docs", "other/repo")};
+  assert.throws(() => summarizeUpstreamCatalog({...index, catalogs: [differentSource, ckeditor]}, cases),
+    /pinned upstream commit/);
+  const entry = tiptap.entries[0];
+  const [caseId, version] = entry.cases[0].split("@");
+  entry.cases = [];
+  assert.deepEqual(summarizeUpstreamCatalog(index, cases)[0].unmapped, [entry.id]);
+  entry.cases = [`${caseId}@${Number(version) + 1}`];
+  assert.throws(() => summarizeUpstreamCatalog(index, cases), /unknown case versions/);
+  entry.cases = [];
+  index.catalogs[0].entries.push(entry);
+  assert.throws(() => summarizeUpstreamCatalog(index, cases), /duplicate upstream entry/);
 });
 
 test("help and invalid options do not run a gate or hide errors", () => {

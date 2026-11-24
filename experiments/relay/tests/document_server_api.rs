@@ -9,6 +9,13 @@
     clippy::type_complexity,
     clippy::case_sensitive_file_extension_comparisons
 )]
+use axum::{
+    ServiceExt,
+    body::{Body, Bytes},
+    extract::Request,
+    http::StatusCode,
+    response::Response,
+};
 use breditor_collab_feasibility::{
     anchor::Affinity,
     review::{
@@ -29,16 +36,20 @@ use breditor_collab_relay::{
         verify_webhook_signature,
     },
 };
-use futures_util::{SinkExt, StreamExt};
+use futures_util::{SinkExt, StreamExt, stream};
 use serde_json::{Value, json};
 use std::{
+    convert::Infallible,
     fs,
+    future::{Future, poll_fn},
     net::SocketAddr,
     path::PathBuf,
+    pin::pin,
     sync::{
         Arc, Mutex,
         atomic::{AtomicU64, Ordering},
     },
+    task::Poll,
     time::Duration,
 };
 use tokio::{
@@ -252,6 +263,96 @@ async fn connect(address: SocketAddr, room: &str, accounts: &Accounts) -> Result
     )
     .await?;
     Ok((socket, reply))
+}
+
+fn rest_request(
+    accounts: &Accounts,
+    method: &str,
+    path: &str,
+    principal: Option<&str>,
+    body: Body,
+) -> Result<Request> {
+    let mut builder = axum::http::Request::builder().method(method).uri(path);
+    if let Some(principal) = principal {
+        builder = builder
+            .header("authorization", format!("Bearer {}", accounts.token(principal)))
+            .header("x-breditor-principal", principal);
+    }
+    Ok(builder.body(body)?)
+}
+
+async fn router_call(
+    router: &mut impl ServiceExt<Request, Response = Response, Error = Infallible>,
+    request: Request,
+) -> Response {
+    poll_fn(|context| router.poll_ready(context)).await.expect("router ready");
+    router.call(request).await.expect("router response")
+}
+
+#[tokio::test]
+async fn document_write_admission_precedes_body_collection() -> Result {
+    let directory = Directory::new()?;
+    let accounts = Accounts::new()?;
+    let server = DocumentServer::open(
+        &directory.0,
+        Authentication::from_json(&accounts.json)?,
+        DocumentServerConfiguration::from_json(&api_config(&json!({})).to_string())?,
+    )?;
+    let mut router = server.router();
+    for (method, path, principal) in [
+        ("POST", "/documents/v1/rooms", None),
+        ("POST", "/documents/v1/rooms", Some("mallory")),
+        ("PUT", "/documents/v1/rooms/notes/service-access", None),
+        ("POST", "/documents/v1/rooms/notes/injections", None),
+        ("POST", "/documents/v1/rooms/notes/injections", Some("mallory")),
+    ] {
+        let body =
+            Body::from_stream(stream::poll_fn::<std::result::Result<Bytes, Infallible>, _>(|_| {
+                panic!("refused body must not be polled")
+            }));
+        let response =
+            router_call(&mut router, rest_request(&accounts, method, path, principal, body)?).await;
+        assert_eq!(response.status(), StatusCode::FORBIDDEN, "{method} {path}");
+    }
+    assert!(server.rooms().is_empty());
+    Ok(())
+}
+
+#[tokio::test]
+async fn document_body_deadline_releases_the_operation_slot() -> Result {
+    let directory = Directory::new()?;
+    let accounts = Accounts::new()?;
+    let mut config = api_config(&json!({}));
+    config["limits"]["concurrentOperations"] = json!(1);
+    config["limits"]["deadlineMillis"] = json!(100);
+    let server = DocumentServer::open(
+        &directory.0,
+        Authentication::from_json(&accounts.json)?,
+        DocumentServerConfiguration::from_json(&config.to_string())?,
+    )?;
+    let (mut stalled_router, mut other_router) = (server.router(), server.router());
+    let body = Body::from_stream(stream::pending::<std::result::Result<Bytes, Infallible>>());
+    let mut stalled = pin!(router_call(
+        &mut stalled_router,
+        rest_request(&accounts, "POST", "/documents/v1/rooms", Some("alice"), body)?,
+    ));
+    poll_fn(|context| {
+        assert!(stalled.as_mut().poll(context).is_pending());
+        Poll::Ready(())
+    })
+    .await;
+    let list =
+        || rest_request(&accounts, "GET", "/documents/v1/rooms", Some("alice"), Body::empty());
+    let response = router_call(&mut other_router, list()?).await;
+    assert_eq!(response.status(), StatusCode::SERVICE_UNAVAILABLE);
+
+    let response = tokio::time::timeout(Duration::from_secs(5), stalled).await?;
+    assert_eq!(response.status(), StatusCode::REQUEST_TIMEOUT);
+    let body = axum::body::to_bytes(response.into_body(), 1024).await?;
+    assert_eq!(serde_json::from_slice::<Value>(&body)?["code"], "request_timeout");
+    assert_eq!(router_call(&mut other_router, list()?).await.status(), StatusCode::OK);
+    assert!(server.rooms().is_empty());
+    Ok(())
 }
 
 #[tokio::test(flavor = "multi_thread", worker_threads = 2)]

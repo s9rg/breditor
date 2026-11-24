@@ -124,7 +124,7 @@ export function mountRichSelectionToolbar(host:RichContextUiHost,options:RichSel
   dismiss,refresh:update,dispose};
 }
 
-/** Right click, Shift+F10 or the ContextMenu key in the editor; arrow keys rove, Escape/Tab return focus to the editor. */
+/** Right click, Shift+F10 or the ContextMenu key in the editor; arrow keys rove between controls. */
 export function mountRichContextMenu(host:RichContextUiHost,options:RichContextMenuOptions={}):RichContextMenu{
  if(options.hideDisabled!==undefined&&typeof options.hideDisabled!=="boolean")throw TypeError("Expected boolean hideDisabled");
  const {ui,d,element,views,ids,abort,release,report}=prepare(host,"menu",options,richContextMenuDefaults),surface=host.surface,realm=d.defaultView!,signal=abort.signal,hideDisabled=options.hideDisabled!==false;
@@ -186,6 +186,7 @@ export function mountRichContextMenu(host:RichContextUiHost,options:RichContextM
   },{signal});
   element.addEventListener("keydown",event=>{
    if(event.isComposing)return;
+   if(event.key==="Tab"&&element.contains((event.target as HTMLElement).closest("details[open]")))return;
    if(event.key==="Escape"||event.key==="Tab"){event.preventDefault();close(true);return;}
    rove(event,views,"ArrowDown","ArrowUp");
   },{signal});

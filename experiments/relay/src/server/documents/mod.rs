@@ -17,7 +17,7 @@ use crate::{Error, Result, Role, Room, assets::AssetStore};
 use axum::{
     Router,
     body::Bytes,
-    extract::{DefaultBodyLimit, Path, Request, State, WebSocketUpgrade},
+    extract::{DefaultBodyLimit, FromRequest, Path, Request, State, WebSocketUpgrade},
     http::{HeaderMap, StatusCode, Uri},
     response::{IntoResponse, Response},
     routing::get,
@@ -230,6 +230,19 @@ impl DocumentServer {
             .map_err(|_| code(StatusCode::SERVICE_UNAVAILABLE, "busy"))?;
         Ok((principal, permit))
     }
+    async fn read_body(&self, request: Request) -> std::result::Result<Bytes, Response> {
+        // Keep Axum's route byte limit, and start collecting only after admission.
+        match tokio::time::timeout(
+            self.inner.config.limits.deadline,
+            Bytes::from_request(request, self),
+        )
+        .await
+        {
+            Ok(Ok(bytes)) => Ok(bytes),
+            Ok(Err(error)) => Err(error.into_response()),
+            Err(_) => Err(code(StatusCode::REQUEST_TIMEOUT, "request_timeout")),
+        }
+    }
     async fn run<T: Send + 'static>(
         &self,
         host: &Host,
@@ -390,11 +403,16 @@ fn create_room(path: &FsPath, request: &CreateRequest, owner: &str) -> Result<Ro
         _ => Err(Error::Contract("rich language version")),
     }
 }
-async fn create(State(server): State<DocumentServer>, headers: HeaderMap, body: Bytes) -> Response {
+async fn create(
+    State(server): State<DocumentServer>,
+    headers: HeaderMap,
+    request: Request,
+) -> Response {
     let (principal, _permit) = admitted!(server, headers);
     if !server.inner.config.creators.contains(&principal) {
         return failure(&Error::Permission);
     }
+    let body = ran!(server.read_body(request).await);
     let request: CreateRequest = match serde_json::from_slice(&body) {
         Ok(request) => request,
         Err(error) => return failure(&error.into()),
@@ -516,12 +534,13 @@ async fn service_access(
     State(server): State<DocumentServer>,
     Path(name): Path<String>,
     headers: HeaderMap,
-    body: Bytes,
+    request: Request,
 ) -> Response {
     let (principal, _permit) = admitted!(server, headers);
     let Some(service) = server.inner.config.service_principal.clone() else {
         return code(StatusCode::NOT_FOUND, "injection_disabled");
     };
+    let body = ran!(server.read_body(request).await);
     let request: ServiceAccess = match serde_json::from_slice(&body) {
         Ok(request) => request,
         Err(error) => return failure(&error.into()),
@@ -559,13 +578,14 @@ async fn inject(
     State(server): State<DocumentServer>,
     Path(name): Path<String>,
     headers: HeaderMap,
-    body: Bytes,
+    request: Request,
 ) -> Response {
     let (principal, _permit) = admitted!(server, headers);
     let config = &server.inner.config;
     if !config.injection || !config.injectors.contains(&principal) {
         return failure(&Error::Permission);
     }
+    let body = ran!(server.read_body(request).await);
     let request: InjectRequest = match serde_json::from_slice(&body) {
         Ok(request) => request,
         Err(error) => return failure(&error.into()),

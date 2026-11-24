@@ -3,10 +3,17 @@ import {expect,test} from "@playwright/test";
 test("an invalid backup leaves the local document and history available",async({page})=>{
  await page.goto("/demo");
  await expect(page.locator("#ready")).toContainText("Ready");
- await page.locator('[data-rich-text="demo-intro"]').click();
+ const documentJson=()=>page.evaluate(()=>window.demo.editor.view().documentJson);
+ const original=await documentJson();
+ const intro=page.locator('[data-rich-text="demo-intro"]');
+ await intro.click();
  await page.keyboard.insertText("Recovery test. ");
- const before=await page.evaluate(()=>window.demo.editor.view().documentJson);
- const checkpoint=await page.evaluate(()=>window.demo.editor.checkpointJson());
+ await expect(intro).toContainText("Recovery test.");
+ const {edited,checkpoint}=await page.evaluate(()=>{
+  const {editor}=window.demo;
+  return {edited:editor.view().documentJson,checkpoint:editor.checkpointJson()};
+ });
+ expect(edited).not.toBe(original);
  const input=page.getByLabel("Restore session");
  await input.setInputFiles({name:"damaged.json",mimeType:"application/json",buffer:Buffer.from("{invalid")});
  const status=page.locator("#notice");
@@ -16,9 +23,9 @@ test("an invalid backup leaves the local document and history available",async({
  await expect(input).toHaveValue("");
  expect(await page.evaluate(()=>window.demo.editor.checkpointJson())).toBe(checkpoint);
  await page.getByRole("button",{name:"Undo",exact:true}).click();
- expect(await page.evaluate(()=>window.demo.editor.view().documentJson)).not.toBe(before);
+ await expect.poll(documentJson).toBe(original);
  await page.getByRole("button",{name:"Redo",exact:true}).click();
- expect(await page.evaluate(()=>window.demo.editor.view().documentJson)).toBe(before);
+ await expect.poll(documentJson).toBe(edited);
  await input.setInputFiles({name:"working.json",mimeType:"application/json",buffer:Buffer.from(checkpoint)});
  await expect(status).toHaveText("Restored the exact local content and undo/redo branch.");
 });

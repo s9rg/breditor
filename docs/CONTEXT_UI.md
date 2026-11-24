@@ -86,10 +86,12 @@ so toolbar styles apply), `label`, `onError`; the menu also takes `hideDisabled`
   `menuitemcheckbox` with `aria-checked` mirrored from the shared widget's
   `aria-pressed` (`true`, `false` or `mixed`). Disabled controls are hidden by
   default and never focusable.
-- Up/Down/Home/End rove; **Escape** or **Tab** closes and restores the editor
-  focus and selection. Running an item closes the menu after the control returned
-  focus to the editor; a refused form keeps the menu open. Pointer-down outside,
-  focus leaving the menu, read-only policy and composition close it.
+- Up/Down/Home/End rove; **Escape** or **Tab** from a closed control returns
+  focus and selection to the editor. **Tab** and **Shift+Tab** in an open field
+  form use its native tab order. Running an item closes the menu after the
+  control returns focus to the editor. A refused form keeps the menu open.
+  Pointer-down outside, focus leaving the menu, read-only policy and
+  composition close it.
 - Repositions on scroll/resize relative to the surface (pointer-opened) or the
   selection (keyboard-opened).
 

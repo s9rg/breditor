@@ -1,0 +1,312 @@
+{
+  "format": "breditor/v1-catalog-cases",
+  "formatVersion": 1,
+  "cases": [
+    {
+      "id": "paragraph-split-join",
+      "version": 1,
+      "feature": "paragraphs-headings",
+      "sources": [
+        "tiptap-starter",
+        "ckeditor-overview"
+      ],
+      "scenario": "Enter text and a bold span in a paragraph, split inside the span with Enter, then join the resulting paragraphs with Backspace at the second paragraph's start. Run the same steps in installed local and shared editors.",
+      "expected": [
+        "The split preserves text order and both portions of the bold span. The join restores the original paragraph content, with the caret at the join.",
+        "Undo and Redo reverse each command separately. Save and reopen in the same profile, then repeat the history traversal."
+      ]
+    },
+    {
+      "id": "heading-ranks-and-paragraph-conversion",
+      "version": 1,
+      "feature": "paragraphs-headings",
+      "sources": [
+        "tiptap-starter",
+        "ckeditor-overview"
+      ],
+      "scenario": "Apply each of heading ranks 1 through 6 to an existing paragraph containing formatted text and a link. Switch between different ranks and back to a paragraph, round-tripping the document through HTML.",
+      "expected": [
+        "Each rank is inspectable in document state and renders as the matching heading level in exported HTML. Paragraph conversion preserves the text, supported inline formats and block identity.",
+        "Undo and Redo recover the preceding block type and supported inline formats as one action per conversion. Reopen the saved document and verify the same rank and history."
+      ]
+    },
+    {
+      "id": "editable-position-after-final-block",
+      "version": 1,
+      "feature": "paragraphs-headings",
+      "sources": [
+        "tiptap-starter"
+      ],
+      "scenario": "Open an empty document, then a document ending in an atomic block. In each document, use the published keyboard path to reach an editable paragraph and type one character.",
+      "expected": [
+        "The empty document accepts typing into a paragraph. The terminal-block case allows text entry after the block while preserving it.",
+        "The persisted document records the typed text in the intended position. Undo removes only the editing action and keeps an accessible insertion position."
+      ]
+    },
+    {
+      "id": "inline-mark-range-and-caret",
+      "version": 1,
+      "feature": "basic-inline-formatting",
+      "sources": [
+        "tiptap-starter",
+        "ckeditor-styles"
+      ],
+      "scenario": "Run the same sequence with Bold, Italic, Underline and Strikethrough. Select mixed marked and unmarked text, use the toolbar and shortcut where advertised, then use a collapsed caret at the boundary to toggle the mark and type.",
+      "expected": [
+        "Toolbar state distinguishes uniform, mixed and unset ranges. After application, only the selected text gains the mark and the collapsed-caret action applies it only to newly typed text.",
+        "Clipboard and HTML round trips retain the semantic mark, surrounding text and overlaps with other supported marks. Undo and Redo restore the prior range formatting."
+      ]
+    },
+    {
+      "id": "inline-code-mark",
+      "version": 1,
+      "feature": "basic-inline-formatting",
+      "sources": [
+        "tiptap-starter",
+        "ckeditor-styles"
+      ],
+      "scenario": "Mark a short expression as inline code beside ordinary prose. Type spaces and angle brackets inside the expression, then dismiss the mark at a collapsed caret and continue typing.",
+      "expected": [
+        "The expression remains in the same text block, with its literal text preserved in canonical data and escaped in semantic HTML code markup.",
+        "The continuation has the expected ordinary formatting. Copy and paste the expression into a rich document and verify that the inline code boundary persists."
+      ]
+    },
+    {
+      "id": "clear-formatting-mixed-range",
+      "version": 1,
+      "feature": "basic-inline-formatting",
+      "sources": [
+        "ckeditor-digest"
+      ],
+      "scenario": "Select part of two paragraphs containing bold, italic, inline code, text color and a link. Apply the published Remove Format action.",
+      "expected": [
+        "The documented clearable marks disappear from the selection. Formatting outside its endpoints and any marks intentionally preserved by the action retain their previous values.",
+        "Text, block structure and the retained portions of cross-boundary marks are identical. Undo restores the exact marked ranges in one history step."
+      ]
+    },
+    {
+      "id": "script-format-switching",
+      "version": 1,
+      "feature": "subscript-superscript",
+      "sources": [
+        "tiptap-catalog",
+        "ckeditor-styles"
+      ],
+      "scenario": "Format the digits of H2O and x2 as subscript and superscript. Change one selection from subscript to superscript and repeat in a table cell or caption.",
+      "expected": [
+        "The script switch presents only the selected script on the switched range and leaves neighboring text untouched.",
+        "One Undo restores the earlier script format. Supported HTML interchange produces sub and sup elements on the expected ranges and keeps the base characters unchanged."
+      ]
+    },
+    {
+      "id": "font-family-and-size",
+      "version": 1,
+      "feature": "font-and-color",
+      "sources": [
+        "tiptap-catalog",
+        "ckeditor-overview"
+      ],
+      "scenario": "Across two text runs with different fonts and sizes, inspect the Font Family and Font Size controls, choose documented values, reset one field, then save, reopen and export.",
+      "expected": [
+        "The controls report mixed values before replacement. The reset removes only the selected field and reverts to the effective document default while preserving the other field.",
+        "Supported values appear on the intended ranges in the live editor and exported HTML. A value outside the published domain follows the documented refusal or normalization behavior."
+      ]
+    },
+    {
+      "id": "foreground-and-background-color",
+      "version": 1,
+      "feature": "font-and-color",
+      "sources": [
+        "tiptap-catalog",
+        "ckeditor-overview"
+      ],
+      "scenario": "Apply different foreground and background colors to overlapping text ranges. Reset the foreground color on only the overlapping range, then Undo and compare live rendering with exported HTML.",
+      "expected": [
+        "The colors have independent range boundaries and resetting foreground leaves background intact.",
+        "Supported color values round-trip through HTML and cold restore. Removing an already-absent color leaves existing Redo available."
+      ]
+    },
+    {
+      "id": "inline-link-edit-remove-and-retain",
+      "version": 1,
+      "feature": "links",
+      "sources": [
+        "tiptap-starter",
+        "ckeditor-overview"
+      ],
+      "scenario": "Add a link to selected text, update its destination and display text through the published editing actions, then remove the link. Also edit a shared selection containing two existing links while leaving the destination field blank.",
+      "expected": [
+        "Each regular action updates only the selected link content, and removal preserves its label as text. Updating the shared selection preserves each original URL when its destination field is left unchanged.",
+        "Undo restores the previous link data and text. An approved URL and supported attributes survive reload and HTML or clipboard round-trip."
+      ],
+      "untrustedInput": "Use a URL refused by the published scheme policy. Verify direct editing and imported markup cannot expose the refused destination as a navigable link in live or exported content."
+    },
+    {
+      "id": "automatic-linking-with-delimiters",
+      "version": 1,
+      "feature": "links",
+      "sources": [
+        "tiptap-starter",
+        "ckeditor-overview"
+      ],
+      "scenario": "With automatic linking enabled, type a supported URL and terminal punctuation, then press Space or Enter as documented. Repeat with the option disabled and inside a code block.",
+      "expected": [
+        "The configured rule links the expected URL range and leaves surrounding punctuation unlinked. The disabled and code paths follow their documented literal behavior.",
+        "Undo of automatic formatting removes the link while retaining the typed URL text. Reopening preserves the recovered format and its history."
+      ]
+    },
+    {
+      "id": "blockquote-wrap-and-unwrap",
+      "version": 1,
+      "feature": "blockquotes-code-rules",
+      "sources": [
+        "tiptap-starter",
+        "ckeditor-digest"
+      ],
+      "scenario": "Wrap two paragraphs containing inline formats in a block quote, edit one quoted paragraph, then unwrap the quote and export the document.",
+      "expected": [
+        "The wrapper changes block structure while the same paragraphs retain text, order and supported inline formatting. Export emits semantic blockquote markup while the wrapper is present.",
+        "Local or shared Undo restores the preceding wrapper state and preserves edits outside the selected blocks."
+      ]
+    },
+    {
+      "id": "code-block-language-and-literal-text",
+      "version": 1,
+      "feature": "blockquotes-code-rules",
+      "sources": [
+        "tiptap-starter",
+        "ckeditor-digest"
+      ],
+      "scenario": "Create a code block, choose an advertised language, enter indentation and characters meaningful in HTML, and use the documented keyboard action to exit the block.",
+      "expected": [
+        "The code block retains literal spacing, line breaks, language and text. The exit produces or reaches a normal editing block at the documented position.",
+        "Save and reopen, then export and reimport. The supported fidelity rules preserve code contents and the code block designation."
+      ]
+    },
+    {
+      "id": "horizontal-rule-editing",
+      "version": 1,
+      "feature": "blockquotes-code-rules",
+      "sources": [
+        "tiptap-starter",
+        "ckeditor-digest"
+      ],
+      "scenario": "Insert a horizontal rule between two paragraphs, move the caret before and after it, select the rule, and remove it with the documented keyboard action.",
+      "expected": [
+        "The rule renders and exports as a separator. It has one selectable identity and can be removed without modifying either paragraph.",
+        "Undo recovers the separator and Redo removes it. Selection recovery leaves a valid caret in the surrounding content."
+      ]
+    },
+    {
+      "id": "hard-break-and-block-boundary",
+      "version": 1,
+      "feature": "line-and-block-navigation",
+      "sources": [
+        "tiptap-starter"
+      ],
+      "scenario": "Within a paragraph, use Shift+Enter in the middle and at the end. Type immediately after the terminal break, then use Enter to split the paragraph.",
+      "expected": [
+        "Each Shift+Enter adds one in-block line break and keeps the paragraph count unchanged. The typed text lands after the terminal break. Enter creates a separate block.",
+        "Plain text, HTML and saved semantic state reflect one content break per action, including on browsers that require an extra presentation-only caret anchor."
+      ]
+    },
+    {
+      "id": "keyboard-gap-around-atoms",
+      "version": 1,
+      "feature": "line-and-block-navigation",
+      "sources": [
+        "tiptap-starter",
+        "tiptap-source-starter"
+      ],
+      "scenario": "In local and shared editors, use only documented keyboard actions to reach gaps before and after a block image, rule and table, including neighboring atoms and an atom at the end of a document.",
+      "expected": [
+        "Every advertised gap has a reachable text insertion position or a documented navigation action that creates one while preserving adjacent atoms.",
+        "Deleting the sole atom in an otherwise empty editing container recovers a valid editable position. Reversing the action restores the atom at its original location."
+      ]
+    },
+    {
+      "id": "range-selection-both-directions",
+      "version": 1,
+      "feature": "general-selections",
+      "sources": [
+        "tiptap-catalog",
+        "ckeditor-digest"
+      ],
+      "scenario": "Select the same text across a paragraph, list item and table cell in both directions. Use Copy, apply an inline format, and replace the range with a single character in separate runs.",
+      "expected": [
+        "Both anchor directions cover the same content. Selected text receives the format and replacement changes only eligible content in the documented selection scope.",
+        "The clipboard exposes the documented plain-text and rich structure. Undo recovers the overwritten content and keeps unselected cell contents and block identities."
+      ]
+    },
+    {
+      "id": "selection-of-atomic-node",
+      "version": 1,
+      "feature": "general-selections",
+      "sources": [
+        "tiptap-catalog",
+        "ckeditor-digest"
+      ],
+      "scenario": "Select an image as a node using keyboard navigation. Copy and paste it, then use the documented replace action on the original node selection.",
+      "expected": [
+        "Selection highlights a single image as a unit and the clipboard retains its approved asset reference and alt text. Pasting assigns a fresh node identity.",
+        "Replacement preserves neighboring content and creates the appropriate text position. Undo recovers the original node identity and reference."
+      ]
+    },
+    {
+      "id": "rectangular-cell-selection",
+      "version": 1,
+      "feature": "general-selections",
+      "sources": [
+        "tiptap-catalog",
+        "ckeditor-digest"
+      ],
+      "scenario": "Select a 2×2 grid inside a larger table. Copy to an ordinary clipboard and paste into a matching table region. Repeat with a rectangular selection whose edge intersects a merged cell.",
+      "expected": [
+        "The clipboard matrix follows the visible row and column order. The paste affects only the documented destination rectangle and leaves adjacent cells intact.",
+        "The merged-cell boundary follows the published expansion or refusal policy. A refused paste leaves the grid, selection and history unaffected."
+      ]
+    },
+    {
+      "id": "document-select-all-and-replace",
+      "version": 1,
+      "feature": "general-selections",
+      "sources": [
+        "tiptap-catalog",
+        "ckeditor-digest"
+      ],
+      "scenario": "In a document containing text, lists, tables, captions and atomic blocks, invoke the document-wide Select All command, inspect its copy result, and replace the selection. Repeat with leading and trailing atoms.",
+      "expected": [
+        "Selection and export cover the whole document scope, including atoms at either edge. Replacement produces a valid editable document containing the new content.",
+        "Undo restores the original structure, retained asset references and selection semantics after cold reopen."
+      ]
+    },
+    {
+      "id": "local-history-typing-and-command-groups",
+      "version": 1,
+      "feature": "history",
+      "sources": [
+        "tiptap-starter",
+        "ckeditor-digest"
+      ],
+      "scenario": "Use a controllable clock or published timing fixture to type a continuous run, pause beyond the configured grouping gap, type again, commit one IME composition, then paste, format, and move content in distinct actions.",
+      "expected": [
+        "Continuous typing forms the expected group, the pause starts a new group, and the completed composition and subsequent discrete commands respect the published history boundaries.",
+        "Undo and Redo traverse the groups in reverse and forward order respectively. After saving at a partial Undo, a compatible reopen retains the remaining Redo."
+      ]
+    },
+    {
+      "id": "shared-history-preserves-peer-edits",
+      "version": 1,
+      "feature": "history",
+      "sources": [
+        "tiptap-starter",
+        "ckeditor-digest"
+      ],
+      "scenario": "Have two authors edit the same paragraph and adjacent blocks. Let one author edit offline, reconnect and settle the shared document. Undo and Redo that author's most recent local action after saving and reopening.",
+      "expected": [
+        "Both editors converge on the same document after Undo settles and again after Redo settles. Only the selected author's edit is reversed or replayed. The other author's compatible text and structural edits remain.",
+        "Restoring a compatible checkpoint preserves the authored history and visible content. An incompatible checkpoint is refused through the published recovery path."
+      ]
+    }
+  ]
+}

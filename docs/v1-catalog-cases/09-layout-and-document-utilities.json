@@ -1,0 +1,301 @@
+{
+  "format": "breditor/v1-catalog-cases",
+  "formatVersion": 1,
+  "cases": [
+    {
+      "id": "multi-root-focus-and-global-history",
+      "version": 1,
+      "feature": "multiple-roots",
+      "sources": [
+        "ckeditor-overview",
+        "ckeditor-digest"
+      ],
+      "scenario": "Mount labeled title, summary and body roots with a common toolbar. Edit the title, format the body, then undo twice from the summary and redo twice from the title.",
+      "expected": [
+        "Toolbar and selection state follow the active root, with separate editable boundaries and accessible labels. A gesture spanning two roots follows the declared selection behavior.",
+        "Undo and redo replay the interleaved operations in one global order, focus the relevant root, and preserve independent root identities and content."
+      ]
+    },
+    {
+      "id": "multi-root-lifecycle-and-attributes",
+      "version": 1,
+      "feature": "multiple-roots",
+      "sources": [
+        "ckeditor-overview",
+        "ckeditor-digest"
+      ],
+      "scenario": "Qualify undoable root-set changes once a root-set history contract is implemented. Add a labeled root with a host attribute, reorder it and edit its contents. Remove it, undo the removal and reopen the saved set in a fresh session.",
+      "expected": [
+        "The repaired root has its original identity, label, attributes, content and position. Root-set history traverses authored membership and attribute edits in the order defined by the new contract.",
+        "The set checkpoint identifies the active root and retained history under the documented recovery rules. A duplicate root identifier is refused without changing the existing set."
+      ]
+    },
+    {
+      "id": "shared-multi-root-order-and-interchange",
+      "version": 1,
+      "feature": "multiple-roots",
+      "sources": [
+        "ckeditor-overview",
+        "ckeditor-digest"
+      ],
+      "scenario": "Open the same shared root set from two accounts. Edit different roots concurrently, move one root in the set order and reopen with a fresh observer. Export the complete set and import it into a fresh target.",
+      "expected": [
+        "The replicas converge on the same root order, identities and per-root contents, and reconnect restores one consistent set revision.",
+        "The supported interchange represents root names, order, admitted attributes and document bodies. Unsupported target representations identify lost root metadata or segmentation."
+      ]
+    },
+    {
+      "id": "explicit-page-break-editing",
+      "version": 1,
+      "feature": "pagination",
+      "sources": [
+        "ckeditor-page-break",
+        "tiptap-pages"
+      ],
+      "scenario": "Insert an explicit break between two top-level sections using the editor control. Navigate across the break, copy it to another document, remove it, then undo and round-trip through the supported HTML or document interchange.",
+      "expected": [
+        "The break has a distinct editable identity, occupies the intended root boundary and is distinguishable during navigation. Copy and import reconstruct the intended boundary.",
+        "Undo restores one break at the exact original position, and supported print output starts the following content on the next page."
+      ]
+    },
+    {
+      "id": "print-media-page-settings",
+      "version": 1,
+      "feature": "pagination",
+      "sources": [
+        "ckeditor-digest",
+        "tiptap-pages"
+      ],
+      "scenario": "Print a fixed-font fixture with an explicit break, a table and a kept-together block. Repeat with Letter portrait and A4 landscape, changing the configured margins and comparing a browser print preview with supported PDF output.",
+      "expected": [
+        "Page dimensions, orientation and margins match the selected settings within documented output tolerances. The explicit break, keep-together behavior and repeated table heading appear in the expected positions.",
+        "Changing print settings leaves the canonical document and undo history intact, and unsupported settings report their fallback."
+      ]
+    },
+    {
+      "id": "paged-view-navigation-and-zoom",
+      "version": 1,
+      "feature": "pagination",
+      "sources": [
+        "tiptap-pages",
+        "ckeditor-pagination"
+      ],
+      "scenario": "Open a multi-page document in its page view. Navigate directly to a page number, change zoom at that location, edit a heading and return to fit-width mode.",
+      "expected": [
+        "Page navigation targets the visible page and keeps the selected block reachable after both zoom changes. The current page indicator reflects the active view.",
+        "Zoom does not enter content history or change print geometry. The heading edit survives zoom and view changes and remains independently undoable."
+      ]
+    },
+    {
+      "id": "page-headers-footers-and-number-fields",
+      "version": 1,
+      "feature": "pagination",
+      "sources": [
+        "tiptap-pages",
+        "ckeditor-digest"
+      ],
+      "scenario": "Add running header and footer content with current-page and total-page fields. Use different first-page settings and insert content that adds a page, then inspect preview and the supported printed output.",
+      "expected": [
+        "The first-page rule and running content are applied to the intended pages. Every following page displays its current number and the updated total.",
+        "Changing the page settings or flow recomputes the fields without duplicating authored header and footer text. Save and reopen preserve the authored content and field definitions."
+      ]
+    },
+    {
+      "id": "document-template-instantiation",
+      "version": 1,
+      "feature": "document-utilities",
+      "sources": [
+        "ckeditor-digest",
+        "tiptap-catalog"
+      ],
+      "scenario": "Select a versioned notice template with repeated heading labels, a table, a logo and a recipient field. Instantiate it twice and change one instance before saving and exporting both.",
+      "expected": [
+        "Both instances begin with the expected template contents and independent document and element identities. Editing one instance leaves the other instance and the template unchanged.",
+        "Template provenance and supported structure survive reopen and interchange under the published representation."
+      ]
+    },
+    {
+      "id": "merge-field-resolution-and-fallback",
+      "version": 1,
+      "feature": "document-utilities",
+      "sources": [
+        "ckeditor-digest",
+        "tiptap-catalog"
+      ],
+      "scenario": "Insert the same typed merge field twice, preview with one supplied value and one missing required value, then render with a resolved data set while reopening the editable template separately.",
+      "expected": [
+        "Repeated field instances receive the intended value consistently. Required missing values have a visible fallback or validation error identifying the field.",
+        "The editable template retains the field identities and contains no resolved personal values until the supported save action requests them."
+      ],
+      "untrustedInput": "Supply a field value with literal markup and a disallowed external reference. Verify that preview, restore and export use the declared typed field policy and do not activate the disallowed input."
+    },
+    {
+      "id": "validated-template-slots",
+      "version": 1,
+      "feature": "document-utilities",
+      "sources": [
+        "tiptap-catalog",
+        "tiptap-content-protection"
+      ],
+      "scenario": "Define an editable date slot and an enumerated choice slot inside a protected template. Fill the slots through their controls, then paste an invalid value and try editing the enclosing protected HTML.",
+      "expected": [
+        "Valid entries appear in the intended slots and preserve the surrounding template. Keyboard navigation reaches the slots in document order.",
+        "Invalid values and protected content changes are refused or visibly flagged under the documented validation rules. Reopen restores the admitted values and slot bindings."
+      ]
+    },
+    {
+      "id": "reactive-document-variables",
+      "version": 1,
+      "feature": "document-utilities",
+      "sources": [
+        "tiptap-catalog",
+        "tiptap-content-protection"
+      ],
+      "scenario": "Bind two references to a single value and provide one authorized editable slot for that value. Change it, undo the change and reopen while a separate client has the document visible.",
+      "expected": [
+        "Both references present the same resolved value for each revision, including after undo and reopen. The shared document converges on one value and retains both variable bindings.",
+        "A missing variable, type mismatch or unauthorized write leaves a documented placeholder or refusal with the original bindings preserved."
+      ]
+    },
+    {
+      "id": "bookmark-rename-move-and-removal",
+      "version": 1,
+      "feature": "document-utilities",
+      "sources": [
+        "ckeditor-bookmarks",
+        "ckeditor-digest"
+      ],
+      "scenario": "Create a named bookmark and two internal links to it, rename the bookmark, move its containing block, then remove the target and test navigation and undo from both peers.",
+      "expected": [
+        "The rename retargets the two links in one documented history action, and moving the block preserves the resolved destination.",
+        "Removal exposes the expected dangling-reference state. Undo restores the original target under the documented history policy and the links resolve again."
+      ]
+    },
+    {
+      "id": "inline-bookmark-position",
+      "version": 1,
+      "feature": "document-utilities",
+      "sources": [
+        "ckeditor-bookmarks"
+      ],
+      "scenario": "Place two named bookmarks at different character offsets in the same paragraph and link to each from a separate section. Insert text before both offsets, split the paragraph between the bookmarks and round-trip the result.",
+      "expected": [
+        "The two links navigate to their distinct authored targets after insertion and split. Reopen and supported HTML interchange retain meaningful independent anchors.",
+        "If a target export cannot retain exact inline placement, the export reports that specific loss."
+      ]
+    },
+    {
+      "id": "document-cross-reference-fields",
+      "version": 1,
+      "feature": "document-utilities",
+      "sources": [
+        "ckeditor-digest",
+        "ckeditor-bookmarks"
+      ],
+      "scenario": "Add a cross-reference to a labeled figure or section that displays the target's current label. Move, relabel and remove the target, then undo the removal and check navigation and exported text.",
+      "expected": [
+        "The reference retains the target identity across edits and updates its visible label under the documented resolution rules.",
+        "A missing target yields an explicit unresolved state. Restoring the target resolves the same stored reference without recreating it."
+      ]
+    },
+    {
+      "id": "footnote-references-and-renumbering",
+      "version": 1,
+      "feature": "document-utilities",
+      "sources": [
+        "ckeditor-footnotes",
+        "tiptap-pages"
+      ],
+      "scenario": "Insert two footnotes and their references. Move the second reference before the first, edit a note from its reference, then remove and restore one citation before exporting.",
+      "expected": [
+        "Reference labels follow document order while retaining note identity and body text. Navigation moves between each reference and its intended note and back.",
+        "Undo restores the relationship without duplicating a note. Supported formatted output retains the correspondence between reference labels and note bodies."
+      ]
+    },
+    {
+      "id": "endnote-section-and-portable-export",
+      "version": 1,
+      "feature": "document-utilities",
+      "sources": [
+        "tiptap-pages",
+        "ckeditor-footnotes"
+      ],
+      "scenario": "Create two endnotes in a document also containing a footnote. Reorder the endnote references, save and reopen, then export into the supported print and portable formats.",
+      "expected": [
+        "Endnotes appear at the configured document or section end, with labels and navigation distinct from footnotes. Undo of the reorder restores the prior sequence.",
+        "Reopen and supported interchange retain note kind, body and reference identity. Formats that flatten the distinction report the specific change."
+      ]
+    },
+    {
+      "id": "shipped-ui-locale-packs",
+      "version": 1,
+      "feature": "localization-and-bidi",
+      "sources": [
+        "ckeditor-overview",
+        "ckeditor-digest"
+      ],
+      "scenario": "Install the published language packs for an admitted non-English left-to-right locale and an admitted right-to-left locale. Open the same local and shared documents and exercise toolbars, menus, status and validation messages.",
+      "expected": [
+        "Each shipped pack provides its documented labels, shortcuts and accessible names. Locale selection and fallback produce the expected visible and announced text.",
+        "Changing the UI language or chrome direction preserves document content, semantic language metadata and history."
+      ]
+    },
+    {
+      "id": "mixed-direction-text-editing",
+      "version": 1,
+      "feature": "localization-and-bidi",
+      "sources": [
+        "ckeditor-overview",
+        "ckeditor-digest",
+        "ckeditor-language"
+      ],
+      "scenario": "Edit an Arabic or Hebrew paragraph containing a Latin link, numerals and punctuation. Navigate and extend selection with arrow keys, copy the selected span and apply formatting across a direction boundary.",
+      "expected": [
+        "Caret and selection follow the documented native visual-navigation behavior while edit operations target the intended logical range. The copied text has the expected logical order.",
+        "The unselected text and linked run remain intact. Undo and HTML round-trip preserve the admitted direction, code points and formatting boundaries."
+      ]
+    },
+    {
+      "id": "text-part-language-and-direction",
+      "version": 1,
+      "feature": "localization-and-bidi",
+      "sources": [
+        "ckeditor-language",
+        "ckeditor-digest"
+      ],
+      "scenario": "Mark two runs of the same paragraph with different supported BCP 47 language tags and direction metadata, then change one tag without changing paragraph or UI locale. Inspect the accessibility tree, exported HTML and restored editor.",
+      "expected": [
+        "Each run exposes its normalized language and the intended text direction to consumers. Updating a run leaves unrelated direction, UI labels and adjacent language spans unchanged.",
+        "Supported interchange and reopen retain the admitted run boundaries and metadata. A malformed language tag or unsupported direction value leaves existing metadata intact."
+      ]
+    },
+    {
+      "id": "movable-persisted-table-of-contents",
+      "version": 1,
+      "feature": "table-of-contents",
+      "sources": [
+        "ckeditor-table-of-contents",
+        "tiptap-catalog"
+      ],
+      "scenario": "Insert a contents block after the introduction of a document containing repeated headings at three levels. Move the block before the introduction, edit a heading and reopen from saved state.",
+      "expected": [
+        "The saved block retains its placement and supported configuration. Its entries follow the current heading hierarchy and duplicate labels keep distinct target identities.",
+        "Following an entry navigates to the heading without an authoring operation. Moving or removing the contents block is an independently undoable content edit."
+      ]
+    },
+    {
+      "id": "table-of-contents-static-and-portable-output",
+      "version": 1,
+      "feature": "table-of-contents",
+      "sources": [
+        "ckeditor-table-of-contents",
+        "tiptap-catalog"
+      ],
+      "scenario": "Export a document containing a saved contents block, repeated heading labels and a host-side outline to HTML and supported non-HTML targets. Follow contents links in each output and import an output when round-trip is documented.",
+      "expected": [
+        "Export keeps the authored contents block at its document position, with one unique destination per eligible heading. The host-side outline stays editor chrome and does not appear as separate document content.",
+        "Supported portable output preserves link destinations or reports its specific fallback. Re-import keeps the documented saved contents representation."
+      ]
+    }
+  ]
+}
