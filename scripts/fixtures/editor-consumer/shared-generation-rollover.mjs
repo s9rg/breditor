@@ -64,6 +64,7 @@ async function verify(){
   bob.core.select(range("intro",0));
   check(bob.core.type("offline "),"Disconnected peer must durably author its edit");
   const offlineEdit=bob.core.documentJson();
+  const offlineFrame=bob.core.updateFrame();
   await Promise.all([alice.flush(),bob.flush()]);
   legacy=[alice.core.checkpointJson(),bob.core.checkpointJson()];
   await close();
@@ -93,9 +94,12 @@ async function verify(){
   await reopenExactly();
   check(frontier().every((count,index)=>count===preCutFrontier[index]),"Cold open after two seals must preserve the pre-cut frontier");
   check(alice.core.documentJson()===firstEdit&&bob.core.documentJson()===offlineEdit,"The peer must still be offline after the second seal");
+  check(await alice.core.receiveFrame(offlineFrame),"The exact pre-cut frame must deliver after two seals");
+  check(alice.core.documentJson()===offlineEdit,"The pre-cut frame must restore the offline edit");
+  const afterDelivery=alice.core.checkpointJson();
+  check(!await alice.core.receiveFrame(offlineFrame)&&alice.core.checkpointJson()===afterDelivery,
+   "Repeating the exact frame must leave the complete checkpoint unchanged");
   await sync();
-  await sync();
-  check(alice.core.documentJson()===offlineEdit,"Repeated delivery after two seals must apply the offline edit exactly once");
   const redoWithOffline=secondEdit.replace('"SDK heading"','"offline SDK heading"');
   check(redoWithOffline!==secondEdit,"The seeded heading must be present");
   check(alice.core.redo(),"The pre-cut Redo must survive both sealed segments and a cold open");
