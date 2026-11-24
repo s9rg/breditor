@@ -330,8 +330,8 @@ test("functional and full plans cover current candidate work without weakening t
  assert.ok(!functional.checks.some(check=>check.id==="reviewed-v1-readiness"));
  assert.ok(functional.deferred.includes("native-clipboard-ime-screen-reader-mobile"));
  for(const id of ["search-programmatic-sdk","search-persistent-sessions","search-borrowed-controls","search-managed-startup","installed-search-workflows"])assert.ok(functional.checks.some(check=>check.id===id),id);
- const search=functional.checks.find(check=>check.id==="installed-search-workflows");assert.deepEqual(search.args,["scripts/check-search-installed.mjs"]);assert.deepEqual(search.artifacts,[{path:"target/search-installed-consumer.json",fresh:true}]);
- assert.ok(!functional.checks.some(check=>check.id==="installed-search-browser"));const searchBrowser=full.checks.find(check=>check.id==="installed-search-browser");assert.deepEqual(searchBrowser.args,["scripts/check-search-browser.mjs"]);assert.deepEqual(searchBrowser.artifacts,[{path:"target/search-installed-browser.json",fresh:true}]);
+ const search=functional.checks.find(check=>check.id==="installed-search-workflows");assert.deepEqual(search.args,["scripts/check-search-installed.mjs"]);assert.deepEqual(search.artifacts,[{path:"target/search-installed-consumer.json",fresh:true,retain:true}]);
+ assert.ok(!functional.checks.some(check=>check.id==="installed-search-browser"));const searchBrowser=full.checks.find(check=>check.id==="installed-search-browser");assert.deepEqual(searchBrowser.args,["scripts/check-search-browser.mjs"]);assert.deepEqual(searchBrowser.artifacts,[{path:"target/search-installed-browser.json",fresh:true,retain:true}]);
  assert.throws(()=>candidateReleasePlan({profile:"skip-hard-parts"}));
  for(const check of full.checks){assert.ok(Object.isFrozen(check)&&Object.isFrozen(check.args)&&Object.isFrozen(check.artifacts));assert.ok(!check.args.some(arg=>/^(publish|push|tag|--skip-tests|--retries)$/.test(arg)));}
 });
@@ -416,7 +416,7 @@ test("both profiles require native retained-copy replay and its fresh installed 
  const installed=readFileSync(join(repository,"scripts/check-session-backups-installed.mjs"),"utf8");for(const text of ["participant-replay-probe.mjs","room-replay-probe.mjs","types-participant-replay.ts","types-room-replay.ts","concurrentReadOnlyCopies:66","nativeDisposals:70","forbiddenCalls:0","reentrantSourceDisposals:1","participant-replay-bundle.mjs","/participant_replay/read.js","/room_replay/read.js","replayInstalledReport"])assert.ok(installed.includes(text),text);
 });
 test("asset archive contracts and fresh public packages are mandatory; full additionally requires native raster/reload acceptance",()=>{
- for(const profile of ["functional","full"]){const plan=candidateReleasePlan({profile}),find=id=>{const check=plan.checks.find(c=>c.id===id);assert.ok(check,id);return check;};assert.deepEqual(find("asset-archive-storage-contracts").args,["--test","scripts/asset-backups.test.mjs"]);const installed=find("installed-asset-backups");assert.deepEqual(installed.args,["scripts/check-asset-backups-installed.mjs"]);assert.deepEqual(installed.artifacts,[{path:"target/asset-backups-installed-consumer.json",fresh:true}]);const browser=plan.checks.find(c=>c.id==="installed-asset-backups-browser");if(profile==="full"){assert.deepEqual(browser.args,["scripts/check-asset-backups-browser.mjs"]);assert.deepEqual(browser.artifacts,[{path:"target/asset-backups-installed-browser.json",fresh:true}]);}else assert.equal(browser,undefined);}
+ for(const profile of ["functional","full"]){const plan=candidateReleasePlan({profile}),find=id=>{const check=plan.checks.find(c=>c.id===id);assert.ok(check,id);return check;};assert.deepEqual(find("asset-archive-storage-contracts").args,["--test","scripts/asset-backups.test.mjs"]);const installed=find("installed-asset-backups");assert.deepEqual(installed.args,["scripts/check-asset-backups-installed.mjs"]);assert.deepEqual(installed.artifacts,[{path:"target/asset-backups-installed-consumer.json",fresh:true,retain:true}]);const browser=plan.checks.find(c=>c.id==="installed-asset-backups-browser");if(profile==="full"){assert.deepEqual(browser.args,["scripts/check-asset-backups-browser.mjs"]);assert.deepEqual(browser.artifacts,[{path:"target/asset-backups-installed-browser.json",fresh:true,retain:true}]);}else assert.equal(browser,undefined);}
 });
 test("both candidate profiles require portable input rules without reusing or inventing historical fixtures",()=>{
  for(const profile of ["functional","full"]){
@@ -448,10 +448,10 @@ test("clean candidate SDK prerequisites and explicit rich types precede dependen
  }
 });
 test("both profiles require portable fullscreen workflows and fresh acceptance; full adds native browser activation",()=>{
- for(const profile of ["functional","full"]){const p=candidateReleasePlan({profile}),find=id=>{const row=p.checks.find(x=>x.id===id);assert.ok(row,id);return row;};assert.deepEqual(find("fullscreen-sdk-and-controls").args,["scripts/probe-fullscreen.mjs","target/rich-browser-web","target/promoted-shared-web"]);const installed=find("installed-fullscreen-workflows");assert.deepEqual(installed.args,["scripts/check-fullscreen-installed.mjs"]);assert.deepEqual(installed.artifacts,[{path:"target/fullscreen-installed-consumer.json",fresh:true}]);assert.ok(!installed.args.includes("--reuse-runtimes"));assert.ok(p.checks.findIndex(x=>x.id==="editor-build")<p.checks.findIndex(x=>x.id==="fullscreen-sdk-and-controls"));assert.ok(p.checks.findIndex(x=>x.id==="installed-fullscreen-workflows")<p.checks.findIndex(x=>x.id==="readiness-inventory"));if(profile==="full"){const browser=find("installed-fullscreen-browser");assert.deepEqual(browser.args,["scripts/check-fullscreen-browser.mjs"]);assert.deepEqual(browser.artifacts,[{path:"target/fullscreen-installed-browser.json",fresh:true}]);}else assert.ok(!p.checks.some(x=>x.id==="installed-fullscreen-browser"));}
+ for(const profile of ["functional","full"]){const p=candidateReleasePlan({profile}),find=id=>{const row=p.checks.find(x=>x.id===id);assert.ok(row,id);return row;};assert.deepEqual(find("fullscreen-sdk-and-controls").args,["scripts/probe-fullscreen.mjs","target/rich-browser-web","target/promoted-shared-web"]);const installed=find("installed-fullscreen-workflows");assert.deepEqual(installed.args,["scripts/check-fullscreen-installed.mjs"]);assert.deepEqual(installed.artifacts,[{path:"target/fullscreen-installed-consumer.json",fresh:true,retain:true}]);assert.ok(!installed.args.includes("--reuse-runtimes"));assert.ok(p.checks.findIndex(x=>x.id==="editor-build")<p.checks.findIndex(x=>x.id==="fullscreen-sdk-and-controls"));assert.ok(p.checks.findIndex(x=>x.id==="installed-fullscreen-workflows")<p.checks.findIndex(x=>x.id==="readiness-inventory"));if(profile==="full"){const browser=find("installed-fullscreen-browser");assert.deepEqual(browser.args,["scripts/check-fullscreen-browser.mjs"]);assert.deepEqual(browser.artifacts,[{path:"target/fullscreen-installed-browser.json",fresh:true,retain:true}]);}else assert.ok(!p.checks.some(x=>x.id==="installed-fullscreen-browser"));}
 });
 test("both profiles require current native placeholder workflows and fresh isolated acceptance",()=>{
- for(const profile of ["functional","full"]){const p=candidateReleasePlan({profile}),find=id=>{const r=p.checks.find(s=>s.id===id);assert.ok(r,id);return r;};assert.deepEqual(find("placeholder-native-sdk-and-controls").args,["scripts/probe-placeholder.mjs","target/rich-browser-web","target/promoted-shared-web"]);const installed=find("installed-placeholder-workflows");assert.deepEqual(installed.args,["scripts/check-placeholder-installed.mjs"]);assert.deepEqual(installed.artifacts,[{path:"target/placeholder-installed-consumer.json",fresh:true}]);assert.ok(!installed.args.includes("--reuse-runtimes"));assert.ok(p.checks.findIndex(s=>s.id==="rich-browser-build")<p.checks.findIndex(s=>s.id==="placeholder-native-sdk-and-controls"));assert.ok(p.checks.findIndex(s=>s.id==="installed-placeholder-workflows")<p.checks.findIndex(s=>s.id==="readiness-inventory"));if(profile==="full"){const browser=find("installed-placeholder-browser");assert.deepEqual(browser.args,["scripts/check-placeholder-browser.mjs"]);assert.deepEqual(browser.artifacts,[{path:"target/placeholder-installed-browser.json",fresh:true}]);}else assert.ok(!p.checks.some(s=>s.id==="installed-placeholder-browser"));}
+ for(const profile of ["functional","full"]){const p=candidateReleasePlan({profile}),find=id=>{const r=p.checks.find(s=>s.id===id);assert.ok(r,id);return r;};assert.deepEqual(find("placeholder-native-sdk-and-controls").args,["scripts/probe-placeholder.mjs","target/rich-browser-web","target/promoted-shared-web"]);const installed=find("installed-placeholder-workflows");assert.deepEqual(installed.args,["scripts/check-placeholder-installed.mjs"]);assert.deepEqual(installed.artifacts,[{path:"target/placeholder-installed-consumer.json",fresh:true,retain:true}]);assert.ok(!installed.args.includes("--reuse-runtimes"));assert.ok(p.checks.findIndex(s=>s.id==="rich-browser-build")<p.checks.findIndex(s=>s.id==="placeholder-native-sdk-and-controls"));assert.ok(p.checks.findIndex(s=>s.id==="installed-placeholder-workflows")<p.checks.findIndex(s=>s.id==="readiness-inventory"));if(profile==="full"){const browser=find("installed-placeholder-browser");assert.deepEqual(browser.args,["scripts/check-placeholder-browser.mjs"]);assert.deepEqual(browser.artifacts,[{path:"target/placeholder-installed-browser.json",fresh:true,retain:true}]);}else assert.ok(!p.checks.some(s=>s.id==="installed-placeholder-browser"));}
 });
 test("dry run is cwd-independent and explicitly cannot imply V1 readiness",()=>{
  const script=join(repository,"scripts/verify-candidate.mjs"),r=spawnSync(process.execPath,[script,"--functional","--dry-run"],{cwd:tmpdir(),encoding:"utf8"});assert.equal(r.status,0,r.stderr);const p=JSON.parse(r.stdout);assert.equal(p.executed,false);assert.equal(p.v1Ready,false);assert.equal(p.profile,"functional");assert.ok(p.deferred.length>0);
@@ -538,15 +538,23 @@ test("candidate engineering coverage can be collected before reviewed readiness"
   .map(check=>check.id)
   .filter(id=>!covered.has(id)),["reviewed-v1-readiness"]);
  const {checks}=candidateReleasePlan({profile:"installed-feature-browser"});
- const producer=checks.findIndex(check=>check.id==="installed-session-backups");
- const browser=checks.findIndex(check=>check.id==="installed-session-backups-browser");
- assert.ok(producer>=0&&producer<browser);
- assert.deepEqual(checks[producer].artifacts.find(report=>
-  report.path==="target/session-backups-installed-consumer.json"),
-  {path:"target/session-backups-installed-consumer.json",fresh:true,retain:true});
- assert.deepEqual(checks[browser].artifacts,[
-  {path:"target/session-backups-installed-browser.json",fresh:true,retain:true},
- ]);
+ for(const [feature,producerId] of [
+  ["search","installed-search-workflows"],
+  ["placeholder","installed-placeholder-workflows"],
+  ["fullscreen","installed-fullscreen-workflows"],
+  ["session-backups","installed-session-backups"],
+  ["asset-backups","installed-asset-backups"],
+ ]){
+  const producer=checks.findIndex(check=>check.id===producerId);
+  const browser=checks.findIndex(check=>check.id==="installed-"+feature+"-browser");
+  assert.ok(producer>=0&&producer<browser,feature);
+  const report="target/"+feature+"-installed-consumer.json";
+  assert.deepEqual(checks[producer].artifacts.find(artifact=>artifact.path===report),
+   {path:report,fresh:true,retain:true});
+  assert.deepEqual(checks[browser].artifacts,[
+   {path:"target/"+feature+"-installed-browser.json",fresh:true,retain:true},
+  ]);
+ }
 });
 
 test("candidate shards partition the full plan through installed generation component reconstruction",()=>{
