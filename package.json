@@ -60,7 +60,7 @@
     "test": "npm run test --workspaces --if-present && npm run test:diagnostics && npm run test:scripts",
     "test:scripts": "node --test scripts/*.test.mjs",
     "test:diagnostics": "vitest run --config vitest.diagnostics.config.ts",
-    "test:startup:diagnostics": "npm run build && vite build --config vite.startup-diagnostics.config.ts && playwright test -c playwright.startup-diagnostics.config.ts --project=webkit",
+    "test:startup:diagnostics": "npm run build && vite build --config vite.startup-diagnostics.config.ts && playwright test -c playwright.startup-projection-control.config.ts --project=webkit && playwright test -c playwright.startup-diagnostics.config.ts --project=webkit",
     "test:property:diagnostics": "npm run build && vite build --config vite.property-isolation.config.ts && playwright test -c playwright.property-isolation.config.ts --project=webkit",
     "test:number:diagnostics": "vite build --config vite.number-transport.config.ts && playwright test -c playwright.number-transport.config.ts --project=webkit",
     "test:number:candidate": "npm run build && vite build --config vite.numeric-normalization.config.ts && playwright test -c playwright.numeric-normalization.config.ts --project=webkit",

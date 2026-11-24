@@ -2121,14 +2121,16 @@ The investigation now has a maintained command:
 npm run test:startup:diagnostics
 ```
 
-It builds the packages, then a separate normally optimized fixture under
-`target/startup-diagnostics`, then runs twenty WebKit repetitions with the same
-10,000-restore oracle, standard budgets, zero retries and first-failure stop.
+It builds the packages and a separate normally optimized fixture under
+`target/startup-diagnostics`. Two deterministic control cases qualify projection
+rejection capture before twenty WebKit repetitions run the same 10,000-restore
+oracle with standard budgets, zero retries and first-failure stop.
 No validation is bypassed, no getter is reread, and public error codes remain
 unchanged. `npm run test:diagnostics` tests the recorder and source transform.
 
-The diagnostic Vite plugin instruments named rejection exits in four emitted
-modules (bootstrap, checkpoint, document admission and profile descriptor).
+The diagnostic Vite plugin instruments named rejection exits in six emitted
+modules (bootstrap, checkpoint, document admission, profile descriptor,
+projection and selection).
 It uses the existing Rolldown parser, fails on parse/known-site drift, and emits
 `startup-diagnostic-map.json` with original emitted-source SHA-256 hashes and
 function/line/column mappings. It does not instrument expected alternative-shape
@@ -2146,6 +2148,15 @@ Open the trace under `target/playwright-startup-diagnostics-results` with
 `playwright show-trace`; the JSON is a test attachment, not necessarily a separate
 file next to the trace. Save the trace, build and mapping before another run,
 because subsequent builds/runs replace their output directories.
+
+The [November 23 projection failure](qualification/2026-11-23-webkit-startup.json)
+rejected the initial document seed before any restore. Its trace contains an
+empty diagnostic record and a map without projection sites. The maintained
+controls force an invalid node count and a valid revision that differs from the
+observed snapshot. Both require the historical public rejection code, and each
+checks the specific rejection path in the emitted-source map. The controls use
+real Wasm with one fixture-only scalar replaced in each case. The cause of the
+intermittent WebKit rejection remains open.
 
 The first diagnostic build passed one 10,000-restore check in each of Chromium,
 Firefox and WebKit, with no breadcrumbs. After making reader presence mandatory,

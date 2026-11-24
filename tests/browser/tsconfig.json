@@ -32,6 +32,7 @@
     "../../playwright.queue-diagnostics.config.ts",
     "../../vite.queue-diagnostics.config.ts",
     "../../playwright.startup-development-diagnostics.config.ts",
+    "../../playwright.startup-projection-control.config.ts",
     "../../vite.startup-development-diagnostics.config.ts",
     "../../vite.browser.config.ts",
     "../../playwright.numeric-range-static.config.ts",

@@ -4,13 +4,18 @@ import base from "./vite.selection-stress.config";
 import { instrumentStartupModule, startupDiagnosticModuleCount } from "./tests/browser/diagnostics/startup_instrumentation";
 
 const recorder = fileURLToPath(new URL("./tests/browser/diagnostics/startup_recorder.ts", import.meta.url));
+const projectionControl = fileURLToPath(new URL("./tests/browser/harness/startup_projection_control.ts", import.meta.url));
 const manifest = new Map<string, unknown>();
 
 const diagnosticPlugin: Plugin = {
   name: "breditor-startup-diagnostics", enforce: "pre",
   transform(code, id) {
     if (id.endsWith("/harness/selection-production/main.ts")) {
-      return `import { readStartupRejections } from ${JSON.stringify(recorder)};\n${code}\nObject.assign(window, { breditorStartupDiagnostics: readStartupRejections });`;
+      return `import { readStartupRejections } from ${JSON.stringify(recorder)};\n${code}\nObject.assign(window, {
+        breditorStartupDiagnostics: readStartupRejections,
+        breditorStartupProjectionControl: async (control) =>
+          (await import(${JSON.stringify(projectionControl)})).probeStartupProjectionRejection(control),
+      });`;
     }
     const instrumented = instrumentStartupModule(code, id, recorder);
     if (instrumented === null) return null;

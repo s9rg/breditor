@@ -18,7 +18,7 @@ export function createStartupDiagnosticRecorder() {
         for (const key of ["index", "length", "bytes", "maximum", "kindTag",
           "integerMinimum", "integerMaximum", "stringMinimum", "stringMaximum",
           "integerMinimumType", "integerMaximumType", "stringMinimumType", "stringMaximumType",
-          "nodeIndex", "offset", "requestedIndex", "nodeIndexType", "offsetType",
+          "nodeIndex", "offset", "requestedIndex", "nodeIndexType", "offsetType", "nodeCount", "rootIndex",
           "pointKindTag", "affinityTag", "expectedKindTag", "iteration", "propertyIndex", "mismatchMask", "count",
           "version", "versionType", "nameType", "nameQualifiedRecheck", "versionValidRecheck", "activationTag",
           "sourceKindTag", "actionNameType", "intentNameType", "directionTag", "actionQualifiedRecheck", "intentQualifiedRecheck",
