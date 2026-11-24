@@ -1,19 +1,32 @@
 import {generate,parse} from "css-tree";
-import {Budget,ConversionFailure,bytes,fail} from "./budget.js";
+import {Budget,ConversionFailure,bytes,fail,limits} from "./budget.js";
 import {declarationValues} from "./html_style.js";
 import {attribute,isElement,plainText,type HtmlElement,type HtmlNode} from "./html_tree.js";
 interface Value {value:string;important:boolean}
-interface Selector {tag:string|undefined;id:string|undefined;classes:string[];specificity:number}
+interface Compound {tag:string|undefined;id:string|undefined;classes:string[]}
+interface Selector {parts:Compound[];specificity:number}
 interface Rule {selector:Selector;declarations:Map<string,Value>;order:number}
-function selector(source:string):Selector|null {
+function compound(source:string):Compound|null {
   if(!/^(?:[a-zA-Z][\w-]*|\*)?(?:[.#][a-zA-Z_][\w-]*)*$/.test(source)||!source)return null;
   const tag=/^[a-zA-Z][\w-]*/.exec(source)?.[0]?.toLowerCase(),ids=[...source.matchAll(/#([a-zA-Z_][\w-]*)/g)].map(m=>m[1]!);if(ids.length>1)return null;
   const classes=[...source.matchAll(/\.([a-zA-Z_][\w-]*)/g)].map(m=>m[1]!);if(classes.length>8)return null;
-  return{tag,id:ids[0],classes,specificity:ids.length*100+classes.length*10+(tag?1:0)};
+  return{tag,id:ids[0],classes};
 }
-/** Closed simple selectors only; no DOM matching, external stylesheet loads, CSS evaluation or URL fetching. */
+function selector(source:string):Selector|null {
+  const tokens=source.split(/\s+/);if(tokens.length>3)return null;
+  const parts:Compound[]=[];let specificity=0;
+  for(const token of tokens){
+    const part=compound(token);if(!part)return null;
+    parts.push(part);
+    // At most 24 classes and three types, so each column stays below 100.
+    specificity+=(part.id===undefined?0:10_000)+part.classes.length*100+(part.tag===undefined?0:1);
+  }
+  return{parts,specificity};
+}
+/** Closed compound and descendant selectors over the inert HTML tree. */
 export class Stylesheets {
   #rules:Rule[]=[];#styleNodes=new WeakSet<HtmlElement>();#declarations=0;
+  #classes=new WeakMap<HtmlElement,Set<string>>();#ancestorChecks=0;
   constructor(nodes:readonly HtmlNode[],readonly b:Budget){
     const todo=[...nodes].reverse();let total=0;
     while(todo.length){const node=todo.pop()!;if(!isElement(node))continue;
@@ -39,9 +52,35 @@ export class Stylesheets {
     }
   }
   consumed(node:HtmlElement):boolean{return this.#styleNodes.has(node);}
+  #classesOf(node:HtmlElement):Set<string>{
+    let classes=this.#classes.get(node);
+    if(!classes){
+      const tokens=(attribute(node,"class")??"").split(/\s+/).filter(Boolean);if(tokens.length>64)fail("resource-limit");
+      classes=new Set(tokens);this.#classes.set(node,classes);
+    }
+    return classes;
+  }
+  #matches(node:HtmlElement,part:Compound):boolean{
+    return (part.tag===undefined||part.tag===node.tagName)&&(part.id===undefined||part.id===attribute(node,"id"))&&part.classes.every(c=>this.#classesOf(node).has(c));
+  }
+  #matchesSelector(node:HtmlElement,{parts}:Selector):boolean{
+    if(!this.#matches(node,parts.at(-1)!))return false;
+    let ancestor=node.parentNode;
+    for(let i=parts.length-2;i>=0;i--){
+      let matched=false;
+      while(ancestor&&"tagName" in ancestor&&ancestor.namespaceURI==="http://www.w3.org/1999/xhtml"){
+        if(++this.#ancestorChecks>8*limits.parsedNodes)fail("resource-limit");
+        matched=this.#matches(ancestor,parts[i]!);ancestor=ancestor.parentNode;
+        if(matched)break;
+      }
+      if(!matched)return false;
+    }
+    return true;
+  }
   apply(node:HtmlElement,inline:Map<string,string>,inlineImportant:ReadonlySet<string>):Map<string,string> {
-    const classes=(attribute(node,"class")??"").split(/\s+/).filter(Boolean);if(classes.length>64)fail("resource-limit");const classSet=new Set(classes),id=attribute(node,"id"),values=new Map<string,Value&{specificity:number;order:number}>();
-    for(const rule of this.#rules){const s=rule.selector;if(s.tag!==undefined&&s.tag!==node.tagName||s.id!==undefined&&s.id!==id||s.classes.some(c=>!classSet.has(c)))continue;
+    this.#classesOf(node);
+    const values=new Map<string,Value&{specificity:number;order:number}>();
+    for(const rule of this.#rules){const s=rule.selector;if(!this.#matchesSelector(node,s))continue;
       for(const [name,value]of rule.declarations){const prior=values.get(name),replace=!prior||value.important&&!prior.important||value.important===prior.important&&(s.specificity>prior.specificity||s.specificity===prior.specificity&&rule.order>prior.order);if(replace)values.set(name,{...value,specificity:s.specificity,order:rule.order});}
     }
     const result=new Map([...values].map(([name,v])=>[name,v.value]));for(const [name,value]of inline){if(!values.get(name)?.important||inlineImportant.has(name))result.set(name,value);}return result;

@@ -83,8 +83,10 @@ The adapter parses inert bounded trees, never attaches input markup to the
 editing DOM, and emits only allowlisted semantic content. Construction,
 HTML repair, final traversal, CSS rules and Markdown tokens are bounded before
 publication. Full-document parsing retains authored body styles as well as
-ordinary clipboard fragments. Simple stylesheet selectors and inline CSS
-become closed native formats/layout fields; unsupported CSS has explicit notices.
+ordinary clipboard fragments. Stylesheets can match tag, class and ID compounds
+with up to three parts joined by descendant whitespace. The importer caps total
+ancestor checks. Matching declarations and inline CSS become closed native
+formats and layout fields. Unsupported CSS produces explicit notices.
 Font shorthand uses the same bounded family, size, weight, style and line-height
 conversion as the longhand properties. Shorthand resets and `!important` apply
 in the declaration cascade. System font keywords and unsupported components,

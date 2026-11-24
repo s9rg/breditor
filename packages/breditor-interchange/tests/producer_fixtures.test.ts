@@ -207,7 +207,8 @@ describe("reconstructed producer clipboard corpus",()=>{
     for(const [run,mark]of [["Bold","strong"],["italic","italic"],["underline","underline"],["struck","strike"],["2","superscript"]] as const)expect(marks(root,run)).toEqual([mark]);
     expect(marks(root,"link")).toEqual(["link=https://example.org/minutes"]);
     expect(images.seen).toEqual([]);
-    expect(notices).toEqual(losses({"image-reference":1,"list-numbering":1,"style-approximation":1,"table-width":5,"unsupported-attribute":8,"unsupported-style":30}));
+    // The td p selector matches both cell paragraphs, whose orphans and widows are unsupported.
+    expect(notices).toEqual(losses({"image-reference":1,"list-numbering":1,"style-approximation":1,"table-width":5,"unsupported-attribute":8,"unsupported-style":33}));
   });
   it("Cocoa HTML Writer (Notes/TextEdit/Pages): br paragraphs, converted spaces, tab spans and ul-in-ul nesting",()=>{
     const {root,losses:notices}=load("apple-cocoa.html");
