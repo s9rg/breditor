@@ -12,7 +12,7 @@ import {activationPlan, activationStageIds} from "./candidate-release/activation
 import {
  activationBuildReports, checkActivationBundle, restoreActivationInputs, sealActivationInputs, verifyActivationInputs,
 } from "./candidate-release/activation-inputs.mjs";
-import {copySharedRuntimeForActivation, retainSharedRuntimeBuild, sharedRuntimeBuildReport, verifySharedRuntimeBuild} from "./candidate-release/shared-runtime-evidence.mjs";
+import {copySharedRuntimeForActivation, retainSharedRuntimeBuild, sharedRuntimeBuildReport, verifyInstalledSharedRuntime, verifySharedRuntimeBuild} from "./candidate-release/shared-runtime-evidence.mjs";
 import {nativeSuggestionBuildReport, nativeSuggestionExecutable, retainNativeSuggestionBuild, verifyNativeSuggestionBuild} from "./candidate-release/native-suggestion-build-evidence.mjs";
 import {metadataFixtureEvidence, metadataFixtureStageIds} from "./candidate-release/metadata-fixture-evidence.mjs";
 import {sharedRuntimeReceiptVariable} from "./fixtures/native-runtime/shared-runtime-receipt.mjs";
@@ -182,7 +182,14 @@ test("an independent fixture uses only the copied receipt pinned by its launcher
  const {root, directory} = fixture(t);
  const consumer = join(directory, "consumer");
  mkdirSync(consumer);
- const runtime = copySharedRuntimeForActivation(root, consumer, sourceEvidence(root));
+ const source = sourceEvidence(root), runtime = copySharedRuntimeForActivation(root, consumer, source);
+ const installed = "node_modules/@breditor/collaboration/dist/runtime";
+ for (const {name} of verifySharedRuntimeBuild(root, source).files) {
+  write(consumer, installed + "/" + name, readFileSync(join(root, "target/promoted-shared-web", name)));
+ }
+ assert.equal(verifyInstalledSharedRuntime(consumer, installed, source, runtime), runtime.wasmSha256);
+ write(consumer, installed + "/breditor_shared.js", "modified installed glue");
+ assert.throws(() => verifyInstalledSharedRuntime(consumer, installed, source, runtime), /breditor_shared\.js/);
  for (const file of ["normal-shared-identity.mjs", "shared-runtime-receipt.mjs"]) {
   const relative = "scripts/fixtures/native-runtime/" + file;
   write(consumer, relative, readFileSync(new URL("../" + relative, import.meta.url)));
