@@ -23,7 +23,8 @@ the default ABI 5 or the older document/session wire families.
   and ABI specified by that release. The default ABI 5 module still exposes the
   explicit Session Checkpoint V1 factory for base documents. The [frozen
   checkpoint](../crates/breditor-wasm/tests/fixtures/v0.1.0/README.md) was emitted
-  by the released ABI 2 module. Native and Wasm boundary tests restore it
+  by an ABI 2 build of the released V0.1.0 source. Native and Wasm boundary
+  tests restore it
   byte-for-byte, traverse its full Undo/Redo history and reject an unknown
   checkpoint version and a foreign schema.
 - **Document schema.** The base Document V1 schema and the fingerprinted rich
