@@ -1,4 +1,11 @@
 import {test,expect} from "@playwright/test";
+
+test("installed local checkpoint families preserve malformed occupied rows and exact native recovery",async({page})=>{
+ await ready(page);
+ expect(await page.evaluate(()=>window.sdk.verifyLocalCheckpointAdmission())).toEqual({
+  freshFamilies:3,malformedReads:12,malformedWrites:11,exactMalformedRows:11,exactNativeReopens:3,
+ });
+});
 // Observe startup rejection metadata without preventing errors or retrying startup.
 // Only the closed numeric schema diagnostic is retained, never document content.
 test.beforeEach(async({page})=>{
