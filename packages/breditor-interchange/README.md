@@ -255,15 +255,17 @@ owner:
 
 ### Table captions (rich V4 owners)
 
-The adapter also reads the owner's optional `supportsTableCaptions()` once. Only a
-local rich V4 owner reports `true`; every other owner keeps the original
-conversion (`<caption>` content becomes flow before the table with
-`block-structure`). With a V4 owner:
+The adapter reads the owner's optional `supportsTableCaptions()` once. Owners
+without the capability convert `<caption>` content to flow before the table
+and report `block-structure`. With a capable V4 owner:
 
 - HTML import maps a table's first `<caption>` to its caption paragraph. One
   paragraph imports without a notice; a leading heading becomes the caption
   paragraph and further or unsupported blocks stay as flow before the table, each
   reported as `block-structure`. A second `<caption>` keeps the original conversion.
+- A table followed by an inline or single-paragraph sibling `<figcaption>` in
+  the same figure uses that caption when the table has no direct `<caption>`.
+  An authored table caption retains precedence.
 - HTML export writes `<table><caption><p …>…</p></caption><colgroup>…`; V4 HTML round
   trips exactly. A hidden (rowless) captioned table exports its caption as a
   paragraph with `table-geometry`.

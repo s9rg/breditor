@@ -19,6 +19,8 @@ const removed=new Set(["script","style","iframe","object","embed","template","no
 // Non-rendered document metadata (Office ProgId/Generator, File-List companions, charset, empty titles).
 const metadata=new Set(["meta","title","base","link"]);
 const inlineTags=new Set(["span","b","strong","i","em","u","s","strike","del","code","sub","sup","a","small","big","font","label","abbr","mark","wbr"]);
+const captionInline=(node:HtmlElement):boolean=>node.childNodes.every(child=>!isElement(child)||
+  (inlineTags.has(child.tagName)||["br","ruby","rt","rp"].includes(child.tagName))&&captionInline(child));
 const knownAttributes=new Set(["style","class","id","dir","align","lang","href","target","rel","src","alt","width","height","start","value","rowspan","colspan","span","type","checked","disabled","data-breditor-placeholder","data-breditor-cell-partition","data-breditor-cell-row","data-breditor-cell-column","data-breditor-cell-header"]);
 const structuralRoles=new Set(["presentation","none","list","listitem"]);
 // Word for the web flat-list metadata that structural conversion consumes.
@@ -422,6 +424,18 @@ export class HtmlConversion {
     return elements[0];
   }
   #figure(node:HtmlElement,state:StyleState,insideTable:boolean):Element[] {
+    const children=node.childNodes.filter(isElement),[table,tableCaption]=children;
+    // The table's own caption wins if both shapes are authored. Other figure contents keep ordinary flow.
+    if(this.capabilities.tableCaptions&&children.length===2&&table?.tagName==="table"&&tableCaption?.tagName==="figcaption"&&
+      !node.childNodes.some(child=>!isElement(child)&&plainText(child).replace(htmlSpace,""))&&
+      !table.childNodes.some(child=>isElement(child)&&child.tagName==="caption")&&!this.#hidden(table)&&!this.#hidden(tableCaption)){
+      const content=tableCaption.childNodes.filter(child=>isElement(child)||plainText(child).replace(htmlSpace,""));
+      const [first]=content,prose=content.length===1&&first&&isElement(first)&&first.tagName==="p"?first:tableCaption;
+      if(captionInline(prose)){
+        if(insideTable)fail("unsupported-content");
+        return importTable(this,table,this.style(table,state),{node:tableCaption,parent:state});
+      }
+    }
     const images:HtmlElement[]=[],captions:HtmlElement[]=[];let other=false;
     // V4: `<figure><a href><img></a><figcaption>` is a linked image with a caption.
     const anchors=new Map<HtmlElement,HtmlElement>();
