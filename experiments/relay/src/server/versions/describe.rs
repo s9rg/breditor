@@ -10,6 +10,22 @@ pub(in crate::server) async fn describe(State(host): State<Host>, headers: Heade
         Ok(principal) => principal,
         Err(error) => return cors(failure(&error), allowed),
     };
-    let result=host.transaction(move|room|Ok(json!({"format":"breditor/relay-document-versions-info","formatVersion":1,"descriptor":room.document_versions_descriptor(&principal)?,"canPublish":room.document_versions_can_publish(&principal)?}))).await;
-    cors(result.map_or_else(|error| failure(&error), super::json), allowed)
+    let Ok(permit) = host.version_operations.clone().try_acquire_owned() else {
+        return cors(StatusCode::SERVICE_UNAVAILABLE.into_response(), allowed);
+    };
+    let result = host
+        .transaction(move |room| {
+            let descriptor = room.document_versions_descriptor(&principal)?;
+            let can_publish = room.document_versions_can_publish(&principal)?;
+            let bytes = serde_json::to_vec(&json!({
+                "format":"breditor/relay-document-versions-info", "formatVersion":1,
+                "descriptor":descriptor, "canPublish":can_publish,
+            }))?;
+            Ok((bytes, permit))
+        })
+        .await;
+    cors(
+        result.map_or_else(|error| failure(&error), |(bytes, permit)| super::json(bytes, permit)),
+        allowed,
+    )
 }
