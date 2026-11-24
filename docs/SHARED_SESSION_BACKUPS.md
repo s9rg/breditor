@@ -107,7 +107,10 @@ rejects the opening with `session_open_versionchange` or
 `review_open_versionchange`; a returned unpublished native owner is freed and
 writer leases release. No old-database editor is published afterward. Once live,
 the existing path instead retires the readable owner and retains recovery
-responsibility until explicit closure.
+responsibility until explicit closure. A save, retry, flush, or durable close
+after a live upgrade reports `session_versionchange` or `review_versionchange`.
+Export the retired history and explicitly discard that owner before restoring
+to a fresh database.
 
 The installed backup regression also upgrades live document-only and paired
 owners after aborting a staged autosave. It compares the old committed record

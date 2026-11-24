@@ -61,6 +61,11 @@ async function recoverLiveUpgrade(p){
   same(await readJournal(upgraded),committed,"The upgrade must preserve the exact last committed record");
   check(source.state().status==="failed"&&p.snapshot(source)===current,"Retirement must retain the exact unsaved native history");
   await refuses(async()=>source.core.type("Refuse retired writer"),"retired");
+  const terminal=source.state(),versionchange=p.paired?"review_versionchange":"session_versionchange";
+  for(const save of [()=>source.save(),()=>source.retry(),()=>source.close(),()=>source.flush()]){
+   await refuses(async()=>save(),versionchange);
+   same(source.state(),terminal,"Obsolete database writes must preserve the version-change failure");
+  }
   const backupJson=await source.exportBackup(),{create,...options}=p.options;
   const recovery={...options,database:`${database}-recovered`,backupJson,writerRecovery:"host-reacquired"};
   await refuses(()=>p.importBackup(recovery),"writer_in_use");

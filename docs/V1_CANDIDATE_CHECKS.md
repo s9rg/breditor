@@ -65,6 +65,13 @@ cases use the same hash-verified release relay as the installed editor matrix.
 The profile retains the three-engine Playwright reports and failed traces.
 The full plan requires this suite along with the installed SDK checks.
 
+Select `installed-application-network` to run the promoted SDK network suite
+in Chromium, Firefox and WebKit. It builds and installs fresh browser, rich,
+collaboration and editor packages and runs the same first-party pilot,
+history and presentation assertions against the candidate Native relay.
+The retained report includes the Playwright results, archive, shared Wasm,
+relay and fixture digests. The workflow retains failed Playwright traces.
+
 ## Dependency inventories
 
 Select `dependency-inventories` to build the rich and shared Wasm notice
@@ -84,6 +91,16 @@ and stage logs include npm archive digests, and the candidate manifest records
 the relay fixture hashes. This profile exercises installed APIs and the native
 relay through synthetic DOM and storage fixtures. Browser matrices are separate
 profiles.
+
+## Input rules and writing tools
+
+Select `input-writing-workflows` to qualify the current input rules and
+writing tools against the candidate source and fresh SDK archives. It runs
+the existing borrowed controls and managed startup checks, then retains both
+independently installed workflow reports. These reports bind the exercised
+local and shared Wasm and npm archive hashes to the run and record the bundle
+module checks. Historical reader qualification and physical-input evidence have
+separate procedures.
 
 ## Installed feature browser checks
 

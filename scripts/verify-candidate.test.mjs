@@ -12,6 +12,7 @@ import {executeCandidateStage} from "./candidate-release/process.mjs";
 import {runCandidateChecks} from "./verify-candidate.mjs";
 import {candidateCoverage} from "./check-candidate-coverage.mjs";
 import {verifyHostedContext} from "./candidate-release/hosted-context.mjs";
+import {validateApplicationNetworkReport} from "./candidate-release/application-network-report.mjs";
 const temporary=()=>mkdtempSync(join(tmpdir(),"breditor-candidate-contract-"));
 const fixtureCheck=(id="fixture",script="console.log('fixture proof')")=>({id,command:process.execPath,args:["-e",script],env:{},artifacts:[],timeoutMs:4000});
 const plan=checks=>({profile:"functional",deferred:["not-a-v1-certification"],checks});
@@ -423,7 +424,7 @@ test("both candidate profiles require portable input rules without reusing or in
   const plan=candidateReleasePlan({profile}),find=id=>{const value=plan.checks.find(c=>c.id===id);assert.ok(value,id);return value;};
   assert.deepEqual(find("input-rules-borrowed-controls").args,["scripts/probe-input-rules-ui.mjs","--current-runtime-only","target/rich-browser-web","target/promoted-shared-web"]);
   assert.deepEqual(find("input-rules-managed-startup").args,["scripts/probe-input-rules-root-sdk.mjs","target/rich-browser-web","target/promoted-shared-web"]);
-  const installed=find("installed-input-rule-workflows");assert.deepEqual(installed.args,["scripts/check-input-rules-installed.mjs","--current-runtime-only"]);assert.deepEqual(installed.artifacts,[{path:"target/input-rules-current-installed-consumer.json",fresh:true}]);
+  const installed=find("installed-input-rule-workflows");assert.deepEqual(installed.args,["scripts/check-input-rules-installed.mjs","--current-runtime-only"]);assert.deepEqual(installed.artifacts,[{path:"target/input-rules-current-installed-consumer.json",fresh:true,retain:true}]);
   assert.ok(!installed.args.includes("--reuse-runtimes"));assert.ok(plan.deferred.includes("pinned-input-rule-historical-readers"));
   const index=id=>plan.checks.findIndex(c=>c.id===id);assert.ok(index("paired-local-runtime")<index("input-rules-borrowed-controls"));assert.ok(index("paired-shared-runtime")<index("input-rules-managed-startup"));assert.ok(index("installed-input-rule-workflows")<index("readiness-inventory"));
   assert.ok(plan.checks.every(c=>c.args.every(arg=>!arg.includes("input-rule-old-readers-")&&!arg.includes("input-rules-runtime-"))),"CI has no dependency on untracked historical caches");
@@ -433,7 +434,7 @@ test("both profiles require complete current writing utilities, actual root Reac
  for(const profile of ["functional","full"]){const plan=candidateReleasePlan({profile}),find=id=>{const value=plan.checks.find(c=>c.id===id);assert.ok(value,id);return value;};
   assert.deepEqual(find("writing-tools-native-sdk-and-controls").args,["scripts/probe-writing-tools.mjs","target/rich-browser-web","target/promoted-shared-web"]);
   assert.deepEqual(find("writing-tools-managed-startup").args,["scripts/probe-writing-tools-root-sdk.mjs","target/rich-browser-web","target/promoted-shared-web"]);
-  const installed=find("installed-writing-tools-workflows");assert.deepEqual(installed.args,["scripts/check-writing-tools-installed.mjs"]);assert.deepEqual(installed.artifacts,[{path:"target/writing-tools-installed-consumer.json",fresh:true}]);assert.ok(!installed.args.includes("--reuse-runtimes"));
+  const installed=find("installed-writing-tools-workflows");assert.deepEqual(installed.args,["scripts/check-writing-tools-installed.mjs"]);assert.deepEqual(installed.artifacts,[{path:"target/writing-tools-installed-consumer.json",fresh:true,retain:true}]);assert.ok(!installed.args.includes("--reuse-runtimes"));
   assert.ok(plan.checks.findIndex(c=>c.id==="paired-shared-runtime")<plan.checks.findIndex(c=>c.id==="writing-tools-native-sdk-and-controls"));assert.ok(plan.checks.findIndex(c=>c.id==="installed-writing-tools-workflows")<plan.checks.findIndex(c=>c.id==="readiness-inventory"));
  }
 });
@@ -484,6 +485,10 @@ test("isolated release matrices preserve the full plan's commands and report the
    "shared-browser-wasm-build","shared-browser-wasm-bindgen","shared-browser-native-fixtures","shared-browser-vector",
    "shared-browser-raster-fixtures","shared-browser-typescript-build","shared-browser-matrix",
   ]],
+  ["installed-application-network",[
+   "relay-native-dependency-notices","default-typescript-build","installed-editor-pairing",
+   "shared-browser-vector","shared-browser-raster-fixtures","installed-application-network-matrix",
+  ]],
   ["portable-relay-recovery",[
    "default-typescript-build","paired-local-runtime","paired-shared-runtime","rich-browser-build","collaboration-build",
    "functional-native-fixtures","portable-relay-relocation","portable-relay-legacy-handover",
@@ -493,6 +498,11 @@ test("isolated release matrices preserve the full plan's commands and report the
    "default-typescript-build","paired-local-runtime","paired-shared-runtime","rich-browser-build","collaboration-build",
    "installed-rich-interchange","functional-native-fixtures","installed-everyday-mixed-workflows",
    "installed-text-review-and-readers","installed-formatting-review-and-readers","installed-assets-comments-versions",
+  ]],
+  ["input-writing-workflows",[
+   "default-typescript-build","paired-local-runtime","paired-shared-runtime","rich-browser-build","collaboration-build","editor-build",
+   "input-rules-borrowed-controls","input-rules-managed-startup","writing-tools-native-sdk-and-controls","writing-tools-managed-startup",
+   "installed-input-rule-workflows","installed-writing-tools-workflows",
   ]],
   ["installed-feature-browser",[
    "default-typescript-build","paired-local-runtime","paired-shared-runtime","rich-browser-build","collaboration-build","editor-build",
@@ -524,6 +534,19 @@ test("isolated release matrices preserve the full plan's commands and report the
   assert.equal(run.status,2);
   assert.equal(run.stdout,"");
  }
+});
+test("application network evidence counts pilot runs from each Playwright file suite",()=>{
+ const titles=[
+  "the first-party pilot opens independent participants and verifies an offline checkpoint after reload",
+  "the pilot supports keyboard sign-in and checkpoint recovery at a narrow viewport",
+ ];
+ const report={stats:{expected:6,skipped:0,unexpected:0,flaky:0},suites:
+  ["chromium","firefox","webkit-1"].map(projectName=>({file:"network-demo.spec.mjs",
+   specs:titles.map(title=>({title,tests:[{projectName,results:[{status:"passed"}]}]})),
+  }))};
+ validateApplicationNetworkReport(report);
+ assert.throws(()=>validateApplicationNetworkReport({...report,suites:report.suites.slice(0,2)}),/offline checkpoint after reload/);
+ assert.throws(()=>validateApplicationNetworkReport({...report,suites:[...report.suites,report.suites[0]]}),/offline checkpoint after reload/);
 });
 test("candidate engineering coverage can be collected before reviewed readiness",()=>{
  const covered=new Set(candidateCheckProfiles

@@ -34,6 +34,8 @@ to the private `target/pilot-model11-journal12-v1/accounts.json`. Send each
 participant only their own code through the team's private channel. The browser
 needs the code again after a reload. It retains the writer, journal, and a
 one-way check for the code on that browser profile.
+Close a participant's editor before opening the same participant in another
+tab in that profile. The second tab reopens the same writer and history.
 
 On the same workstation, use independent browser profiles. On separate
 workstations, keep both services bound to loopback and forward both ports

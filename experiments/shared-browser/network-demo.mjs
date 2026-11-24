@@ -41,16 +41,22 @@ export async function openNetworkDemo(bootstrap,chosen,{
   if(pilot)document.querySelector(`#pane-${key}`).hidden=false;
   const peer={key,principal,paint:0,offline:paused,session:undefined,cache:undefined,sync:undefined,presence:undefined,assets:undefined,mounted:undefined,overlay:undefined};app.peers[key]=peer;
   const getToken=()=>tokenFor(principal),identityKey=[bootstrap.endpoint,principal];
-  const saved=await credentials(identityDb,identityKey);
-  if(pilot&&saved&&saved.codeSha256!==codeSha256)throw Error("Incorrect code for the saved pilot writer");
-  let identity=pilot?saved?.identity:saved,registration;
-  if(!identity){
-   registration=await registerSharedRelayWriter({endpoint:bootstrap.endpoint,principal,room:"room",getToken,
-    saveIdentity:record=>credentials(identityDb,identityKey,pilot?{identity:record,codeSha256}:record)});
-   identity=registration.identity;
-  }
-  peer.identity=identity;
-  peer.session=await SharedPersistentSession.open({database:`${namespace}-journals-v12`,room:identity.room,writer:identity.writer,create:()=>{if(!registration)throw Error("Exact saved writer journal is missing; refusing a new history");return profile.join_frame(identity.room,identity.writer,registration.frame);},restore:journal=>profile.restore(identity.room,journal),onState:()=>update(peer),onError:report});
+  const openSession=async()=>{
+   const saved=await credentials(identityDb,identityKey);
+   if(pilot&&saved&&saved.codeSha256!==codeSha256)throw Error("Incorrect code for the saved pilot writer");
+   let identity=pilot?saved?.identity:saved,registration;
+   if(!identity){
+    registration=await registerSharedRelayWriter({endpoint:bootstrap.endpoint,principal,room:"room",getToken,
+     saveIdentity:record=>credentials(identityDb,identityKey,pilot?{identity:record,codeSha256}:record)});
+    identity=registration.identity;
+   }
+   peer.identity=identity;
+   return SharedPersistentSession.open({database:`${namespace}-journals-v12`,room:identity.room,writer:identity.writer,create:()=>{if(!registration)throw Error("Exact saved writer journal is missing; refusing a new history");return profile.join_frame(identity.room,identity.writer,registration.frame);},restore:journal=>profile.restore(identity.room,journal),onState:()=>update(peer),onError:report});
+  };
+  // Give the second tab the first tab's writer and the usual live journal lease check.
+  // Keep the registration lock until the first exact local journal has been committed.
+  peer.session=pilot?await navigator.locks.request(`breditor-pilot-login-v1:${JSON.stringify(identityKey)}`,openSession):await openSession();
+  const identity=peer.identity;
   peer.cache=await RichAssetStore.open(`${namespace}-assets-${principal}`,{onChange:()=>update(peer)});
   peer.assets=new SharedRelayAssets({endpoint:bootstrap.endpoint,principal,getToken,store:peer.cache});
   if(peer.offline)peer.assets.setOnline(false);
