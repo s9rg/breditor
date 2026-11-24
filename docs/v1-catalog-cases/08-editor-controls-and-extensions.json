@@ -1,0 +1,300 @@
+{
+  "format": "breditor/v1-catalog-cases",
+  "formatVersion": 1,
+  "cases": [
+    {
+      "id": "extension-compose-configure-and-depend",
+      "version": 1,
+      "feature": "extension-sdk",
+      "sources": [
+        "tiptap-extension",
+        "ckeditor-overview"
+      ],
+      "scenario": "Install a test extension that depends on a second extension. Start the same profile with a supported option override, then try a missing dependency, a duplicate ID and an incompatible version.",
+      "expected": [
+        "Valid declarations resolve deterministically and the option changes only the advertised capability. The public manifest exposes the resolved dependencies and effective configuration.",
+        "Invalid configurations fail before dispatch or document publication, with a diagnostic identifying the rejected declaration."
+      ]
+    },
+    {
+      "id": "extension-mark-and-custom-node-round-trip",
+      "version": 1,
+      "feature": "extension-sdk",
+      "sources": [
+        "tiptap-extension",
+        "ckeditor-overview"
+      ],
+      "scenario": "Configure a custom mark and a bounded custom block with typed fields, a renderer and an HTML converter through the documented SDK. Insert and edit each from a host command, then reopen and interchange the document.",
+      "expected": [
+        "The nodes and marks retain their approved fields, identifiers and formatting through live rendering, export and compatible restore. A supported field edit is one undoable command.",
+        "A consumer without the required extension receives the documented compatibility outcome and an actionable diagnostic. It never silently treats an unsupported custom node as another type."
+      ],
+      "untrustedInput": "Pass an invalid field and an unapproved external reference through the extension converter. Verify validation is applied before editor, history or publishable state changes."
+    },
+    {
+      "id": "extension-command-and-keymap-admission",
+      "version": 1,
+      "feature": "extension-sdk",
+      "sources": [
+        "tiptap-extension"
+      ],
+      "scenario": "Register a typed extension command with a distinct keyboard binding and invoke it by its shortcut and host control. In a fresh editor attempt to compile two identical chords, then restart with the extension disabled.",
+      "expected": [
+        "The shortcut and host control dispatch the same admitted command and expose the same eligibility. The duplicate binding configuration is refused before listeners or editor DOM are installed.",
+        "Disabling the extension removes its keyboard registration. A failed or refused invocation leaves existing content and history unchanged."
+      ]
+    },
+    {
+      "id": "extension-renderer-and-decoration-isolation",
+      "version": 1,
+      "feature": "extension-sdk",
+      "sources": [
+        "tiptap-extension",
+        "tiptap-catalog"
+      ],
+      "scenario": "Install a presentation extension that renders a per-node placeholder or highlight from the current document state. Trigger rerendering and owner disposal, and repeat with a callback that throws.",
+      "expected": [
+        "The decoration updates with semantic state and leaves stored content, selected text and exported data unchanged. Disposal releases listeners and presentation state without touching another editor.",
+        "A failing callback follows the documented isolation and fallback behavior. Commands and valid renderers continue working without a partial document write."
+      ]
+    },
+    {
+      "id": "control-state-across-toolbar-and-keyboard",
+      "version": 1,
+      "feature": "toolbar-and-context-ui",
+      "sources": [
+        "tiptap-catalog",
+        "ckeditor-overview"
+      ],
+      "scenario": "Select a mixed inline formatting range, then apply the same command using a toolbar button and its advertised shortcut in separate runs. Repeat in a read-only editor.",
+      "expected": [
+        "The toggle accurately announces mixed, active and disabled states, and keyboard and pointer invocation produce the same semantic result and history group.",
+        "The read-only control refuses the edit through both paths while leaving text selection and navigation available."
+      ]
+    },
+    {
+      "id": "configurable-toolbar-groups-and-overflow",
+      "version": 1,
+      "feature": "toolbar-and-context-ui",
+      "sources": [
+        "tiptap-catalog",
+        "ckeditor-overview"
+      ],
+      "scenario": "Configure a toolbar with action groups, a labeled dropdown and a custom control. Resize from a wide layout to overflow, navigate with the keyboard and use an overflowed command.",
+      "expected": [
+        "Configured grouping, order and accessible names remain discoverable. Overflowed commands retain the same active and disabled state and can be reached without pointer input.",
+        "Closing the dropdown or completing its action returns focus to the documented control or editor location. An unknown requested control is handled during configuration with the documented diagnostic."
+      ]
+    },
+    {
+      "id": "floating-selection-toolbar-placement",
+      "version": 1,
+      "feature": "toolbar-and-context-ui",
+      "sources": [
+        "tiptap-catalog",
+        "ckeditor-overview"
+      ],
+      "scenario": "Select text by pointer and keyboard in a scrolling host, then resize the viewport near an edge and invoke a selection toolbar command. Collapse the selection and repeat in read-only mode.",
+      "expected": [
+        "Eligibility and placement follow the documented selection and viewport behavior. Shown controls remain reachable at supported zoom and viewport sizes and act on the visible selection.",
+        "The overlay hides or updates when navigation invalidates the selection. Commit returns focus to the editor and creates one undoable action."
+      ]
+    },
+    {
+      "id": "object-and-keyboard-context-controls",
+      "version": 1,
+      "feature": "toolbar-and-context-ui",
+      "sources": [
+        "tiptap-catalog",
+        "ckeditor-overview"
+      ],
+      "scenario": "Open the context menu using the advertised keyboard command and by pointer on text, image and table selections. Inspect the applicable controls and attempt one action after a shared update changes the selection.",
+      "expected": [
+        "Each menu exposes controls appropriate to the current selection and provides named keyboard targets. Escape dismisses it with the original context focused.",
+        "A stale draft refuses the action instead of targeting a changed selection. A fresh context action and its fixed-toolbar equivalent have the same mutation and eligibility."
+      ]
+    },
+    {
+      "id": "unicode-find-flags-and-result-navigation",
+      "version": 1,
+      "feature": "find-replace",
+      "sources": [
+        "tiptap-find-replace",
+        "ckeditor-digest"
+      ],
+      "scenario": "Search for a fixture with accented letters, repeated whole words, partial matches and occurrences in a caption, a table cell and a collapsed section. Toggle case and whole-word flags, then navigate next, previous and wrap.",
+      "expected": [
+        "Counts and highlights match the published Unicode, text-boundary and content-inclusion rules. The active result has a distinct indicator and can be located in the document from the search UI.",
+        "Read-only search retains navigation without offering an effective replace operation. Closing search restores focus to the documented location."
+      ]
+    },
+    {
+      "id": "regex-find-and-replace-one",
+      "version": 1,
+      "feature": "find-replace",
+      "sources": [
+        "tiptap-find-replace",
+        "ckeditor-digest"
+      ],
+      "scenario": "Search code-like text that contains literal regex punctuation in both literal and regex modes. Run Replace One for an admitted capture pattern, then try an invalid regex.",
+      "expected": [
+        "Literal mode searches the punctuation as text. The compiled pattern and replacement follow the documented regex and capture syntax, changing only the active eligible match.",
+        "An invalid query reports its error and clears or deactivates previous results as specified. It leaves document content and history unchanged."
+      ]
+    },
+    {
+      "id": "replace-all-bounded-and-stale",
+      "version": 1,
+      "feature": "find-replace",
+      "sources": [
+        "tiptap-find-replace",
+        "ckeditor-digest"
+      ],
+      "scenario": "Search text in ordinary prose, table cells and protected content. Attempt Replace All after a peer changes a match, then repeat with fresh results spanning both editable and protected matches. Use a separate query of all eligible matches for the limit and success cases.",
+      "expected": [
+        "A stale action, an oversized action and a mixed protected/editable action each refuse the entire change. The eligible action updates every match in its declared scope once and preserves unrelated content.",
+        "The successful action is one undoable history group. Undo after a compatible reopen restores the matching text while retaining unrelated peer edits."
+      ]
+    },
+    {
+      "id": "mention-identity-trigger-and-output",
+      "version": 1,
+      "feature": "mentions-slash",
+      "sources": [
+        "tiptap-mention",
+        "ckeditor-mentions"
+      ],
+      "scenario": "Configure an admitted mention trigger and its provider, return two candidates with identical labels and distinct identity keys, choose the second, then edit adjacent text and export.",
+      "expected": [
+        "The inserted entity retains the chosen ID and remains an atomic editable item. Labels and the configured presentation survive recovery and supported interchange according to the output contract.",
+        "The same labels do not collapse two identities. Undo removes the mention as one edit and restores the trigger context where the published semantics specify it."
+      ],
+      "untrustedInput": "Return a label containing markup and an invalid or unauthorized identifier. Verify escaped labels and rejection of inadmissible entity data in edit, restore and export."
+    },
+    {
+      "id": "mention-async-results-and-keyboard",
+      "version": 1,
+      "feature": "mentions-slash",
+      "sources": [
+        "tiptap-mention",
+        "ckeditor-mentions"
+      ],
+      "scenario": "Type two mention queries in quick succession while the first is pending. Resolve responses out of order and test Arrow keys, Enter, Escape and a provider failure using only the keyboard.",
+      "expected": [
+        "Late or cancelled responses never replace the current query results. The active option and result state are announced through the supported accessibility contract.",
+        "Escape and provider failure preserve the typed text and leave focus usable. Selection commits only the currently resolved admitted candidate."
+      ]
+    },
+    {
+      "id": "slash-command-atomic-transform",
+      "version": 1,
+      "feature": "mentions-slash",
+      "sources": [
+        "ckeditor-slash-commands",
+        "tiptap-catalog"
+      ],
+      "scenario": "Open an empty-block slash menu, filter for a block conversion, and apply it by keyboard. Repeat with no eligible match, a protected selection and a concurrent shared update.",
+      "expected": [
+        "The successful action consumes its trigger and performs the conversion as one history step. Undo recovers the prior content and trigger as specified.",
+        "An empty, disabled or stale invocation leaves the document unchanged and returns an observable outcome without sending a partial command."
+      ]
+    },
+    {
+      "id": "drag-block-retained-identity",
+      "version": 1,
+      "feature": "drag-and-drop",
+      "sources": [
+        "tiptap-catalog",
+        "ckeditor-digest"
+      ],
+      "scenario": "Move a formatted block or container using its drag handle, then use the documented keyboard move path for the same destination. Include an adjacent block and a collaborator editing the moved block.",
+      "expected": [
+        "Both valid paths retain the original block and metadata identities and produce the same semantic order. The live insertion target is visually distinguishable before commit.",
+        "Each commit creates one Undo step and preserves compatible collaborator edits. The moved content and positions agree after convergence and reopen."
+      ]
+    },
+    {
+      "id": "drag-target-rejection-and-cancel",
+      "version": 1,
+      "feature": "drag-and-drop",
+      "sources": [
+        "tiptap-catalog",
+        "ckeditor-digest"
+      ],
+      "scenario": "Begin dragging a block, hover inside its own descendant and outside the allowed scope, then cancel. Repeat with a concurrent target removal and an Escape cancellation during the keyboard move path.",
+      "expected": [
+        "Invalid targets never advertise a valid insertion point. Refused or cancelled drops remove feedback and keep the previous content, identities and history.",
+        "Focus returns to the documented source handle or valid editor position, and a subsequent valid move can proceed."
+      ]
+    },
+    {
+      "id": "inline-drag-clipboard-and-drop-feedback",
+      "version": 1,
+      "feature": "drag-and-drop",
+      "sources": [
+        "tiptap-catalog",
+        "ckeditor-digest"
+      ],
+      "scenario": "Drag a formatted text range between paragraphs using native drag input. Compare the ordinary move with any advertised copy modifier and with dropping onto a protected destination.",
+      "expected": [
+        "The drop indicator identifies the actual target without mutating the document before commit. A valid move preserves admitted formatting and deletes the original range exactly once. A valid copy keeps the source range.",
+        "A protected destination refuses the drop without losing the original data. Undo recovers source and destination text and formats for the successful move."
+      ]
+    },
+    {
+      "id": "editor-layout-and-external-toolbar-mount",
+      "version": 1,
+      "feature": "editor-shell-and-help",
+      "sources": [
+        "ckeditor-overview",
+        "tiptap-catalog"
+      ],
+      "scenario": "Mount the advertised fixed, inline, contextual and separately hosted toolbar layouts in small and wide containers. Change the active editor while one external toolbar host stays mounted.",
+      "expected": [
+        "Each installed layout renders controls in its documented location and visibility conditions. Focus and command eligibility follow the active editor and never leak to the previously bound owner.",
+        "Unmount removes the controls and keyboard bindings owned by that layout. Saved document data remains compatible across the offered layouts of the same profile."
+      ]
+    },
+    {
+      "id": "editor-menu-bar-keyboard-and-accessibility",
+      "version": 1,
+      "feature": "editor-shell-and-help",
+      "sources": [
+        "ckeditor-menubar"
+      ],
+      "scenario": "Open the menu bar and operate nested or grouped items using the published arrow, typeahead, Escape and Tab controls. Repeat with right-to-left chrome and the supported screen reader pairing.",
+      "expected": [
+        "Focus has a predictable roving tab stop, item roles and disabled state are announced, and directional navigation matches the declared language direction.",
+        "A successful activation dispatches the same admitted command as its toolbar control and returns focus as documented. Dismissal performs no edit."
+      ]
+    },
+    {
+      "id": "empty-line-block-menu-lifecycle",
+      "version": 1,
+      "feature": "editor-shell-and-help",
+      "sources": [
+        "ckeditor-menubar",
+        "tiptap-catalog"
+      ],
+      "scenario": "Move the caret from ordinary text into an empty line that supports block insertion, open the floating block menu through its advertised shortcut, then type text or leave the block.",
+      "expected": [
+        "The menu appears only in published contexts and its appearance does not take editing focus. Keyboard opening exposes named eligible commands and accepting one produces the expected undoable block edit.",
+        "Typing or moving away updates the menu without leaving stale controls or a hidden keyboard stop. It does not compete with a selection toolbar on a noncollapsed range."
+      ]
+    },
+    {
+      "id": "shortcut-help-dialog-platform-and-lifecycle",
+      "version": 1,
+      "feature": "editor-shell-and-help",
+      "sources": [
+        "ckeditor-overview",
+        "ckeditor-menubar"
+      ],
+      "scenario": "Open the keyboard shortcut dialog on two supported platforms with one configured extension. Navigate using keyboard and the supported screen reader, dismiss it, disable that extension and reopen.",
+      "expected": [
+        "The dialog exposes its title and contains focus while open. Chords match the active platform and configuration, and disabled extensions' chords disappear.",
+        "Escape and the close control restore the prior editor focus or documented fallback. Opening and dismissal do not create history entries."
+      ]
+    }
+  ]
+}
