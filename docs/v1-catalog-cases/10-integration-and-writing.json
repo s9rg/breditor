@@ -1,0 +1,618 @@
+{
+  "format": "breditor/v1-catalog-cases",
+  "formatVersion": 1,
+  "cases": [
+    {
+      "id": "installed-vanilla-editor-lifecycle",
+      "version": 1,
+      "feature": "framework-integrations",
+      "sources": [
+        "tiptap-extension",
+        "ckeditor-overview"
+      ],
+      "scenario": "Install the released browser SDK in a clean vanilla consumer. Mount, edit, save, dispose and remount a local editor, then repeat with the optional shared entry and a new room.",
+      "expected": [
+        "Supported package roots resolve in both consumers and the saved document reopens with its last confirmed selection and history under the documented profile.",
+        "Disposal releases event handlers and ownership. Shared save failure exposes recovery and keeps pending work available for reopen."
+      ]
+    },
+    {
+      "id": "react-editor-lifecycle-and-controlled-updates",
+      "version": 1,
+      "feature": "framework-integrations",
+      "sources": [
+        "tiptap-extension",
+        "ckeditor-overview"
+      ],
+      "scenario": "Mount the installed React wrapper in Strict Mode, change a presentation prop, switch document identity during asynchronous startup and unmount during a failed shared save.",
+      "expected": [
+        "Presentation-only updates keep the active owner. A document change publishes only the replacement owner's view and tears down earlier mounts and callbacks.",
+        "A failed shared save surfaces the recovery handle and reopening it shows the exact outstanding edits."
+      ]
+    },
+    {
+      "id": "non-react-framework-adapter-contract",
+      "version": 1,
+      "feature": "framework-integrations",
+      "sources": [
+        "tiptap-catalog",
+        "ckeditor-overview"
+      ],
+      "scenario": "Use the documented framework adapter boundary in a small Vue, Svelte or Angular fixture. Bind a toolbar and change the active editor via component props before unmounting.",
+      "expected": [
+        "Toolbar updates target the current owner, edits reach the host state once, and unmount releases the effects and event subscriptions created by the adapter.",
+        "The adapter imports documented package entries and its consumer bundle reports the actual runtime dependencies it loads."
+      ]
+    },
+    {
+      "id": "server-static-document-rendering",
+      "version": 1,
+      "feature": "framework-integrations",
+      "sources": [
+        "tiptap-extension",
+        "ckeditor-overview"
+      ],
+      "scenario": "Render installed-package static output in a Node process with no browser globals, using a known local and shared rich snapshot with formatting, a merged table and an image. Compare the markup with the supported browser and React static outputs.",
+      "expected": [
+        "Equivalent canonical snapshots produce equivalent semantic markup for formats, table geometry and authorized asset references.",
+        "The static renderer runs without private repo artifacts. The resulting document has zero editor listeners or editable surfaces."
+      ],
+      "untrustedInput": "Use an unknown node, a denied link and a denied image reference in saved input. Confirm strict schema refusal or the documented inert representation and loss reporting at static publication."
+    },
+    {
+      "id": "unique-document-element-identities",
+      "version": 1,
+      "feature": "framework-integrations",
+      "sources": [
+        "tiptap-catalog",
+        "ckeditor-overview"
+      ],
+      "scenario": "Integrate a host index keyed by document element IDs. Save a document, reorder a block, duplicate it through copy and paste, then reopen and apply a peer insertion.",
+      "expected": [
+        "Moving and reopening preserve identity for retained nodes. Copies and concurrent insertions acquire independent IDs before the index sees them.",
+        "Exports or imports that cannot preserve identity report the documented remapping behavior to the host."
+      ]
+    },
+    {
+      "id": "word-and-character-count-boundaries",
+      "version": 1,
+      "feature": "writing-utilities",
+      "sources": [
+        "tiptap-catalog",
+        "ckeditor-digest"
+      ],
+      "scenario": "Count a document and then a selection containing combining marks, an emoji sequence, CJK words, a hard break and a column of table cells. Compare with the documented segmentation mode and repeat after an edit and Undo.",
+      "expected": [
+        "The document and selection display the expected word and character units, including separators, and update exactly once for each observed edit.",
+        "Undo restores the earlier counts and read-only mode still shows and updates counts from incoming document changes."
+      ]
+    },
+    {
+      "id": "empty-editor-and-block-placeholders",
+      "version": 1,
+      "feature": "writing-utilities",
+      "sources": [
+        "tiptap-catalog",
+        "ckeditor-digest"
+      ],
+      "scenario": "Check a configured document placeholder, a per-block placeholder and the empty state in a localized editor. Enter text, Undo back to empty, then copy and export.",
+      "expected": [
+        "A placeholder appears according to the documented empty and focus rules and disappears as soon as content is inserted.",
+        "Copy, stored data and export contain only the authored document, and assistive technology can distinguish the control label from its placeholder."
+      ]
+    },
+    {
+      "id": "fullscreen-editor-focus-and-restoration",
+      "version": 1,
+      "feature": "writing-utilities",
+      "sources": [
+        "ckeditor-digest"
+      ],
+      "scenario": "Enter fullscreen with a real pointer or keyboard activation of the toolbar control. Exit with the control in an unchanged editor. Repeat after typing and moving the selection, exercising the browser's physical Escape behavior separately from a simulated fullscreen-change event.",
+      "expected": [
+        "Fullscreen retains editor state and accessible toolbar navigation. The browser's physical exit is reflected in the control state.",
+        "An unchanged editor can restore the captured focus and selection. An edit keeps its Undo step and the current selection. Exit does not restore a stale selection over the new revision."
+      ]
+    },
+    {
+      "id": "live-heading-outline-navigation",
+      "version": 1,
+      "feature": "writing-utilities",
+      "sources": [
+        "ckeditor-digest",
+        "tiptap-catalog"
+      ],
+      "scenario": "Open a host-side outline on a document with repeated heading labels and three depths. Relabel a heading, move a section, navigate with the keyboard and reopen after a peer changes a heading.",
+      "expected": [
+        "The outline shows the current labels, nesting and document order, with distinct destinations for headings that share a label.",
+        "Invoking an item focuses its current heading without modifying the document or creating an Undo step."
+      ]
+    },
+    {
+      "id": "show-blocks-editor-overlay",
+      "version": 1,
+      "feature": "editing-aids",
+      "sources": [
+        "ckeditor-show-blocks",
+        "tiptap-catalog"
+      ],
+      "scenario": "Toggle show blocks on a document with a paragraph, heading, code block and table. Inspect block boundaries, then type, drag-select, copy and save while the overlay is visible.",
+      "expected": [
+        "The overlay identifies the documented block types after edits and scroll, keeps the caret and selection hit targets reachable, and is excluded from the reading order.",
+        "Selection, saved document content and clipboard bytes for the same selection are identical with the overlay on or off."
+      ]
+    },
+    {
+      "id": "invisible-characters-editor-overlay",
+      "version": 1,
+      "feature": "editing-aids",
+      "sources": [
+        "tiptap-invisible-characters"
+      ],
+      "scenario": "Show invisible characters in prose, code and a bidirectional paragraph with spaces, nonbreaking spaces, tab characters and hard breaks. Scroll, type at a marker and copy a range crossing it.",
+      "expected": [
+        "The expected markers track their text and break positions, and typing navigates the original content offsets.",
+        "The exported and copied text contains the underlying characters. The overlay has no effects on the document revision or Undo history."
+      ]
+    },
+    {
+      "id": "focused-node-style-scope",
+      "version": 1,
+      "feature": "editing-aids",
+      "sources": [
+        "tiptap-catalog"
+      ],
+      "scenario": "Enable focus styling for selected depths. Move between a paragraph, a nested list item and a table cell, then shift focus to another editor.",
+      "expected": [
+        "The marked nodes follow the configured ancestor policy and selection, and focus styling clears or transfers when the active editor changes.",
+        "The selected text, document data and static output contain zero styling records contributed by the focus overlay."
+      ]
+    },
+    {
+      "id": "content-minimap-scroll-navigation",
+      "version": 1,
+      "feature": "editing-aids",
+      "sources": [
+        "ckeditor-digest"
+      ],
+      "scenario": "Open the minimap on a long document with varied block heights. Navigate to the end using its supported control, add paragraphs above the current location and resize the editor.",
+      "expected": [
+        "The viewport marker remains aligned with the editor after scroll, edits and resize, and activating the minimap changes the visible document region.",
+        "The navigational control has an accessible label and creates zero document commits."
+      ]
+    },
+    {
+      "id": "document-title-field",
+      "version": 1,
+      "feature": "editing-aids",
+      "sources": [
+        "ckeditor-digest"
+      ],
+      "scenario": "Enter a title and a first body heading with different text. Use keyboard navigation between title and body, clear the title, Undo and reopen the saved document.",
+      "expected": [
+        "Title and body heading retain their distinct roles and values, with predictable focus order and an accessible empty-title label.",
+        "Title edits restore under the documented history contract, and supported output preserves the title where the export format provides a title field."
+      ]
+    },
+    {
+      "id": "configured-ai-chat-start-shortcuts",
+      "version": 1,
+      "feature": "ai-and-language-tools",
+      "sources": [
+        "ckeditor-ai",
+        "ckeditor-digest"
+      ],
+      "scenario": "Configure a starter prompt, a review shortcut and a translation shortcut requiring a destination language. Open a new conversation and use each shortcut by keyboard. Repeat with the review adapter disabled, and cancel the language chooser before selecting a destination.",
+      "expected": [
+        "Each enabled shortcut shows its configured label and invokes the intended action with the user-approved scope and arguments. An unavailable action follows the documented disabled or hidden behavior.",
+        "Cancelling before choosing a language starts no request. Starting a conversation or review leaves document content and history unchanged until an authorized apply."
+      ]
+    },
+    {
+      "id": "ai-context-across-editors-and-roots",
+      "version": 1,
+      "feature": "ai-and-language-tools",
+      "sources": [
+        "ckeditor-ai",
+        "ckeditor-digest"
+      ],
+      "scenario": "Use two labeled roots and a second editor in the same host context plus an unrelated third editor. Request chat, review and translation over an authorized root group, switch focus before replies arrive, and reopen the conversation from another editor in the group.",
+      "expected": [
+        "Only authorized roots are included in each request. Conversation history follows the declared context boundary and stays inaccessible to the unrelated editor.",
+        "Each suggestion identifies its original editor, root and range. Review or translation applies only to its authorized target after a fresh revision check, regardless of focus changes."
+      ]
+    },
+    {
+      "id": "ai-assistant-command-and-custom-prompt-workflows",
+      "version": 1,
+      "feature": "ai-and-language-tools",
+      "sources": [
+        "ckeditor-ai",
+        "ckeditor-digest"
+      ],
+      "scenario": "Use the installed editor host API to register a named rewrite action with a default prompt and two provider adapters. Rewrite a selection, generate from a custom prompt at a caret, then deliberately select the second provider and exercise its controlled failure.",
+      "expected": [
+        "The registered action keeps its stable ID and sends the configured default prompt. The custom action sends the entered prompt. Both send only allowed context through the selected provider, preview the destination and require an explicit accept or discard.",
+        "An accepted result changes only the guarded target in one Undo step. Failure and discard preserve the document. A host configured without a provider exposes no enabled generation action."
+      ]
+    },
+    {
+      "id": "wproofreader-language-review-provider",
+      "version": 1,
+      "feature": "ai-and-language-tools",
+      "sources": [
+        "ckeditor-digest"
+      ],
+      "scenario": "Configure a supported WProofreader service using the documented language-review boundary in a test account. Check tagged English and German sentences containing spelling, grammar and punctuation issues. Use inline suggestions and the review dialog, add a technical word to a custom dictionary, and explicitly accept one completion.",
+      "expected": [
+        "The provider receives only the allowed spans and language metadata. Inline and dialog review identify and update the intended revisions and ranges, and a stale correction cannot edit a changed target.",
+        "A dictionary entry affects its documented scope, the accepted completion changes only the intended text, and provider failure or disablement preserves authored content. Explicitly enabled autocorrection follows the documented undo and opt-out behavior."
+      ]
+    },
+    {
+      "id": "equation-and-chemistry-authoring-modes",
+      "version": 1,
+      "feature": "widgets-and-embeds",
+      "sources": [
+        "ckeditor-digest"
+      ],
+      "scenario": "Insert a simple fraction with a keyboard-accessible equation editor, use the handwriting mode on a touch device to recognize the same fraction, and insert the water formula H₂O using the chemistry input controls. Correct one recognized symbol before applying, reopen the document and export it with equation numbering enabled.",
+      "expected": [
+        "Typed and recognized input exposes a reviewable representation before insertion, and chemistry input retains the intended symbol and subscript semantics. The original structures remain editable after reopen.",
+        "Number labels follow the documented sequence, and supported output preserves formula meaning and accessible text or reports the specific loss. Cancelling either input mode preserves the preceding selection and document revision."
+      ]
+    },
+    {
+      "id": "mermaid-source-edit-and-round-trip",
+      "version": 1,
+      "feature": "widgets-and-embeds",
+      "sources": [
+        "ckeditor-digest",
+        "tiptap-catalog"
+      ],
+      "scenario": "Insert Mermaid flowchart and sequence-diagram fixtures with styled labels. Edit a node and an edge in source, reopen from a checkpoint and round-trip through the advertised editable interchange. Then try unsupported syntax and export the last valid version.",
+      "expected": [
+        "The Mermaid source survives the editable round-trip, and re-rendering the restored source produces the expected labels and connections.",
+        "Unsupported input yields a useful diagnostic and leaves its source available for correction. Static export preserves the documented diagram rendering and accessible alternative."
+      ],
+      "untrustedInput": "Include a disallowed external resource or active label in a controlled fixture. Verify that preview, reopen and export keep it inactive under the host resource policy."
+    },
+    {
+      "id": "cross-workflow-accessibility-conformance-evidence",
+      "version": 1,
+      "feature": "editor-shell-and-help",
+      "sources": [
+        "ckeditor-overview",
+        "ckeditor-digest"
+      ],
+      "scenario": "Run the declared WCAG 2.2 A and AA review on exact installed release candidates and supported desktop and touch environments. Exercise authoring, keyboard-only commands, toolbars and dialogs, comments, tables, clipboard and review. Identify browser and assistive technology versions and inspect semantic document output.",
+      "expected": [
+        "Retained evidence records each applicable success criterion, tested artifact and profile, procedure, expected and observed behavior, and outcome. It includes manual keyboard, screen reader, focus, zoom, contrast and non-drag alternatives alongside any automated results.",
+        "Output inspection covers headings, language metadata, alternative text, table associations and labeled links. Conformance for the declared scope requires passing evidence for every applicable criterion in that scope. Failed and untested criteria remain open."
+      ]
+    },
+    {
+      "id": "balloon-block-two-surface-layout",
+      "version": 1,
+      "feature": "editor-shell-and-help",
+      "sources": [
+        "ckeditor-digest",
+        "ckeditor-overview"
+      ],
+      "scenario": "In the future opt-in balloon-block layout, mount an adjacent block command surface and a text selection balloon with the fixed toolbar absent. Move the caret between a nonempty paragraph and heading, then select text in one. Compare with the existing empty-line menu preset.",
+      "expected": [
+        "The adjacent command surface follows the active nonempty block and exposes block actions distinct from its drag handle. The selection balloon follows selected text and addresses only that selection.",
+        "Both surfaces have a labeled invocation path and return focus to the relevant editor context. The existing preset still opens its block menu on an eligible empty line."
+      ]
+    },
+    {
+      "id": "adjacent-block-toolbar-configured-actions",
+      "version": 1,
+      "feature": "toolbar-and-context-ui",
+      "sources": [
+        "ckeditor-digest",
+        "ckeditor-overview"
+      ],
+      "scenario": "Configure a block-side toolbar with one block-type action and one disabled command while a separate main toolbar is mounted. Move between a paragraph and a block where eligibility changes, then open the block toolbar with the advertised keyboard action.",
+      "expected": [
+        "The side toolbar follows the focused block and exposes exactly the configured controls in order. The same commands in the main toolbar reflect the same eligible state.",
+        "Running an enabled block command changes the focused block once and returns editing focus there. A stale or disabled command makes no edit."
+      ]
+    },
+    {
+      "id": "toolbar-wrapping-and-explicit-row-breaks",
+      "version": 1,
+      "feature": "toolbar-and-context-ui",
+      "sources": [
+        "ckeditor-digest",
+        "ckeditor-overview"
+      ],
+      "scenario": "Configure the Breditor toolbar with presentation wrapping enabled and an explicit break after a named control. Resize from a wide container to one that also requires an automatic wrap, while a wrapped control has keyboard focus.",
+      "expected": [
+        "At wide width, the declared break starts a row. At narrow width, excess controls flow into further rows while keeping group order, names and states.",
+        "All controls remain reachable directly by keyboard and focus stays on the same command when possible. Layout changes do not dispatch editor commands."
+      ]
+    },
+    {
+      "id": "toolbar-dropdown-contains-action-group",
+      "version": 1,
+      "feature": "toolbar-and-context-ui",
+      "sources": [
+        "ckeditor-digest",
+        "ckeditor-overview"
+      ],
+      "scenario": "Define a named toolbar dropdown containing a formatting toggle, a field control and a disabled item. Open it by keyboard, run the toggle, reopen the group and open and dismiss the field.",
+      "expected": [
+        "The opener announces its accessible name and expanded state. The nested control group preserves declared order and source command state, including disabled and mixed values.",
+        "The toggle produces one history step. Closing the field or dropdown restores focus as documented and does not dispatch a second action."
+      ]
+    },
+    {
+      "id": "wide-review-sidebar-thread-expansion",
+      "version": 1,
+      "feature": "comments",
+      "sources": [
+        "ckeditor-digest"
+      ],
+      "scenario": "Open an editor with three visible anchored threads and a host-allocated wide review region. Select the middle marker, read its complete discussion and navigate into a different thread with the keyboard.",
+      "expected": [
+        "The wide presentation exposes summaries for all three discussions and shows the complete active thread without losing the others. Each marker and entry resolves to the same retained thread ID.",
+        "Selecting a thread scrolls or focuses the corresponding context under the declared host behavior. Display changes do not create discussion revisions or document edits."
+      ]
+    },
+    {
+      "id": "review-annotations-switch-presentation-mode",
+      "version": 1,
+      "feature": "comments",
+      "sources": [
+        "ckeditor-digest"
+      ],
+      "scenario": "Using the Breditor host API, present the same comment threads as wide summaries, compact markers and inline bubbles. Switch while a thread is active, then route comments to the sidebar and suggestion annotations inline.",
+      "expected": [
+        "Each mode exposes the same authorized comments, with their anchor, expansion and active-thread state retained or restored by a documented focus rule.",
+        "Routing by annotation kind has no duplicates or cross-kind attribution. A mode change leaves document and review contents unchanged."
+      ]
+    },
+    {
+      "id": "enhanced-source-dialog-editor-aids",
+      "version": 1,
+      "feature": "html-source-and-email",
+      "sources": [
+        "ckeditor-digest",
+        "ckeditor-general-html"
+      ],
+      "scenario": "Open a Breditor source dialog from two advertised editor layouts. Complete an admitted tag using the source editor's suggestions, inspect syntax highlighting and try closing once with Cancel and once with Apply.",
+      "expected": [
+        "The modal exposes a labeled editor and a keyboard-operable completion list. Highlighting and completion remain presentation features until the authored text is applied.",
+        "Cancel restores focus and discards the draft. Apply validates and commits the admitted replacement in one action; a stale or refused draft leaves the live revision untouched."
+      ],
+      "untrustedInput": "Add a denied external reference next to an admitted tag and confirm the completion and preview surfaces keep the source inert while the source import applies its declared policy."
+    },
+    {
+      "id": "email-preset-validation-and-discovery",
+      "version": 1,
+      "feature": "html-source-and-email",
+      "sources": [
+        "ckeditor-digest",
+        "ckeditor-email-editing"
+      ],
+      "scenario": "Start the email profile through Breditor's public setup helper with default settings, then configure one documented supported override and one unsupported content option.",
+      "expected": [
+        "The helper publishes the effective email capabilities and enables the advertised layout, safe styles and export controls. A valid override reaches the corresponding control and output policy.",
+        "The unsupported option reports a specific configuration diagnostic under the published policy. The original stored document remains unmodified during setup."
+      ]
+    },
+    {
+      "id": "react-drag-handle-callback-and-mount-lifecycle",
+      "version": 1,
+      "feature": "framework-integrations",
+      "sources": [
+        "tiptap-catalog",
+        "tiptap-docs-catalog"
+      ],
+      "scenario": "Attach a custom block handle from an installed React integration. Re-render with a changed target callback, drag a nested block, then unmount and remount the handle against the same document.",
+      "expected": [
+        "The current callback receives the hovered block identity and a clear notification when no block is eligible. Re-rendering keeps one handle and one command dispatch for the completed move.",
+        "Unmount releases the handle's listeners and actions. Remount restores just one handle, and the document persists the move as one undoable edit."
+      ]
+    },
+    {
+      "id": "vue-drag-handle-reactive-targeting-and-disposal",
+      "version": 1,
+      "feature": "framework-integrations",
+      "sources": [
+        "tiptap-catalog",
+        "tiptap-docs-catalog"
+      ],
+      "scenario": "Build a supported Vue consumer with Breditor's handle binding and a custom handle slot. Change reactive nested-target and locked-state inputs, observe target and drag lifecycle notifications, then remove the component.",
+      "expected": [
+        "The slot remains reachable and the handle follows the documented nesting and locking options without duplicate registrations after reactive updates.",
+        "One valid drop produces one move and the corresponding lifecycle notifications. Removing the consumer component clears its handle and callbacks without disposing an independently owned editor."
+      ]
+    },
+    {
+      "id": "legacy-word-doc-export",
+      "version": 1,
+      "feature": "document-conversion",
+      "sources": [
+        "tiptap-conversion"
+      ],
+      "scenario": "Export a document with headings, nested lists, a table, an admitted image and comments to the advertised legacy Word DOC target. Validate the output format independently and open it in a supported DOC consumer.",
+      "expected": [
+        "The consumer recognizes the file as legacy DOC and opens it without a format-mismatch warning. Heading order, list text, table cell content and the admitted image survive within the target's published fidelity subset.",
+        "The conversion reports each expected omission or approximation for modern metadata and advanced layout. The source document and review revisions retain their original values after export."
+      ],
+      "untrustedInput": "Include an unapproved external image reference beside a retained asset. Confirm conversion accesses only admitted assets and the legacy output contains no live reference to the refused resource."
+    },
+    {
+      "id": "twitch-video-clip-and-channel-embeds",
+      "version": 1,
+      "feature": "widgets-and-embeds",
+      "sources": [
+        "tiptap-docs-catalog",
+        "tiptap-catalog"
+      ],
+      "scenario": "Using a controlled provider fixture, insert a Twitch VOD, clip and live channel by their documented URL forms. Exercise configured paste recognition and a VOD start time, then save, reopen and publish on a host with an approved embedding origin.",
+      "expected": [
+        "The installed editor preserves the three media kinds and canonical identifiers. The VOD start time only affects the playback type that supports it, and disabling paste recognition preserves the URL as ordinary input.",
+        "The approved publish host supplies the required embedding context, while an unauthorized or unavailable player shows the documented inert fallback without losing its editable reference."
+      ],
+      "untrustedInput": "Paste a URL with an unapproved origin and attempt to supply an arbitrary embedding origin. Observe the resulting policy outcome and verify the refused origin is never requested in preview, reopen or publication."
+    },
+    {
+      "id": "youtube-video-embed-options",
+      "version": 1,
+      "feature": "widgets-and-embeds",
+      "sources": [
+        "tiptap-docs-catalog",
+        "tiptap-catalog"
+      ],
+      "scenario": "Insert a YouTube video using its watch URL and paste an alternate URL for the same video. Enable the supported privacy mode, set a playback start and change dimensions, then undo the edit, reopen and publish.",
+      "expected": [
+        "Accepted URL forms resolve to the same canonical provider video identifier. Supported start time, dimensions and privacy mode survive recovery, and Undo restores the earlier options.",
+        "Preview and publication use the configured approved player variant and preserve an accessible fallback when the player is disabled or unavailable."
+      ],
+      "untrustedInput": "Add a refused provider lookalike URL and an unrecognized playback option to the synthetic fixture. Confirm the resulting normalized representation cannot redirect the player or expand its admitted capabilities."
+    },
+    {
+      "id": "media-embed-layout-style-presets",
+      "version": 1,
+      "feature": "widgets-and-embeds",
+      "sources": [
+        "ckeditor-digest"
+      ],
+      "scenario": "Configure a built-in alignment and a host-defined media style. Apply each to the same embed alongside ordinary prose, then undo, reopen and inspect published output at two supported widths.",
+      "expected": [
+        "Each style changes the media layout according to its declared preset while preserving provider identity, playback options and neighboring text. Apply and reset follow the published history contract.",
+        "A compatible reopen and publication reproduce the admitted style and reading order. A receiver without the preset uses the documented fallback or reports its absence."
+      ],
+      "untrustedInput": "Supply an unknown style identifier and a style input that asks for a denied external resource. Confirm only validated preset data reaches the live or published view, including after recovery."
+    },
+    {
+      "id": "editor-developer-inspector-projections",
+      "version": 1,
+      "feature": "extension-sdk",
+      "sources": [
+        "ckeditor-digest"
+      ],
+      "scenario": "Enable the documented developer inspector in a controlled editor with a preset and a test extension. Inspect structural document data, rendered view and command eligibility before and after a marked edit, Undo and a selection change. Detach while a second editor is active.",
+      "expected": [
+        "The inspector displays the declared projections for the correct owner revision, including the associated selection and command state. It presents differences between model data and rendering without editing either.",
+        "Detaching inspector tools removes their subscriptions and produces no document publication. A default production consumer mounts no inspector and exposes no extra diagnostic state beyond its declared API."
+      ]
+    },
+    {
+      "id": "editor-theme-tokens-and-instance-scope",
+      "version": 1,
+      "feature": "framework-integrations",
+      "sources": [
+        "ckeditor-digest"
+      ],
+      "scenario": "Mount two installed editor instances with different theme tokens for chrome and content presentation. Change one instance's theme while its dropdown is open, then remount it and inspect the documented static-content theme behavior.",
+      "expected": [
+        "The chosen themes change only the advertised controls and presentation within their intended scopes. The other editor retains its computed colors and spacing, and focus and disabled indicators remain perceivable.",
+        "Theme changes and remounting preserve the admitted document, editing state and history under the published profile. The documented static-content option applies the supported styling without carrying editor UI state."
+      ]
+    },
+    {
+      "id": "composable-editor-ui-component-library",
+      "version": 1,
+      "feature": "framework-integrations",
+      "sources": [
+        "ckeditor-digest",
+        "tiptap-extension"
+      ],
+      "scenario": "Build a small vanilla consumer that imports SDK UI primitives to assemble a custom editor button and popup from a host-owned layout. Bind them to a declared editor command, then rebind to a second instance with a different selection and dispose.",
+      "expected": [
+        "Public component imports work outside the repository. The custom button renders the current owner's accessible command name and eligibility, and activation routes through the same admitted action as the stock control.",
+        "Keyboard opening, dismissal and focus return follow the component contract. Rebinding and disposal remove obsolete event subscriptions and cannot dispatch to the prior editor."
+      ]
+    },
+    {
+      "id": "host-custom-image-upload-adapter",
+      "version": 1,
+      "feature": "advanced-images",
+      "sources": [
+        "ckeditor-digest",
+        "ckeditor-image-upload"
+      ],
+      "scenario": "Install a host-provided image upload adapter that sends controlled admitted bytes to a test asset service. Exercise progress, success, cancellation and retry using paste, drop and file selection. Let an old cancelled adapter complete after a replacement succeeds.",
+      "expected": [
+        "The attached adapter receives only the admitted file and documented upload context. Progress and failures are observable, and successful admission binds the correct immutable asset to the document.",
+        "Cancellation reaches the adapter, a late completion cannot publish or overwrite a newer binding, and retry follows the published queue and identity contract."
+      ],
+      "untrustedInput": "Return a receipt for the wrong asset and a refused delivery location. Verify the editor reports the invalid receipt without fetching or publishing its reference in live, restored or exported content."
+    },
+    {
+      "id": "configured-http-image-upload-adapter",
+      "version": 1,
+      "feature": "advanced-images",
+      "sources": [
+        "ckeditor-digest",
+        "ckeditor-image-upload"
+      ],
+      "scenario": "Configure the provided HTTP upload adapter using only an endpoint and documented request options. Upload an admitted raster to a controlled server, then test an approved response with alternate widths, a reported server error and a rejected response.",
+      "expected": [
+        "The server receives only the supported request fields and configured headers at the approved endpoint. A valid upload reports progress, maps a validated response to the declared binding and rendition shape, and marks the upload complete only after validation.",
+        "An error response produces the documented user-visible failure without publishing a successful asset. The installed consumer can retry without supplying a custom transport implementation."
+      ],
+      "untrustedInput": "Return an unexpected object, an oversized response and a rendition at a denied destination. Validate the adapter's refusal and prove request credentials never enter saved document data, logs intended for export or output markup."
+    },
+    {
+      "id": "inline-highlight-mark",
+      "version": 1,
+      "feature": "basic-inline-formatting",
+      "sources": [
+        "tiptap-catalog",
+        "ckeditor-styles"
+      ],
+      "scenario": "Apply the default highlight and a configured highlight color to separate ranges, including text with another format. Inspect caret state, remove highlight from part of the range, Undo and round-trip through HTML.",
+      "expected": [
+        "The document retains the intended highlight ranges and unrelated marks. Removing and undoing highlight changes only the targeted formatting.",
+        "Semantic output represents highlight with a mark and keeps admitted colors after import. A disallowed color follows the documented rejection or loss behavior."
+      ]
+    },
+    {
+      "id": "selection-retention-on-blur",
+      "version": 1,
+      "feature": "general-selections",
+      "sources": [
+        "tiptap-catalog"
+      ],
+      "scenario": "Select a noncollapsed range, move focus to a host control and apply a command to the retained range. Then repeat with a collapsed caret and with a host control that changes the editor revision before applying.",
+      "expected": [
+        "The opt-in presentation identifies the retained range while the editor is blurred. Focus returns to the editing context under the documented restore policy.",
+        "Selection styling adds no canonical marks. A collapsed caret has no retained range decoration, and a stale apply follows the documented revision guard."
+      ]
+    },
+    {
+      "id": "configured-trailing-node-policy",
+      "version": 1,
+      "feature": "paragraphs-headings",
+      "sources": [
+        "tiptap-starter",
+        "tiptap-catalog"
+      ],
+      "scenario": "Configure a supported trailing node and a terminal-node exclusion. Insert a nonexcluded terminal atom, replace it with an excluded terminal type, and reopen each resulting checkpoint.",
+      "expected": [
+        "The configured policy creates exactly one trailing node for the nonexcluded terminal case, and the excluded case adds no trailing node.",
+        "Undo, redo, checkpoint reopen and a settled peer update retain the documented trailing-node state without accumulating duplicates."
+      ]
+    },
+    {
+      "id": "host-file-paste-and-drop-dispatch",
+      "version": 1,
+      "feature": "raster-images",
+      "sources": [
+        "tiptap-catalog",
+        "ckeditor-digest"
+      ],
+      "scenario": "Register a host file handler for allowed media types. Paste and drop a mix of allowed and denied local files, including a drop at a known block boundary, and repeat with the handler removed.",
+      "expected": [
+        "The host receives each allowed file and the documented paste or drop context once. The denied file produces the documented refusal and no upload or edit.",
+        "Host callbacks can choose when to insert admitted assets. Without the handler the editor uses the documented default file behavior."
+      ],
+      "untrustedInput": "Include a file whose bytes disagree with its advertised type. The admission and restore path does not publish an asset or export a reference to the rejected contents."
+    }
+  ]
+}
