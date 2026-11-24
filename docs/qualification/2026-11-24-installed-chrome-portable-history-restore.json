@@ -1,0 +1,65 @@
+{
+  "format": "breditor/installed-chrome-portable-history-restore",
+  "formatVersion": 1,
+  "date": "2026-11-24",
+  "fixtureCommit": "b09dc475fba6632903d78e9a438039d340e9e2f8",
+  "archiveSourceCommit": "b09dc475fba6632903d78e9a438039d340e9e2f8",
+  "archives": [
+    {
+      "name": "@breditor/browser",
+      "version": "0.3.0-alpha.22",
+      "bytes": 263467,
+      "sha256": "1199d14fe5b3d5b2e0318642a9bbf9f5b84773e97265597f72e190be43869ae0"
+    },
+    {
+      "name": "@breditor/experimental-rich-content",
+      "version": "0.3.0-alpha.22",
+      "bytes": 2337792,
+      "sha256": "41bef48450af2d2ddc3e8d5b159205bf0d4ed836627690b992d393cfdd12016a"
+    },
+    {
+      "name": "@breditor/collaboration",
+      "version": "0.3.0-alpha.22",
+      "bytes": 5625680,
+      "sha256": "a0ed9422649deac8b190413a6f7f06191c22298d907bdfc672eb9c446f8fe65f"
+    },
+    {
+      "name": "@breditor/editor",
+      "version": "0.3.0-alpha.22",
+      "bytes": 83477,
+      "sha256": "ff50188718a1587bc21fda0e0700a2f4de61085ae00d083cf569789d29c713dd"
+    }
+  ],
+  "environment": {
+    "platform": "darwin",
+    "arch": "arm64",
+    "macOS": "26.6.2"
+  },
+  "elapsedMs": 191613,
+  "reportSha256": "52298aa48359a02072f672e16417e5cda1bf467d0fc16a0a2666c735905232d7",
+  "observed": {
+    "passed": true,
+    "rounds": 115,
+    "exactLegacyRoots": 2,
+    "explicitSeals": 4,
+    "exactPeerReopens": 6,
+    "legacyDatabasesReopened": 2,
+    "portableRecoveryRestores": 2,
+    "heldWriterRefusals": 2,
+    "occupiedDestinationRefusals": 2,
+    "unchangedSegmentedSources": 2,
+    "legacyBytes": [
+      16206396,
+      15700675
+    ],
+    "offlineEditPreserved": true,
+    "preCutRedoItemsRestored": 2,
+    "preBoundaryUndoAndRedoPreserved": true,
+    "archiveBytes": [
+      18687883,
+      17951030
+    ],
+    "browserVersion": "158.0.8127.37"
+  },
+  "scope": "Installed Chrome and IndexedDB with native document histories and direct peer frame exchange. After two explicit seals per writer, distinct fresh databases admit exact portable recovery records once the original writer leases close. Live writers and occupied destinations refuse before native replay. The original and newer destination storage is checked after reopening. The recovered writers preserve both history directions and the undelivered pre-cut frame."
+}
