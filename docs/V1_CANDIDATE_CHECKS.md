@@ -164,6 +164,23 @@ Compare the reported repository, run ID and attempt with the GitHub listing
 for the same downloaded artifact. The coverage report also records the context
 digest. This option requires artifacts from a workflow that records those fields.
 
+To automate the comparison, save the authenticated GitHub REST responses for
+`repos/OWNER/REPO/actions/artifacts/ARTIFACT_ID` and
+`repos/OWNER/REPO/actions/runs/RUN_ID/attempts/ATTEMPT` as `artifact.json`
+and `run-attempt.json`. Download that artifact's ZIP from GitHub. Keep the
+responses and ZIP outside the extracted artifact. Supply the repository you
+intended to qualify, then run this in the exact clean candidate checkout.
+
+```sh
+node scripts/check-hosted-candidate-artifact.mjs OWNER/REPO artifact.json run-attempt.json artifact.zip extracted/run-NAME/result.json
+```
+
+The command uses `unzip` to compare the archived manifest and runner context
+against the extracted files. It checks the ZIP digest from the artifact API,
+requires a successful attempt of the candidate workflow, and validates the
+candidate stage logs and retained reports with the regular coverage checker.
+The authenticated API responses supply the trusted repository and run metadata.
+
 ## Whole-room activation jobs
 
 Select `portable-relay-recovery` to run both relocation checks in a dedicated
