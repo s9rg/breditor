@@ -1,12 +1,16 @@
 /** One local, non-publishing release gate. Requires the documented toolchain. */
 import { spawnSync } from "node:child_process";
-import { realpathSync } from "node:fs";
+import { mkdtempSync, readFileSync, realpathSync, rmSync, statSync } from "node:fs";
+import { tmpdir } from "node:os";
 import { dirname, join } from "node:path";
 import { fileURLToPath } from "node:url";
+import { validateDefaultBrowserReport } from "./candidate-release/default-browser-report.mjs";
 
 export const repository = dirname(dirname(fileURLToPath(import.meta.url)));
 /** This pipeline builds default outputs, not the separately assembled nested archive. */
 export const releaseScope = "default-packages";
+const browserChecks = new Set(["browser-matrix", "demo-matrix"]);
+const passed = result => !result.error && !result.signal && result.status === 0;
 
 /** Explicit argv avoids shell interpolation, including executable overrides. */
 export function releaseChecks(environment = process.env) {
@@ -44,17 +48,47 @@ export function releaseChecks(environment = process.env) {
   ]);
 }
 
+function browserReport(path) {
+  const file = statSync(path);
+  if (!file.isFile() || file.size > 32 * 1024 * 1024) throw Error("Expected a bounded Playwright JSON report");
+  return JSON.parse(readFileSync(path, "utf8"));
+}
+
+function runBrowserCheck(check, options, run, report) {
+  const directory = mkdtempSync(join(tmpdir(), "breditor-default-browser-"));
+  try {
+    const invoke = (args, filename) => run(check.command, [...check.args, ...args], {
+      ...options, env: { ...options.env, PLAYWRIGHT_JSON_OUTPUT_FILE: filename },
+    });
+    const discoveryFile = join(directory, "discovery.json"), resultsFile = join(directory, "results.json");
+    const discovery = invoke(["--list", "--reporter=json"], discoveryFile);
+    if (!passed(discovery)) return discovery;
+    const inventory = browserReport(discoveryFile);
+    const result = invoke(["--reporter=line,json"], resultsFile);
+    if (!passed(result)) return result;
+    const verified = validateDefaultBrowserReport(inventory, browserReport(resultsFile));
+    report(`verify-release: ${check.id} verified ${verified.count} passing results in ${verified.projects.join(", ")}`);
+    return result;
+  } catch (error) {
+    report(`verify-release: ${check.id} evidence rejected: ${error.message}`);
+    return { status: 1 };
+  } finally {
+    rmSync(directory, { recursive: true, force: true });
+  }
+}
+
 /** Stop on the first unsuccessful or interrupted process; never report it green. */
 export function runReleaseChecks(checks, run = spawnSync, report = console.log) {
   for (const [index, check] of checks.entries()) {
     report(`verify-release: [${index + 1}/${checks.length}] ${check.id}`);
-    const result = run(check.command, check.args, {
+    const options = {
       cwd: repository,
       env: { ...process.env, ...check.env },
       stdio: "inherit",
       shell: false,
-    });
-    if (result.error || result.signal || result.status !== 0) {
+    };
+    const result = browserChecks.has(check.id) ? runBrowserCheck(check, options, run, report) : run(check.command, check.args, options);
+    if (!passed(result)) {
       report(`verify-release: FAILED ${check.id}; later gates were not run.`);
       return result.signal === "SIGINT" ? 130
         : result.signal === "SIGTERM" ? 143

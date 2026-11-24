@@ -59,7 +59,9 @@ Locally, use `node scripts/verify-candidate.mjs --default-matrix` or
 the selected profile and leave full candidate qualification outstanding.
 
 The default matrix runs workspace TypeScript and diagnostics after it builds
-the default packages. Both complete candidate profiles also run the full
+the default packages. Its browser and demo stages discover the selected
+Playwright projects and cases before execution and require every discovered
+case to pass exactly once. Both complete candidate profiles also run the full
 workspace script suite after the Native executable and fixture producers.
 That suite uses the exact shared runtime receipt from its candidate.
 
