@@ -28,10 +28,13 @@ test("supported shorthand and longhand decoration share one native cascade",asyn
    '<span style="text-decoration-line:underline;text-decoration:dotted">Omitted line</span>',
    '<span class="rich" style="text-decoration-line:underline!important">Line-only priority</span>',
    '<span class="rich" style="text-decoration:underline!important">Full priority reset</span>',
+   '<u><span style="text-decoration:initial">Parent underline, initial</span></u>',
+   '<u><span style="text-decoration:unset">Parent underline, unset</span></u>',
   ].map(span=>`<p>${span}</p>`);
   const source=rules+rows.join("");
   const sourceDom=document.createElement("main");sourceDom.innerHTML=source;document.body.append(sourceDom);
   const browser=[...sourceDom.querySelectorAll("span")].map(span=>getComputedStyle(span).textDecorationLine);
+  const browserAncestors=[...sourceDom.querySelectorAll("u")].map(element=>getComputedStyle(element).textDecorationLine);
   try{
    const interchange=createRichInterchange(owner);
    const imported=interchange.importHtml(source);
@@ -50,13 +53,14 @@ test("supported shorthand and longhand decoration share one native cascade",asyn
    if(!portable.ok)throw Error(portable.error);
    const paras=JSON.parse(reopened.documentJson()).root.children.slice(0,browser.length);
    const parsed=new DOMParser().parseFromString(portable.value,"text/html");
-   return {exact,browser,native:paras.map(p=>p.children[0].formats.map(f=>f.type)),serialized:[...parsed.querySelectorAll("p")].slice(0,browser.length).map(p=>[Boolean(p.querySelector("u")),Boolean(p.querySelector("s"))]),notices};
+   return {exact,browser,browserAncestors,native:paras.map(p=>p.children[0].formats.map(f=>f.type)),serialized:[...parsed.querySelectorAll("p")].slice(0,browser.length).map(p=>[Boolean(p.querySelector("u")),Boolean(p.querySelector("s"))]),notices};
   }finally{sourceDom.remove();reopened?.dispose();owner?.dispose();profile.dispose();}
  });
  const underline="breditor-inline/underline",strike="breditor-inline/strike";
  const loss=[{code:"unsupported-style",effect:"loss",count:1}];
- expect(result).toEqual({exact:true,browser:["underline","line-through","line-through","none","underline line-through","line-through","underline","line-through","none","underline","underline"],
-  native:[[underline],[strike],[strike],[],[strike,underline],[strike],[underline],[strike],[],[underline],[underline]],
-  serialized:[[true,false],[false,true],[false,true],[false,false],[true,true],[false,true],[true,false],[false,true],[false,false],[true,false],[true,false]],
-  notices:[[],[],[],[],[],loss,[],loss,loss,loss,[]]});
+ expect(result).toEqual({exact:true,browser:["underline","line-through","line-through","none","underline line-through","line-through","underline","line-through","none","underline","underline","none","none"],
+  browserAncestors:["underline","underline"],
+  native:[[underline],[strike],[strike],[],[strike,underline],[strike],[underline],[strike],[],[underline],[underline],[underline],[underline]],
+  serialized:[[true,false],[false,true],[false,true],[false,false],[true,true],[false,true],[true,false],[false,true],[false,false],[true,false],[true,false],[true,false],[true,false]],
+  notices:[[],[],[],[],[],loss,[],loss,loss,loss,[],loss,loss]});
 });

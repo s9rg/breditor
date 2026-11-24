@@ -140,7 +140,8 @@ export function styleFor(node:HtmlElement,parent:StyleState,b:Budget,css:Map<str
       case "mso-data-placement":if(node.tagName!=="br"||value!=="same-cell")b.loss("unsupported-style");break;
       case "font-style":if(value==="italic"||value==="oblique")set("italic");else if(value==="normal")remove("italic");else b.loss("unsupported-style");break;
       case "text-decoration":case "text-decoration-line":{
-        const words=["initial","unset"].includes(value)?["none"]:value.split(/\s+/);
+        // CSS-wide resets can leave decoration painted by an ancestor.
+        const words=value.split(/\s+/);
         if(words.includes("none")){remove("underline");remove("strike");}
         if(words.includes("underline"))set("underline");if(words.includes("line-through"))set("strike");
         if(words.some(v=>!["none","underline","line-through"].includes(v)))decorationLoss=true;break;

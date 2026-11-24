@@ -173,7 +173,8 @@ The `inherit` and `unset` values use the parent font. System fonts,
 `initial`, `revert` and unrepresented components report `unsupported-style`.
 Valid `text-decoration` shorthands share the cascade with their longhand
 properties. Underline and strike-through become native marks. Other winning
-decoration lines and nondefault style, color and thickness report `unsupported-style`.
+decoration lines, unrepresented resets and nondefault style, color and thickness
+report `unsupported-style`.
 
 ### Ordered-list numbering (rich V4 owners)
 
