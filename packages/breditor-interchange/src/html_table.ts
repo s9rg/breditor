@@ -7,10 +7,16 @@ export function pixels(value:string|undefined):number|null {
   if(value===undefined)return null;const m=/^(\d+(?:\.\d+)?)(px|pt)?$/i.exec(value.trim());return m?Number(m[1])*(m[2]?.toLowerCase()==="pt"?4/3:1):null;
 }
 /** Reconstruct the complete bounded base-cell partition, never only rendered master cells. */
-export function importTable(c:HtmlConversion,node:HtmlElement,state:StyleState):Element[] {
+export function importTable(c:HtmlConversion,node:HtmlElement,state:StyleState,
+  figureCaption?:{readonly node:HtmlElement;readonly parent:StyleState}):Element[] {
   const rows:{node:HtmlElement;state:StyleState;group:number;remaining:number}[]=[],colWidths:(number|null|undefined)[]=[],captions:Element[]=[];
   // V4 owners keep the first <caption> as the table's caption paragraph (see `tableCaption`).
   let caption:Element|undefined,captioned=false;
+  const addCaption=(source:HtmlElement,parent:StyleState)=>{
+    const blocks=c.flow(source.childNodes,c.style(source,parent),true);
+    if(c.capabilities.tableCaptions===true&&!captioned){captioned=true;const kept=tableCaption(c,blocks);caption=kept.caption;captions.push(...kept.before);}
+    else{c.b.loss("block-structure");captions.push(...blocks);}
+  };
   let group=0;
   const widthHint=(node:HtmlElement,fallback?:number|null)=>{
     const raw=c.css(node).get("width")??attribute(node,"width");if(raw===undefined)return fallback;
@@ -33,17 +39,13 @@ export function importTable(c:HtmlConversion,node:HtmlElement,state:StyleState):
   for(const n of node.childNodes){
     if(!isElement(n)){if(plainText(n).trim())fail("malformed-table");continue;}
     if(c.excluded(n))fail("unsupported-content");
-    if(n.tagName==="caption"){
-      const blocks=c.flow(n.childNodes,c.style(n,state),true);
-      if(c.capabilities.tableCaptions===true&&!captioned){captioned=true;const kept=tableCaption(c,blocks);caption=kept.caption;captions.push(...kept.before);}
-      else{c.b.loss("block-structure");captions.push(...blocks);}
-      continue;
-    }
+    if(n.tagName==="caption"){addCaption(n,state);continue;}
     if(n.tagName==="colgroup"){c.style(n,state);addColumns(n);continue;}
     const groupState=n.tagName==="tr"?state:c.style(n,state),rowNodes=n.tagName==="tr"?[n]:["thead","tbody","tfoot"].includes(n.tagName)?n.childNodes.filter(isElement):null;
     if(rowNodes===null)fail("malformed-table");group++;
     for(const [i,row]of rowNodes.entries()){if(row.tagName!=="tr")fail("malformed-table");if(c.excluded(row))fail("unsupported-content");rows.push({node:row,state:groupState,group,remaining:rowNodes.length-i});}
   }
+  if(figureCaption)addCaption(figureCaption.node,figureCaption.parent);
   if(!rows.length){c.b.loss("table-geometry");return caption?[...captions,caption]:captions;}
   if(rows.length>limits.rows)fail("resource-limit");
   const tableId=c.b.id(),rowIds=rows.map(()=>c.b.id()),columns:string[]=[],grid:({body:Element[];header:boolean}|undefined)[][]=rows.map(()=>[]),merges:{r:number;c:number;rs:number;cs:number}[]=[];
