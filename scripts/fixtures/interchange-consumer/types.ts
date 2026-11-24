@@ -16,6 +16,11 @@ const sharedDocumentReact={onInterchange} satisfies Pick<BreditorSharedDocumentE
 void [local,document,shared,sharedDocument,react,documentReact,sharedReact,sharedDocumentReact];
 const rasterOptions:PortableHtmlRasterOptions={loadImage:({asset,generation})=>asset&&generation?new Blob():undefined};
 void exportPortableHtml({},"{}",rasterOptions);
+import {preparePortableHtmlImport} from "@breditor/interchange/portable-html-import";
+declare const portableLocal:Parameters<NonNullable<LocalDocumentEditorOptions["clipboardInterchange"]>>[0];
+declare const portableShared:Parameters<NonNullable<SharedDocumentEditorSessionOptions["clipboardInterchange"]>>[0];
+void preparePortableHtmlImport(portableLocal,"",portableLocal.view().revision);
+void preparePortableHtmlImport(portableShared,"",portableShared.view().revision);
 // Opt-in DOCX entry: installed subpath export and strict consumer types.
 import {exportDocx,docxContentType,type DocxResult,type DocxLossCode} from "@breditor/interchange/docx";
 const docx:DocxResult<Uint8Array>=exportDocx("{}",{image:binding=>binding.asset?undefined:new Uint8Array(),pageSize:"a4"});
