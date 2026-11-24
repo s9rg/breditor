@@ -19,10 +19,14 @@ add("/network-demo.mjs",resolve(root,"experiments/shared-browser/network-demo.mj
 add("/pilot.mjs",resolve(root,"experiments/shared-browser/pilot.mjs"));
 if(application)add("/pilot-static.js",resolve(installed,"node_modules/@breditor/editor/dist/static_document.js"));
 else {
- const {default:ts}=await import("typescript");
- const source=readFileSync(resolve(root,"packages/breditor-editor/src/static_document.ts"),"utf8");
- const {outputText}=ts.transpileModule(source,{compilerOptions:{module:ts.ModuleKind.ES2022,target:ts.ScriptTarget.ES2022}});
- resources.set("/pilot-static.js",["text/javascript; charset=utf-8",Buffer.from(outputText)]);
+ const {rolldown}=await import("rolldown");
+ const bundle=await rolldown({input:resolve(root,"packages/breditor-editor/src/static_document.ts"),
+  external:["@breditor/experimental-rich-content/rendering"],logLevel:"silent"});
+ try {
+  const {output}=await bundle.generate({format:"esm"});
+  if(output.length!==1||output[0].type!=="chunk")throw Error("Expected one pilot static module");
+  resources.set("/pilot-static.js",["text/javascript; charset=utf-8",Buffer.from(output[0].code)]);
+ } finally {await bundle.close();}
 }
 add("/inline-presentation-fixture.mjs",resolve(root,"experiments/shared-browser/inline-presentation-fixture.mjs"));
 add("/standard-inline-fixture.mjs",resolve(root,"experiments/shared-browser/standard-inline-fixture.mjs"));
