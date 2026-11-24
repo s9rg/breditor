@@ -193,9 +193,10 @@ reports. The coverage report checks the source digest, planned stage sequence
 and retained file hashes. Direct stages that use a paired shared runtime must
 name the same build receipt from their run, including the execution input
 recorded by the runner. Coverage also verifies each direct stage’s command,
-arguments and successful process exit. It compares absolute arguments inside
-the checkout by repository-relative path and uses the recorded tool paths
-for the plan’s tool roles. Candidate coverage requires directly executed stages.
+arguments, planned proof settings and successful process exit. It compares
+absolute argument and planned environment paths inside the checkout by
+repository-relative path and uses the recorded tool paths for the plan’s tool
+roles. Candidate coverage requires directly executed stages.
 Use the separate activation shard verifier for adopted worker reports.
 Add `--require-complete` before the
 manifest paths to fail if any engineering stage is missing. The functional
