@@ -77,8 +77,8 @@ first generate their build and archive receipts in the same checkout.
 ## Candidate shards
 
 The manual full profile accepts an optional shard. The named shards cover the
-contiguous native, runtime, SDK and relay stages through installed reconciled
-packet recovery. Each SDK or relay shard first runs the full plan's prerequisite
+contiguous native, runtime, SDK and relay stages through installed metadata
+reconciliation. Each SDK or relay shard first runs the full plan's prerequisite
 builds in its own checkout. The joint handover source and installed checks run
 in separate jobs so each has its own time and evidence budget. The result
 identifies the shard, its prerequisites, its assigned stage IDs and the source
@@ -92,6 +92,10 @@ Reconciled packet recovery has separate source and installed jobs for the
 short contracts, original Pending availability, checked current state and the
 older reference-only read path. Every case checks the current candidate
 runtime's receipt and retains its Native observations in the case report.
+
+The source and installed metadata reconciliation jobs build the same three
+companion native relay fixtures. The installed job verifies the copied
+executables against the candidate build receipt.
 
 Run a shard locally with `node scripts/verify-candidate.mjs --shard <name>`.
 Add `--dry-run` to inspect its checks. Run with the default shard selection

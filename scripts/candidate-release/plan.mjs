@@ -14,6 +14,7 @@ import {richDemoLatencyReport} from "../record-rich-demo-latency.mjs";
 import {candidateRuntimeSizeReport} from "../measure-candidate-runtime-size.mjs";
 import {nativeColdCaseIds,nativeColdReport,nativeColdSelection} from "../native-cold-restart-plan.mjs";
 import {reconciledPacketCaseIds,reconciledPacketReport,reconciledPacketSelection} from "../reconciled-packet-recovery-plan.mjs";
+import {metadataReconciliationHostReceipt} from "./metadata-reconciliation-hosts.mjs";
 export const repository=resolve(dirname(fileURLToPath(import.meta.url)),"../..");
 export const deferredFunctionalGates=Object.freeze([
  "default-package-release-matrix","installed-editor-browser-matrix",
@@ -602,11 +603,12 @@ export function candidateReleasePlan({profile="full",environment=process.env}={}
     withSharedRuntime(script('installed-reconciled-packet-recovery-'+id,'check-reconciled-packet-recovery-installed.mjs',[id],[{path:reconciledPacketReport('installed',id),fresh:true,retain:true}],timeoutMs+600000)),
    ];
   }),
-  stage('metadata-reconciliation-plan-contracts',node,['--test','scripts/metadata-reconciliation-candidate-plan.test.mjs']),
-  stage('metadata-reconciliation-private-types',node,['node_modules/typescript/bin/tsc','--noEmit','--strict','--exactOptionalPropertyTypes','--noUncheckedIndexedAccess','--target','ES2022','--module','NodeNext','--lib','ES2022,DOM','scripts/fixtures/editor-consumer/types-local-metadata-reconciliation.ts']),
-  stage('metadata-reconciliation-component-contracts',node,['--test','scripts/local-metadata-reconciliation-contracts.test.mjs']),
+  stage('metadata-reconciliation-plan-contracts',node,['--test','scripts/metadata-reconciliation-candidate-plan.test.mjs'],{},[],120000),
+  script('metadata-reconciliation-companion-hosts','build-metadata-reconciliation-hosts.mjs',[],[{path:metadataReconciliationHostReceipt,fresh:true,retain:true}],1800000),
+  stage('metadata-reconciliation-private-types',node,['node_modules/typescript/bin/tsc','--noEmit','--strict','--exactOptionalPropertyTypes','--noUncheckedIndexedAccess','--target','ES2022','--module','NodeNext','--lib','ES2022,DOM','scripts/fixtures/editor-consumer/types-local-metadata-reconciliation.ts'],{},[],180000),
+  stage('metadata-reconciliation-component-contracts',node,['--test','scripts/local-metadata-reconciliation-contracts.test.mjs'],{},[],180000),
   stage('metadata-reconciliation-native',node,['--test','scripts/metadata-reconciliation-input-native.test.mjs','scripts/original-retention-version-loan-native.test.mjs','scripts/original-recovery-owner-version-loan-native.test.mjs','scripts/original-retained-root-version-loan-native.test.mjs','scripts/metadata-provider-reconciliation-native.test.mjs','scripts/metadata-provider-reconciliation-cold-native.test.mjs'],{},[],7200000),
-  script('installed-metadata-reconciliation','check-metadata-reconciliation-installed.mjs',[],[{path:metadataRecoveryArtifacts.reconciliation,fresh:true}],7800000),
+  script('installed-metadata-reconciliation','check-metadata-reconciliation-installed.mjs',[],[{path:metadataRecoveryArtifacts.reconciliation,fresh:true,retain:true}],7800000),
   stage('native-version-delivery-plan-contracts',node,['--test','scripts/native-version-delivery-candidate-plan.test.mjs']),
   stage('native-version-delivery-private-types',node,['node_modules/typescript/bin/tsc','--noEmit','--strict','--exactOptionalPropertyTypes','--noUncheckedIndexedAccess','--target','ES2022','--module','NodeNext','--lib','ES2022,DOM','scripts/fixtures/editor-consumer/types-native-version-delivery.ts']),
   withSharedRuntime(stage('native-version-delivery-functional',node,['--test','scripts/native-version-delivery.test.mjs','scripts/native-version-delivery-failures.test.mjs','scripts/native-version-selected-room.test.mjs'],{},[],1800000)),
