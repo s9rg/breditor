@@ -187,9 +187,12 @@ declared dimensions and full raster decode. The exact original bytes are kept,
 not a lossy re-encoding. `breditor/relay-asset-receipt` V1 binds asset, MIME, byte
 length, width, height and duplicate status. Encoded files are capped at 10 MiB,
 dimensions at 16,384, pixels at 32 million, and retained room assets at 1,024 and
-256 MiB. Four HTTP asset operations may run concurrently. A running decode or
-storage operation holds its slot through completion, including after an HTTP
-request is cancelled. These are correctness
+256 MiB. Four authenticated HTTP asset operations per room may run concurrently.
+Uploads reserve a slot before scheduling the room permission check and before
+reading the request body. A running permission check, decode, or storage
+operation keeps its slot through completion, including after an HTTP request is
+cancelled. Download bytes retain their slot while the HTTP transport owns them.
+Authenticated requests above this limit receive HTTP 503. These are correctness
 budgets, not a public-host memory/CPU guarantee: the decoder's allocation limit
 is [best effort](https://docs.rs/image/0.25.10/image/struct.Limits.html), and the
 resource-limited worker remains a public deployment gate.
