@@ -43,6 +43,11 @@ const focusedStageIds = {
   "installed-rich-interchange","functional-native-fixtures","installed-everyday-mixed-workflows",
   "installed-text-review-and-readers","installed-formatting-review-and-readers","installed-assets-comments-versions",
  ],
+ "input-writing-workflows": [
+  "default-typescript-build","paired-local-runtime","paired-shared-runtime","rich-browser-build","collaboration-build","editor-build",
+  "input-rules-borrowed-controls","input-rules-managed-startup","writing-tools-native-sdk-and-controls","writing-tools-managed-startup",
+  "installed-input-rule-workflows","installed-writing-tools-workflows",
+ ],
  "installed-feature-browser": [
   "default-typescript-build","paired-local-runtime","paired-shared-runtime","rich-browser-build","collaboration-build","editor-build",
   "installed-search-workflows","installed-placeholder-workflows","installed-fullscreen-workflows","installed-session-backups","installed-asset-backups",
@@ -812,8 +817,8 @@ export function candidateReleasePlan({profile="full",environment=process.env}={}
   stage("editor-types",npm,["run","typecheck:candidate","--workspace","@breditor/editor"]),
   script("installed-editor-pairing","check-editor-package.mjs",[],[{path:"target/editor-installed-consumer.json",fresh:true,retain:true}]),
   script("installed-search-workflows","check-search-installed.mjs",[],[{path:"target/search-installed-consumer.json",fresh:true}]),
-  script("installed-input-rule-workflows","check-input-rules-installed.mjs",["--current-runtime-only"],[{path:"target/input-rules-current-installed-consumer.json",fresh:true}]),
-  script("installed-writing-tools-workflows","check-writing-tools-installed.mjs",[],[{path:"target/writing-tools-installed-consumer.json",fresh:true}]),
+  script("installed-input-rule-workflows","check-input-rules-installed.mjs",["--current-runtime-only"],[{path:"target/input-rules-current-installed-consumer.json",fresh:true,retain:true}]),
+  script("installed-writing-tools-workflows","check-writing-tools-installed.mjs",[],[{path:"target/writing-tools-installed-consumer.json",fresh:true,retain:true}]),
   script("installed-placeholder-workflows","check-placeholder-installed.mjs",[],[{path:"target/placeholder-installed-consumer.json",fresh:true}]),
   script("installed-fullscreen-workflows","check-fullscreen-installed.mjs",[],[{path:"target/fullscreen-installed-consumer.json",fresh:true}]),
   script("installed-session-backups","check-session-backups-installed.mjs",[],[{path:"target/session-backups-installed-consumer.json",fresh:true,retain:true},{path:"target/participant-operation-installed-consumer.json",fresh:true},{path:"target/catalog-participant-operation-installed-consumer.json",fresh:true},{path:"target/room-operational-recovery-installed-consumer.json",fresh:true},{path:"target/participant-replay-installed-consumer.json",fresh:true},{path:"target/retained-version-recovery-installed-consumer.json",fresh:true},{path:"target/pending-recovery-installed-consumer.json",fresh:true},{path:"target/upload-reconciliation-installed-consumer.json",fresh:true},{path:"target/retained-owner-handoffs-installed-consumer.json",fresh:true}]),
