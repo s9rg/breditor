@@ -190,17 +190,17 @@ try{
  assert.deepEqual(session.core.writerGroupsV2(acknowledged.through),offline);
  assert.throws(()=>insert(session,'forbidden'));
  assert.equal((await rows()).prior,before.active);
- const read=IDBObjectStore.prototype.get,observedHeads=[];
- IDBObjectStore.prototype.get=function(recordKey){
+ const read=IDBObjectStore.prototype.getAll,observedHeads=[];
+ IDBObjectStore.prototype.getAll=function(recordKey,count){
   if(this.transaction.db.name===options.database&&this.name==='generation_heads'){
-   observedHeads.push({key:recordKey,transaction:this.transaction});
+   observedHeads.push({key:recordKey,count,transaction:this.transaction});
   }
-  return read.call(this,recordKey);
+  return read.call(this,recordKey,count);
  };
  let backup;
  try{backup=await session.exportContinuedBackup();}
- finally{IDBObjectStore.prototype.get=read;}
- assert.deepEqual(observedHeads.map(row=>row.key),[key,[...key,'continued-from']]);
+ finally{IDBObjectStore.prototype.getAll=read;}
+ assert.deepEqual(observedHeads.map(row=>[row.key,row.count]),[[key,1],[[...key,'continued-from'],1]]);
  assert.equal(observedHeads[0].transaction,observedHeads[1].transaction);
  assert.equal(observedHeads[0].transaction.mode,'readonly');
  assert.deepEqual(backup.current,current);

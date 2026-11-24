@@ -26,3 +26,11 @@ for(const retirement of ["upgrade","discard","discard-reject"])test(`installed g
  expect(report,report.reason).toEqual({passed:true,upgrade:retirement==="upgrade",hashRejected:retirement==="discard-reject",obsoleteAttempts:0,
   unchangedRows:true,exactReadAndRestore:retirement==="upgrade"});
 });
+
+test("installed generation admission refuses existing malformed heads before native replay",async({page})=>{
+ await page.goto("/shared-generation-rollover.html?headAdmission=1");
+ const result=page.locator("#result");
+ await expect(result).toContainText('"passed"',{timeout:15000});
+ const report=JSON.parse(await result.textContent());
+ expect(report,report.reason).toEqual({passed:true,malformedHeadRefusals:5,insertOnlyRaceRefusal:true,exactReopen:true});
+});
