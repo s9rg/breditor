@@ -10,7 +10,7 @@ use crate::{
     assets::{self, MAX_ASSET_BYTES, PreparedAsset},
 };
 use axum::{
-    body::{Body, to_bytes},
+    body::{Body, Bytes, to_bytes},
     extract::{Path, Request, State},
     http::{HeaderMap, StatusCode},
     response::{IntoResponse, Response},
@@ -20,6 +20,17 @@ use tokio::sync::OwnedSemaphorePermit;
 
 /// Whole-body deadline for one asset upload: about 1.4 Mbit/s for the 10 MiB maximum.
 const UPLOAD_BODY_TIMEOUT: std::time::Duration = std::time::Duration::from_secs(60);
+
+struct AssetDownload {
+    bytes: Vec<u8>,
+    _permit: OwnedSemaphorePermit,
+}
+
+impl AsRef<[u8]> for AssetDownload {
+    fn as_ref(&self) -> &[u8] {
+        &self.bytes
+    }
+}
 
 pub(super) async fn preflight(State(host): State<Host>, headers: HeaderMap) -> Response {
     let Some(allowed) = origin(&host, &headers) else {
@@ -82,9 +93,10 @@ pub(super) async fn download(
         })
         .await;
     let response = match result {
-        Ok((Some(stored), _permit)) => {
-            ([("content-type", stored.info.mime.as_str())], Body::from(stored.bytes))
-                .into_response()
+        Ok((Some(stored), permit)) => {
+            // The slot follows the payload while the transport retains it or shares its bytes.
+            let bytes = Bytes::from_owner(AssetDownload { bytes: stored.bytes, _permit: permit });
+            ([("content-type", stored.info.mime.as_str())], Body::from(bytes)).into_response()
         }
         Ok((None, _permit)) => StatusCode::NOT_FOUND.into_response(),
         Err(e) => failure(&e),
@@ -107,12 +119,15 @@ pub(super) async fn upload(
         Ok(p) => p,
         Err(e) => return cors(failure(&e), allowed),
     };
-    let p = principal.clone();
-    if let Err(e) = host.transaction(move |room| room.editor(&p)).await {
-        return cors(failure(&e), allowed);
-    }
     let Ok(permit) = host.asset_operations.clone().try_acquire_owned() else {
         return cors(StatusCode::SERVICE_UNAVAILABLE.into_response(), allowed);
+    };
+    let p = principal.clone();
+    // A disconnected request can leave its blocking role check queued. Keep the same slot
+    // until that check completes to keep the room's queue bounded under churn.
+    let permit = match host.transaction(move |room| room.editor(&p).map(|()| permit)).await {
+        Ok(permit) => permit,
+        Err(e) => return cors(failure(&e), allowed),
     };
     let Some(mime) =
         parts.headers.get("content-type").and_then(|h| h.to_str().ok()).map(str::to_owned)
@@ -165,7 +180,10 @@ async fn prepare_upload(
 #[cfg(test)]
 mod tests {
     use super::*;
+    use crate::{Role, room::segment_handover_test_source, server::Authentication};
+    use axum::http::{HeaderValue, Request as HttpRequest};
     use std::{
+        io::Cursor,
         sync::{Arc, mpsc},
         time::Duration,
     };
@@ -194,5 +212,67 @@ mod tests {
         release.send(()).unwrap();
         assert!(slot_retained);
         let _released = timeout(deadline, slots.acquire()).await.unwrap().unwrap();
+    }
+
+    #[tokio::test]
+    async fn download_bytes_hold_capacity_and_upload_admission_checks_capacity_before_role()
+    -> std::result::Result<(), Box<dyn std::error::Error>> {
+        const ORIGIN: &str = "http://127.0.0.1:4187";
+        let (files, mut room, _) = segment_handover_test_source(1, false, false)?;
+        room.grant("owner", "reader", Some(Role::Reader))?;
+        let path = files.room().with_extension("assets");
+        let mut store = assets::AssetStore::open(&path, room.asset_binding())?;
+        let mut encoded = Cursor::new(Vec::new());
+        image::DynamicImage::new_rgb8(2, 3).write_to(&mut encoded, image::ImageFormat::Png)?;
+        let bytes = encoded.into_inner();
+        let asset = assets::asset_id(&bytes);
+        store.put(assets::prepare_asset(&asset, "image/png", bytes.clone())?)?;
+        let (token, hash) = Authentication::issue_token()?;
+        let auth = Authentication::from_json(
+            &json!({
+                "format":"breditor/relay-auth", "formatVersion":1, "origins":[ORIGIN],
+                "accounts":[{"principal":"reader", "tokenHash":hash}],
+            })
+            .to_string(),
+        )?;
+        let host = super::super::create_host(room, auth, Some(store));
+        let auth_header = HeaderValue::from_str(&format!("Bearer {token}"))?;
+        let request = |auth: HeaderValue| {
+            HttpRequest::builder()
+                .header("origin", ORIGIN)
+                .header("x-breditor-principal", "reader")
+                .header("authorization", auth)
+                .header("content-type", "image/png")
+                .body(Body::empty())
+        };
+        let occupied = host.asset_operations.clone().try_acquire_many_owned(3)?;
+        let response = download(
+            State(host.clone()),
+            Path(asset.clone()),
+            request(auth_header.clone())?.headers().clone(),
+        )
+        .await;
+        assert_eq!(response.status(), StatusCode::OK);
+        let payload = to_bytes(response.into_body(), bytes.len()).await?;
+        assert_eq!(payload.as_ref(), bytes);
+        let pending = payload.clone();
+        drop(payload);
+        assert_eq!(host.asset_operations.available_permits(), 0);
+        let no_code = upload(
+            State(host.clone()),
+            Path(asset.clone()),
+            request(HeaderValue::from_static("Bearer invalid"))?,
+        )
+        .await;
+        assert_eq!(no_code.status(), StatusCode::FORBIDDEN);
+        let busy =
+            upload(State(host.clone()), Path(asset.clone()), request(auth_header.clone())?).await;
+        assert_eq!(busy.status(), StatusCode::SERVICE_UNAVAILABLE);
+        drop(pending);
+        let denied = upload(State(host.clone()), Path(asset), request(auth_header)?).await;
+        assert_eq!(denied.status(), StatusCode::FORBIDDEN);
+        assert_eq!(host.asset_operations.available_permits(), 1);
+        drop(occupied);
+        Ok(())
     }
 }
