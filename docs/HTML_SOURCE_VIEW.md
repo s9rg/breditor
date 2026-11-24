@@ -146,9 +146,13 @@ validates the observation, re-keys every identity under a fresh reserved
 namespace, replaces the document, and records it as one Undo group.
 
 Whole-document flow paste always appends one fresh empty paragraph, and the
-export shows that paragraph as `<p></p>`. To keep export, edit and apply stable,
-the import drops exactly one trailing empty paragraph from the source before
-parsing.
+export shows its canonical HTML. To keep export, edit and apply stable, the
+source view omits one matching plain empty paragraph before import. Authored
+attributes, preformatted spaces and hard breaks still go through the adapter
+and native admission.
+
+When the paste is refused, the panel keeps the edited source and clears the
+consumed review. Review the draft again before retrying.
 
 **Cancel** discards the source and the review and closes the view.
 

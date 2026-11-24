@@ -75,6 +75,22 @@ test("a document change after opening makes Apply refuse with a clear message",a
  await panel.getByRole("button",{name:"Cancel"}).click();await expect(text).toBeHidden();await expect(page.locator(".breditor-rich-surface")).toContainText("Someone else");
 });
 
+test("source apply preserves an authored final paragraph with layout",async({page})=>{
+ await mount(page);const panel=source(page),text=panel.locator("textarea[data-source-text]");
+ await panel.getByRole("button",{name:"Edit HTML source"}).click();const before=await state(page);
+ await text.fill('<p>Body</p><p style="text-align:right"></p>');
+ await panel.getByRole("button",{name:"Review changes"}).click();
+ await panel.getByRole("button",{name:"Apply"}).click();
+ const after=await state(page),blocks=JSON.parse(after.documentJson).root.children;
+ expect(after.undo).toBe(before.undo+1);
+ expect(blocks).toHaveLength(3);
+ expect(blocks[1]).toMatchObject({type:"breditor/paragraph",properties:{"breditor/block-align":6},children:[]});
+ expect(blocks[2].properties["breditor/block-align"]).toBeUndefined();
+ expect(blocks[2].children).toEqual([]);
+ await page.evaluate(()=>window.sourceTest.editor.execute({kind:"undo"}));
+ expect((await state(page)).documentJson).toBe(before.documentJson);
+});
+
 test("read-only editors get a view-only source and the size bound refuses before parsing",async({page})=>{
  await mount(page,{readOnly:true});const panel=source(page),text=panel.locator("textarea[data-source-text]");
  await panel.getByRole("button",{name:"View HTML source"}).click();await expect(text).toHaveJSProperty("readOnly",true);await expect(text).toHaveValue(/Original body/);

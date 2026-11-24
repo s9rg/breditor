@@ -18,10 +18,10 @@ export function sourceBytes(source:string):number {
  return count;
 }
 /**
- * Whole-document flow paste always appends one fresh empty paragraph, and the export shows it. Dropping exactly one
- * trailing empty paragraph from the source keeps export → apply idempotent instead of growing the document.
+ * Whole-document flow paste appends a plain empty paragraph. Omit only an empty tag or its canonical HTML export
+ * so the paste supplies the same floor. Attributes, preserved whitespace and hard breaks carry source content.
  */
-const trailingEmptyParagraph=/<p(?:\s[^<>]*)?>\s*(?:<br\s*\/?>\s*)?<\/p>\s*$/i;
+const trailingEmptyParagraph=/<p(?: style="white-space:pre-wrap")?><\/p>\s*$/i;
 export function withoutTrailingEmptyParagraph(source:string):string {const match=trailingEmptyParagraph.exec(source);if(!match)return source;const rest=source.slice(0,match.index);return rest.trim()?rest:source;}
 export function staleSourceMessage(opened:string,current:string):string {return `The document changed after the source view opened (revision ${opened}, now ${current}). Nothing was applied; reload the source to edit the current document.`;}
 function notices(value:unknown):readonly RichInterchangeNotice[] {
