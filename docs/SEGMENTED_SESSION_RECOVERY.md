@@ -40,8 +40,15 @@ cold reopen, the peers resend the exact pre-cut frame and verify that its
 second delivery leaves the full checkpoint unchanged. The drill traverses
 all three pre-cut history items, including a Redo item that stayed untouched
 through both seals, while preserving the other writer's work.
-Storage-lifecycle qualification still requires coordinated room and relay
-cutover, backup restoration, and asset retention under release operating limits.
+
+The portable recovery drill exports both segmented cuts after the second seal
+and restores each into a fresh IndexedDB database after its writer closes. It
+checks that live writers and occupied destinations refuse recovery before native
+replay, that both segmented sources retain their exact recovery records, and
+that both recovered writers can resume editing and synchronize the original
+offline frame. Storage-lifecycle qualification still requires coordinated room
+and relay cutover, coordinated backup restoration, and asset retention under
+release operating limits.
 
 Rebuild the installed SDK fixture with the optional rollover page, then run
 the drill with Chrome installed on the host.

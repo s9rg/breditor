@@ -33,6 +33,7 @@ async function verify(){
  const restore=(writer,recovery,overrides={})=>SharedSegmentedPersistentSession.restoreRecovery({
   ...options(writer),database:"restored-rollover-"+writer,recovery,writerRecovery:"host-reacquired",...overrides,
  });
+ const matchesRecovery=(session,recovery)=>session.recovered&&JSON.stringify(session.exportRecovery())===JSON.stringify(recovery);
  const expectRestoreRefusal=async(writer,recovery,expected)=>{
   let replayed=false,error;
   try{
@@ -121,8 +122,8 @@ async function verify(){
   alice=await restore("101",recovery[0]);
   bob=await restore("202",recovery[1]);
   segmentedDatabase="restored-rollover-";
-  check([alice,bob].every((session,index)=>session.recovered&&
-   JSON.stringify(session.exportRecovery())===JSON.stringify(recovery[index])),"Each fresh destination must restore the entire exact recovery record");
+  check([alice,bob].every((session,index)=>matchesRecovery(session,recovery[index])),
+   "Each fresh destination must restore the entire exact recovery record");
   check(frontier().every((count,index)=>count===preCutFrontier[index]),"Portable recovery must preserve the exact history frontier");
   check(alice.core.documentJson()===firstEdit&&bob.core.documentJson()===offlineEdit,"Portable recovery must preserve each offline document");
   check(await alice.core.receiveFrame(offlineFrame),"The exact pre-cut frame must deliver after two seals");
@@ -170,13 +171,14 @@ async function verify(){
   await close();
   segmentedDatabase="native-rollover-";
   await open();
-  check([alice,bob].every((session,index)=>session.recovered&&session.core.checkpointJson()===sourceCut[index]),
-   "Recovering into new destinations must preserve both segmented source databases byte-for-byte");
+  check([alice,bob].every((session,index)=>matchesRecovery(session,recovery[index])),
+   "Recovering into new destinations must preserve the exact recovery records of both segmented sources");
   await close();
   segmented=false;
   await open();
   check(alice.recovered&&bob.recovered&&alice.core.checkpointJson()===legacy[0]&&bob.core.checkpointJson()===legacy[1],
    "The original databases must remain available for exact recovery");
+  await close();
   return {passed:true,rounds:completed,exactLegacyRoots:2,explicitSeals:4,exactPeerReopens:6,legacyDatabasesReopened:2,
    portableRecoveryRestores:2,heldWriterRefusals:2,occupiedDestinationRefusals:2,unchangedSegmentedSources:2,
    legacyBytes:legacy.map(value=>new TextEncoder().encode(value).length),
