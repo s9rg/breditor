@@ -53,9 +53,11 @@ function readStoredSessionCheckpoint(db:IDBDatabase,key:readonly[string,string],
 function readStoredSessionCheckpoint(db:IDBDatabase,key:readonly[string,string],document:true):Promise<StoredDocumentSessionCheckpoint|null>;
 function readStoredSessionCheckpoint(db:IDBDatabase,key:readonly[string,string],document:boolean):Promise<StoredDocumentSessionCheckpoint|null>{
  return new Promise((resolve,reject)=>{
-  const tx=db.transaction("journals","readonly"),request=tx.objectStore("journals").get([...key]);let result:StoredDocumentSessionCheckpoint|null=null,failure:unknown;
-  request.onsuccess=()=>{try{const value:unknown=request.result;
-   if(value===undefined)return;
+  const tx=db.transaction("journals","readonly"),request=tx.objectStore("journals").getAll([...key],1);let result:StoredDocumentSessionCheckpoint|null=null,failure:unknown;
+  // An occupied key with an undefined value is malformed, not an empty session.
+  request.onsuccess=()=>{try{
+   if(request.result.length===0)return;
+   const value:unknown=request.result[0];
    if(typeof value==="string"){result={history:"explicit",json:value};return;}
    if(!value||typeof value!=="object"||Array.isArray(value))throw new SharedEditorError("session_read","Unknown stored shared history record");
    const record=value as Record<string,unknown>;
@@ -94,8 +96,13 @@ export function writeSessionCheckpoint(db:IDBDatabase,key:readonly[string,string
 }
 export function readCheckpoint(db:IDBDatabase,key:readonly[string,string]):Promise<string|null>{
  return new Promise((resolve,reject)=>{
-  const tx=db.transaction("journals","readonly"),request=tx.objectStore("journals").get([...key]);let result:string|null=null;
-  request.onsuccess=()=>{if(request.result!==undefined&&typeof request.result!=="string"){tx.abort();return;}result=request.result??null;};
+  const tx=db.transaction("journals","readonly"),request=tx.objectStore("journals").getAll([...key],1);let result:string|null=null;
+  request.onsuccess=()=>{
+   if(request.result.length===0)return;
+   const value:unknown=request.result[0];
+   if(typeof value!=="string"){tx.abort();return;}
+   result=value;
+  };
   settleOwnedTransaction(tx,()=>result,()=>tx.error??new SharedEditorError("session_read","Cannot read the exact shared journal"),resolve,reject);
  });
 }

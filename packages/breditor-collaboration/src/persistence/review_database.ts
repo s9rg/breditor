@@ -30,8 +30,8 @@ export function checkReviewRecordFields(r:Omit<ReviewCheckpointRecord,"format">,
 /** Read only the declared paired family. Legacy records require an explicit future migration. */
 export function readReviewRecord(db:IDBDatabase,key:readonly[string,string]):Promise<ReviewCheckpointRecord|null> {
  return new Promise((resolve,reject)=>{
-  const tx=db.transaction("journals","readonly"),request=tx.objectStore("journals").get([...key]);let result:ReviewCheckpointRecord|null=null,failure:unknown;
-  request.onsuccess=()=>{try{if(request.result!==undefined){checkReviewRecord(request.result,key);result=request.result;}}catch(error){failure=error;tx.abort();}};
+  const tx=db.transaction("journals","readonly"),request=tx.objectStore("journals").getAll([...key],1);let result:ReviewCheckpointRecord|null=null,failure:unknown;
+  request.onsuccess=()=>{try{if(request.result.length){const value:unknown=request.result[0];checkReviewRecord(value,key);result=value;}}catch(error){failure=error;tx.abort();}};
   settleOwnedTransaction(tx,()=>result,()=>failure??tx.error??new SharedEditorError("review_record_read","Paired recovery read failed"),resolve,reject);
  });
 }
