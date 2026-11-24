@@ -117,6 +117,11 @@ const writeFailure={
  original:["session_write","Shared journal transaction did not complete"],
  document:["session_write","Shared document journal transaction did not complete"],
  search:["search_record_write","Search transaction did not complete"],
+ "breditor/shared-review-checkpoint-record":["review_record_write","Paired recovery transaction did not complete"],
+ "breditor/shared-review-relay-checkpoint-record":["review_relay_record_write","Paired relay transaction did not complete"],
+ "breditor/shared-review-observer-checkpoint-record":["review_observer_write","Read-only paired transaction did not complete"],
+ "breditor/shared-reviewed-review-checkpoint-record":["reviewed_record_write","Reviewed paired transaction did not complete"],
+ "breditor/shared-search-review-checkpoint-record":["search_review_write","Search paired transaction did not complete"],
 } as const;
 
 /** Commit a private, already admitted storage record. The caller owns journal admission. */
