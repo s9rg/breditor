@@ -67,6 +67,25 @@ test("selects pinned smaller raster bytes for live and static renders of the exa
    const low=await pending,high=await prepare(64,[smallEntry,largeEntry],retained);
    const fallback=await prepare(36,[denied],retained),missing=await prepare(100,[smallEntry],retained),ratio=await prepare(36,[wrongEntry],retained);
    const byteGrowth=await prepare(36,[noisyEntry],flat,await sha(flat)),orientation=await prepare(36,[rotatedEntry],retained);
+   const refusal=async(work)=>{try{await work;return null;}catch(error){return typeof error.code==="string"?error.code:error.name;}};
+   const invalidPin=await refusal(prepare(36,[smallEntry],new Blob(["not a raster"]),"invalid"));
+   const controller=new AbortController(),aborted=await refusal(api.prepareRichRasterRendition(retained,{
+    requestedWidth:36,candidates:[smallEntry],originalAsset,signal:controller.signal,allowUrl:()=>true,
+    load(){controller.abort();return {url:smallEntry.url,blob:small};},
+   }));
+   // Deliver real aborts between internal display admission and its public result.
+   const atDisplayReturn=extraTurn=>{
+    const controller=new AbortController(),read=Object.getOwnPropertyDescriptor(AbortSignal.prototype,"aborted").get;
+    let checks=0;
+    Object.defineProperty(controller.signal,"aborted",{get(){
+     if(++checks===2)queueMicrotask(()=>{if(extraTurn)queueMicrotask(()=>controller.abort());else controller.abort();});
+     return read.call(this);
+    }});
+    return controller.signal;
+   };
+   const inspectFence=await refusal(api.inspectRichRaster(retained,{signal:atDisplayReturn(false)}));
+   const urlFence=await refusal(api.prepareRichRasterUrl(smallEntry.url,{signal:atDisplayReturn(true),expectedAsset:smallEntry.expectedAsset,
+    allowUrl:()=>true,load:()=>({url:smallEntry.url,blob:small})}));
    const rotatedImage=new Image();rotatedImage.src=await toDataUrl(rotated);await rotatedImage.decode();
    const render=async(selection)=>{
     const restored=profile.restoreEditor(checkpoint),exact=restored.checkpointJson()===checkpoint;
@@ -87,7 +106,7 @@ test("selects pinned smaller raster bytes for live and static renders of the exa
    const shape=s=>[s.kind,s.reason??null,s.originalAsset===originalAsset,s.raster.asset,s.raster.bytes,s.displayWidth,s.displayHeight];
    return {original:originalRecord.asset===originalAsset,held:await sha(retained)===originalAsset,bytes:original.size,
     low:shape(low),high:shape(high),fallback:shape(fallback),missing:missing.reason,ratio:ratio.reason,byteGrowth:byteGrowth.reason,
-    orientation:orientation.reason,decodedExif:[rotatedImage.naturalWidth,rotatedImage.naturalHeight],calls,
+    orientation:orientation.reason,decodedExif:[rotatedImage.naturalWidth,rotatedImage.naturalHeight],calls,invalidPin,aborted,inspectFence,urlFence,
     originalStillOnly:(await store.list()).map(record=>record.asset),mutablePin:[smallEntry.expectedAsset,largeEntry.expectedAsset,originalAsset],
     renders:[await render(low),await render(high),await render(fallback)]};
   }finally{editor?.dispose();profile.dispose();store.close();initial.remove();}
@@ -97,6 +116,7 @@ test("selects pinned smaller raster bytes for live and static renders of the exa
   low:["rendition",null,true,smallAsset,expect.any(Number),40,30],high:["rendition",null,true,largeAsset,expect.any(Number),80,60],
   fallback:["original","refused-rendition",true,originalAsset,result.bytes,120,90],missing:"no-rendition",ratio:"incompatible-rendition",
   byteGrowth:"incompatible-rendition",orientation:"incompatible-rendition",decodedExif:[30,40],
+  invalidPin:"integrity",aborted:"AbortError",inspectFence:"asset_backup_aborted",urlFence:"AbortError",
   calls:["40.png","80.png","wrong.png","noisy.png","rotated.jpg"].map(name=>"https://rendition-fixture.example.test/"+name),
   renders:[[40,30],[80,60],[120,90]].map(([width,height])=>({exact:true,unchanged:true,correctBinding:true,
    images:[[width,height,"Chart","120","90"],[width,height,"Chart","120","90"]]}))});

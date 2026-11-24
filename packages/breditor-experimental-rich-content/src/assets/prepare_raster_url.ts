@@ -28,17 +28,22 @@ export class RichRasterUrlError extends Error {
 }
 
 const rasterTypes=new Set(["image/png","image/jpeg","image/webp"]);
+export function isPinnedRasterAsset(value:unknown):value is string {
+ return typeof value==="string"&&value.length===71&&/^sha256:[0-9a-f]{64}$/.test(value);
+}
 
 /** Inspect only host-approved HTTPS bytes against a pinned content address. */
 export async function prepareRichRasterUrl(source:string,options:RichRasterUrlOptions):Promise<RichRasterInspection>{
- return (await prepareRasterUrlDisplay(source,options)).raster;
+ const signal=options.signal,result=await prepareRasterUrlDisplay(source,options,signal);
+ checkRasterSignal(signal);
+ return result.raster;
 }
-export async function prepareRasterUrlDisplay(source:string,options:RichRasterUrlOptions):Promise<RichRasterDisplaySize&{readonly raster:RichRasterInspection}>{
- const {allowUrl,load,expectedAsset,signal,limits:supplied}=options;
+export async function prepareRasterUrlDisplay(source:string,options:RichRasterUrlOptions,signal:AbortSignal|undefined):Promise<RichRasterDisplaySize&{readonly raster:RichRasterInspection}>{
+ const {allowUrl,load,expectedAsset,limits:supplied}=options;
  checkRasterSignal(signal);
  const url=canonicalImageLinkHrefV1(source);
  if(url===null||!url.startsWith("https://")||url.includes("#"))throw new RichRasterUrlError("url","Expected a credential-free HTTPS raster URL without a fragment");
- if(typeof expectedAsset!=="string"||expectedAsset.length!==71||!/^sha256:[0-9a-f]{64}$/.test(expectedAsset)){
+ if(!isPinnedRasterAsset(expectedAsset)){
   throw new RichRasterUrlError("integrity","Expected the pinned SHA-256 raster address");
  }
  const limits=checkedAssetLimits(supplied);

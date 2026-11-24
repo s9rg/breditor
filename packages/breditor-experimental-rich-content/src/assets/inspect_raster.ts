@@ -11,7 +11,9 @@ export interface RichRasterInspection {
 export interface RichRasterDisplaySize {readonly displayWidth:number;readonly displayHeight:number}
 /** Snapshot Blob bytes before asynchronous decoding. Returned metadata and payload are immutable. */
 export async function inspectRichRaster(input:Blob,options:RichRasterInspectionOptions={}):Promise<RichRasterInspection>{
- return (await inspectRasterDisplay(input,options)).raster;
+ const selected={...options},result=await inspectRasterDisplay(input,selected);
+ checkAssetBackupSignal(selected.signal);
+ return result.raster;
 }
 /** The browser's decoded size can differ from header dimensions, for example after EXIF orientation. */
 export async function inspectRasterDisplay(input:Blob,options:RichRasterInspectionOptions):Promise<RichRasterDisplaySize&{readonly raster:RichRasterInspection}>{

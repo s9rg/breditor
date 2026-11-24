@@ -1,6 +1,6 @@
 import {inspectRasterDisplay,type RichRasterDisplaySize,type RichRasterInspection} from "./inspect_raster.js";
 import {checkedAssetLimits} from "./limits.js";
-import {prepareRasterUrlDisplay,RichRasterUrlError,type RichRasterUrlOptions} from "./prepare_raster_url.js";
+import {isPinnedRasterAsset,prepareRasterUrlDisplay,RichRasterUrlError,type RichRasterUrlOptions} from "./prepare_raster_url.js";
 import {checkRasterSignal} from "./raster_decode.js";
 
 export interface RichRasterRenditionCandidate {
@@ -37,6 +37,7 @@ function snapshotCandidates(candidates:readonly RichRasterRenditionCandidate[]):
 export async function prepareRichRasterRendition(original:Blob,options:RichRasterRenditionOptions):Promise<RichRasterRenditionResult>{
  const {originalAsset,requestedWidth,candidates,allowUrl,load,signal,limits:supplied}=options;
  checkRasterSignal(signal);
+ if(!isPinnedRasterAsset(originalAsset))throw new RichRasterUrlError("integrity","Expected the pinned original SHA-256 raster address");
  if(!Number.isSafeInteger(requestedWidth)||requestedWidth<1)throw new RangeError("Request a positive whole-pixel rendition width");
  if(typeof allowUrl!=="function"||typeof load!=="function")throw new TypeError("Choose an explicit raster URL policy and loader");
  const variants=snapshotCandidates(candidates),limits=checkedAssetLimits(supplied);
@@ -53,7 +54,7 @@ export async function prepareRichRasterRendition(original:Blob,options:RichRaste
  let rendition:Awaited<ReturnType<typeof prepareRasterUrlDisplay>>;
  try{
   rendition=await prepareRasterUrlDisplay(selected.url,{...admission,expectedAsset:selected.expectedAsset,
-   allowUrl:url=>allowUrl.call(options,url),load:request=>load.call(options,request)});
+   allowUrl:url=>allowUrl.call(options,url),load:request=>load.call(options,request)},signal);
  }catch(error){
   checkRasterSignal(signal);
   if(error instanceof RichRasterUrlError)return fallback("refused-rendition");
