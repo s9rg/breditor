@@ -462,6 +462,8 @@ test("isolated release matrices preserve the full plan's commands and report the
   assert.deepEqual(selected.deferred,["full-candidate-qualification"]);
   assert.deepEqual(selected.checks,ids.map(id=>full.find(check=>check.id===id)));
  }
+ const sharedFixtures=full.find(check=>check.id==="shared-browser-native-fixtures");
+ assert.deepEqual(sharedFixtures.args.slice(-4),["--example","relay_contract_driver","--example","compare_engine_exports"]);
  for(const [engine,project] of [["chromium","chromium"],["firefox","firefox"],["webkit","webkit*"]]){
   const rich=full.find(check=>check.id==="rich-browser-"+engine);
   assert.deepEqual(rich.args.slice(-4),["experiments/rich-browser/playwright.config.mjs","--project="+project,"--output=target/rich-browser-results/"+engine,"--reporter=line,json"]);

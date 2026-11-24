@@ -1,9 +1,11 @@
 // Same coverage-preserving process isolation used by the legacy collaboration matrix.
+import assert from "node:assert/strict";
 import {execFileSync} from "node:child_process";
 import {createHash} from "node:crypto";
 import {mkdirSync,readFileSync,readdirSync,writeFileSync} from "node:fs";
-import {resolve,dirname} from "node:path";
+import {basename,resolve,dirname} from "node:path";
 import {fileURLToPath} from "node:url";
+import {nativeComparisonDriver} from "../experiments/collaboration/browser/compare-exports.mjs";
 import {nativeAdmissionDriver} from "../experiments/shared-browser/native-relay.mjs";
 import config from "../experiments/shared-browser/playwright.config.mjs";
 import {candidateBrowserRelay} from "./check-editor-browser.mjs";
@@ -18,8 +20,10 @@ const discovered=readdirSync(resolve(root,"experiments/shared-browser")).filter(
 const runs=sharedBrowserRuns(config.testMatch,discovered);
 const env=candidate?{...process.env,BREDITOR_BROWSER_RELAY_EXE:candidateBrowserRelay(root),BREDITOR_SHARED_INSTALLED:""}:process.env;
 const outputDirectory=resolve(root,"target/shared-browser-results"),reports=[];
-const driverSha256=()=>createHash("sha256").update(readFileSync(nativeAdmissionDriver)).digest("hex");
-const nativeAdmissionSha256=candidate?driverSha256():undefined;
+const nativeFixtureHashes=()=>[nativeAdmissionDriver,nativeComparisonDriver].map(path=>({
+ name:basename(path),sha256:createHash("sha256").update(readFileSync(path)).digest("hex"),
+}));
+const nativeFixtures=candidate?nativeFixtureHashes():undefined;
 console.log("Shared WebKit uses fresh per-file processes; every discovered spec runs once, without retries or relaxed assertions");
 for(const run of runs){
  const suite=run.specs[0]??"chromium-firefox";
@@ -42,6 +46,6 @@ for(const run of runs){
  }
 }
 if(candidate){
- if(driverSha256()!==nativeAdmissionSha256)throw Error("The Native admission driver changed during the shared browser matrix");
- writeFileSync(resolve(root,"target/shared-browser-report.json"),JSON.stringify({nativeAdmissionSha256,runs:reports})+"\n");
+ assert.deepEqual(nativeFixtureHashes(),nativeFixtures,"Native fixtures changed during the shared browser matrix");
+ writeFileSync(resolve(root,"target/shared-browser-report.json"),JSON.stringify({nativeFixtures,runs:reports})+"\n");
 }
