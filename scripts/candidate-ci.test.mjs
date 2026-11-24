@@ -102,6 +102,30 @@ test("failure evidence preserves exact bounded browser reports even without trac
  }finally{rmSync(root,{recursive:true,force:true});}
 });
 
+test("browser failure reports stop at the total artifact budget",()=>{
+ const root=mkdtempSync(join(tmpdir(),"breditor-browser-report-budget-"));
+ try{
+  mkdirSync(join(root,"experiments/shared-browser"),{recursive:true});
+  mkdirSync(join(root,"target/shared-browser-results"),{recursive:true});
+  const maximumFileBytes=8*1024*1024;
+  for(const name of [
+   "rich-browser-chromium-report.json","rich-browser-firefox-report.json",
+   "rich-browser-webkit-report.json","shared-application-browser-playwright.json",
+  ]){
+   const path=join(root,"target",name);
+   writeFileSync(path,"");
+   truncateSync(path,maximumFileBytes);
+  }
+  const omitted="target/shared-browser-results/chromium-firefox.json";
+  writeFileSync(join(root,omitted),"{}");
+
+  const proof=retainCandidateBrowserReports(root);
+  assert.equal(proof.reports.length,4);
+  assert.equal(proof.reports.reduce((total,report)=>total+report.bytes,0),4*maximumFileBytes);
+  assert.deepEqual(proof.omitted,[{path:omitted,reason:"size-bound"}]);
+ }finally{rmSync(root,{recursive:true,force:true});}
+});
+
 test("failed browser and demo traces have their own bounded artifact",()=>{
  const traces=named("Retain failed browser and demo traces");
  assert.equal(traces.if,"${{ failure() && steps.candidate.outcome == 'failure' }}");
