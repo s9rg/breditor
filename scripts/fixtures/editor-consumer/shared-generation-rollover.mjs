@@ -29,6 +29,15 @@ async function verify(){
   bob=await store.open(options("202"));
  };
  const close=async()=>{await Promise.all([alice.close(),bob.close()]);};
+ const reopenExactly=async()=>{
+  await Promise.all([alice.flush(),bob.flush()]);
+  const saved=[alice.core.checkpointJson(),bob.core.checkpointJson()];
+  await close();
+  await open();
+  check(alice.recovered&&bob.recovered,"Both peers must reopen persisted storage");
+  check(alice.core.checkpointJson()===saved[0]&&bob.core.checkpointJson()===saved[1],"Both reopen checkpoints must match byte-for-byte");
+  return saved;
+ };
  try{
   await open();
   const original=alice.core.documentJson();
@@ -47,8 +56,14 @@ async function verify(){
   };
   while(completed<105)await round();
   await edit();
+  const firstEdit=alice.core.documentJson();
+  alice.core.select(range("first-head",0));
+  check(alice.core.type("y"),"The second legacy edit must commit");
+  const secondEdit=alice.core.documentJson();
+  check(alice.core.undo()&&alice.core.documentJson()===firstEdit,"The original cut must have a Redo ahead of its Undo");
   bob.core.select(range("intro",0));
   check(bob.core.type("offline "),"Disconnected peer must durably author its edit");
+  const offlineEdit=bob.core.documentJson();
   await Promise.all([alice.flush(),bob.flush()]);
   legacy=[alice.core.checkpointJson(),bob.core.checkpointJson()];
   await close();
@@ -56,15 +71,42 @@ async function verify(){
   await open();
   check(JSON.parse(alice.core.checkpointJson()).rootCheckpoint===legacy[0]&&
    JSON.parse(bob.core.checkpointJson()).rootCheckpoint===legacy[1],"Exact legacy journals must become immutable roots");
-  const first=[alice.core.checkpointJson(),bob.core.checkpointJson()];
-  await close();
-  await open();
-  check(alice.recovered&&bob.recovered,"Both peers must reopen persisted storage");
-  check(alice.core.checkpointJson()===first[0]&&bob.core.checkpointJson()===first[1],"Reopen must preserve exact rollover bytes");
+  await reopenExactly();
+  const frontier=()=>{
+   const {undoItems,redoItems}=alice.core.segmentedHistoryInfo();
+   return [undoItems,redoItems];
+  };
+  const preCutFrontier=frontier();
+  check(preCutFrontier.every(count=>count>0),"The recovered legacy cut must have both an Undo and a Redo");
+  for(const [index,next] of ["two","three"].entries()){
+   // Author records in each active segment without delivering the offline edit.
+   check(alice.core.redo()&&alice.core.documentJson()===secondEdit,"The pre-cut Redo must replay the second edit");
+   check(alice.core.undo()&&alice.core.documentJson()===firstEdit,"Undo must restore the pre-cut Redo frontier");
+   bob.core.select(range("second-head",0));
+   check(bob.core.type("z")&&bob.core.undo()&&bob.core.documentJson()===offlineEdit,"The peer keeps its unsubmitted edit while filling its segment");
+   await Promise.all([alice.sealGeneration(next),bob.sealGeneration(next)]);
+   for(const {core} of [alice,bob]){
+    const info=core.segmentedHistoryInfo();
+    check(info.activeGeneration===next&&info.sealedGenerations===index+2,"Both owners must seal the actual active segment");
+   }
+  }
+  await reopenExactly();
+  check(frontier().every((count,index)=>count===preCutFrontier[index]),"Cold open after two seals must preserve the pre-cut frontier");
+  check(alice.core.documentJson()===firstEdit&&bob.core.documentJson()===offlineEdit,"The peer must still be offline after the second seal");
+  await sync();
+  await sync();
+  check(alice.core.documentJson()===offlineEdit,"Repeated delivery after two seals must apply the offline edit exactly once");
+  const redoWithOffline=secondEdit.replace('"SDK heading"','"offline SDK heading"');
+  check(redoWithOffline!==secondEdit,"The seeded heading must be present");
+  check(alice.core.redo(),"The pre-cut Redo must survive both sealed segments and a cold open");
+  await sync();
+  check(bob.core.documentJson()===redoWithOffline,"Pre-cut Redo must restore the second edit without changing the offline edit");
+  check(alice.core.undo(),"Undo must reverse the second edit");
+  await sync();
+  check(bob.core.documentJson()===offlineEdit,"Undo of the second edit must leave the rest of the shared document intact");
   check(alice.core.undo(),"Pre-boundary Undo must survive the generation and reopen");
   await sync();
-  check(alice.core.documentJson().includes("offline SDK heading"),"Other peer's offline edit must arrive");
-  check(!alice.core.documentJson().includes("xNested idea"),"Pre-boundary Undo must be delivered");
+  check(alice.core.documentJson()===original.replace('"SDK heading"','"offline SDK heading"'),"Pre-cut Undo must keep the other author's offline edit");
   check(bob.core.undo(),"The offline edit must retain author-local Undo across rollover");
   await sync();
   check(alice.core.documentJson()===original,"Both author-local Undos must restore the original document");
@@ -75,22 +117,16 @@ async function verify(){
   await sync();
   check(alice.core.documentJson()===original,"Cross-boundary Undo must recover the original document");
   completed++;
-  await Promise.all([alice.sealGeneration("two"),bob.sealGeneration("two")]);
   while(completed<115)await round();
-  await Promise.all([alice.flush(),bob.flush()]);
-  const retained=[alice.core.checkpointJson(),bob.core.checkpointJson()];
-  await close();
-  await open();
-  check(alice.recovered&&bob.recovered,"Both final checkpoints must reopen");
-  check(alice.core.checkpointJson()===retained[0]&&bob.core.checkpointJson()===retained[1],"Both final reopen checkpoints must match byte-for-byte");
+  const retained=await reopenExactly();
   await close();
   segmented=false;
   await open();
   check(alice.recovered&&bob.recovered&&alice.core.checkpointJson()===legacy[0]&&bob.core.checkpointJson()===legacy[1],
    "The original databases must remain available for exact recovery");
-  return {passed:true,rounds:completed,exactLegacyRoots:2,explicitSeals:2,exactPeerReopens:4,legacyDatabasesReopened:2,
+  return {passed:true,rounds:completed,exactLegacyRoots:2,explicitSeals:4,exactPeerReopens:6,legacyDatabasesReopened:2,
    legacyBytes:legacy.map(value=>new TextEncoder().encode(value).length),
-   offlineEditPreserved:true,preBoundaryUndoAndRedoPreserved:true,
+   offlineEditPreserved:true,preCutRedoPreserved:true,preBoundaryUndoAndRedoPreserved:true,
    archiveBytes:retained.map(value=>new TextEncoder().encode(value).length)};
  }finally{
   await Promise.all([alice?.discardAndClose(),bob?.discardAndClose()]);

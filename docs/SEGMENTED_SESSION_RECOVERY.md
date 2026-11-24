@@ -31,11 +31,15 @@ first generation retains the original checkpoint as its root. Keep the
 original database available for recovery. The new active segment can be sealed
 after it receives its first journal entry.
 
-The [installed Chrome rollover drill](qualification/2026-11-23-installed-chrome-shared-journal-rollover.json)
-reopens both generation archives, delivers the second writer's offline edit,
-and checks Undo and Redo across the original generation boundary. The
-storage-lifecycle gate still requires coordinated room and relay cutover,
-backup restoration, and asset retention under the release operating limits.
+The [initial installed Chrome drill](qualification/2026-11-23-installed-chrome-shared-journal-rollover.json)
+reopened both archives and checked history across the original journal
+boundary. The current drill keeps both an Undo item and a Redo item from
+that original cut and adds two explicit seals per writer. After a byte-exact
+cold reopen, the peers resend the previously undelivered edit and compare
+the complete document. The drill traverses both pre-cut history items and
+checks that each writer's Undo leaves the other writer's work in place.
+Storage-lifecycle qualification still requires coordinated room and relay
+cutover, backup restoration, and asset retention under release operating limits.
 
 Rebuild the installed SDK fixture with the optional rollover page, then run
 the drill with Chrome installed on the host.

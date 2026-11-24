@@ -1,6 +1,6 @@
 import {expect,test} from "@playwright/test";
 
-test("installed original journals retain offline edits and Undo across a generation",async({page,browser},testInfo)=>{
+test("installed original journals retain offline edits and both history directions across two seals",async({page,browser},testInfo)=>{
  await page.goto("/shared-generation-rollover.html");
  const result=page.locator("#result");
  await expect(result).toContainText('"passed"',{timeout:330000});
@@ -10,8 +10,8 @@ test("installed original journals retain offline edits and Undo across a generat
   body:JSON.stringify({...report,browserVersion:browser.version()},null,2),
  });
  expect(report,report.reason).toMatchObject({
-  passed:true,rounds:115,exactLegacyRoots:2,explicitSeals:2,exactPeerReopens:4,
-  legacyDatabasesReopened:2,offlineEditPreserved:true,preBoundaryUndoAndRedoPreserved:true,
+  passed:true,rounds:115,exactLegacyRoots:2,explicitSeals:4,exactPeerReopens:6,
+  legacyDatabasesReopened:2,offlineEditPreserved:true,preCutRedoPreserved:true,preBoundaryUndoAndRedoPreserved:true,
  });
  expect(report.legacyBytes.every(bytes=>bytes<=16*1024*1024)).toBe(true);
  expect(report.archiveBytes.every(bytes=>bytes>16*1024*1024)).toBe(true);
