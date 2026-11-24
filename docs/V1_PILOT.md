@@ -50,8 +50,8 @@ checkpoint downloads private because they include Undo history.
 
 On narrow screens, wide tables have their own scrolling region and labeled
 scroll buttons. The skip link takes keyboard focus to the pilot workspace.
-On touch screens, the pilot's sign-in and session controls have at least
-44 CSS pixels of space for each tap target.
+On touch screens, the pilot's sign-in and session controls have tap targets
+that are at least 44 by 44 CSS pixels.
 
 ## Exercise the handoff
 
