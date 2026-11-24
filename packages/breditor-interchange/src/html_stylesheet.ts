@@ -4,7 +4,8 @@ import {declarationValues} from "./html_style.js";
 import {attribute,isElement,plainText,type HtmlElement,type HtmlNode} from "./html_tree.js";
 interface Value {value:string;important:boolean}
 interface Compound {tag:string|undefined;id:string|undefined;classes:string[]}
-interface Selector {parts:Compound[];specificity:number}
+type Relation=" "|">";
+interface Selector {parts:Compound[];relations:Relation[];specificity:number}
 interface Rule {selector:Selector;declarations:Map<string,Value>;order:number}
 function compound(source:string):Compound|null {
   if(!/^(?:[a-zA-Z][\w-]*|\*)?(?:[.#][a-zA-Z_][\w-]*)*$/.test(source)||!source)return null;
@@ -13,11 +14,11 @@ function compound(source:string):Compound|null {
   return{tag,id:ids[0],classes};
 }
 function selector(source:CssSelector):Selector|null {
-  const tokens=[""];
+  const tokens=[""],relations:Relation[]=[];
   for(const node of source.children){
     if(node.type==="Combinator"){
-      if(node.name!==" "||tokens.length===3)return null;
-      tokens.push("");
+      if((node.name!==" "&&node.name!==">")||tokens.length===3)return null;
+      relations.push(node.name);tokens.push("");
     }else tokens[tokens.length-1]+=generate(node);
   }
   const parts:Compound[]=[];let specificity=0;
@@ -27,9 +28,9 @@ function selector(source:CssSelector):Selector|null {
     // At most 24 classes and three types, so each column stays below 100.
     specificity+=(part.id===undefined?0:10_000)+part.classes.length*100+(part.tag===undefined?0:1);
   }
-  return{parts,specificity};
+  return{parts,relations,specificity};
 }
-/** Closed compound and descendant selectors over the inert HTML tree. */
+/** Closed compound, descendant and direct-child selectors over the inert HTML tree. */
 export class Stylesheets {
   #rules:Rule[]=[];#styleNodes=new WeakSet<HtmlElement>();#declarations=0;
   #classes=new WeakMap<HtmlElement,Set<string>>();#ancestorChecks=0;
@@ -69,19 +70,23 @@ export class Stylesheets {
   #matches(node:HtmlElement,part:Compound):boolean{
     return (part.tag===undefined||part.tag===node.tagName)&&(part.id===undefined||part.id===attribute(node,"id"))&&part.classes.every(c=>this.#classesOf(node).has(c));
   }
-  #matchesSelector(node:HtmlElement,{parts}:Selector):boolean{
-    if(!this.#matches(node,parts.at(-1)!))return false;
-    let ancestor=node.parentNode;
-    for(let i=parts.length-2;i>=0;i--){
-      let matched=false;
-      while(ancestor&&"tagName" in ancestor&&ancestor.namespaceURI==="http://www.w3.org/1999/xhtml"){
-        if(++this.#ancestorChecks>8*limits.parsedNodes)fail("resource-limit");
-        matched=this.#matches(ancestor,parts[i]!);ancestor=ancestor.parentNode;
-        if(matched)break;
+  #matchesPrefix(node:HtmlElement,selector:Selector,index:number):boolean{
+    if(index<0)return true;
+    const relation=selector.relations[index]!,part=selector.parts[index]!;
+    // Only a descendant with a preceding child relation can need a farther match at this depth.
+    const backtrack=relation===" "&&selector.relations[index-1]===">";
+    for(let ancestor=node.parentNode;ancestor&&"tagName" in ancestor&&ancestor.namespaceURI==="http://www.w3.org/1999/xhtml";ancestor=ancestor.parentNode){
+      if(++this.#ancestorChecks>8*limits.parsedNodes)fail("resource-limit");
+      if(this.#matches(ancestor,part)){
+        const prefix=this.#matchesPrefix(ancestor,selector,index-1);
+        if(prefix||!backtrack)return prefix;
       }
-      if(!matched)return false;
+      if(relation===">")break;
     }
-    return true;
+    return false;
+  }
+  #matchesSelector(node:HtmlElement,selector:Selector):boolean{
+    return this.#matches(node,selector.parts.at(-1)!)&&this.#matchesPrefix(node,selector,selector.parts.length-2);
   }
   apply(node:HtmlElement,inline:Map<string,string>,inlineImportant:ReadonlySet<string>):Map<string,string> {
     this.#classesOf(node);
