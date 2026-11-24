@@ -47,11 +47,18 @@ function readSegment(json:string):Record<string,unknown>{
  if(s["format"]!=="breditor/shared-history-segment"||s["formatVersion"]!==1||!Number.isSafeInteger(s["start"])||Number(s["start"])<0||!Array.isArray(s["entries"])||s["entries"].length>1000||!Array.isArray(s["joins"])||s["joins"].length>1000||typeof s["publication"]!=="string"||!/^(0|[1-9]\d{0,19})$/.test(s["publication"])||BigInt(s["publication"])>18446744073709551615n)throw fail();
  return s;
 }
+function readChildSegment(json:string,parent:SegmentedFile):Record<string,unknown>{
+ const segment=readSegment(json);
+ if(segment["parentGeneration"]!==parent.generation||segment["parentSha256"]!==parent.sha256)throw fail();
+ return segment;
+}
 export async function segmentedDigest(input:string):Promise<string>{const data=new TextEncoder().encode(input);const hash=await crypto.subtle.digest("SHA-256",data);return [...new Uint8Array(hash)].map(v=>v.toString(16).padStart(2,"0")).join("");}
 /** Verify exact byte hashes/links without rewriting a native record or inferring any old format. */
 export async function splitSegmentedCheckpoint(input:string,identity:SegmentedSessionIdentity,version:1|2=1):Promise<{archive:Archive;files:SegmentedFile[]}> {
  const archive=checkSegmentedCheckpoint(input,identity,version),files:SegmentedFile[]=[{generation:archive.rootGeneration,sha256:await segmentedDigest(archive.rootCheckpoint),kind:"root",json:archive.rootCheckpoint}];
  let parent=files[0]!;
- for(const json of [...archive.sealed,archive.active]){const s=readSegment(json);if(s["parentGeneration"]!==parent.generation||s["parentSha256"]!==parent.sha256)throw fail();const next:SegmentedFile={generation:s["generation"] as string,sha256:await segmentedDigest(json),kind:"sealed",json};files.push(next);parent=next;}
- files.pop();return{archive,files}; // The active segment lives atomically in the head, not as a sealed file.
+ for(const json of archive.sealed){const s=readChildSegment(json,parent);const next:SegmentedFile={generation:s["generation"] as string,sha256:await segmentedDigest(json),kind:"sealed",json};files.push(next);parent=next;}
+ // The active segment lives in the head. Validate its link without hashing an unreferenced file.
+ readChildSegment(archive.active,parent);
+ return{archive,files};
 }

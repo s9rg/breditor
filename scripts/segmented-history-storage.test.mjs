@@ -1,10 +1,12 @@
 /** Fault injection around actual native owners; synthetic IDB/locks, not crash-durability certification. */
 import test,{before,after} from 'node:test';
 import assert from 'node:assert/strict';
+import {createHash} from 'node:crypto';
 import {readFileSync} from 'node:fs';
 import {IDBFactory,IDBDatabase,IDBObjectStore} from 'fake-indexeddb';
 import {SharedSegmentedPersistentSession,SharedRichEditor} from '../packages/breditor-collaboration/dist/index.js';
 import {openSegmentedDatabase,readSegmentedCut} from '../packages/breditor-collaboration/dist/persistence/segmented_database.js';
+import {makeGenerationCut} from '../packages/breditor-collaboration/dist/persistence/segmented_head.js';
 import {openSessionDatabase,writeCheckpoint,readCheckpoint} from '../packages/breditor-collaboration/dist/persistence/session_database.js';
 const key=['room','101'],host={held:new Set(),request(name,_options,work){return Promise.resolve().then(async()=>{if(host.held.has(name))return work(null);host.held.add(name);try{return await work({name});}finally{host.held.delete(name);}});}};
 const globals=new Map(['indexedDB','navigator'].map(n=>[n,Object.getOwnPropertyDescriptor(globalThis,n)]));
@@ -35,6 +37,43 @@ async function setup(t,{paired=true}={}){
 function insert(core,text){core.dispatch({commands:[{kind:'insert_text',data:{block:'p',offset:0,text}}]});}
 function get(db,store,key){return new Promise((resolve,reject)=>{const tx=db.transaction(store,'readonly'),r=tx.objectStore(store).get(key);let v;r.onsuccess=()=>{v=r.result;};tx.oncomplete=()=>resolve(v);tx.onabort=()=>reject(tx.error);});}
 function put(db,store,key,value){return new Promise((resolve,reject)=>{const tx=db.transaction(store,'readwrite');tx.objectStore(store).put(value,key);tx.oncomplete=()=>resolve();tx.onabort=()=>reject(tx.error);});}
+
+test('V1 and continued V2 hash only persisted immutable files and still check active parent links',async t=>{
+ const h=await setup(t,{paired:false});
+ await h.session.close();
+ const raw=h.p.create(h.doc,key[1]),digest=SubtleCrypto.prototype.digest;
+ const observe=action=>{const observed=raw.observe();try{return action(observed);}finally{observed.free();}};
+ const add=text=>observe(observed=>raw.dispatch(observed,JSON.stringify({commands:[{kind:'insert_text',data:{block:'p',offset:0,text}}]})));
+ const identity={room:key[0],writer:key[1],richLanguage:3,history:'explicit',rangeEditing:'original',selectionEditing:'original',searchHistory:null,reviewedHistory:null};
+ const sha=json=>createHash('sha256').update(json).digest('hex');
+ const digested=[];
+ const decoder=new TextDecoder();
+ SubtleCrypto.prototype.digest=function(algorithm,input){digested.push(decoder.decode(input));return digest.call(this,algorithm,input);};
+ try{
+  observe(observed=>raw.enable_segmented_history(observed,'root','one'));
+  assert.equal(add('sealed edit '),true);
+  observe(observed=>raw.seal_history_segment(observed,'two'));
+  assert.equal(add('active edit '),true);
+  for(const version of [1,2]){
+   if(version===2){observe(observed=>raw.continue_history(observed,'three'));assert.equal(add('continued edit '),true);}
+   const checkpoint=version===1?raw.segmented_checkpoint():raw.continued_history_checkpoint(),archive=JSON.parse(checkpoint);
+   const files=[{generation:archive.rootGeneration,sha256:sha(archive.rootCheckpoint),kind:'root',json:archive.rootCheckpoint},
+    ...archive.sealed.map(json=>({generation:JSON.parse(json).generation,sha256:sha(json),kind:'sealed',json}))];
+   const [root,...sealed]=files.map(({generation,sha256})=>({generation,sha256}));
+   const head=JSON.stringify({format:'breditor/shared-generation-head',formatVersion:version,identity,family:archive.family,root,sealed,
+    active:archive.active,review:null,versions:[],...(version===2?{continuedAfter:archive.continuedAfter}:{})});
+   digested.length=0;
+   assert.deepEqual(await makeGenerationCut(checkpoint,identity,null,[],version),{head,files});
+   assert.equal(digested.length,files.length,'Only files retained in the head should be hashed');
+   assert.deepEqual(digested,files.map(file=>file.json));
+   for(const [field,value] of [['parentGeneration','wrong-parent'],['parentSha256','0'.repeat(64)]]){
+    const active=JSON.stringify({...JSON.parse(archive.active),[field]:value});
+    await assert.rejects(makeGenerationCut(JSON.stringify({...archive,active}),identity,null,[],version),error=>error.code==='segmented_checkpoint');
+   }
+  }
+ }finally{SubtleCrypto.prototype.digest=digest;raw.free();}
+});
+
 test('aborted save and close retain exact durable pair, readable offline work and both leases',async t=>{
  const h=await setup(t),before=await readSegmentedCut(h.db,key);fault='abort';insert(h.session.core,'offline ');await assert.rejects(h.session.flush());await assert.rejects(h.session.close());
  assert.equal((await readSegmentedCut(h.db,key)).head,before.head);const recovery=h.session.exportRecovery();assert.ok(recovery.checkpoint.includes('offline'));assert.equal(typeof recovery.reviewCheckpoint,'string');
