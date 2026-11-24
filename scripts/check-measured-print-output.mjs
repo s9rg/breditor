@@ -50,10 +50,12 @@ try {
     execFileSync("/usr/bin/tar",["-xf",archive.path,"-C",directory],{timeout:10000});
     packed.set(name,join(directory,"package"));
   }
-  const installedModules = Object.keys(output[0].modules).filter(path=>path.startsWith(`${installedScope}/`));
+  const installedModules = Object.keys(output[0].modules).filter(path=>path!==entry&&path!=="\0rolldown/runtime.js");
+  assert.ok(installedModules.every(path=>path.startsWith(`${installedScope}/`)),"Bundle used a module outside the installed archives");
   assert.ok(installedModules.includes(join(installedScope,"experimental-rich-content/dist/browser/print.js")));
   assert.ok(installedModules.includes(join(installedScope,"editor/dist/static_document.js")));
   for(const path of [...installedModules,wasmPath]){
+    assert.equal(realpathSync(path),path,`Installed module is a symlink: ${path}`);
     const modulePath = relative(installedScope,path);
     const [name,...parts] = modulePath.split("/");
     assert.ok(packed.has(name),`Evidence uses an unpinned archive: ${name}`);
