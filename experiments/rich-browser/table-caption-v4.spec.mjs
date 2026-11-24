@@ -152,7 +152,7 @@ test("interchange maps <caption> for the V4 owner only",async({page})=>{
   t.editor.execute(t.select("q",6));const pasted=t.core.validateClipboard(v4.value.structuredJson).kind;
   const v3p=t.api.compileStandardLayoutRichProfileV3(window.rich.wasm,t.bootstrap(8,4)),old=t.open(v3p,undefined);v3p.dispose();
   try{const v3=t.createRichInterchange(old).importHtml(html);
-   return {v4:kinds(v4),losses:v4.losses,html:exported.ok&&exported.value.startsWith('<table><caption><p style="white-space:pre-wrap">Sales <strong>2026</strong></p></caption>'),markdownLosses:markdown.losses.map(l=>l.code),back:kinds(back),pasted,v3:kinds(v3),v3losses:v3.losses.map(l=>[l.code,l.count])};}finally{old.dispose();}
+   return {v4:kinds(v4),losses:v4.losses,html:exported.ok&&exported.value.startsWith('<table><caption style="caption-side:bottom"><p style="white-space:pre-wrap">Sales <strong>2026</strong></p></caption>'),markdownLosses:markdown.losses.map(l=>l.code),back:kinds(back),pasted,v3:kinds(v3),v3losses:v3.losses.map(l=>[l.code,l.count])};}finally{old.dispose();}
  });
  const table={type:"table",children:[{type:"table-row",children:[{type:"table-cell",children:[{type:"paragraph",children:["A"]}]}]},{type:"paragraph",children:["Sales ","2026"]}]};
  expect(result).toEqual({v4:[table],losses:[],html:true,markdownLosses:["markdown-feature"],back:[table],pasted:"flow",
@@ -179,4 +179,20 @@ test("V3 and V4 reject tables nested inside HTML captions",async({page})=>{
  });
  const refused={direct:"unsupported-content",wrapped:"unsupported-content",markdown:"unsupported-content",unchanged:true};
  expect(result).toEqual([refused,refused]);
+});
+
+test("portable HTML renders its semantic table caption below the grid",async({page})=>{
+ const result=await page.evaluate(()=>{
+  const t=window.dt,adapter=t.createRichInterchange(t.core),before=t.core.checkpointJson();
+  const source=adapter.importHtml('<table><caption>Legend</caption><tr><th>Heading</th><td>Value</td></tr></table>');
+  const exported=adapter.exportHtml(source.value.structuredJson);
+  const mount=document.createElement("section");mount.innerHTML=exported.value;document.body.append(mount);
+  try{
+   const table=mount.querySelector("table"),caption=table.caption,back=adapter.importHtml(exported.value);
+   return {first:caption===table.firstElementChild,afterGrid:caption.getBoundingClientRect().top>=table.rows[0].getBoundingClientRect().bottom-1,
+    side:getComputedStyle(caption).captionSide,text:caption.textContent,losses:back.losses,roundTrip:back.ok&&back.value.structuredJson===source.value.structuredJson,
+    unchanged:t.core.checkpointJson()===before};
+  }finally{mount.remove();}
+ });
+ expect(result).toEqual({first:true,afterGrid:true,side:"bottom",text:"Legend",losses:[],roundTrip:true,unchanged:true});
 });

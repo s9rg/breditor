@@ -58,11 +58,16 @@ describe("candidate rich V4 table-caption interchange",()=>{
   expect(blocks(rowless)).toEqual([{type:"paragraph",children:["Only"]}]);
   expect(codes(rowless)).toEqual({"block-structure":1,"table-geometry":1});
  });
+ it("reports an explicit caption placement that the document model cannot represent",()=>{
+  const placed=staging(true).importHtml(source.replace("<caption>",'<caption style="caption-side:top">'));
+  expect(blocks(placed)).toEqual(blocks(staging(true).importHtml(source)));
+  expect(codes(placed)).toEqual({"unsupported-style":1});
+ });
  it("exports a leading <caption>, falls back to HTML in Markdown and round trips",()=>{
   const captioned=table(para("cap",[t("Legend "),t("bold",[{type:"breditor/strong",properties:{}}])]));
   const exported=staging(true).exportHtml(doc([captioned]));
   if(!exported.ok)throw Error(exported.error);
-  expect(exported.value).toBe('<table><caption><p style="white-space:pre-wrap">Legend <strong>bold</strong></p></caption><colgroup><col width="120"><col width="120"></colgroup><tbody><tr><th><p style="white-space:pre-wrap">1a</p></th><th><p style="white-space:pre-wrap">1b</p></th></tr><tr><td><p style="white-space:pre-wrap">2a</p></td><td><p style="white-space:pre-wrap">2b</p></td></tr></tbody></table>');
+  expect(exported.value).toBe('<table><caption style="caption-side:bottom"><p style="white-space:pre-wrap">Legend <strong>bold</strong></p></caption><colgroup><col width="120"><col width="120"></colgroup><tbody><tr><th><p style="white-space:pre-wrap">1a</p></th><th><p style="white-space:pre-wrap">1b</p></th></tr><tr><td><p style="white-space:pre-wrap">2a</p></td><td><p style="white-space:pre-wrap">2b</p></td></tr></tbody></table>');
   expect(exported.losses).toEqual([]);
   const back=staging(true).importHtml(exported.value);
   expect(blocks(back)).toEqual([shape(captioned)]);
@@ -74,7 +79,7 @@ describe("candidate rich V4 table-caption interchange",()=>{
   const markdown=staging(true).exportMarkdown(doc([captioned]));
   if(!markdown.ok)throw Error(markdown.error);
   expect(codes(markdown)).toEqual({"markdown-feature":1});
-  expect(markdown.value.startsWith("<table><caption>")).toBe(true);
+  expect(markdown.value.startsWith('<table><caption style="caption-side:bottom">')).toBe(true);
   expect(blocks(staging(true).importMarkdown(markdown.value))).toEqual([shape(captioned)]);
   // A V3 owner reading the same Markdown keeps the original caption conversion.
   expect(blocks(staging(false).importMarkdown(markdown.value))[0]).toEqual({type:"paragraph",children:["Legend ","bold"]});

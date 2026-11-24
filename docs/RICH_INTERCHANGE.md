@@ -228,8 +228,10 @@ V4 owners also report `supportsTableCaptions()`. For them, a table's first
 `<caption>` becomes the table's trailing caption paragraph (one paragraph imports
 without a notice; a leading heading is converted and further or unsupported blocks
 stay as flow before the table, each with `block-structure`). HTML export writes
-`<table><caption>…</caption><colgroup>…`, which round trips exactly; GFM tables have
-no caption, so a captioned table falls back to safe HTML with `markdown-feature`.
+`<caption style="caption-side:bottom">` as the table's first child so browsers
+render it below the grid. Explicit unsupported placements report
+`unsupported-style` on import. GFM tables have no caption, so a captioned table
+falls back to the same safe HTML with `markdown-feature`.
 Other owners keep the original conversion: `<caption>` content becomes flow before
 the table with `block-structure`.
 

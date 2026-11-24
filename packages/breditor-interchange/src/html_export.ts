@@ -113,7 +113,7 @@ export class HtmlExport {
     const captionNode=last?.type==="breditor/paragraph"?last:undefined,rows=captionNode?elements.slice(0,-1):elements;
     const columns=property(node,"columns") as {id:string;width:number}[],merges=property(node,"merges") as Record<string,unknown>[];
     if(!Array.isArray(columns)||!Array.isArray(merges))fail("native-admission");if(!rows.length){this.b.loss("table-geometry");return captionNode?this.blocks([captionNode],depth+1):"";}
-    const caption=captionNode?`<caption>${this.blocks([captionNode],depth+1)}</caption>`:"";
+    const caption=captionNode?`<caption style="caption-side:bottom">${this.blocks([captionNode],depth+1)}</caption>`:"";
     const occupied=new Map<string,{r:number;c:number;rs:number;cs:number}>(),rowIds=rows.map(r=>stringProperty(r,"row-id")),columnIds=columns.map(c=>c.id);
     for(const merge of merges){const r=rowIds.indexOf(String(merge["first-row"])),endR=rowIds.indexOf(String(merge["last-row"])),c=columnIds.indexOf(String(merge["first-column"])),endC=columnIds.indexOf(String(merge["last-column"]));if(r<0||c<0||endR<r||endC<c)fail("native-admission");const bounds={r,c,rs:endR-r+1,cs:endC-c+1};for(let y=r;y<=endR;y++)for(let x=c;x<=endC;x++)occupied.set(`${y}:${x}`,bounds);}
     const cells=rows.map(row=>columnIds.map(column=>row.children.find((n):n is Element=>n.kind==="element"&&property(n,"column-id")===column)??fail("native-admission")));
