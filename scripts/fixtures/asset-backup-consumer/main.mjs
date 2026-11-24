@@ -5,6 +5,46 @@ const host=document.querySelector("#editor"),errors=[],check=(condition,message)
 const sha=async blob=>[...new Uint8Array(await crypto.subtle.digest("SHA-256",await blob.arrayBuffer()))].map(x=>x.toString(16).padStart(2,"0")).join("");
 async function imageFile(mime,color){const canvas=document.createElement("canvas");canvas.width=3;canvas.height=2;const paint=canvas.getContext("2d");paint.fillStyle=color;paint.fillRect(0,0,3,2);const blob=await new Promise(done=>canvas.toBlob(done,mime));check(blob?.type===mime,"Browser must encode the requested PNG/JPEG/WebP fixture");return new File([blob],`owned.${mime.split("/")[1]}`,{type:mime});}
 async function refuses(operation,code){let failure;try{const owner=await operation();owner?.close();}catch(error){failure=error;}check(failure?.code===code,`Expected ${code}; received ${failure?.code??"acceptance"}`);}
+async function closeBeforeUploadProvider(file,database){
+ let owner=await RichAssetStore.open(database);
+ const put=IDBObjectStore.prototype.put,providerCalls=[];
+ try{
+  const {asset}=await owner.ingest(file);
+  let closes=0;
+  IDBObjectStore.prototype.put=function(...args){
+   const request=put.apply(this,args),tx=this.transaction;
+   if(this.name==="assets"&&tx.db.name===database&&args[0].attempts===1){
+    const commit=tx.oncomplete;
+    tx.oncomplete=function(event){
+     commit.call(this,event);
+     // The durable attempt wakes the uploader. Close before its deferred provider call.
+     queueMicrotask(()=>{owner.close();closes++;});
+    };
+   }
+   return request;
+  };
+  try{await owner.flush(async (_info,_blob,signal)=>{
+   providerCalls.push(signal.aborted);
+   return "abandoned-receipt";
+  });}finally{IDBObjectStore.prototype.put=put;}
+  check(closes===1,"A real upload attempt must commit before the scheduled store close");
+  same(providerCalls,[],`Closing the store must prevent the deferred provider call, saw aborted flags ${JSON.stringify(providerCalls)}`);
+  owner=await RichAssetStore.open(database);
+  const pending=await owner.get(asset);
+  check(pending.status==="pending"&&pending.attempts===1&&pending.storageRef===null,"A closed attempt must remain pending without a receipt");
+  check(await sha(await owner.blob(asset))===await sha(file),"The closed attempt must keep the exact raster bytes");
+  await owner.flush(async (info,blob,signal)=>{
+   providerCalls.push(signal.aborted);
+   check(info.asset===asset&&await sha(blob)===await sha(file),"Retry must deliver the original raster bytes");
+   return "reopened-receipt";
+  });
+  owner.close();owner=await RichAssetStore.open(database);
+  const uploaded=await owner.get(asset);
+  same(providerCalls,[false],"Only the reopened owner may call the provider");
+  check(uploaded.status==="uploaded"&&uploaded.attempts===2&&uploaded.storageRef==="reopened-receipt","Retry must durably preserve its exact receipt");
+  return true;
+ }finally{IDBObjectStore.prototype.put=put;owner.close();}
+}
 function refusesInventory(operation){let refused=false;try{operation();}catch{refused=true;}check(refused,"Copied, foreign or stale inventory must be rejected");}
 async function listMetadata(store,database){
  const getAll=IDBObjectStore.prototype.getAll;
@@ -21,6 +61,7 @@ async function listMetadata(store,database){
 function options(checkpointJson,assetStore){return{host,richLanguage:3,history:"typing-v1",toolbar:()=>[],resolveAsset:binding=>assetStore.resolve(binding.asset),onError:error=>errors.push(String(error)),initial:checkpointJson?{kind:"typingCheckpoint",checkpointJson}:{kind:"empty",blockId:"body"}};}
 async function run(){
  check(RichAssetStore===DirectStore,"Public entry points must share the same asset class");const prefix=`asset-backup-browser-${crypto.randomUUID()}`,source=await RichAssetStore.open(`${prefix}-source`);let target,extra,winner;try{
+  const providerCloseFence=await closeBeforeUploadProvider(await imageFile("image/png","#245912"),prefix+"-provider-close");
   editor=await openLocalEditor(options(null,source));const png=await imageFile("image/png","#346799"),jpeg=await imageFile("image/jpeg","#a64080"),webp=await imageFile("image/webp","#249f35"),fourth=await imageFile("image/png","#7930ba"),images=await editor.insertImageFiles(source,[png,jpeg],{parent:{kind:"document"},before:null}),webpInfo=await source.ingest(webp);await source.ingest(fourth);const opaqueReceipt="host-receipt:"+String.fromCharCode(0xd800,0,0xdc00)+":🙂";let uploadCalls=0;await source.flush(async info=>{uploadCalls++;if(info.asset===images[0].asset)return opaqueReceipt;throw Error("fixture offline upload");});await source.cancel(images[1].asset);await source.retry(webpInfo.asset);
   const metadata=await listMetadata(source,`${prefix}-source`);same(metadata.map(r=>r.status).sort(),["cancelled","failed","pending","uploaded"],"Retain all four queue states");editor.execute({kind:"undo"});const checkpoint=editor.checkpointJson();check(!editor.view().documentJson.includes(images[0].asset),"Undo removes references, not retained bytes");
   check(editor.supportsRetainedAssetReferences(),"Managed installed owner must expose native retained-image reads");const inventory=editor.retainedAssetReferences();editor.checkRetainedAssetReferences(inventory);same(inventory.references.map(r=>r.asset).sort(),images.map(r=>r.asset).sort(),"Inventory includes invisible Redo images, not unrelated store files");check([inventory,inventory.schema,inventory.references,...inventory.references].every(Object.isFrozen),"Inventory is immutable");refusesInventory(()=>editor.checkRetainedAssetReferences(structuredClone(inventory)));check(editor.checkpointJson()===checkpoint,"Native inventory must not publish a history action");
@@ -31,7 +72,7 @@ async function run(){
   const outcomes=await Promise.allSettled([RichAssetStore.restoreBackup(`${prefix}-race`,archive,{uploadState:"preserve"}),RichAssetStore.restoreBackup(`${prefix}-race`,archive,{uploadState:"preserve"})]);check(outcomes.filter(r=>r.status==="fulfilled").length===1,"Exactly one concurrent restore wins");const lost=outcomes.find(r=>r.status==="rejected");check(lost.reason.code==="asset_backup_destination_exists","A racing import cannot overwrite");winner=outcomes.find(r=>r.status==="fulfilled").value;check(await sha(await winner.exportBackup())===archiveSha256,"Racing winner is complete");winner.close();winner=undefined;
   const add=IDBObjectStore.prototype.add;let queuedAdds=0;try{IDBObjectStore.prototype.add=function(...args){const request=add.apply(this,args);if(this.name==="assets"){queuedAdds++;const tx=this.transaction;queueMicrotask(()=>{try{tx.abort();}catch{}});}return request;};await refuses(()=>RichAssetStore.restoreBackup(`${prefix}-abort`,archive,{uploadState:"preserve"}),"asset_backup_storage");}finally{IDBObjectStore.prototype.add=add;}check(queuedAdds===4,"Abort after every asset add has been queued");extra=await RichAssetStore.open(`${prefix}-abort`);same(await extra.list(),[],"No partial raster set survives");await extra.exportBackup();extra.close();extra=undefined;extra=await RichAssetStore.restoreBackup(`${prefix}-abort`,archive,{uploadState:"preserve"});check(await sha(await extra.exportBackup())===archiveSha256,"Aborted transaction can be retried exactly");extra.close();extra=undefined;
   const corrupted=new Uint8Array(await archive.arrayBuffer());corrupted[corrupted.length-1]^=1;let failed;try{extra=await RichAssetStore.restoreBackup(`${prefix}-corrupt`,new Blob([corrupted]),{uploadState:"preserve"});}catch(error){failed=error;}check(["asset_backup_raster","asset_backup_integrity"].includes(failed?.code),"Tampered raster bytes must fail admission");check(!(await indexedDB.databases()).some(db=>db.name===`${prefix}-corrupt`),"Invalid raster must not create a destination");
-  editor.dispose();editor=undefined;source.close();store=target;target=undefined;editor=await openLocalEditor(options(checkpoint,store));check(editor.checkpointJson()===checkpoint,"Recover exact native Redo with historical image bytes");refusesInventory(()=>editor.checkRetainedAssetReferences(inventory));same(editor.retainedAssetReferences().references,inventory.references,"New owner derives its own exact inventory");editor.execute({kind:"redo"});expected=editor.checkpointJson();check(editor.view().documentJson.includes(images[0].asset)&&editor.view().documentJson.includes(images[1].asset),"Redo recovers both image references");sessionStorage.setItem("asset-backup-reload",JSON.stringify({database:`${prefix}-target`,metadata,checkpoint,expected,archiveSha256,inventory}));return{passed:true,assets:metadata.length,mimes:[...new Set(metadata.map(r=>r.mime))].sort(),states:metadata.map(r=>r.status).sort(),exactRasterDecodes:metadata.length,binaryBytes:archive.size,uploadCalls,queuedAdds,concurrentRestoreWinners:1,occupiedRefusals:1,corruptRefusals:1,atomicAbortRetries:1,nativeUndoRedoWithRetainedAssets:true,nativeRetainedInventory:true,sourceCut:true,pureUploadReader:true,retainedImageBindings:inventory.references.length,inventorySourceRefusals:2};
+  editor.dispose();editor=undefined;source.close();store=target;target=undefined;editor=await openLocalEditor(options(checkpoint,store));check(editor.checkpointJson()===checkpoint,"Recover exact native Redo with historical image bytes");refusesInventory(()=>editor.checkRetainedAssetReferences(inventory));same(editor.retainedAssetReferences().references,inventory.references,"New owner derives its own exact inventory");editor.execute({kind:"redo"});expected=editor.checkpointJson();check(editor.view().documentJson.includes(images[0].asset)&&editor.view().documentJson.includes(images[1].asset),"Redo recovers both image references");sessionStorage.setItem("asset-backup-reload",JSON.stringify({database:`${prefix}-target`,metadata,checkpoint,expected,archiveSha256,inventory}));return{passed:true,providerCloseFence,assets:metadata.length,mimes:[...new Set(metadata.map(r=>r.mime))].sort(),states:metadata.map(r=>r.status).sort(),exactRasterDecodes:metadata.length,binaryBytes:archive.size,uploadCalls,queuedAdds,concurrentRestoreWinners:1,occupiedRefusals:1,corruptRefusals:1,atomicAbortRetries:1,nativeUndoRedoWithRetainedAssets:true,nativeRetainedInventory:true,sourceCut:true,pureUploadReader:true,retainedImageBindings:inventory.references.length,inventorySourceRefusals:2};
  }finally{source.close();target?.close();extra?.close();winner?.close();}
 }
 async function reopen(){const saved=JSON.parse(sessionStorage.getItem("asset-backup-reload"));store=await RichAssetStore.open(saved.database);same(await store.list(),saved.metadata,"Real reload preserves every upload state");check(await sha(await store.exportBackup())===saved.archiveSha256,"Real reload preserves the complete binary archive");editor=await openLocalEditor(options(saved.checkpoint,store));check(editor.checkpointJson()===saved.checkpoint,"Exact native history before future Redo");refusesInventory(()=>editor.checkRetainedAssetReferences(saved.inventory));const inventory=editor.retainedAssetReferences();same(inventory.references,saved.inventory.references,"Native inventory survives real reload without adopting serialized provenance");editor.checkRetainedAssetReferences(inventory);editor.execute({kind:"redo"});refusesInventory(()=>editor.checkRetainedAssetReferences(inventory));expected=saved.expected;check(editor.checkpointJson()===expected,"Exact future native history after reload");return{passed:true,retainedAssets:saved.metadata.length,exactArchiveAfterReload:true,exactFutureCheckpoint:true,nativeRetainedInventoryAfterReload:true,inventorySourceRefusals:2};}

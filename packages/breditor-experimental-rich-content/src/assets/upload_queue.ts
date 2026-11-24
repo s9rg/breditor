@@ -3,11 +3,15 @@ import {readAsset, updateAsset} from "./database.js";
 
 function invokeProvider(uploader: AssetUploader, record: AssetRecord, signal: AbortSignal): Promise<string> {
   return new Promise((resolve, reject) => {
-    const aborted = (): void => reject(new DOMException("Asset upload was cancelled", "AbortError"));
+    const cancellation = () => new DOMException("Asset upload was cancelled", "AbortError");
+    const aborted = (): void => reject(cancellation());
     if (signal.aborted) { aborted(); return; }
     signal.addEventListener("abort", aborted, {once: true});
     // Observe late completion/rejection even if cancellation wins, but never publish it.
-    Promise.resolve().then(() => uploader(assetInfo(record), new Blob([record.payload], {type: record.mime}), signal))
+    Promise.resolve().then(() => {
+      if (signal.aborted) throw cancellation();
+      return uploader(assetInfo(record), new Blob([record.payload], {type: record.mime}), signal);
+    })
       .then(resolve, reject).finally(() => signal.removeEventListener("abort", aborted));
   });
 }
