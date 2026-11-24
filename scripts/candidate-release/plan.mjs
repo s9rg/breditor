@@ -22,9 +22,11 @@ export const deferredFunctionalGates=Object.freeze([
  "dependency-license-review","catalog-parity-and-final-rc-approval",
  "pinned-input-rule-historical-readers",
 ]);
+const richBrowserEngines=["chromium","firefox","webkit"];
 const focusedStageIds = {
  "default-matrix": ["default-package-release-matrix"],
  "editor-browser-matrix": ["relay-native-dependency-notices","default-typescript-build","installed-editor-browser-matrix"],
+ "rich-browser-matrix": ["default-typescript-build","paired-local-runtime","rich-browser-build",...richBrowserEngines.map(engine=>"rich-browser-"+engine)],
  "dependency-inventories": ["relay-native-dependency-notices","paired-local-runtime","paired-shared-runtime"],
  "installed-feature-browser": [
   "default-typescript-build","paired-local-runtime","paired-shared-runtime","rich-browser-build","collaboration-build","editor-build",
@@ -845,6 +847,12 @@ export function candidateReleasePlan({profile="full",environment=process.env}={}
   script("readiness-inventory","check-v1-readiness.mjs",["--json"]),
  ];
  if(profile!=="functional")checks.push(
+  ...richBrowserEngines.map(engine=>{
+   const output="target/rich-browser-results/"+engine,report="target/rich-browser-"+engine+"-report.json";
+   return stage("rich-browser-"+engine,node,["node_modules/@playwright/test/cli.js","test","--config","experiments/rich-browser/playwright.config.mjs",
+    "--project="+(engine==="webkit"?"webkit*":engine),"--output="+output,"--reporter=line,json"],
+    {PLAYWRIGHT_JSON_OUTPUT_FILE:report},[{path:report,fresh:true,retain:true}],1800000);
+  }),
   script("rich-demo-latency","record-rich-demo-latency.mjs",[],[{path:richDemoLatencyReport,fresh:true,retain:true}],240000),
   script("installed-search-browser","check-search-browser.mjs",[],[{path:"target/search-installed-browser.json",fresh:true}]),
   script("installed-placeholder-browser","check-placeholder-browser.mjs",[],[{path:"target/placeholder-installed-browser.json",fresh:true}]),

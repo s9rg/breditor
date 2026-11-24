@@ -53,6 +53,12 @@ the default packages. Both complete candidate profiles also run the full
 workspace script suite after the Native executable and fixture producers.
 That suite uses the exact shared runtime receipt from its candidate.
 
+Select `rich-browser-matrix` to build the candidate's local rich runtime and
+run the existing grouped rich browser suite in Chromium, Firefox and WebKit.
+Each engine has a separate Playwright process and stage budget. The candidate
+manifest retains each report and the workflow keeps failed traces. This matrix
+is also required by the full candidate plan.
+
 ## Dependency inventories
 
 Select `dependency-inventories` to build the rich and shared Wasm notice
