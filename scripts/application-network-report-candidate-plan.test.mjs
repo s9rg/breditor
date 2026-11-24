@@ -82,4 +82,14 @@ test("retained installed application reports are reviewed even when their file h
   assert.throws(()=>verifyApplicationNetworkStage(directory,evidence(testReport(),claimed),preceding),error);
  }
  assert.throws(()=>verifyApplicationNetworkStage(directory,evidence(testReport()),preceding.slice(1)),/Missing preceding application network input/);
+ const missingRelay=[...preceding];
+ missingRelay[1]=retain("relay-native-dependency-notices","target/relay-native-notices/breditor_dependency_inventory.json",{nativeBuild:{}});
+ assert.throws(()=>verifyApplicationNetworkStage(directory,evidence(testReport(),{...inputs,relaySha256:undefined}),missingRelay),
+  /Missing valid application network relay digest/);
+ for(const archives of [[],[inputs.archives[0],inputs.archives[0]],[{...inputs.archives[0],sha256:"wrong"}]]){
+  const sharedClaim=[...preceding];
+  sharedClaim[0]=retain("installed-editor-pairing","target/editor-installed-consumer.json",{archiveEvidence:archives});
+  assert.throws(()=>verifyApplicationNetworkStage(directory,evidence(testReport(),{...inputs,archives}),sharedClaim),
+   /Missing valid, unique application network archive identities/);
+ }
 });

@@ -9,6 +9,7 @@ import {sharedBrowserWebKitGroups} from "../shared-browser-runs.mjs";
 import {sharedBrowserBatchProjects,validateSharedBrowserReport} from "./shared-browser-report.mjs";
 
 const reportPath="target/shared-application-browser-report.json";
+const sha256=/^[a-f0-9]{64}$/u;
 const productionInputs={
  archives:["installed-editor-pairing","target/editor-installed-consumer.json"],
  relay:["relay-native-dependency-notices",relayNoticePaths[0]],
@@ -62,8 +63,16 @@ export function verifyApplicationNetworkStage(directory,stage,preceding){
   return artifact;
  };
  const {inputs}=evidence;
+ assert.ok(typeof inputs?.relaySha256==="string"&&sha256.test(inputs.relaySha256),"Missing valid application network relay digest");
+ const archives=inputs.archives;
+ assert.ok(Array.isArray(archives)&&archives.length>0&&archives.every(archive=>
+  typeof archive?.name==="string"&&/^@breditor\/[a-z0-9-]+$/u.test(archive.name)&&
+  typeof archive.filename==="string"&&/^[a-z0-9][a-z0-9+._-]*\.tgz$/u.test(archive.filename)&&
+  typeof archive.sha256==="string"&&sha256.test(archive.sha256))&&
+  new Set(archives.map(archive=>archive.name)).size===archives.length&&new Set(archives.map(archive=>archive.filename)).size===archives.length,
+ "Missing valid, unique application network archive identities");
  const archiveReport=readApplicationArtifact(directory,...productionInputs.archives,prior("archives"));
- assert.deepEqual(inputs.archives,archiveReport.archiveEvidence.map(({name,filename,sha256})=>({name,filename,sha256})),
+ assert.deepEqual(archives,archiveReport.archiveEvidence.map(({name,filename,sha256})=>({name,filename,sha256})),
   "Application network archives differ from the installed SDK producer");
  const relayReport=readApplicationArtifact(directory,...productionInputs.relay,prior("relay"));
  assert.equal(inputs.relaySha256,relayReport.nativeBuild.executableSha256,"Application network relay differs from the inventoried Native build");
