@@ -12,6 +12,7 @@ import {environment} from './fixtures/room-participant-inventory/environment.mjs
 import {pixel, proposalAsset, proposalPixel, secondAsset, secondPixel, recoveredAsset, recoveredPixel} from './fixtures/review-assets/pixels.mjs';
 import {lostReplyUpload, unavailableAsset, unavailableUpload, UnavailableUploadImage} from './fixtures/physical-recovery-control/unavailable-upload.mjs';
 import {assertOlderAuthorityRefused, startSegmentHandoverHost} from './fixtures/relay-segment-handover-host.mjs';
+import {measureSegmentColdStart} from './fixtures/relay-segment-cold-start-memory.mjs';
 import {verifyContinuedRasterServing} from './fixtures/relay-continued-raster-serving.mjs';
 import {advanceRelocatedHistories, readStorageCostCut, storageCost, verifyRelocatedMaintenanceRetries} from './fixtures/relay-segment-maintenance.mjs';
 import {captureParticipant, checkRecoveredAlternate, checkRetainedSelected, proposalAlias, reopenParticipant, withWrongReviewReceipt} from './fixtures/relay-segment-participant.mjs';
@@ -140,12 +141,21 @@ async function run(mode, {distribution, rich}, executable, parent, journalKind, 
   const previousSocket = Object.getOwnPropertyDescriptor(globalThis, 'WebSocket');
   const loss = recoverCommentIntent ? {armed: false, durable: null, submissions: 0} : null;
   const portableSockets = [];
+  let coldReplayRequests;
   Object.defineProperty(globalThis, 'WebSocket', {
     configurable: true,
     value: loss ? recoveryReviewReplySocket(Socket, origin, loss) : class extends Socket {
       constructor(url) {
         super(url, {headers: {Origin: origin}});
         if (portableSeal) portableSockets.push(this);
+      }
+      send(raw) {
+        if (coldReplayRequests) {
+          const {kind} = JSON.parse(raw).request;
+          coldReplayRequests.add(kind);
+          assert.ok(kind !== 'submit' && kind !== 'reviewSubmit', 'A cold replay may not repair the relay from local edits');
+        }
+        return super.send(raw);
       }
     },
   });
@@ -451,6 +461,35 @@ async function run(mode, {distribution, rich}, executable, parent, journalKind, 
       assert.equal(lastReceipt.through, localThrough);
       assert.ok(BigInt(lastReceipt.through) > BigInt(acceptedReviewBeforeHandoff));
       recordExhaustion.offlineEditAndCommentAccepted = true;
+    }
+    let coldStartMemory;
+    if (observeColdStart) {
+      const exactCut = () => {
+        const {source, relay} = session.exportRecovery();
+        const {cursor, ...acceptedReview} = relay.review;
+        return {documentSha256: sha(source.documentCheckpoint), reviewSha256: sha(source.reviewCheckpoint),
+          documentSequence: document.state().serverReceiptSequence, reviewThrough: review.state().serverThrough,
+          documentProgress: relay.document, acceptedReview, reviewReceipt: relay.reviewReceipt, cursor};
+      };
+      const {cursor: beforeCursor, ...before} = exactCut();
+      assert.ok(before.documentSequence && before.reviewThrough && before.documentProgress.receipt && before.reviewReceipt && beforeCursor);
+      await stopClients();
+      await host.crash();
+      host = undefined;
+      coldStartMemory = await measureSegmentColdStart(executable, parent);
+      host = await startSegmentHandoverHost(executable, [parent, 'final', address]);
+      const requests = new Set();
+      coldReplayRequests = requests;
+      try { await attach(); } finally { coldReplayRequests = undefined; }
+      for (const kind of ['clock', 'reviewClock', 'reviewCursorProof', 'reviewSync']) assert.ok(requests.has(kind));
+      const {cursor: afterCursor, ...after} = exactCut();
+      assert.deepEqual(after, before, 'Restart must retain native histories and accepted receipts');
+      // A verified catch-up may advance the reader over its last already acknowledged batch.
+      assert.equal(afterCursor.binding, beforeCursor.binding);
+      assert.ok(BigInt(afterCursor.after) >= BigInt(beforeCursor.after));
+      assert.ok(BigInt(afterCursor.after) >= BigInt(after.reviewReceipt.sequence));
+      coldStartMemory.exactHistoriesAndReceipts = true;
+      coldStartMemory.replayedWithoutSubmissions = true;
     }
     await stopClients();
     const rasterBefore = await fetch(rasterUrl, {headers});
@@ -1199,11 +1238,13 @@ async function run(mode, {distribution, rich}, executable, parent, journalKind, 
     }
     const extra = Number(carryForward);
     const relocated = Number(portableSeal);
+    const meteredRestarts = coldStartMemory ? 2 : 0;
     return {mode, handoffs: 2, saturatedSuccessorColdReopens: 1, saturatedSuccessorDescriptorLimit: 160,
       portableRestores: 1 + extra + relocated, restoredOfflineLanes: 6, undoRedoLanes: 2, rasterReads: 2,
-      processExits: 4 + extra + Number(reviewRecovered) + Number(relayDiscussion) + relocated, authenticatedTakeovers: 1 + extra + relocated,
-      oldServingRefusals: 1 + extra, coldResumes: 2 + extra + Number(reviewRecovered) + Number(relayDiscussion),
+      processExits: 4 + extra + Number(reviewRecovered) + Number(relayDiscussion) + relocated + meteredRestarts, authenticatedTakeovers: 1 + extra + relocated,
+      oldServingRefusals: 1 + extra, coldResumes: 2 + extra + Number(reviewRecovered) + Number(relayDiscussion) + meteredRestarts,
       ...(recordExhaustion ? {recordExhaustion} : {}),
+      ...(coldStartMemory ? {coldStartMemory} : {}),
       ...carryEvidence,
       ...relocationEvidence,
       ...coldReaderEvidence,
@@ -1267,7 +1308,8 @@ const executable = resolve(process.argv[2]);
 const option = process.argv[3];
 const terminalReceipts = option === '--participant-terminal-receipts';
 const opaque = option === '--participant-opaque';
-const portableSeal = option === '--participant-portable-seal';
+const observeColdStart = option === '--measure-portable-cold-start';
+const portableSeal = observeColdStart || option === '--participant-portable-seal';
 const relayDiscussion = portableSeal || option === '--participant-relay-discussion';
 const recoverDiscussion = relayDiscussion || option === '--participant-recovered-discussion';
 const recoverCommentIntent = option === '--participant-recovered-comment-intent';
@@ -1281,7 +1323,9 @@ const reviewRecovered = multipleReviewed || option === '--participant-reviewed-t
 const competing = carryForward || reviewRecovered || option === '--participant-accepted-branch';
 assert.ok(process.argv.length === 3 || process.argv.length === 4 &&
   ['--independent-delivery', '--participant-archive', '--participant-terminal-receipts', '--participant-opaque',
-    '--participant-accepted-branch', '--participant-carried-alternate', '--participant-multiple-alternates', '--participant-reviewed-text', '--participant-multiple-reviewed', '--participant-multiple-rich-review', '--participant-cold-review-reader', '--participant-recovered-comment', '--participant-recovered-comment-intent', '--participant-recovered-discussion', '--participant-relay-discussion', '--participant-portable-seal'].includes(option));
+    '--participant-accepted-branch', '--participant-carried-alternate', '--participant-multiple-alternates', '--participant-reviewed-text', '--participant-multiple-reviewed', '--participant-multiple-rich-review', '--participant-cold-review-reader', '--participant-recovered-comment', '--participant-recovered-comment-intent', '--participant-recovered-discussion', '--participant-relay-discussion', '--participant-portable-seal', '--measure-portable-cold-start'].includes(option));
+if (observeColdStart) assert.equal(process.platform, 'darwin', 'Native cold-start memory measurement requires macOS');
+const measuredRelaySha256 = observeColdStart ? sha(readFileSync(executable)) : undefined;
 const journalKind = terminalReceipts || opaque || competing || option === '--participant-archive' ? 'independentParticipant'
   : option === '--independent-delivery' ? 'independentDelivery' : 'pairedSession';
 const source = sourceEvidence(root);
@@ -1306,11 +1350,14 @@ try {
   }
   assert.equal(reports.source.runtimeSha256, reports.installed.runtimeSha256);
   assert.deepEqual(sourceEvidence(root), source);
+  const relaySha256 = sha(readFileSync(executable));
+  if (measuredRelaySha256) assert.equal(relaySha256, measuredRelaySha256, 'Measured native executable changed during qualification');
   const report = {
     format: 'breditor/writable-relay-segment-qualification', formatVersion: 1,
-    source, relaySha256: sha(readFileSync(executable)), reports,
+    source, relaySha256: measuredRelaySha256 ?? relaySha256, reports,
   };
-  const reportFile = portableSeal ? 'qualified-portable-relocation.json'
+  const reportFile = observeColdStart ? 'qualified-portable-cold-start.json'
+    : portableSeal ? 'qualified-portable-relocation.json'
     : relayDiscussion ? 'qualified-relay-discussion.json'
     : recoverDiscussion ? 'qualified-recovered-discussion.json'
     : recoverCommentIntent ? 'qualified-recovered-comment-intent.json'
