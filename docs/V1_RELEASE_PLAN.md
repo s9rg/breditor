@@ -513,6 +513,24 @@ deliver offline edits and comments after that handoff under the
 160-descriptor predecessor limit. The later portable activation retains
 review packets and raster data. All 46 focused relay tests pass.
 
+[Cold relay startup memory](qualification/2026-11-24-native-relay-cold-start-memory.json)
+observes the same bounded handoff chain from source and fresh installed clients
+on macOS. Each debug relay started in a fresh process with 129 retained WAL
+files totaling approximately 1.51 MB. The relay announced listening in 345 and
+349 ms. Kernel peak RSS was 31.18 and 31.26 MB, about 0.10 and 0.13 MB above
+the first RSS sample after listening. The fixture hashes the WAL files before
+each startup, so the filesystem cache can be warm. The metered process runs
+without clients. A separate authenticated reconnect verifies exact native
+history and receipts while blocking all document and comment submissions.
+This workload leaves supported WAL and room lifetime limits open.
+
+Repeat the optional measurement on macOS with a compatible native debug fixture.
+
+```sh
+node scripts/check-writable-relay-segment.mjs \
+  /path/to/relay_segment_functional --measure-portable-cold-start
+```
+
 [Native history reserve planning](qualification/2026-11-16-native-history-reserve.json)
 lets an owner choose a minimum amount of free capacity before staging a
 boundary. It prefers a seal when the exact projection meets every floor and
