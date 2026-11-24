@@ -6,6 +6,7 @@ import {basename,dirname,join} from "node:path";
 import {fileEvidence} from "./evidence.mjs";
 
 const contextFile="runner-context.tsv";
+const workflowFile=".github/workflows/candidate-qualification.yml";
 const successfulSteps=["checkout","node","rust","npm","cargo","candidate"];
 const browserStages=new Set([
  "default-package-release-matrix","installed-editor-browser-matrix","installed-application-network-matrix",
@@ -18,7 +19,17 @@ const keys=[
  "revision","profile","shard","os","arch","browsers",...successfulSteps,
 ].sort();
 
-export function verifyHostedContext(directory,receipt,plan){
+function pinnedNodeVersion(root){
+ const workflow=JSON.parse(readFileSync(join(root,workflowFile),"utf8"));
+ const steps=workflow.jobs?.qualify?.steps?.filter(step=>step.id==="node");
+ const version=steps?.[0]?.with?.["node-version"];
+ assert.ok(steps?.length===1&&/^actions\/setup-node@[a-f0-9]{40}$/u.test(steps[0].uses)&&
+  typeof version==="string"&&/^[0-9]+\.[0-9]+\.[0-9]+$/u.test(version),
+  "Candidate qualification workflow must pin an exact Node version");
+ return `v${version}`;
+}
+
+export function verifyHostedContext(candidateRoot,directory,receipt,plan){
  assert.match(basename(directory),/^run-[a-z0-9]+$/i,"Hosted results must remain in their downloaded run directory");
  const root=dirname(directory),context=fileEvidence(root,contextFile);
  assert.ok(context.bytes<=8192,"Hosted runner context exceeds its size bound");
@@ -30,7 +41,7 @@ export function verifyHostedContext(directory,receipt,plan){
  const value=Object.fromEntries(rows);
  assert.equal(value.format,"1","Unsupported hosted runner context");
  assert.match(value.repository,/^[a-z0-9_.-]+\/[a-z0-9_.-]+$/i,"Missing GitHub repository identity");
- const workflow=`${value.repository}/.github/workflows/candidate-qualification.yml@`;
+ const workflow=`${value.repository}/${workflowFile}@`;
  assert.ok(value.workflow.startsWith(workflow)&&/^refs\/(?:heads|tags)\/[^\s]+$/.test(value.workflow.slice(workflow.length)),
   "Hosted runner context names a different workflow");
  assert.equal(value.event,"workflow_dispatch");
@@ -41,6 +52,7 @@ export function verifyHostedContext(directory,receipt,plan){
  assert.deepEqual([value.os,value.arch,receipt.environment?.platform,receipt.environment?.arch],
   ["Linux","X64","linux","x64"],"Hosted runner and receipt must name the candidate Linux x64 host");
  for(const step of successfulSteps)assert.equal(value[step],"success",`Hosted runner step ${step} did not succeed`);
+ assert.ok(receipt.environment?.node===pinnedNodeVersion(candidateRoot),"Hosted receipt Node version differs from the candidate workflow pin");
  const expectedBrowserSetup=plan.checks.some(check=>browserStages.has(check.id))?"success":"skipped";
  assert.equal(value.browsers,expectedBrowserSetup,"Hosted browser setup differs from the selected qualification");
  return {repository:value.repository,workflow:value.workflow,runId:value.runId,

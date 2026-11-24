@@ -28,7 +28,12 @@ test("candidate coverage requires one clean source, complete selected stages and
  try{
   git(["init","-q"]);
   writeFileSync(join(root,".gitignore"),"target/\ndist/\n");
-  git(["add",".gitignore"]);
+  const workflowPath=".github/workflows/candidate-qualification.yml",fixtureNodeVersion="22.99.1";
+  const workflow=JSON.parse(readFileSync(join(repository,workflowPath),"utf8"));
+  workflow.jobs.qualify.steps.find(step=>step.id==="node").with["node-version"]=fixtureNodeVersion;
+  mkdirSync(dirname(join(root,workflowPath)),{recursive:true});
+  writeFileSync(join(root,workflowPath),JSON.stringify(workflow));
+  git(["add",".gitignore",workflowPath]);
   git(["-c","user.name=Candidate Fixture","-c","user.email=fixture@example.test","commit","-qm","Candidate source"]);
   const fullFixture=candidateReleasePlan({profile:"portable-relay-recovery",environment:{BREDITOR_NPM:join(root,"build tools","npm")}});
   const selected={...fullFixture,checks:fullFixture.checks.map(check=>({...check,args:check.args.map(argument=>
@@ -67,7 +72,7 @@ test("candidate coverage requires one clean source, complete selected stages and
   const original=structuredClone(manifest);
   assert.throws(()=>candidateCoverage(root,[run.manifest],{requireHosted:true}),/runner-context.tsv/);
 
-  manifest.environment={...manifest.environment,platform:"linux",arch:"x64"};
+  manifest.environment={...manifest.environment,platform:"linux",arch:"x64",node:`v${fixtureNodeVersion}`};
   saveEvidence(run.manifest,manifest);
   const contextPath=join(dirname(dirname(run.manifest)),"runner-context.tsv");
   const runner={
@@ -131,12 +136,19 @@ test("candidate coverage requires one clean source, complete selected stages and
   writeFileSync(contextPath,context(runner)+"runAttempt\t3\n");
   assert.throws(()=>candidateCoverage(root,[run.manifest],{requireHosted:true}),/duplicate hosted runner context fields/);
 
+  writeFileSync(contextPath,context(runner));
+  const pinnedEnvironment=manifest.environment;
+  manifest.environment={...pinnedEnvironment,node:"v20.0.0"};
+  saveEvidence(run.manifest,manifest);
+  assert.throws(()=>candidateCoverage(root,[run.manifest],{requireHosted:true}),/Node version differs from the candidate workflow pin/);
+  assert.equal(candidateCoverage(root,[run.manifest]).coveredStages,selected.checks.length);
+  manifest.environment=pinnedEnvironment;
   const browserPlan=candidateReleasePlan({profile:"default-matrix"});
   const browserReceipt={...manifest,profile:browserPlan.profile};
   writeFileSync(contextPath,context({...runner,profile:browserPlan.profile}));
-  assert.throws(()=>verifyHostedContext(dirname(run.manifest),browserReceipt,browserPlan),/browser setup differs/);
+  assert.throws(()=>verifyHostedContext(root,dirname(run.manifest),browserReceipt,browserPlan),/browser setup differs/);
   writeFileSync(contextPath,context({...runner,profile:browserPlan.profile,browsers:"success"}));
-  assert.equal(verifyHostedContext(dirname(run.manifest),browserReceipt,browserPlan).runId,runner.runId);
+  assert.equal(verifyHostedContext(root,dirname(run.manifest),browserReceipt,browserPlan).runId,runner.runId);
   manifest.environment=original.environment;
   const firstStage=manifest.stages[0],originalCommand=firstStage.command;
   firstStage.command="true";
