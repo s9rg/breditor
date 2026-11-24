@@ -13,6 +13,8 @@ import {executeCandidateStage} from "./candidate-release/process.mjs";
 import {runCandidateChecks} from "./verify-candidate.mjs";
 import {candidateCoverage} from "./check-candidate-coverage.mjs";
 import {verifyHostedCandidateArtifact} from "./check-hosted-candidate-artifact.mjs";
+import {retainSharedRuntimeBuild,sharedRuntimeBuildReport} from "./candidate-release/shared-runtime-evidence.mjs";
+import {sharedRuntimeReceiptVariable} from "./fixtures/native-runtime/shared-runtime-receipt.mjs";
 import {verifyHostedContext} from "./candidate-release/hosted-context.mjs";
 import {validateApplicationNetworkReport} from "./candidate-release/application-network-report.mjs";
 const temporary=()=>mkdtempSync(join(tmpdir(),"breditor-candidate-contract-"));
@@ -28,7 +30,7 @@ test("candidate coverage requires one clean source, complete selected stages and
   writeFileSync(join(root,".gitignore"),"target/\ndist/\n");
   git(["add",".gitignore"]);
   git(["-c","user.name=Candidate Fixture","-c","user.email=fixture@example.test","commit","-qm","Candidate source"]);
-  const selected=candidateReleasePlan({profile:"dependency-inventories"});
+  const selected=candidateReleasePlan({profile:"portable-relay-recovery"});
   const run=await runCandidateChecks(selected,{root,report:()=>{},execute:async(check,{logPath})=>{
    writeFileSync(logPath,check.id);
    for(const artifact of check.artifacts){
@@ -38,6 +40,17 @@ test("candidate coverage requires one clean source, complete selected stages and
     // Permit coarse filesystem timestamp granularity in this synthetic fixture.
     const now=Date.now()/1000;
     utimesSync(output,now+2,now+2);
+   }
+   if(check.id==="paired-shared-runtime"){
+    for(const dir of ["target/promoted-shared-web","packages/breditor-collaboration/dist/runtime"]){
+     mkdirSync(join(root,dir),{recursive:true});
+     for(const name of ["breditor_shared.js","breditor_shared.d.ts","breditor_shared_bg.wasm","breditor_shared_bg.wasm.d.ts"]){
+      writeFileSync(join(root,dir,name),name);
+     }
+    }
+    retainSharedRuntimeBuild(root,sourceEvidence(root));
+    const now=Date.now()/1000;
+    utimesSync(join(root,sharedRuntimeBuildReport),now+2,now+2);
    }
    return {status:"passed"};
   }});
@@ -123,6 +136,20 @@ test("candidate coverage requires one clean source, complete selected stages and
   writeFileSync(contextPath,context({...runner,profile:browserPlan.profile,browsers:"success"}));
   assert.equal(verifyHostedContext(dirname(run.manifest),browserReceipt,browserPlan).runId,runner.runId);
   manifest.environment=original.environment;
+  const runtimeStage=manifest.stages.find(stage=>stage.id==="portable-relay-relocation");
+  const originalRuntime=runtimeStage.sharedRuntimeReceiptSha256;
+  runtimeStage.sharedRuntimeReceiptSha256="0".repeat(64);
+  saveEvidence(run.manifest,manifest);
+  assert.throws(()=>candidateCoverage(root,[run.manifest]),/Shared-runtime receipt differs for portable-relay-relocation/);
+  runtimeStage.sharedRuntimeReceiptSha256=originalRuntime;
+  runtimeStage.env[sharedRuntimeReceiptVariable]="0".repeat(64);
+  saveEvidence(run.manifest,manifest);
+  assert.throws(()=>candidateCoverage(root,[run.manifest]),/Shared-runtime execution input differs for portable-relay-relocation/);
+  runtimeStage.env[sharedRuntimeReceiptVariable]=originalRuntime;
+  runtimeStage.execution="activation-shard";
+  saveEvidence(run.manifest,manifest);
+  assert.throws(()=>candidateCoverage(root,[run.manifest]),/Candidate coverage requires direct execution for portable-relay-relocation/);
+  delete runtimeStage.execution;
   manifest.source.commit="0".repeat(40);
   saveEvidence(run.manifest,manifest);
   assert.throws(()=>candidateCoverage(root,[run.manifest]),/Source mismatch/);
@@ -131,7 +158,7 @@ test("candidate coverage requires one clean source, complete selected stages and
   saveEvidence(run.manifest,manifest);
   assert.throws(()=>candidateCoverage(root,[run.manifest]),/Stage sequence differs/);
   saveEvidence(run.manifest,original);
-  const retained=original.stages[0].artifacts.find(artifact=>artifact.retainedPath);
+  const retained=original.stages.flatMap(stage=>stage.artifacts).find(artifact=>artifact.retainedPath);
   assert.ok(retained);
   const retainedPath=join(dirname(run.manifest),retained.retainedPath);
   writeFileSync(retainedPath,"x".repeat(retained.bytes));

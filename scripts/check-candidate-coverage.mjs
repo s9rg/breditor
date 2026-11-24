@@ -8,11 +8,27 @@ import {candidateReleasePlan,repository} from "./candidate-release/plan.mjs";
 import {candidateShardPlan} from "./candidate-release/shards.mjs";
 import {fileEvidence,sourceEvidence} from "./candidate-release/evidence.mjs";
 import {verifyHostedContext} from "./candidate-release/hosted-context.mjs";
+import {candidateStageReceipts} from "./candidate-release/runtime-stage-policy.mjs";
+import {
+ sharedRuntimeBuildFormat,sharedRuntimeBuildReport,sharedRuntimeReceiptVariable,
+} from "./fixtures/native-runtime/shared-runtime-receipt.mjs";
 
 function requireRetainedBytes(directory,path,record) {
  const retained=fileEvidence(directory,path);
  assert.equal(retained.bytes,record.bytes,`Retained file length changed for ${path}`);
  assert.equal(retained.sha256,record.sha256,`Retained file digest changed for ${path}`);
+}
+
+function verifyRuntimeProducer(directory,stage,source){
+ const receipt=stage.artifacts.find(artifact=>artifact.path===sharedRuntimeBuildReport);
+ assert.ok(receipt?.retainedPath,"Missing retained paired shared-runtime build receipt");
+ const bytes=readFileSync(resolve(directory,receipt.retainedPath));
+ assert.equal(createHash("sha256").update(bytes).digest("hex"),receipt.sha256,"Shared-runtime receipt changed during coverage review");
+ const report=JSON.parse(bytes);
+ assert.equal(report.format,sharedRuntimeBuildFormat);
+ assert.equal(report.version,1);
+ assert.deepEqual(report.source,source,"Paired shared-runtime receipt belongs to another candidate");
+ return receipt.sha256;
 }
 
 export function candidateCoverage(root,manifests,{requireHosted=false}={}) {
@@ -31,14 +47,18 @@ export function candidateCoverage(root,manifests,{requireHosted=false}={}) {
   assert.deepEqual(receipt.source,source,`Source mismatch in ${input}`);
   assert.equal(receipt.status,"passed",`Qualification did not pass in ${input}`);
   assert.equal(receipt.selectedChecksPassed,true,`Missing completed-stage result in ${input}`);
+  assert.ok(receipt.activationQualification===undefined,
+   "Candidate coverage requires directly executed stages. Review adopted workers with qualify-activation-shard verify");
   const plan=receipt.shard?candidateShardPlan(full,receipt.shard.id):candidateReleasePlan({profile:receipt.profile});
   assert.equal(receipt.profile,plan.profile);
   assert.deepEqual(receipt.shard,plan.shard);
   assert.deepEqual(receipt.stages.map(stage=>stage.id),plan.checks.map(check=>check.id),
    `Stage sequence differs from the candidate plan in ${input}`);
+  let sharedRuntimeSha256;
   for(const [index,check] of plan.checks.entries()){
    const stage=receipt.stages[index], log=`${String(index+1).padStart(2,"0")}-${check.id}.log`;
    assert.equal(stage.status,"passed",`Stage did not pass in ${input}: ${check.id}`);
+   assert.ok(stage.execution===undefined,`Candidate coverage requires direct execution for ${check.id}`);
    assert.equal(basename(stage.log.path),log);
    requireRetainedBytes(directory,log,stage.log);
    assert.deepEqual(stage.artifacts.map(artifact=>artifact.path),check.artifacts.map(artifact=>artifact.path));
@@ -50,6 +70,12 @@ export function candidateCoverage(root,manifests,{requireHosted=false}={}) {
     const retained=`artifacts/${check.id}/${artifact.path}`;
     assert.equal(observed.retainedPath,retained);
     requireRetainedBytes(directory,retained,observed);
+   }
+   if(check.id==="paired-shared-runtime")sharedRuntimeSha256=verifyRuntimeProducer(directory,stage,source);
+   if(candidateStageReceipts(check).sharedRuntime){
+    assert.ok(sharedRuntimeSha256,`No preceding paired shared-runtime receipt for ${check.id}`);
+    assert.equal(stage.sharedRuntimeReceiptSha256,sharedRuntimeSha256,`Shared-runtime receipt differs for ${check.id}`);
+    assert.equal(stage.env?.[sharedRuntimeReceiptVariable],sharedRuntimeSha256,`Shared-runtime execution input differs for ${check.id}`);
    }
    covered.add(check.id);
   }

@@ -19,6 +19,7 @@ import {sharedRuntimeReceiptVariable} from "./fixtures/native-runtime/shared-run
 import {activationReportName, retainActivationShard, verifyActivationShards} from "./candidate-release/activation-results.mjs";
 import {fileEvidence, saveEvidence, sourceEvidence} from "./candidate-release/evidence.mjs";
 import {runCandidateChecks} from "./verify-candidate.mjs";
+import {candidateCoverage} from "./check-candidate-coverage.mjs";
 
 const handoverHost = "target/handover-activation-native/release/examples/native_handover_activation_sdk_functional";
 const handoverReport = "target/handover-native-activation-native-build.json";
@@ -306,6 +307,7 @@ test("aggregation requires six matching results and checks retained logs and pac
  assert.equal(candidate.result.v1Ready, false);
  assert.ok(candidate.result.activationQualification.sha256);
  assert.equal(candidate.result.stages.find(stage => stage.id === last).artifacts.length, 1);
+ assert.throws(()=>candidateCoverage(worker,[candidate.manifest]),/Review adopted workers with qualify-activation-shard verify/);
 
  write(worker, wasm, "changed by local build");
  write(worker, "packages/breditor-collaboration/dist/runtime/breditor_shared_bg.wasm", "changed by local build");

@@ -184,7 +184,11 @@ In the exact clean candidate checkout, run
 `node scripts/check-candidate-coverage.mjs <result.json>...` over downloaded
 candidate run manifests. Keep each manifest next to its logs and retained
 reports. The coverage report checks the source digest, planned stage sequence
-and retained file hashes. Add `--require-complete` before the
+and retained file hashes. Direct stages that use a paired shared runtime must
+name the same build receipt from their run, including the execution input
+recorded by the runner. Candidate coverage requires directly executed stages.
+Use the separate activation shard verifier for adopted worker reports.
+Add `--require-complete` before the
 manifest paths to fail if any engineering stage is missing. The functional
 and focused profiles together can supply all engineering stage evidence
 before the readiness ledger passes.
