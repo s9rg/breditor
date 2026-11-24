@@ -16,6 +16,7 @@ add("/socket-fixture.mjs",resolve(root,"experiments/shared-browser/socket-fixtur
 add("/relay-app-fixture.mjs",resolve(root,"experiments/shared-browser/relay-app-fixture.mjs"));
 add("/raster-fixtures.json",resolve(root,"target/relay-raster-fixtures.json"),"application/json");
 add("/network-demo.mjs",resolve(root,"experiments/shared-browser/network-demo.mjs"));
+add("/pilot.mjs",resolve(root,"experiments/shared-browser/pilot.mjs"));
 add("/inline-presentation-fixture.mjs",resolve(root,"experiments/shared-browser/inline-presentation-fixture.mjs"));
 add("/standard-inline-fixture.mjs",resolve(root,"experiments/shared-browser/standard-inline-fixture.mjs"));
 add("/structural-fixture.mjs",resolve(root,"experiments/shared-browser/structural-fixture.mjs"));
@@ -24,7 +25,18 @@ add("/v4-fixture-structure.mjs",resolve(root,"experiments/shared-browser/v4-fixt
 add("/contract-startup.mjs",resolve(root,"experiments/shared-browser/contract-startup.mjs"));
 add("/v4-fixture-inline.mjs",resolve(root,"experiments/shared-browser/v4-fixture-inline.mjs"));
 add("/v4-fixture-productivity.mjs",resolve(root,"experiments/shared-browser/v4-fixture-productivity.mjs"));
-if(process.env["BREDITOR_NETWORK_BOOTSTRAP"])add("/relay-bootstrap.json",resolve(process.env["BREDITOR_NETWORK_BOOTSTRAP"]),"application/json");
+const pilotBootstrap=process.env["BREDITOR_PILOT_BOOTSTRAP"];
+const networkBootstrap=process.env["BREDITOR_NETWORK_BOOTSTRAP"];
+if(pilotBootstrap&&networkBootstrap)throw Error("Choose one demo bootstrap");
+if(pilotBootstrap){
+ const settings=JSON.parse(readFileSync(resolve(pilotBootstrap),"utf8"));
+ const keys=Object.keys(settings).sort();
+ if(keys.join(",")!=="configuration,endpoint,format,formatVersion"||
+    settings.format!=="breditor/first-party-pilot"||settings.formatVersion!==1)
+  throw Error("Pilot bootstrap must contain only public settings");
+ resources.set("/pilot-bootstrap.json",["application/json",Buffer.from(JSON.stringify(settings))]);
+}
+if(networkBootstrap)add("/relay-bootstrap.json",resolve(networkBootstrap),"application/json");
 function modules(directory,prefix){for(const file of readdirSync(directory,{withFileTypes:true})){if(file.isDirectory())modules(resolve(directory,file.name),`${prefix}/${file.name}`);else if(file.isFile()&&file.name.endsWith(".js"))add(`${prefix}/${file.name}`,resolve(directory,file.name));}}
 modules(resolve(shared,"dist"),"/dist");modules(resolve(local,"dist/browser"),"/dist/browser");
 modules(installed?resolve(installed,"node_modules/@breditor/browser/dist"):resolve(root,"packages/breditor-browser/dist"),"/presentation");
@@ -36,4 +48,6 @@ for(const [url,resource] of codeDemoResources("shared",imports))resources.set(ur
 for(const [url,resource] of contentsDemoResources("shared",imports))resources.set(url,resource);
 const networkPanes=[["a","alice"],["b","bob"]].map(([key,principal])=>`<section id="pane-${key}" class="pane" aria-labelledby="network-writer-${key}"><header><h2 id="network-writer-${key}">${principal}</h2><button id="connect-${key}">Go offline</button><button id="upload-${key}">Upload or retry pending images</button><button id="save-${key}">Export exact journal</button><label>Image files <input id="files-${key}" type="file" multiple accept="image/png,image/jpeg,image/webp"></label></header><p id="state-${key}" role="status" aria-label="${principal} synchronization">Opening exact local history…</p><output id="presence-${key}" aria-label="${principal} peer selection">No peer selection</output><div id="${key}"></div></section>`).join("");
 resources.set("/network-demo",["text/html; charset=utf-8",Buffer.from(`<!doctype html><html lang="en"><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>Breditor network rich editor demo</title>${imports}<style>body{background:#f2f5ef;color:#173d37;font:15px system-ui;margin:24px}body>header,.editors{max-width:1600px;margin:0 auto 20px}.editors{display:grid;grid-template-columns:1fr 1fr;gap:20px}@media(max-width:1100px){.editors{grid-template-columns:1fr}}button{padding:6px 10px}.pane>header{display:flex;gap:8px;align-items:center;flex-wrap:wrap}.pane h2{margin-right:auto}.pane output{display:block;min-height:1.5em}input[type=file]{max-width:230px}.skip-link{position:absolute;inset-block-start:8px;inset-inline-start:8px;transform:translateY(-200%);padding:8px 12px;background:#fff;color:#173d37;z-index:10}.skip-link:focus{position:relative;display:inline-block;inset:auto;transform:none;margin-bottom:.5rem}</style><a class="skip-link" href="#network-editors">Skip to network editors</a><header><h1>breditor network editor</h1><p>Real Rust relay, two separately saved writers, offline recovery, writer-local Undo/Redo, shared image bytes and live peer selections. Local journal, server acknowledgement and uploaded image states are separate.</p><p><strong>Local developer accounts only.</strong> This page receives both demo account tokens from a private loopback bootstrap. Do not expose this example publicly. The original same-page demo is preserved at <a href="/demo">/demo</a>. Open <a href="/network-demo?peer=alice">alice only</a> or <a href="/network-demo?peer=bob">bob only</a> in separate browser contexts; an active writer cannot be cloned in another tab.</p><p id="network-state" role="status">Loading matching Wasm…</p></header><main class="editors" id="network-editors" tabindex="-1">${networkPanes}</main><script type="module" src="/network-demo.mjs"></script></html>`)]);
+const pilotPage=readFileSync(resolve(root,"experiments/shared-browser/pilot.html"),"utf8");
+resources.set("/pilot",["text/html; charset=utf-8",Buffer.from(pilotPage.replace("{{imports}}",imports).replace("{{networkPanes}}",networkPanes))]);
 const server=createServer((request,response)=>{const resource=request.method==="GET"?resources.get(request.url?.split("?")[0]):undefined;if(!resource){response.writeHead(404);response.end("Not found");return;}response.writeHead(200,{"Content-Type":resource[0],"Cache-Control":"no-store","X-Content-Type-Options":"nosniff"});response.end(resource[1]);});server.listen(port,"127.0.0.1",()=>console.log(`Shared editor functional host: http://127.0.0.1:${port}/demo`));for(const signal of["SIGINT","SIGTERM"])process.on(signal,()=>server.close(()=>process.exit(0)));

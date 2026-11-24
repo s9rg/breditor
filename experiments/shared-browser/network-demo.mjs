@@ -7,8 +7,8 @@ await init();
 const app={peers:{},errors:[],ready:false,closed:false};window.breditorNetworkDemo=app;
 const status=document.querySelector("#network-state"),report=error=>{const message=error?.code??String(error);app.errors.push(message);status.textContent=message;};
 window.addEventListener("pagehide",()=>{app.closed=true;for(const peer of Object.values(app.peers)){peer.overlay?.dispose();peer.sync?.dispose();peer.presence?.dispose();peer.assets?.dispose();peer.session?.discardAndClose();peer.cache?.close();}},{once:true});
-async function credentials(key,value){
- const db=await new Promise((resolve,reject)=>{const r=indexedDB.open("breditor-network-demo-identities-v1",1);r.onupgradeneeded=()=>r.result.createObjectStore("identities");r.onsuccess=()=>resolve(r.result);r.onerror=()=>reject(r.error);});
+async function credentials(database,key,value){
+ const db=await new Promise((resolve,reject)=>{const r=indexedDB.open(database,1);r.onupgradeneeded=()=>r.result.createObjectStore("identities");r.onsuccess=()=>resolve(r.result);r.onerror=()=>reject(r.error);});
  try{return await new Promise((resolve,reject)=>{const tx=db.transaction("identities",value?"readwrite":"readonly"),s=tx.objectStore("identities"),r=value?s.put(value,key):s.get(key);let result;r.onsuccess=()=>{result=r.result;};tx.oncomplete=()=>resolve(result);tx.onabort=()=>reject(tx.error);});}finally{db.close();}
 }
 const placeholder="data:image/svg+xml,"+encodeURIComponent('<svg xmlns="http://www.w3.org/2000/svg" width="240" height="120"><rect width="240" height="120" rx="10" fill="#d9eee2"/><text x="22" y="70" font-size="25" fill="#175c48">breditor image</text></svg>');
@@ -22,32 +22,95 @@ async function show(peer){
  setStatusText(document.querySelector(`#presence-${peer.key}`),peer.presence.view().map(p=>{const r=p.resolution;if(r?.kind!=="resolved"||!r.selection)return`${p.label}: ${r?.kind??"waiting"}`;const s=r.selection;return s.kind==="text"?`${p.label}: caret ${s.focus.block}@${s.focus.offset}`:s.kind==="node"?`${p.label}: node ${s.block}`:`${p.label}: cells ${s.anchor.table}`;}).join(" · ")||"No peer selection");
 }
 const update=peer=>{void show(peer).catch(report);};
-try{
- const response=await fetch("/relay-bootstrap.json");if(!response.ok)throw Error("Start scripts/demo-shared-relay.mjs to enable the local network demo");
- const bootstrap=await response.json();if(bootstrap.format!=="breditor/network-demo"||bootstrap.formatVersion!==1)throw Error("Unknown network demo bootstrap");
- const chosen=new URL(location.href).searchParams.get("peer");if(chosen&&!['alice','bob'].includes(chosen))throw Error("Choose peer=alice or peer=bob");
+/** Mount the selected accounts using the shared demo controls. Pilot mode supplies one code. */
+export async function openNetworkDemo(bootstrap,chosen,{
+ pilot=false,tokenFor=principal=>bootstrap.tokens[principal],codeSha256,paused=false,onPause=()=>{},
+}={}){
+ if(chosen&&!["alice","bob"].includes(chosen))throw Error("Choose peer=alice or peer=bob");
+ if(pilot&&(!chosen||!codeSha256||!/^[a-f0-9]{64}$/.test(codeSha256)))throw Error("Choose one pilot participant and code");
  if(chosen)document.querySelector(".editors").style.gridTemplateColumns="1fr";
+ const namespace=pilot?"breditor-pilot":"breditor-network-demo";
+ const identityDb=`${namespace}-identities-v1`;
  const profile=compileSharedProfile(wasm,bootstrap.configuration);
  try{for(const[key,principal]of[["a","alice"],["b","bob"]]){
-  if(chosen&&chosen!==principal){document.querySelector(`#pane-${key}`).remove();continue;}
-  const peer={key,principal,paint:0,offline:false,session:undefined,cache:undefined,sync:undefined,presence:undefined,assets:undefined,mounted:undefined,overlay:undefined};app.peers[key]=peer;
-  const getToken=()=>bootstrap.tokens[principal],identityKey=[bootstrap.endpoint,principal];let identity=await credentials(identityKey),registration;
-  if(!identity){registration=await registerSharedRelayWriter({endpoint:bootstrap.endpoint,principal,room:"room",getToken,saveIdentity:record=>credentials(identityKey,record)});identity=registration.identity;}
+  if(chosen&&chosen!==principal){
+   const pane=document.querySelector(`#pane-${key}`);
+   if(pilot)pane.hidden=true;else pane.remove();
+   continue;
+  }
+  if(pilot)document.querySelector(`#pane-${key}`).hidden=false;
+  const peer={key,principal,paint:0,offline:paused,session:undefined,cache:undefined,sync:undefined,presence:undefined,assets:undefined,mounted:undefined,overlay:undefined};app.peers[key]=peer;
+  const getToken=()=>tokenFor(principal),identityKey=[bootstrap.endpoint,principal];
+  const saved=await credentials(identityDb,identityKey);
+  if(pilot&&saved&&saved.codeSha256!==codeSha256)throw Error("Incorrect code for the saved pilot writer");
+  let identity=pilot?saved?.identity:saved,registration;
+  if(!identity){
+   registration=await registerSharedRelayWriter({endpoint:bootstrap.endpoint,principal,room:"room",getToken,
+    saveIdentity:record=>credentials(identityDb,identityKey,pilot?{identity:record,codeSha256}:record)});
+   identity=registration.identity;
+  }
   peer.identity=identity;
-  peer.session=await SharedPersistentSession.open({database:"breditor-network-demo-journals-v12",room:identity.room,writer:identity.writer,create:()=>{if(!registration)throw Error("Exact saved writer journal is missing; refusing a new history");return profile.join_frame(identity.room,identity.writer,registration.frame);},restore:journal=>profile.restore(identity.room,journal),onState:()=>update(peer),onError:report});
-  peer.cache=await RichAssetStore.open(`breditor-network-demo-assets-${principal}`,{onChange:()=>update(peer)});
+  peer.session=await SharedPersistentSession.open({database:`${namespace}-journals-v12`,room:identity.room,writer:identity.writer,create:()=>{if(!registration)throw Error("Exact saved writer journal is missing; refusing a new history");return profile.join_frame(identity.room,identity.writer,registration.frame);},restore:journal=>profile.restore(identity.room,journal),onState:()=>update(peer),onError:report});
+  peer.cache=await RichAssetStore.open(`${namespace}-assets-${principal}`,{onChange:()=>update(peer)});
   peer.assets=new SharedRelayAssets({endpoint:bootstrap.endpoint,principal,getToken,store:peer.cache});
+  if(peer.offline)peer.assets.setOnline(false);
   peer.presence=new SharedPresence(peer.session.core,{onError:report});peer.presence.subscribe(()=>update(peer));
   const insert=async(files,position,revision)=>{await insertSharedImageFiles(peer.session.core,peer.cache,files,position,revision);update(peer);if(!peer.offline)await peer.assets.flush();update(peer);};
   peer.mounted=mountSharedEditor(document.querySelector(`#${key}`),{core:peer.session.core,label:`Network ${principal}`,image:{asset:"asset",alt:"Shared diagram"},resolveAsset:binding=>binding.asset==="asset"||binding.asset==="alternate-asset"?placeholder:peer.assets.resolve(binding.asset),onFiles:insert,onError:report,onChange:()=>update(peer)});
   peer.overlay=new SharedPresenceOverlay({editor:peer.mounted,presence:peer.presence});
   peer.sync=new SharedRelaySync(peer.session.core,{identity,getToken,persistLocal:()=>peer.session.flush(),presence:peer.presence,autoConnect:false,onAssetsChanged:()=>peer.mounted.refreshAssets(),onState:()=>update(peer),onError:report});
-  document.querySelector(`#connect-${key}`).addEventListener("click",async()=>{try{peer.offline=!peer.offline;peer.assets.setOnline(!peer.offline);if(peer.offline)peer.sync.disconnect();else{await peer.sync.connect();await peer.sync.flush();peer.mounted.refreshAssets();}update(peer);}catch(e){report(e);}});
+  document.querySelector(`#connect-${key}`).addEventListener("click",async event=>{
+   const button=event.currentTarget;
+   button.disabled=true;
+   try{
+    const nextOffline=!peer.offline;
+    onPause(nextOffline);
+    peer.offline=nextOffline;
+    peer.assets.setOnline(!nextOffline);
+    if(peer.offline)peer.sync.disconnect();
+    else{await peer.sync.connect();await peer.sync.flush();peer.mounted.refreshAssets();}
+   }catch(e){report(e);}finally{button.disabled=false;update(peer);}
+  });
   document.querySelector(`#upload-${key}`).addEventListener("click",async()=>{try{for(const info of await peer.cache.list())if(info.status==="failed")await peer.cache.retry(info.asset);await peer.assets.flush();peer.mounted.refreshAssets();update(peer);}catch(e){report(e);}});
   document.querySelector(`#files-${key}`).addEventListener("change",event=>{const input=event.currentTarget,files=[...input.files??[]];input.value="";if(files.length)void insert(files,{parent:null,before:null},peer.session.core.view().revision).catch(report);});
-  document.querySelector(`#save-${key}`).addEventListener("click",()=>{const url=URL.createObjectURL(new Blob([peer.session.core.checkpointJson()],{type:"application/json"})),link=document.createElement("a");link.href=url;link.download=`breditor-network-${principal}.json`;link.click();setTimeout(()=>URL.revokeObjectURL(url),0);});
-  try{await peer.sync.connect();}catch{/* Offline saved journals remain editable and explicitly unsynced. */}update(peer);
- }}finally{profile.free();}
+  if(!pilot)document.querySelector(`#save-${key}`).addEventListener("click",()=>downloadNetworkCheckpoint(peer));
+  if(!peer.offline)try{await peer.sync.connect();}catch{/* Saved journals can reopen while offline. */}
+  update(peer);
+ }}catch(error){
+  if(pilot){
+   for(const peer of Object.values(app.peers))await closePeer(peer,false);
+   app.peers={};
+  }
+  throw error;
+ }finally{profile.free();}
  app.ready=true;status.textContent="Editors ready";
- app.close=async()=>{if(app.closed)return;for(const peer of Object.values(app.peers)){peer.closing=true;peer.overlay?.dispose();peer.sync?.dispose();peer.presence?.dispose();peer.assets?.dispose();await peer.session?.close();peer.mounted?.dispose();peer.cache?.close();}app.closed=true;};
-}catch(error){report(error);}
+ app.close=async()=>{if(app.closed)return;for(const peer of Object.values(app.peers))await closePeer(peer,true);app.closed=true;};
+ return app;
+}
+
+async function closePeer(peer,save){
+ peer.closing=true;
+ peer.overlay?.dispose();peer.sync?.dispose();peer.presence?.dispose();peer.assets?.dispose();
+ if(save)await peer.session?.close();else await peer.session?.discardAndClose();
+ peer.mounted?.dispose();peer.cache?.close();
+}
+
+export function downloadNetworkCheckpoint(peer){
+ const checkpoint=peer.session.core.checkpointJson();
+ const url=URL.createObjectURL(new Blob([checkpoint],{type:"application/json"})),link=document.createElement("a");
+ link.href=url;
+ link.download=`breditor-network-${peer.principal}.json`;
+ link.click();
+ setTimeout(()=>URL.revokeObjectURL(url),0);
+ return checkpoint;
+}
+
+if(!document.body.hasAttribute("data-breditor-pilot")){
+ try{
+  const response=await fetch("/relay-bootstrap.json");
+  if(!response.ok)throw Error("Start scripts/demo-shared-relay.mjs to enable the local network demo");
+  const bootstrap=await response.json();
+  if(bootstrap.format!=="breditor/network-demo"||bootstrap.formatVersion!==1)throw Error("Unknown network demo bootstrap");
+  await openNetworkDemo(bootstrap,new URL(location.href).searchParams.get("peer"));
+ }catch(error){report(error);}
+}

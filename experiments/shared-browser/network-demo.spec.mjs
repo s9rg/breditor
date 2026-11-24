@@ -2,17 +2,20 @@ import AxeBuilder from "@axe-core/playwright";
 import {test,expect} from "@playwright/test";
 import {createRelay} from "./relay-fixture.mjs";
 import {readFileSync} from "node:fs";
+import {createHash} from "node:crypto";
 let relay,bootstrap,otherContext;
 async function route(page){await page.route("**/relay-bootstrap.json",r=>r.fulfill({status:200,contentType:"application/json",body:JSON.stringify(bootstrap)}));}
 async function ready(page){await expect(page.locator("#network-state")).toHaveText("Editors ready");await expect.poll(()=>page.evaluate(()=>Object.values(window.breditorNetworkDemo.peers).every(p=>p.sync.state().status==="ready"))).toBe(true);}
 async function same(page){await expect.poll(()=>page.evaluate(()=>{const{a,b}=window.breditorNetworkDemo.peers;return a.session.core.documentJson()===b.session.core.documentJson();})).toBe(true);}
-test.beforeEach(async({page})=>{
+async function provisionDemo(page,root){
  await page.goto("/");await expect(page.locator("#status")).toHaveText("Ready");
- const input=await page.evaluate(()=>({configuration:JSON.stringify(window.sharedTools.vector.shared_profile.configuration),input:window.sharedTools.vector.shared_profile.input,origin:location.origin}));relay=await createRelay(input);
+ const input=await page.evaluate(()=>({configuration:JSON.stringify(window.sharedTools.vector.shared_profile.configuration),input:window.sharedTools.vector.shared_profile.input,origin:location.origin}));
+ if(root)input.input=JSON.stringify({...JSON.parse(input.input),root});
+ relay=await createRelay(input);
  await page.addScriptTag({type:"module",url:"/socket-fixture.mjs"});await page.waitForFunction(()=>window.relaySocketFixture);
  await page.evaluate(async({url,tokens})=>{const owner=await window.relaySocketFixture.connect(url,"owner",tokens.owner);for(const principal of["alice","bob"]){const r=await owner.request({kind:"grant",principal,role:"editor"});if(r.kind!=="granted")throw Error("Demo account provisioning failed");}await owner.close();},{url:relay.url,tokens:relay.tokens});
- bootstrap={format:"breditor/network-demo",formatVersion:1,endpoint:relay.url,configuration:JSON.parse(input.configuration),tokens:{alice:relay.tokens.alice,bob:relay.tokens.bob}};await route(page);
-});
+ bootstrap={format:"breditor/network-demo",formatVersion:1,endpoint:relay.url,configuration:JSON.parse(input.configuration),tokens:{alice:relay.tokens.alice,bob:relay.tokens.bob}};
+}
 test.afterEach(async({page},info)=>{
  if(info.status!==info.expectedStatus&&!page.isClosed()){
   const state=await page.evaluate(()=>{const t=window.breditorNetworkDemo;if(!t)return null;return {ready:t.ready,errors:t.errors,peers:Object.fromEntries(Object.entries(t.peers).map(([key,p])=>[key,{offline:p.offline,button:document.querySelector(`#connect-${key}`)?.textContent,sync:p.sync?.state(),checkpoint:p.session?.core.checkpointJson()}]))};}).catch(error=>({diagnosticError:String(error)}));
@@ -21,6 +24,8 @@ test.afterEach(async({page},info)=>{
  await otherContext?.close();otherContext=undefined;await relay?.dispose();relay=undefined;
 });
 
+test.describe("Developer demo",()=>{
+test.beforeEach(async({page})=>{await provisionDemo(page);await route(page);});
 test("the network demo has separate writer statuses and a keyboard skip link",async({page,browserName})=>{
  await page.goto("/network-demo");await ready(page);
  const skip=page.getByRole("link",{name:"Skip to network editors"});
@@ -167,4 +172,103 @@ test("independent offline writers keep exact journals across a relay and page re
   }finally{profile.free();}
  },{configuration:bootstrap.configuration,downloaded});
  expect(restored).toEqual(downloaded.map(checkpoint=>({checkpoint,document:merged})));
+});
+});
+
+test("the first-party pilot opens independent participants and verifies an offline checkpoint after reload",async({page,browser})=>{
+ const seed=JSON.parse(readFileSync(new URL("./pilot-root.json",import.meta.url),"utf8"));
+ await provisionDemo(page,seed);
+ const pilotConfig={format:"breditor/first-party-pilot",formatVersion:1,endpoint:bootstrap.endpoint,configuration:bootstrap.configuration};
+ const open=async (writer,principal)=>{
+  await writer.getByLabel("Participant",{exact:true}).selectOption(principal);
+  await writer.getByLabel("Participant code").fill(bootstrap.tokens[principal]);
+  await writer.getByRole("button",{name:"Open editor"}).click();
+  await expect(writer.getByRole("region",{name:"Shared document"})).toBeVisible();
+ };
+ const configure=writer=>writer.route("**/pilot-bootstrap.json",route=>route.fulfill({
+  status:200,contentType:"application/json",body:JSON.stringify(pilotConfig),
+ }));
+ await configure(page);
+ await page.goto("/pilot");
+ const publicConfig=await page.evaluate(async()=>({
+  pilot:await (await fetch("/pilot-bootstrap.json")).json(),
+  developerStatus:(await fetch("/relay-bootstrap.json")).status,
+ }));
+ expect(publicConfig).toEqual({pilot:pilotConfig,developerStatus:404});
+ await expect(page.getByRole("heading",{name:"Release handoff"})).toBeVisible();
+ await expect(page.getByRole("region",{name:"Shared document"})).toBeHidden();
+ await page.getByLabel("Participant code").fill("0".repeat(64));
+ await page.getByRole("button",{name:"Open editor"}).click();
+ await expect(page.locator("#network-state")).toContainText("could not open");
+ await expect(page.getByRole("region",{name:"Shared document"})).toBeHidden();
+
+ await open(page,"alice");
+ await ready(page);
+ await expect(page.locator("#pane-b")).toBeHidden();
+ otherContext=await browser.newContext();
+ const bob=await otherContext.newPage();
+ await configure(bob);
+ await bob.goto("/pilot");
+ await open(bob,"bob");
+ await ready(bob);
+ await expect(bob.locator("#pane-a")).toBeHidden();
+
+ await page.getByRole("button",{name:"Go offline",exact:true}).click();
+ await expect(page.locator("#state-a")).toContainText("offline");
+ const type=async (writer,key,block,text)=>{
+  await writer.bringToFront();
+  await writer.evaluate(({key,block})=>{
+   const {mounted}=window.breditorNetworkDemo.peers[key];
+   const point={block,offset:"0",affinity:"after"};
+   mounted.surface.focus();
+   mounted.select({kind:"text",anchor:point,focus:point});
+  },{key,block});
+  await writer.keyboard.insertText(text);
+ };
+ await type(page,"a","pilot-notes","Pilot decision. ");
+ await type(bob,"b","pilot-item","Pilot evidence. ");
+ await expect(bob.locator('#b [data-rich-text="pilot-notes"]')).toHaveText("Add the decisions and results that the next reviewer needs.");
+ await expect(page.locator('#a [data-rich-text="pilot-item"]')).toHaveText("Verify the handoff");
+ const checkpoint=await page.evaluate(()=>window.breditorNetworkDemo.peers.a.session.core.checkpointJson());
+
+ await page.getByRole("button",{name:"Save and reload"}).click();
+ await expect(page.getByRole("button",{name:"Open editor"})).toBeEnabled();
+ await expect(page.getByLabel("Participant code")).toHaveValue("");
+ await expect(page.getByLabel("Participant",{exact:true})).toHaveValue("alice");
+ const savedKeys=await page.evaluate(()=>Object.entries(sessionStorage));
+ expect(savedKeys).toEqual(expect.arrayContaining([["breditor-pilot-paused-alice","1"]]));
+ expect(JSON.stringify(savedKeys)).not.toContain(bootstrap.tokens.alice);
+ await page.getByLabel("Participant code").fill("0".repeat(64));
+ await page.getByRole("button",{name:"Open editor"}).click();
+ await expect(page.locator("#network-state")).toContainText("could not open");
+ await expect(page.getByRole("region",{name:"Shared document"})).toBeHidden();
+ await open(page,"alice");
+ await expect(page.locator("#state-a")).toContainText("offline");
+ expect(await page.evaluate(()=>window.breditorNetworkDemo.peers.a.session.core.checkpointJson())).toBe(checkpoint);
+
+ const downloaded=page.waitForEvent("download");
+ await page.getByRole("button",{name:"Download checkpoint"}).click();
+ const file=await downloaded;
+ const downloadBytes=readFileSync(await file.path());
+ expect(downloadBytes).toEqual(Buffer.from(checkpoint,"utf8"));
+ const expectedHash=createHash("sha256").update(downloadBytes).digest("hex");
+ await expect(page.getByLabel("Downloaded checkpoint digest")).toContainText(expectedHash);
+ const restore=page.getByLabel("Document checkpoint");
+ await restore.setInputFiles(await file.path());
+ await expect(page.locator("#pilot-verification")).toContainText(`Exact read-only replay verified. Undo 1. Redo 0. SHA-256 ${expectedHash}`);
+ await expect(page.getByLabel("Recovered document text")).toContainText("Pilot decision.");
+ await expect(page.getByLabel("Recovered document text")).not.toContainText("Pilot evidence.");
+ expect(await page.evaluate(()=>window.breditorNetworkDemo.peers.a.session.core.checkpointJson())).toBe(checkpoint);
+
+ await restore.setInputFiles({name:"noncanonical.json",mimeType:"application/json",buffer:Buffer.from(checkpoint+"\n","utf8")});
+ await expect(page.locator("#pilot-verification")).toContainText("could not be recovered");
+ await expect(page.getByLabel("Recovered document text")).toBeHidden();
+ await restore.setInputFiles({name:"invalid.json",mimeType:"application/json",buffer:Buffer.from([0xff,0x00])});
+ await expect(page.locator("#pilot-verification")).toContainText("could not be recovered");
+ await expect(page.getByLabel("Recovered document text")).toBeHidden();
+
+ await page.getByRole("button",{name:"Reconnect",exact:true}).click();
+ await ready(page);
+ await expect(bob.locator('#b [data-rich-text="pilot-notes"]')).toHaveText("Pilot decision. Add the decisions and results that the next reviewer needs.");
+ await expect(page.locator('#a [data-rich-text="pilot-item"]')).toHaveText("Pilot evidence. Verify the handoff");
 });

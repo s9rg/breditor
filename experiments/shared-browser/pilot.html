@@ -1,0 +1,73 @@
+<!doctype html>
+<html lang="en">
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Breditor pilot · Release handoff</title>
+{{imports}}
+<style>
+  :root { color-scheme: light; font: 16px/1.5 system-ui, sans-serif; color: #172c2a; background: #f3f5ef; }
+  * { box-sizing: border-box; }
+  body { margin: 0; }
+  body > header, main { max-width: 70rem; margin: auto; padding: 1.25rem clamp(1rem, 4vw, 3rem); }
+  body > header { padding-top: 2rem; }
+  h1, h2, p { margin: 0 0 .65rem; }
+  h1 { font-size: clamp(1.9rem, 4.5vw, 3rem); letter-spacing: -.04em; line-height: 1.1; }
+  h2 { font-size: 1.2rem; }
+  .eyebrow { color: #355a50; font-size: .9rem; font-weight: 650; }
+  .panel { min-width: 0; margin: 0 0 1rem; padding: clamp(1rem, 3vw, 1.5rem); border: 1px solid #cad5cb; border-radius: .85rem; background: white; }
+  .fields, .pane > header { display: flex; align-items: end; flex-wrap: wrap; gap: .75rem; }
+  .fields > div, .pane label { display: grid; gap: .2rem; min-width: 0; }
+  select, input, button { font: inherit; max-inline-size: 100%; }
+  button, select, input[type="password"] { padding: .44rem .7rem; border: 1px solid #587267; border-radius: .35rem; background: #fff; color: inherit; }
+  #pilot-open { background: #205044; border-color: #205044; color: white; }
+  :focus-visible { outline: 3px solid #256a55; outline-offset: 3px; }
+  .pane > header { align-items: center; margin-bottom: .7rem; }
+  .pane h2 { margin: 0; }
+  output, pre { overflow-wrap: anywhere; }
+  pre { white-space: pre-wrap; padding: 1rem; background: #f3f5ef; }
+  #pilot-verification, #pilot-export-digest, #network-state { overflow-wrap: anywhere; }
+  .skip-link { position: absolute; inset: .5rem auto auto .5rem; transform: translateY(-200%); padding: .55rem; background: white; color: #205044; }
+  .skip-link:focus { transform: none; }
+</style>
+<body data-breditor-pilot>
+  <a class="skip-link" href="#pilot-main">Skip to pilot workspace</a>
+  <header>
+    <p class="eyebrow">Breditor pilot</p>
+    <h1>Release handoff</h1>
+    <p>Use the shared document to record decisions, owners, and release evidence with another participant.</p>
+  </header>
+  <main id="pilot-main" tabindex="-1">
+    <section class="panel" aria-labelledby="pilot-account-heading">
+      <form id="pilot-account">
+        <h2 id="pilot-account-heading">Open your editor</h2>
+        <p>Use the participant code supplied by the pilot operator. Enter it again after a reload.</p>
+        <div class="fields">
+          <div>
+            <label for="pilot-participant">Participant</label>
+            <select id="pilot-participant" name="principal"><option value="alice">Alice</option><option value="bob">Bob</option></select>
+          </div>
+          <div>
+            <label for="pilot-code">Participant code</label>
+            <input id="pilot-code" name="token" type="password" autocomplete="off" spellcheck="false" required maxlength="64">
+          </div>
+          <button id="pilot-open" disabled>Open editor</button>
+        </div>
+      </form>
+      <p id="network-state" role="status">Loading pilot…</p>
+    </section>
+    <section id="pilot-workspace" class="panel editors" aria-label="Shared document" hidden>
+      {{networkPanes}}
+      <button id="pilot-reload" type="button">Save and reload</button>
+      <output id="pilot-export-digest" aria-label="Downloaded checkpoint digest"></output>
+    </section>
+    <section class="panel" aria-labelledby="pilot-recovery-heading">
+      <h2 id="pilot-recovery-heading">Rehearse checkpoint recovery</h2>
+      <p>Choose a downloaded document checkpoint to verify its exact bytes and inspect a read-only preview. Image bytes are stored separately.</p>
+      <label>Document checkpoint <input id="pilot-backup" type="file" accept=".json,application/json" disabled></label>
+      <p id="pilot-verification" role="status"></p>
+      <pre id="pilot-preview" aria-label="Recovered document text" hidden></pre>
+    </section>
+  </main>
+  <script type="module" src="/pilot.mjs"></script>
+</body>
+</html>
