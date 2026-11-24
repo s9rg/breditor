@@ -10,7 +10,7 @@ const pilotBootstrap=()=>({format:"breditor/first-party-pilot",formatVersion:1,e
 const routePilot=(page,config=pilotBootstrap())=>page.route("**/pilot-bootstrap.json",route=>route.fulfill({
  status:200,contentType:"application/json",body:JSON.stringify(config),
 }));
-async function ready(page){await expect(page.locator("#network-state")).toHaveText("Editors ready");await expect.poll(()=>page.evaluate(()=>Object.values(window.breditorNetworkDemo.peers).every(p=>p.sync.state().status==="ready"))).toBe(true);}
+async function ready(page,options={}){await expect(page.locator("#network-state")).toHaveText("Editors ready",options);await expect.poll(()=>page.evaluate(()=>Object.values(window.breditorNetworkDemo.peers).every(p=>p.sync.state().status==="ready")),options).toBe(true);}
 async function same(page){await expect.poll(()=>page.evaluate(()=>{const{a,b}=window.breditorNetworkDemo.peers;return a.session.core.documentJson()===b.session.core.documentJson();})).toBe(true);}
 async function provisionDemo(page,root){
  await page.goto("/");await expect(page.locator("#status")).toHaveText("Ready");
@@ -95,6 +95,7 @@ test("independent offline writers keep exact journals across a relay and page re
   await writer.bringToFront();
   await writer.getByRole("button",{name:"Go offline",exact:true}).press("Enter");
   await expect(writer.locator(`#state-${key}`)).toContainText("offline");
+  await writer.evaluate(key=>window.breditorNetworkDemo.peers[key].sync.waitForDisconnected(),key);
   await writer.evaluate(({key,block})=>{
    const {mounted}=window.breditorNetworkDemo.peers[key];
    const point={block,offset:"0",affinity:"after"};
@@ -116,7 +117,7 @@ test("independent offline writers keep exact journals across a relay and page re
  await Promise.all(writers.map(([writer])=>writer.evaluate(()=>window.breditorNetworkDemo.close())));
  await Promise.all(writers.map(([writer])=>writer.reload()));
  for(const [index,[writer,key]] of writers.entries()){
-  await expect(writer.locator("#network-state")).toHaveText("Editors ready");
+  await expect.poll(()=>writer.evaluate(()=>window.breditorNetworkDemo?.ready)).toBe(true);
   const reloaded=await writer.evaluate(key=>{
    const {session,identity}=window.breditorNetworkDemo.peers[key];
    return {checkpoint:session.core.checkpointJson(),writer:identity.writer,recovered:session.recovered};
@@ -125,13 +126,12 @@ test("independent offline writers keep exact journals across a relay and page re
  }
 
  expect(await relay.online()).toBe(relay.url);
- await Promise.all(writers.map(([writer,key])=>writer.evaluate(async key=>{
-  const {sync}=window.breditorNetworkDemo.peers[key];
-  await sync.connect();
-  await sync.flush();
- },key)));
+ // Reload already started an automatic connection. Wait for its resume
+ // rather than joining an earlier connection attempt made while offline.
+ await Promise.all(writers.map(([writer])=>ready(writer,{timeout:15_000})));
+ await Promise.all(writers.map(([writer,key])=>writer.evaluate(
+  key=>window.breditorNetworkDemo.peers[key].sync.flush(),key)));
  for(const [writer,key] of writers){
-  await ready(writer);
   await expect(writer.locator(`#${key} [data-rich-text="p"]`)).toHaveText("Alice offline. a🙂b");
   await expect(writer.locator(`#${key} [data-rich-text="caption"]`)).toHaveText("Bob offline. xy🙂");
  }
