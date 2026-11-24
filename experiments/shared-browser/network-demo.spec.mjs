@@ -518,7 +518,10 @@ test("the pilot supports keyboard sign-in and checkpoint recovery at a narrow vi
  await backup.setInputFiles({name:"checkpoint.json",mimeType:"application/json",buffer:Buffer.from(checkpoint)});
  await expect(page.locator("#pilot-verification")).toContainText("Exact read-only replay verified");
  await expect(backup).toBeFocused();
- await expect(page.getByRole("region",{name:"Recovered document",exact:true}).getByRole("table")).toBeVisible();
+ const recovered=page.getByRole("region",{name:"Recovered document",exact:true});
+ await expect(recovered.getByRole("table")).toBeVisible();
+ await page.keyboard.press(tab);
+ await expect(recovered).toBeFocused();
  expect(await page.evaluate(()=>document.documentElement.scrollWidth)).toBe(320);
  expect((await new AxeBuilder({page}).analyze()).violations).toEqual([]);
 });
