@@ -110,6 +110,20 @@ describe("editing aids",()=>{
   const bounded=mountRichEditingAids(f.dom,{invisibles:true,maxMarkers:4});flush();expect(markers(bounded)).toHaveLength(4);bounded.dispose();
  });
 
+ it("charges ordinary visible text to the character scan budget",()=>{
+  const surface=document.createElement("div"),long=document.createElement("p"),later=document.createElement("p");
+  surface.className="breditor-rich-surface";long.dataset["richText"]="long";later.dataset["richText"]="later";
+  long.textContent=` ${"x".repeat(200_000)} `;later.textContent="a b";
+  surface.append(long,later);document.body.append(surface);
+  // Give late characters a visible box too, so geometry cannot hide an unbounded scan.
+  const measure=vi.spyOn(Range.prototype,"getClientRects").mockReturnValue([rect(20,12,6,16)] as unknown as DOMRectList);
+  const aids=mountRichEditingAids(surface,{invisibles:true,kinds:["space"]});flush();
+  expect(measure).toHaveBeenCalledTimes(1);expect(markers(aids,"space")).toHaveLength(1);
+  long.textContent="a b";aids.refresh();flush();
+  expect(markers(aids,"space")).toHaveLength(2);
+  aids.dispose();
+ });
+
  it("rejects malformed options before mounting anything",()=>{
   const f=fixture();
   for(const options of [{kinds:["zero-width"]},{glyphs:{space:""}},{glyphs:{space:"12345"}},{glyphs:{tab:"\u0007"}},{glyphs:{other:"x"}},{maxMarkers:0},{maxMarkers:70000},{showBlocks:"yes"},{shortcuts:1},{nonce:""}])

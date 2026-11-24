@@ -64,7 +64,7 @@ export const richEditingAidsStyles=`[data-breditor-editing-aids]{position:fixed;
 
 const characters:Readonly<Record<string,RichInvisibleKind>>=Object.freeze({" ":"space"," ":"nbsp"," ":"nbsp","\t":"tab","\n":"hardBreak"});
 /** Characters measured per paint, a bound independent of the marker limit (off-screen nodes are skipped cheaply). */
-const MEASURE_BUDGET=200_000;
+const CHARACTER_SCAN_LIMIT=200_000;
 const mounted=new WeakSet<HTMLElement>();
 const bool=(value:unknown,name:string,fallback:boolean):boolean=>{if(value===undefined)return fallback;if(typeof value!=="boolean")throw new TypeError(`${name} must be a Boolean`);return value;};
 
@@ -149,7 +149,8 @@ export function mountRichEditingAids(host:RichEditingAidsHost|HTMLElement,option
     fragment.append(label);count++;
    }
    if(settings.invisibles&&!composing){
-    let budget=MEASURE_BUDGET;const range=document.createRange();
+    let budget=CHARACTER_SCAN_LIMIT;const range=document.createRange();
+    const scanCharacters=[...kinds].some(kind=>kind!=="blockEnd");
     const glyph=(kind:RichInvisibleKind,left:number,top:number,width:number,height:number):void=>{
      if(count>=limit||!kinds.has(kind)||height<=0)return;
      if(left+width<clip.left||left>clip.right||top+height<clip.top||top>clip.bottom)return;
@@ -163,10 +164,12 @@ export function mountRichEditingAids(host:RichEditingAidsHost|HTMLElement,option
      let last:{node:Text;offset:number}|undefined;
      for(let node=walker.nextNode() as Text|null;node;node=walker.nextNode() as Text|null){
       const text=node.data;if(!text.length)continue;last={node,offset:text.length};
+      if(!scanCharacters)continue;
       range.selectNodeContents(node);if(!visible(range.getBoundingClientRect()))continue;
       for(let index=0;index<text.length;index++){
+       if(budget===0||count>=limit)break outer;
+       budget--;
        const kind=characters[text[index]!];if(!kind||!kinds.has(kind))continue;
-       if(--budget<=0||count>=limit)break outer;
        range.setStart(node,index);range.setEnd(node,index+1);
        const rect=[...range.getClientRects()].find(item=>item.height>0);if(!rect)continue;
        if(kind==="hardBreak"){const width=rect.height*0.7;glyph(kind,rtl?rect.right-width:rect.left,rect.top,width,rect.height);}

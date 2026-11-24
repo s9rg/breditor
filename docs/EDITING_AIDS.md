@@ -109,7 +109,8 @@ Classes: `[data-breditor-editing-aids]` (layer, carries `data-show-blocks` and
 - Only blocks intersecting the visible surface are painted. Scrolling, resizing,
   DOM changes (including remote shared edits) and fullscreen changes repaint on
   the next animation frame. Each paint is bounded by `maxMarkers` and a fixed
-  per-paint character budget.
+  per-paint character scan budget. Ordinary characters in visible runs count
+  toward the scan limit too. Paragraph-end-only painting skips the scan.
 
 ## Not included
 
