@@ -95,7 +95,8 @@ export class HtmlConversion {
   #listStyleConsumed=new WeakSet<HtmlElement>();
   /** V4: `<a name|id>` anchors already adopted or reported, and every adopted bookmark name. */
   #anchors=new WeakSet<HtmlElement>();#bookmarkNames=new Set<string>();
-  constructor(readonly b:Budget,readonly options:InterchangeOptions,readonly sheets:Stylesheets,readonly capabilities:ImportCapabilities={listNumbering:false}){}
+  constructor(readonly b:Budget,readonly options:InterchangeOptions,readonly sheets:Stylesheets,readonly capabilities:ImportCapabilities={listNumbering:false},
+    private readonly interchangeNewline?:HtmlElement){}
   css(node:HtmlElement):Map<string,string>{let value=this.#css.get(node);if(!value){const important=new Set<string>();value=this.sheets.apply(node,declarations(node,this.b,important),important);this.#css.set(node,value);}return value;}
   /** `interpreted` names attributes that structural conversion already consumed for this node. */
   style(node:HtmlElement,parent:StyleState,interpreted?:ReadonlySet<string>):StyleState {
@@ -205,7 +206,7 @@ export class HtmlConversion {
     const walk=(items:readonly HtmlNode[],parent:StyleState)=>{
       for(const node of items){
         if(!isElement(node)){if(node.nodeName==="#text")this.#inlineText(output,plainText(node),parent);continue;}
-        if(!this.#safe(node)||this.#markers.has(node)||this.#checkboxes.has(node)||this.#paragraphMark(node)||interchangeNewline(node))continue;
+        if(!this.#safe(node)||this.#markers.has(node)||this.#checkboxes.has(node)||this.#paragraphMark(node)||node===this.interchangeNewline)continue;
         // V4: Word's `<br clear=all style='page-break-before:always'>` splits the paragraph at a page break.
         if(node.tagName==="br"&&this.#breakCarrier(node)){this.style(node,parent);output.push(this.#pageBreak(false));continue;}
         // Opt-in ruby extension: each base/`<rt>` pair becomes base text carrying the annotation.
@@ -271,7 +272,7 @@ export class HtmlConversion {
     const flush=()=>{
       // A lone <br> between blocks renders one empty line (Docs, Notes): an empty paragraph, not a hard break.
       const significant=pending.filter(n=>isElement(n)||plainText(n).trim()!=="");
-      if(state.whiteSpace!=="pre"&&significant.length===1&&isElement(significant[0]!)&&significant[0]!.tagName==="br"&&!interchangeNewline(significant[0]!)&&!this.#hidden(significant[0]!)&&attribute(significant[0]!,"data-breditor-placeholder")!=="1"&&!this.#breakCarrier(significant[0]!)){this.style(significant[0]!,state);output.push(element(this.b,"paragraph",[],{...state.layout}));}
+      if(state.whiteSpace!=="pre"&&significant.length===1&&isElement(significant[0]!)&&significant[0]!.tagName==="br"&&significant[0]!==this.interchangeNewline&&!this.#hidden(significant[0]!)&&attribute(significant[0]!,"data-breditor-placeholder")!=="1"&&!this.#breakCarrier(significant[0]!)){this.style(significant[0]!,state);output.push(element(this.b,"paragraph",[],{...state.layout}));}
       else if(significant.length||state.whiteSpace==="pre"&&pending.length)output.push(...this.prose(pending,state,undefined,false));
       pending=[];
     };
@@ -597,10 +598,19 @@ export class HtmlConversion {
     return output;
   }
 }
-/** WebKit/Blink trailing-selection marker (Docs, Notes, Safari); it is not authored content. */
-function interchangeNewline(node:HtmlElement):boolean{return node.tagName==="br"&&(attribute(node,"class")??"").split(/\s+/).includes("Apple-interchange-newline");}
+/** WebKit/Blink's final selection marker can be wrapped by the producer's last element. */
+function trailingInterchangeNewline(nodes:readonly HtmlNode[]):HtmlElement|undefined {
+  const html=nodes[0];if(!html||!isElement(html))return undefined;
+  let tail=html.childNodes.find((node):node is HtmlElement=>isElement(node)&&node.tagName==="body");
+  while(tail){
+    if(tail.tagName==="br"&&(attribute(tail,"class")??"").split(/[\t\n\f\r ]+/).includes("Apple-interchange-newline"))return tail;
+    const significant=tail.childNodes.filter(node=>isElement(node)||/[^\t\n\f\r ]/.test(plainText(node))).at(-1);
+    tail=significant&&isElement(significant)?significant:undefined;
+  }
+  return undefined;
+}
 export function importHtmlContent(source:string,b:Budget,options:InterchangeOptions,capabilities:ImportCapabilities={listNumbering:false}):{root:string;kind:"text"|"flow"} {
-  const sourceNodes=htmlTree(source,b),converter=new HtmlConversion(b,options,new Stylesheets(sourceNodes,b),capabilities),body=converter.pageBreakRoot(converter.flow(sourceNodes));
+  const sourceNodes=htmlTree(source,b),converter=new HtmlConversion(b,options,new Stylesheets(sourceNodes,b),capabilities,trailingInterchangeNewline(sourceNodes)),body=converter.pageBreakRoot(converter.flow(sourceNodes));
   const containsBlock=(n:HtmlNode):boolean=>isElement(n)&&(blocks.has(n.tagName)||n.childNodes.some(containsBlock));
   const inline=!sourceNodes.some(containsBlock)&&body.length===1&&body[0]!.type==="breditor/paragraph"&&Object.keys(body[0]!.properties).every(k=>k==="breditor/block-id")&&body[0]!.children.length>0&&body[0]!.children.every(n=>n.kind==="text");
   return{root:rootJson(b,body),kind:inline?"text":"flow"};
