@@ -65,6 +65,7 @@ const same=(a:Capture|undefined,b:Capture)=>!!a&&a.checkpoint===b.checkpoint&&a.
 
 /** Both leases precede cold native replay. Only complete superseded captures are coalesced. */
 const constructionKey=Object.freeze({});
+const generationVersionChange=(message="The generation database changed")=>new SharedEditorError("segmented_versionchange",message);
 type GenerationRecords=GenerationRecordMetadata|ContinuedGenerationRecordMetadata;
 let readGenerationRecords:(
  owner:SharedSegmentedPersistentSession,authority:()=>void,formatVersion:1|2,signal?:AbortSignal,
@@ -136,7 +137,7 @@ export class SharedSegmentedPersistentSession<P extends SharedSelectionPolicy=Sh
   let documentRevision=core.view().revision,reviewRevision=options.review?core.reviewSnapshot().reviewRevision:null;
   const changed=(document:string,review?:string)=>{if(document!==documentRevision||review!==undefined&&review!==reviewRevision){this.#sourceStamp=Object.freeze({});documentRevision=document;if(review!==undefined)reviewRevision=review;}save();};
   this.#off=[core.subscribe(e=>changed(e.view.revision)),...(options.review?[core.subscribeReview(e=>changed(e.documentRevision,e.reviewRevision))]:[])];
-  db.onversionchange=()=>{this.#storageChanged=true;try{this.#companion?.retire?.();}finally{retireOwnedCore(core);db.close();this.#failed(new SharedEditorError("segmented_versionchange","Generation storage changed; export the readable native histories before explicitly discarding"));}};
+  db.onversionchange=()=>{this.#storageChanged=true;try{this.#companion?.retire?.();}finally{retireOwnedCore(core);db.close();this.#failed(generationVersionChange("Generation storage changed; export the readable native histories before explicitly discarding"));}};
  }
  static{const inspect=(owner:SharedSegmentedPersistentSession,stopped=true):StoppedActorBinding=>{if(!owner||typeof owner!=='object'||!(#ownedCore in owner))throw new SharedEditorError('actor_source_unavailable','Use the actual native persistence owner');if(owner.#closed||owner.#running||owner.#closing)throw new SharedEditorError('actor_source_in_use','Settle actual native persistence and cleanup before moving actor custody');if(Object.getOwnPropertyDescriptor(owner,'core')?.value!==owner.#ownedCore)throw new SharedEditorError('actor_source_unavailable','The original native core binding was replaced');if(stopped)requireStoppedActorCore(owner.#ownedCore);else requireLiveActorCore(owner.#ownedCore);const binding=owner.#actorBinding;checkSharedWriterLeaseForEscrow(owner.#documentLease,binding.room,binding.writer);if(binding.actor!==null)checkReviewWriterLeaseForEscrow(owner.#reviewLease!,binding.room,binding.actor);return binding;};readyActorCustody=owner=>inspect(owner,false);checkActorCustody=owner=>inspect(owner,true);takeActorCustody=owner=>{const binding=inspect(owner);return binding.actor===null?createSharedWriterLeaseEscrow(owner.#documentLease,binding.room,binding.writer):createStoppedActorEscrow(owner.#documentLease,owner.#reviewLease!,binding.room,binding.writer,binding.actor);};}
  static{readGenerationRecords=async(owner,provided,formatVersion,signal)=>{
@@ -340,15 +341,23 @@ export class SharedSegmentedPersistentSession<P extends SharedSelectionPolicy=Sh
    return readContinuedBackup(this.#db,[this.#identity.room,this.#identity.writer],head!,predecessor!,check);
   });
  }
- save():void{this.#live();this.#recordReadEpoch=Object.freeze({});if(this.#storageChanged)throw new SharedEditorError("segmented_versionchange","The generation database changed");const capture=this.#capture();this.#checkCapture(capture);if(same(this.#saved,capture)&&!this.#attempt&&!this.#pending&&!this.#running&&!this.#failure)return;this.#pending=capture;this.#failure=undefined;this.#notify();this.#start();}
- #start():void{if(this.#running||this.#closed||this.#failure||!this.#attempt&&!this.#pending)return;this.#running=this.#drain().catch(error=>this.#failed(error)).finally(()=>{this.#running=undefined;if(!this.#failure)this.#start();});}
- async #drain():Promise<void>{while(!this.#closed&&(this.#attempt||this.#pending)){
+ save():void{this.#live();if(this.#storageChanged)throw generationVersionChange();this.#recordReadEpoch=Object.freeze({});const capture=this.#capture();this.#checkCapture(capture);if(same(this.#saved,capture)&&!this.#attempt&&!this.#pending&&!this.#running&&!this.#failure)return;this.#pending=capture;this.#failure=undefined;this.#notify();this.#start();}
+ #start():void{if(this.#running||this.#closed||this.#storageChanged||this.#failure||!this.#attempt&&!this.#pending)return;this.#running=this.#drain().catch(error=>{if(!this.#storageChanged)this.#failed(error);}).finally(()=>{this.#running=undefined;if(!this.#failure)this.#start();});}
+ async #drain():Promise<void>{while(!this.#closed&&!this.#storageChanged&&(this.#attempt||this.#pending)){
   this.#documentLease.assertLive();this.#reviewLease?.assertLive();
   if(!this.#attempt){const capture=this.#pending!;this.#pending=undefined;if(same(this.#saved,capture))continue;this.#attempt={capture,cut:undefined};}
-  const attempt=this.#attempt;if(!attempt.cut){const cut=await makeGenerationCut(attempt.capture.checkpoint,this.#identity,attempt.capture.review,attempt.capture.versions,this.#formatVersion);attempt.cut=this.#companion?{head:this.#companion.wrap(JSON.parse(cut.head),attempt.capture.companion!),files:cut.files}:cut;}
+  const attempt=this.#attempt;
+  if(!attempt.cut){
+   const cut=await makeGenerationCut(attempt.capture.checkpoint,this.#identity,attempt.capture.review,attempt.capture.versions,this.#formatVersion);
+   // Hashing can outlive a discarded owner or the IndexedDB connection that started the save.
+   if(this.#closed||this.#storageChanged)return;
+   attempt.cut=this.#companion?{head:this.#companion.wrap(JSON.parse(cut.head),attempt.capture.companion!),files:cut.files}:cut;
+  }
   await writeSegmentedCut(this.#db,[this.#identity.room,this.#identity.writer],this.#savedHead,attempt.cut,this.#formatVersion===2?readContinuedHead:this.#companion?.readHead,this.#continuedPredecessor===undefined?undefined:{predecessor:this.#continuedPredecessor},this.#recoveryBootstrap);
   if(this.#closed){this.#attempt=undefined;return;}
-  this.#savedHead=attempt.cut.head;this.#saved=attempt.capture;this.#attempt=undefined;if(attempt.capture.companion!==null)this.#companion?.acknowledged?.(attempt.capture.companion);this.#notify();
+  this.#savedHead=attempt.cut.head;this.#saved=attempt.capture;this.#attempt=undefined;
+  if(this.#storageChanged)return;
+  if(attempt.capture.companion!==null)this.#companion?.acknowledged?.(attempt.capture.companion);this.#notify();
  }}
  async flush():Promise<void>{this.#live();while(this.#running){await this.#running;if(this.#failure)throw this.#failure;}if(this.#failure)throw this.#failure;}
  /** Retry the exact uncertain attempt first. A newer pending capture cannot overwrite an unacknowledged cut. */

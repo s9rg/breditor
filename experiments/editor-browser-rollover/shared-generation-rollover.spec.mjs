@@ -17,3 +17,12 @@ test("installed original journals retain offline edits and both history directio
  expect(report.legacyBytes.every(bytes=>bytes<=16*1024*1024)).toBe(true);
  expect(report.archiveBytes.every(bytes=>bytes>16*1024*1024)).toBe(true);
 });
+
+for(const retirement of ["upgrade","discard"])test(`installed generation save fences an obsolete browser journal after ${retirement}`,async({page})=>{
+ await page.goto(`/shared-generation-rollover.html?retirement=${retirement}`);
+ const result=page.locator("#result");
+ await expect(result).toContainText('"passed"',{timeout:15000});
+ const report=JSON.parse(await result.textContent());
+ expect(report,report.reason).toEqual({passed:true,upgrade:retirement==="upgrade",obsoleteAttempts:0,
+  unchangedRows:true,exactReadAndRestore:retirement==="upgrade"});
+});
