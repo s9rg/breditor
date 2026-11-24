@@ -66,8 +66,11 @@ That suite uses the exact shared runtime receipt from its candidate.
 Select `rich-browser-matrix` to build the candidate's local rich runtime and
 run the existing grouped rich browser suite in Chromium, Firefox and WebKit.
 Each engine has a separate Playwright process and stage budget. The candidate
-manifest retains each report and the workflow keeps failed traces. This matrix
-is also required by the full candidate plan.
+manifest retains each report and the workflow keeps failed traces. Qualification
+and coverage review require a passing result for every reported spec, zero
+skips or failures, and an executed suite for every candidate rich-browser spec
+file on each engine. The bounded WebKit projects provide that file coverage
+together. This matrix is also required by the full candidate plan.
 
 Select `shared-browser-matrix` to run the shared collaboration browser suite
 with the research Wasm probe and fixtures built from the candidate. Its network

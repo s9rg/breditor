@@ -10,6 +10,7 @@ import {retainCandidateActivationEvidence} from "./candidate-release/activation-
 import {sharedRuntimeForActivation} from "./candidate-release/shared-runtime-evidence.mjs";
 import {candidateStageReceipts} from "./candidate-release/runtime-stage-policy.mjs";
 import {verifyNativeSuggestionBuild} from "./candidate-release/native-suggestion-build-evidence.mjs";
+import {verifyRichBrowserStage} from "./candidate-release/rich-browser-report.mjs";
 
 export async function runCandidateChecks(plan,{root=repository,signal,report=console.log,execute=executeCandidateStage,snapshot=sourceEvidence,activationEvidence}={}){
  if(!candidateCheckProfiles.includes(plan.profile)||!Array.isArray(plan.checks)||!plan.checks.length||new Set(plan.checks.map(check=>check.id)).size!==plan.checks.length||plan.checks.some(check=>!/^[a-z][a-z0-9-]*$/.test(check.id)||typeof check.command!=="string"||!check.command||!Array.isArray(check.args)||check.args.some(arg=>typeof arg!=="string")||!Array.isArray(check.artifacts)||!Number.isSafeInteger(check.timeoutMs)||check.timeoutMs<=0))throw Error("Invalid candidate check plan");
@@ -46,7 +47,10 @@ export async function runCandidateChecks(plan,{root=repository,signal,report=con
      if(sharedRuntimeForActivation(root,source).sha256!==runtime.sha256)throw Error("Shared runtime build receipt changed during qualification");
      if(nativeFixture&&verifyNativeSuggestionBuild(root,source).sha256!==entry.nativeHostBuildReceiptSha256)throw Error("Native host build receipt changed during qualification");
     }
-    if(entry.status==="passed")entry.artifacts=check.artifacts.map(artifact=>{const evidence=fileEvidence(root,artifact.path);if(artifact.fresh&&evidence.modifiedAtMs<Date.parse(entry.startedAt))throw Error(`Stale stage report: ${artifact.path}`);return artifact.retain===true?retainStageArtifact(root,directory,check.id,evidence):evidence;});
+    if(entry.status==="passed"){
+     entry.artifacts=check.artifacts.map(artifact=>{const evidence=fileEvidence(root,artifact.path);if(artifact.fresh&&evidence.modifiedAtMs<Date.parse(entry.startedAt))throw Error(`Stale stage report: ${artifact.path}`);return artifact.retain===true?retainStageArtifact(root,directory,check.id,evidence):evidence;});
+     verifyRichBrowserStage(root,directory,entry);
+    }
    }
    checkSource();
    saveEvidence(manifest,result);report(`verify-candidate: ${entry.status} ${check.id}`);

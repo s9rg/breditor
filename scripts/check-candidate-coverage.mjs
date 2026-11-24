@@ -9,6 +9,7 @@ import {candidateShardPlan} from "./candidate-release/shards.mjs";
 import {fileEvidence,sourceEvidence} from "./candidate-release/evidence.mjs";
 import {verifyHostedContext} from "./candidate-release/hosted-context.mjs";
 import {candidateStageReceipts} from "./candidate-release/runtime-stage-policy.mjs";
+import {verifyRichBrowserStage} from "./candidate-release/rich-browser-report.mjs";
 import {
  sharedRuntimeBuildFormat,sharedRuntimeBuildReport,sharedRuntimeReceiptVariable,
 } from "./fixtures/native-runtime/shared-runtime-receipt.mjs";
@@ -71,6 +72,7 @@ export function candidateCoverage(root,manifests,{requireHosted=false}={}) {
     assert.equal(observed.retainedPath,retained);
     requireRetainedBytes(directory,retained,observed);
    }
+   verifyRichBrowserStage(root,directory,stage);
    if(check.id==="paired-shared-runtime")sharedRuntimeSha256=verifyRuntimeProducer(directory,stage,source);
    if(candidateStageReceipts(check).sharedRuntime){
     assert.ok(sharedRuntimeSha256,`No preceding paired shared-runtime receipt for ${check.id}`);
