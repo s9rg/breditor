@@ -622,7 +622,7 @@ edit/Undo rounds. For checkpoints from 383,425 to 426,954 bytes, the general
 range session encoded and parsed each captured journal twice. The second
 validation had a median cost of 1.5 ms. Reusing the synchronously admitted
 checkpoint reduced this to one encode and parse per publication. Median
-synchronous publication went from 33.1 ms to 31.5 ms across 15 samples, and
+synchronous publication went from 33.1 ms to 31.2 ms across 15 samples, and
 both peers reopened with identical checkpoint bytes in each build.
 [Measurement and archive hashes](qualification/2026-11-24-installed-chrome-shared-save-validation.json)
 

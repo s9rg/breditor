@@ -252,7 +252,7 @@
       },
       {
         "file": "breditor-collaboration-0.3.0-alpha.22.tgz",
-        "sha256": "50c7bde8baec452570c2f8163dc3377fc84da050baa323daf1960efb5d042cce"
+        "sha256": "f3f2138106247e853363667b6096a062902af703e1133b10e1e68135edb81ccd"
       }
     ],
     "loadedWasm": [
@@ -263,13 +263,13 @@
       {
         "bytes": 383425,
         "encodeMs": [
-          0.7
+          0.8
         ],
         "parseMs": [
-          0.7
+          0.6
         ],
-        "publishMs": 32.5,
-        "commitMs": 34.7
+        "publishMs": 29.7,
+        "commitMs": 31.9
       },
       {
         "bytes": 386549,
@@ -280,18 +280,18 @@
           0.6
         ],
         "publishMs": 29.4,
-        "commitMs": 31.5
+        "commitMs": 32.6
       },
       {
         "bytes": 389657,
         "encodeMs": [
-          0.8
+          0.9
         ],
         "parseMs": [
           0.6
         ],
-        "publishMs": 30.1,
-        "commitMs": 33.3
+        "publishMs": 29.4,
+        "commitMs": 33.6
       },
       {
         "bytes": 392765,
@@ -301,41 +301,41 @@
         "parseMs": [
           0.6
         ],
-        "publishMs": 29.9,
-        "commitMs": 35.5
+        "publishMs": 29.6,
+        "commitMs": 33
       },
       {
         "bytes": 395873,
         "encodeMs": [
-          0.9
-        ],
-        "parseMs": [
           0.7
         ],
-        "publishMs": 31.2,
-        "commitMs": 32.4
+        "parseMs": [
+          0.6
+        ],
+        "publishMs": 30.7,
+        "commitMs": 32.6
       },
       {
         "bytes": 398981,
-        "encodeMs": [
-          0.8
-        ],
-        "parseMs": [
-          0.7
-        ],
-        "publishMs": 31,
-        "commitMs": 32.8
-      },
-      {
-        "bytes": 402089,
         "encodeMs": [
           0.9
         ],
         "parseMs": [
           0.6
         ],
-        "publishMs": 30.8,
-        "commitMs": 32.8
+        "publishMs": 30.6,
+        "commitMs": 32.6
+      },
+      {
+        "bytes": 402089,
+        "encodeMs": [
+          0.8
+        ],
+        "parseMs": [
+          0.6
+        ],
+        "publishMs": 30.4,
+        "commitMs": 33.1
       },
       {
         "bytes": 405197,
@@ -345,29 +345,29 @@
         "parseMs": [
           0.7
         ],
-        "publishMs": 31.1,
-        "commitMs": 33.3
+        "publishMs": 31.2,
+        "commitMs": 35.3
       },
       {
         "bytes": 408305,
         "encodeMs": [
-          0.9
+          0.8
         ],
         "parseMs": [
           0.6
         ],
-        "publishMs": 31.5,
+        "publishMs": 31.9,
         "commitMs": 33.6
       },
       {
         "bytes": 411413,
         "encodeMs": [
-          0.8
+          0.7
         ],
         "parseMs": [
           0.7
         ],
-        "publishMs": 31.9,
+        "publishMs": 31.8,
         "commitMs": 33
       },
       {
@@ -376,10 +376,10 @@
           0.8
         ],
         "parseMs": [
-          0.6
+          0.7
         ],
-        "publishMs": 31.8,
-        "commitMs": 33
+        "publishMs": 32.1,
+        "commitMs": 34.6
       },
       {
         "bytes": 417630,
@@ -387,10 +387,10 @@
           0.8
         ],
         "parseMs": [
-          0.8
+          0.7
         ],
-        "publishMs": 35.4,
-        "commitMs": 37.7
+        "publishMs": 32.5,
+        "commitMs": 34.5
       },
       {
         "bytes": 420738,
@@ -400,30 +400,30 @@
         "parseMs": [
           0.7
         ],
-        "publishMs": 32.3,
-        "commitMs": 33.4
+        "publishMs": 32.6,
+        "commitMs": 35.5
       },
       {
         "bytes": 423846,
         "encodeMs": [
-          0.9
+          0.8
         ],
         "parseMs": [
-          0.7
+          0.8
         ],
-        "publishMs": 33.2,
-        "commitMs": 34.4
+        "publishMs": 33.1,
+        "commitMs": 34.3
       },
       {
         "bytes": 426954,
         "encodeMs": [
-          0.9
+          0.8
         ],
         "parseMs": [
-          0.7
+          0.8
         ],
-        "publishMs": 33.7,
-        "commitMs": 34.8
+        "publishMs": 33.5,
+        "commitMs": 34.6
       }
     ]
   }

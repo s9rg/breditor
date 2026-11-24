@@ -81,7 +81,7 @@ export class SharedPersistentSession<P extends SharedSelectionPolicy="original">
  #db:IDBDatabase;#lease:SharedWriterLease;#options:SharedSessionOptions|SharedDocumentSessionOptions;#unsubscribe:()=>void;
  readonly #selectionPolicy:P;
  readonly #search:boolean;
- #pending:{json:string;revision:string}|undefined;#running:Promise<void>|undefined;#failure:unknown;
+ #pending:{json:string;revision:string;key:readonly[string,string];record:unknown}|undefined;#running:Promise<void>|undefined;#failure:unknown;
  #saved:string|undefined;#savedRevision:string|null=null;#closed=false;#storageChanged=false;
  #closeRequest:Promise<void>|undefined;#released:Promise<void>|undefined;
  readonly #releasePendingWork:()=>void;
@@ -207,11 +207,14 @@ export class SharedPersistentSession<P extends SharedSelectionPolicy="original">
  save():void{
   this.#live();if(this.#storageChanged)throw versionChangeError();
   this.#recordReadEpoch=Object.freeze({});const core=this.#boundCore(),json=core.checkpointJson(),revision=core.view().revision;
-  if(this.#search)checkSearchCheckpoint(json,this.#options.room,this.#options.writer,this.#options.richLanguage??1,this.#options.history??"explicit",this.#options.rangeEditing??"original",this.#selectionPolicy);
-  else if(this.#selectionPolicy==="document-v1")checkDocumentCheckpoint(json,this.#options.room,this.#options.writer,this.#options.richLanguage,this.#options.history);
-  else checkCheckpoint(json,this.#options.room,this.#options.writer,this.#options.richLanguage,this.#options.history,this.#options.rangeEditing);
+  const identity=this.#identity(),{room,writer,richLanguage,history,rangeEditing,selectionEditing}=identity;
+  if(this.#search)checkSearchCheckpoint(json,room,writer,richLanguage,history,rangeEditing,selectionEditing);
+  else if(selectionEditing==="document-v1")checkDocumentCheckpoint(json,room,writer,richLanguage,history);
+  else checkCheckpoint(json,room,writer,richLanguage,history,rangeEditing);
   if(json===this.#saved&&!this.#pending&&!this.#running&&!this.#failure)return;
-  this.#pending={json,revision};this.#failure=undefined;this.#notify();this.#start();
+  // Stage the exact storage identity and payload before notifying any host observer.
+  this.#pending={json,revision,key:[room,writer],record:sessionJournalRecord(json,identity)};
+  this.#failure=undefined;this.#notify();this.#start();
  }
  #start():void{
   if(this.#running||this.#closed||!this.#pending)return;
@@ -220,12 +223,10 @@ export class SharedPersistentSession<P extends SharedSelectionPolicy="original">
  async #drain():Promise<void>{
   while(this.#pending&&!this.#closed&&!this.#storageChanged){
    this.#lease.assertLive();const next=this.#pending;this.#pending=undefined;
-   const identity=this.#identity(),key=[identity.room,identity.writer] as const;
    const insertOnly=!this.recovered&&this.#saved===undefined;
    try{
-    // save() already admitted this immutable payload before queueing it.
     const kind=this.#search?"search":this.#selectionPolicy==="document-v1"?"document":"original";
-    await writeAdmittedSessionRecord(this.#db,key,sessionJournalRecord(next.json,identity),insertOnly,kind);
+    await writeAdmittedSessionRecord(this.#db,next.key,next.record,insertOnly,kind);
    }catch(error){
     this.#pending??=next;
     if(insertOnly&&error instanceof Error&&error.name==="ConstraintError")throw new SharedEditorError("session_destination_exists","A journal was created while the shared session was opening");
