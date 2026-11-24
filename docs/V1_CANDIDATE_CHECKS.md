@@ -132,6 +132,15 @@ manifest paths to fail if any engineering stage is missing. The functional
 and focused profiles together can supply all engineering stage evidence
 before the readiness ledger passes.
 
+For hosted receipts, verify each downloaded ZIP against its artifact digest
+in GitHub and confirm the corresponding workflow attempt succeeded. Add
+`--require-hosted` to validate the recorded runner identity, revision,
+profile, shard and setup outcomes alongside each result. Keep
+`runner-context.tsv` in the artifact directory above each `run-*` directory.
+Compare the reported repository, run ID and attempt with the GitHub listing
+for the same downloaded artifact. The coverage report also records the context
+digest. This option requires artifacts from a workflow that records those fields.
+
 ## Whole-room activation jobs
 
 Select `portable-relay-recovery` to run both relocation checks in a dedicated

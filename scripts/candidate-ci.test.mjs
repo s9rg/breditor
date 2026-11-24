@@ -169,13 +169,17 @@ test("a setup failure still has a retained commit and runner outcome report",()=
   const summary=join(cwd,"summary.md");
   const result=spawnSync("bash",["-ec",row.run],{
    cwd,encoding:"utf8",env:{...process.env,GITHUB_SHA:sha,CANDIDATE_PROFILE:"full",RUNNER_OS:"Linux",RUNNER_ARCH:"X64",
-    GITHUB_STEP_SUMMARY:summary,
+    GITHUB_STEP_SUMMARY:summary,GITHUB_REPOSITORY:"s9rg/breditor",GITHUB_EVENT_NAME:"workflow_dispatch",
+    GITHUB_WORKFLOW_REF:"s9rg/breditor/.github/workflows/candidate-qualification.yml@refs/heads/main",
+    GITHUB_RUN_ID:"1234",GITHUB_RUN_ATTEMPT:"2",
     CHECKOUT_OUTCOME:"success",NODE_OUTCOME:"success",RUST_OUTCOME:"failure",
     NPM_OUTCOME:"skipped",CARGO_OUTCOME:"skipped",BROWSERS_OUTCOME:"skipped",CANDIDATE_OUTCOME:"skipped"},
   });
   assert.equal(result.status,0,result.stderr);
   const report=readFileSync(join(cwd,"target/v1-candidate-runs/runner-context.tsv"),"utf8");
   assert.deepEqual(Object.fromEntries(report.trimEnd().split("\n").map(line=>line.split("\t"))),{
+   format:"1",repository:"s9rg/breditor",workflow:"s9rg/breditor/.github/workflows/candidate-qualification.yml@refs/heads/main",
+   event:"workflow_dispatch",runId:"1234",runAttempt:"2",
    revision:sha,profile:"full",shard:"none",os:"Linux",arch:"X64",checkout:"success",node:"success",rust:"failure",
    npm:"skipped",cargo:"skipped",browsers:"skipped",candidate:"skipped",
   });
