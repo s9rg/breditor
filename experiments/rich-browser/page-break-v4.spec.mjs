@@ -157,6 +157,38 @@ test("simultaneous screen previews keep their own geometry through update and di
   updated:[a4,{width:139.7,padding:38.1,guides:203.2}],remaining:a4,disposed:true,unchanged:true});
 });
 
+test("a print preview inside a closed shadow root applies screen and print styles",async({page})=>{
+ await page.evaluate(()=>{
+  const t=window.dt,attachment=document.createElement("section"),host=document.createElement("div");
+  document.body.append(attachment);attachment.attachShadow({mode:"closed"}).append(host);
+  const core=t.open(t.profile,true),editor=t.api.mountRichEditor(host,{core});
+  const before=core.checkpointJson(),preview=t.api.mountRichPrintPreview(editor.surface,{size:"Letter",margin:"narrow"});
+  window.shadowPrint={attachment,host,core,editor,preview,before};
+ });
+ const read=()=>page.evaluate(()=>{
+  const {core,before,editor,host}=window.shadowPrint,style=getComputedStyle(editor.surface),mm=px=>Math.round(parseFloat(px)*25.4/96*10)/10;
+  const marker=host.querySelector("[data-rich-page-break]");
+  return {width:mm(style.width),padding:mm(style.paddingTop),guide:style.backgroundImage.includes("repeating-linear-gradient"),marker:marker.getBoundingClientRect().height,
+   toolbar:getComputedStyle(editor.toolbar).display,unchanged:core.checkpointJson()===before};
+ });
+ const screen=await read();
+ expect(screen).toMatchObject({width:190.5,padding:12.7,guide:true,toolbar:"flex",unchanged:true});
+ expect(screen.marker).toBeGreaterThan(10);
+ await page.emulateMedia({media:"print"});
+ expect(await read()).toMatchObject({padding:0,guide:false,marker:0,toolbar:"none",unchanged:true});
+ const after=await page.evaluate(()=>{
+  const {attachment,host,editor,preview}=window.shadowPrint;
+  const pageRules=()=>[...document.styleSheets].flatMap(sheet=>[...sheet.cssRules]).filter(rule=>rule.type===CSSRule.PAGE_RULE).map(rule=>{
+   const [size,orientation="portrait"]=rule.style.getPropertyValue("size").trim().split(/\s+/);
+   return [size.toLowerCase(),orientation,rule.style.margin];
+  });
+  const initial=pageRules();preview.update({orientation:"landscape",margin:"wide"});const updated=pageRules();
+  preview.dispose();const disposed=pageRules(),previewStyles=host.getRootNode().querySelectorAll("style[data-breditor-print-preview]").length;
+  editor.dispose();attachment.remove();return {initial,updated,disposed,previewStyles};
+ });
+ expect(after).toEqual({initial:[["letter","portrait","12.7mm"]],updated:[["a4","landscape","38.1mm"]],disposed:[],previewStyles:0});
+});
+
 test("static export embeds print CSS and repeats header rows under print media",async({page})=>{
  await page.emulateMedia({media:"print"});
  const result=await page.evaluate(()=>{const t=window.dt,frame=document.createElement("section");

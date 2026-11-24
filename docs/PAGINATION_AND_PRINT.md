@@ -138,12 +138,14 @@ byte-for-byte unchanged.
 ### Print preview: `mountRichPrintPreview(surface, options?)`
 
 Opt-in and CSS only. It marks the surface (`data-breditor-print-preview`,
-`aria-description` from the new catalog key `printPreviewLabel`) and installs one
-stylesheet: the surface becomes the printable width with the page margin as
-padding, and a thin guide is drawn every printable page height. Each mounted
+`aria-description` from the new catalog key `printPreviewLabel`) and installs
+a stylesheet in the surface's document or shadow root. The surface becomes the
+printable width with the page margin as padding, and a thin guide is drawn every
+printable page height. Each mounted
 screen preview uses its own layout. By default the print styles for the same
-layout are installed too (`print: false` to skip). The browser applies `@page`
-size and margins to the whole printed document. `update(options)` changes the
+layout are installed too (`print: false` to skip). For a shadow-root surface,
+the preview adds the `@page` rule to the owner document. The browser applies
+page size and margins to the whole printed document. `update(options)` changes the
 surface's preview layout and `dispose()` restores the element. Editing continues
 normally during preview.
 
