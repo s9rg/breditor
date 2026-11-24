@@ -106,8 +106,10 @@ companion `link` elements (a stylesheet `link` reports `unsupported-style`), CSS
 `<!--`/`-->` tokens, legacy HTML 4 doctypes, and no-op values (`font-variant:
 normal`, `vertical-align: baseline`, `background-color: transparent`, native
 `list-style-type` values, `mso-data-placement: same-cell` on `<br>`). Other
-`list-style-type` values report `list-numbering`. Everything else unrecognized,
-including `mso-*` producer properties and the `font` shorthand, keeps its notice.
+`list-style-type` values report `list-numbering`. Unrecognized `mso-*` producer
+properties retain their notices. The `font` shorthand expands before the CSS
+cascade and uses the same bounded conversion as the matching longhand properties.
+System fonts and unrepresented components report `unsupported-style`.
 
 ### Ordered-list numbering (rich V4 owners)
 

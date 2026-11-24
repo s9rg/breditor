@@ -224,8 +224,8 @@ describe("reconstructed producer clipboard corpus",()=>{
       "  list-item",
       '    paragraph "Bread"',
     ]);
-    expect(marks(root,"Groceries")).toEqual(["strong"]);expect(marks(root,"Friday")).toEqual(["italic"]);
-    // The `font` shorthand (size/family) is not interpreted and is reported, not guessed.
+    expect(marks(root,"Groceries")).toEqual(["strong","text-size=24"]);expect(marks(root,"Friday")).toEqual(["italic","text-size=13"]);
+    // Sizes are retained; the unsupported Helvetica Neue face still reports loss.
     expect(notices).toEqual(losses({"unsupported-style":13}));
   });
 });

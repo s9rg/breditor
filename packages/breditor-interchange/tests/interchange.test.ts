@@ -156,6 +156,56 @@ describe("explicit parser staging contracts",()=>{
     const r=root(staging().adapter.importHtml('<p style="font-family:Georgia,Arial,monospace">A</p>'));
     expect(r.children[0].children[0].formats[0].properties["breditor-inline/family"]).toBe(3);
   });
+  it("preserves representable font shorthand and round trips through native HTML fields",()=>{
+    const {adapter}=staging();
+    const imported=adapter.importHtml('<p style="font:italic 700 12pt/1.5 serif">A</p>');
+    if(!imported.ok)throw Error(imported.error);
+    const paragraph=root(imported).children[0];
+    expect(imported.losses).toEqual([]);
+    expect(paragraph.properties["breditor/line-height-percent"]).toBe(150);
+    expect(paragraph.children[0].formats).toEqual([
+      {type:"breditor-inline/font-family",properties:{"breditor-inline/family":3}},
+      {type:"breditor-inline/italic",properties:{}},
+      {type:"breditor-inline/text-size",properties:{"breditor-inline/pixels":16}},
+      {type:"breditor/strong",properties:{}},
+    ]);
+    const exported=adapter.exportHtml(imported.value.structuredJson);
+    if(!exported.ok)throw Error(exported.error);
+    expect(root(adapter.importHtml(exported.value))).toEqual(root(imported));
+  });
+  it("cascades font shorthand, resets and longhands in source and importance order",()=>{
+    const {adapter}=staging();
+    const result=adapter.importHtml(`<style>
+      p.x {font-weight:bold;font-style:italic}
+      .x {font:16px serif!important}
+      .x {font-family:monospace!important}
+    </style>
+    <p class="x" style="font-size:24px;font-style:italic!important">A</p>
+    <p style="font-style:italic;font:16px/2 serif;font-size:18px;line-height:normal">B</p>`);
+    expect(result.losses).toEqual([]);
+    const [first,second]=root(result).children;
+    expect(first.children[0].formats).toEqual([
+      {type:"breditor-inline/font-family",properties:{"breditor-inline/family":4}},
+      {type:"breditor-inline/italic",properties:{}},
+      {type:"breditor-inline/text-size",properties:{"breditor-inline/pixels":16}},
+    ]);
+    expect(second.properties["breditor/line-height-percent"]).toBeUndefined();
+    expect(second.children[0].formats).toEqual([
+      {type:"breditor-inline/font-family",properties:{"breditor-inline/family":3}},
+      {type:"breditor-inline/text-size",properties:{"breditor-inline/pixels":18}},
+    ]);
+  });
+  it("reports unrepresented shorthand components and preserves the closed fields",()=>{
+    const {adapter}=staging();
+    const result=adapter.importHtml('<p style="font:small-caps condensed 16px serif">A</p><p style="font:menu">B</p>');
+    const [partial,unavailable]=root(result).children;
+    expect(result.losses).toEqual([{code:"unsupported-style",count:3,effect:"loss"}]);
+    expect(partial.children[0].formats).toEqual([
+      {type:"breditor-inline/font-family",properties:{"breditor-inline/family":3}},
+      {type:"breditor-inline/text-size",properties:{"breditor-inline/pixels":16}},
+    ]);
+    expect(unavailable.children[0].formats).toEqual([]);
+  });
   it("does not treat inherited object keys as known tags, colors or layout values",()=>{
     const result=staging().adapter.importHtml('<constructor><span style="color:constructor;font-family:__proto__;text-align:constructor;direction:constructor">A</span></constructor>');
     expect(result.ok).toBe(true);expect(nodes(root(result)).find(n=>n.kind==="text").formats).toEqual([]);expect(JSON.stringify(root(result))).not.toContain("function Object");expect(result.losses.some(l=>l.code==="unsupported-style")).toBe(true);

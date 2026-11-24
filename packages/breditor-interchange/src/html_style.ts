@@ -1,4 +1,4 @@
-import {generate,parse,type Declaration} from "css-tree";
+import {generate,lexer,parse,type Declaration} from "css-tree";
 import {Budget,bytes,fail,limits} from "./budget.js";
 import {attribute,type HtmlElement} from "./html_tree.js";
 import {format,type Literal} from "./wire.js";
@@ -17,6 +17,43 @@ export function rgb(value:string):number|null {
   if(channels.some(c=>!Number.isFinite(c)||c<0||c>255+1e-8))return null;
   return Math.round(channels[0]!)*65536+Math.round(channels[1]!)*256+Math.round(channels[2]!);
 }
+const fontLonghands = [
+  ["font-style", "normal"], ["font-variant", "normal"], ["font-weight", "normal"],
+  ["font-stretch", "normal"], ["line-height", "normal"], ["font-size", ""], ["font-family", ""],
+] as const;
+const matchedFontParts = [
+  ["font-style", "font-style"], ["font-variant-css2", "font-variant"], ["font-weight", "font-weight"],
+  ["font-width-css3", "font-stretch"], ["line-height", "line-height"],
+  ["font-size", "font-size"], ["font-family", "font-family"],
+] as const;
+
+/** Expand before the cascade so shorthand and longhand share ordering and !important. */
+export function declarationValues({property,value}:Declaration): Array<[string,string]> {
+  const name=property.toLowerCase(), source=generate(value);
+  const unexpanded: Array<[string,string]> = [[name,source]];
+  if(name!=="font"||value.type!=="Value")return unexpanded;
+  if(["inherit","unset"].includes(source.toLowerCase())){
+    return fontLonghands.map(([key])=>[key,"inherit"]);
+  }
+  const matched=lexer.matchProperty("font",value);
+  if(matched.error!==null)return unexpanded;
+  const parts=new Map<string,string[]>();
+  for(const node of value.children){
+    const token=generate(node);
+    const key=matchedFontParts.find(([part])=>matched.isProperty(node,part)||matched.isType(node,part))?.[1];
+    if(key!==undefined){
+      const items=parts.get(key)??[];
+      items.push(token);
+      parts.set(key,items);
+    }else if(node.type==="Operator"&&token===","){
+      parts.get("font-family")?.push(token);
+    }else if(node.type!=="Operator"||token!=="/"){
+      return unexpanded;
+    }
+  }
+  if(!parts.has("font-size")||!parts.has("font-family"))return unexpanded;
+  return fontLonghands.map(([key,reset])=>[key,parts.get(key)?.join(" ")??reset]);
+}
 /** Parse CSS as inert data. Only individually recognized bounded values enter native literals. */
 export function declarations(node:HtmlElement,b:Budget,important?:Set<string>):Map<string,string> {
   const raw=attribute(node,"style");if(!raw)return new Map();if(raw.length>limits.styleBytes||bytes(raw)>limits.styleBytes)fail("resource-limit");
@@ -26,8 +63,9 @@ export function declarations(node:HtmlElement,b:Budget,important?:Set<string>):M
     if(tree.type!=="DeclarationList")return new Map();
     tree.children.forEach(entry=>{
       if(entry.type!=="Declaration"){b.loss("unsupported-style");return;}
-      const d=entry as Declaration,key=d.property.toLowerCase(),value=generate(d.value),old=values.get(key);
-      if(!old?.important||d.important)values.set(key,{value,important:Boolean(d.important)});
+      for(const [key,value]of declarationValues(entry)){
+        if(!values.get(key)?.important||entry.important)values.set(key,{value,important:Boolean(entry.important)});
+      }
     });
   }catch{b.loss("unsupported-style");}
   for(const [key,value]of values)if(value.important)important?.add(key);
@@ -55,7 +93,7 @@ export function styleFor(node:HtmlElement,parent:StyleState,b:Budget,css:Map<str
     switch(name){
       case "font-weight":if(value==="bold"||value==="bolder"||/^([6-9]00|1000)$/.test(value))set("strong");else if(value==="normal"||/^[1-5]00$/.test(value))remove("strong");else b.loss("unsupported-style");break;
       // Initial/no-op values Office and Docs write on every run are not presentation loss.
-      case "font-variant":if(value!=="normal")b.loss("unsupported-style");break;
+      case "font-variant":case "font-stretch":if(value!=="normal")b.loss("unsupported-style");break;
       case "vertical-align":
         if(value==="super"){remove("subscript");set("superscript");}else if(value==="sub"){remove("superscript");set("subscript");}
         else if(value==="baseline"){remove("superscript");remove("subscript");}else b.loss("unsupported-style");break;
