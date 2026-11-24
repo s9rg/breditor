@@ -151,6 +151,7 @@ export function summarizeAudit(audit, catalogs = readCatalogs()) {
     coverage: audit.coverage,
     testsExecuted: false,
     ledgerComplete: featureGaps.length === 0 && openGates.length === 0,
+    preRcLedgerComplete: featureGaps.length === 0 && openGates.every(row => row.id === "final-rc"),
     featureGroups: audit.features.length,
     catalogCasesDefined: cases.length,
     catalogFeatureGroupsWithCases: new Set(cases.map(row => row.feature)).size,
@@ -191,10 +192,13 @@ export function summarizeUpstreamCatalog(index, cases) {
 
 export function main(args, report = console.log, error = console.error) {
   if (args.length === 1 && args[0] === "--help") {
-    report("Usage: node scripts/check-v1-readiness.mjs [--json] [--require-ready]\nRead-only reviewed-ledger audit. Does not run tests, certify parity, publish or deploy. --require-ready fails for any remaining feature gap or gate.");
+    report("Usage: node scripts/check-v1-readiness.mjs [--json] [--require-ready | --require-pre-rc]\nRead-only reviewed-ledger audit. Does not run tests, certify parity, publish or deploy. --require-ready fails for any remaining feature gap or gate. --require-pre-rc allows only the final-rc gate to remain open.");
     return 0;
   }
-  if (new Set(args).size !== args.length || args.some(arg => !["--json", "--require-ready"].includes(arg))) {
+  const requireReady = args.includes("--require-ready");
+  const requirePreRc = args.includes("--require-pre-rc");
+  if ((requireReady && requirePreRc) || new Set(args).size !== args.length ||
+      args.some(arg => !["--json", "--require-ready", "--require-pre-rc"].includes(arg))) {
     error("V1 audit: unknown or repeated argument; use --help.");
     return 2;
   }
@@ -218,9 +222,14 @@ export function main(args, report = console.log, error = console.error) {
       report(`${summary.openGates.length} open qualification gates. No behavioral tests executed.`);
       for (const row of summary.featureGaps) report(`  ${row.status}: ${row.id} — ${row.summary}`);
       for (const row of summary.openGates) report(`  gate: ${row.id} — ${row.summary}`);
-      report(summary.ledgerComplete ? "Reviewed ledger complete; exact RC verification and publication approval are still separate." : "NOT RELEASE READY: feature parity and V1 qualification remain incomplete.");
+      if (requirePreRc && summary.preRcLedgerComplete) {
+        report("Reviewed pre-RC ledger complete. Verify exact candidate evidence and record final RC approval separately.");
+      } else {
+        report(summary.ledgerComplete ? "Reviewed ledger complete; exact RC verification and publication approval are still separate." : "NOT RELEASE READY: feature parity and V1 qualification remain incomplete.");
+      }
     }
-    return args.includes("--require-ready") && !summary.ledgerComplete ? 1 : 0;
+    return (requireReady && !summary.ledgerComplete) ||
+      (requirePreRc && !summary.preRcLedgerComplete) ? 1 : 0;
   } catch (cause) {
     error(`V1 audit invalid: ${cause instanceof Error ? cause.message : "unknown validation error"}`);
     return 2;

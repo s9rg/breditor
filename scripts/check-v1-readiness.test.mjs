@@ -141,6 +141,24 @@ test("passed gates cannot hide missing feature groups", () => {
   assert.equal(summarizeAudit(audit).ledgerComplete, false);
 });
 
+test("pre-RC review allows only final approval to remain open", () => {
+  const audit = load();
+  for (const row of audit.features) row.status = "implemented";
+  for (const row of audit.gates) row.status = row.id === "final-rc" ? "open" : "passed";
+  const summary = summarizeAudit(audit);
+  assert.equal(summary.preRcLedgerComplete, true);
+  assert.equal(summary.ledgerComplete, false);
+  assert.equal(summary.testsExecuted, false);
+  assert.deepEqual(summary.openGates.map(row => row.id), ["final-rc"]);
+
+  const remainingGate = audit.gates.find(row => row.id === "release-ci");
+  remainingGate.status = "open";
+  assert.equal(summarizeAudit(audit).preRcLedgerComplete, false);
+  remainingGate.status = "passed";
+  audit.features[0].status = "partial";
+  assert.equal(summarizeAudit(audit).preRcLedgerComplete, false);
+});
+
 test("even a fully reviewed ledger explicitly does not execute behavioral tests", () => {
   const audit = load();
   for (const row of audit.features) row.status = "implemented";
@@ -161,6 +179,11 @@ test("CLI is cwd-independent, read-only and machine readable; the readiness gate
   const gate = spawnSync(process.execPath, [script, "--json", "--require-ready"], {cwd: "/tmp", encoding: "utf8"});
   assert.equal(gate.status, 1, gate.stderr);
   assert.equal(JSON.parse(gate.stdout).testsExecuted, false);
+  const preRc = spawnSync(process.execPath, [script, "--json", "--require-pre-rc"], {cwd: "/tmp", encoding: "utf8"});
+  assert.equal(preRc.status, 1, preRc.stderr);
+  const preRcSummary = JSON.parse(preRc.stdout);
+  assert.equal(preRcSummary.preRcLedgerComplete, false);
+  assert.equal(preRcSummary.testsExecuted, false);
   assert.equal(readFileSync(auditPath, "utf8"), before);
 });
 
@@ -193,10 +216,10 @@ test("help and invalid options do not run a gate or hide errors", () => {
   const reports = [], errors = [];
   assert.equal(main(["--help"], value => reports.push(value), value => errors.push(value)), 0);
   assert.match(reports[0], /Does not run tests/);
-  for (const args of [["--skip"], ["--help", "--require-ready"], ["--json", "--json"]]) {
+  for (const args of [["--skip"], ["--help", "--require-ready"], ["--json", "--json"], ["--require-ready", "--require-pre-rc"]]) {
     assert.equal(main(args, value => reports.push(value), value => errors.push(value)), 2);
   }
-  assert.equal(errors.length, 3);
+  assert.equal(errors.length, 4);
 });
 
 test("workspace scripts expose both reporting and fail-closed qualification guards", () => {

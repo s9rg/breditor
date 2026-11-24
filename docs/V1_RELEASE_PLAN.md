@@ -1,5 +1,28 @@
 # Breditor V1 release preparation
 
+## Verify the release candidate
+
+Run this command from a clean checkout of the proposed candidate commit to
+check the reviewed feature rows and prerequisite gates.
+
+```sh
+node scripts/check-v1-readiness.mjs --json --require-pre-rc
+```
+
+The prerelease check allows the final RC approval to remain open. It reads
+the ledger and leaves it unchanged. The strict `--require-ready` check still
+requires every gate.
+
+Review complete engineering evidence from that same checkout with
+`node scripts/check-candidate-coverage.mjs --require-complete <result.json>...`.
+Keep the downloaded manifests with their stage logs and retained reports. See
+[V1 candidate checks](V1_CANDIDATE_CHECKS.md) for the full and focused profiles.
+Complete coverage validates the source and required stage evidence.
+
+For the reviewed RC, record the exact tag target, clean-install results,
+archive hashes, and final gate decision together. Obtain separate approval for
+publication and deployment.
+
 ## November 21 parity round
 
 **Status: not release ready.** This round closed the last shared V4 gaps,
