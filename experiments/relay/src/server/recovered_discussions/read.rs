@@ -1,6 +1,6 @@
 //! Discover a pin or download exact accepted bytes under current room-read authorization.
-use super::{Access, CONTENT_TYPE, Host, cors, entry_response, failure, origin};
-use crate::{Result, Room};
+use super::{Access, CONTENT_TYPE, ENTRY_CONTENT_TYPE, Host, cors, entry_bytes, failure, origin};
+use crate::{Result, Room, server::http::retained_body};
 use axum::{
     extract::{Path, State},
     http::{HeaderMap, StatusCode},
@@ -12,11 +12,10 @@ pub(in crate::server) async fn discover(
     Path(id): Path<(String, String)>,
     headers: HeaderMap,
 ) -> Response {
-    read(host, id, headers, |room, access| {
-        Ok(match room.recovered_discussion(&access.principal, &access.binding, &access.thread)? {
-            Some(entry) => entry_response(entry),
-            None => StatusCode::NOT_FOUND.into_response(),
-        })
+    read(host, id, headers, ENTRY_CONTENT_TYPE, |room, access| {
+        room.recovered_discussion(&access.principal, &access.binding, &access.thread)?
+            .map(entry_bytes)
+            .transpose()
     })
     .await
 }
@@ -26,17 +25,10 @@ pub(in crate::server) async fn download(
     Path(id): Path<(String, String)>,
     headers: HeaderMap,
 ) -> Response {
-    read(host, id, headers, |room, access| {
-        Ok(
-            match room.recovered_discussion_packet(
-                &access.principal,
-                &access.binding,
-                &access.thread,
-            )? {
-                Some(packet) => ([("content-type", CONTENT_TYPE)], packet).into_response(),
-                None => StatusCode::NOT_FOUND.into_response(),
-            },
-        )
+    read(host, id, headers, CONTENT_TYPE, |room, access| {
+        Ok(room
+            .recovered_discussion_packet(&access.principal, &access.binding, &access.thread)?
+            .map(String::into_bytes))
     })
     .await
 }
@@ -45,7 +37,8 @@ async fn read(
     host: Host,
     id: (String, String),
     headers: HeaderMap,
-    handler: impl FnOnce(&Room, Access) -> Result<Response> + Send + 'static,
+    content_type: &'static str,
+    handler: impl FnOnce(&Room, Access) -> Result<Option<Vec<u8>>> + Send + 'static,
 ) -> Response {
     let Some(allowed) = origin(&host, &headers) else {
         return StatusCode::FORBIDDEN.into_response();
@@ -54,9 +47,19 @@ async fn read(
         Ok(access) => access,
         Err(error) => return cors(failure(&error), allowed),
     };
-    let Ok(_permit) = host.discussion_operations.clone().try_acquire_owned() else {
+    let Ok(permit) = host.discussion_operations.clone().try_acquire_owned() else {
         return cors(StatusCode::SERVICE_UNAVAILABLE.into_response(), allowed);
     };
-    let response = host.transaction(move |room| handler(room, access)).await;
-    cors(response.unwrap_or_else(|error| failure(&error)), allowed)
+    let result = host.transaction(move |room| Ok((handler(room, access)?, permit))).await;
+    let response = match result {
+        Ok((Some(bytes), permit)) => {
+            ([("content-type", content_type)], retained_body(bytes, permit)).into_response()
+        }
+        Ok((None, _permit)) => StatusCode::NOT_FOUND.into_response(),
+        Err(error) => failure(&error),
+    };
+    cors(response, allowed)
 }
+
+#[cfg(test)]
+mod tests;
