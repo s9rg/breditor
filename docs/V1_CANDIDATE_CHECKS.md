@@ -22,6 +22,12 @@ and write an interrupted result. The job retains the evidence before the
 six-hour runner limit. A timed-out run fails qualification and keeps the
 stages it reached for diagnosis.
 
+When qualification fails, the candidate artifact also retains bounded raw
+Playwright JSON from the rich, shared and installed application network
+matrices when those reports exist. The browser failure index lists the copied
+paths, digests and omissions. This preserves structured evidence even when all
+browser tests finished and a later report check failed before retaining them.
+
 The GitHub Actions job summary identifies failed setup or the last recorded
 candidate stage. It gives the stage log's path within the uploaded artifact
 when available.
