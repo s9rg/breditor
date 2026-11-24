@@ -747,6 +747,28 @@ test("source inventory refusal is retained before any child launches",async()=>{
 test("a running stage retains its start time before the child completes",async()=>{
  const root=temporary();try{const run=await runCandidateChecks(plan([fixtureCheck()]),quiet({root,execute:async(check,options)=>{const manifest=JSON.parse(readFileSync(join(options.root,"target/v1-candidate-runs",(await import("node:fs")).readdirSync(join(options.root,"target/v1-candidate-runs"))[0],"result.json"),"utf8"));assert.equal(manifest.stages[0].status,"running");assert.ok(Number.isFinite(Date.parse(manifest.stages[0].startedAt)));return executeCandidateStage(check,options);}}));assert.equal(run.exitCode,0);}finally{rmSync(root,{recursive:true,force:true});}
 });
+test("a live stage reports bounded progress independently of observer failures",async()=>{
+ const root=temporary(),reports=[];
+ const child=`const {existsSync}=require("node:fs");
+ console.log("stage log fixture");
+ const waiting=setInterval(()=>{if(existsSync("release"))clearInterval(waiting);},10);`;
+ try{
+  const run=await runCandidateChecks(plan([fixtureCheck("held",child)]),quiet({root,
+   execute:(check,options)=>executeCandidateStage(check,{...options,progressEveryMs:10}),
+   report:message=>{
+    reports.push(message);
+    if(/held still running after \d+s \([1-9]\d* log bytes\)/.test(message)){
+     writeFileSync(join(root,"release"),"");
+     return Promise.reject(Error("progress observer fixture"));
+    }
+   },
+  }));
+  assert.equal(run.exitCode,0);
+  assert.ok(reports.some(message=>/held still running/.test(message)));
+  assert.ok(reports.every(message=>!message.includes("stage log fixture")));
+  assert.match(readFileSync(run.result.stages[0].logPath,"utf8"),/stage log fixture/);
+ }finally{rmSync(root,{recursive:true,force:true});}
+});
 test("missing/stale declared artifacts reject a zero-exit stage",async()=>{
  for(const stale of [false,true]){const root=temporary();try{if(stale){writeFileSync(join(root,"proof.json"),"old");utimesSync(join(root,"proof.json"),new Date(0),new Date(0));}const check={...fixtureCheck(),artifacts:[{path:"proof.json",fresh:true}]},run=await runCandidateChecks(plan([check]),quiet({root}));assert.equal(run.exitCode,1);assert.equal(run.result.stages[0].status,"failed");if(stale)assert.match(run.result.error,/Stale stage report/);}finally{rmSync(root,{recursive:true,force:true});}}
 });

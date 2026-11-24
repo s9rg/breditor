@@ -32,6 +32,10 @@ The GitHub Actions job summary identifies failed setup or the last recorded
 candidate stage. It gives the stage log's path within the uploaded artifact
 when available.
 
+Each running stage reports its elapsed time and captured log size once a
+minute in the live job output. Detailed command output stays in the
+stage log, which the workflow retains with the final evidence.
+
 The run artifact retains completed runtime size reports and the dependency
 inventories and notice files from the paired Wasm packages and native relay.
 Reviewers can compare the exact files and their recorded hashes across builds.
