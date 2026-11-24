@@ -1,5 +1,5 @@
 export {mountRichEditor,mountDocumentRichEditor,RichDomEditor,type RichEditorOptions,type RichDocumentEditorOptions} from "./controller.js";
-export type {RichClipboardInterchange,RichClipboardInterchangeReport,RichInterchangeFormatReport,RichInterchangeNotice,RichInterchangeResult} from "./clipboard_interchange.js";
+export type {RichClipboardInterchange,RichClipboardInterchangeReport,RichInterchangeFormatReport,RichInterchangeNotice,RichInterchangeResult,RichTextPasteIntent} from "./clipboard_interchange.js";
 export {defaultToolbar,type ToolbarControl,type ActionContext} from "./actions.js";
 export type {AssetBinding,RenderOptions} from "./render.js";
 export {mountRichCodeHighlighting,type RichCodeHighlighting,type RichCodeHighlightingOptions} from "./code_highlighting.js";

@@ -33,7 +33,7 @@ export {richEditingAidsUiStringsEn,type RichEditingAidsUiStrings} from "./dist/b
 export {richAiToolsHost,RICH_AI_MAX_BYTES,RICH_AI_MAX_INSTRUCTION,RICH_AI_MAX_TIMEOUT_MS,type RichAiToolsHost,type RichAiHostState,type RichAiViewRead,type RichAiEditorPort,type RichAiScope,type RichAiSegment,type RichAiTransfer} from "./dist/browser/ai_tools_host.js";
 export {richAiUiStringsEn,type RichAiUiStrings} from "./dist/browser/ui_locale_ai.js";
 export {RICH_DOCUMENT_SOURCE_MAX_BYTES,type RichDocumentSourceHost,type RichDocumentSourceHostState,type RichDocumentSourceRead,type RichDocumentSourcePreview} from "./dist/browser/source_view_types.js";
-export type {RichClipboardInterchange,RichClipboardInterchangeReport,RichInterchangeFormatReport,RichInterchangeNotice,RichInterchangeResult} from "./dist/browser/clipboard_interchange.js";
+export type {RichClipboardInterchange,RichClipboardInterchangeReport,RichInterchangeFormatReport,RichInterchangeNotice,RichInterchangeResult,RichTextPasteIntent} from "./dist/browser/clipboard_interchange.js";
 export {mountRichEditor,mountDocumentRichEditor,RichDomEditor,defaultToolbar,RichAssetStore,defaultAssetLimits,insertImageFiles,type RichEditorOptions,type RichDocumentEditorOptions,type ToolbarControl,type ActionContext,type AssetBinding,type RenderOptions,type RichAssetOptions,type AssetInfo,type AssetLimits,type AssetStatus,type AssetUploader,type RasterMime} from "./dist/browser/index.js";
 export {RichAssetStoreCustody,RichAssetCustodyError} from './dist/browser/index.js';
 export {RichAssetBackupError,MAX_ASSET_BACKUP_BYTES,MAX_ASSET_BACKUP_HEADER_BYTES,ASSET_BACKUP_MIME,type RichAssetBackupOptions,type RichAssetRestoreOptions,type RichAssetHeldRestoreOptions} from "./dist/browser/index.js";

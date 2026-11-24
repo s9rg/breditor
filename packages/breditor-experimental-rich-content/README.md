@@ -800,3 +800,19 @@ a publication that changes the dragged image cancel the drag. The corner is a
 focusable `role="slider"`: arrow keys, Shift+arrows, PageUp/PageDown and
 Home/End publish one aspect-preserving command per key. See
 [the image resize contract](../../docs/IMAGE_RESIZE.md).
+
+## Host-directed text paste
+
+A host using a borrowed local or shared DOM editor can send text with
+`dom.pasteText(text)` or `dom.pasteText(text, "literal")` for a literal paste.
+With an explicit clipboard interchange adapter, a host action can request
+`dom.pasteText(text, "detect-markdown")`. It recognizes an ATX heading followed
+by a blank line and at least two flat, consistently marked bullet items. Other
+text remains literal, as do pastes without the adapter and pastes into a grid
+selection. A recognized conversion that fails is reported through the editor's
+error handler. A successful paste is one native Undo step.
+
+These are explicit host actions on supplied text. Ordinary browser clipboard
+events still choose from the supplied MIME types, and a `text/plain` event stays
+literal. Hosts can wire their own literal and detect actions without inferring
+the intent of an operating system shortcut.

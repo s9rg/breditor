@@ -24,7 +24,7 @@ import {blockLayoutShortcut} from "./block_layout_controls.js";
 import {encodeBlockLayoutPatch} from "./block_layout_serialization.js";
 import {encodeListNumberingPatch} from "./list_numbering_serialization.js";
 import type {RichClipboardTextProjection} from "./core.js";
-import {requireClipboardInterchange,readClipboardInput,exportClipboard,writeClipboard,clipboardInterchangeReport,clipboardInterchangeStatus,clipboardProjectionText,type RichClipboardInterchange,type RichClipboardInterchangeReport,type RichInterchangeFormatReport} from "./clipboard_interchange.js";
+import {requireClipboardInterchange,readClipboardInput,readClipboardText,exportClipboard,writeClipboard,clipboardInterchangeReport,clipboardInterchangeStatus,clipboardProjectionText,type ClipboardInput,type RichTextPasteIntent,type RichClipboardInterchange,type RichClipboardInterchangeReport,type RichInterchangeFormatReport} from "./clipboard_interchange.js";
 import type {RichSearchQuery,RichSearchReplacement,RichSearchResults} from "./core.js";
 import {RichSearchEvents,type RichSearchHostState,type RichSearchCompletion} from "./search_host.js";
 import {publishRichSearchIntent,type RichSearchIntent} from "./search_intent.js";
@@ -244,6 +244,11 @@ export class RichDomEditor<P extends RichSelectionPolicy="original"> {
  /** Explicit extended scope entry point; original execute remains closed. */
  selectDocument(this:RichDomEditor<"document-v1">,expectedRevision=this.#model.view.revision):RichCommandOutcome|"queued" {
   return this.#executeIntent({kind:"selectDocument"},true,expectedRevision);
+ }
+ /** Apply host-supplied text with a literal default, through the native paste transaction. */
+ pasteText(source:string,intent:RichTextPasteIntent="literal"):void {
+  this.#live();if(this.#model.view.readOnly===true||this.#composition)return;
+  this.#boundary();this.#attempt(()=>this.#pasteInput(grid=>readClipboardText(source,this.#interchange,grid,intent)));
  }
  pasteDocumentClipboard(this:RichDomEditor<"document-v1">,clipboardJson:string,expectedRevision=this.#model.view.revision):RichCommandOutcome|"queued" {
   return this.#executeIntent({kind:"pasteDocumentClipboard",clipboardJson,prefix:this.#allocate("paste")},true,expectedRevision);
@@ -573,20 +578,23 @@ export class RichDomEditor<P extends RichSelectionPolicy="original"> {
   if(this.#composition||!event.clipboardData){if(this.#interchange)event.preventDefault();return;}event.preventDefault();
   this.#boundary();
   this.#attempt(()=>{const data=event.clipboardData!,foreign=this.#interchange&&data.types.some(t=>["application/x-breditor-rich+json","text/html","text/markdown"].includes(t)),files=[...data.files];if(files.length&&!foreign){this.#files(files);return;}
-   this.#sync();const model=this.#model,revision=model.view.revision,selection=model.view.selection,context={...this.#context(),model},input=readClipboardInput(data,this.#interchange,selection?.kind==="grid"),clipboard=input.fragment;
-   let projection:RichClipboardTextProjection|undefined,command:RichCommand|DocumentIntent;
-   if(selection?.kind==="document"&&this.#document){if(clipboard)command={kind:"pasteDocumentClipboard",clipboardJson:clipboard,prefix:this.#allocate("paste")};else{if(!input.plain)return;command={kind:"replaceDocumentPlainText",paragraph:this.#allocate("p"),text:input.plain};}}
-   else if(clipboard){const kind=(JSON.parse(clipboard) as {kind:string}).kind,allocation={prefix:this.#allocate("paste"),replica:"1",counter:String(this.#counter++),lamport:revision};
-    if(kind==="text"){if(this.#general&&selection?.kind==="text"){if(this.#options.core.supportsGeneralInlinePaste?.()!==true)throw Error("Use matching native general inline clipboard paste");command={kind:"pasteGeneralInlineClipboard",data:{selection,clipboardJson:clipboard,prefix:allocation.prefix}};}else command={kind:"pasteInlineClipboard",data:{clipboardJson:clipboard}};}
-    else if(kind==="grid"&&selection?.kind==="grid")command={kind:"pasteGridClipboard",data:{clipboardJson:clipboard,allocation}};
-    else if(selection?.kind==="text"){
-     const core=this.#options.core,converted=core.supportsClipboardTextPolicy?.()===true?core.projectClipboardText!(selection,clipboard,revision):null;
-     if(converted){projection=converted;command=this.#general?{kind:"replaceGeneralRangePlainText",data:{selection,text:converted.text,prefix:allocation.prefix}}:{kind:"insertPlainText",text:converted.text};}
-     else {const right=this.#allocate("p");if(this.#general){if(core.supportsGeneralFlowPaste?.()!==true)throw Error("Use matching native general rich-flow clipboard paste");command={kind:"pasteGeneralFlowClipboard",data:{selection,clipboardJson:clipboard,allocation,prefix:allocation.prefix,right}};}else command={kind:"pasteFlowAtText",data:{clipboardJson:clipboard,allocation,right}};}
-    }else command={kind:"pasteFlowClipboard",data:{clipboardJson:clipboard,allocation,position:positionAfter(context)}};
-   }else {const plain=input.plain;if(!plain)return;command=this.#general&&selection?.kind==="text"?{kind:"replaceGeneralRangePlainText",data:{selection,text:plain,prefix:this.#allocate("range")}}:isStructuralRichLanguage(this.#options.core.richLanguageVersion?.())&&this.#options.core.supportsAtomEditing?.()===true&&selectedFlowAtom(model)?{kind:"replaceAtomPlainText",data:{paragraph:this.#allocate("p"),text:plain}}:{kind:"insertPlainText",text:plain};}
-   this.#executeIntent(command,true,revision,display=>this.#clipboardComplete("paste",revision,input.formats,projection,display));
+   this.#pasteInput(grid=>readClipboardInput(data,this.#interchange,grid));
   });
+ }
+ #pasteInput(read:(grid:boolean)=>ClipboardInput):void {
+  this.#sync();const model=this.#model,revision=model.view.revision,selection=model.view.selection,context={...this.#context(),model},input=read(selection?.kind==="grid"),clipboard=input.fragment;
+  let projection:RichClipboardTextProjection|undefined,command:RichCommand|DocumentIntent;
+  if(selection?.kind==="document"&&this.#document){if(clipboard)command={kind:"pasteDocumentClipboard",clipboardJson:clipboard,prefix:this.#allocate("paste")};else{if(!input.plain)return;command={kind:"replaceDocumentPlainText",paragraph:this.#allocate("p"),text:input.plain};}}
+  else if(clipboard){const kind=(JSON.parse(clipboard) as {kind:string}).kind,allocation={prefix:this.#allocate("paste"),replica:"1",counter:String(this.#counter++),lamport:revision};
+   if(kind==="text"){if(this.#general&&selection?.kind==="text"){if(this.#options.core.supportsGeneralInlinePaste?.()!==true)throw Error("Use matching native general inline clipboard paste");command={kind:"pasteGeneralInlineClipboard",data:{selection,clipboardJson:clipboard,prefix:allocation.prefix}};}else command={kind:"pasteInlineClipboard",data:{clipboardJson:clipboard}};}
+   else if(kind==="grid"&&selection?.kind==="grid")command={kind:"pasteGridClipboard",data:{clipboardJson:clipboard,allocation}};
+   else if(selection?.kind==="text"){
+    const core=this.#options.core,converted=core.supportsClipboardTextPolicy?.()===true?core.projectClipboardText!(selection,clipboard,revision):null;
+    if(converted){projection=converted;command=this.#general?{kind:"replaceGeneralRangePlainText",data:{selection,text:converted.text,prefix:allocation.prefix}}:{kind:"insertPlainText",text:converted.text};}
+    else {const right=this.#allocate("p");if(this.#general){if(core.supportsGeneralFlowPaste?.()!==true)throw Error("Use matching native general rich-flow clipboard paste");command={kind:"pasteGeneralFlowClipboard",data:{selection,clipboardJson:clipboard,allocation,prefix:allocation.prefix,right}};}else command={kind:"pasteFlowAtText",data:{clipboardJson:clipboard,allocation,right}};}
+   }else command={kind:"pasteFlowClipboard",data:{clipboardJson:clipboard,allocation,position:positionAfter(context)}};
+  }else {const plain=input.plain;if(!plain)return;command=this.#general&&selection?.kind==="text"?{kind:"replaceGeneralRangePlainText",data:{selection,text:plain,prefix:this.#allocate("range")}}:isStructuralRichLanguage(this.#options.core.richLanguageVersion?.())&&this.#options.core.supportsAtomEditing?.()===true&&selectedFlowAtom(model)?{kind:"replaceAtomPlainText",data:{paragraph:this.#allocate("p"),text:plain}}:{kind:"insertPlainText",text:plain};}
+  this.#executeIntent(command,true,revision,display=>this.#clipboardComplete("paste",revision,input.formats,projection,display));
  }
  #clipboardComplete(operation:RichClipboardInterchangeReport["operation"],revision:string,formats:readonly RichInterchangeFormatReport[],destination?:RichClipboardTextProjection,display=true):void {
   if(this.#disposed)return;
