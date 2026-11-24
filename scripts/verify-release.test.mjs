@@ -1,6 +1,6 @@
 import assert from "node:assert/strict";
 import { spawnSync } from "node:child_process";
-import { mkdtempSync, readFileSync, rmSync, symlinkSync } from "node:fs";
+import { mkdtempSync, readFileSync, rmSync, symlinkSync, writeFileSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 import test from "node:test";
@@ -44,10 +44,23 @@ test("all successful stages run sequentially from the repository without a shell
   let calls = 0;
   const reports = [];
   assert.equal(runReleaseChecks(checks, (command, args, options) => {
-    assert.equal(command, checks[calls].command);
-    assert.deepEqual(args, checks[calls].args);
+    const check = checks[calls];
+    assert.equal(command, check.command);
     assert.equal(options.cwd, repository);
     assert.equal(options.shell, false);
+    if (["browser-matrix", "demo-matrix"].includes(check.id)) {
+      const listing = args.includes("--list");
+      assert.deepEqual(args, [...check.args, ...(listing ? ["--list", "--reporter=json"] : ["--reporter=line,json"])]);
+      const project = "chromium";
+      writeFileSync(options.env.PLAYWRIGHT_JSON_OUTPUT_FILE, JSON.stringify({
+        config: { projects: [{ name: project }] }, errors: [], stats: { expected: 1, skipped: 0, unexpected: 0, flaky: 0 },
+        suites: [{ file: "fixture.spec.ts", specs: [{ id: "fixture", tests: [{ projectId: project, projectName: project,
+          expectedStatus: "passed", status: "expected", results: [{ status: "passed" }] }] }] }],
+      }));
+      if (listing) return { status: 0 };
+    } else {
+      assert.deepEqual(args, check.args);
+    }
     calls += 1;
     return { status: 0 };
   }, (message) => reports.push(message)), 0);
