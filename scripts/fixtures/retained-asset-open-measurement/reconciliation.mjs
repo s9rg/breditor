@@ -26,7 +26,13 @@ globalThis.measureReconciledAssetWrites=async()=>{
   target=await RichAssetStore.open(database);
   source=await RichAssetStore.open(database+'-incoming');
   editor=await openLocalEditor({...nativeOptions(target),initial:{kind:'empty',documentId:'raster-write-proof',blockId:'body'}});
-  const first=await file(0),images=await editor.insertImageFiles(target,[first,await file(1)],{parent:{kind:'document'},before:null});
+  const first=await file(0),second=await file(1),randomUUID=Crypto.prototype.randomUUID;
+  let images;
+  // Pin only the image insertion's generated block prefix across the two installed runs.
+  try{
+   Crypto.prototype.randomUUID=()=>'00000000-0000-4000-8000-000000000001';
+   images=await editor.insertImageFiles(target,[first,second],{parent:{kind:'document'},before:null});
+  }finally{Crypto.prototype.randomUUID=randomUUID;}
   const beforeUndo=editor.view().documentJson;
   editor.execute({kind:'undo'});
   const checkpoint=editor.checkpointJson(),afterUndo=editor.view().documentJson;
