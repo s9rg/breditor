@@ -30,6 +30,10 @@ const matchedFontParts = [
 /** Expand before the cascade so shorthand and longhand share ordering and !important. */
 export function declarationValues({property,value}:Declaration): Array<[string,string]> {
   const name=property.toLowerCase(), source=generate(value);
+  // A line-only shorthand contributes to the same cascade as its explicit longhand.
+  if(name==="text-decoration"&&value.type==="Value"&&lexer.matchProperty("text-decoration-line",value).error===null){
+    return [["text-decoration-line",source]];
+  }
   const unexpanded: Array<[string,string]> = [[name,source]];
   if(name!=="font"||value.type!=="Value")return unexpanded;
   if(["inherit","unset"].includes(source.toLowerCase())){
