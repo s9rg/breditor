@@ -5,10 +5,11 @@ import * as api from '../../../packages/breditor-collaboration/dist/index.js';im
 import {environment} from '../room-participant-inventory/environment.mjs';import {nativeProfile} from '../owned-core-cleanup/session.mjs';import {deliverySession,pendingDelivery} from '../independent-delivery/session.mjs';
 import {dormantMetadataTransport} from '../../../packages/breditor-collaboration/dist/metadata/dormant_transport.js';import {prepareCompoundMetadata} from '../../../packages/breditor-collaboration/dist/metadata/compound_preparation.js';
 import {reserveNativeRecovery} from '../../../packages/breditor-collaboration/dist/core.js';import {createNativeRelayDelivery} from '../../../packages/breditor-collaboration/dist/relay/native_delivery.js';
+import {NORMAL_SHARED_WASM_SHA256} from '../native-runtime/normal-shared-identity.mjs';
 const sha=b=>createHash('sha256').update(b).digest('hex');let initialized;
 export const families=[{name:'retained',kind:'retained'},...[false,true].flatMap(documentSegmented=>[false,true].map(reviewSegmented=>({name:'independent-'+Number(documentSegmented)+Number(reviewSegmented),kind:'independent',documentSegmented,reviewSegmented})))];
 export async function heldMetadataSession({family=families[0],scope=0,mask=0,retained='all'}={},visit){
- const bytes=readFileSync(new URL('../../../packages/breditor-collaboration/dist/runtime/breditor_shared_bg.wasm',import.meta.url));assert.equal(sha(bytes),'165e23dbaef2ab77a6f920a20012e19624422ab2ccb74ec4e01f2146ac8086e0');await(initialized??=native.default({module_or_path:bytes}));
+ const bytes=readFileSync(new URL('../../../packages/breditor-collaboration/dist/runtime/breditor_shared_bg.wasm',import.meta.url));assert.equal(sha(bytes),NORMAL_SHARED_WASM_SHA256);await(initialized??=native.default({module_or_path:bytes}));
  const reset=environment(),profile=nativeProfile(native,3,true),selected=deliverySession(api,profile,{...family,scope,mask,retained,language:3,database:'held-metadata-'+family.name+'-'+scope+'-'+mask}),savedTransaction=IDBDatabase.prototype.transaction,originalFetch=globalThis.fetch;
  let source,hold,context,parts,closed=false,writes=0,network=0,armed=false,allowed=true;const shadows=['save','flush','openSuggestionQueue','openSuggestionRevisions','openVersionCatalog'];
  const {documentHistory,reviewHistory,...segmented}=selected.options,options=family.kind==='retained'?segmented:selected.options;

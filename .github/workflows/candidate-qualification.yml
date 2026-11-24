@@ -81,7 +81,9 @@
             "reconciled-packet-compatibility-source",
             "reconciled-packet-compatibility-installed",
             "metadata-reconciliation-source",
-            "metadata-reconciliation-installed"
+            "metadata-reconciliation-installed",
+            "native-version-delivery",
+            "held-metadata"
           ]
         }
       }
