@@ -18,6 +18,7 @@ async function file(index){
 const nativeOptions=(store,checkpointJson)=>({host:document.querySelector('#editor'),richLanguage:3,history:'typing-v1',
  toolbar:()=>[],resolveAsset:binding=>store.resolve(binding.asset),
  initial:checkpointJson?{kind:'typingCheckpoint',checkpointJson}:{kind:'empty',blockId:'body'}});
+export {file,nativeOptions,sha};
 async function replacePayload(database,asset){
  const db=await new Promise((resolve,reject)=>{const open=indexedDB.open(database);open.onsuccess=()=>resolve(open.result);open.onerror=()=>reject(open.error);});
  try{await new Promise((resolve,reject)=>{
