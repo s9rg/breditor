@@ -139,10 +139,28 @@ describe("opt-in HTML source view (real interchange sanitizer, stubbed native ow
  });
  it("drops only the one trailing empty paragraph that whole-document paste re-appends",()=>{
   expect(withoutTrailingEmptyParagraph(`<p>a</p><p style="white-space:pre-wrap"></p>\n`)).toBe("<p>a</p>");
-  expect(withoutTrailingEmptyParagraph("<p>a</p><p></p><p><br></p>")).toBe("<p>a</p><p></p>");
-  for(const kept of ["<p></p>","<p>a</p><pre></pre>","<p>a</p><p>b</p>","<p>a</p><p> x </p>"])expect(withoutTrailingEmptyParagraph(kept)).toBe(kept);
+  expect(withoutTrailingEmptyParagraph("<p>a</p><P></P>")).toBe("<p>a</p>");
+  expect(withoutTrailingEmptyParagraph("<p>a</p><p></p><p></p>")).toBe("<p>a</p><p></p>");
+  for(const kept of [
+   "<p></p>","<p>a</p><pre></pre>","<p>a</p><p>b</p>","<p>a</p><p> x </p>",
+   '<p>a</p><p id="bm-end"></p>','<p>a</p><p style="text-align:right"></p>',
+   '<p>a</p><p style="white-space:pre-wrap"> </p>',"<p>a</p><p><br></p>",
+  ])expect(withoutTrailingEmptyParagraph(kept)).toBe(kept);
   const t=fixture(),view=mountRichSourceView(t.panelRoot,t.dom.documentSource());view.open();view.setSource("<p>One</p><p></p>");view.review();
   expect(t.importHtml).toHaveBeenCalledWith("<p>One</p>",{kind:"flow"});view.dispose();t.dom.dispose();
+ });
+ it("keeps edits and requires a fresh review after the native paste refuses",()=>{
+  const t=fixture(),onApply=vi.fn(),view=mountRichSourceView(t.panelRoot,t.dom.documentSource(),{onApply});
+  view.open();const source="<p>Keep this draft</p>";view.setSource(source);view.review();
+  const before=t.core.checkpointJson();
+  vi.spyOn(t.core,"pasteDocumentClipboard").mockImplementationOnce(()=>{throw Error("Native paste refused");});
+  action(t.panelRoot,"apply").click();
+  expect(view.state()).toMatchObject({open:true,preview:null,error:"Native paste refused"});
+  expect(view.source()).toBe(source);expect(action(t.panelRoot,"apply").disabled).toBe(true);
+  expect(t.core.checkpointJson()).toBe(before);expect(onApply).not.toHaveBeenCalled();
+  view.review();action(t.panelRoot,"apply").click();
+  expect(onApply).toHaveBeenCalledWith("content");expect(t.calls).toHaveLength(1);
+  view.dispose();t.dom.dispose();
  });
  it("requires the explicit interchange adapter and a separate host",()=>{
   const t=fixture({adapter:false}),source=t.dom.documentSource();expect(source.sourceState().available).toBe(false);

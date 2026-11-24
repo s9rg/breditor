@@ -106,9 +106,11 @@ class SourcePanel implements RichSourceView {
   this.#live();const read=this.#read,preview=this.#preview;if(!read)throw Error("Open the source view first");
   if(!preview)throw Error("Review the source before applying it");
   const s=this.#host.sourceState();if(s.revision!==read.revision)throw Error(staleSourceMessage(read.revision,s.revision));
-  this.#applying=true;let outcome:RichCommandOutcome|"queued";
-  try{outcome=this.#host.applyDocumentSource(preview);}finally{this.#applying=false;}
-  this.#preview=undefined;this.#close(outcome==="unchanged"?"No changes to apply.":`Applied as one change · revision ${this.#host.sourceState().revision}`);
+  this.#applying=true;this.#preview=undefined;let outcome:RichCommandOutcome|"queued";
+  try{outcome=this.#host.applyDocumentSource(preview);}
+  catch(error){this.#report.replaceChildren();this.#render();throw error;}
+  finally{this.#applying=false;}
+  this.#close(outcome==="unchanged"?"No changes to apply.":`Applied as one change · revision ${this.#host.sourceState().revision}`);
   try{this.#options.onApply?.(outcome);}catch(error){this.#fail(error);}
   return outcome;
  }
