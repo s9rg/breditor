@@ -1,5 +1,5 @@
 import {createSharedProfile} from "@breditor/editor/collaboration";
-import {SharedPersistentSession,SharedSegmentedPersistentSession,restoreSharedSegmentedEditor} from "@breditor/collaboration";
+import {SharedPersistentSession,SharedSegmentedPersistentSession,SharedIndependentHistoryPersistentSession,restoreSharedSegmentedEditor} from "@breditor/collaboration";
 import {seed,range} from "./seed.mjs";
 
 const check=(ok,stage)=>{if(!ok)throw new Error(stage);};
@@ -197,9 +197,9 @@ function generationDatabase(name,version){
   request.onblocked=()=>reject(Error("Generation database upgrade was blocked"));
  });
 }
-async function generationRows(db){
+async function generationRows(db,stores=["generation_heads","generation_files"]){
  return new Promise((resolve,reject)=>{
-  const stores=["generation_heads","generation_files"],transaction=db.transaction(stores,"readonly");
+  const transaction=db.transaction(stores,"readonly");
   const rows=stores.map(name=>{
    const store=transaction.objectStore(name);
    return [store.getAllKeys(),store.getAll()];
@@ -207,6 +207,78 @@ async function generationRows(db){
   transaction.oncomplete=()=>resolve(rows.map(store=>store.map(request=>request.result)));
   transaction.onabort=()=>reject(transaction.error);
  });
+}
+async function verifyIndependentUpgrade(rejectDigest){
+ const profile=await createSharedProfile(),document=seed(JSON.parse(profile.descriptor_json()));
+ const database=`independent-history-upgrade-${crypto.randomUUID()}`,writer="101",actor="upgrade-comments",errors=[];
+ const options={database,room:"room",writer,richLanguage:1,history:"explicit",rangeEditing:"original",selectionEditing:"original",searchHistory:null,reviewedHistory:null,
+  readOnly:false,review:{actor,principal:"alice",access:"comment"},create:()=>profile.create(document,writer),
+  documentHistory:{kind:"segmented-v1",initialGenerations:{root:"root",active:"one"},restoreSegmented:checkpoint=>restoreSharedSegmentedEditor(profile,"room",checkpoint)},
+  reviewHistory:{kind:"segmented-v1",initialGenerations:{root:"root",active:"one"}},onError:error=>errors.push(error?.code??error?.name),
+ };
+ const stores=["history_heads","history_files"],digest=SubtleCrypto.prototype.digest,transaction=IDBDatabase.prototype.transaction;
+ const ownsBoth=async()=>{
+  const {held}=await navigator.locks.query(),names=new Set(held.map(lock=>lock.name));
+  return [`breditor:shared-writer:${JSON.stringify(["room",writer])}`,`breditor:review-writer:${JSON.stringify(["room",actor])}`].filter(name=>names.has(name)).length;
+ };
+ const settle=operation=>Promise.resolve().then(operation).then(()=>null,error=>error?.code??error?.name);
+ let session,restored,db,started,release,reject,obsolete=0,obsoleteAttempts=false;
+ const reached=new Promise(resolve=>{started=resolve;}),held=new Promise((resolve,fail)=>{release=resolve;reject=fail;});
+ try{
+  session=await SharedIndependentHistoryPersistentSession.open(options);
+  session.core.select(range("intro",0));
+  check(session.core.type("Durable independent "),"An initial independent edit must commit");
+  await session.sealDocumentGeneration("two");
+  const saved=session.state();
+  db=await generationDatabase(database,1);
+  const before=JSON.stringify(await generationRows(db,stores));db.close();db=undefined;
+  IDBDatabase.prototype.transaction=function(...args){
+   if(obsoleteAttempts&&this.name===database&&this.version===1&&args[1]==="readwrite")obsolete++;
+   return transaction.apply(this,args);
+  };
+  SubtleCrypto.prototype.digest=function(...args){
+   SubtleCrypto.prototype.digest=digest;
+   started();
+   return held.then(()=>digest.apply(this,args));
+  };
+  check(session.core.type("Offline independent "),"The held checkpoint needs a distinct local document edit");
+  const edited=session.core.documentJson();
+  check(session.core.undo(),"The local document edit must be on the redo frontier");
+  const anchorJson=session.core.captureReviewAnchor({kind:"document"});
+  check(session.core.dispatchReview({kind:"create_thread",data:{anchorJson,body:"Offline independent comment"}}).kind==="committed","The held history needs a distinct local comment");
+  check(session.core.undoReview().kind==="committed","The local review edit must be on the redo frontier");
+  await reached;
+  const unsaved=session.exportRecovery(),pending=settle(()=>session.flush());
+  db=await generationDatabase(database,2);obsoleteAttempts=true;
+  const versionchange="independent_history_versionchange";
+  check(db.version===2&&await ownsBoth()===2,"A real upgraded database must keep both writer leases on the retired native owner");
+  check(await settle(()=>session.core.type("Obsolete edit"))==="retired","The native owner must become read-only on upgrade");
+  const retired=session.state();
+  check(retired.status==="failed"&&retired.documentRevision===saved.documentRevision&&retired.reviewRevision===saved.reviewRevision,"The failure must still identify the last saved revisions");
+  if(rejectDigest)reject(Error("Late digest failure"));else release();
+  check(await pending===versionchange,"The running save must report the original version-change failure");
+  check(await settle(()=>session.retry())===versionchange,"Retry must refuse the retired database");
+  check(obsolete===0&&JSON.stringify(errors)===JSON.stringify([versionchange]),`The retired writer attempted ${obsolete} writes or published a late failure`);
+  check(JSON.stringify(session.state())===JSON.stringify(retired),"Late settlement must preserve the terminal diagnostic and saved revisions");
+  check(JSON.stringify(await generationRows(db,stores))===before,"The old durable head and files must remain byte-exact");
+  check(JSON.stringify(session.exportRecovery())===JSON.stringify(unsaved),"The retired owner must retain both exact unsaved histories");
+  const recovery={...options,database:database+"-restored"};
+  check(await settle(()=>SharedIndependentHistoryPersistentSession.restoreRecovery(recovery,unsaved,"host-reacquired"))==="writer_in_use","The live lease must fence native recovery");
+  await session.discardAndClose();
+  check(await ownsBoth()===0,"Discard after settlement must release both leases");
+  restored=await SharedIndependentHistoryPersistentSession.restoreRecovery(recovery,unsaved,"host-reacquired");
+  check(JSON.stringify(restored.exportRecovery())===JSON.stringify(unsaved),"Insert-only restore must retain both exact native histories");
+  await restored.close();
+  restored=await SharedIndependentHistoryPersistentSession.open(recovery);
+  check(restored.recovered&&JSON.stringify(restored.exportRecovery())===JSON.stringify(unsaved),"Cold reopen must retain both exact restored histories");
+  check(restored.core.redo()&&restored.core.documentJson()===edited,"The exact unsaved document redo must survive recovery");
+  check(restored.core.redoReview().kind==="committed"&&JSON.stringify(restored.core.reviewSnapshot()).includes("Offline independent comment"),"The exact unsaved review redo must survive recovery");
+  await restored.close();
+  return {passed:true,rejectDigest,obsoleteWrites:obsolete,exactRecoveredLanes:2};
+ }finally{
+  SubtleCrypto.prototype.digest=digest;IDBDatabase.prototype.transaction=transaction;
+  release();db?.close();await Promise.all([session?.discardAndClose(),restored?.discardAndClose()]);profile.free();
+ }
 }
 async function verifyHeadAdmission(){
  const profile=await createSharedProfile(),document=seed(JSON.parse(profile.descriptor_json()));
@@ -371,6 +443,7 @@ async function verifyRetirement(scenario){
  }
 }
 const query=new URLSearchParams(location.search),scenario=query.get("retirement");
-const result=await (query.has("headAdmission")?verifyHeadAdmission():scenario===null?verify():verifyRetirement(scenario))
+const result=await (query.has("independentUpgrade")?verifyIndependentUpgrade(query.get("independentUpgrade")==="rejected"):
+ query.has("headAdmission")?verifyHeadAdmission():scenario===null?verify():verifyRetirement(scenario))
  .catch(error=>({passed:false,reason:String(error).slice(0,250)}));
 document.querySelector("#result").textContent=JSON.stringify(result);
