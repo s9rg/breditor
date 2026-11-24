@@ -14,6 +14,7 @@ import {verifyRichBrowserStage} from "./candidate-release/rich-browser-report.mj
 import {
  sharedRuntimeBuildFormat,sharedRuntimeBuildReport,sharedRuntimeReceiptVariable,
 } from "./fixtures/native-runtime/shared-runtime-receipt.mjs";
+import {nativeSuggestionBuildReport} from "./candidate-release/native-suggestion-build-evidence.mjs";
 
 function requireRetainedBytes(directory,path,record) {
  const retained=fileEvidence(directory,path);
@@ -56,7 +57,7 @@ export function candidateCoverage(root,manifests,{requireHosted=false}={}) {
   assert.deepEqual(receipt.shard,plan.shard);
   assert.deepEqual(receipt.stages.map(stage=>stage.id),plan.checks.map(check=>check.id),
    `Stage sequence differs from the candidate plan in ${input}`);
-  let sharedRuntimeSha256,recordedCheckout;
+  let sharedRuntimeSha256,nativeHostBuildSha256,recordedCheckout;
   for(const [index,check] of plan.checks.entries()){
    const stage=receipt.stages[index], log=`${String(index+1).padStart(2,"0")}-${check.id}.log`;
    assert.equal(stage.status,"passed",`Stage did not pass in ${input}: ${check.id}`);
@@ -77,10 +78,20 @@ export function candidateCoverage(root,manifests,{requireHosted=false}={}) {
    }
    verifyRichBrowserStage(root,directory,stage);
    if(check.id==="paired-shared-runtime")sharedRuntimeSha256=verifyRuntimeProducer(directory,stage,source);
-   if(candidateStageReceipts(check).sharedRuntime){
+   const {sharedRuntime,nativeFixture}=candidateStageReceipts(check);
+   if(sharedRuntime){
     assert.ok(sharedRuntimeSha256,`No preceding paired shared-runtime receipt for ${check.id}`);
     assert.equal(stage.sharedRuntimeReceiptSha256,sharedRuntimeSha256,`Shared-runtime receipt differs for ${check.id}`);
     assert.equal(stage.env?.[sharedRuntimeReceiptVariable],sharedRuntimeSha256,`Shared-runtime execution input differs for ${check.id}`);
+   }
+   if(check.id==="native-suggestion-room-host"){
+    const producer=stage.artifacts.find(artifact=>artifact.path===nativeSuggestionBuildReport);
+    assert.ok(producer?.bytes>0,"Missing Native host build receipt digest");
+    nativeHostBuildSha256=producer.sha256;
+   }
+   if(nativeFixture){
+    assert.ok(nativeHostBuildSha256,`No preceding Native host build receipt for ${check.id}`);
+    assert.equal(stage.nativeHostBuildReceiptSha256,nativeHostBuildSha256,`Native host build receipt differs for ${check.id}`);
    }
    covered.add(check.id);
   }
