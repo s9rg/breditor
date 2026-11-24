@@ -330,6 +330,61 @@ test("simultaneous pilot sign-in in the same browser profile reuses one writer",
  expect(registrations).toBe(1);
 });
 
+const retirePilotJournal=page=>page.evaluate(()=>new Promise((resolve,reject)=>{
+ const upgrade=indexedDB.open("breditor-pilot-journals-v12",2);
+ upgrade.onsuccess=()=>{upgrade.result.close();resolve();};
+ upgrade.onerror=()=>reject(upgrade.error);
+}));
+
+test("a journal retired during pilot sign-in offers the exact saved checkpoint",async({page})=>{
+ await provisionDemo(page,pilotRoot());
+ await routePilot(page);
+ await page.goto("/pilot");
+ const signIn=async()=>{
+  await page.getByLabel("Participant code").fill(bootstrap.tokens.alice);
+  await page.getByRole("button",{name:"Open editor"}).click();
+ };
+ await signIn();
+ await ready(page);
+ await page.evaluate(async()=>{
+  const {session,sync}=window.breditorNetworkDemo.peers.a;
+  session.core.dispatch({commands:[{kind:"insert_text",data:{block:"pilot-notes",offset:0,text:"Saved before sign-in. "}}]});
+  await session.flush();
+  await sync.flush();
+ });
+ await page.addInitScript(endpoint=>{
+  const send=WebSocket.prototype.send;
+  window.blockedPilotClocks=0;
+  WebSocket.prototype.send=function(message){
+   if(this.url===endpoint&&typeof message==="string"&&JSON.parse(message).request?.kind==="clock"){
+    window.blockedPilotClocks++;return;
+   }
+   return send.call(this,message);
+  };
+ },bootstrap.endpoint);
+ await page.getByRole("button",{name:"Save and reload"}).click();
+ await expect(page.getByRole("button",{name:"Open editor"})).toBeEnabled();
+ await signIn();
+ await expect.poll(()=>page.evaluate(()=>window.blockedPilotClocks)).toBe(1);
+ const region=page.getByRole("region",{name:"Shared document"});
+ await expect(region).toBeHidden();
+ const checkpoint=await page.evaluate(()=>window.breditorNetworkDemo.peers.a.session.core.checkpointJson());
+ expect(checkpoint).toContain("Saved before sign-in.");
+ await retirePilotJournal(page);
+
+ await expect(page.locator("#network-state")).toContainText("Local storage changed. Use Download checkpoint before leaving.");
+ await expect(region).toBeVisible();
+ const backup=page.getByRole("button",{name:"Download checkpoint"});
+ await expect(backup).toBeFocused();
+ await expect(page.locator("#a")).toHaveJSProperty("inert",true);
+ for(const control of ["connect","upload","files"])await expect(page.locator(`#${control}-a`)).toBeDisabled();
+ expect(await page.evaluate(()=>window.blockedPilotClocks)).toBe(1);
+ const download=page.waitForEvent("download");
+ await backup.press("Enter");
+ expect(readFileSync(await (await download).path(),"utf8")).toBe(checkpoint);
+ await expect(page.getByLabel("Downloaded checkpoint digest")).toContainText(createHash("sha256").update(checkpoint).digest("hex"));
+});
+
 test("a failed pilot save keeps the retired workspace available for exact backup",async({page})=>{
  await provisionDemo(page,pilotRoot());
  await routePilot(page);
@@ -384,12 +439,7 @@ test("a failed pilot save keeps the retired workspace available for exact backup
  });
  await page.getByRole("button",{name:"Reconnect",exact:true}).click();
  await page.evaluate(()=>window.pendingPilotReconnect.reached);
- await page.evaluate(()=>new Promise((resolve,reject)=>{
-  // An actual upgrade fences the live original journal and makes a final save fail.
-  const upgrade=indexedDB.open("breditor-pilot-journals-v12",2);
-  upgrade.onsuccess=()=>{upgrade.result.close();resolve();};
-  upgrade.onerror=()=>reject(upgrade.error);
- }));
+ await retirePilotJournal(page);
  const backup=page.getByRole("button",{name:"Download checkpoint"});
  await expect(page.locator("#network-state")).toContainText("Local storage changed. Use Download checkpoint before leaving.");
  await expect(backup).toBeFocused();

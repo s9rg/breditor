@@ -78,6 +78,8 @@ If the local journal is retired by a browser storage upgrade or the local save
 for **Save and reload** fails, the workspace stays visible with **Download
 checkpoint** available. Keyboard focus moves to the checkpoint action, and
 editing, reconnect, and upload controls are disabled.
+If storage changes while opening a saved writer, the pilot stops the initial
+relay connection and opens the same checkpoint recovery controls.
 
 Record the tested source commit, installed archive hashes from
 `target/editor-installed-consumer.json`, browser versions, workflow, incidents,

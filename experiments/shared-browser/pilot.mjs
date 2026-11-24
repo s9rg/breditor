@@ -104,6 +104,10 @@ function offerCheckpointRecovery(peer, message, error) {
   nextControl.focus({preventScroll: true});
 }
 
+function offerRetiredJournal(peer, error) {
+  offerCheckpointRecovery(peer, "Local storage changed. Use Download checkpoint before leaving.", error);
+}
+
 function enableWorkspaceActions(app, peer, downloadNetworkCheckpoint) {
   const save = document.querySelector(`#save-${peer.key}`);
   save.textContent = "Download checkpoint";
@@ -131,7 +135,8 @@ function enableWorkspaceActions(app, peer, downloadNetworkCheckpoint) {
   });
   workspace.hidden = false;
   workspace.tabIndex = -1;
-  workspace.focus();
+  if (peer.journalRetirement) offerRetiredJournal(peer, peer.journalRetirement);
+  else workspace.focus();
 }
 
 async function startPilot(bootstrap) {
@@ -164,8 +169,7 @@ async function startPilot(bootstrap) {
         codeSha256: await digest(new TextEncoder().encode(token)),
         paused: sessionStorage.getItem(pauseKey) === "1",
         onPause: paused => sessionStorage.setItem(pauseKey, paused ? "1" : "0"),
-        onJournalRetired: (peer, error) =>
-          offerCheckpointRecovery(peer, "Local storage changed. Use Download checkpoint before leaving.", error),
+        onJournalRetired: offerRetiredJournal,
       });
       const peer = Object.values(app.peers)[0];
       form.hidden = true;

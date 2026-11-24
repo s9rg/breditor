@@ -40,13 +40,14 @@ export async function openNetworkDemo(bootstrap,chosen,{
    continue;
   }
   if(pilot)document.querySelector(`#pane-${key}`).hidden=false;
-  const peer={key,principal,paint:0,offline:paused,closing:false,session:undefined,cache:undefined,sync:undefined,presence:undefined,assets:undefined,mounted:undefined,overlay:undefined};app.peers[key]=peer;
+  const peer={key,principal,paint:0,offline:paused,closing:false,journalRetirement:undefined,session:undefined,cache:undefined,sync:undefined,presence:undefined,assets:undefined,mounted:undefined,overlay:undefined};app.peers[key]=peer;
   const onError=error=>reportPeerError(peer,error);
   const onJournalError=error=>{
-   if(pilot&&onJournalRetired&&app.ready&&!app.closed&&!peer.closing&&error?.code==="session_versionchange"){
+   if(pilot&&onJournalRetired&&!app.closed&&!peer.closing&&error?.code==="session_versionchange"){
     report(error);
+    peer.journalRetirement=error;
     retirePeer(peer);
-    onJournalRetired(peer,error);
+    if(app.ready)onJournalRetired(peer,error);
    }else onError(error);
   };
   const getToken=()=>tokenFor(principal),identityKey=[bootstrap.endpoint,principal];
@@ -65,8 +66,11 @@ export async function openNetworkDemo(bootstrap,chosen,{
   // Give the second tab the first tab's writer and the usual live journal lease check.
   // Keep the registration lock until the first exact local journal has been committed.
   peer.session=pilot?await navigator.locks.request(`breditor-pilot-login-v1:${JSON.stringify(identityKey)}`,openSession):await openSession();
+  if(peer.journalRetirement)continue;
   const identity=peer.identity;
-  peer.cache=await RichAssetStore.open(`${namespace}-assets-${principal}`,{onChange:()=>update(peer)});
+  try{peer.cache=await RichAssetStore.open(`${namespace}-assets-${principal}`,{onChange:()=>update(peer)});}
+  catch(error){if(!peer.journalRetirement)throw error;}
+  if(peer.journalRetirement){peer.cache?.close();peer.cache=undefined;continue;}
   peer.assets=new SharedRelayAssets({endpoint:bootstrap.endpoint,principal,getToken,store:peer.cache});
   if(peer.offline)peer.assets.setOnline(false);
   peer.presence=new SharedPresence(peer.session.core,{onError});peer.presence.subscribe(()=>update(peer));
@@ -125,7 +129,8 @@ export async function openNetworkDemo(bootstrap,chosen,{
   }
   throw error;
  }finally{profile.free();}
- app.ready=true;status.textContent="Editors ready";
+ app.ready=true;
+ if(!Object.values(app.peers).some(peer=>peer.journalRetirement))status.textContent="Editors ready";
  app.close=async()=>{if(app.closed)return;for(const peer of Object.values(app.peers))await closePeer(peer,true);app.closed=true;};
  return app;
 }
