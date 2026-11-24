@@ -78,7 +78,7 @@ export function candidateCoverage(root,manifests,{requireHosted=false}={}) {
     requireRetainedBytes(directory,retained,observed);
    }
    verifyRichBrowserStage(root,directory,stage);
-   verifyApplicationNetworkStage(directory,stage);
+   if(check.id==="installed-application-network-matrix")verifyApplicationNetworkStage(directory,stage,receipt.stages.slice(0,index));
    if(check.id==="paired-shared-runtime")sharedRuntimeSha256=verifyRuntimeProducer(directory,stage,source);
    const {sharedRuntime,nativeFixture}=candidateStageReceipts(check);
    if(sharedRuntime){

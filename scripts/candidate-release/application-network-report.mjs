@@ -4,10 +4,17 @@ import {createHash} from "node:crypto";
 import {readFileSync} from "node:fs";
 import {resolve} from "node:path";
 import {installedNetworkSpecs} from "../../experiments/shared-browser/installed-network-specs.mjs";
+import {relayNoticePaths} from "../build-relay-notices.mjs";
 import {sharedBrowserWebKitGroups} from "../shared-browser-runs.mjs";
 import {sharedBrowserBatchProjects,validateSharedBrowserReport} from "./shared-browser-report.mjs";
 
 const reportPath="target/shared-application-browser-report.json";
+const productionInputs={
+ archives:["installed-editor-pairing","target/editor-installed-consumer.json"],
+ relay:["relay-native-dependency-notices",relayNoticePaths[0]],
+ vector:["shared-browser-vector","target/collaboration-feasibility-web/native-vector.json"],
+ raster:["shared-browser-raster-fixtures","target/relay-raster-fixtures.json"],
+};
 const projects=sharedBrowserBatchProjects({projects:["webkit*"],specs:installedNetworkSpecs},installedNetworkSpecs,
  sharedBrowserWebKitGroups(installedNetworkSpecs));
 for(const [file,webkit] of projects)projects.set(file,["chromium","firefox",...webkit]);
@@ -33,15 +40,33 @@ export function validateApplicationNetworkReport(report){
  validateSharedBrowserReport(report,projects);
 }
 
-export function verifyApplicationNetworkStage(directory,stage){
- if(stage.id!=="installed-application-network-matrix")return;
- const record=stage.artifacts.find(artifact=>artifact.path===reportPath);
- const retainedPath=`artifacts/${stage.id}/${reportPath}`;
- assert.ok(record?.retainedPath===retainedPath,"Missing retained application network report");
+function readApplicationArtifact(directory,stageId,path,record){
+ const retainedPath=`artifacts/${stageId}/${path}`;
+ assert.ok(record?.retainedPath===retainedPath,`Missing retained application network evidence from ${stageId}`);
  const bytes=readFileSync(resolve(directory,retainedPath));
- assert.equal(createHash("sha256").update(bytes).digest("hex"),record.sha256,"Retained application network report changed");
- const evidence=JSON.parse(bytes);
+ assert.equal(createHash("sha256").update(bytes).digest("hex"),record.sha256,`Retained application network evidence changed for ${stageId}`);
+ return JSON.parse(bytes);
+}
+
+export function verifyApplicationNetworkStage(directory,stage,preceding){
+ const record=stage.artifacts.find(artifact=>artifact.path===reportPath);
+ const evidence=readApplicationArtifact(directory,stage.id,reportPath,record);
  assert.equal(evidence.format,"breditor/installed-application-network");
  assert.equal(evidence.formatVersion,1);
  validateApplicationNetworkReport(evidence.report);
+ const prior=(key)=>{
+  const [id,path]=productionInputs[key];
+  const producer=preceding.find(stage=>stage.id===id);
+  const artifact=producer?.artifacts.find(item=>item.path===path);
+  assert.ok(producer?.status==="passed"&&artifact,`Missing preceding application network input from ${id}`);
+  return artifact;
+ };
+ const {inputs}=evidence;
+ const archiveReport=readApplicationArtifact(directory,...productionInputs.archives,prior("archives"));
+ assert.deepEqual(inputs.archives,archiveReport.archiveEvidence.map(({name,filename,sha256})=>({name,filename,sha256})),
+  "Application network archives differ from the installed SDK producer");
+ const relayReport=readApplicationArtifact(directory,...productionInputs.relay,prior("relay"));
+ assert.equal(inputs.relaySha256,relayReport.nativeBuild.executableSha256,"Application network relay differs from the inventoried Native build");
+ assert.equal(inputs.vectorSha256,prior("vector").sha256,"Application network vector differs from its producer");
+ assert.equal(inputs.rasterFixturesSha256,prior("raster").sha256,"Application network raster fixtures differ from their producer");
 }
