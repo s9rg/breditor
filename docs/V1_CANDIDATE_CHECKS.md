@@ -73,6 +73,18 @@ relay inventory also records the ELF interpreter, linked libraries and library
 search paths of the exact release binary. These reports support the dependency
 review against the distribution's actual artifacts.
 
+## Installed distribution workflows
+
+Select `installed-distribution-workflows` to build the candidate Wasm and
+native relay fixtures and run the installed interchange, mixed editing,
+suggestion, Reader and review asset workflows in an independent job. The mixed
+editing check reuses the interchange consumer produced in the same run. The
+review checks pack and install their own clean consumers. The retained reports
+and stage logs include npm archive digests, and the candidate manifest records
+the relay fixture hashes. This profile exercises installed APIs and the native
+relay through synthetic DOM and storage fixtures. Browser matrices are separate
+profiles.
+
 ## Installed feature browser checks
 
 Select `installed-feature-browser` to build fresh SDK consumers and run the

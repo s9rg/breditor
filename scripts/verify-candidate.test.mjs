@@ -451,6 +451,11 @@ test("isolated release matrices preserve the full plan's commands and report the
    "functional-native-fixtures","portable-relay-relocation","portable-relay-legacy-handover",
   ]],
   ["dependency-inventories",["relay-native-dependency-notices","paired-local-runtime","paired-shared-runtime"]],
+  ["installed-distribution-workflows",[
+   "default-typescript-build","paired-local-runtime","paired-shared-runtime","rich-browser-build","collaboration-build",
+   "installed-rich-interchange","functional-native-fixtures","installed-everyday-mixed-workflows",
+   "installed-text-review-and-readers","installed-formatting-review-and-readers","installed-assets-comments-versions",
+  ]],
   ["installed-feature-browser",[
    "default-typescript-build","paired-local-runtime","paired-shared-runtime","rich-browser-build","collaboration-build","editor-build",
    "installed-search-workflows","installed-placeholder-workflows","installed-fullscreen-workflows","installed-session-backups","installed-asset-backups",
@@ -734,14 +739,19 @@ test("selected audit reports retain exact bytes with the stage log",async()=>{
   assert.equal(readFileSync(join(manifest,"..",audit.retainedPath),"utf8"),"{}\n");
  }finally{rmSync(root,{recursive:true,force:true});}
 });
-test("the candidate retains the exact installed editor, interchange and browser matrix inputs",()=>{
+test("the candidate retains the exact installed editor, interchange and mixed workflow reports",()=>{
  const editorReport=[{path:"target/editor-installed-consumer.json",fresh:true,retain:true}];
  for(const profile of ["functional","full"]){
   const {checks}=candidateReleasePlan({profile});
   assert.deepEqual(checks.find(check=>check.id==="installed-editor-pairing")?.artifacts,
    editorReport);
+ }
+ for(const profile of ["functional","full","installed-distribution-workflows"]){
+  const {checks}=candidateReleasePlan({profile});
   assert.deepEqual(checks.find(check=>check.id==="installed-rich-interchange")?.artifacts,
    [{path:"target/interchange-installed-consumer.json",fresh:true,retain:true}]);
+  assert.deepEqual(checks.find(check=>check.id==="installed-everyday-mixed-workflows")?.artifacts,
+   [{path:"target/editor-mixed-workflows.json",fresh:true,retain:true}]);
  }
  assert.deepEqual(candidateReleasePlan().checks.find(check=>check.id==="installed-editor-browser-matrix")?.artifacts,editorReport);
 });
