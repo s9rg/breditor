@@ -1,7 +1,3 @@
-import * as wasm from "/probe.js";
-import {compileSharedProfile, initializeSharedReadOnly, SharedRichEditor} from "/shared.js";
-import {downloadNetworkCheckpoint, openNetworkDemo} from "/network-demo.mjs";
-
 const maxCheckpointBytes = 16 * 1024 * 1024;
 const form = document.querySelector("#pilot-account");
 const principalField = form.elements.namedItem("principal");
@@ -48,7 +44,7 @@ function textFrom(node) {
   );
 }
 
-function inspectCheckpoint(configuration, checkpoint) {
+function inspectCheckpoint(wasm, {compileSharedProfile, initializeSharedReadOnly, SharedRichEditor}, configuration, checkpoint) {
   const profile = compileSharedProfile(wasm, configuration);
   let owner;
   try {
@@ -69,7 +65,7 @@ function inspectCheckpoint(configuration, checkpoint) {
   }
 }
 
-function enableRecovery(configuration) {
+function enableRecovery(wasm, shared, configuration) {
   backup.disabled = false;
   backup.addEventListener("change", async () => {
     const file = backup.files[0];
@@ -83,7 +79,7 @@ function enableRecovery(configuration) {
       if (file.size === 0 || file.size > maxCheckpointBytes) throw Error("Checkpoint size");
       const bytes = await file.arrayBuffer();
       const checkpoint = new TextDecoder("utf-8", {fatal: true, ignoreBOM: true}).decode(bytes);
-      const recovered = inspectCheckpoint(configuration, checkpoint);
+      const recovered = inspectCheckpoint(wasm, shared, configuration, checkpoint);
       verification.textContent = `Exact read-only replay verified. Undo ${recovered.undoDepth}. Redo ${recovered.redoDepth}. SHA-256 ${await digest(bytes)}.`;
       preview.textContent = recovered.text;
       preview.hidden = false;
@@ -95,7 +91,7 @@ function enableRecovery(configuration) {
   });
 }
 
-function enableWorkspaceActions(app, peer) {
+function enableWorkspaceActions(app, peer, downloadNetworkCheckpoint) {
   const save = document.querySelector(`#save-${peer.key}`);
   save.textContent = "Download checkpoint";
   save.addEventListener("click", async () => {
@@ -125,9 +121,11 @@ function enableWorkspaceActions(app, peer) {
   workspace.focus();
 }
 
-try {
-  const bootstrap = await readBootstrap();
-  enableRecovery(bootstrap.configuration);
+async function startPilot(bootstrap) {
+  const [wasm, shared, {downloadNetworkCheckpoint, openNetworkDemo}] = await Promise.all([
+    import("/probe.js"), import("/shared.js"), import("/network-demo.mjs"),
+  ]);
+  enableRecovery(wasm, shared, bootstrap.configuration);
   const previous = sessionStorage.getItem("breditor-pilot-participant");
   if (participants.has(previous)) principalField.value = previous;
   openButton.disabled = false;
@@ -156,7 +154,7 @@ try {
       });
       const peer = Object.values(app.peers)[0];
       form.hidden = true;
-      enableWorkspaceActions(app, peer);
+      enableWorkspaceActions(app, peer, downloadNetworkCheckpoint);
       try {
         sessionStorage.setItem("breditor-pilot-participant", principal);
       } catch {
@@ -168,6 +166,18 @@ try {
       tokenField.focus();
     }
   });
+}
+
+let bootstrap;
+try {
+  bootstrap = await readBootstrap();
 } catch (error) {
   showError(status, "Start the Breditor pilot launcher to open this workspace.", error);
+}
+if (bootstrap) {
+  try {
+    await startPilot(bootstrap);
+  } catch (error) {
+    showError(status, "The pilot runtime could not load. Check the installed SDK and reload.", error);
+  }
 }

@@ -59,7 +59,7 @@ checkpoint downloads private because they include Undo history.
    the rendered document and image statuses in both profiles. Exercise Undo and
    Redo on each writer and confirm the other participant's work survives.
 4. Choose **Download checkpoint** and record the displayed SHA-256. Select
-   the file under **Rehearse checkpoint recovery** while the relay is paused.
+   the file under **Rehearse checkpoint recovery** while that writer is offline.
    Compare the digest, recovered text, and Undo/Redo counts. This rehearses
    the document checkpoint in a temporary read-only owner. Image bytes and
    relay state use their separate backup contracts.

@@ -189,7 +189,12 @@ test("the first-party pilot opens independent participants and verifies an offli
   status:200,contentType:"application/json",body:JSON.stringify(pilotConfig),
  }));
  await configure(page);
+ await page.route("**/network-demo.mjs",route=>route.abort());
  await page.goto("/pilot");
+ await expect(page.locator("#network-state")).toContainText("The pilot runtime could not load");
+ await expect(page.getByRole("button",{name:"Open editor"})).toBeDisabled();
+ await page.unroute("**/network-demo.mjs");
+ await page.reload();
  const publicConfig=await page.evaluate(async()=>({
   pilot:await (await fetch("/pilot-bootstrap.json")).json(),
   developerStatus:(await fetch("/relay-bootstrap.json")).status,
