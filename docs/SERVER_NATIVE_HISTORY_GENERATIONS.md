@@ -165,6 +165,19 @@ files include the root and active file. Original history has no separate
 generation count. The room also reports the stored native boundary receipts
 and their limit under the families it currently uses.
 
+The portable relocation fixture records each sampled operation's before and after
+capacity reports in `storageOperationCosts`. The rows cover document and review
+continuation, WAL rotation, separate document and review Undo, a resumed raster
+upload queue and an exact upload retry. A positive delta consumes capacity. WAL
+rotation can reduce active WAL bytes while consuming a slot and leaving retained
+bytes unchanged. Retained raster payload and native checkpoint bytes are measured
+separately from framed WAL bytes. These are observations from the bounded fixture
+under its selected configuration. The installed run charged 614 and 596 WAL bytes
+for the two continuation operations, 1,626 and 1,208 WAL bytes for the separate
+Undo operations, and 116 raster payload bytes for the resumed upload. Retrying the
+same upload consumed no further capacity.
+[Exact source and installed samples](qualification/2026-11-24-native-relay-storage-operation-costs.json)
+
 Segmented byte charges reuse the exact immutable file charges used by
 admission. An active file can reach its own ceiling before the whole archive
 does. The native Undo depth ceiling describes its policy, including eviction

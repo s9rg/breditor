@@ -1,0 +1,523 @@
+{
+  "format": "breditor/native-relay-storage-operation-costs",
+  "formatVersion": 1,
+  "source": {
+    "commit": "91ff5e3dffab0b6c582385be503c00f25e544e7b",
+    "dirty": false,
+    "sha256": "34352a9c6f12fc09b602c76f274d3a7320fdac5c12d7f0a7168c6352e0063345",
+    "files": 9647,
+    "bytes": 82730704
+  },
+  "nativeFixture": {
+    "name": "relay_segment_functional",
+    "sha256": "143db2bfc8e17986734b069e0115054ba208367a6f1370498378080775b12520",
+    "retainedWorktreeCommit": "0507e406dd35a53b9f794efeb6a2c5f11890e8e9"
+  },
+  "completeReportSha256": "ee12f494aea0e79fef254ef6efd98a93ffe8891aab55fe132ae1210da49ba354",
+  "scope": "One portable relocation workload in fresh disposable loopback rooms, repeated using SDK source output and a fresh offline install. Retained native executable uses the same capacity and generation code; later HTTP request handling is outside this observation.",
+  "measurements": {
+    "source": {
+      "runtimeSha256": "8f39c742c461006c90e209e0287f7db137574843f316ccddbe2aaa141ca00401",
+      "archives": [],
+      "coldCapacityMatches": true,
+      "operations": [
+        {
+          "operation": "continueDocument",
+          "delta": {
+            "walRecords": 1,
+            "retainedWalBytes": 613,
+            "activeWalBytes": 613,
+            "walSlots": 0,
+            "rasters": 0,
+            "rasterBytes": 0,
+            "native": {
+              "document": {
+                "checkpointBytes": 410,
+                "activeBytes": -4587,
+                "generationFiles": 1
+              },
+              "review": {
+                "checkpointBytes": 0,
+                "activeBytes": 0,
+                "generationFiles": 0
+              },
+              "suggestionEffect": {
+                "checkpointBytes": 524,
+                "activeBytes": 0,
+                "generationFiles": 1
+              }
+            }
+          },
+          "logCut": {
+            "before": "4255",
+            "after": "4256",
+            "beforeDigest": "6625f16bb6ae92a3d9a246325fa730bd940e093c3be673e99d825254f7c2a2c2",
+            "afterDigest": "9c9437f95cb9d7f8296df6fa04e33197b1a9967d28866ee0024fe0f02b0e716a"
+          }
+        },
+        {
+          "operation": "continueReview",
+          "delta": {
+            "walRecords": 1,
+            "retainedWalBytes": 600,
+            "activeWalBytes": 600,
+            "walSlots": 0,
+            "rasters": 0,
+            "rasterBytes": 0,
+            "native": {
+              "document": {
+                "checkpointBytes": 0,
+                "activeBytes": 0,
+                "generationFiles": 0
+              },
+              "review": {
+                "checkpointBytes": 318,
+                "activeBytes": -19314,
+                "generationFiles": 1
+              },
+              "suggestionEffect": {
+                "checkpointBytes": 0,
+                "activeBytes": 0,
+                "generationFiles": 0
+              }
+            }
+          },
+          "logCut": {
+            "before": "4256",
+            "after": "4257",
+            "beforeDigest": "9c9437f95cb9d7f8296df6fa04e33197b1a9967d28866ee0024fe0f02b0e716a",
+            "afterDigest": "88386b51afd330eb06e4e8740bd24ad64ee48740bac5a952929b8f103210c099"
+          }
+        },
+        {
+          "operation": "rotateWal",
+          "delta": {
+            "walRecords": 0,
+            "retainedWalBytes": 0,
+            "activeWalBytes": -1213,
+            "walSlots": 1,
+            "rasters": 0,
+            "rasterBytes": 0,
+            "native": {
+              "document": {
+                "checkpointBytes": 0,
+                "activeBytes": 0,
+                "generationFiles": 0
+              },
+              "review": {
+                "checkpointBytes": 0,
+                "activeBytes": 0,
+                "generationFiles": 0
+              },
+              "suggestionEffect": {
+                "checkpointBytes": 0,
+                "activeBytes": 0,
+                "generationFiles": 0
+              }
+            }
+          },
+          "logCut": {
+            "before": "4257",
+            "after": "4257",
+            "beforeDigest": "88386b51afd330eb06e4e8740bd24ad64ee48740bac5a952929b8f103210c099",
+            "afterDigest": "88386b51afd330eb06e4e8740bd24ad64ee48740bac5a952929b8f103210c099"
+          }
+        },
+        {
+          "operation": "documentUndo",
+          "delta": {
+            "walRecords": 1,
+            "retainedWalBytes": 1624,
+            "activeWalBytes": 1624,
+            "walSlots": 0,
+            "rasters": 0,
+            "rasterBytes": 0,
+            "native": {
+              "document": {
+                "checkpointBytes": 300,
+                "activeBytes": 294,
+                "generationFiles": 0
+              },
+              "review": {
+                "checkpointBytes": 0,
+                "activeBytes": 0,
+                "generationFiles": 0
+              },
+              "suggestionEffect": {
+                "checkpointBytes": 0,
+                "activeBytes": 0,
+                "generationFiles": 0
+              }
+            }
+          },
+          "logCut": {
+            "before": "4257",
+            "after": "4258",
+            "beforeDigest": "88386b51afd330eb06e4e8740bd24ad64ee48740bac5a952929b8f103210c099",
+            "afterDigest": "4adbf2b42191405d3fa5da839235aca2fd303d98256153ff9ae4475ce5762a52"
+          }
+        },
+        {
+          "operation": "reviewUndo",
+          "delta": {
+            "walRecords": 1,
+            "retainedWalBytes": 1210,
+            "activeWalBytes": 1210,
+            "walSlots": 0,
+            "rasters": 0,
+            "rasterBytes": 0,
+            "native": {
+              "document": {
+                "checkpointBytes": 0,
+                "activeBytes": 0,
+                "generationFiles": 0
+              },
+              "review": {
+                "checkpointBytes": 374,
+                "activeBytes": 326,
+                "generationFiles": 0
+              },
+              "suggestionEffect": {
+                "checkpointBytes": 0,
+                "activeBytes": 0,
+                "generationFiles": 0
+              }
+            }
+          },
+          "logCut": {
+            "before": "4258",
+            "after": "4259",
+            "beforeDigest": "4adbf2b42191405d3fa5da839235aca2fd303d98256153ff9ae4475ce5762a52",
+            "afterDigest": "27c91d4f78d7df691b61a61ea3078c52f78ffc0e2de626a2cab736d69b4ba22d"
+          }
+        },
+        {
+          "operation": "resumeClientUploadQueue",
+          "delta": {
+            "walRecords": 0,
+            "retainedWalBytes": 0,
+            "activeWalBytes": 0,
+            "walSlots": 0,
+            "rasters": 1,
+            "rasterBytes": 116,
+            "native": {
+              "document": {
+                "checkpointBytes": 0,
+                "activeBytes": 0,
+                "generationFiles": 0
+              },
+              "review": {
+                "checkpointBytes": 0,
+                "activeBytes": 0,
+                "generationFiles": 0
+              },
+              "suggestionEffect": {
+                "checkpointBytes": 0,
+                "activeBytes": 0,
+                "generationFiles": 0
+              }
+            }
+          },
+          "logCut": {
+            "before": "4259",
+            "after": "4259",
+            "beforeDigest": "27c91d4f78d7df691b61a61ea3078c52f78ffc0e2de626a2cab736d69b4ba22d",
+            "afterDigest": "27c91d4f78d7df691b61a61ea3078c52f78ffc0e2de626a2cab736d69b4ba22d"
+          }
+        },
+        {
+          "operation": "retryExactRaster",
+          "delta": {
+            "walRecords": 0,
+            "retainedWalBytes": 0,
+            "activeWalBytes": 0,
+            "walSlots": 0,
+            "rasters": 0,
+            "rasterBytes": 0,
+            "native": {
+              "document": {
+                "checkpointBytes": 0,
+                "activeBytes": 0,
+                "generationFiles": 0
+              },
+              "review": {
+                "checkpointBytes": 0,
+                "activeBytes": 0,
+                "generationFiles": 0
+              },
+              "suggestionEffect": {
+                "checkpointBytes": 0,
+                "activeBytes": 0,
+                "generationFiles": 0
+              }
+            }
+          },
+          "logCut": {
+            "before": "4259",
+            "after": "4259",
+            "beforeDigest": "27c91d4f78d7df691b61a61ea3078c52f78ffc0e2de626a2cab736d69b4ba22d",
+            "afterDigest": "27c91d4f78d7df691b61a61ea3078c52f78ffc0e2de626a2cab736d69b4ba22d"
+          }
+        }
+      ]
+    },
+    "installed": {
+      "runtimeSha256": "8f39c742c461006c90e209e0287f7db137574843f316ccddbe2aaa141ca00401",
+      "archives": [
+        {
+          "name": "@breditor/browser",
+          "sha256": "1199d14fe5b3d5b2e0318642a9bbf9f5b84773e97265597f72e190be43869ae0"
+        },
+        {
+          "name": "@breditor/experimental-rich-content",
+          "sha256": "1f3fcf77b72fceb84729b390ac2b5468f6a3dd913ec6958cfa546d78787476d8"
+        },
+        {
+          "name": "@breditor/collaboration",
+          "sha256": "f0c5a965f19815d9facef584a8180cae37a108cd554147b5b906ef2178a82e17"
+        }
+      ],
+      "coldCapacityMatches": true,
+      "operations": [
+        {
+          "operation": "continueDocument",
+          "delta": {
+            "walRecords": 1,
+            "retainedWalBytes": 614,
+            "activeWalBytes": 614,
+            "walSlots": 0,
+            "rasters": 0,
+            "rasterBytes": 0,
+            "native": {
+              "document": {
+                "checkpointBytes": 410,
+                "activeBytes": -4587,
+                "generationFiles": 1
+              },
+              "review": {
+                "checkpointBytes": 0,
+                "activeBytes": 0,
+                "generationFiles": 0
+              },
+              "suggestionEffect": {
+                "checkpointBytes": 524,
+                "activeBytes": 0,
+                "generationFiles": 1
+              }
+            }
+          },
+          "logCut": {
+            "before": "4255",
+            "after": "4256",
+            "beforeDigest": "dc8dac3a3abc95e1cbd7666c6c64f9e72dd97bdb8914411f9a68f410355e230b",
+            "afterDigest": "d8159535f98743b91d251b735d9bacfb40bb268b9568008a4693436e544f9d21"
+          }
+        },
+        {
+          "operation": "continueReview",
+          "delta": {
+            "walRecords": 1,
+            "retainedWalBytes": 596,
+            "activeWalBytes": 596,
+            "walSlots": 0,
+            "rasters": 0,
+            "rasterBytes": 0,
+            "native": {
+              "document": {
+                "checkpointBytes": 0,
+                "activeBytes": 0,
+                "generationFiles": 0
+              },
+              "review": {
+                "checkpointBytes": 318,
+                "activeBytes": -19314,
+                "generationFiles": 1
+              },
+              "suggestionEffect": {
+                "checkpointBytes": 0,
+                "activeBytes": 0,
+                "generationFiles": 0
+              }
+            }
+          },
+          "logCut": {
+            "before": "4256",
+            "after": "4257",
+            "beforeDigest": "d8159535f98743b91d251b735d9bacfb40bb268b9568008a4693436e544f9d21",
+            "afterDigest": "84920956a36b85cea4da93eb83981047dcaa546b4ebc3b279ac86297c02574e7"
+          }
+        },
+        {
+          "operation": "rotateWal",
+          "delta": {
+            "walRecords": 0,
+            "retainedWalBytes": 0,
+            "activeWalBytes": -1210,
+            "walSlots": 1,
+            "rasters": 0,
+            "rasterBytes": 0,
+            "native": {
+              "document": {
+                "checkpointBytes": 0,
+                "activeBytes": 0,
+                "generationFiles": 0
+              },
+              "review": {
+                "checkpointBytes": 0,
+                "activeBytes": 0,
+                "generationFiles": 0
+              },
+              "suggestionEffect": {
+                "checkpointBytes": 0,
+                "activeBytes": 0,
+                "generationFiles": 0
+              }
+            }
+          },
+          "logCut": {
+            "before": "4257",
+            "after": "4257",
+            "beforeDigest": "84920956a36b85cea4da93eb83981047dcaa546b4ebc3b279ac86297c02574e7",
+            "afterDigest": "84920956a36b85cea4da93eb83981047dcaa546b4ebc3b279ac86297c02574e7"
+          }
+        },
+        {
+          "operation": "documentUndo",
+          "delta": {
+            "walRecords": 1,
+            "retainedWalBytes": 1626,
+            "activeWalBytes": 1626,
+            "walSlots": 0,
+            "rasters": 0,
+            "rasterBytes": 0,
+            "native": {
+              "document": {
+                "checkpointBytes": 300,
+                "activeBytes": 294,
+                "generationFiles": 0
+              },
+              "review": {
+                "checkpointBytes": 0,
+                "activeBytes": 0,
+                "generationFiles": 0
+              },
+              "suggestionEffect": {
+                "checkpointBytes": 0,
+                "activeBytes": 0,
+                "generationFiles": 0
+              }
+            }
+          },
+          "logCut": {
+            "before": "4257",
+            "after": "4258",
+            "beforeDigest": "84920956a36b85cea4da93eb83981047dcaa546b4ebc3b279ac86297c02574e7",
+            "afterDigest": "77a25d507783865389193221ff5e79efdc7de4184dad4e0afafb55061d7b9200"
+          }
+        },
+        {
+          "operation": "reviewUndo",
+          "delta": {
+            "walRecords": 1,
+            "retainedWalBytes": 1208,
+            "activeWalBytes": 1208,
+            "walSlots": 0,
+            "rasters": 0,
+            "rasterBytes": 0,
+            "native": {
+              "document": {
+                "checkpointBytes": 0,
+                "activeBytes": 0,
+                "generationFiles": 0
+              },
+              "review": {
+                "checkpointBytes": 374,
+                "activeBytes": 326,
+                "generationFiles": 0
+              },
+              "suggestionEffect": {
+                "checkpointBytes": 0,
+                "activeBytes": 0,
+                "generationFiles": 0
+              }
+            }
+          },
+          "logCut": {
+            "before": "4258",
+            "after": "4259",
+            "beforeDigest": "77a25d507783865389193221ff5e79efdc7de4184dad4e0afafb55061d7b9200",
+            "afterDigest": "0b163c8f3a8ea954c8127290ca14ed8a3cbb46c1dead47e2217c29f88a205ccd"
+          }
+        },
+        {
+          "operation": "resumeClientUploadQueue",
+          "delta": {
+            "walRecords": 0,
+            "retainedWalBytes": 0,
+            "activeWalBytes": 0,
+            "walSlots": 0,
+            "rasters": 1,
+            "rasterBytes": 116,
+            "native": {
+              "document": {
+                "checkpointBytes": 0,
+                "activeBytes": 0,
+                "generationFiles": 0
+              },
+              "review": {
+                "checkpointBytes": 0,
+                "activeBytes": 0,
+                "generationFiles": 0
+              },
+              "suggestionEffect": {
+                "checkpointBytes": 0,
+                "activeBytes": 0,
+                "generationFiles": 0
+              }
+            }
+          },
+          "logCut": {
+            "before": "4259",
+            "after": "4259",
+            "beforeDigest": "0b163c8f3a8ea954c8127290ca14ed8a3cbb46c1dead47e2217c29f88a205ccd",
+            "afterDigest": "0b163c8f3a8ea954c8127290ca14ed8a3cbb46c1dead47e2217c29f88a205ccd"
+          }
+        },
+        {
+          "operation": "retryExactRaster",
+          "delta": {
+            "walRecords": 0,
+            "retainedWalBytes": 0,
+            "activeWalBytes": 0,
+            "walSlots": 0,
+            "rasters": 0,
+            "rasterBytes": 0,
+            "native": {
+              "document": {
+                "checkpointBytes": 0,
+                "activeBytes": 0,
+                "generationFiles": 0
+              },
+              "review": {
+                "checkpointBytes": 0,
+                "activeBytes": 0,
+                "generationFiles": 0
+              },
+              "suggestionEffect": {
+                "checkpointBytes": 0,
+                "activeBytes": 0,
+                "generationFiles": 0
+              }
+            }
+          },
+          "logCut": {
+            "before": "4259",
+            "after": "4259",
+            "beforeDigest": "0b163c8f3a8ea954c8127290ca14ed8a3cbb46c1dead47e2217c29f88a205ccd",
+            "afterDigest": "0b163c8f3a8ea954c8127290ca14ed8a3cbb46c1dead47e2217c29f88a205ccd"
+          }
+        }
+      ]
+    }
+  }
+}
