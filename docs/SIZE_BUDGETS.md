@@ -616,3 +616,12 @@ Across rounds 51–100, the original policy measured 223.6 ms p95 typing,
 policy measured 32.2, 32.2, and 19.7 ms respectively. The combined checkpoints
 contained 30,040,753 and 703,624 code units respectively. These measurements
 cover the two-peer, 2,825-byte document and direct frame exchange on one host.
+
+The [paired-session close regression](qualification/2026-11-24-installed-chrome-closed-paired-memory.json)
+measures a live document, one discussion, and fourteen named versions. It also
+discards a second owner after starting a write for a fifteenth version. The
+old SDK retained 10.30 MB after ordinary close and 10.99 MB after discard.
+After clearing the retired checkpoint and version cache, the same Chrome
+isolate measurements retained 0.23 MB in each case. Both cases reopen the
+exact native record and version catalog, including the late write that
+completed before the writer leases released.
