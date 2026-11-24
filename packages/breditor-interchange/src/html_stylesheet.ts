@@ -1,4 +1,4 @@
-import {generate,parse} from "css-tree";
+import {generate,parse,type Selector as CssSelector} from "css-tree";
 import {Budget,ConversionFailure,bytes,fail,limits} from "./budget.js";
 import {declarationValues} from "./html_style.js";
 import {attribute,isElement,plainText,type HtmlElement,type HtmlNode} from "./html_tree.js";
@@ -12,8 +12,14 @@ function compound(source:string):Compound|null {
   const classes=[...source.matchAll(/\.([a-zA-Z_][\w-]*)/g)].map(m=>m[1]!);if(classes.length>8)return null;
   return{tag,id:ids[0],classes};
 }
-function selector(source:string):Selector|null {
-  const tokens=source.split(/\s+/);if(tokens.length>3)return null;
+function selector(source:CssSelector):Selector|null {
+  const tokens=[""];
+  for(const node of source.children){
+    if(node.type==="Combinator"){
+      if(node.name!==" "||tokens.length===3)return null;
+      tokens.push("");
+    }else tokens[tokens.length-1]+=generate(node);
+  }
   const parts:Compound[]=[];let specificity=0;
   for(const token of tokens){
     const part=compound(token);if(!part)return null;
@@ -46,7 +52,7 @@ export class Stylesheets {
               if(!declarations.get(name)?.important||d.important)declarations.set(name,{value,important:Boolean(d.important)});
             }
           });
-          item.prelude.children.forEach(s=>{const parsed=selector(generate(s));if(!parsed){b.loss("unsupported-style");return;}if(this.#rules.length>=256)fail("resource-limit");this.#rules.push({selector:parsed,declarations,order:this.#rules.length});});
+          item.prelude.children.forEach(s=>{const parsed=s.type==="Selector"?selector(s):null;if(!parsed){b.loss("unsupported-style");return;}if(this.#rules.length>=256)fail("resource-limit");this.#rules.push({selector:parsed,declarations,order:this.#rules.length});});
         });
       }catch(error){if(error instanceof ConversionFailure)throw error;b.loss("unsupported-style");}
     }
@@ -55,7 +61,7 @@ export class Stylesheets {
   #classesOf(node:HtmlElement):Set<string>{
     let classes=this.#classes.get(node);
     if(!classes){
-      const tokens=(attribute(node,"class")??"").split(/\s+/).filter(Boolean);if(tokens.length>64)fail("resource-limit");
+      const tokens=(attribute(node,"class")??"").split(/[\t\n\f\r ]+/).filter(Boolean);if(tokens.length>64)fail("resource-limit");
       classes=new Set(tokens);this.#classes.set(node,classes);
     }
     return classes;
