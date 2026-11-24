@@ -19,7 +19,7 @@ test("candidate qualification is manual-only, read-only and does not supersede e
  assert.deepEqual(job.defaults,{run:{shell:"bash"}});
  const profile=workflow.on.workflow_dispatch.inputs.profile;
  assert.equal(profile.required,true);assert.equal(profile.default,"full");
- assert.equal(profile.type,"choice");assert.deepEqual(profile.options,["full","functional","default-matrix","editor-browser-matrix","rich-browser-matrix","shared-browser-matrix","installed-application-network","portable-relay-recovery","dependency-inventories","installed-distribution-workflows","installed-feature-browser"]);
+ assert.equal(profile.type,"choice");assert.deepEqual(profile.options,["full","functional","default-matrix","editor-browser-matrix","rich-browser-matrix","shared-browser-matrix","installed-application-network","portable-relay-recovery","dependency-inventories","installed-distribution-workflows","input-writing-workflows","installed-feature-browser"]);
  const shard=workflow.on.workflow_dispatch.inputs.shard;
  assert.equal(shard.default,"none");assert.equal(shard.type,"choice");
  assert.deepEqual(shard.options,["none",...candidateShardIds]);
@@ -126,7 +126,8 @@ test("profile dispatch honors the deadline and preserves the verifier's exit sta
   ["shared-browser-matrix",["--shared-browser-matrix"]],["portable-relay-recovery",["--portable-relay-recovery"]],
   ["dependency-inventories",["--dependency-inventories"]],
   ["installed-application-network",["--installed-application-network"]],
-  ["installed-distribution-workflows",["--installed-distribution-workflows"]]]){
+  ["installed-distribution-workflows",["--installed-distribution-workflows"]],
+  ["input-writing-workflows",["--input-writing-workflows"]]]){
   const result=run(profile,"2080");
   assert.equal(result.status,0,result.stderr);
   assert.deepEqual(result.stdout.trimEnd().split("\n"),
