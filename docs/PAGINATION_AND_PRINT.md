@@ -104,9 +104,14 @@ DOM-free `/rendering` entry). Options are closed sets; anything else throws
 | `size` | `A4` (210 × 297 mm), `Letter` (215.9 × 279.4 mm) | `A4` |
 | `orientation` | `portrait`, `landscape` | `portrait` |
 | `margin` | `narrow` 12.7 mm, `normal` 25.4 mm, `wide` 38.1 mm (every side) | `normal` |
+| `runningHeader` | One line of host text, up to 240 UTF-16 code units | Off |
+| `pageNumbers` | `true` for a `current / total` footer | Off |
 
 `resolveRichPrintLayout(options)` returns the frozen layout with exact
 millimetre lengths (page, margin, printable width and height).
+The optional header and footer use browser page-margin boxes. They apply to
+the printed document and leave the screen flow available for measurement.
+The Chromium PDF check below verifies them in the generated output.
 
 The stylesheet contains `@page{size:<size> <orientation>;margin:<n>mm}` and,
 under `@media print`, rules scoped to `[data-breditor-rich]` (the live editor
@@ -192,10 +197,10 @@ and the engine.
   editor (see above).
 - **Collapsed sections print collapsed** (native `<details>` rendering); expand
   them before printing to include their bodies.
-- No page numbers, running headers/footers, page counters, footnotes, columns,
-  keep-with-next per block, section-specific page sizes or orientation, or
-  avoid-break toggles in the document. Breaks inside lists, quotes, sections and
-  cells are not representable (root only).
+- The document stores manual breaks at the root. Running headers and page
+  counters are host print settings. Footnotes, columns, per-block
+  keep-with-next, and section-specific page settings require a fuller layout
+  contract.
 - Shared V4 has page breaks too (`insert_page_break`/`delete_page_break`, see
   [SHARED_RICH_V4.md](SHARED_RICH_V4.md)); shared interchange does not report them yet.
 
@@ -241,7 +246,8 @@ and the engine.
   verifies a native V4 document with fixed Menlo typography, an explicit break,
   a decoded raster and a 16-row table. Chromium PDF and the measured screen flow
   agree on the page count and forced page for this fixture. PDFKit checks every
-  table row in order and the repeated header. The text edit changes the output
+  table row in order, the repeated table header, the running page header, and
+  the current and total page counters. The text edit changes the output
   from three pages to five. Undo and a native cold reopen return it to three.
   The raster resize moves the measured forced boundary with three pages still
   present. The check retains package digests, measurements, and PDFs under

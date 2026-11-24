@@ -11,7 +11,7 @@ const row = (id,label,header=false) => element("table-row",`row-${id}`,{"bredito
 const canonical = value => Array.isArray(value) ? value.map(canonical) : value && typeof value==="object" ?
   Object.fromEntries(Object.keys(value).sort().map(key=>[key,canonical(value[key])])) : value;
 
-globalThis.createMeasuredPrintFixture = async ({asset,raster}) => {
+globalThis.createMeasuredPrintFixture = async ({asset,raster,runningHeader}) => {
   const bytes = await (await fetch("/fixture.wasm")).arrayBuffer();
   await initializeLocalRuntime(bytes);
   const profile = await createLocalProfileV4();
@@ -53,7 +53,7 @@ globalThis.createMeasuredPrintFixture = async ({asset,raster}) => {
   const show = async name => {
     preview?.dispose();
     const frame = document.querySelector("main");
-    frame.innerHTML = renderStaticDocument(states[name],{print:true,resolveAsset:binding=>binding.asset===asset?raster:undefined});
+    frame.innerHTML = renderStaticDocument(states[name],{print:{runningHeader,pageNumbers:true},resolveAsset:binding=>binding.asset===asset?raster:undefined});
     const surface = frame.firstElementChild;
     surface.classList.add("breditor-rich-surface");
     const image = surface.querySelector("img");

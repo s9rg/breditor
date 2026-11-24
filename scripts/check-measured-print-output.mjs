@@ -76,6 +76,7 @@ const readPdfPages = `function run(args) {
   return JSON.stringify(pages);
 }`;
 const pdfRoot = mkdtempSync(join(target,"measured-print-output-"));
+const runningHeader = 'Release handoff "PDF" <proof>';
 const browser = await chromium.launch();
 try {
   const page = await browser.newPage();
@@ -96,7 +97,7 @@ try {
     const {show,...native} = fixture;
     globalThis.showMeasuredPrintFixture = show;
     return native;
-  },{asset:pixelAsset,raster:`data:image/png;base64,${pixel.toString("base64")}`});
+  },{asset:pixelAsset,raster:`data:image/png;base64,${pixel.toString("base64")}`,runningHeader});
   assert.deepEqual(native,{undone:true,reopened:true,journalExact:true,redoPreserved:true,edited:true,resized:true,hadHistory:true});
   const results = {};
   const expectedRows = Array.from({length:16},(_,index)=>String(index+1).padStart(2,"0"));
@@ -108,6 +109,10 @@ try {
     const pages = JSON.parse(execFileSync("/usr/bin/osascript",["-l","JavaScript","-e",readPdfPages,path],{encoding:"utf8",timeout:10000}));
     const forcedIndex = screen.measured.pages.findIndex(page=>page.reason==="forced");
     assert.equal(pages.length,screen.measured.pages.length,scenario);
+    for(const [index,text] of pages.entries()){
+      assert.equal(text.replace(/\s+/g," ").split(runningHeader).length,2,`Expected one running header on ${scenario} page ${index+1}`);
+      assert.match(text,new RegExp(`\\b${index+1}\\s*/\\s*${pages.length}\\b`),`${scenario} page counter`);
+    }
     assert.ok(forcedIndex>0);
     assert.ok(pages[0].includes("BeforeForcedBreak"));
     assert.ok(pages.slice(0,forcedIndex).every(text=>!text.includes("AfterForcedBreak")));
@@ -118,7 +123,8 @@ try {
     assert.deepEqual(rowsPerPage.flat(),expectedRows,scenario);
     assert.equal(rowsPerPage.at(-1).at(-1),"16");
     results[scenario]={screen:screen.measured,rasterHeight:screen.rasterHeight,pdfPages:pages.length,
-      forcedPage:forcedIndex+1,repeatedHeaderPages:pages.length-forcedIndex,rowsPerPage:rowsPerPage.map(rows=>rows.length),
+      forcedPage:forcedIndex+1,runningHeaderPages:pages.length,numberedPages:pages.length,
+      repeatedHeaderPages:pages.length-forcedIndex,rowsPerPage:rowsPerPage.map(rows=>rows.length),
       pdfPath:relative(target,path),pdfSha256:digest(pdf)};
   }
   assert.deepEqual(results.undone.screen,results.initial.screen);
