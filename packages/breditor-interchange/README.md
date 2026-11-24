@@ -56,8 +56,9 @@ conversion without exposing their messages.
 ## Formatting and notices
 
 HTML conversion uses inert parse5 and css-tree data, not browser DOM parsing.
-Simple tag/class/ID stylesheet selectors and inline declarations have bounded
-specificity, source-order and important handling. Winning CSS dimensions take
+Stylesheet selectors support up to three tag/class/ID compounds joined by
+descendant whitespace. Stylesheet and inline declarations honor specificity,
+source order and `!important` within bounded matching. Winning CSS dimensions take
 precedence over HTML size attributes on images, tables, columns and cells.
 Dimensions outside the native subset produce a size or width notice. Recognized
 values become closed native fields. Word list metadata is

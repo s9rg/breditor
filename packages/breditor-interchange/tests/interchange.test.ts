@@ -29,6 +29,25 @@ describe("explicit parser staging contracts",()=>{
     expect(heading.type).toBe("breditor/heading");expect(heading.properties["breditor/block-align"]).toBe(2);expect(paragraph.children.map((n:any)=>n.text).join("")).toBe("Keep  two spaces, emphasis and a link.");
     expect(nodes(paragraph).filter(n=>n.kind==="text").every(n=>!n.formats.some((f:any)=>f.type==="breditor/strong"))).toBe(true);
   });
+  it("bounds descendant depth and the total stylesheet ancestor work before native admission",()=>{
+    const tooLong=staging().adapter.importHtml('<style>div section p span{color:red}</style><div><section><p><span>A</span></p></section></div>');
+    expect(root(tooLong).children[0].children[0].formats).toEqual([]);
+    expect(tooLong.losses).toEqual([{code:"unsupported-style",count:1,effect:"loss"}]);
+    const rules=Array.from({length:256},(_,i)=>`.scope${i} span{color:red}`).join("");
+    const deep="<div>".repeat(12)+"<span>A</span>".repeat(120)+"</div>".repeat(12);
+    const test=staging();
+    expect(test.adapter.importHtml(`<style>${rules}</style>${deep}`)).toEqual({ok:false,error:"resource-limit",losses:[]});
+    expect(test.calls).toBe(0);
+  });
+  it("keeps nonbreaking spaces inside selector identifiers and HTML class tokens",()=>{
+    const result=staging().adapter.importHtml('<style>.report\u00a0span{color:red!important}.report\tspan{color:blue}</style>'+
+      '<div class="report\u00a0extra"><p><span>Joined</span></p></div><div class="report\textra"><p><span>Separate</span></p></div>');
+    const runs=nodes(root(result)).filter(node=>node.kind==="text");
+    expect(runs.map(({text,formats})=>[text,formats[0]?.properties["breditor-inline/rgb24"]??null])).toEqual([
+      ["Joined",null],["Separate",0x0000ff],
+    ]);
+    expect(result.losses).toEqual([{code:"unsupported-style",count:1,effect:"loss"}]);
+  });
   it("applies bounded Office class selectors, specificity, source order and important",()=>{
     const value=staging().adapter.importHtml('<style>.x {color:red} p.x {color:green} .x {color:blue!important} .x {color:yellow!important}</style><p class="x" style="color:white">A</p><p class="x" style="color:black!important">B</p>'),r=root(value);
     expect(r.children[0].children[0].formats[0].properties["breditor-inline/rgb24"]).toBe(0xffff00);expect(r.children[1].children[0].formats[0].properties["breditor-inline/rgb24"]).toBe(0);

@@ -73,6 +73,32 @@ test("HTML geometry uses the CSS winner over image and table size attributes",as
  expect(result).toEqual([expected,expected]);
 });
 
+test("portable HTML inlines bounded ancestor-scoped stylesheet rules",async({page})=>{
+ const external=[];
+ page.on("request",request=>{if(request.url().startsWith("https://outside.example/"))external.push(request.url());});
+ const result=await page.evaluate(()=>{
+  const t=window.il,adapter=t.createRichInterchange(t.core),before=t.core.checkpointJson();
+  const source='<style>.report td span{color:#224466!important}span.tint{color:#778899}'+
+   '#priority span{font-style:italic}.a.b.c.d.e.f.g.h td.i.j.k.l.m.n.o.p span{font-style:normal}'+
+   '.report > tbody span{background-color:red}</style><link rel="stylesheet" href="https://outside.example/report.css">'+
+   '<table class="report a b c d e f g h" id="priority"><tr><td class="i j k l m n o p"><span class="tint" style="color:green">Inside</span></td></tr></table>'+
+   '<p><span class="tint">Outside</span></p>';
+  const imported=adapter.importHtml(source),exported=adapter.exportHtml(imported.value.structuredJson);
+  const host=document.createElement("div");host.innerHTML=exported.value;document.body.append(host);
+  try{
+   const inside=[...host.querySelectorAll("td *")].find(element=>[...element.childNodes].some(node=>node.nodeType===Node.TEXT_NODE&&node.textContent==="Inside"));
+   const outside=host.querySelector(":scope > p span");
+   const insideStyle=getComputedStyle(inside);
+   return {inside:insideStyle.color,outside:getComputedStyle(outside).color,italic:insideStyle.fontStyle,
+    background:insideStyle.backgroundColor,styleNodes:host.querySelectorAll("style,link").length,
+    losses:imported.losses,unchanged:t.core.checkpointJson()===before};
+  }finally{host.remove();}
+ });
+ expect(result).toEqual({inside:"rgb(34, 68, 102)",outside:"rgb(119, 136, 153)",italic:"italic",background:"rgba(0, 0, 0, 0)",
+  styleNodes:0,losses:[{code:"unsupported-style",count:2,effect:"loss"}],unchanged:true});
+ expect(external).toEqual([]);
+});
+
 test("the V4 Image link toolbar control sets a link that wraps only the image, with exact Undo/Redo/restore",async({page})=>{
  await page.getByRole("button",{name:"Select image",exact:true}).click();
  await expect(page.locator("figure[data-node-selected]")).toHaveCount(1);
