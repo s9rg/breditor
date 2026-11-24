@@ -83,13 +83,58 @@ function previewStyles(layout:RichPrintLayout,selector:string):string{
  return `@media screen{${selector}{box-sizing:content-box!important;width:${layout.contentWidthMm}mm!important;max-width:none!important;padding:${layout.marginMm}mm!important;margin-left:auto;margin-right:auto;background-color:#fff;background-image:repeating-linear-gradient(to bottom,transparent 0,transparent calc(${height} - 1px),#d0457a calc(${height} - 1px),#d0457a ${height})!important;background-origin:content-box!important;background-clip:content-box!important;background-size:100% ${height}!important;background-repeat:repeat-y!important}}`;
 }
 
-/** A mounted preview. `update` swaps the layout; `dispose` restores the element and removes its stylesheets. */
-export interface RichPrintPreview {readonly layout:RichPrintLayout;update(options:RichPrintOptions):RichPrintLayout;dispose():void}
+/** One measured page start, relative to the preview's content box in CSS pixels. */
+export interface RichPrintPreviewPage {
+ readonly number:number;
+ readonly topCssPx:number;
+ readonly reason:"start"|"automatic"|"forced";
+}
+export interface RichPrintPreviewMeasurement {
+ readonly contentHeightCssPx:number;
+ readonly pageHeightCssPx:number;
+ readonly pages:readonly RichPrintPreviewPage[];
+}
+/** A mounted preview with a read of its current screen flow. */
+export interface RichPrintPreview {
+ readonly layout:RichPrintLayout;
+ update(options:RichPrintOptions):RichPrintLayout;
+ measure():RichPrintPreviewMeasurement;
+ dispose():void;
+}
 export interface RichPrintPreviewOptions extends RichPrintOptions {
  /** Chrome catalog for the preview description (`printPreviewLabel`). */
  readonly ui?:RichUiOptions|RichUiLocale;
  /** Also install `richPrintStyles` for the same layout (default true), so printing uses the previewed page. */
  readonly print?:boolean;
+}
+
+function measurePreview(surface:HTMLElement,layout:RichPrintLayout):RichPrintPreviewMeasurement{
+ const view=surface.ownerDocument.defaultView;
+ const bounds=surface.getBoundingClientRect(),height=surface.offsetHeight;
+ if(!view||!surface.isConnected||height===0||bounds.height===0||view.matchMedia("print").matches){
+  throw Error("Measure a connected print preview in screen media");
+ }
+ const style=view.getComputedStyle(surface),paddingTop=parseFloat(style.paddingTop)||0,paddingBottom=parseFloat(style.paddingBottom)||0;
+ const contentHeightCssPx=Math.max(0,surface.scrollHeight-paddingTop-paddingBottom),pageHeightCssPx=layout.contentHeightMm*96/25.4;
+ const scaleY=bounds.height/height;
+ const contentTop=surface.clientTop+paddingTop-surface.scrollTop;
+ const tolerance=1; // scrollHeight rounds to an integer CSS pixel.
+ const forced=new Set<number>();
+ for(const child of surface.children){
+  if(!child.classList.contains(richPageBreakClass)||child.getClientRects().length===0)continue;
+  const after=(child.getBoundingClientRect().bottom-bounds.top)/scaleY-contentTop;
+  if(after>tolerance&&after<contentHeightCssPx-tolerance)forced.add(after);
+ }
+ const pages:RichPrintPreviewPage[]=[Object.freeze({number:1,topCssPx:0,reason:"start"})];
+ let start=0;
+ for(const end of [...forced].sort((a,b)=>a-b).concat(contentHeightCssPx)){
+  for(let at=start+pageHeightCssPx;at<end-tolerance;at+=pageHeightCssPx){
+   pages.push(Object.freeze({number:pages.length+1,topCssPx:at,reason:"automatic"}));
+  }
+  if(end<contentHeightCssPx)pages.push(Object.freeze({number:pages.length+1,topCssPx:end,reason:"forced"}));
+  start=end;
+ }
+ return Object.freeze({contentHeightCssPx,pageHeightCssPx,pages:Object.freeze(pages)});
 }
 /**
  * Opt-in print preview on an editing surface (or a static wrapper). It adds `data-breditor-print-preview`,
@@ -128,6 +173,7 @@ export function mountRichPrintPreview(surface:HTMLElement,options:RichPrintPrevi
  return {
   get layout(){return layout;},
   update(next:RichPrintOptions):RichPrintLayout{if(disposed)throw Error("The print preview was disposed");layout=resolveRichPrintLayout(next);apply();return layout;},
+  measure():RichPrintPreviewMeasurement{if(disposed)throw Error("The print preview was disposed");return measurePreview(surface,layout);},
   dispose():void{
    if(disposed)return;disposed=true;style.remove();pageStyle?.remove();
    for(const [name,value]of previous){
