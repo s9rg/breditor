@@ -633,3 +633,14 @@ BREDITOR_EDITOR_PAIRED_MEMORY=1 node scripts/check-editor-package.mjs
 BREDITOR_EDITOR_PAIRED_MEMORY=1 node node_modules/@playwright/test/cli.js test \
   -c experiments/editor-browser-memory/playwright.config.mjs paired-memory.spec.mjs
 ```
+
+## Installed raster metadata enumeration
+
+In Google Chrome 158.0.8127.37 on an Apple M1 Pro, listing metadata for 28
+retained PNGs totaling 49,966,325 bytes reduced the observed peak increase in
+Chrome backing storage from 50.0 MB to 32.1 MB. The largest IndexedDB result
+fell from 50.0 MB to one 1.78 MB raster. Median list time rose from 31.7 ms to
+34.8 ms across six observations per SDK. The cursor reads in primary-key order
+and retains only each row's metadata for return. The installed archive fixture
+checks ordered metadata, upload states and exact archive recovery on reload.
+[Measurement and archive hashes](qualification/2026-11-24-installed-chrome-asset-metadata-memory.json)
