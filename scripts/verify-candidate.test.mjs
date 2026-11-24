@@ -4,7 +4,7 @@ import {execFileSync,spawnSync} from "node:child_process";
 import {mkdtempSync,mkdirSync,writeFileSync,readFileSync,existsSync,rmSync,symlinkSync,utimesSync,statSync} from "node:fs";
 import {tmpdir} from "node:os";
 import {dirname,join} from "node:path";
-import {candidateReleasePlan,repository} from "./candidate-release/plan.mjs";
+import {candidateCheckProfiles,candidateReleasePlan,repository} from "./candidate-release/plan.mjs";
 import {candidateShardIds,candidateShardPlan} from "./candidate-release/shards.mjs";
 import {metadataFixtureStageIds} from "./candidate-release/metadata-fixture-evidence.mjs";
 import {fileEvidence,sourceEvidence,saveEvidence} from "./candidate-release/evidence.mjs";
@@ -366,8 +366,8 @@ test("both profiles require complete selected asset bytes through the current na
 test("both profiles require exact shared backups and startup upgrade admission without a runtime reuse shortcut",()=>{
  for(const profile of ["functional","full"]){const plan=candidateReleasePlan({profile}),find=id=>{const value=plan.checks.find(c=>c.id===id);assert.ok(value,id);return value;};
   for(const [id,file]of [["shared-session-backups","probe-session-backups.mjs"],["shared-asset-archive-history","probe-shared-asset-backups.mjs"],["paired-session-backups","probe-paired-backups.mjs"],["session-opening-upgrade-fence","probe-session-opening-upgrade.mjs"]])assert.deepEqual(find(id).args,[`scripts/${file}`,"target/promoted-shared-web"]);
-  const installed=find("installed-session-backups");assert.deepEqual(installed.args,["scripts/check-session-backups-installed.mjs"]);assert.deepEqual(installed.artifacts,[{path:"target/session-backups-installed-consumer.json",fresh:true},{path:"target/participant-operation-installed-consumer.json",fresh:true},{path:"target/catalog-participant-operation-installed-consumer.json",fresh:true},{path:"target/room-operational-recovery-installed-consumer.json",fresh:true},{path:"target/participant-replay-installed-consumer.json",fresh:true},{path:"target/retained-version-recovery-installed-consumer.json",fresh:true},{path:"target/pending-recovery-installed-consumer.json",fresh:true},{path:"target/upload-reconciliation-installed-consumer.json",fresh:true},{path:"target/retained-owner-handoffs-installed-consumer.json",fresh:true}]);
-  const browser=plan.checks.find(c=>c.id==="installed-session-backups-browser");if(profile==="full"){assert.deepEqual(browser.args,["scripts/check-session-backups-browser.mjs"]);assert.deepEqual(browser.artifacts,[{path:"target/session-backups-installed-browser.json",fresh:true}]);}else assert.equal(browser,undefined);
+  const installed=find("installed-session-backups");assert.deepEqual(installed.args,["scripts/check-session-backups-installed.mjs"]);assert.deepEqual(installed.artifacts,[{path:"target/session-backups-installed-consumer.json",fresh:true,retain:true},{path:"target/participant-operation-installed-consumer.json",fresh:true},{path:"target/catalog-participant-operation-installed-consumer.json",fresh:true},{path:"target/room-operational-recovery-installed-consumer.json",fresh:true},{path:"target/participant-replay-installed-consumer.json",fresh:true},{path:"target/retained-version-recovery-installed-consumer.json",fresh:true},{path:"target/pending-recovery-installed-consumer.json",fresh:true},{path:"target/upload-reconciliation-installed-consumer.json",fresh:true},{path:"target/retained-owner-handoffs-installed-consumer.json",fresh:true}]);
+  const browser=plan.checks.find(c=>c.id==="installed-session-backups-browser");if(profile==="full"){assert.deepEqual(browser.args,["scripts/check-session-backups-browser.mjs"]);assert.deepEqual(browser.artifacts,[{path:"target/session-backups-installed-browser.json",fresh:true,retain:true}]);}else assert.equal(browser,undefined);
  }
 });
 test("both profiles require native retained-copy replay and its fresh installed public APIs",()=>{
@@ -453,8 +453,8 @@ test("isolated release matrices preserve the full plan's commands and report the
   ["dependency-inventories",["relay-native-dependency-notices","paired-local-runtime","paired-shared-runtime"]],
   ["installed-feature-browser",[
    "default-typescript-build","paired-local-runtime","paired-shared-runtime","rich-browser-build","collaboration-build","editor-build",
-   "installed-search-workflows","installed-placeholder-workflows","installed-fullscreen-workflows","installed-asset-backups",
-   "rich-demo-latency","installed-search-browser","installed-placeholder-browser","installed-fullscreen-browser","installed-asset-backups-browser",
+   "installed-search-workflows","installed-placeholder-workflows","installed-fullscreen-workflows","installed-session-backups","installed-asset-backups",
+   "rich-demo-latency","installed-search-browser","installed-placeholder-browser","installed-fullscreen-browser","installed-session-backups-browser","installed-asset-backups-browser",
   ]],
  ]){
   const run=spawnSync(process.execPath,[script,`--${profile}`,"--dry-run"],{cwd:tmpdir(),encoding:"utf8"});
@@ -482,6 +482,25 @@ test("isolated release matrices preserve the full plan's commands and report the
   assert.equal(run.stdout,"");
  }
 });
+test("candidate engineering coverage can be collected before reviewed readiness",()=>{
+ const covered=new Set(candidateCheckProfiles
+  .filter(profile=>profile!=="full")
+  .flatMap(profile=>candidateReleasePlan({profile}).checks.map(check=>check.id)));
+ assert.deepEqual(candidateReleasePlan().checks
+  .map(check=>check.id)
+  .filter(id=>!covered.has(id)),["reviewed-v1-readiness"]);
+ const {checks}=candidateReleasePlan({profile:"installed-feature-browser"});
+ const producer=checks.findIndex(check=>check.id==="installed-session-backups");
+ const browser=checks.findIndex(check=>check.id==="installed-session-backups-browser");
+ assert.ok(producer>=0&&producer<browser);
+ assert.deepEqual(checks[producer].artifacts.find(report=>
+  report.path==="target/session-backups-installed-consumer.json"),
+  {path:"target/session-backups-installed-consumer.json",fresh:true,retain:true});
+ assert.deepEqual(checks[browser].artifacts,[
+  {path:"target/session-backups-installed-browser.json",fresh:true,retain:true},
+ ]);
+});
+
 test("candidate shards partition the full plan through installed selected-room storage",()=>{
  const full=candidateReleasePlan(),end=full.checks.findIndex(check=>check.id==="installed-selected-room-storage");
  const byId=new Map(full.checks.map(check=>[check.id,check]));
