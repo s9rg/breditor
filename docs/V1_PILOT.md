@@ -49,7 +49,7 @@ ssh -N -L 49783:127.0.0.1:49783 -L 49784:127.0.0.1:49784 user@private-pilot-host
 The pilot uses test documents and accounts. Retain the private relay state
 directory and each participant's browser profile throughout the run. Keep
 checkpoint downloads private because they include Undo history.
-The launcher checks that its existing state files are regular files and have
+The launcher checks that its five JSON state files are regular files and have
 owner-only permissions on POSIX systems. Keep the generated files in the
 private pilot directory.
 
