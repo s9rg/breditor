@@ -211,8 +211,10 @@ test("column groups retain declared spans and fallback widths without shifting s
    table('<colgroup span="3" width="71" style="width:90px"></colgroup>',"<tr><th colspan=2>A</th><td>B</td></tr><tr><td>C</td><td>D</td><td>E</td></tr>"),
    table('<colgroup width="90"><col><col span="2" width="132" style="width:144px"></colgroup>',"<tr><td>A</td><td>B</td><td>C</td></tr>"),
    table('<colgroup span="3" width="90"></colgroup>',"<tr><td>One</td></tr>"),
-   table('<colgroup span="2" style="width:50%"></colgroup>',"<tr><td>A</td><td>B</td></tr>"),
+   table('<colgroup span="2" style="width:50%"></colgroup>',"<tr><td width=240>A</td><td width=160>B</td></tr>"),
    table('<colgroup span="12" width="90"><col width="130"></colgroup>',"<tr><td>A</td></tr>"),
+   table('<colgroup></colgroup>',"<tr><td width=240>A</td></tr>"),
+   table('<colgroup span="2"></colgroup>',"<tr><td width=240>A</td><td width=160>B</td></tr>"),
   ];
   const admitted=cases.map(source=>{
    const value=adapter.importHtml(source),exported=adapter.exportHtml(value.value.structuredJson);
@@ -230,5 +232,7 @@ test("column groups retain declared spans and fallback widths without shifting s
   check([90,90,90],[cells("One","","")],0,[loss("table-geometry",3)]),
   check([120,120],[cells("A","B")],0,[loss("table-width",1)]),
   check([130],[cells("A")],0,[loss("table-geometry",1)]),
+  check([240],[cells("A")]),
+  check([240,160],[cells("A","B")]),
  ],refused:[{ok:false,error:"malformed-table",losses:[]},{ok:false,error:"resource-limit",losses:[]}],unchanged:true});
 });

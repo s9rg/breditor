@@ -8,25 +8,26 @@ export function pixels(value:string|undefined):number|null {
 }
 /** Reconstruct the complete bounded base-cell partition, never only rendered master cells. */
 export function importTable(c:HtmlConversion,node:HtmlElement,state:StyleState):Element[] {
-  const rows:{node:HtmlElement;state:StyleState;group:number;remaining:number}[]=[],colWidths:(number|null)[]=[],captions:Element[]=[];
+  const rows:{node:HtmlElement;state:StyleState;group:number;remaining:number}[]=[],colWidths:(number|null|undefined)[]=[],captions:Element[]=[];
   // V4 owners keep the first <caption> as the table's caption paragraph (see `tableCaption`).
   let caption:Element|undefined,captioned=false;
   let group=0;
-  const widthHint=(node:HtmlElement,fallback:number|null=null)=>{
+  const widthHint=(node:HtmlElement,fallback?:number|null)=>{
     const raw=c.css(node).get("width")??attribute(node,"width");if(raw===undefined)return fallback;
     const width=pixels(raw);if(width===null)c.b.loss("table-width");return width;
   };
-  const addWidth=(rawSpan:string|undefined,width:number|null)=>{
+  const addWidth=(rawSpan:string|undefined,width:number|null|undefined)=>{
     const count=span(rawSpan,limits.columns);if(colWidths.length+count>limits.columns)fail("resource-limit");
     for(let i=0;i<count;i++)colWidths.push(width);
   };
   const addColumns=(parent:HtmlElement)=>{
     const children=parent.childNodes.filter(isElement),groupSpan=attribute(parent,"span"),groupWidth=widthHint(parent);
+    // An absent group width leaves the existing cell width fallback available.
     if(!children.length){addWidth(groupSpan,groupWidth);return;}
     if(groupSpan!==undefined)c.b.loss("table-geometry");
     for(const child of children){
       if(child.tagName!=="col")fail("malformed-table");if(c.excluded(child))fail("unsupported-content");
-      c.style(child,state);addWidth(attribute(child,"span"),widthHint(child,groupWidth));
+      c.style(child,state);addWidth(attribute(child,"span"),widthHint(child,groupWidth??null));
     }
   };
   for(const n of node.childNodes){

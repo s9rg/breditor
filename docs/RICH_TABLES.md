@@ -118,9 +118,10 @@ in-progress `{table, column, start, width}` or `null`.
 
 HTML import reads span hints on a `<colgroup>` with no `<col>` children.
 The group's supported width supplies each column's default width. An explicit
-child `<col>` width takes precedence. Groups with child columns use their child
-spans and report a `table-geometry` notice for a conflicting group span. Column
-and cell limits apply to the resulting grid, including any padded empty cells.
+child `<col>` width takes precedence. A widthless group without child columns
+keeps the existing cell width fallback. Groups with child columns use their
+child spans and report a `table-geometry` notice for a conflicting group span.
+Column and cell limits include any padded empty cells.
 
 ## Nested-table policy
 
