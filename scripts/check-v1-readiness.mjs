@@ -5,6 +5,7 @@ import {fileURLToPath} from "node:url";
 
 export const repository = resolve(dirname(fileURLToPath(import.meta.url)), "..");
 export const auditPath = resolve(repository, "docs/v1-readiness.json");
+export const catalogPath = resolve(repository, "docs/v1-catalog-cases.json");
 const featureStates = new Set(["implemented", "partial", "missing"]);
 const gateStates = new Set(["open", "passed"]);
 const requiredReleaseGates = [
@@ -88,9 +89,29 @@ export function validateAudit(audit) {
   return audit;
 }
 
+/** Validate versioned case definitions and their references to the grouped audit. */
+export function validateCatalogCases(catalog, audit) {
+  requireValue(object(catalog) && catalog.format === "breditor/v1-catalog-cases" && catalog.formatVersion === 1,
+    "unsupported V1 catalog cases format");
+  uniqueRows(catalog.cases, "catalog cases");
+  const features = new Set(audit.features.map(row => row.id));
+  const sources = new Set(audit.sources.map(row => row.id));
+  for (const row of catalog.cases) {
+    requireValue(Number.isSafeInteger(row.version) && row.version > 0, `${row.id} needs a positive case version`);
+    requireValue(features.has(row.feature), `${row.id} references an unknown feature group`);
+    requireValue(Array.isArray(row.sources) && row.sources.length > 0 && new Set(row.sources).size === row.sources.length
+      && row.sources.every(id => sources.has(id)), `${row.id} has missing, duplicate or unknown comparison sources`);
+    requireValue(text(row.scenario) && Array.isArray(row.expected) && row.expected.length > 0 && row.expected.every(text),
+      `${row.id} needs a scenario and expected observations`);
+    requireValue(row.untrustedInput === undefined || text(row.untrustedInput), `${row.id} has a blank untrusted-input scenario`);
+  }
+  return catalog;
+}
+
 /** Completion is a manually reviewed ledger assertion, never an automated test pass. */
 export function summarizeAudit(audit) {
   validateAudit(audit);
+  const {cases} = validateCatalogCases(JSON.parse(readFileSync(catalogPath, "utf8")), audit);
   const counts = {implemented: 0, partial: 0, missing: 0};
   for (const row of audit.features) counts[row.status] += 1;
   const featureGaps = audit.features.filter(row => row.status !== "implemented");
@@ -102,6 +123,8 @@ export function summarizeAudit(audit) {
     testsExecuted: false,
     ledgerComplete: featureGaps.length === 0 && openGates.length === 0,
     featureGroups: audit.features.length,
+    catalogCasesDefined: cases.length,
+    catalogFeatureGroupsWithCases: new Set(cases.map(row => row.feature)).size,
     counts,
     featureGaps: featureGaps.map(({id, summary, status, acceptance}) => ({id, summary, status, acceptance})),
     openGates: openGates.map(({id, summary, acceptance}) => ({id, summary, acceptance})),
@@ -123,6 +146,7 @@ export function main(args, report = console.log, error = console.error) {
     else {
       report(`V1 audit at ${summary.baselineCommit.slice(0, 7)} (${summary.reviewedAt})`);
       report(`${summary.featureGroups} unequal capability groups: ${summary.counts.implemented} implemented slices, ${summary.counts.partial} partial, ${summary.counts.missing} missing. Not a completion percentage.`);
+      report(`${summary.catalogCasesDefined} catalog acceptance cases defined across ${summary.catalogFeatureGroupsWithCases} groups.`);
       report(`${summary.openGates.length} open qualification gates. No behavioral tests executed.`);
       for (const row of summary.featureGaps) report(`  ${row.status}: ${row.id} — ${row.summary}`);
       for (const row of summary.openGates) report(`  gate: ${row.id} — ${row.summary}`);

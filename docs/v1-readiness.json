@@ -57,7 +57,18 @@
     {"id":"ckeditor-menubar","url":"https://ckeditor.com/docs/ckeditor5/latest/getting-started/setup/menubar.html","note":"Menu bar; see also editor types and the accessibility help dialog."},
     {"id":"ckeditor-csp","url":"https://ckeditor.com/docs/ckeditor5/latest/getting-started/setup/csp.html","note":"Content Security Policy and Trusted Types; see also error-handling.html (watchdog)."},
     {"id":"ckeditor-ai","url":"https://ckeditor.com/docs/ckeditor5/latest/features/ai/ckeditor-ai-overview.html","note":"CKEditor AI: chat, quick actions, review, translate, AI suggestions and MCP (premium)."},
-    {"id":"ckeditor-restricted-editing","url":"https://ckeditor.com/docs/ckeditor5/latest/features/restricted-editing.html","note":"Restricted editing (premium)."}
+    {"id":"ckeditor-restricted-editing","url":"https://ckeditor.com/docs/ckeditor5/latest/features/restricted-editing.html","note":"Restricted editing (premium)."},
+    {"id":"ckeditor-general-html","url":"https://ckeditor.com/docs/ckeditor5/latest/features/html/general-html-support.html","note":"Configurable preservation of extra HTML elements and attributes."},
+    {"id":"ckeditor-html-embed","url":"https://ckeditor.com/docs/ckeditor5/latest/features/html/html-embed.html","note":"HTML snippet embedding and preview boundaries."},
+    {"id":"ckeditor-full-page-html","url":"https://ckeditor.com/docs/ckeditor5/latest/features/html/full-page-html.html","note":"Editing and exporting the entire HTML document and its metadata."},
+    {"id":"ckeditor-image-inserting","url":"https://ckeditor.com/docs/ckeditor5/latest/features/images/images-inserting.html","note":"Image insertion by URL and automatic image insertion."},
+    {"id":"ckeditor-image-upload","url":"https://ckeditor.com/docs/ckeditor5/latest/features/images/image-upload/image-upload.html","note":"CKBox, CKFinder, Uploadcare and optimized image delivery."},
+    {"id":"ckeditor-base64-upload","url":"https://ckeditor.com/docs/ckeditor5/latest/features/images/image-upload/base64-upload-adapter.html","note":"Base64 image storage and HTML data output."},
+    {"id":"ckeditor-paste-markdown","url":"https://ckeditor.com/docs/ckeditor5/latest/features/pasting/paste-markdown.html","note":"Markdown detection and conversion on paste."},
+    {"id":"ckeditor-email-editing","url":"https://ckeditor.com/docs/ckeditor5/latest/features/email-editing/email.html","note":"Email editing, layout tables and email HTML output."},
+    {"id":"ckeditor-inline-style-export","url":"https://ckeditor.com/docs/ckeditor5/latest/features/export-with-inline-styles.html","note":"Stylesheet-to-inline HTML export."},
+    {"id":"ckeditor-pagination","url":"https://ckeditor.com/docs/ckeditor5/latest/features/pagination/pagination.html","note":"Browser-measured pagination and alignment with exports."},
+    {"id":"tiptap-whiteboard","url":"https://tiptap.dev/docs/editor/whiteboard/getting-started/overview","note":"Pilot whiteboard authoring, shape tools and history."}
   ],
   "features": [
     {
@@ -184,7 +195,7 @@
       "id":"markdown","area":"Interchange","status":"partial",
       "summary":"Markdown import, export and paste",
       "current":"The separate optional adapter implements a named version-one CommonMark-based dialect with tables, strikethrough, task markers and sanitized raw HTML. It imports/exports through native schema validation and advertises Markdown MIME explicitly; ordinary text is never guessed as Markdown. Safe HTML fallback and compatibility/loss notices cover unrepresentable layout, rich tables, captions and exact code. This is not full GFM conformance or completed release qualification. Export now alternates list markers so adjacent lists stay separate, emits hard breaks, GFM column alignment, empty fences and safe images as Markdown, and reports dropped fence info and raw HTML comments as losses; ordered starts below 1 become 1 with a list-numbering notice. Markdown import optionally links GFM autolink literals (autolinks: true) under the same candidate grammar and canonical link subset as typed autolink-v1.",
-      "acceptance":"Choose a versioned Markdown subset, preserve representable semantics, report losses for merges/styles/media and test round trips.",
+      "acceptance":"Qualify the versioned Markdown dialect and automatic detection on plain-text paste. Preserve representable semantics, report losses and test round trips.",
       "evidence":["packages/breditor-collaboration/src/index.ts","docs/RICH_INTERCHANGE.md","packages/breditor-interchange/README.md","scripts/check-interchange-package.mjs","docs/qualification/2026-10-16-foreign-interchange.json","docs/qualification/2026-10-18-v1-candidate-functional.json","packages/breditor-interchange/src/autolink.ts"],
       "sources":["ckeditor-markdown","tiptap-source-table"]
     },
@@ -207,8 +218,8 @@
     {
       "id":"advanced-tables","area":"Tables","status":"partial",
       "summary":"Table presentation and advanced interaction",
-      "current":"Width and header controls exist, plus opt-in accessible column-resize separators (one width command per drag or key, clamped to 32..4096). Local and shared editors can opt into keyboard-scrollable table viewports that retain position across redraws. Rich language V4 adds an optional trailing table caption with add/remove commands and table-action, navigation, clipboard, search and HTML interchange, locally and in shared V4 (`add_table_caption`/`remove_table_caption`, one Undo step; a second concurrent caption stays hidden), with identical `<caption>` import and export in shared V4. Missing: table and cell styling (borders, backgrounds, padding, cell alignment), caption placement choice and layout tables. Nested tables are intentionally rejected.",
-      "acceptance":"Resolve nested-table policy explicitly; add captions, accessible resize handles, table/cell presentation and interoperable rich paste without losing source partitions.",
+      "current":"Width and header controls exist, plus opt-in accessible column-resize separators (one width command per drag or key, clamped to 32..4096). Local and shared editors can opt into keyboard-scrollable table viewports that retain position across redraws. Rich language V4 adds an optional trailing table caption with add/remove commands and table-action, navigation, clipboard, search and HTML interchange, locally and in shared V4 (`add_table_caption`/`remove_table_caption`, one Undo step; a second concurrent caption stays hidden), with identical `<caption>` import and export in shared V4. Missing: table and cell styling (borders, backgrounds, padding, cell alignment), caption placement choice and layout tables. The current grammar rejects nested tables. V1 includes nested tables.",
+      "acceptance":"Qualify nested-table editing, navigation, history and interchange alongside captions, accessible resize handles, table and cell presentation, and rich paste with intact source partitions.",
       "evidence":["packages/breditor-collaboration/src/toolbar.ts","packages/breditor-experimental-rich-content/src/render.ts","crates/breditor-core/src/rich_content/drafts.rs","docs/RICH_TABLES.md","packages/breditor-experimental-rich-content/src/table_column_resize.ts","crates/breditor-core/tests/rich_table_caption_v4.rs","docs/SHARED_RICH_V4.md"],
       "sources":["tiptap-table","ckeditor-tables","ckeditor-table-caption"]
     },
@@ -224,7 +235,7 @@
       "id":"advanced-images","area":"Images","status":"partial",
       "summary":"Image layouts, handles, links and external sources",
       "current":"Numeric dimensions and block captions work. Opt-in accessible resize handles (aspect-keeping corner, edges, keyboard, RTL-aware) exist for local and shared editors. Rich language V4 adds image links (canonical http(s) targets, optional new window, inert while editing), locally and in shared V4 (`set_image_link` as one paired field, refused on decorative images), importing and exporting identically in both. Missing: inline and wrapped image styles, responsive variants, insert-by-URL with a safe remote-ingestion policy.",
-      "acceptance":"Define supported layouts and ingestion policy, then test resize gestures, responsive output, link/alt behavior and asset lifecycle. Do not turn remote URLs into implicit server fetches.",
+      "acceptance":"Qualify image layouts and responsive output, both URL insertion and policy-controlled implicit loading, Base64 uploads, the three asset provider integrations, optimization and asset lifecycle.",
       "evidence":["packages/breditor-experimental-rich-content/src/render.ts","packages/breditor-collaboration/src/toolbar.ts","crates/breditor-core/src/rich_content/image_link.rs","docs/IMAGE_RESIZE.md","packages/breditor-experimental-rich-content/src/image_resize.ts","docs/SHARED_RICH_V4.md"],
       "sources":["tiptap-image","ckeditor-overview","ckeditor-image-linking"]
     },
@@ -336,7 +347,7 @@
       "id":"widgets-and-embeds","area":"Extended parity","status":"partial",
       "summary":"Media, details, emoji, math and diagrams",
       "current":"Rich language V4 adds an original collapsible section (breditor/details with one text-only summary and a flow body, nesting bounded at 8, persisted open state) with wrap/unwrap/open-state commands, deterministic editing, live/static rendering and HTML/Markdown interchange, locally and in shared V4 (`wrap_details`, `unwrap_details`, `set_details_open`, toolbar and slash items, one Undo step each). Shared Enter at a collapsed summary expands it and enters the body in one guarded step like local `enterDetailsBody`, and `<details>` interchange is identical in shared V4. Emoji, mathematics (Tiptap now ships KaTeX math open source), media embeds, audio/video, iframes and diagrams remain missing.",
-      "acceptance":"Use separate original node contracts, inert/sandboxed renderers and explicit providers. Define import/export and collaboration for each admitted widget.",
+      "acceptance":"Define original contracts for widgets, HTML embeds and whiteboards. Qualify admission, rendering, recovery, interchange and collaboration for each supported surface.",
       "evidence":["crates/breditor-core/src/rich_content/drafts.rs","packages/breditor-experimental-rich-content/src/render.ts","crates/breditor-core/tests/rich_details_v4.rs","experiments/rich-browser/details-v4.spec.mjs","docs/SHARED_RICH_V4.md","crates/breditor-collaboration/tests/shared_v4_structure_contracts.rs","experiments/shared-browser/v4-structure.spec.mjs","experiments/shared-browser/v4-interchange.spec.mjs"],
       "sources":["tiptap-catalog","ckeditor-digest","tiptap-details","tiptap-mathematics"]
     },
@@ -376,15 +387,15 @@
       "id":"document-conversion","area":"Extended parity","status":"partial",
       "summary":"Word, PDF and other office document conversion",
       "current":"A dependency-free deterministic DOCX exporter (@breditor/interchange/docx, STORE-only zip, fixed timestamps) maps headings, inline formats, links, lists incl. V4 numbering, quotes, code, rules, page breaks, tables with merges and captions, host-supplied images and bookmarks, reporting every unrepresentable feature as a loss. DOCX import, PDF/ODT and opening in Word/LibreOffice are not qualified.",
-      "acceptance":"Choose self-hostable adapters, licensing and fidelity targets; preserve document/asset bindings and report unsupported content instead of silently dropping it.",
+      "acceptance":"Qualify self-hostable conversion adapters, including a versioned XML export. Set fidelity targets, preserve document and asset bindings and report unsupported content.",
       "evidence":["packages/breditor-collaboration/src/index.ts","docs/DOCUMENT_CONVERSION.md","packages/breditor-interchange/src/docx.ts"],
       "sources":["tiptap-catalog","ckeditor-overview","ckeditor-license","tiptap-conversion"]
     },
     {
       "id":"pagination","area":"Extended parity","status":"partial",
       "summary":"Pages, page breaks and print layout",
-      "current":"Breditor stays a flow editor (docs/PAGINATION_AND_PRINT.md). Rich language V4 adds an explicit root-level page-break block (insert/delete, node selection, navigation stop, clipboard, Word/Docs/CSS page-break import), locally and in shared V4 (`insert_page_break`/`delete_page_break`, slash item, rendered separator), plus an opt-in CSS print layer (A4/Letter, orientation, margins, break avoidance, repeated header rows, approximate preview guides). No measured pagination, page numbers, running headers/footers, footnotes/endnotes or zoom (Tiptap Pages, CKEditor Pagination) Word, Google Docs and CSS page breaks import identically in local and shared V4 editors.",
-      "acceptance":"Qualify print output in real browsers and either specify measured pagination with page numbers and running headers or record the flow-editor decision as an approved exclusion.",
+      "current":"The current implementation is a flow editor (docs/PAGINATION_AND_PRINT.md). Rich language V4 adds an explicit root-level page-break block (insert/delete, node selection, navigation stop, clipboard, Word/Docs/CSS page-break import), locally and in shared V4 (`insert_page_break`/`delete_page_break`, slash item, rendered separator), plus an opt-in CSS print layer (A4/Letter, orientation, margins, break avoidance, repeated header rows, approximate preview guides). No measured pagination, page numbers, running headers/footers, footnotes/endnotes or zoom (Tiptap Pages, CKEditor Pagination). Word, Google Docs and CSS page breaks import identically in local and shared V4 editors.",
+      "acceptance":"Qualify measured pagination, page numbers and running headers against physical browser output, with pinned fonts and settings and documented tolerances.",
       "evidence":["packages/breditor-experimental-rich-content/src/render.ts","docs/PAGINATION_AND_PRINT.md","crates/breditor-core/tests/rich_page_break_v4.rs","docs/SHARED_RICH_V4.md","experiments/shared-browser/v4-interchange.spec.mjs"],
       "sources":["tiptap-catalog","ckeditor-digest","tiptap-pages","ckeditor-page-break"]
     },
@@ -407,8 +418,8 @@
     {
       "id":"html-source-and-email","area":"Extended parity","status":"partial",
       "summary":"Source editing, general HTML and email layouts",
-      "current":"Canonical schema-bound AST editing deliberately does not preserve arbitrary HTML/CSS, full-page metadata or email layout markup. The scope is now explicit: page metadata, email layout, scripts and stored CSS are out of scope. An opt-in document-selection source view edits sanitized semantic HTML in a textarea, previews bounded allowlist losses before any change and applies one guarded whole-document paste; shared and ordinary families have no source view.",
-      "acceptance":"Resolve the compatibility scope explicitly. Any source UI must import through a bounded allowlist and loss report; never store executable HTML as trusted editor state.",
+      "current":"The current schema-bound profile round-trips semantic body fragments. Preserving full-page metadata, email layouts and additional HTML and CSS remains V1 work. An opt-in document-selection source view edits sanitized semantic HTML in a textarea, previews bounded allowlist losses before any change and applies one guarded whole-document paste; shared and ordinary families have no source view.",
+      "acceptance":"Qualify general HTML support, full-page round trips, email layouts and inline-style export. Define policy-controlled admission, preview, restore and export for untrusted markup.",
       "evidence":["packages/breditor-browser/src/clipboard_html.ts","crates/breditor-core/src/rich_content/drafts.rs","docs/HTML_SOURCE_VIEW.md","packages/breditor-experimental-rich-content/src/source_view_host.ts"],
       "sources":["ckeditor-digest"]
     },
@@ -518,7 +529,7 @@
     }
   ],
   "gates": [
-    {"id":"catalog-coverage","status":"open","summary":"Finish the feature-by-feature baseline review","acceptance":"Expand the Tiptap 3.35 and CKEditor 5 v49.1 catalog rows into versioned acceptance cases. The reviewed capabilities in docs/V1_RELEASE_PLAN.md are all in V1 scope, including the capabilities previously proposed for exclusion. Track coverage per capability and document approved intentional differences.","evidence":["docs/V1_RELEASE_PLAN.md"]},
+    {"id":"catalog-coverage","status":"open","summary":"Finish the feature-by-feature baseline review","acceptance":"Expand the Tiptap 3.35 and CKEditor 5 v49.1 catalog rows into versioned acceptance cases. The reviewed capabilities in docs/V1_RELEASE_PLAN.md are all in V1 scope, including the capabilities previously proposed for exclusion. Track coverage per capability and document approved intentional differences.","evidence":["docs/V1_RELEASE_PLAN.md","docs/v1-catalog-cases.json"]},
     {"id":"distribution","status":"passed","summary":"Promote rich/shared Rust, Wasm and browser packages","acceptance":"Independent clean consumers install one supported paired profile and production module; no experiments path, manual target artifact or source-only link is required.","evidence":["crates/breditor-collaboration/Cargo.toml","packages/breditor-collaboration/package.json","packages/breditor-editor/README.md","scripts/check-collaboration-native-consumer.mjs","scripts/build-collaboration-runtime.mjs","scripts/check-editor-package.mjs","scripts/build-shared-runtime.mjs","scripts/check-shared-package.mjs","docs/qualification/2026-11-22-v1-archive-and-support.json"]},
     {"id":"compatibility","status":"open","summary":"Freeze V1 APIs and explicit migration contracts","acceptance":"Document source, ABI, schema, journal and asset compatibility separately; add supported old-version recovery/migration fixtures and deliberate rejection paths.","evidence":["docs/COMPATIBILITY.md","experiments/collaboration/README.md","docs/qualification/2026-11-22-v1-archive-and-support.json"]},
     {"id":"release-ci","status":"open","summary":"Cover every distributed feature in the release pipeline","acceptance":"Default verify:release alone is insufficient. Run default, rich, shared, relay and installed-consumer checks reproducibly in CI, retaining exact candidate hashes and failed runs.","evidence":["scripts/verify-candidate.mjs","scripts/candidate-release/plan.mjs","docs/V1_CANDIDATE_CHECKS.md","scripts/verify-release.mjs","scripts/check-shared-browser.mjs","scripts/check-rich-browser.mjs","scripts/check-collaboration-feasibility.mjs","scripts/check-input-rules-installed.mjs","scripts/input-rule-probe-policy.mjs","scripts/verify-candidate.test.mjs",".github/workflows/candidate-qualification.yml","scripts/candidate-ci.test.mjs","docs/qualification/2026-10-18-v1-candidate-functional.json","docs/qualification/2026-10-18-input-rules-candidate-pipeline.json"]},
