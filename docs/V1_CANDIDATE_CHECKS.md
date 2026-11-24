@@ -148,6 +148,8 @@ from the candidate. Each exercises the 92 existing contracts against its
 receipt-bound shared runtime. The installed job repeats all 92 through the
 fresh archive and through the production bundle, and verifies the installed
 Wasm and glue before and after both runs. Both shards retain their reports.
+When either Native generation qualification fails, its stage log records a
+bounded summary of failing TAP test numbers and known source locations.
 
 Run a shard locally with `node scripts/verify-candidate.mjs --shard <name>`.
 Add `--dry-run` to inspect its checks. Run with the default shard selection
