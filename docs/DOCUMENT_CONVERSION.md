@@ -107,7 +107,7 @@ and pagination are Word's.
 | Hard break / tab | `w:br` / `w:tab` | `\r` and XML-invalid controls → `removed-content` |
 | Block align / direction / indent / line height | `w:jc` (start→left, end→right, justify→both), `w:bidi`, `w:ind` (0.5 in per level), `w:spacing w:line` | `auto` direction or physical left/right on RTL → `style-approximation` |
 | Bullet list | numbering definition (•, ◦, ▪ by level), one `w:num` per list | — |
-| Ordered list | numbering definition per marker style (decimal, lower/upper letter, lower/upper roman — V4 list styles), `w:startOverride` = start (restarts each list) | **reversed** → `list-numbering`; > 9 levels or start > 2³¹−1 → `list-numbering` |
+| Ordered list | numbering definition per marker style (decimal, lower/upper letter, lower/upper roman — V4 list styles), `w:startOverride` = start (restarts each list). Reversed decimal lists with a supported start and nonnegative ordinals use one restart per item to preserve their displayed numbers. | Reversed numbering, > 9 levels, or start > 2³¹−1 → `list-numbering` |
 | Task list | ☐ / ☒ bullet markers per item state | `style-approximation` per item (static marker, not a content control) |
 | List item continuation blocks | indented to the item's text, no marker | — |
 | Blockquote | `Quote` style (left border) + 0.5 in indent per depth | — |
