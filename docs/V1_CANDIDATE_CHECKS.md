@@ -158,6 +158,13 @@ Native cohort reports before and after their contract runs. The installed shard
 also checks the unpacked runtime against the receipt. The workflow retains both
 result reports.
 
+Native generation execution also runs in separate source and installed shards.
+The execution checks build their live generation and physical control fixtures
+from the candidate. Each exercises the 92 existing contracts against its
+receipt-bound shared runtime. The installed job repeats all 92 through the
+fresh archive and through the production bundle, and verifies the installed
+Wasm and glue before and after both runs. Both shards retain their reports.
+
 Run a shard locally with `node scripts/verify-candidate.mjs --shard <name>`.
 Add `--dry-run` to inspect its checks. Run with the default shard selection
 `none` for the complete plan. Readiness review and the remaining full-profile
