@@ -146,7 +146,13 @@ test("independent offline writers keep exact journals across a relay and page re
  await page.getByRole("button",{name:"Redo",exact:true}).click();
  await expect.poll(()=>documentJson(writers[1])).toBe(merged);
 
- // Verify the operator-facing downloaded backups while the relay is no longer reachable.
+ // Drain each writer's sync work before comparing an exact offline download.
+ // Document convergence alone does not account for a catchup already in flight.
+ for(const [writer,key] of writers){
+  await writer.getByRole("button",{name:"Go offline",exact:true}).click();
+  await writer.evaluate(key=>window.breditorNetworkDemo.peers[key].sync.waitForDisconnected(),key);
+ }
+ await relay.offline();
  const downloaded=[];
  for(const [writer,key] of writers){
   const checkpoint=await writer.evaluate(async key=>{
@@ -164,7 +170,6 @@ test("independent offline writers keep exact journals across a relay and page re
   downloaded.push(contents);
  }
  await Promise.all(writers.map(([writer])=>writer.evaluate(()=>window.breditorNetworkDemo.close())));
- await relay.offline();
  const restored=await page.evaluate(async({configuration,downloaded})=>{
   const [api,wasm]=await Promise.all([import("/shared.js"),import("/probe.js")]);
   const profile=api.compileSharedProfile(wasm,configuration);
