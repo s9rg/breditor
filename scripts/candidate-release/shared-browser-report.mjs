@@ -1,4 +1,5 @@
 import assert from "node:assert/strict";
+import {validatePlaywrightCaseInventory} from "./playwright-case-inventory.mjs";
 
 export function sharedBrowserBatchProjects(run,files,configuredProjects){
  if(!run.projects.includes("webkit*"))return new Map(files.map(file=>[file,run.projects]));
@@ -53,4 +54,10 @@ export function validateSharedBrowserReport(report,expected){
  }
  assert.equal(files.size,expected.size,"Shared browser batch omitted a planned spec file");
  assert.equal(executed,count,"Shared browser result count differs from the report summary");
+}
+
+export function validateSharedBrowserDiscovery(discovered,report,expected){
+ validateSharedBrowserReport(report,expected);
+ const projects=[...new Set([...expected.values()].flat())];
+ return validatePlaywrightCaseInventory(discovered,report,projects).cases;
 }
