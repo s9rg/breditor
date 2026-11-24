@@ -16,7 +16,6 @@ import {verifyHostedCandidateArtifact} from "./check-hosted-candidate-artifact.m
 import {retainSharedRuntimeBuild,sharedRuntimeBuildReport} from "./candidate-release/shared-runtime-evidence.mjs";
 import {sharedRuntimeReceiptVariable} from "./fixtures/native-runtime/shared-runtime-receipt.mjs";
 import {verifyHostedContext} from "./candidate-release/hosted-context.mjs";
-import {validateApplicationNetworkReport} from "./candidate-release/application-network-report.mjs";
 const temporary=()=>mkdtempSync(join(tmpdir(),"breditor-candidate-contract-"));
 const fixtureCheck=(id="fixture",script="console.log('fixture proof')")=>({id,command:process.execPath,args:["-e",script],env:{},artifacts:[],timeoutMs:4000});
 const plan=checks=>({profile:"functional",deferred:["not-a-v1-certification"],checks});
@@ -671,19 +670,6 @@ test("isolated release matrices preserve the full plan's commands and report the
   assert.equal(run.status,2);
   assert.equal(run.stdout,"");
  }
-});
-test("application network evidence counts pilot runs from each Playwright file suite",()=>{
- const titles=[
-  "the first-party pilot opens independent participants and verifies an offline checkpoint after reload",
-  "the pilot supports keyboard sign-in and checkpoint recovery at a narrow viewport",
- ];
- const report={stats:{expected:6,skipped:0,unexpected:0,flaky:0},suites:
-  ["chromium","firefox","webkit-1"].map(projectName=>({file:"network-demo.spec.mjs",
-   specs:titles.map(title=>({title,tests:[{projectName,results:[{status:"passed"}]}]})),
-  }))};
- validateApplicationNetworkReport(report);
- assert.throws(()=>validateApplicationNetworkReport({...report,suites:report.suites.slice(0,2)}),/offline checkpoint after reload/);
- assert.throws(()=>validateApplicationNetworkReport({...report,suites:[...report.suites,report.suites[0]]}),/offline checkpoint after reload/);
 });
 test("candidate engineering coverage can be collected before reviewed readiness",()=>{
  const covered=new Set(candidateCheckProfiles

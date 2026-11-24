@@ -86,6 +86,8 @@ Select `installed-application-network` to run the promoted SDK network suite
 in Chromium, Firefox and WebKit. It builds and installs fresh browser, rich,
 collaboration and editor packages and runs the same first-party pilot,
 history and presentation assertions against the candidate Native relay.
+Qualification and retained review require each selected file and a passing
+result for every reported source case on each assigned browser project.
 The retained report includes the Playwright results, archive, shared Wasm,
 relay and fixture digests. The workflow retains failed Playwright traces.
 
