@@ -122,7 +122,8 @@ test("the search panel mirrors under RTL chrome, keeps logical tab order and sea
  if(Math.abs(previous.y-next.y)<previous.height)expect(previous.x).toBeGreaterThan(next.x);
  // Tab follows the logical order whatever the visual mirroring. WebKit's default Tab skips checkboxes and
  // buttons (macOS full keyboard access is off), so there the next stop is the replacement field.
- const after=browserName==="webkit"?panel.getByRole("textbox",{name:"استبدال بـ"}):regex;
+ const macWebKit=browserName==="webkit"&&process.platform==="darwin";
+ const after=macWebKit?panel.getByRole("textbox",{name:"استبدال بـ"}):regex;
  await find.focus();await page.keyboard.press("Tab");await expect(after).toBeFocused();
  await page.keyboard.press("Shift+Tab");await expect(find).toBeFocused();
  await find.fill("Rich");const status=panel.locator("[data-search-status]");
