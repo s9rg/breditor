@@ -265,19 +265,32 @@ test("the first-party pilot opens independent participants and verifies an offli
  const expectedHash=createHash("sha256").update(downloadBytes).digest("hex");
  await expect(page.getByLabel("Downloaded checkpoint digest")).toContainText(expectedHash);
  const restore=page.getByLabel("Document checkpoint");
+ // WebKit's context-wide offline emulation also refuses local fixture file reads.
+ // The relay is already disconnected. Block HTTP requests while reading the actual download.
+ const recoveryRequests=[];
+ const externalHttp=/^https?:\/\//;
+ const blockRecoveryRequest=route=>{recoveryRequests.push(route.request().url());return route.abort();};
+ await page.route(externalHttp,blockRecoveryRequest);
  await restore.setInputFiles(await file.path());
  await expect(page.locator("#pilot-verification")).toContainText(`Exact read-only replay verified. Undo 1. Redo 0. SHA-256 ${expectedHash}`);
- await expect(page.getByLabel("Recovered document text")).toContainText("Pilot decision.");
- await expect(page.getByLabel("Recovered document text")).not.toContainText("Pilot evidence.");
+ const recovered=page.getByRole("region",{name:"Recovered document",exact:true});
+ await expect(recovered).toContainText("Pilot decision.");
+ await expect(recovered).not.toContainText("Pilot evidence.");
+ const recoveryTable=recovered.getByRole("table");
+ await expect(recoveryTable.getByRole("columnheader",{name:"Follow-up",exact:true})).toBeVisible();
+ await expect(recoveryTable.getByRole("cell",{name:"Verify the handoff",exact:true})).toBeVisible();
+ await expect(recovered.locator('[contenteditable="true"],button,form,img[src]')).toHaveCount(0);
  expect(await page.evaluate(()=>window.breditorNetworkDemo.peers.a.session.core.checkpointJson())).toBe(checkpoint);
 
  await restore.setInputFiles({name:"noncanonical.json",mimeType:"application/json",buffer:Buffer.from(checkpoint+"\n","utf8")});
  await expect(page.locator("#pilot-verification")).toContainText("could not be recovered");
- await expect(page.getByLabel("Recovered document text")).toBeHidden();
+ await expect(recovered).toBeHidden();
  await restore.setInputFiles({name:"invalid.json",mimeType:"application/json",buffer:Buffer.from([0xff,0x00])});
  await expect(page.locator("#pilot-verification")).toContainText("could not be recovered");
- await expect(page.getByLabel("Recovered document text")).toBeHidden();
+ await expect(recovered).toBeHidden();
 
+ await page.unroute(externalHttp,blockRecoveryRequest);
+ expect(recoveryRequests).toEqual([]);
  await page.getByRole("button",{name:"Reconnect",exact:true}).click();
  await ready(page);
  await expect(bob.locator('#b [data-rich-text="pilot-notes"]')).toHaveText("Pilot decision. Add the decisions and results that the next reviewer needs.");
@@ -505,6 +518,11 @@ test("the pilot supports keyboard sign-in and checkpoint recovery at a narrow vi
  await backup.setInputFiles({name:"checkpoint.json",mimeType:"application/json",buffer:Buffer.from(checkpoint)});
  await expect(page.locator("#pilot-verification")).toContainText("Exact read-only replay verified");
  await expect(backup).toBeFocused();
+ const recovered=page.getByRole("region",{name:"Recovered document",exact:true});
+ await expect(recovered.getByRole("table")).toBeVisible();
+ await page.keyboard.press(tab);
+ await expect(recovered).toBeFocused();
+ expect(await page.evaluate(()=>document.documentElement.scrollWidth)).toBe(320);
  expect((await new AxeBuilder({page}).analyze()).violations).toEqual([]);
 });
 

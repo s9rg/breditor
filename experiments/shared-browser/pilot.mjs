@@ -38,12 +38,6 @@ async function readBootstrap() {
   return value;
 }
 
-function textFrom(node) {
-  return node.kind === "text" ? node.text : node.children.map(textFrom).join(
-    node.type === "breditor/paragraph" ? "" : "\n",
-  );
-}
-
 function inspectCheckpoint(wasm, {compileSharedProfile, initializeSharedReadOnly, SharedRichEditor}, configuration, checkpoint) {
   const profile = compileSharedProfile(wasm, configuration);
   let owner;
@@ -58,20 +52,20 @@ function inspectCheckpoint(wasm, {compileSharedProfile, initializeSharedReadOnly
     owner = new SharedRichEditor(raw);
     const {readOnly, undoDepth, redoDepth} = owner.view();
     if (!readOnly || owner.checkpointJson() !== checkpoint) throw Error("Checkpoint changed on replay");
-    return {text: textFrom(JSON.parse(owner.documentJson()).root), undoDepth, redoDepth};
+    return {documentJson: owner.documentJson(), undoDepth, redoDepth};
   } finally {
     owner?.dispose();
     profile.free();
   }
 }
 
-function enableRecovery(wasm, shared, configuration) {
+function enableRecovery(wasm, shared, configuration, renderStaticDocument) {
   backup.disabled = false;
   backup.addEventListener("change", async () => {
     const file = backup.files[0];
     backup.value = "";
     preview.hidden = true;
-    preview.textContent = "";
+    preview.replaceChildren();
     if (!file) return;
     const hadFocus = document.activeElement === backup;
     verification.textContent = "Checking checkpoint…";
@@ -81,9 +75,10 @@ function enableRecovery(wasm, shared, configuration) {
       const bytes = await file.arrayBuffer();
       const checkpoint = new TextDecoder("utf-8", {fatal: true, ignoreBOM: true}).decode(bytes);
       const recovered = inspectCheckpoint(wasm, shared, configuration, checkpoint);
-      verification.textContent = `Exact read-only replay verified. Undo ${recovered.undoDepth}. Redo ${recovered.redoDepth}. SHA-256 ${await digest(bytes)}.`;
-      preview.textContent = recovered.text;
+      const hash = await digest(bytes);
+      preview.innerHTML = renderStaticDocument(recovered.documentJson, {blockIds: false});
       preview.hidden = false;
+      verification.textContent = `Exact read-only replay verified. Undo ${recovered.undoDepth}. Redo ${recovered.redoDepth}. SHA-256 ${hash}.`;
     } catch (error) {
       showError(verification, "This checkpoint could not be recovered in the pilot.", error);
     } finally {
@@ -140,10 +135,10 @@ function enableWorkspaceActions(app, peer, downloadNetworkCheckpoint) {
 }
 
 async function startPilot(bootstrap) {
-  const [wasm, shared, {downloadNetworkCheckpoint, openNetworkDemo}] = await Promise.all([
-    import("/probe.js"), import("/shared.js"), import("/network-demo.mjs"),
+  const [wasm, shared, {downloadNetworkCheckpoint, openNetworkDemo}, {renderStaticDocument}] = await Promise.all([
+    import("/probe.js"), import("/shared.js"), import("/network-demo.mjs"), import("/pilot-static.js"),
   ]);
-  enableRecovery(wasm, shared, bootstrap.configuration);
+  enableRecovery(wasm, shared, bootstrap.configuration, renderStaticDocument);
   const previous = sessionStorage.getItem("breditor-pilot-participant");
   if (participants.has(previous)) principalField.value = previous;
   openButton.disabled = false;

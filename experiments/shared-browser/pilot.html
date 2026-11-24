@@ -26,6 +26,10 @@
   .pane h2 { margin: 0; }
   output, pre { overflow-wrap: anywhere; }
   pre { white-space: pre-wrap; padding: 1rem; background: #f3f5ef; }
+  #pilot-preview { max-inline-size: 100%; overflow: auto; overflow-wrap: anywhere; margin-block-start: .75rem; padding: .75rem; background: #f3f5ef; }
+  #pilot-preview img { max-inline-size: 100%; height: auto; }
+  #pilot-preview table { border-collapse: collapse; }
+  #pilot-preview :is(th, td) { border: 1px solid #cad5cb; padding: .35rem .5rem; text-align: start; }
   #pilot-verification, #pilot-export-digest, #network-state { overflow-wrap: anywhere; }
   .skip-link { position: absolute; inset: .5rem auto auto .5rem; transform: translateY(-200%); padding: .55rem; background: white; color: #205044; }
   .skip-link:focus { transform: none; }
@@ -70,7 +74,7 @@
       <p>Choose a downloaded document checkpoint to verify its exact bytes and inspect a read-only preview. Image bytes are stored separately.</p>
       <label>Document checkpoint <input id="pilot-backup" type="file" accept=".json,application/json" disabled></label>
       <p id="pilot-verification" role="status"></p>
-      <pre id="pilot-preview" aria-label="Recovered document text" hidden></pre>
+      <section id="pilot-preview" aria-label="Recovered document" tabindex="0" hidden></section>
     </section>
   </main>
   <script type="module" src="/pilot.mjs"></script>

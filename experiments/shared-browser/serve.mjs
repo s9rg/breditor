@@ -17,6 +17,17 @@ add("/relay-app-fixture.mjs",resolve(root,"experiments/shared-browser/relay-app-
 add("/raster-fixtures.json",resolve(root,"target/relay-raster-fixtures.json"),"application/json");
 add("/network-demo.mjs",resolve(root,"experiments/shared-browser/network-demo.mjs"));
 add("/pilot.mjs",resolve(root,"experiments/shared-browser/pilot.mjs"));
+if(application)add("/pilot-static.js",resolve(installed,"node_modules/@breditor/editor/dist/static_document.js"));
+else {
+ const {rolldown}=await import("rolldown");
+ const bundle=await rolldown({input:resolve(root,"packages/breditor-editor/src/static_document.ts"),
+  external:["@breditor/experimental-rich-content/rendering"],logLevel:"silent"});
+ try {
+  const {output}=await bundle.generate({format:"esm"});
+  if(output.length!==1||output[0].type!=="chunk")throw Error("Expected one pilot static module");
+  resources.set("/pilot-static.js",["text/javascript; charset=utf-8",Buffer.from(output[0].code)]);
+ } finally {await bundle.close();}
+}
 add("/inline-presentation-fixture.mjs",resolve(root,"experiments/shared-browser/inline-presentation-fixture.mjs"));
 add("/standard-inline-fixture.mjs",resolve(root,"experiments/shared-browser/standard-inline-fixture.mjs"));
 add("/structural-fixture.mjs",resolve(root,"experiments/shared-browser/structural-fixture.mjs"));
