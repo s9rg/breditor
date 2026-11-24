@@ -816,3 +816,20 @@ These are explicit host actions on supplied text. Ordinary browser clipboard
 events still choose from the supplied MIME types, and a `text/plain` event stays
 literal. Hosts can wire their own literal and detect actions without inferring
 the intent of an operating system shortcut.
+
+## Prepare an HTTPS raster from an explicit host loader
+
+`prepareRichRasterUrl(url, options)` checks a credential-free HTTPS URL without
+a fragment against `allowUrl` before calling the host's `load`. Supply
+`expectedAsset` from a trusted SHA-256 asset record. The loader receives the
+canonical URL, a maximum byte count, the caller's optional abort signal, and
+`redirect: "error"`. It owns network access, enforces the byte limit as it reads,
+rejects redirects, and returns the actual final response URL and immutable
+PNG, JPEG or WebP `Blob`. The SDK checks that final URL and the raster MIME,
+encoded bytes, decoded dimensions and digest before returning the inspection.
+
+The host can explicitly retain the prepared bytes and use its existing native
+insertion workflow. Preparation performs no network or storage operation of
+its own and does not mutate an editor. Cancellation stops waiting and
+discards late host responses. The host is responsible for honouring the
+signal in its loader.

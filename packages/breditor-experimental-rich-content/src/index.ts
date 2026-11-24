@@ -18,6 +18,7 @@ export {RichAssetArchive,readRichAssetBackup,type RichAssetArchiveEntry,type Ric
 export {defaultAssetLimits,type AssetInfo,type AssetLimits,type AssetStatus,type AssetUploader,type RasterMime} from "./assets/types.js";
 export {checkedAssetLimits as checkRichAssetLimits} from "./assets/limits.js";
 export {inspectRichRaster,type RichRasterInspection,type RichRasterInspectionOptions} from "./assets/inspect_raster.js";
+export {prepareRichRasterUrl,RichRasterUrlError,type RichRasterUrlOptions,type RichRasterUrlLoadRequest,type RichRasterUrlLoadResponse} from "./assets/prepare_raster_url.js";
 export {insertImageFiles} from "./assets/insert_image_files.js";
 export {RichLocalSessionStore} from "./persistence/local_session_store.js";
 export {RichDocumentSessionStore,type RichDocumentSessionStoreOptions} from "./persistence/document_session_store.js";
