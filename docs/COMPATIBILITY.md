@@ -26,7 +26,10 @@ the default ABI 5 or the older document/session wire families.
   by an ABI 2 build of the released V0.1.0 source. Native and Wasm boundary
   tests restore it
   byte-for-byte, traverse its full Undo/Redo history and reject an unknown
-  checkpoint version and a foreign schema.
+  checkpoint version and a foreign schema. A separate [V0.2.1 Highlight
+  checkpoint](../crates/breditor-wasm/tests/fixtures/v0.2.1/README.md) from the
+  released ABI 3 source exercises the same guarantees through the matching
+  fingerprint-bearing V2 profile factory and verifies refusal by the V1 reader.
 - **Document schema.** The base Document V1 schema and the fingerprinted rich
   language profiles have distinct admission boundaries. Select the original
   language and fingerprint when reopening saved content.
@@ -38,7 +41,7 @@ the default ABI 5 or the older document/session wire families.
   framing, byte hashes, upload state and epoch data. Its restore policy is
   separate from loading a document or journal with asset references.
 
-The fixture qualifies default checkpoint compatibility. V1 SDK surface review,
+The fixtures qualify the default V1 and Highlight V2 checkpoint paths. V1 SDK surface review,
 shared upgrade and rollback routes, and the historical input-rule reader
 qualification have separate evidence requirements.
 
