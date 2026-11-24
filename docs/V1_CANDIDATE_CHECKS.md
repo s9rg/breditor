@@ -220,11 +220,12 @@ intended to qualify, then run this in the exact clean candidate checkout.
 node scripts/check-hosted-candidate-artifact.mjs OWNER/REPO artifact.json run-attempt.json artifact.zip extracted/run-NAME/result.json
 ```
 
-The command uses `unzip` to compare the archived manifest and runner context
-against the extracted files. It checks the ZIP digest from the artifact API,
-requires a successful attempt of the candidate workflow, and validates the
-candidate stage logs and retained reports with the regular coverage checker.
-The authenticated API responses supply the trusted repository and run metadata.
+The command checks the ZIP digest from the artifact API and requires a
+successful attempt of the candidate workflow. It uses `unzip` to verify that
+the authenticated ZIP contains one matching manifest, runner context and
+copy of each counted stage log and required retained report. It validates the
+extracted copies with the regular coverage checker. The authenticated API
+responses supply the trusted repository and run metadata.
 
 ## Whole-room activation jobs
 

@@ -6,7 +6,8 @@ import {createReadStream,lstatSync,readFileSync,realpathSync} from "node:fs";
 import {basename,dirname,resolve} from "node:path";
 import {fileURLToPath} from "node:url";
 import {candidateCoverage} from "./check-candidate-coverage.mjs";
-import {repository as candidateRoot} from "./candidate-release/plan.mjs";
+import {candidateReleasePlan,repository as candidateRoot} from "./candidate-release/plan.mjs";
+import {candidateShardPlan} from "./candidate-release/shards.mjs";
 
 const workflowPath=".github/workflows/candidate-qualification.yml";
 const sha256=bytes=>createHash("sha256").update(bytes).digest("hex");
@@ -63,15 +64,31 @@ export async function verifyHostedCandidateArtifact(root,{repository,artifactMet
  const path=resolve(archive),stat=lstatSync(path);
  assert.ok(stat.isFile()&&stat.size>0&&stat.size===artifact.size_in_bytes,"Downloaded ZIP size differs from GitHub artifact metadata");
  assert.equal(await archiveDigest(path),artifact.digest,"Downloaded ZIP digest differs from GitHub artifact metadata");
- const entries=execFileSync("unzip",["-Z1",path],{encoding:"utf8",maxBuffer:1024*1024}).split("\n");
- const resultEntry=`${runDirectory}/result.json`;
- for(const [entry,expected,limit] of [
-  ["runner-context.tsv",evidence.hosted.contextSha256,8192],
-  [resultEntry,evidence.sha256,32*1024*1024],
- ]){
-  assert.equal(entries.filter(item=>item===entry).length,1,`ZIP must contain exactly one ${entry}`);
+ const entries=new Map();
+ for(const entry of execFileSync("unzip",["-Z1",path],{encoding:"utf8",maxBuffer:1024*1024}).split("\n")){
+  entries.set(entry,(entries.get(entry)??0)+1);
+ }
+ const verifyEntry=(entry,expected,limit)=>{
+  // unzip interprets its member argument as a pattern. Planned evidence paths are literal.
+  assert.match(entry,/^[a-z0-9_.+/\-]+$/iu,"Expected a literal candidate archive member path");
+  assert.equal(entries.get(entry),1,`ZIP must contain exactly one ${entry}`);
   const bytes=execFileSync("unzip",["-p",path,entry],{maxBuffer:limit});
   assert.ok(sha256(bytes)===expected,`Downloaded ZIP and selected checkout evidence differ for ${entry}`);
+  return bytes;
+ };
+ verifyEntry("runner-context.tsv",evidence.hosted.contextSha256,8192);
+ const receipt=JSON.parse(verifyEntry(`${runDirectory}/result.json`,evidence.sha256,32*1024*1024));
+ const profilePlan=candidateReleasePlan({profile:evidence.profile,environment:{}});
+ const plan=evidence.shard?candidateShardPlan(profilePlan,evidence.shard):profilePlan;
+ // candidateCoverage already checked these records against the same plan and the extracted bytes.
+ for(const [index,check] of plan.checks.entries()){
+  const stage=receipt.stages[index],log=`${String(index+1).padStart(2,"0")}-${check.id}.log`;
+  verifyEntry(`${runDirectory}/${log}`,stage.log.sha256,Math.max(1,stage.log.bytes));
+  for(const [artifactIndex,artifact] of check.artifacts.entries()){
+   if(!artifact.retain)continue;
+   const record=stage.artifacts[artifactIndex],entry=`${runDirectory}/artifacts/${check.id}/${artifact.path}`;
+   verifyEntry(entry,record.sha256,Math.max(1,record.bytes));
+  }
  }
  assert.equal(await archiveDigest(path),artifact.digest,"Downloaded ZIP changed during verification");
  return {...coverage,githubArtifact:{id:artifact.id,name:artifact.name,digest:artifact.digest}};
