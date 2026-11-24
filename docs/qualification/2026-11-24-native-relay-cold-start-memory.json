@@ -1,0 +1,83 @@
+{
+  "format": "breditor/relay-cold-start-memory",
+  "formatVersion": 1,
+  "measuredSource": {
+    "commit": "d06ce6eb88b2977cc14215f7298fe1a2a0fa2303",
+    "dirty": false,
+    "sha256": "0092fc493954f7bdee2c56973ccc802d907216d93daac4a79955e8e74527569b",
+    "files": 9653,
+    "bytes": 82807182
+  },
+  "fullReportSha256": "07fa9958ab59643b30f1db3b6821d9d0282b81e9166e86e461784c60f5d1bbdc",
+  "nativeFixture": {
+    "buildMode": "debug",
+    "sourceCommit": "0507e406dd35a53b9f794efeb6a2c5f11890e8e9",
+    "sha256": "143db2bfc8e17986734b069e0115054ba208367a6f1370498378080775b12520"
+  },
+  "platform": {
+    "os": "macOS 26.6.2 (25G83)",
+    "arch": "arm64",
+    "cpu": "Apple M1 Pro",
+    "node": "22.14.0"
+  },
+  "command": "node scripts/check-writable-relay-segment.mjs <compatible-native-relay_segment_functional> --measure-portable-cold-start",
+  "workload": {
+    "description": "One fresh loopback relay process per source and independently installed client phase. The WAL inventory is read and SHA-256 hashed immediately before each measured start, so filesystem caches may be warm. Three native room segments include two full predecessor directories with document, comment, registration, catalog and raster-reference history, plus a fixture padding the last predecessor to its record ceiling.",
+    "walBytes": "Exact physical .wal bytes in the same source-native, successor and final directories before and after metered replay. The digest binds directory, filename, length and SHA-256 of each file.",
+    "listeningMs": "Measured from wrapper spawn to the native listening line.",
+    "residentAtListeningBytes": "First ps RSS observation after the listening line, before attaching any client to the measured process.",
+    "maximumResidentBytes": "macOS time -l kernel high-water RSS from process launch through clean exit, sampled as a separate metric.",
+    "exactReplay": "The metered boot leaves all retained WAL files unchanged. The following authenticated reconnect verifies document and review server clocks, the retained review cursor proof, catch-up and the exact retained client receipts and histories with submissions forbidden. The verified reader cursor may advance to its already acknowledged review batch."
+  },
+  "observations": [
+    {
+      "mode": "source",
+      "walFiles": 129,
+      "walBytes": 1514280,
+      "walInventorySha256": "7c1e8739c795bbbc8c32b61d4dea18869b3dbede09e74c08f679daa57265b528",
+      "listeningMs": 345.3912500000006,
+      "residentAtListeningBytes": 31080448,
+      "maximumResidentBytes": 31178752,
+      "exactWalReplay": true,
+      "exactHistoriesAndReceipts": true,
+      "replayedWithoutSubmissions": true,
+      "predecessorNextSequence": "4245",
+      "activePredecessorRecordsRemaining": 0,
+      "processExits": 10,
+      "coldResumes": 7,
+      "runtimeSha256": "8f39c742c461006c90e209e0287f7db137574843f316ccddbe2aaa141ca00401"
+    },
+    {
+      "mode": "installed",
+      "walFiles": 129,
+      "walBytes": 1513628,
+      "walInventorySha256": "e3b4e731d0fabcef02bab8974879304778103f34e80981b59ca2ed124e409686",
+      "listeningMs": 349.1212499999965,
+      "residentAtListeningBytes": 31129600,
+      "maximumResidentBytes": 31260672,
+      "exactWalReplay": true,
+      "exactHistoriesAndReceipts": true,
+      "replayedWithoutSubmissions": true,
+      "predecessorNextSequence": "4245",
+      "activePredecessorRecordsRemaining": 0,
+      "processExits": 10,
+      "coldResumes": 7,
+      "runtimeSha256": "8f39c742c461006c90e209e0287f7db137574843f316ccddbe2aaa141ca00401",
+      "installedArchives": [
+        {
+          "name": "@breditor/browser",
+          "sha256": "1199d14fe5b3d5b2e0318642a9bbf9f5b84773e97265597f72e190be43869ae0"
+        },
+        {
+          "name": "@breditor/experimental-rich-content",
+          "sha256": "2e2037898527937bb60f62dcfa84dd80cfd5590a46260bc869531c3bfd377da5"
+        },
+        {
+          "name": "@breditor/collaboration",
+          "sha256": "db13926036a0b8cbc4cbeaf0037bc7e5a4a28a3592c6d370c261ef1bbd1fc373"
+        }
+      ]
+    }
+  ],
+  "scope": "Two debug-build cold process observations on one macOS host, with WALs read before startup and no filesystem cache flush. No platform-independent resource budget, maximum WAL byte-size saturation, power-loss, large-raster or supported-lifetime result."
+}
