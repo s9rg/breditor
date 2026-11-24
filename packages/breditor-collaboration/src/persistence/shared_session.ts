@@ -64,6 +64,7 @@ export interface SharedSearchSessionOptions<P extends SharedSelectionPolicy=Shar
 
 /** Exact causal recovery with bounded coalesced writes and origin-wide writer exclusion. */
 const constructionKey=Object.freeze({});
+const versionChangeError=()=>new SharedEditorError("session_versionchange","Shared storage changed; export the retired journal before explicitly discarding this writer");
 let readOriginalNative:(owner:SharedPersistentSession<SharedSelectionPolicy>,authority:()=>void,signal?:AbortSignal)=>Promise<OriginalRecordRead<OriginalNativeRecords>>;
 let readyActorCustody:(owner:SharedPersistentSession)=>StoppedActorBinding;
 export const checkReadySharedSourceActors=<P extends SharedSelectionPolicy>(owner:SharedPersistentSession<P>):StoppedActorBinding=>readyActorCustody(owner as unknown as SharedPersistentSession);
@@ -97,7 +98,7 @@ export class SharedPersistentSession<P extends SharedSelectionPolicy="original">
   db.onversionchange=()=>{
    // An upgrade must unblock its database, not silently destroy an unsaved native journal.
    this.#storageChanged=true;retireOwnedCore(core);db.close();
-   this.#failed(new SharedEditorError("session_versionchange","Shared storage changed; export the retired journal before explicitly discarding this writer"));
+   this.#failed(versionChangeError());
   };
  }
  static{const inspect=(owner:SharedPersistentSession,stopped=true):StoppedActorBinding=>{if(!owner||typeof owner!=='object'||!(#ownedCore in owner))throw new SharedEditorError('actor_source_unavailable','Use the actual native persistence owner');if(owner.#closed||owner.#running||owner.#closeRequest)throw new SharedEditorError('actor_source_in_use','Settle actual native persistence and cleanup before moving actor custody');if(Object.getOwnPropertyDescriptor(owner,'core')?.value!==owner.#ownedCore)throw new SharedEditorError('actor_source_unavailable','The original native core binding was replaced');if(stopped)requireStoppedActorCore(owner.#ownedCore);else requireLiveActorCore(owner.#ownedCore);const binding=owner.#actorBinding;checkSharedWriterLeaseForEscrow(owner.#lease,binding.room,binding.writer);return binding;};readyActorCustody=owner=>inspect(owner,false);checkActorCustody=owner=>inspect(owner,true);takeActorCustody=owner=>{const binding=inspect(owner);return createSharedWriterLeaseEscrow(owner.#lease,binding.room,binding.writer);};}
@@ -203,7 +204,8 @@ export class SharedPersistentSession<P extends SharedSelectionPolicy="original">
  async exportBackup():Promise<string>{this.#live();const checkpoint=this.#boundCore().checkpointJson(),identity:SharedBackupIdentity={room:this.#options.room,writer:this.#options.writer,richLanguage:this.#options.richLanguage??1,history:this.#options.history??"explicit",rangeEditing:this.#options.rangeEditing??(this.#selectionPolicy==="document-v1"?"general-v1":"original"),selectionEditing:this.#selectionPolicy,searchHistory:this.#search?"search-v1":null};return encodeSharedSessionBackup(identity,checkpoint);}
  /** Capture a complete exact journal synchronously; coalesce only superseded complete checkpoints. */
  save():void{
-  this.#live();this.#recordReadEpoch=Object.freeze({});const core=this.#boundCore(),json=core.checkpointJson(),revision=core.view().revision;
+  this.#live();if(this.#storageChanged)throw versionChangeError();
+  this.#recordReadEpoch=Object.freeze({});const core=this.#boundCore(),json=core.checkpointJson(),revision=core.view().revision;
   if(this.#search)checkSearchCheckpoint(json,this.#options.room,this.#options.writer,this.#options.richLanguage??1,this.#options.history??"explicit",this.#options.rangeEditing??"original",this.#selectionPolicy);
   else if(this.#selectionPolicy==="document-v1")checkDocumentCheckpoint(json,this.#options.room,this.#options.writer,this.#options.richLanguage,this.#options.history);
   else checkCheckpoint(json,this.#options.room,this.#options.writer,this.#options.richLanguage,this.#options.history,this.#options.rangeEditing);
@@ -212,10 +214,10 @@ export class SharedPersistentSession<P extends SharedSelectionPolicy="original">
  }
  #start():void{
   if(this.#running||this.#closed||!this.#pending)return;
-  this.#running=this.#drain().catch(error=>{this.#failed(error);}).finally(()=>{this.#running=undefined;this.#notify();if(!this.#failure)this.#start();});
+  this.#running=this.#drain().catch(error=>{if(!this.#storageChanged)this.#failed(error);}).finally(()=>{this.#running=undefined;this.#notify();if(!this.#failure)this.#start();});
  }
  async #drain():Promise<void>{
-  while(this.#pending&&!this.#closed){this.#lease.assertLive();const next=this.#pending;this.#pending=undefined;
+  while(this.#pending&&!this.#closed&&!this.#storageChanged){this.#lease.assertLive();const next=this.#pending;this.#pending=undefined;
    try{if(this.#search)await writeSearchRecord(this.#db,[this.#options.room,this.#options.writer],{format:"breditor/shared-search-checkpoint-record",formatVersion:1,history:this.#options.history??"explicit",rangeEditing:this.#options.rangeEditing??"original",selectionEditing:this.#selectionPolicy,richLanguage:this.#options.richLanguage??1,checkpointJson:next.json});else if(this.#selectionPolicy==="document-v1")await writeDocumentSessionCheckpoint(this.#db,[this.#options.room,this.#options.writer],next.json,this.#options.history??"explicit",this.#options.richLanguage??1);else if(this.#options.rangeEditing==="general-v1")await writeSessionCheckpoint(this.#db,[this.#options.room,this.#options.writer],next.json,this.#options.history??"explicit","general-v1",this.#options.richLanguage??1);else await writeSessionCheckpoint(this.#db,[this.#options.room,this.#options.writer],next.json,this.#options.history??"explicit");}
    catch(error){this.#pending??=next;throw error;}
    // A late commit can advance the closed revision without retaining its journal.
