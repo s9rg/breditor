@@ -236,3 +236,13 @@ and the engine.
 - Playwright `experiments/rich-browser/page-break-v4.spec.mjs` in Chromium,
   Firefox and WebKit, including `page.emulateMedia({media:"print"})` checks of
   computed break styles for the live editor and the static print export.
+- On macOS, run `node scripts/check-interchange-package.mjs` after preparing
+  the SDK builds, then `node scripts/check-measured-print-output.mjs`. The latter
+  verifies a native V4 document with fixed Menlo typography, an explicit break,
+  a decoded raster and a 16-row table. Chromium PDF and the measured screen flow
+  agree on the page count and forced page for this fixture. PDFKit checks every
+  table row in order and the repeated header. The text edit changes the output
+  from three pages to five. Undo and a native cold reopen return it to three.
+  The raster resize moves the measured forced boundary with three pages still
+  present. The check retains package digests, measurements, and PDFs under
+  `target/`.
