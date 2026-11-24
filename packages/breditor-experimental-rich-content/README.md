@@ -620,8 +620,10 @@ for its reference Rust host. The read-only rendering subpath also exports
 `RichLocalSessionStore.open(name)` stores exact checkpoint strings with a 16 MiB
 ceiling and a bounded serial write queue (64 writes, 32 MiB pending bytes).
 `save` resolves after its IndexedDB transaction completes; `flush` waits for the
-last scheduled write. Replay-admit `load()` through the matching rich profile
-before mounting an owner. Await `flush` before closing if the last write matters.
+last scheduled write. `load()` waits for queued writes to settle and reads the
+last committed checkpoint, including after a write failure. Replay-admit it through
+the matching rich profile before mounting an owner. Await `flush` before closing
+if the last write matters.
 Use a distinct store name per exclusive local editor; this helper does not lease
 writers, merge tabs, persist collaboration state or acknowledge a server save.
 

@@ -15,7 +15,10 @@ export class LocalCheckpointDatabase {
  }
  assertLive():void{if(this.#closed)throw Error("Local session storage is closed");}
  async load(key:string):Promise<unknown>{
-  this.assertLive();await this.#tail;this.assertLive();
+  this.assertLive();
+  // A failed write still leaves a durable record to read. Save and flush report that failure.
+  await this.#tail.catch(()=>{});
+  this.assertLive();
   return new Promise((resolve,reject)=>{
    const tx=this.#db.transaction("checkpoint","readonly"),request=tx.objectStore("checkpoint").get(key);let value:unknown;
    request.onsuccess=()=>{value=request.result;};tx.oncomplete=()=>resolve(value);tx.onabort=()=>reject(tx.error??Error("Local checkpoint read failed"));
