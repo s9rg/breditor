@@ -5,6 +5,25 @@ clipboard/caret or Link Undo faults have been explained. The separate
 [boundary investigation](WEBKIT_ACTION_STATE_REGRESSION.md) retains those
 observations and the descriptor transport mitigations.
 
+## Overlapping default Wasm startup
+
+A slow default `@breditor/wasm` initializer could publish a second WebAssembly
+instance after another initializer had already created a live editor. Owner
+handles still referenced the first instance's memory. The generated glue now
+keeps the first published instance and returns its exports to the later call.
+
+The installed package smoke creates a live owner while a second initializer is
+pending. It checks both an async winner and a sync winner, and compares the
+live owner's checkpoint bytes after the delayed initializer completes.
+
+On November 23, 2026, a controlled loopback check reproduced both orders in
+Chromium 151.0.7922.34, Firefox 153.0 and WebKit 26.5 on arm64 macOS 26.6.2.
+Both orders preserved export identity and the live checkpoint in all three
+engines with the glue repair. Both variants ran the same Wasm bytes
+(`fe2a85b39cf4003d5767307d668fc897b7f9f514ecb45c20c7adbc2e0199c91a`).
+The historical intermittent projection rejection and original spontaneous
+editing fault still require separate qualification.
+
 ## User-visible containment
 
 A runtime fault still disables editing and tears down the command queue and

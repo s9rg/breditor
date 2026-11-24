@@ -3,6 +3,13 @@ import { readFileSync, writeFileSync } from "node:fs";
 if (process.argv.length !== 3) throw Error("Usage: node compact-wasm-glue.mjs <generated-js>");
 const input = process.argv[2];
 let source = readFileSync(input, "utf8");
+
+// A delayed async initializer can finish after another call published Wasm.
+// Live owners keep pointers into that first instance's memory.
+const finalizeInit = "function __wbg_finalize_init(instance, module) {\n";
+if (source.split(finalizeInit).length !== 2) throw Error("Expected one generated Wasm finalizer");
+source = source.replace(finalizeInit, finalizeInit + "    if (wasm !== undefined) return wasm;\n");
+
 let compactedStrings = 0;
 
 function generatedBody(lines) {
