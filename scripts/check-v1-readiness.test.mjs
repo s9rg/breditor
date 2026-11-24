@@ -4,7 +4,7 @@ import {existsSync, mkdtempSync, readdirSync, readFileSync, rmSync, symlinkSync}
 import {tmpdir} from "node:os";
 import {join} from "node:path";
 import test from "node:test";
-import {auditPath, catalogPath, main, readCatalogs, repository, summarizeAudit, validateAudit, validateCatalogCases} from "./check-v1-readiness.mjs";
+import {auditPath, catalogPath, main, readCatalogs, repository, summarizeAudit, summarizeUpstreamCatalog, upstreamCatalogPath, validateAudit, validateCatalogCases} from "./check-v1-readiness.mjs";
 
 const load = () => JSON.parse(readFileSync(auditPath, "utf8"));
 const loadCatalog = () => JSON.parse(readFileSync(catalogPath, "utf8"));
@@ -162,6 +162,31 @@ test("CLI is cwd-independent, read-only and machine readable; the readiness gate
   assert.equal(gate.status, 1, gate.stderr);
   assert.equal(JSON.parse(gate.stdout).testsExecuted, false);
   assert.equal(readFileSync(auditPath, "utf8"), before);
+});
+
+test("pinned upstream entries reference the combined catalog", () => {
+  const index = JSON.parse(readFileSync(upstreamCatalogPath, "utf8"));
+  const cases = [...loadCatalog().cases, ...loadSupplementalCases()];
+  const summary = summarizeUpstreamCatalog(index, cases);
+  assert.deepEqual(summary.map(row => [row.id, row.entries, row.unmapped.length]), [
+    ["tiptap", 93, 0],
+    ["ckeditor5", 160, 0],
+  ]);
+  const [tiptap, ckeditor] = index.catalogs;
+  assert.throws(() => summarizeUpstreamCatalog({...index, catalogs: [tiptap]}, cases),
+    /include both comparison catalogs/);
+  const differentSource = {...tiptap, source: tiptap.source.replace("ueberdosis/tiptap-docs", "other/repo")};
+  assert.throws(() => summarizeUpstreamCatalog({...index, catalogs: [differentSource, ckeditor]}, cases),
+    /pinned upstream commit/);
+  const entry = tiptap.entries[0];
+  const [caseId, version] = entry.cases[0].split("@");
+  entry.cases = [];
+  assert.deepEqual(summarizeUpstreamCatalog(index, cases)[0].unmapped, [entry.id]);
+  entry.cases = [`${caseId}@${Number(version) + 1}`];
+  assert.throws(() => summarizeUpstreamCatalog(index, cases), /unknown case versions/);
+  entry.cases = [];
+  index.catalogs[0].entries.push(entry);
+  assert.throws(() => summarizeUpstreamCatalog(index, cases), /duplicate upstream entry/);
 });
 
 test("help and invalid options do not run a gate or hide errors", () => {

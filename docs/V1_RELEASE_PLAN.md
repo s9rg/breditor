@@ -88,9 +88,9 @@ qualification gates are still open.
 
 ### What the review found
 
-Catalogs reviewed: Tiptap 3.35 (96 entries in the docs catalog, plus Pages,
-Conversion, AI Toolkit, Compare and Composable Docs) and CKEditor 5 v49.1 (the
-feature index, digest and about 90 feature pages).
+This round reviewed Tiptap 3.35 and CKEditor 5 v49.1, including the CKEditor
+feature index, digest and detail pages. The [pinned baseline](V1_CATALOG_BASELINE.md)
+defines the entry counts used by the current comparison index.
 
 - **No row moves to `implemented`.** Shared import and export still use the
   V1–V3 conversions (V4 features are not reported by shared interchange), V4 is
@@ -135,8 +135,9 @@ V1 includes every capability in the proposed scope review:
 The [versioned acceptance cases](v1-catalog-cases.json) define 18 scenarios
 for these capabilities, linked to the grouped audit and primary comparison
 sources. The scope is confirmed and the scenarios are draft qualification
-criteria. The catalog gate stays open while the remaining upstream entries
-are mapped and any intentional differences are reviewed.
+criteria. The [pinned comparison index](V1_CATALOG_BASELINE.md) tracks which
+cases are attached to upstream entries. The catalog gate stays open while
+intentional differences are reviewed.
 
 Related cases are grouped in JSON files under `docs/v1-catalog-cases/`.
 `npm run audit:v1` validates the case definitions and their source and feature
@@ -153,8 +154,8 @@ provider integration results should identify the actual test environment.
 
 1. **Shared V4 interchange** so shared import and export report the V4 features.
    This is the last shared V4 gap (Enter on a collapsed shared summary is done).
-2. **Expand the versioned acceptance cases** across the remaining Tiptap
-   and CKEditor catalog entries.
+2. **Review the pinned case mappings and intentional differences** against
+   the Tiptap catalog and CKEditor feature digest.
 3. **Automate release CI** over every distributed feature, now that shared
    qualification runs again.
 4. **Qualification gates** as before: physical input, assistive technology and

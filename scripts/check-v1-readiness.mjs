@@ -7,8 +7,13 @@ export const repository = resolve(dirname(fileURLToPath(import.meta.url)), "..")
 export const auditPath = resolve(repository, "docs/v1-readiness.json");
 export const catalogPath = resolve(repository, "docs/v1-catalog-cases.json");
 const catalogDirectory = resolve(repository, "docs/v1-catalog-cases");
+export const upstreamCatalogPath = resolve(repository, "docs/v1-catalog-upstream.json");
 const featureStates = new Set(["implemented", "partial", "missing"]);
 const gateStates = new Set(["open", "passed"]);
+const upstreamSources = new Map([
+  ["tiptap", {repository: "ueberdosis/tiptap-docs", view: "tree", path: "src/content"}],
+  ["ckeditor5", {repository: "ckeditor/ckeditor5", view: "blob", path: "docs/features/feature-digest.md"}],
+]);
 const requiredReleaseGates = [
   "catalog-coverage",
   "distribution",
@@ -122,11 +127,13 @@ function supplementalCatalogPaths(directory) {
     .map(name => resolve(directory, name));
 }
 
+function readCatalogJson(path) {
+  requireValue(lstatSync(path).isFile(), `V1 catalog file must be a regular file: ${path}`);
+  return JSON.parse(readFileSync(path, "utf8"));
+}
+
 export function readCatalogs(directory = catalogDirectory) {
-  return [catalogPath, ...supplementalCatalogPaths(directory)].map(path => {
-    requireValue(lstatSync(path).isFile(), `V1 catalog case file must be a regular file: ${path}`);
-    return JSON.parse(readFileSync(path, "utf8"));
-  });
+  return [catalogPath, ...supplementalCatalogPaths(directory)].map(readCatalogJson);
 }
 
 /** Completion is a manually reviewed ledger assertion, never an automated test pass. */
@@ -153,6 +160,35 @@ export function summarizeAudit(audit, catalogs = readCatalogs()) {
   };
 }
 
+/** Validate the pinned comparison index and count its case links. */
+export function summarizeUpstreamCatalog(index, cases) {
+  requireValue(object(index) && index.format === "breditor/v1-catalog-upstream" && index.formatVersion === 1,
+    "unsupported V1 upstream catalog format");
+  const catalogIds = uniqueRows(index.catalogs, "upstream catalogs");
+  requireValue(catalogIds.size === upstreamSources.size && [...upstreamSources.keys()].every(id => catalogIds.has(id)),
+    "the V1 upstream index must include both comparison catalogs");
+  const caseVersions = new Set(cases.map(row => `${row.id}@${row.version}`));
+  return index.catalogs.map(catalog => {
+    const {id, commit, source, entries} = catalog;
+    requireValue(typeof commit === "string" && /^[0-9a-f]{40}$/.test(commit), `${id} needs a pinned upstream commit`);
+    const upstream = upstreamSources.get(id);
+    const pinnedSource = `https://github.com/${upstream.repository}/${upstream.view}/${commit}/${upstream.path}`;
+    requireValue(source === pinnedSource, `${id} source must link to its pinned upstream commit`);
+    requireValue(Array.isArray(entries) && entries.length > 0, `${id} has no upstream entries`);
+    const seen = new Set();
+    const unmapped = [];
+    for (const entry of entries) {
+      requireValue(object(entry) && text(entry.id) && text(entry.group), `${id} has an invalid entry`);
+      requireValue(!seen.has(entry.id), `${id} has duplicate upstream entry ${entry.id}`);
+      seen.add(entry.id);
+      requireValue(Array.isArray(entry.cases) && new Set(entry.cases).size === entry.cases.length
+        && entry.cases.every(ref => caseVersions.has(ref)), `${id}/${entry.id} has duplicate or unknown case versions`);
+      if (entry.cases.length === 0) unmapped.push(entry.id);
+    }
+    return {id, commit, entries: entries.length, mapped: entries.length - unmapped.length, unmapped};
+  });
+}
+
 export function main(args, report = console.log, error = console.error) {
   if (args.length === 1 && args[0] === "--help") {
     report("Usage: node scripts/check-v1-readiness.mjs [--json] [--require-ready]\nRead-only reviewed-ledger audit. Does not run tests, certify parity, publish or deploy. --require-ready fails for any remaining feature gap or gate.");
@@ -163,12 +199,22 @@ export function main(args, report = console.log, error = console.error) {
     return 2;
   }
   try {
-    const summary = summarizeAudit(JSON.parse(readFileSync(auditPath, "utf8")));
+    const catalogs = readCatalogs();
+    const audit = JSON.parse(readFileSync(auditPath, "utf8"));
+    const summary = summarizeAudit(audit, catalogs);
+    const upstream = readCatalogJson(upstreamCatalogPath);
+    summary.upstreamCatalogs = summarizeUpstreamCatalog(upstream, catalogs.flatMap(catalog => catalog.cases));
+    const approvedCatalog = audit.gates.some(row => row.id === "catalog-coverage" && row.status === "passed");
+    requireValue(!approvedCatalog || summary.upstreamCatalogs.every(row => row.unmapped.length === 0),
+      "catalog coverage needs case links for every upstream entry");
     if (args.includes("--json")) report(JSON.stringify(summary, null, 2));
     else {
       report(`V1 audit at ${summary.baselineCommit.slice(0, 7)} (${summary.reviewedAt})`);
       report(`${summary.featureGroups} unequal capability groups: ${summary.counts.implemented} implemented slices, ${summary.counts.partial} partial, ${summary.counts.missing} missing. Not a completion percentage.`);
       report(`${summary.catalogCasesDefined} catalog acceptance cases defined across ${summary.catalogFeatureGroupsWithCases} groups.`);
+      for (const row of summary.upstreamCatalogs) {
+        report(`  ${row.id} ${row.commit.slice(0, 7)}: ${row.mapped}/${row.entries} upstream entries linked to case definitions.`);
+      }
       report(`${summary.openGates.length} open qualification gates. No behavioral tests executed.`);
       for (const row of summary.featureGaps) report(`  ${row.status}: ${row.id} — ${row.summary}`);
       for (const row of summary.openGates) report(`  gate: ${row.id} — ${row.summary}`);
