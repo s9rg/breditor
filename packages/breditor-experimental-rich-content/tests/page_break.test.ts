@@ -135,7 +135,8 @@ describe("opt-in print presentation",()=>{
   expect(surface.getAttribute("aria-description")).toBe("Print preview: page boundaries are approximate");
   expect(surface.dataset["breditorPrintSize"]).toBe("Letter");
   const style=document.head.querySelector<HTMLStyleElement>("style[data-breditor-print-preview]")!;
-  expect(style.textContent).toBe(richPrintPreviewStyles({size:"Letter"})+richPrintStyles({size:"Letter"}));
+  expect(style.textContent).toContain('@media screen{[data-breditor-print-preview][data-breditor-print-size="Letter"][data-breditor-print-orientation="portrait"][data-breditor-print-margin="normal"]{');
+  expect(style.textContent?.endsWith(richPrintStyles({size:"Letter"}))).toBe(true);
   expect(()=>mountRichPrintPreview(surface)).toThrow("already mounted");
   expect(preview.update({orientation:"landscape"}).pageWidthMm).toBe(297);
   expect(style.textContent).toContain("size:A4 landscape");expect(preview.layout.orientation).toBe("landscape");
@@ -146,7 +147,9 @@ describe("opt-in print presentation",()=>{
   expect(style.isConnected).toBe(false);
   const local=mountRichPrintPreview(surface,{ui:arabicUi,print:false});
   expect(surface.getAttribute("aria-description")).toBe("معاينة الطباعة: حدود الصفحات تقريبية");
-  expect(document.head.querySelector("style[data-breditor-print-preview]")!.textContent).toBe(richPrintPreviewStyles());
+  const screenOnly=document.head.querySelector("style[data-breditor-print-preview]")!.textContent;
+  expect(screenOnly).toContain("@media screen{");
+  expect(screenOnly).not.toContain("@page");
   local.dispose();surface.remove();
  });
 });

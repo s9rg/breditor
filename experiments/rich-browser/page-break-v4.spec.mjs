@@ -132,6 +132,31 @@ test("print media: forced breaks, keep-together rules and an approximate preview
  expect(after).toEqual({typed:true,attribute:false,style:0,errors:[]});
 });
 
+test("simultaneous screen previews keep their own geometry through update and disposal",async({page})=>{
+ const result=await page.evaluate(()=>{
+  const t=window.dt,live=t.editor.surface,staticWrapper=document.createElement("section");
+  staticWrapper.innerHTML=t.renderStaticDocument(t.envelope(t.profile,true));
+  document.body.append(staticWrapper);
+  const before=t.core.checkpointJson();
+  const read=surface=>{
+   const style=getComputedStyle(surface),mm=px=>Math.round(parseFloat(px)*25.4/96*10)/10;
+   return {width:mm(style.width),padding:mm(style.paddingTop),guides:mm(style.backgroundSize.split(" ")[1])};
+  };
+  const livePreview=t.api.mountRichPrintPreview(live,{print:false});
+  const staticPreview=t.api.mountRichPrintPreview(staticWrapper,{size:"Letter",orientation:"landscape",margin:"narrow",print:false});
+  try{
+   const mounted=[read(live),read(staticWrapper)];
+   staticPreview.update({size:"Letter",margin:"wide"});
+   const updated=[read(live),read(staticWrapper)];
+   staticPreview.dispose();
+   return {mounted,updated,remaining:read(live),disposed:!staticWrapper.hasAttribute("data-breditor-print-preview"),unchanged:t.core.checkpointJson()===before};
+  }finally{livePreview.dispose();staticPreview.dispose();staticWrapper.remove();}
+ });
+ const a4={width:159.2,padding:25.4,guides:246.2};
+ expect(result).toEqual({mounted:[a4,{width:254,padding:12.7,guides:190.5}],
+  updated:[a4,{width:139.7,padding:38.1,guides:203.2}],remaining:a4,disposed:true,unchanged:true});
+});
+
 test("static export embeds print CSS and repeats header rows under print media",async({page})=>{
  await page.emulateMedia({media:"print"});
  const result=await page.evaluate(()=>{const t=window.dt,frame=document.createElement("section");

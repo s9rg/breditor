@@ -140,10 +140,12 @@ byte-for-byte unchanged.
 Opt-in and CSS only. It marks the surface (`data-breditor-print-preview`,
 `aria-description` from the new catalog key `printPreviewLabel`) and installs one
 stylesheet: the surface becomes the printable width with the page margin as
-padding, and a thin guide is drawn every printable page height; by default the
-print styles for the same layout are installed too (`print: false` to skip).
-`update(options)` changes the layout; `dispose()` restores the element. Editing
-continues normally; nothing is sent to the Rust owner.
+padding, and a thin guide is drawn every printable page height. Each mounted
+screen preview uses its own layout. By default the print styles for the same
+layout are installed too (`print: false` to skip). The browser applies `@page`
+size and margins to the whole printed document. `update(options)` changes the
+surface's preview layout and `dispose()` restores the element. Editing continues
+normally during preview.
 
 ### Static export
 
