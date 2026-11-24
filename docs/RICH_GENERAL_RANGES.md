@@ -646,8 +646,11 @@ the matching native profile still proves schema and exact history replay.
 
 Both local stores share the bounded queue: at most 64 pending writes and 32 MiB
 of pending native payload, with the existing configurable 16 MiB checkpoint
-ceiling. An aborted write retains the preceding committed value; a later save
-can retry the current native checkpoint without disposing the owner.
+ceiling. An absent key opens empty. An occupied value with the wrong storage
+shape or explicit document family is preserved and reported as a failure.
+The save transaction checks the existing key before replacing it. An aborted
+write retains the preceding committed value. A later save can retry the current
+native checkpoint without disposing the owner.
 
 The [document persistence checkpoint](qualification/2026-10-16-document-selection-persistence.json)
 covers actual local/shared release Wasm through the source facades and transaction
