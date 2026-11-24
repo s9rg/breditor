@@ -672,3 +672,26 @@ fell from 50.0 MB to one 1.78 MB raster. Median list time rose from 31.7 ms to
 and retains only each row's metadata for return. The installed archive fixture
 checks ordered metadata, upload states and exact archive recovery on reload.
 [Measurement and archive hashes](qualification/2026-11-24-installed-chrome-asset-metadata-memory.json)
+
+## Installed retained asset open
+
+For twelve browser-encoded PNGs with queued, failed, cancelled and uploaded
+states, every earlier `openRetained()` call constructed and discarded one
+17,998,472-byte archive Blob. Every fixed call constructed zero whole-archive
+Blobs. Reopening still validates each raster and the canonical archive header.
+Explicit export produced identical bytes in both builds. Each test restored
+its own exact native checkpoint and verified that Undo and Redo retained both
+raster references. Both builds refused a changed retained raster.
+
+Median open time was 165.2 ms before and 157.5 ms after across three calls per
+build in one installed Chrome 158 fixture. The constructor census counts
+whole-archive Blobs and their logical byte lengths for those calls.
+[Measurement and archive hashes](qualification/2026-11-24-installed-chrome-retained-asset-open.json)
+
+Use the installed archive build and installed Google Chrome to repeat the
+measurement.
+
+```sh
+node scripts/check-asset-backups-installed.mjs --reuse-runtime
+node scripts/measure-retained-asset-open.mjs
+```
