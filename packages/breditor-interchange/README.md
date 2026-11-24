@@ -431,8 +431,7 @@ admitted image asset and generation identifiers.
 
 Whole-document copy produces Breditor's normalized clipboard projection. Its
 root uses the neutral clipboard document ID and its tables represent the
-current semantic geometry. The native checkpoint remains the format for the
-exact document identity, schema binding, and history.
+current semantic geometry.
 
 - `document` has `version="1"`, the clipboard `kind` of `text`, `flow`, or
   `grid`, and one root `element`.
@@ -449,6 +448,16 @@ same admitted record have identical bytes. The host resolves image asset bytes
 and applies its publication policy. Text scalars unavailable in XML 1.0 become
 replacement characters and are counted in `removed-content`. A source over
 1 MiB or an export over 4 MiB returns `resource-limit`.
+
+For a source-bound snapshot, call `exportDocumentXml(core)` on the local or
+shared native owner. It reads one Document V2 view and leaves the selection and
+history untouched. The `urn:breditor:interchange:document-xml:1` namespace
+uses the same ordered element, property, format and run vocabulary and includes
+the original document ID. Its outer element carries `version="1"`,
+`document-format-version="2"`, `schema-name`, `schema-version`, and
+`schema-fingerprint`. The same size limits and XML text-loss reporting apply.
+Use the native checkpoint to restore history and the host asset store to
+retrieve referenced image bytes.
 
 ## DOCX export (`@breditor/interchange/docx`)
 

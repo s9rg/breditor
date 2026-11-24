@@ -20,12 +20,12 @@ async function ready(ref){for(let i=0;i<500;i++){if(ref.current?.getEditor())ret
 export async function probeBrowserInterchange(localDirectory,sharedDirectory){
  // Node 22's require(ESM) bridge in jsdom must finish loading parse5 before the adapter's ESM graph.
  const {createRichInterchange}=await import("../packages/breditor-interchange/dist/index.js");
- const {exportXml,xmlContractV1}=await import("../packages/breditor-interchange/dist/xml.js");
+ const {documentXmlContractV1,exportDocumentXml,exportXml,xmlContractV1}=await import("../packages/breditor-interchange/dist/xml.js");
  const localBytes=readFileSync(resolve(localDirectory,"breditor_wasm_bg.wasm")),sharedBytes=readFileSync(resolve(sharedDirectory,"breditor_shared_bg.wasm"));
  assert.equal(hash(localBytes),hash(readFileSync(new URL("../packages/breditor-experimental-rich-content/dist/breditor_wasm_bg.wasm",import.meta.url))));assert.equal(hash(sharedBytes),hash(readFileSync(new URL("../packages/breditor-collaboration/dist/runtime/breditor_shared_bg.wasm",import.meta.url))));
  const realm=new JSDOM("<!doctype html><body></body>",{pretendToBeVisual:true}),{window}=realm,saved=new Map(),locks=lockFixture(),globals={window,document:window.document,indexedDB:new IDBFactory(),navigator:{locks},IS_REACT_ACT_ENVIRONMENT:true};
  for(const name of ["HTMLElement","HTMLInputElement","HTMLSelectElement","Node","Element","AbortController"])globals[name]=window[name];for(const [name,value]of Object.entries(globals)){saved.set(name,Object.getOwnPropertyDescriptor(globalThis,name));Object.defineProperty(globalThis,name,{value,configurable:true,writable:true});}
- let serial=0,pastes=0,restores=0,future=0,retentionRefusals=0,priorityCases=0,staleRefusals=0,cutCases=0,readOnlyCases=0,reactOwners=0,queuedReports=0,failedConversions=0,durableResumes=0,assetCases=0,xmlExports=0;
+ let serial=0,pastes=0,restores=0,future=0,retentionRefusals=0,priorityCases=0,staleRefusals=0,cutCases=0,readOnlyCases=0,reactOwners=0,queuedReports=0,failedConversions=0,durableResumes=0,assetCases=0,xmlExports=0,documentXmlExports=0;
  const host=()=>{const h=window.document.createElement("div");window.document.body.append(h);return h;},close=async editor=>{if(editor?.core)await editor.close();else editor?.dispose();},opener=(shared,document)=>shared?(document?openSharedDocumentEditor:openSharedEditor):(document?openLocalDocumentEditor:openLocalEditor);
  const select=(editor,selection)=>{window.document.getSelection().removeAllRanges();if(selection.kind==="document")editor.selectDocument();else if(editor.core)editor.select(selection,false);else editor.execute({kind:"setSelection",selection},false);};
  const history=(editor,kind)=>editor.core?editor.core[kind]():editor.execute({kind});
@@ -86,6 +86,10 @@ export async function probeBrowserInterchange(localDirectory,sharedDirectory){
     await close(editor);editor=undefined;
     recovered=await opener(shared,true)({...options,host:recoveryHost,initial:{kind:"documentCheckpoint",checkpointJson:checkpoint}});
     assert.equal(recovered.checkpointJson(),checkpoint);
+    const snapshot=exportDocumentXml(owner);
+    assert.equal(snapshot.ok,true);assert.deepEqual(snapshot.losses,[]);
+    assert.deepEqual(exportDocumentXml(owner),snapshot);
+    assert.equal(recovered.checkpointJson(),checkpoint);
     select(recovered,{kind:"document"});
     const clipboardJson=clipboard(window,recovered.surface,"copy").get(mime);
     const before=recovered.checkpointJson(),output=exportXml(owner,clipboardJson);
@@ -114,7 +118,25 @@ export async function probeBrowserInterchange(localDirectory,sharedDirectory){
     assert.equal(property("asset-id"),"owned-asset");
     assert.equal(property("asset-generation"),clipboardImage.properties["breditor/asset-generation"]);
     assert.equal(property("alt-text"),"Owned raster");
-    assert.deepEqual(errors,[]);xmlExports++;
+    const xmlProperty=(node,name)=>JSON.parse([...node.children].find(child=>child.getAttribute("name")===`breditor/${name}`).textContent);
+    assert.equal(xmlProperty(nodes[0],"document-id"),"breditor-clipboard");
+    const original=JSON.parse(source),docNamespace="urn:breditor:interchange:document-xml:1";
+    assert.equal(documentXmlContractV1.namespace,docNamespace);
+    const savedXml=new window.DOMParser().parseFromString(snapshot.value,"application/xml").documentElement;
+    assert.equal(savedXml.localName,"document");assert.equal(savedXml.namespaceURI,docNamespace);
+    assert.equal(savedXml.getAttribute("version"),"1");assert.equal(savedXml.getAttribute("document-format-version"),"2");
+    assert.equal(savedXml.getAttribute("schema-name"),original.schema.name);
+    assert.equal(savedXml.getAttribute("schema-version"),String(original.schema.version));
+    assert.equal(savedXml.getAttribute("schema-fingerprint"),original.schemaFingerprint);
+    const saved=[...savedXml.getElementsByTagNameNS(docNamespace,"element")];
+    assert.equal(xmlProperty(saved[0],"document-id"),original.root.properties["breditor/document-id"]);
+    const savedImage=saved.find(node=>type(node,"image"));
+    const nativeImage=findImage(JSON.parse(owner.documentJson()).root);
+    assert.equal(xmlProperty(savedImage,"asset-id"),"owned-asset");
+    assert.equal(xmlProperty(savedImage,"asset-generation"),nativeImage.properties["breditor/asset-generation"]);
+    assert.equal(xmlProperty(savedImage,"alt-text"),"Owned raster");
+    assert.deepEqual([...savedXml.getElementsByTagNameNS(docNamespace,"value")].map(value=>value.textContent),values);
+    assert.deepEqual(errors,[]);xmlExports++;documentXmlExports++;
    }finally{await close(recovered);await close(editor);container.remove();recoveryHost.remove();}
   }
   for(const shared of [false,true])for(const document of [false,true])for(const natural of [false,true]){
@@ -127,6 +149,6 @@ export async function probeBrowserInterchange(localDirectory,sharedDirectory){
   }
  }finally{lp?.dispose();sp?.free();window.close();for(const [name,descriptor]of saved){if(descriptor)Object.defineProperty(globalThis,name,descriptor);else delete globalThis[name];}}
  assert.equal(pastes,44);assert.equal(restores,44);assert.equal(future,176);assert.equal(retentionRefusals,32);assert.equal(priorityCases,24);assert.equal(cutCases,8);assert.equal(readOnlyCases,8);assert.equal(staleRefusals,8);assert.equal(queuedReports,8);assert.equal(failedConversions,16);assert.equal(reactOwners,8);assert.equal(durableResumes,22);assert.equal(assetCases,8);assert.equal(locks.held.size,0);
- return{format:"breditor/browser-interchange-functional-probe",formatVersion:1,localWasmSha256:hash(localBytes),sharedWasmSha256:hash(sharedBytes),passed:true,pastes,exactRestores:restores,exactFutureCheckpoints:future,durableSharedResumes:durableResumes,retentionRefusals,priorityCases,cutCases,readOnlyCases,staleRefusals,queuedReportCases:queuedReports,failedConversions,hostOwnedImageCases:assetCases,xmlExports,actualReactOwners:reactOwners,scope:"Compiled managed local/shared original/document SDKs and all four React wrappers; real paired release Wasm and opt-in converter; synthetic clipboard, jsdom, IndexedDB and locks. Not OS clipboard, captured Office applications, installed-consumer, cross-browser, IME, accessibility or release qualification."};
+ return{format:"breditor/browser-interchange-functional-probe",formatVersion:1,localWasmSha256:hash(localBytes),sharedWasmSha256:hash(sharedBytes),passed:true,pastes,exactRestores:restores,exactFutureCheckpoints:future,durableSharedResumes:durableResumes,retentionRefusals,priorityCases,cutCases,readOnlyCases,staleRefusals,queuedReportCases:queuedReports,failedConversions,hostOwnedImageCases:assetCases,xmlExports,documentXmlExports,actualReactOwners:reactOwners,scope:"Compiled managed local/shared original/document SDKs and all four React wrappers; real paired release Wasm and opt-in converter; synthetic clipboard, jsdom, IndexedDB and locks. Not OS clipboard, captured Office applications, installed-consumer, cross-browser, IME, accessibility or release qualification."};
 }
 if(process.argv[1]&&realpathSync(process.argv[1])===fileURLToPath(import.meta.url)){const args=process.argv.slice(2);if(args.length!==2)throw Error("Expected paired local/shared release Wasm directories");try{console.log(JSON.stringify(await probeBrowserInterchange(...args),null,2));}catch(error){console.error(error.stack?.split("\n").filter(line=>line.startsWith("    at ")).join("\n"));console.error(error instanceof assert.AssertionError?`${error.operator}: ${typeof error.actual==="string"?error.actual.slice(0,100):JSON.stringify(error.actual)} !== ${typeof error.expected==="string"?error.expected.slice(0,100):JSON.stringify(error.expected)}`:error.message);process.exitCode=1;}}
