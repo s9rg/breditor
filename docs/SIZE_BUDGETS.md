@@ -625,3 +625,11 @@ After clearing the retired checkpoint and version cache, the same Chrome
 isolate measurements retained 0.23 MB in each case. Both cases reopen the
 exact native record and version catalog, including the late write that
 completed before the writer leases released.
+
+With Google Chrome installed, build the opt-in page and run the paired cases.
+
+```sh
+BREDITOR_EDITOR_PAIRED_MEMORY=1 node scripts/check-editor-package.mjs
+BREDITOR_EDITOR_PAIRED_MEMORY=1 node node_modules/@playwright/test/cli.js test \
+  -c experiments/editor-browser-memory/playwright.config.mjs paired-memory.spec.mjs
+```
