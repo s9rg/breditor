@@ -1,3 +1,5 @@
+import {openPilotSessionReport} from "./pilot-session-report.mjs";
+
 const maxCheckpointBytes = 16 * 1024 * 1024;
 const form = document.querySelector("#pilot-account");
 const principalField = form.elements.namedItem("principal");
@@ -10,7 +12,9 @@ const verification = document.querySelector("#pilot-verification");
 const preview = document.querySelector("#pilot-preview");
 const exportDigest = document.querySelector("#pilot-export-digest");
 const reload = document.querySelector("#pilot-reload");
+const report = document.querySelector("#pilot-session-report");
 const participants = new Set(["alice", "bob"]);
+let activeReport;
 
 const showError = (element, message, error) => {
   const code = error?.code;
@@ -79,6 +83,7 @@ function enableRecovery(wasm, shared, configuration, renderStaticDocument) {
       preview.innerHTML = renderStaticDocument(recovered.documentJson, {blockIds: false});
       preview.hidden = false;
       verification.textContent = `Exact read-only replay verified. Undo ${recovered.undoDepth}. Redo ${recovered.redoDepth}. SHA-256 ${hash}.`;
+      activeReport?.record("verifiedRecoveries", hash);
     } catch (error) {
       showError(verification, "This checkpoint could not be recovered in the pilot.", error);
     } finally {
@@ -100,6 +105,7 @@ function offerCheckpointRecovery(peer, message, error) {
 }
 
 function offerRetiredJournal(peer, error) {
+  activeReport?.record("retiredJournals");
   offerCheckpointRecovery(peer, "Local storage changed. Use Download checkpoint before leaving.", error);
 }
 
@@ -111,7 +117,9 @@ function enableWorkspaceActions(app, peer, downloadNetworkCheckpoint) {
     exportDigest.textContent = "";
     try {
       const checkpoint = downloadNetworkCheckpoint(peer);
-      exportDigest.textContent = `Downloaded checkpoint SHA-256 ${await digest(new TextEncoder().encode(checkpoint))}.`;
+      const hash = await digest(new TextEncoder().encode(checkpoint));
+      exportDigest.textContent = `Downloaded checkpoint SHA-256 ${hash}.`;
+      activeReport.record("checkpointDownloads", hash);
     } catch (error) {
       showError(exportDigest, "The checkpoint digest is unavailable.", error);
     } finally {
@@ -122,11 +130,21 @@ function enableWorkspaceActions(app, peer, downloadNetworkCheckpoint) {
     reload.disabled = true;
     try {
       await app.close();
+      activeReport.record("savedReloads");
       location.reload();
     } catch (error) {
       reload.disabled = false;
       offerCheckpointRecovery(peer, "Local save did not finish. Use Download checkpoint before leaving.", error);
     }
+  });
+  report.addEventListener("click", () => {
+    const payload = JSON.stringify(activeReport.snapshot(), null, 2) + "\n";
+    const url = URL.createObjectURL(new Blob([payload], {type:"application/json"}));
+    const link = document.createElement("a");
+    link.href = url;
+    link.download = `breditor-pilot-session-${peer.principal}.json`;
+    link.click();
+    setTimeout(() => URL.revokeObjectURL(url), 0);
   });
   workspace.hidden = false;
   workspace.tabIndex = -1;
@@ -163,10 +181,15 @@ async function startPilot(bootstrap) {
         tokenFor: account => account === principal ? token : undefined,
         codeSha256: await digest(new TextEncoder().encode(token)),
         paused: sessionStorage.getItem(pauseKey) === "1",
-        onPause: paused => sessionStorage.setItem(pauseKey, paused ? "1" : "0"),
+        onPause: paused => {
+          sessionStorage.setItem(pauseKey, paused ? "1" : "0");
+          activeReport?.record(paused ? "disconnects" : "reconnectRequests");
+        },
         onJournalRetired: offerRetiredJournal,
       });
       const peer = Object.values(app.peers)[0];
+      activeReport = openPilotSessionReport(principal, sessionStorage);
+      activeReport.record("opens");
       form.hidden = true;
       enableWorkspaceActions(app, peer, downloadNetworkCheckpoint);
       try {

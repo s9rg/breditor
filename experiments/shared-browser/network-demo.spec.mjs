@@ -295,6 +295,21 @@ test("the first-party pilot opens independent participants and verifies an offli
  await ready(page);
  await expect(bob.locator('#b [data-rich-text="pilot-notes"]')).toHaveText("Pilot decision. Add the decisions and results that the next reviewer needs.");
  await expect(page.locator('#a [data-rich-text="pilot-item"]')).toHaveText("Pilot evidence. Verify the handoff");
+ const reportDownload=page.waitForEvent("download");
+ await page.getByRole("button",{name:"Download session report"}).click();
+ const reportFile=await reportDownload;
+ expect(reportFile.suggestedFilename()).toBe("breditor-pilot-session-alice.json");
+ const reportText=readFileSync(await reportFile.path(),"utf8");
+ expect(reportText).not.toContain(bootstrap.tokens.alice);
+ expect(reportText).not.toContain(bootstrap.tokens.bob);
+ expect(reportText).not.toContain("Pilot decision.");
+ expect(reportText).not.toContain(bootstrap.endpoint);
+ const report=JSON.parse(reportText);
+ expect(report).toEqual({format:"breditor/first-party-pilot-session-report",formatVersion:1,participant:"alice",
+  openedAt:expect.any(String),collectedAt:expect.any(String),browser:expect.any(String),
+  counts:{opens:2,disconnects:1,reconnectRequests:1,savedReloads:1,checkpointDownloads:1,verifiedRecoveries:1,retiredJournals:0},
+  downloadedSha256:expectedHash,recoveredSha256:expectedHash});
+ expect(Date.parse(report.collectedAt)).toBeGreaterThanOrEqual(Date.parse(report.openedAt));
 });
 
 test("simultaneous pilot sign-in in the same browser profile reuses one writer",async({page})=>{
