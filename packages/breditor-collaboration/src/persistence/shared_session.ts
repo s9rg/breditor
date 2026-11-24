@@ -14,9 +14,9 @@ import {freeUnclaimedSharedRustOwner} from '../raw_owner_lifetime.js';
 import {SharedRichEditor,SharedEditorError,createSharedDocumentEditor} from "../core.js";
 import type {SharedEditorOptions,SharedRustOwner,SharedHistoryPolicy,SharedRangePolicy,SharedSelectionPolicy} from "../types.js";
 import {SharedWriterLease} from "./writer_lease.js";
-import {checkCheckpoint,checkDocumentCheckpoint,openSessionDatabase,readSessionCheckpoint,readDocumentSessionCheckpoint,writeSessionCheckpoint,writeDocumentSessionCheckpoint} from "./session_database.js";
+import {checkCheckpoint,checkDocumentCheckpoint,openSessionDatabase,readSessionCheckpoint,readDocumentSessionCheckpoint,sessionJournalRecord,writeAdmittedSessionRecord} from "./session_database.js";
 import {checkSearchCheckpoint} from "./search_checkpoint.js";
-import {readSearchRecord,writeSearchRecord} from "./search_database.js";
+import {readSearchRecord} from "./search_database.js";
 import {encodeSharedSessionBackup,decodeSharedSessionBackup} from "../backups/session.js";
 import {backupDestinationExists,insertSessionBackup} from "../backups/database.js";
 import {requireBackupRecovery} from "../backups/identity.js";
@@ -81,7 +81,7 @@ export class SharedPersistentSession<P extends SharedSelectionPolicy="original">
  #db:IDBDatabase;#lease:SharedWriterLease;#options:SharedSessionOptions|SharedDocumentSessionOptions;#unsubscribe:()=>void;
  readonly #selectionPolicy:P;
  readonly #search:boolean;
- #pending:{json:string;revision:string}|undefined;#running:Promise<void>|undefined;#failure:unknown;
+ #pending:{json:string;revision:string;key:readonly[string,string];record:unknown}|undefined;#running:Promise<void>|undefined;#failure:unknown;
  #saved:string|undefined;#savedRevision:string|null=null;#closed=false;#storageChanged=false;
  #closeRequest:Promise<void>|undefined;#released:Promise<void>|undefined;
  readonly #releasePendingWork:()=>void;
@@ -201,16 +201,20 @@ export class SharedPersistentSession<P extends SharedSelectionPolicy="original">
  #failed(error:unknown):void{this.#failure=error;this.#report(error);this.#notify();}
  state():SharedSaveState{return{status:this.#closed?"closed":this.#failure?"failed":this.#pending||this.#running?"pending":"saved",revision:this.#savedRevision,error:this.#failure?String(this.#failure):null};}
  /** Capture accepted native history now, then encode integrity asynchronously. Does not flush or include assets/outboxes. */
- async exportBackup():Promise<string>{this.#live();const checkpoint=this.#boundCore().checkpointJson(),identity:SharedBackupIdentity={room:this.#options.room,writer:this.#options.writer,richLanguage:this.#options.richLanguage??1,history:this.#options.history??"explicit",rangeEditing:this.#options.rangeEditing??(this.#selectionPolicy==="document-v1"?"general-v1":"original"),selectionEditing:this.#selectionPolicy,searchHistory:this.#search?"search-v1":null};return encodeSharedSessionBackup(identity,checkpoint);}
+ async exportBackup():Promise<string>{this.#live();return encodeSharedSessionBackup(this.#identity(),this.#boundCore().checkpointJson());}
+ #identity():SharedBackupIdentity{return {room:this.#options.room,writer:this.#options.writer,richLanguage:this.#options.richLanguage??1,history:this.#options.history??"explicit",rangeEditing:this.#options.rangeEditing??(this.#selectionPolicy==="document-v1"?"general-v1":"original"),selectionEditing:this.#selectionPolicy,searchHistory:this.#search?"search-v1":null};}
  /** Capture a complete exact journal synchronously; coalesce only superseded complete checkpoints. */
  save():void{
   this.#live();if(this.#storageChanged)throw versionChangeError();
   this.#recordReadEpoch=Object.freeze({});const core=this.#boundCore(),json=core.checkpointJson(),revision=core.view().revision;
-  if(this.#search)checkSearchCheckpoint(json,this.#options.room,this.#options.writer,this.#options.richLanguage??1,this.#options.history??"explicit",this.#options.rangeEditing??"original",this.#selectionPolicy);
-  else if(this.#selectionPolicy==="document-v1")checkDocumentCheckpoint(json,this.#options.room,this.#options.writer,this.#options.richLanguage,this.#options.history);
-  else checkCheckpoint(json,this.#options.room,this.#options.writer,this.#options.richLanguage,this.#options.history,this.#options.rangeEditing);
+  const identity=this.#identity(),{room,writer,richLanguage,history,rangeEditing,selectionEditing}=identity;
+  if(this.#search)checkSearchCheckpoint(json,room,writer,richLanguage,history,rangeEditing,selectionEditing);
+  else if(selectionEditing==="document-v1")checkDocumentCheckpoint(json,room,writer,richLanguage,history);
+  else checkCheckpoint(json,room,writer,richLanguage,history,rangeEditing);
   if(json===this.#saved&&!this.#pending&&!this.#running&&!this.#failure)return;
-  this.#pending={json,revision};this.#failure=undefined;this.#notify();this.#start();
+  // Stage the exact storage identity and payload before notifying any host observer.
+  this.#pending={json,revision,key:[room,writer],record:sessionJournalRecord(json,identity)};
+  this.#failure=undefined;this.#notify();this.#start();
  }
  #start():void{
   if(this.#running||this.#closed||!this.#pending)return;
@@ -219,13 +223,10 @@ export class SharedPersistentSession<P extends SharedSelectionPolicy="original">
  async #drain():Promise<void>{
   while(this.#pending&&!this.#closed&&!this.#storageChanged){
    this.#lease.assertLive();const next=this.#pending;this.#pending=undefined;
-   const key=[this.#options.room,this.#options.writer] as const;
-   const history=this.#options.history??"explicit",language=this.#options.richLanguage??1,ranges=this.#options.rangeEditing??"original";
    const insertOnly=!this.recovered&&this.#saved===undefined;
    try{
-    if(this.#search)await writeSearchRecord(this.#db,key,{format:"breditor/shared-search-checkpoint-record",formatVersion:1,history,rangeEditing:ranges,selectionEditing:this.#selectionPolicy,richLanguage:language,checkpointJson:next.json},insertOnly);
-    else if(this.#selectionPolicy==="document-v1")await writeDocumentSessionCheckpoint(this.#db,key,next.json,history,language,insertOnly);
-    else await writeSessionCheckpoint(this.#db,key,next.json,history,ranges,language,insertOnly);
+    const kind=this.#search?"search":this.#selectionPolicy==="document-v1"?"document":"original";
+    await writeAdmittedSessionRecord(this.#db,next.key,next.record,insertOnly,kind);
    }catch(error){
     this.#pending??=next;
     if(insertOnly&&error instanceof Error&&error.name==="ConstraintError")throw new SharedEditorError("session_destination_exists","A journal was created while the shared session was opening");

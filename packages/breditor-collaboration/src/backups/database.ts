@@ -1,6 +1,7 @@
 import {SharedEditorError} from "../core.js";
 import type {SharedBackupIdentity} from "./types.js";
 import {checkBackupCheckpoint} from "./session.js";
+import {sessionJournalRecord} from "../persistence/session_database.js";
 /** Presence only: an unfamiliar destination is never parsed or treated as an empty seed. */
 export function backupDestinationExists(db:IDBDatabase,key:readonly[string,string]):Promise<boolean>{
  return new Promise((resolve,reject)=>{const tx=db.transaction("journals","readonly"),request=tx.objectStore("journals").count([...key]);let exists=false;request.onsuccess=()=>{exists=request.result!==0;};tx.oncomplete=()=>resolve(exists);tx.onabort=()=>reject(new SharedEditorError("backup_storage","Backup destination could not be checked"));});
@@ -19,8 +20,5 @@ export function insertSessionBackup(db:IDBDatabase,checkpointJson:string,identit
 /** Shared exact original encoding for insert-only restoration and read-before-adoption checks. */
 export function sessionBackupRecord(checkpointJson:string,identity:SharedBackupIdentity):unknown{
  checkBackupCheckpoint(checkpointJson,identity);
- if(identity.searchHistory)return {format:"breditor/shared-search-checkpoint-record",formatVersion:1,history:identity.history,rangeEditing:identity.rangeEditing,selectionEditing:identity.selectionEditing,richLanguage:identity.richLanguage,checkpointJson};
- if(identity.selectionEditing==="document-v1")return {format:"breditor/shared-document-checkpoint-record",formatVersion:1,history:identity.history,richLanguage:identity.richLanguage,checkpointJson};
- if(identity.rangeEditing==="general-v1")return {format:"breditor/shared-general-checkpoint-record",formatVersion:1,history:identity.history,richLanguage:identity.richLanguage,checkpointJson};
- return identity.history==="explicit"?checkpointJson:{format:"breditor/shared-typing-checkpoint-record",formatVersion:1,checkpointJson};
+ return sessionJournalRecord(checkpointJson,identity);
 }

@@ -617,6 +617,15 @@ policy measured 32.2, 32.2, and 19.7 ms respectively. The combined checkpoints
 contained 30,040,753 and 703,624 code units respectively. These measurements
 cover the two-peer, 2,825-byte document and direct frame exchange on one host.
 
+An installed Chrome sample measured the write path separately after 38 peer
+edit/Undo rounds. For checkpoints from 383,425 to 426,954 bytes, the general
+range session encoded and parsed each captured journal twice. The second
+validation had a median cost of 1.5 ms. Reusing the synchronously admitted
+checkpoint reduced this to one encode and parse per publication. Median
+synchronous publication went from 33.1 ms to 31.2 ms across 15 samples, and
+both peers reopened with identical checkpoint bytes in each build.
+[Measurement and archive hashes](qualification/2026-11-24-installed-chrome-shared-save-validation.json)
+
 The [paired-session close regression](qualification/2026-11-24-installed-chrome-closed-paired-memory.json)
 measures a live document, one discussion, and fourteen named versions. It also
 discards a second owner after starting a write for a fifteenth version. The

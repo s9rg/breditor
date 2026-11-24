@@ -2,6 +2,7 @@ import {settleOwnedTransaction} from "./settle_owned_transaction.js";
 /** Separate declared records. Old durable readers keep rejecting search history instead of guessing. */
 import {SharedEditorError} from "../core.js";
 import {checkSearchCheckpoint} from "./search_checkpoint.js";
+import {writeAdmittedSessionRecord} from "./session_database.js";
 import type {SharedHistoryPolicy,SharedRangePolicy,SharedSelectionPolicy} from "../types.js";
 export interface SearchCheckpointRecord {
  format:"breditor/shared-search-checkpoint-record";formatVersion:1;history:SharedHistoryPolicy;
@@ -13,4 +14,4 @@ export function checkSearchRecord(input:unknown,key:readonly[string,string]):ass
  checkSearchCheckpoint(r.checkpointJson,...key,r.richLanguage,r.history,r.rangeEditing,r.selectionEditing);
 }
 export function readSearchRecord(db:IDBDatabase,key:readonly[string,string]):Promise<SearchCheckpointRecord|null>{return new Promise((resolve,reject)=>{const tx=db.transaction("journals","readonly"),request=tx.objectStore("journals").getAll([...key],1);let result:SearchCheckpointRecord|null=null,failure:unknown;request.onsuccess=()=>{try{if(request.result.length){const value:unknown=request.result[0];checkSearchRecord(value,key);result=value;}}catch(error){failure=error;tx.abort();}};settleOwnedTransaction(tx,()=>result,()=>failure??tx.error??new SharedEditorError("search_record_read","Search recovery failed"),resolve,reject);});}
-export function writeSearchRecord(db:IDBDatabase,key:readonly[string,string],record:SearchCheckpointRecord,insertOnly=false):Promise<void>{try{checkSearchRecord(record,key);}catch(error){return Promise.reject(error);}return new Promise((resolve,reject)=>{const tx=db.transaction("journals","readwrite");tx.oncomplete=()=>resolve();tx.onabort=()=>reject(tx.error??new SharedEditorError("search_record_write","Search transaction did not complete"));try{tx.objectStore("journals")[insertOnly?"add":"put"](record,[...key]);}catch(error){tx.abort();reject(error);}});}
+export function writeSearchRecord(db:IDBDatabase,key:readonly[string,string],record:SearchCheckpointRecord,insertOnly=false):Promise<void>{try{checkSearchRecord(record,key);}catch(error){return Promise.reject(error);}return writeAdmittedSessionRecord(db,key,record,insertOnly,"search");}

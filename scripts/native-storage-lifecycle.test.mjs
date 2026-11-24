@@ -10,13 +10,42 @@ import {independentDeliverySource} from '../packages/breditor-collaboration/dist
 import {readOperationSourceDatabase} from '../packages/breditor-collaboration/dist/independent_operation/read_source_database.js';
 import {LocalMetadataDeliveryStore} from '../packages/breditor-collaboration/dist/selected_local_metadata_delivery/store.js';
 import {environment} from './fixtures/room-participant-inventory/environment.mjs';
-import {nativeProfile,insertCleanupText} from './fixtures/owned-core-cleanup/session.mjs';
+import {cleanupSession,nativeProfile,insertCleanupText} from './fixtures/owned-core-cleanup/session.mjs';
 import {portableFixture} from './fixtures/independent-operation/portable.mjs';
 import {databaseValues} from './fixtures/independent-delivery-recovery/storage.mjs';
 import {localMetadataFixture} from './fixtures/local-metadata/session.mjs';
 await native.default({module_or_path:readFileSync(new URL('../packages/breditor-collaboration/dist/runtime/breditor_shared_bg.wasm',import.meta.url))});
 function observeTransactions(name){const original=IDBDatabase.prototype.transaction,transactions=[];IDBDatabase.prototype.transaction=function(...args){const tx=original.apply(this,args);if(this.name===name)transactions.push(tx);return tx;};return {transactions,restore(){IDBDatabase.prototype.transaction=original;}};}
 function released(transactions){assert.ok(transactions.length>0);for(const tx of transactions)for(const field of ['oncomplete','onabort','onerror'])assert.equal(tx[field],null,field+' releases its terminal closure');}
+
+test('a save observer cannot redirect an already admitted shared journal',async()=>{
+ const restore=environment(),profile=nativeProfile(native,3,true),database='admitted-save-observer';
+ const selected=cleanupSession(api,profile,{family:'original',language:3,scope:1,database});
+ let session,armed=false,changed=0;
+ const options={...selected.options,onState(state){
+  if(!armed)return;
+  if(state.status==='pending'&&this.room==='room'){
+   this.room='observer-room';this.writer='202';this.rangeEditing='original';changed++;
+  }else if(state.status!=='pending'){
+   this.room='room';this.writer='101';this.rangeEditing='general-v1';
+  }
+ }};
+ try{
+  session=await api.SharedPersistentSession.open(options);
+  armed=true;
+  insertCleanupText(session.core,'Retain exact admitted journal ');
+  const expected=session.core.checkpointJson();
+  await session.flush();
+  assert.equal(changed,1);
+  assert.deepEqual((await databaseValues(database)).journals,{
+   keys:[['room','101']],values:[{format:'breditor/shared-general-checkpoint-record',formatVersion:1,history:'explicit',richLanguage:3,checkpointJson:expected}],
+  });
+  armed=false;
+  await session.close();
+  session=await api.SharedPersistentSession.open(options);
+  assert.equal(session.core.checkpointJson(),expected);
+ }finally{armed=false;await session?.discardAndClose();profile.free();restore();}
+});
 
 test('repeated exact native source reads release owned callbacks, keep data, and preserve future Undo/Redo',async()=>{
  const restore=environment(),profile=nativeProfile(native,3,true),seed=JSON.parse(readFileSync(new URL('../crates/breditor-core/tests/fixtures/rich-local-root.json',import.meta.url)));let f,observer;

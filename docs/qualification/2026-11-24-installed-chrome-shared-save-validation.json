@@ -1,0 +1,430 @@
+{
+  "format": "breditor/installed-chrome-shared-save-validation",
+  "formatVersion": 1,
+  "host": {
+    "browser": "158.0.8127.37",
+    "platform": "macOS 26.6.2",
+    "processor": "Apple M1 Pro",
+    "arch": "arm64"
+  },
+  "fixture": {
+    "page": "scripts/fixtures/editor-consumer/shared-session.html",
+    "rangeEditing": "general-v1",
+    "peers": 2,
+    "peerEditUndoRounds": 38,
+    "measuredPublications": 15
+  },
+  "method": "Fresh offline installs; time synchronous edit publication and local flush; count TextEncoder and JSON.parse only for general-range checkpoint strings. Compare both exact persisted checkpoints after reload.",
+  "before": {
+    "archives": [
+      {
+        "file": "breditor-browser-0.3.0-alpha.22.tgz",
+        "sha256": "1199d14fe5b3d5b2e0318642a9bbf9f5b84773e97265597f72e190be43869ae0"
+      },
+      {
+        "file": "breditor-editor-0.3.0-alpha.22.tgz",
+        "sha256": "ff50188718a1587bc21fda0e0700a2f4de61085ae00d083cf569789d29c713dd"
+      },
+      {
+        "file": "breditor-experimental-rich-content-0.3.0-alpha.22.tgz",
+        "sha256": "41bef48450af2d2ddc3e8d5b159205bf0d4ed836627690b992d393cfdd12016a"
+      },
+      {
+        "file": "breditor-collaboration-0.3.0-alpha.22.tgz",
+        "sha256": "84eac53fb33e729345b73e493177bcc0025c8bd6371ae64b4f317eeaa557ec04"
+      }
+    ],
+    "loadedWasm": [
+      "8f39c742c461006c90e209e0287f7db137574843f316ccddbe2aaa141ca00401"
+    ],
+    "exactReopen": true,
+    "samples": [
+      {
+        "bytes": 383425,
+        "encodeMs": [
+          0.8,
+          0.9
+        ],
+        "parseMs": [
+          0.5,
+          0.5
+        ],
+        "publishMs": 30.8,
+        "commitMs": 32.8
+      },
+      {
+        "bytes": 386549,
+        "encodeMs": [
+          0.8,
+          0.6
+        ],
+        "parseMs": [
+          0.6,
+          0.6
+        ],
+        "publishMs": 30.5,
+        "commitMs": 32.3
+      },
+      {
+        "bytes": 389657,
+        "encodeMs": [
+          0.9,
+          0.9
+        ],
+        "parseMs": [
+          2.3,
+          0.5
+        ],
+        "publishMs": 33.1,
+        "commitMs": 35.2
+      },
+      {
+        "bytes": 392765,
+        "encodeMs": [
+          0.9,
+          1.7
+        ],
+        "parseMs": [
+          0.7,
+          0.6
+        ],
+        "publishMs": 32.2,
+        "commitMs": 34.1
+      },
+      {
+        "bytes": 395873,
+        "encodeMs": [
+          0.8,
+          0.7
+        ],
+        "parseMs": [
+          0.6,
+          0.6
+        ],
+        "publishMs": 32.1,
+        "commitMs": 34
+      },
+      {
+        "bytes": 398981,
+        "encodeMs": [
+          0.8,
+          0.8
+        ],
+        "parseMs": [
+          0.6,
+          0.7
+        ],
+        "publishMs": 31.9,
+        "commitMs": 33.7
+      },
+      {
+        "bytes": 402089,
+        "encodeMs": [
+          0.9,
+          0.9
+        ],
+        "parseMs": [
+          0.6,
+          1
+        ],
+        "publishMs": 32.8,
+        "commitMs": 34.6
+      },
+      {
+        "bytes": 405197,
+        "encodeMs": [
+          0.8,
+          0.8
+        ],
+        "parseMs": [
+          0.6,
+          0.6
+        ],
+        "publishMs": 32.7,
+        "commitMs": 34.6
+      },
+      {
+        "bytes": 408305,
+        "encodeMs": [
+          0.8,
+          1
+        ],
+        "parseMs": [
+          0.7,
+          0.9
+        ],
+        "publishMs": 35.1,
+        "commitMs": 37
+      },
+      {
+        "bytes": 411413,
+        "encodeMs": [
+          0.9,
+          0.9
+        ],
+        "parseMs": [
+          0.6,
+          0.6
+        ],
+        "publishMs": 33.3,
+        "commitMs": 34.5
+      },
+      {
+        "bytes": 414521,
+        "encodeMs": [
+          0.7,
+          0.7
+        ],
+        "parseMs": [
+          0.8,
+          0.6
+        ],
+        "publishMs": 34.1,
+        "commitMs": 35.4
+      },
+      {
+        "bytes": 417630,
+        "encodeMs": [
+          0.7,
+          0.8
+        ],
+        "parseMs": [
+          0.8,
+          0.7
+        ],
+        "publishMs": 34.6,
+        "commitMs": 36.4
+      },
+      {
+        "bytes": 420738,
+        "encodeMs": [
+          0.8,
+          0.8
+        ],
+        "parseMs": [
+          0.7,
+          0.6
+        ],
+        "publishMs": 35,
+        "commitMs": 38.1
+      },
+      {
+        "bytes": 423846,
+        "encodeMs": [
+          0.8,
+          0.8
+        ],
+        "parseMs": [
+          0.7,
+          0.7
+        ],
+        "publishMs": 35.8,
+        "commitMs": 37.2
+      },
+      {
+        "bytes": 426954,
+        "encodeMs": [
+          0.9,
+          1
+        ],
+        "parseMs": [
+          0.7,
+          0.6
+        ],
+        "publishMs": 36.2,
+        "commitMs": 38.9
+      }
+    ]
+  },
+  "after": {
+    "archives": [
+      {
+        "file": "breditor-browser-0.3.0-alpha.22.tgz",
+        "sha256": "1199d14fe5b3d5b2e0318642a9bbf9f5b84773e97265597f72e190be43869ae0"
+      },
+      {
+        "file": "breditor-editor-0.3.0-alpha.22.tgz",
+        "sha256": "ff50188718a1587bc21fda0e0700a2f4de61085ae00d083cf569789d29c713dd"
+      },
+      {
+        "file": "breditor-experimental-rich-content-0.3.0-alpha.22.tgz",
+        "sha256": "41bef48450af2d2ddc3e8d5b159205bf0d4ed836627690b992d393cfdd12016a"
+      },
+      {
+        "file": "breditor-collaboration-0.3.0-alpha.22.tgz",
+        "sha256": "f3f2138106247e853363667b6096a062902af703e1133b10e1e68135edb81ccd"
+      }
+    ],
+    "loadedWasm": [
+      "8f39c742c461006c90e209e0287f7db137574843f316ccddbe2aaa141ca00401"
+    ],
+    "exactReopen": true,
+    "samples": [
+      {
+        "bytes": 383425,
+        "encodeMs": [
+          0.8
+        ],
+        "parseMs": [
+          0.6
+        ],
+        "publishMs": 29.7,
+        "commitMs": 31.9
+      },
+      {
+        "bytes": 386549,
+        "encodeMs": [
+          0.8
+        ],
+        "parseMs": [
+          0.6
+        ],
+        "publishMs": 29.4,
+        "commitMs": 32.6
+      },
+      {
+        "bytes": 389657,
+        "encodeMs": [
+          0.9
+        ],
+        "parseMs": [
+          0.6
+        ],
+        "publishMs": 29.4,
+        "commitMs": 33.6
+      },
+      {
+        "bytes": 392765,
+        "encodeMs": [
+          0.8
+        ],
+        "parseMs": [
+          0.6
+        ],
+        "publishMs": 29.6,
+        "commitMs": 33
+      },
+      {
+        "bytes": 395873,
+        "encodeMs": [
+          0.7
+        ],
+        "parseMs": [
+          0.6
+        ],
+        "publishMs": 30.7,
+        "commitMs": 32.6
+      },
+      {
+        "bytes": 398981,
+        "encodeMs": [
+          0.9
+        ],
+        "parseMs": [
+          0.6
+        ],
+        "publishMs": 30.6,
+        "commitMs": 32.6
+      },
+      {
+        "bytes": 402089,
+        "encodeMs": [
+          0.8
+        ],
+        "parseMs": [
+          0.6
+        ],
+        "publishMs": 30.4,
+        "commitMs": 33.1
+      },
+      {
+        "bytes": 405197,
+        "encodeMs": [
+          0.8
+        ],
+        "parseMs": [
+          0.7
+        ],
+        "publishMs": 31.2,
+        "commitMs": 35.3
+      },
+      {
+        "bytes": 408305,
+        "encodeMs": [
+          0.8
+        ],
+        "parseMs": [
+          0.6
+        ],
+        "publishMs": 31.9,
+        "commitMs": 33.6
+      },
+      {
+        "bytes": 411413,
+        "encodeMs": [
+          0.7
+        ],
+        "parseMs": [
+          0.7
+        ],
+        "publishMs": 31.8,
+        "commitMs": 33
+      },
+      {
+        "bytes": 414521,
+        "encodeMs": [
+          0.8
+        ],
+        "parseMs": [
+          0.7
+        ],
+        "publishMs": 32.1,
+        "commitMs": 34.6
+      },
+      {
+        "bytes": 417630,
+        "encodeMs": [
+          0.8
+        ],
+        "parseMs": [
+          0.7
+        ],
+        "publishMs": 32.5,
+        "commitMs": 34.5
+      },
+      {
+        "bytes": 420738,
+        "encodeMs": [
+          0.8
+        ],
+        "parseMs": [
+          0.7
+        ],
+        "publishMs": 32.6,
+        "commitMs": 35.5
+      },
+      {
+        "bytes": 423846,
+        "encodeMs": [
+          0.8
+        ],
+        "parseMs": [
+          0.8
+        ],
+        "publishMs": 33.1,
+        "commitMs": 34.3
+      },
+      {
+        "bytes": 426954,
+        "encodeMs": [
+          0.8
+        ],
+        "parseMs": [
+          0.8
+        ],
+        "publishMs": 33.5,
+        "commitMs": 34.6
+      }
+    ]
+  }
+}
