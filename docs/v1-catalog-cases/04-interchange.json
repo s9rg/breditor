@@ -1,0 +1,280 @@
+{
+  "format": "breditor/v1-catalog-cases",
+  "formatVersion": 1,
+  "cases": [
+    {
+      "id": "structural-clipboard-range-and-grid",
+      "version": 1,
+      "feature": "internal-clipboard",
+      "sources": [
+        "ckeditor-source-clipboard",
+        "ckeditor-tables"
+      ],
+      "scenario": "Copy a general selection that starts inside formatted text and ends partway through a table. Paste into an installed local editor and a shared editor on the same rich language. Repeat with a rectangular grid selection and a whole-document selection.",
+      "expected": [
+        "Pasted content preserves the selected text, inline formats and structural boundaries. Unselected table cells remain empty and copied cell merges retain their source partitions.",
+        "Pasted blocks, cells and asset binding generations follow the documented identity rules, with no collisions after repeating the paste. Each paste contributes one undo unit and Redo restores the same identities."
+      ]
+    },
+    {
+      "id": "clipboard-format-priority-and-plain-paste",
+      "version": 1,
+      "feature": "html-interchange",
+      "sources": [
+        "ckeditor-source-clipboard",
+        "ckeditor-overview"
+      ],
+      "scenario": "Put distinguishable Breditor structured content, HTML, explicit Markdown MIME and plain text on one clipboard. Paste into an installation with the interchange adapter and repeat while removing the highest-priority flavor each time. Finally use the explicit plain-text action with all flavors present.",
+      "expected": [
+        "Normal paste selects Breditor content, HTML, explicit Markdown and plain text in that order, following the documented destination and adapter settings.",
+        "The explicit plain-text action keeps only the plain text and the documented line and paragraph breaks. Each successful replacement is undone in one step."
+      ],
+      "untrustedInput": "Corrupt the selected Breditor and HTML flavors in separate runs while supplying a valid lower-priority flavor. Confirm the paste reports refusal and leaves the document, selection and history intact, with no fallback mutation."
+    },
+    {
+      "id": "guarded-rich-cut-and-paste",
+      "version": 1,
+      "feature": "internal-clipboard",
+      "sources": [
+        "ckeditor-source-clipboard"
+      ],
+      "scenario": "Cut a selection spanning formatted text and a block image in an installed editor with foreign formats enabled. Repeat with a clipboard implementation that declines one required format and with a selection that becomes stale during the Cut.",
+      "expected": [
+        "Successful Cut retains the expected native, HTML, Markdown and plain clipboard data and removes only the selected content in one history step. Undo restores the exact source selection and content.",
+        "Loss of a required clipboard format or a stale selection leaves source content untouched, emits the corresponding failure and adds no history entry. A subsequent ordinary Cut still succeeds."
+      ]
+    },
+    {
+      "id": "semantic-html-interchange-round-trip",
+      "version": 1,
+      "feature": "html-interchange",
+      "sources": [
+        "ckeditor-general-html",
+        "ckeditor-source-clipboard",
+        "tiptap-source-table"
+      ],
+      "scenario": "Import an HTML fragment with a heading, nested list, block quote, multilingual inline formats, a captioned merged table and an image addressed through the host's asset registry. Restore the document and export it to HTML, then import the output into a fresh document with the same rich language.",
+      "expected": [
+        "Both native imports match independently authored expectations for order, text, formats, list numbering, table geometry, captions and the authorized asset. Ignore only the expected rekeying of native identities.",
+        "The export preserves admitted structure. For a fixture with a documented approximation, the report contains the expected loss code and count, and the lossy result differs only at the reported construct."
+      ]
+    },
+    {
+      "id": "bounded-html-interchange-and-losses",
+      "version": 1,
+      "feature": "html-interchange",
+      "sources": [
+        "ckeditor-general-html",
+        "ckeditor-source-clipboard"
+      ],
+      "scenario": "Paste a fixture containing permitted text alongside one unsupported style, one blocked link and one unavailable image. Repeat at the documented HTML input and nesting limits and once beyond each limit.",
+      "expected": [
+        "A successful paste retains permitted text and reports the expected aggregate unsupported-style, unsafe-link and image-reference losses without echoing source attributes or URLs.",
+        "Limits are enforced independently. A refused paste publishes no document change, history entry or asset reference and presents the documented error instead of a successful loss report."
+      ],
+      "untrustedInput": "Include a controlled external resource, inert test markup with a disallowed event attribute, and a forged image binding. Capture requests and resolved asset identities through import, live and static rendering, cold restore and exported HTML in the supported consumer."
+    },
+    {
+      "id": "markdown-dialect-import-and-output",
+      "version": 1,
+      "feature": "markdown",
+      "sources": [
+        "ckeditor-markdown",
+        "tiptap-catalog"
+      ],
+      "scenario": "Import the declared Markdown dialect with headings, emphasis, strike, nested lists, task markers, an aligned pipe table, fenced code, a hard break and adjacent separate ordered lists. Export and import into a fresh editor.",
+      "expected": [
+        "Compare each native import with an independently authored fixture for text, structure, task state, alignment, formats, list boundaries and list starts. Equality between imports alone cannot detect first-pass loss.",
+        "Code line breaks and hard breaks survive independently. The writer returns the same Markdown and loss observations for repeated exports of the same revision."
+      ]
+    },
+    {
+      "id": "markdown-html-fallback-and-losses",
+      "version": 1,
+      "feature": "markdown",
+      "sources": [
+        "ckeditor-markdown",
+        "ckeditor-general-html",
+        "tiptap-catalog"
+      ],
+      "scenario": "Export a fixture with a captioned merged table, an admitted layout property and a fenced code sample with significant whitespace. Also import a fixture with an out-of-range list start and unsupported trailing fence metadata.",
+      "expected": [
+        "The supported HTML fallback reimports the table geometry, caption, layout and exact code content. The report distinguishes compatibility notices for fallback from actual fidelity losses.",
+        "The Markdown importer reports the discarded fence metadata and adjusted list numbering with the documented loss codes and exact counts for the fixture."
+      ],
+      "untrustedInput": "Put a blocked external resource and unsupported active markup in a raw HTML block next to permitted text. Verify that the Markdown importer, restored renderer and exported HTML fallback honor the same content and resource policy."
+    },
+    {
+      "id": "markdown-autolinks-explicit-opt-in",
+      "version": 1,
+      "feature": "markdown",
+      "sources": [
+        "ckeditor-markdown",
+        "tiptap-catalog"
+      ],
+      "scenario": "Import one Markdown fixture containing an unmarked URL, a www-prefixed target, an autolink candidate followed by punctuation and a URL inside code. Run with the versioned autolink option on and off.",
+      "expected": [
+        "Opt-in mode links each admitted candidate with the documented canonical target and excludes trailing prose punctuation. The code span and denied candidates remain literal text.",
+        "The default import leaves the unmarked candidates literal. Existing explicit Markdown link syntax retains its declared behavior in both modes."
+      ]
+    },
+    {
+      "id": "word-native-office-paste",
+      "version": 1,
+      "feature": "office-paste",
+      "sources": [
+        "ckeditor-office"
+      ],
+      "scenario": "Capture native clipboard payloads for the same fixture from named Word desktop and Word for the web versions. Include a restarted multilevel list with lettered and roman markers, mixed styles, a table and a linked image whose bytes are registered by the host. Paste into an installed local editor and a shared editor.",
+      "expected": [
+        "The expected native structure matches the producer-specific fixture baseline for list depth, starts, marker styles, formats, table spans and permitted asset mapping. Known approximations produce the expected per-producer loss records.",
+        "Paste is one undoable insertion. Cold reopen and delivery to a shared peer retain the admitted structure and its image binding."
+      ],
+      "untrustedInput": "Include a producer-local image path and an unavailable external image. Resolve the registered asset only and compare requests, restored content and exported references."
+    },
+    {
+      "id": "google-docs-native-paste",
+      "version": 1,
+      "feature": "office-paste",
+      "sources": [
+        "ckeditor-overview"
+      ],
+      "scenario": "Capture Google Docs clipboard output for a fixture with a numbered list, subscript, superscript, a linked span, a table and an explicit page break. Paste the captured payload into an installed editor and compare with the native structure expected for its rich language.",
+      "expected": [
+        "List state, admitted inline formatting, link text and table order are preserved. Producer wrapper styling does not introduce formatting outside its intended range.",
+        "The page break is retained when the target language admits it. Otherwise the result and loss report show the documented fallback for that target."
+      ],
+      "untrustedInput": "Add one disallowed external reference beside a permitted link. Observe the expected loss and ensure the blocked destination stays absent through live rendering, cold recovery and export."
+    },
+    {
+      "id": "spreadsheet-native-grid-paste",
+      "version": 1,
+      "feature": "office-paste",
+      "sources": [
+        "ckeditor-office",
+        "ckeditor-overview"
+      ],
+      "scenario": "Capture actual clipboard payloads from supported Excel and Google Sheets versions with a merged header, empty cells, formatted numeric values, multiline text and a formula result. Paste the capture once as a standalone table and once into a compatible selected grid.",
+      "expected": [
+        "Both destinations preserve the expected rectangle, blank cell positions, merge geometry and displayed cell values. The installed rich editor has no active spreadsheet formulas after paste.",
+        "Paste into a destination that cannot admit the source geometry refuses atomically or applies the stated fallback with its exact loss report. Undo of each successful paste restores the entire prior grid."
+      ],
+      "untrustedInput": "Include a linked cell and a controlled resource-bearing style. Inspect resulting links, rendered requests, recovery and exported HTML to confirm only admitted references remain."
+    },
+    {
+      "id": "office-paste-into-plain-destinations",
+      "version": 1,
+      "feature": "office-paste",
+      "sources": [
+        "ckeditor-office",
+        "ckeditor-source-clipboard"
+      ],
+      "scenario": "Use the same captured Office fragment with headings, emphasis and a link when pasting into ordinary flow, a code block and an image caption.",
+      "expected": [
+        "Ordinary flow retains supported structure and formats. Plain-text-only destinations insert the expected text with the documented whitespace behavior and the expected destination-specific loss report.",
+        "Each insertion contributes one history step. Undo restores prior text and selection, and Redo recreates the destination-specific representation."
+      ]
+    },
+    {
+      "id": "docx-import-and-recovery",
+      "version": 1,
+      "feature": "document-conversion",
+      "sources": [
+        "tiptap-conversion",
+        "ckeditor-overview"
+      ],
+      "scenario": "Import a DOCX authored in a supported Word version with document headings, numbering, a merged table, a captioned embedded image, a page break and one intentionally unsupported feature. Inspect the imported document, edit it and reopen it in a fresh installed editor.",
+      "expected": [
+        "The configured conversion preserves the published fidelity subset, including the embedded image's exact admitted bytes and placement, and reports the unsupported input feature with its documented diagnostic.",
+        "A valid import produces a recoverable native document. A failed import does not leave a newly published partial document or residual asset references."
+      ],
+      "untrustedInput": "Use controlled fixtures with malformed package metadata, an oversized part and an external-reference fixture. Verify bounded refusal or a reported omission at import and check that restored and exported output stays inside the admitted asset policy."
+    },
+    {
+      "id": "docx-export-word-and-libreoffice",
+      "version": 1,
+      "feature": "document-conversion",
+      "sources": [
+        "tiptap-conversion",
+        "ckeditor-overview"
+      ],
+      "scenario": "Export the same native document twice with fixed image inputs, then open the DOCX in named supported Word and LibreOffice versions. Use multilingual text, a restarted list, an explicit page break, two references to one image and a table with merges.",
+      "expected": [
+        "Repeated export bytes match. An independent package reader sees valid parts and relationships, one shared media part for the repeated binding and the expected table and numbering structure.",
+        "Both applications open the file without a repair dialog and present the expected text, numbering, table spans and image placements. Compare the fixture's unsupported features with the reported loss codes and counts."
+      ],
+      "untrustedInput": "Repeat with one missing asset and a denied link. Output keeps the documented alt text and link text fallbacks, reports each loss and contains no relationship to a rejected destination."
+    },
+    {
+      "id": "pdf-export-portability",
+      "version": 1,
+      "feature": "document-conversion",
+      "sources": [
+        "ckeditor-overview",
+        "tiptap-conversion"
+      ],
+      "scenario": "Export a native document with defined paper size and fonts, mixed-direction text, an internal bookmark, a permitted link, an image and a forced page break. Open the result in an independent PDF reader and parse page geometry and link annotations.",
+      "expected": [
+        "The reader opens a valid PDF with the expected paper size, content order, image placement, forced break and supported link behavior. Text extraction preserves the represented multilingual content.",
+        "The exporter reports each deliberately unsupported construct under its published fidelity contract, and identical source revisions preserve the same visible content and annotation targets."
+      ],
+      "untrustedInput": "Use a denied image reference and forbidden link target. Ensure the export conversion attempts no access to either resource and the PDF carries no URI annotation for the denied link."
+    },
+    {
+      "id": "odt-export-open-document-fidelity",
+      "version": 1,
+      "feature": "document-conversion",
+      "sources": [
+        "tiptap-conversion"
+      ],
+      "scenario": "Export a document with headings, formatted runs, numbered lists, a merged table and a registered image to ODT. Open it in a supported ODF application and independently inspect the package.",
+      "expected": [
+        "The ODF application opens an editable document with expected text and structure, and the package manifest and image binding identify the expected media bytes.",
+        "Every deliberately unsupported construct produces the documented fidelity result. The editor revision is unchanged after export."
+      ]
+    },
+    {
+      "id": "epub-export-reflowable-content",
+      "version": 1,
+      "feature": "document-conversion",
+      "sources": [
+        "tiptap-conversion"
+      ],
+      "scenario": "Export a document with a title, multiple sections, an internal bookmark, lists, an image and multilingual text as EPUB. Use an independent validator and open the result in a supported reader at two viewport widths.",
+      "expected": [
+        "The archive validates and its reading order, navigation targets and media references resolve. The reader reflows admitted text, preserves the expected text order and renders the image at both widths.",
+        "Unsupported layout or metadata produces the documented loss outcome without dropping unrelated section content."
+      ]
+    },
+    {
+      "id": "html-source-preview-apply-and-undo",
+      "version": 1,
+      "feature": "html-source-and-email",
+      "sources": [
+        "ckeditor-overview",
+        "ckeditor-general-html"
+      ],
+      "scenario": "Open the source view on an installed editor with structured HTML support. Edit a heading and list, preview changes, apply once, save and reopen, then Undo and Redo. Repeat Preview after changing the underlying revision in the editor.",
+      "expected": [
+        "Preview reports expected normalization and losses while preserving the prior live revision. Apply performs one validated whole-document replacement and reseats identities according to the native contract.",
+        "Undo and Redo recover the exact source and applied structures. A stale preview is refused without changing the newer document or its history."
+      ],
+      "untrustedInput": "Add an unsupported attribute and a controlled denied resource to source text. Verify the preview change report, the exact admitted data, live/static rendering immediately and after reopen, and the exported fragment."
+    },
+    {
+      "id": "html-comment-element-round-trip",
+      "version": 1,
+      "feature": "html-source-and-email",
+      "sources": [
+        "ckeditor-overview",
+        "ckeditor-general-html"
+      ],
+      "scenario": "Import markup with comments before a heading and between two paragraphs under the profile that supports editable HTML comments. Edit the nearest paragraph and change one comment through the source view, then save, reopen and export HTML.",
+      "expected": [
+        "The published comment capability preserves the allowed comment text and document position through source editing, Undo and reopen. Comment text remains absent from ordinary visible paragraph text.",
+        "Export writes a valid comment representation in the expected position and rejects or reports content outside the documented comment bounds."
+      ],
+      "untrustedInput": "Use a synthetic comment with markup-like text and an invalid delimiter sequence. Verify reported handling at import and source preview, and confirm no comment text becomes an active element after restoration or export."
+    }
+  ]
+}
