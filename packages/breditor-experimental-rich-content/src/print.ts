@@ -9,11 +9,20 @@ export type RichPrintPageSize="A4"|"Letter";
 export type RichPrintOrientation="portrait"|"landscape";
 /** Closed margin presets: narrow 12.7 mm (0.5 in), normal 25.4 mm (1 in), wide 38.1 mm (1.5 in), on every side. */
 export type RichPrintMargin="narrow"|"normal"|"wide";
-export interface RichPrintOptions {readonly size?:RichPrintPageSize;readonly orientation?:RichPrintOrientation;readonly margin?:RichPrintMargin}
+export interface RichPrintOptions {
+ readonly size?:RichPrintPageSize;
+ readonly orientation?:RichPrintOrientation;
+ readonly margin?:RichPrintMargin;
+ /** One line of text centered in the printed top margin. */
+ readonly runningHeader?:string;
+ /** Print the current page and total page count in the bottom margin. */
+ readonly pageNumbers?:boolean;
+}
 /** One validated, frozen layout. Lengths are millimetres, exact to 0.1 mm. */
 export interface RichPrintLayout {
  readonly size:RichPrintPageSize;readonly orientation:RichPrintOrientation;readonly margin:RichPrintMargin;
  readonly pageWidthMm:number;readonly pageHeightMm:number;readonly marginMm:number;readonly contentWidthMm:number;readonly contentHeightMm:number;
+ readonly runningHeader?:string;readonly pageNumbers?:boolean;
 }
 export const richPrintPageSizes:readonly RichPrintPageSize[]=Object.freeze(["A4","Letter"]);
 export const richPrintOrientations:readonly RichPrintOrientation[]=Object.freeze(["portrait","landscape"]);
@@ -26,19 +35,32 @@ const mm=(tenths:number):number=>tenths/10;
 /** Validate options against the closed sets; defaults are A4, portrait, normal. Throws TypeError otherwise. */
 export function resolveRichPrintLayout(options:RichPrintOptions|RichPrintLayout={}):RichPrintLayout{
  if(options===null||typeof options!=="object"||Array.isArray(options))throw new TypeError("Print options must be an object");
- const known=["size","orientation","margin","pageWidthMm","pageHeightMm","marginMm","contentWidthMm","contentHeightMm"];
+ const known=["size","orientation","margin","pageWidthMm","pageHeightMm","marginMm","contentWidthMm","contentHeightMm","runningHeader","pageNumbers"];
  for(const key of Object.keys(options))if(!known.includes(key))throw new TypeError(`Unknown print option ${JSON.stringify(key)}`);
  const size=options.size??"A4",orientation=options.orientation??"portrait",margin=options.margin??"normal";
  if(!richPrintPageSizes.includes(size))throw new TypeError("Print size must be A4 or Letter");
  if(!richPrintOrientations.includes(orientation))throw new TypeError("Print orientation must be portrait or landscape");
  if(!richPrintMargins.includes(margin))throw new TypeError("Print margin must be narrow, normal or wide");
+ const {runningHeader,pageNumbers}=options;
+ if(runningHeader!==undefined&&(typeof runningHeader!=="string"||runningHeader.length>240||/[\u0000-\u001f\u007f-\u009f\u2028\u2029\ud800-\udfff]/u.test(runningHeader))){
+  throw new TypeError("The running header needs one line of Unicode text, up to 240 UTF-16 code units");
+ }
+ if(pageNumbers!==undefined&&typeof pageNumbers!=="boolean")throw new TypeError("Print pageNumbers must be a Boolean");
  const [short,long]=paper[size],width=orientation==="portrait"?short:long,height=orientation==="portrait"?long:short,edge=margins[margin];
- return Object.freeze({size,orientation,margin,pageWidthMm:mm(width),pageHeightMm:mm(height),marginMm:mm(edge),contentWidthMm:mm(width-2*edge),contentHeightMm:mm(height-2*edge)});
+ return Object.freeze({size,orientation,margin,pageWidthMm:mm(width),pageHeightMm:mm(height),marginMm:mm(edge),contentWidthMm:mm(width-2*edge),contentHeightMm:mm(height-2*edge),
+  ...(runningHeader?{runningHeader}:{}),...(pageNumbers?{pageNumbers}:{})});
 }
 
 const scope="[data-breditor-rich]";
 const rule=(selectors:readonly string[],body:string):string=>`${selectors.map(selector=>`${scope} ${selector}`).join(",")}{${body}}`;
-const pageRule=(layout:RichPrintLayout):string=>`@page{size:${layout.size} ${layout.orientation};margin:${layout.marginMm}mm}`;
+function pageRule(layout:RichPrintLayout):string {
+ // Escape the CSS string and the surrounding HTML style element used by static export.
+ const text=layout.runningHeader?.replace(/["\\<]/g,value=>`\\${value.charCodeAt(0).toString(16)} `);
+ const header=text?`@top-center{content:"${text}";font:9pt system-ui;white-space:nowrap}`:"";
+ const footer=layout.pageNumbers?'@bottom-center{content:counter(page) " / " counter(pages);font:9pt system-ui}':"";
+ const boxes=header+footer;
+ return `@page{size:${layout.size} ${layout.orientation};margin:${layout.marginMm}mm${boxes?`;${boxes}`:""}}`;
+}
 /**
  * Print stylesheet for a live editor root or static output (`[data-breditor-rich]`). Deterministic: the
  * same options always produce the same string. It sets `@page` size and margins and, under `@media print`:

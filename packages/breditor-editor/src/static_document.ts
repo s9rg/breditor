@@ -64,8 +64,8 @@ export interface StaticRenderOptions {
  /** Accessible label of V4 page-break elements (default the English catalog `pageBreakLabel`, "Page break"). */
  pageBreakLabel?:string;
  /**
-  * Print/export mode (default off, output unchanged). `true` or bounded `RichPrintOptions` (A4/Letter,
-  * portrait/landscape, narrow/normal/wide margins): the wrapper starts with a `<style data-breditor-print>`
+  * Print/export mode (default off, output unchanged). `true` or bounded `RichPrintOptions` including an
+  * optional running header and page counters. The wrapper starts with a `<style data-breditor-print>`
   * holding `richPrintStyles` for that layout (fragments carry no stylesheet; hosts add `richPrintStyles`
   * themselves), and a table's leading rows whose every cell is a header cell (no row span crossing into a
   * body row) are emitted in `<thead>` so paged media repeats them on each page.

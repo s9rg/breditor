@@ -127,6 +127,19 @@ describe("opt-in print presentation",()=>{
   expect(richPrintPreviewStyles()).toContain("width:159.2mm!important");
   expect(richPrintPreviewStyles()).toContain("background-size:100% 246.2mm!important");
  });
+ it("escapes bounded header text in the printed margin and emits native page counters",()=>{
+  const options={runningHeader:'Release "A" \\ </style> 🙂',pageNumbers:true} as const;
+  const printed=richPrintStyles(options);
+  expect(printed).toContain('@top-center{content:"Release \\22 A\\22  \\5c  \\3c /style> 🙂";');
+  expect(printed).toContain('@bottom-center{content:counter(page) " / " counter(pages);');
+  expect(printed).not.toContain('</style>');
+  expect(richPrintStyles(resolveRichPrintLayout(options))).toBe(printed);
+  expect(richPrintStyles({runningHeader:"",pageNumbers:false})).toBe(richPrintStyles());
+  for(const bad of [{runningHeader:"first\nsecond"},{runningHeader:"first\u0085second"},{runningHeader:"first\u2028second"},
+   {runningHeader:"first\u2029second"},{runningHeader:"\ud800"},{runningHeader:"x".repeat(241)},{pageNumbers:"yes"}]){
+   expect(()=>resolveRichPrintLayout(bad as never)).toThrow(TypeError);
+  }
+ });
  it("mounts, updates and disposes a print preview without touching content",()=>{
   const surface=document.createElement("div");surface.contentEditable="true";document.body.append(surface);render(surface,model(caret("p",0)),{});
   const before=surface.innerHTML;
@@ -138,8 +151,12 @@ describe("opt-in print presentation",()=>{
   expect(style.textContent).toContain('@media screen{[data-breditor-print-preview][data-breditor-print-size="Letter"][data-breditor-print-orientation="portrait"][data-breditor-print-margin="normal"]{');
   expect(style.textContent?.endsWith(richPrintStyles({size:"Letter"}))).toBe(true);
   expect(()=>mountRichPrintPreview(surface)).toThrow("already mounted");
-  expect(preview.update({orientation:"landscape"}).pageWidthMm).toBe(297);
+  expect(preview.update({orientation:"landscape",runningHeader:"Changed title",pageNumbers:true}).pageWidthMm).toBe(297);
   expect(style.textContent).toContain("size:A4 landscape");expect(preview.layout.orientation).toBe("landscape");
+  expect(style.textContent).toContain('@top-center{content:"Changed title";');
+  expect(style.textContent).toContain('@bottom-center{content:counter(page) " / " counter(pages);');
+  preview.update({orientation:"landscape"});
+  expect(style.textContent).not.toMatch(/@top-center|@bottom-center/);
   expect(()=>preview.update({size:"B5"} as never)).toThrow(TypeError);
   expect(surface.innerHTML).toBe(before);
   preview.dispose();preview.dispose();
