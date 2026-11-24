@@ -80,7 +80,7 @@ test("portable HTML inlines bounded ancestor-scoped stylesheet rules",async({pag
   const t=window.il,adapter=t.createRichInterchange(t.core),before=t.core.checkpointJson();
   const source='<style>.report td span{color:#224466!important}span.tint{color:#778899}'+
    '#priority span{font-style:italic}.a.b.c.d.e.f.g.h td.i.j.k.l.m.n.o.p span{font-style:normal}'+
-   '.report > tbody span{background-color:red}</style><link rel="stylesheet" href="https://outside.example/report.css">'+
+   '.report + tbody span{background-color:red}</style><link rel="stylesheet" href="https://outside.example/report.css">'+
    '<table class="report a b c d e f g h" id="priority"><tr><td class="i j k l m n o p"><span class="tint" style="color:green">Inside</span></td></tr></table>'+
    '<p><span class="tint">Outside</span></p>';
   const imported=adapter.importHtml(source),exported=adapter.exportHtml(imported.value.structuredJson);

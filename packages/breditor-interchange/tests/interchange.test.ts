@@ -39,6 +39,17 @@ describe("explicit parser staging contracts",()=>{
     expect(test.adapter.importHtml(`<style>${rules}</style>${deep}`)).toEqual({ok:false,error:"resource-limit",losses:[]});
     expect(test.calls).toBe(0);
   });
+  it("handles bounded mixed child selectors without using the wrong ancestor",()=>{
+    const result=staging().adapter.importHtml('<style>.outer > .region p{color:#123456} .outer > p{color:#980000}'+
+      '.outer .heading > span{color:#765432} .outer > div > p > span{color:red}</style>'+
+      '<div class="outer"><p>Direct</p><div class="region"><div><div class="region"><p>Farther match</p></div></div></div>'+
+      '<div><p>Wrong subtree</p></div><p class="heading"><span>Immediate</span><em><span>Nested</span></em></p></div>');
+    const runs=nodes(root(result)).filter(node=>node.kind==="text");
+    expect(runs.map(({text,formats})=>[text,formats.find((format:any)=>format.type==="breditor-inline/text-color")?.properties["breditor-inline/rgb24"]??null])).toEqual([
+      ["Direct",0x980000],["Farther match",0x123456],["Wrong subtree",null],["Immediate",0x765432],["Nested",0x980000],
+    ]);
+    expect(result.losses).toEqual([{code:"unsupported-style",count:1,effect:"loss"}]);
+  });
   it("keeps nonbreaking spaces inside selector identifiers and HTML class tokens",()=>{
     const result=staging().adapter.importHtml('<style>.report\u00a0span{color:red!important}.report\tspan{color:blue}</style>'+
       '<div class="report\u00a0extra"><p><span>Joined</span></p></div><div class="report\textra"><p><span>Separate</span></p></div>');
@@ -51,7 +62,7 @@ describe("explicit parser staging contracts",()=>{
   it("applies bounded Office class selectors, specificity, source order and important",()=>{
     const value=staging().adapter.importHtml('<style>.x {color:red} p.x {color:green} .x {color:blue!important} .x {color:yellow!important}</style><p class="x" style="color:white">A</p><p class="x" style="color:black!important">B</p>'),r=root(value);
     expect(r.children[0].children[0].formats[0].properties["breditor-inline/rgb24"]).toBe(0xffff00);expect(r.children[1].children[0].formats[0].properties["breditor-inline/rgb24"]).toBe(0);
-    const ignored=staging().adapter.importHtml('<style>@import url(SECRET); div > p {color:red}</style><p>A</p>');expect(ignored.losses.some(l=>l.code==="unsupported-style")).toBe(true);expect(JSON.stringify(root(ignored))).not.toContain("SECRET");
+    const ignored=staging().adapter.importHtml('<style>@import url(SECRET); div + p {color:red}</style><p>A</p>');expect(ignored.losses.some(l=>l.code==="unsupported-style")).toBe(true);expect(JSON.stringify(root(ignored))).not.toContain("SECRET");
   });
   it("retains authored full-document body styles and rejects unavailable media rules",()=>{
     const r=root(staging().adapter.importHtml('<!doctype html><html><head><style>.body {color:#123456}</style><style media="print">p{color:red}</style></head><body class="body" style="font-size:16px;text-align:center"><p>A</p></body></html>'));

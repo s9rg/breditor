@@ -114,7 +114,7 @@ and installing this subpath leaves clipboard and image import unchanged.
 
 HTML conversion uses inert parse5 and css-tree data, not browser DOM parsing.
 Stylesheet selectors support up to three tag/class/ID compounds joined by
-descendant whitespace. Stylesheet and inline declarations honor specificity,
+descendant whitespace or the direct-child combinator `>`. Stylesheet and inline declarations honor specificity,
 source order and `!important` within bounded matching. Winning CSS dimensions take
 precedence over HTML size attributes on images, tables, columns and cells.
 Dimensions outside the native subset produce a size or width notice. Recognized
