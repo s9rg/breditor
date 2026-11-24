@@ -4,10 +4,22 @@ import type {RichSearchHost} from "./search_host.js";
 const paintLimit=8192;
 /** @internal Join the editor's fullscreen layer while keeping markers outside editable content. */
 export function placeViewportOverlay(surface:HTMLElement,overlay:HTMLElement):void{
- const document=surface.ownerDocument,root=surface.getRootNode() as Document|ShadowRoot;
- const full=root.fullscreenElement??document.fullscreenElement;
- const parent=full&&full!==surface&&full.contains(surface)?full:document.body??document.documentElement;
- if(overlay.parentElement!==parent)parent.append(overlay);
+ const document=surface.ownerDocument,view=document.defaultView;
+ let parent:Element|ShadowRoot=document.body??document.documentElement;
+ let current:Element=surface,childShadow:ShadowRoot|undefined;
+ for(;;){
+  const root=current.getRootNode();
+  const shadow=view&&root instanceof view.ShadowRoot?root:undefined;
+  const full=root===document?document.fullscreenElement:shadow?.fullscreenElement;
+  if(full){
+   // An unslotted fullscreen host renders its shadow tree, not appended light DOM.
+   if(full!==surface&&full.contains(current))parent=full===current&&childShadow?childShadow:full;
+   break;
+  }
+  if(!shadow)break;
+  childShadow=shadow;current=shadow.host;
+ }
+ if(overlay.parentNode!==parent)parent.append(overlay);
 }
 /** @internal Also used by the language-check overlay (same block/UTF-16 to DOM mapping). */
 export function endpoint(block:HTMLElement,offset:string):[Node,number]|null{

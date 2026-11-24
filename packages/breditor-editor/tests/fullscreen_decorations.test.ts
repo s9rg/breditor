@@ -100,4 +100,28 @@ describe("fullscreen viewport decorations", () => {
       for (const layer of layers) layer.dispose();
     }
   });
+
+  it("follows fullscreen outside a shadow editor, including its unslotted host", () => {
+    mockFullscreen();
+    const wrapper = document.createElement("main");
+    const shadowHost = document.createElement("div");
+    wrapper.append(shadowHost);
+    document.body.append(wrapper);
+    const shadow = shadowHost.attachShadow({ mode: "closed" });
+    const { surface, mount } = fixture(shadow);
+    const layers = mount();
+    try {
+      changeFullscreen(wrapper);
+      for (const layer of layers) expect(layer.element.parentNode).toBe(wrapper);
+      changeFullscreen(shadowHost);
+      for (const layer of layers) {
+        expect(layer.element.parentNode).toBe(shadow);
+        expect(surface.contains(layer.element)).toBe(false);
+      }
+      changeFullscreen(null);
+      for (const layer of layers) expect(layer.element.parentNode).toBe(document.body);
+    } finally {
+      for (const layer of layers) layer.dispose();
+    }
+  });
 });
