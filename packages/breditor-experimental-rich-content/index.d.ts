@@ -41,6 +41,7 @@ export {RichAssetArchive,readRichAssetBackup,type RichAssetSourceBackup,type Ric
 export {RichAssetReconciliation,RichAssetReconciliationError,type RichAssetReconciliationOptions,type RichAssetReconciliationChoice,type RichAssetReconciliationConflict,type RichAssetReconciliationPreview,type RichAssetUploadState} from "./dist/browser/index.js";
 export {RichAssetReconciledBase,RichAssetBaseError,ASSET_BASE_MIME,type RichAssetBaseMetadata,type RichAssetBasePart,type RichAssetBaseReadOptions,type RichAssetBaseBuildOptions} from './dist/browser/index.js';
 export {checkRichAssetLimits,inspectRichRaster,type RichRasterInspection,type RichRasterInspectionOptions} from "./dist/browser/index.js";
+export {prepareRichRasterUrl,RichRasterUrlError,type RichRasterUrlOptions,type RichRasterUrlLoadRequest,type RichRasterUrlLoadResponse} from "./dist/browser/index.js";
 export {mountRichMultiRootEditor,restoreRichRootSet,type RichRootSetPort,type RichRootSetState,type RichRootMetaInput,type RichRootCheckpointPart,type RichMultiRootDefinition,type RichMultiRootEditor,type RichMultiRootEditorOptions} from "./dist/browser/multi_root.js";
 /** Native multi-root history coordinator; one global Undo order over separate root owners. */
 export function createRichRootSet(wasm:RichWasmModule):import("./dist/browser/multi_root.js").RichRootSetPort;
