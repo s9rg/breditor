@@ -11,6 +11,7 @@ import {fileEvidence,sourceEvidence,saveEvidence} from "./candidate-release/evid
 import {executeCandidateStage} from "./candidate-release/process.mjs";
 import {runCandidateChecks} from "./verify-candidate.mjs";
 import {candidateCoverage} from "./check-candidate-coverage.mjs";
+import {verifyHostedContext} from "./candidate-release/hosted-context.mjs";
 const temporary=()=>mkdtempSync(join(tmpdir(),"breditor-candidate-contract-"));
 const fixtureCheck=(id="fixture",script="console.log('fixture proof')")=>({id,command:process.execPath,args:["-e",script],env:{},artifacts:[],timeoutMs:4000});
 const plan=checks=>({profile:"functional",deferred:["not-a-v1-certification"],checks});
@@ -67,6 +68,7 @@ test("candidate coverage requires one clean source, complete selected stages and
    [{profile:"full"},/profile differs/],
    [{shard:"native"},/shard differs/],
    [{candidate:"failure"},/candidate did not succeed/],
+   [{browsers:"success"},/browser setup differs/],
    [{workflow:runner.workflow.replace("candidate-qualification.yml","unrelated.yml")},/different workflow/],
   ]){
    writeFileSync(contextPath,context({...runner,...patch}));
@@ -74,6 +76,13 @@ test("candidate coverage requires one clean source, complete selected stages and
   }
   writeFileSync(contextPath,context(runner)+"runAttempt\t3\n");
   assert.throws(()=>candidateCoverage(root,[run.manifest],{requireHosted:true}),/duplicate hosted runner context fields/);
+
+  const browserPlan=candidateReleasePlan({profile:"default-matrix"});
+  const browserReceipt={...manifest,profile:browserPlan.profile};
+  writeFileSync(contextPath,context({...runner,profile:browserPlan.profile}));
+  assert.throws(()=>verifyHostedContext(dirname(run.manifest),browserReceipt,browserPlan),/browser setup differs/);
+  writeFileSync(contextPath,context({...runner,profile:browserPlan.profile,browsers:"success"}));
+  assert.equal(verifyHostedContext(dirname(run.manifest),browserReceipt,browserPlan).runId,runner.runId);
   manifest.environment=original.environment;
   manifest.source.commit="0".repeat(40);
   saveEvidence(run.manifest,manifest);

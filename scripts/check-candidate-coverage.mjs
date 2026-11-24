@@ -53,7 +53,7 @@ export function candidateCoverage(root,manifests,{requireHosted=false}={}) {
    }
    covered.add(check.id);
   }
-  const hosted=requireHosted?{hosted:verifyHostedContext(directory,receipt)}:{};
+  const hosted=requireHosted?{hosted:verifyHostedContext(directory,receipt,plan)}:{};
   evidence.push({path:input,profile:receipt.profile,shard:receipt.shard?.id,environment:receipt.environment,sha256:record.sha256,...hosted});
  }
  assert.deepEqual(sourceEvidence(root),source,"Candidate source changed during evidence review");

@@ -7,12 +7,18 @@ import {fileEvidence} from "./evidence.mjs";
 
 const contextFile="runner-context.tsv";
 const successfulSteps=["checkout","node","rust","npm","cargo","candidate"];
+const browserStages=new Set([
+ "default-package-release-matrix","installed-editor-browser-matrix","installed-application-network-matrix",
+ "rich-browser-chromium","rich-browser-firefox","rich-browser-webkit","shared-browser-matrix","rich-demo-latency",
+ "installed-search-browser","installed-placeholder-browser","installed-fullscreen-browser",
+ "installed-session-backups-browser","installed-asset-backups-browser",
+]);
 const keys=[
  "format","repository","workflow","event","runId","runAttempt",
  "revision","profile","shard","os","arch","browsers",...successfulSteps,
 ].sort();
 
-export function verifyHostedContext(directory,receipt){
+export function verifyHostedContext(directory,receipt,plan){
  assert.match(basename(directory),/^run-[a-z0-9]+$/i,"Hosted results must remain in their downloaded run directory");
  const root=dirname(directory),context=fileEvidence(root,contextFile);
  assert.ok(context.bytes<=8192,"Hosted runner context exceeds its size bound");
@@ -35,7 +41,8 @@ export function verifyHostedContext(directory,receipt){
  assert.deepEqual([value.os,value.arch,receipt.environment?.platform,receipt.environment?.arch],
   ["Linux","X64","linux","x64"],"Hosted runner and receipt must name the candidate Linux x64 host");
  for(const step of successfulSteps)assert.equal(value[step],"success",`Hosted runner step ${step} did not succeed`);
- assert.ok(["success","skipped"].includes(value.browsers),"Hosted browser setup did not succeed or skip");
+ const expectedBrowserSetup=plan.checks.some(check=>browserStages.has(check.id))?"success":"skipped";
+ assert.equal(value.browsers,expectedBrowserSetup,"Hosted browser setup differs from the selected qualification");
  return {repository:value.repository,workflow:value.workflow,runId:value.runId,
   runAttempt:value.runAttempt,contextSha256:context.sha256};
 }

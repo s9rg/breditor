@@ -137,8 +137,9 @@ in GitHub and confirm the corresponding workflow attempt succeeded. Add
 `--require-hosted` to validate the recorded runner identity, revision,
 profile, shard and setup outcomes alongside each result. Keep
 `runner-context.tsv` in the artifact directory above each `run-*` directory.
-The coverage report records the run ID, attempt and context digest. This
-option requires artifacts produced by a workflow that records those fields.
+Compare the reported repository, run ID and attempt with the GitHub listing
+for the same downloaded artifact. The coverage report also records the context
+digest. This option requires artifacts from a workflow that records those fields.
 
 ## Whole-room activation jobs
 
