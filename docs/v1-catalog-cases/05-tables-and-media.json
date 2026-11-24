@@ -104,15 +104,15 @@
     },
     {
       "id": "table-caption-edit-and-placement",
-      "version": 1,
+      "version": 2,
       "feature": "advanced-tables",
       "sources": [
         "ckeditor-table-caption",
         "ckeditor-tables"
       ],
-      "scenario": "Add and edit a caption through the table controls, move it between the offered positions where available, then copy the table and perform a save and HTML round trip.",
+      "scenario": "Import one upstream fixture with a table inside a figure and a sibling figcaption, and another with a caption inside the table. Edit each caption, copy and reopen its table, and compare editing and published views with host configurations for above-table and below-table placement.",
       "expected": [
-        "The live table and exported HTML associate the caption with the same table. Caption placement and ordering follow the supported format contract, with a reported difference for an unsupported source position.",
+        "Both upstream HTML forms import as a table with its semantic caption association. Export and reimport preserve the association, caption text and formatting. The caption follows the host placement in both views without changing canonical document content or history.",
         "Removing the caption preserves the table and its grid. Undo restores the prior caption and formatting without creating a second visible caption."
       ]
     },

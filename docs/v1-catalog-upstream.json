@@ -164,7 +164,7 @@
         {"id": "styling-tables-cells", "group": "core-editing", "cases": ["table-and-cell-style-controls@1"]},
         {"id": "table-headers", "group": "core-editing", "cases": ["table-row-and-column-headers@1"]},
         {"id": "table-selection", "group": "core-editing", "cases": ["rectangular-cell-selection@1", "table-tab-navigation-and-cell-bodies@1"]},
-        {"id": "table-caption", "group": "core-editing", "cases": ["table-caption-edit-and-placement@1"]},
+        {"id": "table-caption", "group": "core-editing", "cases": ["table-caption-edit-and-placement@2"]},
         {"id": "layout-tables", "group": "core-editing", "cases": ["layout-table-presentation@1", "email-layouts@1"]},
         {"id": "text-alignment", "group": "core-editing", "cases": ["block-alignment-and-mixed-selection@1"]},
         {"id": "bold", "group": "core-editing", "cases": ["inline-mark-range-and-caret@1"]},
