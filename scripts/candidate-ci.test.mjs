@@ -82,7 +82,7 @@ test("failed browser and demo traces have their own bounded artifact",()=>{
  assert.equal(traces.if,"${{ failure() && steps.candidate.outcome == 'failure' }}");
  assert.deepEqual(traces.with,{
   name:"candidate-browser-failures-${{ github.sha }}-${{ github.run_attempt }}",
-  path:"target/playwright-results/**/trace.zip\ntarget/playwright-demo-results/**/trace.zip\ntarget/rich-browser-results/**/trace.zip",
+  path:"target/playwright-results/**/trace.zip\ntarget/playwright-demo-results/**/trace.zip\ntarget/rich-browser-results/**/trace.zip\ntarget/editor-browser-results/**/trace.zip",
   "if-no-files-found":"ignore",
   "retention-days":14,
   "include-hidden-files":false,

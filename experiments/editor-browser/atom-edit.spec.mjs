@@ -63,8 +63,18 @@ test("installed local React atom replacement survives rerender and exact history
  await page.evaluate(()=>window.v2React.ref.current.getEditor().execute({kind:"undo"}));expect(await page.evaluate(()=>window.v2React.ref.current.getEditor().view().documentJson)).toBe(before);await page.evaluate(()=>window.v2React.ref.current.getEditor().execute({kind:"redo"}));expect(await page.evaluate(()=>window.v2React.ref.current.getEditor().view().documentJson)).toBe(after);expect(await page.evaluate(()=>window.v2React.errors)).toEqual([]);
 });
 test("installed shared React atom typing retains its native unit across writer replacement and reload",async({page})=>{
+ await page.clock.install();
  await page.goto("/shared-structural-react.html?history=typing");await expect(page.locator("#ready")).toHaveText("Ready");
- const before=await page.evaluate(()=>{const t=window.sharedV2React,e=t.ref.current.getEditor();t.original=e;e.select({kind:"node",block:"rule"});e.focus();return e.view().documentJson;});await page.keyboard.type("QR");
+ const before=await page.evaluate(()=>{const t=window.sharedV2React,e=t.ref.current.getEditor();t.original=e;e.select({kind:"node",block:"rule"});e.focus();return e.view().documentJson;});
+ // Keep both trusted inputs inside the native 750 ms typing window even on a busy runner.
+ await page.clock.pauseAt(await page.evaluate(()=>Date.now()+60_000));
+ try{
+  await page.keyboard.type("Q");
+  await page.clock.runFor(20);
+  await page.keyboard.type("R");
+ }finally{
+  await page.clock.resume();
+ }
  const saved=await page.evaluate(async()=>{const t=window.sharedV2React,e=t.ref.current.getEditor();e.closeTypingGroup();await e.flush();return {checkpoint:e.checkpointJson(),document:e.view().documentJson,depth:e.view().undoDepth,ready:t.ready};});expect(saved.depth).toBe(1);
  await page.locator("#rerender").click();await expect(page.locator("#count")).toHaveText("1");expect(await page.evaluate(()=>window.sharedV2React.original===window.sharedV2React.ref.current.getEditor())).toBe(true);
  await page.locator("#reopen").click();await expect.poll(()=>page.evaluate(()=>window.sharedV2React.ready)).toBeGreaterThan(saved.ready);expect(await page.evaluate(()=>window.sharedV2React.ref.current.checkpointJson())).toBe(saved.checkpoint);
