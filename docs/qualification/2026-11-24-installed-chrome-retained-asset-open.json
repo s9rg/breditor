@@ -1,0 +1,129 @@
+{
+  "format": "breditor/installed-chrome-retained-asset-open-materialization",
+  "formatVersion": 1,
+  "browser": "158.0.8127.37",
+  "host": "Apple M1 Pro, macOS 26.6.2",
+  "localWasmSha256": "f100599f39805586d465961161bf751e0bd51e8d524ad2ab653001946347200e",
+  "fixtureProof": [
+    {
+      "path": "scripts/fixtures/retained-asset-open-measurement/index.html",
+      "sha256": "6969efd0aa85e7381608fc0453ab576edd572d9344f9f979bfe08f5537282480"
+    },
+    {
+      "path": "scripts/fixtures/retained-asset-open-measurement/measure.mjs",
+      "sha256": "7705616712f83cdfcb4dfbf08dd548832f0a1175ffcf1629615042b0eae51cea"
+    }
+  ],
+  "workload": "Twelve browser-encoded 660\u00d7660 PNGs with four retained upload statuses. Three repeated retained opens per fresh archive installation in a single Chrome page.",
+  "assets": 12,
+  "rasterBytes": 17995358,
+  "exactArchiveBytes": 17998472,
+  "exactArchiveSha256": "d9069fe4c0c6c08537183133ec1083b9e21261100dec8d867adba5dbc834a3b0",
+  "queueStates": [
+    "cancelled",
+    "failed",
+    "failed",
+    "failed",
+    "failed",
+    "failed",
+    "failed",
+    "failed",
+    "failed",
+    "failed",
+    "pending",
+    "uploaded"
+  ],
+  "before": {
+    "source": {
+      "commit": "1336a41e9496d0252125723b1a2b8fda50f4c977",
+      "dirty": false,
+      "sha256": "8dd41d219f171e0bbe4bc71ad6b8f7b06bf9fc6295ecc98a0df94f0368080193",
+      "files": 9678,
+      "bytes": 82972545
+    },
+    "archives": [
+      {
+        "name": "@breditor/browser",
+        "sha256": "1199d14fe5b3d5b2e0318642a9bbf9f5b84773e97265597f72e190be43869ae0"
+      },
+      {
+        "name": "@breditor/experimental-rich-content",
+        "sha256": "3f33c9100ace94ddf69bf76c7bc2ca604713fc9f1ed613346ea82b40debef131"
+      },
+      {
+        "name": "@breditor/editor",
+        "sha256": "526258df76a9746c415498d9a5c74b1bde952110e671b21c6608579dadd37874"
+      }
+    ],
+    "checkpointSha256": "2887ebed1425425f1c5a6e46c0613c04bc369ad59d1490f1165f8c90c188fb85",
+    "samples": [
+      {
+        "wholeArchiveBlobs": 1,
+        "wholeArchiveBlobBytes": 17998472,
+        "openMs": 165.20000004768372
+      },
+      {
+        "wholeArchiveBlobs": 1,
+        "wholeArchiveBlobBytes": 17998472,
+        "openMs": 199.5
+      },
+      {
+        "wholeArchiveBlobs": 1,
+        "wholeArchiveBlobBytes": 17998472,
+        "openMs": 164.29999995231628
+      }
+    ],
+    "exactArchive": true,
+    "nativeUndoRedo": true,
+    "corruptRasterRefused": true,
+    "medianOpenMs": 165.2,
+    "fullReportSha256": "9e6fa5765a7d85109935fc5381802be4136abd7bc6d61148262e9459f64f5905"
+  },
+  "after": {
+    "source": {
+      "commit": "460fb54316fa8e4f47b290476e05fd0ce5f02fd9",
+      "dirty": false,
+      "sha256": "a04f82b5c1f4d17e5fc5227cd54b6b9f9bc0eac8cc3cf44cf3da472dcaee18a7",
+      "files": 9678,
+      "bytes": 82973156
+    },
+    "archives": [
+      {
+        "name": "@breditor/browser",
+        "sha256": "1199d14fe5b3d5b2e0318642a9bbf9f5b84773e97265597f72e190be43869ae0"
+      },
+      {
+        "name": "@breditor/experimental-rich-content",
+        "sha256": "18c25c8f63e5bf174c3e4092ba230bd097a340e407a8ce077c0c3b1c28449570"
+      },
+      {
+        "name": "@breditor/editor",
+        "sha256": "526258df76a9746c415498d9a5c74b1bde952110e671b21c6608579dadd37874"
+      }
+    ],
+    "checkpointSha256": "91d837327595ea943d99746d63af55b433ea5b7c008b44143f6ea60135cdc6b1",
+    "samples": [
+      {
+        "wholeArchiveBlobs": 0,
+        "wholeArchiveBlobBytes": 0,
+        "openMs": 213.89999997615814
+      },
+      {
+        "wholeArchiveBlobs": 0,
+        "wholeArchiveBlobBytes": 0,
+        "openMs": 157.5
+      },
+      {
+        "wholeArchiveBlobs": 0,
+        "wholeArchiveBlobBytes": 0,
+        "openMs": 142.10000002384186
+      }
+    ],
+    "exactArchive": true,
+    "nativeUndoRedo": true,
+    "corruptRasterRefused": true,
+    "medianOpenMs": 157.5,
+    "fullReportSha256": "76e35437c2ea595d8badb37f4816f3fc8f13c30e20909b71ea65adc69bff4cae"
+  },
+  "scope": "The installed Chrome fixture counts whole-archive Blob construction and logical bytes and observes wall time for those calls. Each run independently replays its own exact native checkpoint with raster Undo/Redo and preserved queue state. The builds produced identical bytes on separate explicit archive exports. Export and restore controls follow the measured retained opens."
+}
