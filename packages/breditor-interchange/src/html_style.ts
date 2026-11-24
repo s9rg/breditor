@@ -136,6 +136,7 @@ export function styleFor(node:HtmlElement,parent:StyleState,b:Budget,css:Map<str
       case "mso-list":break;
       case "width":if(!["table","colgroup","col","td","th","img"].includes(node.tagName))b.loss("unsupported-style");break;
       case "height":if(node.tagName!=="img")b.loss("unsupported-style");break;
+      case "caption-side":if(node.tagName!=="caption"||value!=="bottom")b.loss("unsupported-style");break;
       default:b.loss("unsupported-style");
     }
   }
