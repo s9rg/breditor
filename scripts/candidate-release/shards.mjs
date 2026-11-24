@@ -62,6 +62,8 @@ const boundaries = [
  ["held-metadata","installed-held-metadata",["selected-delivery-native-host"]],
  ["metadata-work","installed-metadata-work",["editor-build","metadata-native-hosts"]],
  ["selected-room-storage","installed-selected-room-storage",["selected-delivery-native-host"]],
+ ["generation-component-reconstruction-source","generation-component-reconstruction",["native-complete-cohort","native-complete-image-cohort"]],
+ ["generation-component-reconstruction-installed","installed-generation-component-reconstruction",["native-complete-cohort","native-complete-image-cohort"]],
 ];
 const sdkPrerequisites = [
  "default-typescript-build",

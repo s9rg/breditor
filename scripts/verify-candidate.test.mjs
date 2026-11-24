@@ -478,8 +478,8 @@ test("isolated release matrices preserve the full plan's commands and report the
   assert.equal(run.stdout,"");
  }
 });
-test("candidate shards partition the full plan through installed selected-room storage",()=>{
- const full=candidateReleasePlan(),end=full.checks.findIndex(check=>check.id==="installed-selected-room-storage");
+test("candidate shards partition the full plan through installed generation component reconstruction",()=>{
+ const full=candidateReleasePlan(),end=full.checks.findIndex(check=>check.id==="installed-generation-component-reconstruction");
  const byId=new Map(full.checks.map(check=>[check.id,check]));
  const covered=[];
  for(const name of candidateShardIds){

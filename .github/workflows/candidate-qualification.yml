@@ -86,7 +86,9 @@
             "native-version-delivery",
             "held-metadata",
             "metadata-work",
-            "selected-room-storage"
+            "selected-room-storage",
+            "generation-component-reconstruction-source",
+            "generation-component-reconstruction-installed"
           ]
         }
       }
