@@ -40,8 +40,8 @@ const focusedStageIds = {
  "dependency-inventories": ["relay-native-dependency-notices","paired-local-runtime","paired-shared-runtime"],
  "installed-feature-browser": [
   "default-typescript-build","paired-local-runtime","paired-shared-runtime","rich-browser-build","collaboration-build","editor-build",
-  "installed-search-workflows","installed-placeholder-workflows","installed-fullscreen-workflows","installed-asset-backups",
-  "rich-demo-latency","installed-search-browser","installed-placeholder-browser","installed-fullscreen-browser","installed-asset-backups-browser",
+  "installed-search-workflows","installed-placeholder-workflows","installed-fullscreen-workflows","installed-session-backups","installed-asset-backups",
+  "rich-demo-latency","installed-search-browser","installed-placeholder-browser","installed-fullscreen-browser","installed-session-backups-browser","installed-asset-backups-browser",
  ],
 };
 export const candidateCheckProfiles=Object.freeze(["full","functional",...Object.keys(focusedStageIds)]);
@@ -887,7 +887,7 @@ export function candidateReleasePlan({profile="full",environment=process.env}={}
   script("installed-search-browser","check-search-browser.mjs",[],[{path:"target/search-installed-browser.json",fresh:true}]),
   script("installed-placeholder-browser","check-placeholder-browser.mjs",[],[{path:"target/placeholder-installed-browser.json",fresh:true}]),
   script("installed-fullscreen-browser","check-fullscreen-browser.mjs",[],[{path:"target/fullscreen-installed-browser.json",fresh:true}]),
-  script("installed-session-backups-browser","check-session-backups-browser.mjs",[],[{path:"target/session-backups-installed-browser.json",fresh:true}]),
+  script("installed-session-backups-browser","check-session-backups-browser.mjs",[],[{path:"target/session-backups-installed-browser.json",fresh:true,retain:true}]),
   script("installed-asset-backups-browser","check-asset-backups-browser.mjs",[],[{path:"target/asset-backups-installed-browser.json",fresh:true}]),
   script("default-package-release-matrix","verify-release.mjs",[],[],7200000),
   script("installed-editor-browser-matrix","check-editor-browser.mjs",["--candidate-relay"],[{path:"target/editor-installed-consumer.json",fresh:true,retain:true}],7200000),
