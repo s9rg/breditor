@@ -128,8 +128,8 @@ below describe what happens today, and they are tested.
 2. **Local actions.** `insert_table`, table cell paste and flow paste check
    for nested tables before publishing. An action that would nest a table is
    rejected as a whole, and the document and history are unchanged.
-3. **HTML import** (`@breditor/interchange`). A `<table>` anywhere inside a
-   table cell's flow rejects the **whole** import with `unsupported-content`
+3. **HTML import** (`@breditor/interchange`). A `<table>` anywhere in the flow
+   of an outer table's cell or caption rejects the **whole** import with `unsupported-content`
    before native admission. The nested table is not flattened to text, the
    inner table is not lifted out, and the outer table is not imported partially.
    See `packages/breditor-interchange/src/html_import.ts` (`insideTable`) and

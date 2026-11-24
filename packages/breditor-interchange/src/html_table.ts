@@ -17,7 +17,7 @@ export function importTable(c:HtmlConversion,node:HtmlElement,state:StyleState):
     if(!isElement(n)){if(plainText(n).trim())fail("malformed-table");continue;}
     if(c.excluded(n))fail("unsupported-content");
     if(n.tagName==="caption"){
-      const blocks=c.flow(n.childNodes,c.style(n,state));
+      const blocks=c.flow(n.childNodes,c.style(n,state),true);
       if(c.capabilities.tableCaptions===true&&!captioned){captioned=true;const kept=tableCaption(c,blocks);caption=kept.caption;captions.push(...kept.before);}
       else{c.b.loss("block-structure");captions.push(...blocks);}
       continue;
