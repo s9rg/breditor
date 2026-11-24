@@ -7,11 +7,9 @@ print/export expectations for tables, captions and images."
 
 ## Scope decision
 
-**Breditor stays a flow editor.** It does not measure text, split blocks across
-pages, number pages, or keep any page geometry in the document, the history or
-the Rust owner. A pagination engine would make canonical content depend on fonts,
-viewport, printer and browser, which conflicts with deterministic content and
-exact cross-engine history.
+**Breditor stays a flow editor.** The document, history and Rust owner store
+canonical flow. Browser presentation can measure that flow without making
+canonical content depend on fonts, viewport, printer or browser.
 
 Instead Breditor gains two separate, small pieces:
 
@@ -20,9 +18,10 @@ Instead Breditor gains two separate, small pieces:
    document: "start a new page after this point when printing". It is ordinary
    canonical content with history, clipboard, interchange and static output.
 2. **An opt-in print presentation layer** (`richPrintStyles`,
-   `mountRichPrintPreview`, and the static renderer's `print` option). It is CSS
-   only: bounded `@page` choices plus `break-*` hints handed to the browser's own
-   paged-media layout. It never changes the document.
+   `mountRichPrintPreview`, and the static renderer's `print` option). It passes
+   bounded `@page` choices and `break-*` hints to the browser's paged-media
+   layout. In screen media, a mounted preview can also measure the rendered
+   flow for a host to present. Both behaviors leave canonical content intact.
 
 Everything else about pages (where automatic breaks fall, widows/orphans, header
 repetition) is the browser's paged-media layout under those rules.
@@ -137,7 +136,7 @@ byte-for-byte unchanged.
 
 ### Print preview: `mountRichPrintPreview(surface, options?)`
 
-Opt-in and CSS only. It marks the surface (`data-breditor-print-preview`,
+The opt-in preview marks the surface (`data-breditor-print-preview`,
 `aria-description` from the new catalog key `printPreviewLabel`) and installs
 a stylesheet in the surface's document or shadow root. The surface becomes the
 printable width with the page margin as padding, and a thin guide is drawn every
@@ -150,6 +149,16 @@ the layout and moves the preview styles to the surface's current tree. Call it
 after moving a mounted surface between the document and a shadow root.
 `dispose()` restores the element's prior attributes and removes the preview
 styles. Editing continues normally during preview.
+
+Call `preview.measure()` in screen media to read the current content height,
+printable page height, and numbered page starts in CSS pixels. It measures the
+connected surface's vertical scrollable flow and starts a fresh page after V4
+page-break markers that occupy layout. A marker with `visibility: hidden` still
+occupies layout. A marker with `display: none` is ignored. Read the measurements
+again after editing, resizing, or changing the preview layout. Hosts can use
+them to draw guides on vertically aligned surfaces.
+Printed pagination still follows the browser's paged-media layout, including
+table header repetition and keep-together rules.
 
 ### Static export
 

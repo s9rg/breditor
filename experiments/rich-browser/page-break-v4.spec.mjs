@@ -233,6 +233,47 @@ test("updating a print preview after a DOM move follows the surface and restores
  });
 });
 
+test("a print preview measures numbered flow pages and follows explicit native breaks",async({page})=>{
+ const result=await page.evaluate(()=>{
+  const t=window.dt;
+  t.mount(true);
+  const {core,editor}=t,surface=editor.surface,checkpoint=core.checkpointJson();
+  const preview=t.api.mountRichPrintPreview(surface,{print:false});
+  try{
+   const initial=preview.measure();
+   const style=getComputedStyle(surface),marker=surface.querySelector("[data-rich-page-break]");
+   const expected=marker.getBoundingClientRect().bottom-surface.getBoundingClientRect().top-surface.clientTop-parseFloat(style.paddingTop);
+   marker.style.visibility="hidden";
+   const hidden=preview.measure();
+   marker.style.display="none";
+   const omitted=preview.measure();
+   marker.style.removeProperty("visibility");marker.style.removeProperty("display");
+   surface.querySelector('[data-rich-text="q"]').style.minHeight="1350px";
+   const resized=preview.measure();
+   preview.update({orientation:"landscape",margin:"wide"});
+   const updated=preview.measure();
+   const shape=measurement=>({count:measurement.pages.length,height:measurement.contentHeightCssPx,
+    pageHeight:measurement.pageHeightCssPx,reasons:measurement.pages.map(p=>p.reason),
+    numbered:measurement.pages.every((p,i)=>p.number===i+1&&(i===0||p.topCssPx>measurement.pages[i-1].topCssPx)),
+    frozen:Object.isFrozen(measurement)&&Object.isFrozen(measurement.pages)&&measurement.pages.every(Object.isFrozen)});
+   preview.dispose();
+   let disposed=false;try{preview.measure();}catch(error){disposed=String(error).includes("disposed");}
+   return {initial:shape(initial),hidden:shape(hidden),omitted:shape(omitted),resized:shape(resized),updated:shape(updated),expected,
+    explicit:initial.pages.find(p=>p.reason==="forced")?.topCssPx,unchanged:core.checkpointJson()===checkpoint,disposed};
+  }finally{preview.dispose();}
+ });
+ expect(result.initial.reasons).toEqual(["start","forced"]);
+ expect(result.hidden).toEqual(result.initial);
+ expect(result.omitted.reasons).toEqual(["start"]);
+ expect(Math.abs(result.explicit-result.expected)).toBeLessThan(1);
+ expect(result.resized.height).toBeGreaterThan(result.initial.height+1000);
+ expect(result.resized.reasons).toEqual(["start","forced","automatic"]);
+ expect(result.updated.pageHeight).toBeLessThan(result.resized.pageHeight);
+ expect(result.updated.count).toBeGreaterThan(result.resized.count);
+ for(const state of [result.initial,result.resized,result.updated])expect(state).toMatchObject({numbered:true,frozen:true});
+ expect(result).toMatchObject({unchanged:true,disposed:true});
+});
+
 test("static export embeds print CSS and repeats header rows under print media",async({page})=>{
  await page.emulateMedia({media:"print"});
  const result=await page.evaluate(()=>{const t=window.dt,frame=document.createElement("section");
