@@ -446,6 +446,10 @@ test("isolated release matrices preserve the full plan's commands and report the
    "shared-browser-wasm-build","shared-browser-wasm-bindgen","shared-browser-native-fixtures","shared-browser-vector",
    "shared-browser-raster-fixtures","shared-browser-typescript-build","shared-browser-matrix",
   ]],
+  ["installed-application-network",[
+   "relay-native-dependency-notices","default-typescript-build","installed-editor-pairing",
+   "shared-browser-vector","shared-browser-raster-fixtures","installed-application-network-matrix",
+  ]],
   ["portable-relay-recovery",[
    "default-typescript-build","paired-local-runtime","paired-shared-runtime","rich-browser-build","collaboration-build",
    "functional-native-fixtures","portable-relay-relocation","portable-relay-legacy-handover",
