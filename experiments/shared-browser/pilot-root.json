@@ -1,0 +1,66 @@
+{
+  "kind": "element",
+  "type": "breditor/document",
+  "entityId": null,
+  "properties": {"breditor/document-id": "room"},
+  "children": [
+    {
+      "kind": "element",
+      "type": "breditor/paragraph",
+      "entityId": null,
+      "properties": {"breditor/block-id": "pilot-summary"},
+      "children": [{"kind": "text", "text": "Release summary", "formats": [{"type": "breditor/strong", "properties": {}}]}]
+    },
+    {
+      "kind": "element",
+      "type": "breditor/paragraph",
+      "entityId": null,
+      "properties": {"breditor/block-id": "pilot-notes"},
+      "children": [{"kind": "text", "text": "Add the decisions and results that the next reviewer needs.", "formats": []}]
+    },
+    {
+      "kind": "element",
+      "type": "breditor/table",
+      "entityId": null,
+      "properties": {
+        "breditor/block-id": "pilot-assignments",
+        "breditor/columns": [{"id": "item", "width": 270}, {"id": "owner", "width": 135}],
+        "breditor/merges": [], "breditor/retracted-merges": [], "breditor/table-id": "pilot-table"
+      },
+      "children": [
+        {
+          "kind": "element", "type": "breditor/table-row", "entityId": null,
+          "properties": {"breditor/block-id": "pilot-header", "breditor/row-id": "header"},
+          "children": [
+            {
+              "kind": "element", "type": "breditor/table-cell", "entityId": null,
+              "properties": {"breditor/block-id": "pilot-item-header", "breditor/column-id": "item", "breditor/header": true},
+              "children": [{"kind": "element", "type": "breditor/paragraph", "entityId": null, "properties": {"breditor/block-id": "pilot-item-label"}, "children": [{"kind": "text", "text": "Follow-up", "formats": []}]}]
+            },
+            {
+              "kind": "element", "type": "breditor/table-cell", "entityId": null,
+              "properties": {"breditor/block-id": "pilot-owner-header", "breditor/column-id": "owner", "breditor/header": true},
+              "children": [{"kind": "element", "type": "breditor/paragraph", "entityId": null, "properties": {"breditor/block-id": "pilot-owner-label"}, "children": [{"kind": "text", "text": "Owner", "formats": []}]}]
+            }
+          ]
+        },
+        {
+          "kind": "element", "type": "breditor/table-row", "entityId": null,
+          "properties": {"breditor/block-id": "pilot-work", "breditor/row-id": "work"},
+          "children": [
+            {
+              "kind": "element", "type": "breditor/table-cell", "entityId": null,
+              "properties": {"breditor/block-id": "pilot-item-cell", "breditor/column-id": "item", "breditor/header": false},
+              "children": [{"kind": "element", "type": "breditor/paragraph", "entityId": null, "properties": {"breditor/block-id": "pilot-item"}, "children": [{"kind": "text", "text": "Verify the handoff", "formats": []}]}]
+            },
+            {
+              "kind": "element", "type": "breditor/table-cell", "entityId": null,
+              "properties": {"breditor/block-id": "pilot-owner-cell", "breditor/column-id": "owner", "breditor/header": false},
+              "children": [{"kind": "element", "type": "breditor/paragraph", "entityId": null, "properties": {"breditor/block-id": "pilot-owner"}, "children": [{"kind": "text", "text": "Unassigned", "formats": []}]}]
+            }
+          ]
+        }
+      ]
+    }
+  ]
+}

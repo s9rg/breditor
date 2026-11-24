@@ -62,7 +62,9 @@ npm run demo:shared:network
 ```
 
 This demo supplies local development credentials and must not be exposed
-publicly. The default React demo below remains a separate, narrower integration.
+publicly. For independent participants, use the [Breditor pilot](docs/V1_PILOT.md)
+with separately supplied participant codes and a read-only checkpoint rehearsal.
+The default React demo below remains a separate, narrower integration.
 Earlier [heading/flat-list beta evidence](docs/FEATURE_EXPANSION_BETA.md),
 [nested-list contracts](docs/NESTED_LISTS.md) and
 [structural-block boundaries](docs/STRUCTURAL_BLOCKS.md) retain their own
