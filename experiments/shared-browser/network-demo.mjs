@@ -6,7 +6,8 @@ import {RichAssetStore} from "/rich.js";
 await init();
 const app={peers:{},errors:[],ready:false,closed:false};window.breditorNetworkDemo=app;
 const status=document.querySelector("#network-state"),report=error=>{const message=error?.code??String(error);app.errors.push(message);status.textContent=message;};
-window.addEventListener("pagehide",()=>{app.closed=true;for(const peer of Object.values(app.peers)){peer.overlay?.dispose();peer.sync?.dispose();peer.presence?.dispose();peer.assets?.dispose();peer.session?.discardAndClose();peer.cache?.close();}},{once:true});
+const reportPeerError=(peer,error)=>{if(!app.closed&&!peer.closing)report(error);};
+window.addEventListener("pagehide",()=>{app.closed=true;for(const peer of Object.values(app.peers)){peer.closing=true;peer.overlay?.dispose();peer.sync?.dispose();peer.presence?.dispose();peer.assets?.dispose();peer.session?.discardAndClose();peer.cache?.close();}},{once:true});
 async function credentials(database,key,value){
  const db=await new Promise((resolve,reject)=>{const r=indexedDB.open(database,1);r.onupgradeneeded=()=>r.result.createObjectStore("identities");r.onsuccess=()=>resolve(r.result);r.onerror=()=>reject(r.error);});
  try{return await new Promise((resolve,reject)=>{const tx=db.transaction("identities",value?"readwrite":"readonly"),s=tx.objectStore("identities"),r=value?s.put(value,key):s.get(key);let result;r.onsuccess=()=>{result=r.result;};tx.oncomplete=()=>resolve(result);tx.onabort=()=>reject(tx.error);});}finally{db.close();}
@@ -21,7 +22,7 @@ async function show(peer){
  document.querySelector(`#connect-${peer.key}`).textContent=peer.offline?"Reconnect":"Go offline";
  setStatusText(document.querySelector(`#presence-${peer.key}`),peer.presence.view().map(p=>{const r=p.resolution;if(r?.kind!=="resolved"||!r.selection)return`${p.label}: ${r?.kind??"waiting"}`;const s=r.selection;return s.kind==="text"?`${p.label}: caret ${s.focus.block}@${s.focus.offset}`:s.kind==="node"?`${p.label}: node ${s.block}`:`${p.label}: cells ${s.anchor.table}`;}).join(" · ")||"No peer selection");
 }
-const update=peer=>{void show(peer).catch(report);};
+const update=peer=>{void show(peer).catch(error=>reportPeerError(peer,error));};
 /** Mount the selected accounts using the shared demo controls. Pilot mode supplies one code. */
 export async function openNetworkDemo(bootstrap,chosen,{
  pilot=false,tokenFor=principal=>bootstrap.tokens[principal],codeSha256,paused=false,onPause=()=>{},
@@ -39,7 +40,8 @@ export async function openNetworkDemo(bootstrap,chosen,{
    continue;
   }
   if(pilot)document.querySelector(`#pane-${key}`).hidden=false;
-  const peer={key,principal,paint:0,offline:paused,session:undefined,cache:undefined,sync:undefined,presence:undefined,assets:undefined,mounted:undefined,overlay:undefined};app.peers[key]=peer;
+  const peer={key,principal,paint:0,offline:paused,closing:false,session:undefined,cache:undefined,sync:undefined,presence:undefined,assets:undefined,mounted:undefined,overlay:undefined};app.peers[key]=peer;
+  const onError=error=>reportPeerError(peer,error);
   const getToken=()=>tokenFor(principal),identityKey=[bootstrap.endpoint,principal];
   const openSession=async()=>{
    const saved=await credentials(identityDb,identityKey);
@@ -51,7 +53,7 @@ export async function openNetworkDemo(bootstrap,chosen,{
     identity=registration.identity;
    }
    peer.identity=identity;
-   return SharedPersistentSession.open({database:`${namespace}-journals-v12`,room:identity.room,writer:identity.writer,create:()=>{if(!registration)throw Error("Exact saved writer journal is missing; refusing a new history");return profile.join_frame(identity.room,identity.writer,registration.frame);},restore:journal=>profile.restore(identity.room,journal),onState:()=>update(peer),onError:report});
+   return SharedPersistentSession.open({database:`${namespace}-journals-v12`,room:identity.room,writer:identity.writer,create:()=>{if(!registration)throw Error("Exact saved writer journal is missing; refusing a new history");return profile.join_frame(identity.room,identity.writer,registration.frame);},restore:journal=>profile.restore(identity.room,journal),onState:()=>update(peer),onError});
   };
   // Give the second tab the first tab's writer and the usual live journal lease check.
   // Keep the registration lock until the first exact local journal has been committed.
@@ -60,12 +62,19 @@ export async function openNetworkDemo(bootstrap,chosen,{
   peer.cache=await RichAssetStore.open(`${namespace}-assets-${principal}`,{onChange:()=>update(peer)});
   peer.assets=new SharedRelayAssets({endpoint:bootstrap.endpoint,principal,getToken,store:peer.cache});
   if(peer.offline)peer.assets.setOnline(false);
-  peer.presence=new SharedPresence(peer.session.core,{onError:report});peer.presence.subscribe(()=>update(peer));
-  const insert=async(files,position,revision)=>{await insertSharedImageFiles(peer.session.core,peer.cache,files,position,revision);update(peer);if(!peer.offline)await peer.assets.flush();update(peer);};
-  peer.mounted=mountSharedEditor(document.querySelector(`#${key}`),{core:peer.session.core,label:`Network ${principal}`,scrollableTables:pilot,image:{asset:"asset",alt:"Shared diagram"},resolveAsset:binding=>binding.asset==="asset"||binding.asset==="alternate-asset"?placeholder:peer.assets.resolve(binding.asset),onFiles:insert,onError:report,onChange:()=>update(peer)});
+  peer.presence=new SharedPresence(peer.session.core,{onError});peer.presence.subscribe(()=>update(peer));
+  const insert=async(files,position,revision)=>{
+   if(peer.closing)return;
+   await insertSharedImageFiles(peer.session.core,peer.cache,files,position,revision);
+   update(peer);
+   if(!peer.offline&&!peer.closing)await peer.assets.flush();
+   update(peer);
+  };
+  peer.mounted=mountSharedEditor(document.querySelector(`#${key}`),{core:peer.session.core,label:`Network ${principal}`,scrollableTables:pilot,image:{asset:"asset",alt:"Shared diagram"},resolveAsset:binding=>binding.asset==="asset"||binding.asset==="alternate-asset"?placeholder:peer.assets.resolve(binding.asset),onFiles:insert,onError,onChange:()=>update(peer)});
   peer.overlay=new SharedPresenceOverlay({editor:peer.mounted,presence:peer.presence});
-  peer.sync=new SharedRelaySync(peer.session.core,{identity,getToken,persistLocal:()=>peer.session.flush(),presence:peer.presence,autoConnect:false,onAssetsChanged:()=>peer.mounted.refreshAssets(),onState:()=>update(peer),onError:report});
+  peer.sync=new SharedRelaySync(peer.session.core,{identity,getToken,persistLocal:()=>peer.session.flush(),presence:peer.presence,autoConnect:false,onAssetsChanged:()=>{if(!peer.closing)peer.mounted.refreshAssets();},onState:()=>update(peer),onError});
   document.querySelector(`#connect-${key}`).addEventListener("click",async event=>{
+   if(peer.closing)return;
    const button=event.currentTarget;
    button.disabled=true;
    try{
@@ -74,11 +83,31 @@ export async function openNetworkDemo(bootstrap,chosen,{
     peer.offline=nextOffline;
     peer.assets.setOnline(!nextOffline);
     if(peer.offline)peer.sync.disconnect();
-    else{await peer.sync.connect();await peer.sync.flush();peer.mounted.refreshAssets();}
-   }catch(e){report(e);}finally{button.disabled=false;update(peer);}
+    else{
+     await peer.sync.connect();
+     if(peer.closing)return;
+     await peer.sync.flush();
+     if(!peer.closing)peer.mounted.refreshAssets();
+    }
+   }catch(error){onError(error);}finally{button.disabled=peer.closing;update(peer);}
   });
-  document.querySelector(`#upload-${key}`).addEventListener("click",async()=>{try{for(const info of await peer.cache.list())if(info.status==="failed")await peer.cache.retry(info.asset);await peer.assets.flush();peer.mounted.refreshAssets();update(peer);}catch(e){report(e);}});
-  document.querySelector(`#files-${key}`).addEventListener("change",event=>{const input=event.currentTarget,files=[...input.files??[]];input.value="";if(files.length)void insert(files,{parent:null,before:null},peer.session.core.view().revision).catch(report);});
+  document.querySelector(`#upload-${key}`).addEventListener("click",async()=>{
+   if(peer.closing)return;
+   try{
+    for(const info of await peer.cache.list()){
+     if(peer.closing)return;
+     if(info.status==="failed")await peer.cache.retry(info.asset);
+    }
+    if(peer.closing)return;
+    await peer.assets.flush();
+    if(!peer.closing)peer.mounted.refreshAssets();
+    update(peer);
+   }catch(error){onError(error);}
+  });
+  document.querySelector(`#files-${key}`).addEventListener("change",event=>{
+   const input=event.currentTarget,files=[...input.files??[]];input.value="";
+   if(files.length&&!peer.closing)void insert(files,{parent:null,before:null},peer.session.core.view().revision).catch(onError);
+  });
   if(!pilot)document.querySelector(`#save-${key}`).addEventListener("click",()=>downloadNetworkCheckpoint(peer));
   if(!peer.offline)try{await peer.sync.connect();}catch{/* Saved journals can reopen while offline. */}
   update(peer);

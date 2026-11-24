@@ -74,6 +74,10 @@ that are at least 44 by 44 CSS pixels.
    the same host and keep the same browser profiles. Record reconnect behavior
    and any pending edits or uploads as the participant sees them.
 
+If the local save for **Save and reload** fails, the retired workspace stays
+visible with **Download checkpoint** available. Keyboard focus moves to
+the checkpoint action, and editing, reconnect, and upload controls are disabled.
+
 Record the tested source commit, installed archive hashes from
 `target/editor-installed-consumer.json`, browser versions, workflow, incidents,
 data integrity observations, and the document, history, and image sizes
