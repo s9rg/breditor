@@ -373,6 +373,12 @@ admission. Only after successful replay can it truncate an incomplete final
 record. A corrupt complete record rejects without modifying the file. A complete
 append whose reply was lost remains accepted and discoverable by exact retry.
 
+The shared browser relay suite kills a disposable native server with `SIGKILL`
+after two acknowledged writes. After cold restart, the browser reopens its exact
+local journals and resumes with the original writer credential. Retrying an acknowledged
+group returns the original receipt and sequence with the duplicate flag, and the
+WAL digest remains unchanged. The two peers then converge through Undo and Redo.
+
 The log is locked exclusively with the standard-library file lock for its open
 lifetime. Unix creation requests mode 0600; initial creation syncs the file and
 its containing directory. Use an existing host-owned directory and a local

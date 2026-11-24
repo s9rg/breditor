@@ -28,7 +28,7 @@ async function provision(page, relay) {
   },{url:relay.url,tokens:relay.tokens});
 }
 
-test("real Rust WebSocket relay durably merges offline table image edits and restores selective history after server and page restart",async({page})=>{
+for(const abrupt of [false,true])test(`real Rust WebSocket relay durably merges offline edits and restores selective history after ${abrupt?"SIGKILL":"server restart"} and page reload`,async({page})=>{
   const ids=await provision(page,relay);expect(ids).toEqual({a:"2",b:"3"});
   const first=await page.evaluate(async()=>{
     const t=window.sharedTools,n=t.network;
@@ -45,8 +45,11 @@ test("real Rust WebSocket relay durably merges offline table image edits and res
   });
   expect(first.same).toBe(true);expect(first.history).toEqual([1,1]);expect(first.ackA.duplicate).toBe(false);expect(first.ackB.duplicate).toBe(false);
   await expect.poll(()=>page.evaluate(()=>{const n=window.sharedTools.network;return[n.a,n.b].every(s=>s.events.some(e=>e.kind==="catchup"));})).toBe(true);
-  const url=await relay.restart();await page.reload();await expect(page.locator("#status")).toHaveText("Ready");await page.addScriptTag({type:"module",url:"/socket-fixture.mjs"});await page.waitForFunction(()=>window.relaySocketFixture);
-  const restored=await page.evaluate(async({url,tokens})=>{
+  const committedLog=abrupt?await relay.logSha256():null;
+  const url=abrupt?await relay.restartAfterKill():await relay.restart();
+  if(abrupt)expect(await relay.logSha256()).toBe(committedLog);
+  await page.reload();await expect(page.locator("#status")).toHaveText("Ready");await page.addScriptTag({type:"module",url:"/socket-fixture.mjs"});await page.waitForFunction(()=>window.relaySocketFixture);
+  const reopened=await page.evaluate(async({url,tokens})=>{
     const t=window.sharedTools,p=t.wasm.SharedRichProfile.from_configuration_json(t.vector.shared_writer.configuration),saved=JSON.parse(localStorage.getItem("relay-editor-journals")),credentials=JSON.parse(localStorage.getItem("relay-separate-credentials")),accepted=JSON.parse(localStorage.getItem("relay-accepted-groups"));
     const aa=new t.SharedRichEditor(p.restore("room",saved.a)),bb=new t.SharedRichEditor(p.restore("room",saved.b));p.free();
     const exact=aa.checkpointJson()===saved.a&&bb.checkpointJson()===saved.b;
@@ -55,13 +58,22 @@ test("real Rust WebSocket relay durably merges offline table image edits and res
     if(ar.kind!=="resumed"||br.kind!=="resumed")throw Error("Resume failed");
     const retry=await a.request({kind:"submit",group:accepted.ga});
     await aa.receiveFrame(a.authenticated.frame);await bb.receiveFrame(b.authenticated.frame);
+    t.networkRestored={a,b,aa,bb};
+    return{exact,retry,original:accepted.a,documents:[aa.documentJson(),bb.documentJson()]};
+  },{url,tokens:relay.tokens});
+  expect(reopened.exact).toBe(true);
+  expect(reopened.retry).toEqual({...reopened.original,duplicate:true});
+  expect(reopened.documents).toEqual([first.document,first.document]);
+  if(abrupt)expect(await relay.logSha256()).toBe(committedLog);
+  const restored=await page.evaluate(async()=>{
+    const t=window.sharedTools,{a,b,aa,bb}=t.networkRestored,accepted=JSON.parse(localStorage.getItem("relay-accepted-groups"));
     aa.undo();const undone=aa.documentJson();const ug=aa.writerGroups(accepted.a.receipt.through).groups;
     const undoReceipt=await a.request({kind:"submit",group:ug[0]});aa.redo();const rg=aa.writerGroups(undoReceipt.receipt.through).groups;const redoReceipt=await a.request({kind:"submit",group:rg[0]});
     const frame=(await b.request({kind:"sync"})).frame;await aa.receiveFrame(frame);await bb.receiveFrame(frame);
-    t.networkRestored={a,b,aa,bb};t.mountSharedEditor(document.querySelector("#a"),{core:aa});t.mountSharedEditor(document.querySelector("#b"),{core:bb});
-    return{exact,retry,original:accepted.a,undoReceipt,redoReceipt,undone,document:aa.documentJson(),same:aa.documentJson()===bb.documentJson(),history:[aa.view().undoDepth,bb.view().undoDepth]};
-  },{url,tokens:relay.tokens});
-  expect(restored.exact).toBe(true);expect(restored.retry).toEqual({...restored.original,duplicate:true});expect(restored.undoReceipt.kind).toBe("durable");expect(restored.redoReceipt.kind).toBe("durable");expect(restored.undone).toContain("Remote caption ");expect(restored.undone).not.toContain("Network 🙂 ");expect(restored.document).toBe(first.document);expect(restored.same).toBe(true);expect(restored.history).toEqual([1,1]);
+    t.mountSharedEditor(document.querySelector("#a"),{core:aa});t.mountSharedEditor(document.querySelector("#b"),{core:bb});
+    return{undoReceipt,redoReceipt,undone,document:aa.documentJson(),same:aa.documentJson()===bb.documentJson(),history:[aa.view().undoDepth,bb.view().undoDepth]};
+  });
+  expect(restored.undoReceipt.kind).toBe("durable");expect(restored.redoReceipt.kind).toBe("durable");expect(restored.undone).toContain("Remote caption ");expect(restored.undone).not.toContain("Network 🙂 ");expect(restored.document).toBe(first.document);expect(restored.same).toBe(true);expect(restored.history).toEqual([1,1]);
   for(const pane of["#a","#b"]){await expect(page.locator(`${pane} [data-rich-text="p"]`)).toHaveText("Network 🙂 a🙂b");await expect(page.locator(`${pane} img`)).toHaveAttribute("alt","Network image");}
 });
 

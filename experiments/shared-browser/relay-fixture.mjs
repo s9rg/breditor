@@ -1,7 +1,7 @@
 // Test lifecycle only. The Rust binary owns actual account/lease/admission/durability authority.
 import {spawn, execFile} from "node:child_process";
 import {promisify} from "node:util";
-import {mkdtemp, writeFile, rm} from "node:fs/promises";
+import {mkdtemp, readFile, writeFile, rm} from "node:fs/promises";
 import {tmpdir} from "node:os";
 import {dirname, join, resolve} from "node:path";
 import {fileURLToPath} from "node:url";
@@ -19,12 +19,12 @@ export async function createRelay({configuration, input, origin,richLanguage=1,s
   await writeFile(profile, configuration, {mode:0o600}); await writeFile(document,input,{mode:0o600});
   await writeFile(auth, JSON.stringify({format:"breditor/relay-auth",formatVersion:1,origins:[origin],accounts:Object.entries(tokens).map(([principal,token])=>({principal,tokenHash:[...createHash("sha256").update(token).digest()]}))}),{mode:0o600});
   let child, exit, address;
-  async function stop() {
+  async function stop(signal="SIGTERM") {
     if (!child) return;
     const current = child; child = undefined;
-    current.kill("SIGTERM");
+    current.kill(signal);
     const timer = setTimeout(()=>current.kill("SIGKILL"), 3000);
-    try { await exit; } finally { clearTimeout(timer); }
+    try { return await exit; } finally { clearTimeout(timer); }
   }
   async function start(bind="127.0.0.1:0") {
     child = spawn(binary,["serve",log,auth,bind],{cwd:root,stdio:["ignore","pipe","pipe"]});
@@ -44,6 +44,13 @@ export async function createRelay({configuration, input, origin,richLanguage=1,s
     const mode=richLanguage===3?(standardInline?"init-standard-v3":"init-v3"):richLanguage===2?(standardInline?"init-standard-v2":"init-v2"):"init";
     await execute(binary,[mode,log,profile,document,"owner"],{cwd:root,timeout:10_000,maxBuffer:16_384});
     const url = await start();
-    return {url,tokens,async restart(){await stop();return start();},async offline(){await stop();},async online(){if(child)throw Error("Relay already online");return start(address);},async dispose(){await stop();await rm(directory,{recursive:true,force:true});}};
+    return {url,tokens,async restart(){await stop();return start();},async offline(){await stop();},async online(){if(child)throw Error("Relay already online");return start(address);},
+      async restartAfterKill(){
+        const stopped=await stop("SIGKILL");
+        if (stopped?.signal!=="SIGKILL") throw Error("The disposable relay did not exit on SIGKILL");
+        return start();
+      },
+      async logSha256(){return createHash("sha256").update(await readFile(log)).digest("hex");},
+      async dispose(){await stop();await rm(directory,{recursive:true,force:true});}};
   } catch(error) { await stop();await rm(directory,{recursive:true,force:true});throw error; }
 }
