@@ -330,6 +330,92 @@ test("simultaneous pilot sign-in in the same browser profile reuses one writer",
  expect(registrations).toBe(1);
 });
 
+test("a failed pilot save keeps the retired workspace available for exact backup",async({page})=>{
+ await provisionDemo(page,pilotRoot());
+ await routePilot(page);
+ await page.goto("/pilot");
+ await page.getByLabel("Participant code").fill(bootstrap.tokens.alice);
+ await page.getByRole("button",{name:"Open editor"}).click();
+ await ready(page);
+ await page.getByRole("button",{name:"Go offline",exact:true}).click();
+ const checkpoint=await page.evaluate(async()=>{
+  const {session,sync}=window.breditorNetworkDemo.peers.a;
+  await sync.waitForDisconnected();
+  session.core.dispatch({commands:[{kind:"insert_text",data:{block:"pilot-notes",offset:0,text:"Keep this backup. "}}]});
+  await session.flush();
+  return session.core.checkpointJson();
+ });
+ const raster=JSON.parse(readFileSync(new URL("../../target/relay-raster-fixtures.json",import.meta.url),"utf8"))[0];
+ const failedAsset=await page.evaluate(async({bytes,mime})=>{
+  const {cache}=window.breditorNetworkDemo.peers.a;
+  const {asset}=await cache.ingest(new Blob([new Uint8Array(bytes)],{type:mime}));
+  await cache.flush(async()=>{throw Error("Upload fixture refused");});
+  const list=cache.list.bind(cache),retry=cache.retry.bind(cache);
+  let holdNextList=false,started,release,settled;
+  const reached=new Promise(resolve=>{started=resolve;});
+  const held=new Promise(resolve=>{release=resolve;});
+  const done=new Promise(resolve=>{settled=resolve;});
+  const upload={reached,release,done,retries:0};
+  document.querySelector("#upload-a").addEventListener("click",()=>{holdNextList=true;},{capture:true,once:true});
+  cache.list=async()=>{
+   if(!holdNextList)return list();
+   holdNextList=false;
+   const records=await list();
+   started();
+   await held;
+   settled();
+   return records;
+  };
+  cache.retry=value=>{upload.retries++;return retry(value);};
+  window.pendingPilotUpload=upload;
+  return cache.get(asset);
+ },raster);
+ expect(failedAsset.status).toBe("failed");
+ await page.locator("#upload-a").click();
+ await page.evaluate(()=>window.pendingPilotUpload.reached);
+ await page.evaluate(()=>{
+  const {sync}=window.breditorNetworkDemo.peers.a,connect=sync.connect.bind(sync);
+  let started,release,settled;
+  const reached=new Promise(resolve=>{started=resolve;});
+  const held=new Promise(resolve=>{release=resolve;});
+  const done=new Promise(resolve=>{settled=resolve;});
+  sync.connect=async()=>{started();await held;try{await connect();}finally{settled();}};
+  window.pendingPilotReconnect={reached,release,done};
+ });
+ await page.getByRole("button",{name:"Reconnect",exact:true}).click();
+ await page.evaluate(()=>window.pendingPilotReconnect.reached);
+ await page.evaluate(()=>new Promise((resolve,reject)=>{
+  // An actual upgrade fences the live original journal and makes a final save fail.
+  const upgrade=indexedDB.open("breditor-pilot-journals-v12",2);
+  upgrade.onsuccess=()=>{upgrade.result.close();resolve();};
+  upgrade.onerror=()=>reject(upgrade.error);
+ }));
+ await page.getByRole("button",{name:"Save and reload"}).click();
+ await expect(page.locator("#network-state")).toContainText("Local save did not finish");
+ await page.evaluate(async()=>{
+  const pending=[window.pendingPilotReconnect,window.pendingPilotUpload];
+  for(const action of pending)action.release();
+  await Promise.all(pending.map(action=>action.done));
+  await new Promise(requestAnimationFrame);
+ });
+ await expect(page.locator("#network-state")).toContainText("Local save did not finish");
+ expect(await page.evaluate(async asset=>({
+  retries:window.pendingPilotUpload.retries,
+  current:await window.breditorNetworkDemo.peers.a.cache.get(asset),
+ }),failedAsset.asset)).toEqual({retries:0,current:failedAsset});
+ await expect(page.getByRole("region",{name:"Shared document"})).toBeVisible();
+ await expect(page.locator("#a")).toHaveJSProperty("inert",true);
+ await expect(page.locator("#connect-a")).toBeDisabled();
+ await expect(page.locator("#upload-a")).toBeDisabled();
+ await expect(page.locator("#files-a")).toBeDisabled();
+ const backup=page.getByRole("button",{name:"Download checkpoint"});
+ await expect(backup).toBeFocused();
+ const download=page.waitForEvent("download");
+ await backup.press("Enter");
+ expect(readFileSync(await (await download).path(),"utf8")).toBe(checkpoint);
+ await expect(page.getByLabel("Downloaded checkpoint digest")).toContainText(createHash("sha256").update(checkpoint).digest("hex"));
+});
+
 test("the pilot supports keyboard sign-in and checkpoint recovery at a narrow viewport",async({page,browserName})=>{
  await provisionDemo(page,pilotRoot());
  await routePilot(page);

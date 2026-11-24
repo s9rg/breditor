@@ -115,7 +115,13 @@ function enableWorkspaceActions(app, peer, downloadNetworkCheckpoint) {
       location.reload();
     } catch (error) {
       showError(status, "Local save did not finish. Use Download checkpoint before leaving.", error);
+      document.querySelector(`#${peer.key}`).inert = true;
+      for (const action of ["connect", "upload", "files"]) {
+        document.querySelector(`#${action}-${peer.key}`).disabled = true;
+      }
       reload.disabled = false;
+      const nextControl = save.disabled ? reload : save;
+      nextControl.focus({preventScroll: true});
     }
   });
   workspace.hidden = false;
