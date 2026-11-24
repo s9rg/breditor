@@ -152,8 +152,10 @@ export function mountRichImageResize(overlay:HTMLElement,host:RichImageResizeHos
    rendered.forEach((figure,index)=>{
     const id=figure.dataset["richImage"]!,entry=list.get(id)!,img=bitmap(figure);if(!img||seen.has(id))return;seen.add(id);
     let group=groups.get(id);if(!group){group=create(id);groups.set(id,group);layer.append(group.root);}
-    const rect=img.getBoundingClientRect(),natural=img.naturalWidth>0&&img.naturalHeight>0?{width:clampRichImageDimension(img.naturalWidth),height:clampRichImageDimension(img.naturalHeight)}:null;
-    // An image without display dimensions starts from its intrinsic size; until it decodes there is nothing to resize from.
+    const rect=img.getBoundingClientRect(),width=img.naturalWidth,height=img.naturalHeight;
+    // Fit an unsized bitmap proportionally into the display domain once it has decoded.
+    const fit=Math.min(1,RICH_IMAGE_SIZE_MAX/Math.max(width,height));
+    const natural=width>0&&height>0?{width:clampRichImageDimension(width*fit),height:clampRichImageDimension(height*fit)}:null;
     const size=entry.size??natural,rtl=isRtl(figure);
     // Only shrinking (max-width) maps model pixels to fewer screen pixels; CSS minimum sizes never inflate drag deltas.
     const scale=(screen:number,model:number|undefined)=>model&&screen>0?Math.min(1,screen/model):1;

@@ -256,6 +256,16 @@ describe("image resize handles",()=>{
   expect(host.commits).toEqual([{image:"i2",block:"b2",size:size(632,316),revision:"1"}]);
  });
 
+ it("fits an oversized portrait bitmap proportionally before mapping pointer deltas",()=>{
+  host.images=[{id:"i2",block:"b2",size:null,rect:{left:0,top:0,width:200,height:400},natural:size(3000,6000)}];host.render();
+  const resize=mountRichImageResize(overlay,host,{commit:host.commit}),corner=sliders()[0]!;
+  expect(corner.getAttribute("aria-valuetext")).toBe("2048 by 4096 pixels (original size)");
+  drag(corner,[200,400],[180,360]);
+  expect(resize.preview()).toMatchObject({start:size(2048,4096),size:size(1843,3686)});
+  corner.dispatchEvent(pointer("pointerup",180,360));
+  expect(host.commits.map(commit=>commit.size)).toEqual([size(1843,3686)]);
+ });
+
  it("labels images in document order, marks the selected image and tracks hover",()=>{
   host.images.push({id:"i2",block:"b2",size:size(50,50),rect:{left:0,top:300,width:50,height:50}});host.render();
   const resize=mountRichImageResize(overlay,host,{commit:host.commit,label:(index,count,image)=>`${image} ${index}/${count}`});
