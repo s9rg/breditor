@@ -113,10 +113,11 @@ separate procedures.
 Select `installed-feature-browser` to build fresh SDK consumers and run the
 search, placeholder, fullscreen, session backup and raster backup browser
 checks, along with the three-engine rich-demo latency sample. The consumer
-checks first generate their build and archive receipts in the same checkout.
-The session backup check uses a fresh installed consumer. The run retains
-its producer report with npm archive hashes and its browser report with
-Wasm and IndexedDB recovery evidence through a page reload.
+checks generate their build and archive receipts in the same checkout.
+The run retains each primary installed consumer report and its corresponding
+browser report. Reviewers can compare the npm archive hashes from the producer
+with the Wasm and behavior recorded by the browser. The session backup browser
+report also records IndexedDB recovery through a page reload.
 
 ## Candidate shards
 
@@ -140,6 +141,13 @@ runtime's receipt and retains its Native observations in the case report.
 The source and installed metadata reconciliation jobs build the same three
 companion native relay fixtures. The installed job verifies the copied
 executables against the candidate build receipt.
+
+Native generation reconstruction has separate source and installed shards.
+Each builds the Native cohort prerequisites and uses a shared-runtime receipt
+from its candidate checkout. Both shards verify the source and bytes of the
+Native cohort reports before and after their contract runs. The installed shard
+also checks the unpacked runtime against the receipt. The workflow retains both
+result reports.
 
 Run a shard locally with `node scripts/verify-candidate.mjs --shard <name>`.
 Add `--dry-run` to inspect its checks. Run with the default shard selection

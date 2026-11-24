@@ -150,7 +150,34 @@ export async function runBackupAcceptance(wasm){
  }
  const liveUpgrades=[];
  for(const paired of [false,true])liveUpgrades.push(await recoverLiveUpgrade(policy(profile,paired?"paired-local":"original",false,`${prefix}-live-upgrade-${paired}`)));
- return{passed:true,cases,existingRefusals,liveCloneRefusals,integrityRefusals,futureHistoryChecks,nativeRecoveryOriginReads,nativeRecoveryOriginRollbackRefusals,upgrades,liveUpgrades,reloadRecords};
+ return{passed:true,cases,existingRefusals,liveCloneRefusals,integrityRefusals,futureHistoryChecks,nativeRecoveryOriginReads,nativeRecoveryOriginRollbackRefusals,upgrades,liveUpgrades,malformedJournalRefusals:await refuseMalformedJournals(profile,prefix),reloadRecords};
  }finally{profile.free();}
 }
 export async function reopenBackupAcceptance(wasm,records){const profile=wasm.SharedRichProfile.from_standard_configuration_json_v3(JSON.stringify(configuration));let exactReopens=0;try{for(const record of records){const p=policy(profile,record.family,record.natural,record.database),owner=await p.open(p.options);try{check(owner.recovered&&p.snapshot(owner)===record.expected,"Reload must recover the exact complete durable record");exactReopens++;}finally{await owner.close();}}return{passed:true,exactReopens};}finally{profile.free();}}
+
+async function refuseMalformedJournals(profile,prefix){
+ const cases={original:"session_read",general:"session_read",document:"session_read","document-search":"search_record",
+  "paired-local":"review_record","paired-relay":"review_relay_record","paired-observer":"review_observer_record",
+  "paired-reviewed":"reviewed_record","paired-search":"search_review_record","paired-search-reviewed":"search_review_record"};
+ let refusals=0;
+ for(const [family,code] of Object.entries(cases)){
+  const database=`${prefix}-malformed-${family}`,p=policy(profile,family,false,database),key=["room","101"];
+  const db=await new Promise((resolve,reject)=>{
+   const request=indexedDB.open(database,1);
+   request.onupgradeneeded=()=>request.result.createObjectStore("journals").add(undefined,key);
+   request.onsuccess=()=>resolve(request.result);request.onerror=()=>reject(request.error);
+  });
+  try{
+   let calls=0;
+   await refuses(()=>p.open({...p.options,create:()=>{calls++;return p.options.create();}}),code);
+   check(calls===0,`${family} must refuse existing malformed data before creating a native owner`);
+   const count=await new Promise((resolve,reject)=>{
+    const tx=db.transaction("journals"),request=tx.objectStore("journals").count(key);
+    tx.oncomplete=()=>resolve(request.result);tx.onabort=()=>reject(tx.error);
+   });
+   check(count===1&&await readJournal(db)===undefined,`${family} must preserve the existing malformed value`);
+   refusals++;
+  }finally{db.close();}
+ }
+ return refusals;
+}

@@ -173,7 +173,18 @@ export class OperationalSharedParticipant<P extends SharedSelectionPolicy=Shared
  async intoParts():Promise<Readonly<OperationalSharedParticipantParts<P>>>{
   if(this.#failedReadCleanup)await this.#drainReadCleanup();
   let source:ReturnType<typeof captureSharedAssetReferences>|undefined,handoff:OperationalParticipantHandoff<OperationalSharedParticipantParts<SharedSelectionPolicy>>|undefined;
-  try{handoff=await prepareOperationalParticipantHandoff([this as unknown as OperationalSharedParticipant<SharedSelectionPolicy>],async([s],markReleased)=>{const state=s!,parts=Object.freeze({sources:Object.freeze(ownerSources(state.p,state.owners)),session:state.owners.session!,uploads:state.owners.uploads!});source=captureSharedAssetReferences(parts.sources);await release(state.db,state.recoveryDb,state.leases);markReleased();return parts;},states=>{for(const s of states){s.p.guard();s.origin.verify(managedSourceCore(s.owners.session!) as SharedRichEditor<SharedSelectionPolicy>);}},()=>checkHandoffSource.call(source!));return handoff.commit() as unknown as OperationalSharedParticipantParts<P>;}finally{handoff?.abandon();if(source)disposeHandoffSource.call(source);}
+  try{
+   handoff=await prepareOperationalParticipantHandoff([this as unknown as OperationalSharedParticipant<SharedSelectionPolicy>],async([s],markReleased)=>{
+    const state=s!,parts=Object.freeze({sources:Object.freeze(ownerSources(state.p,state.owners)),session:state.owners.session!,uploads:state.owners.uploads!});
+    source=captureSharedAssetReferences(parts.sources);await release(state.db,state.recoveryDb,state.leases);markReleased();return parts;
+   },states=>{
+    for(const s of states){
+     s.p.guard();checkManagedRecoveryOwners(s.owners);
+     s.origin.verify(managedSourceCore(s.owners.session!) as SharedRichEditor<SharedSelectionPolicy>);
+    }
+   },()=>checkHandoffSource.call(source!));
+   return handoff.commit() as unknown as OperationalSharedParticipantParts<P>;
+  }finally{handoff?.abandon();if(source)disposeHandoffSource.call(source);}
  }
  /** Save ordinary owners before releasing custody. Failed saves/releases remain retryable. */
  async close():Promise<void>{if(this.#closed)return;if(this.#failedReadCleanup)await this.#drainReadCleanup();if(this.#busy)throw operationFailure("operation_in_use");this.#busy=true;try{const s=this.#state,o=s.owners;await o.revisions?.close();await o.suggestions?.close();await o.versions?.close();await o.session?.close();o.uploads?.close();await release(s.db,s.recoveryDb,s.leases);s.origin.dispose();s.p.backup.dispose();this.#closed=true;}finally{this.#busy=false;}}

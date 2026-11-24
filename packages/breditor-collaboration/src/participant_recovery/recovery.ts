@@ -53,7 +53,19 @@ export class RecoveredSharedParticipant<P extends SharedSelectionPolicy=SharedSe
  async intoParts():Promise<Readonly<RecoveredSharedParticipantParts<P>>>{
   if(this.#closed||this.#released)throw recoveryFailure("recovery_closed");if(this.#busy)throw recoveryFailure("recovery_in_use");this.#busy=true;
   let assets:OperationalAssetCustody|undefined;
-  try{const {prepared:p,owners,db,leases}=this.#state;assets=await holdOperationalAssets([owners.uploads!]);await verify(p,owners);const record=await readRecoveryJournal(db,p.record);if(record.phase!=="ready")throw recoveryFailure("recovery_diverged");p.guard();const source=captureSharedAssetReferences(ownerSources(p,owners));try{await release(db,leases);this.#released=true;p.guard();checkHandoffSource.call(source);checkManagedRecoveryOwners(owners);assets.check();assets.release();this.#closed=true;return Object.freeze({sources:this.sources,session:this.session,uploads:this.uploads});}finally{disposeHandoffSource.call(source);}}finally{assets?.release();this.#busy=false;}
+  try{
+   const {prepared:p,owners,db,leases}=this.#state;assets=await holdOperationalAssets([owners.uploads!]);await verify(p,owners);
+   const record=await readRecoveryJournal(db,p.record);if(record.phase!=="ready")throw recoveryFailure("recovery_diverged");p.guard();
+   const source=captureSharedAssetReferences(ownerSources(p,owners));
+   try{
+    await release(db,leases);this.#released=true;p.guard();
+    // A storage upgrade can retire the core during release. Check the session
+    // before a dependent record reader can report only the retired core.
+    checkManagedRecoveryOwners(owners);
+    checkHandoffSource.call(source);checkManagedRecoveryOwners(owners);assets.check();assets.release();this.#closed=true;
+    return Object.freeze({sources:this.sources,session:this.session,uploads:this.uploads});
+   }finally{disposeHandoffSource.call(source);}
+  }finally{assets?.release();this.#busy=false;}
  }
  /** Graceful close retains failures for retry through the original owner close contracts. */
  async close():Promise<void>{if(this.#closed)return;if(this.#busy)throw recoveryFailure("recovery_in_use");this.#busy=true;try{const {owners,db,leases}=this.#state;await owners.revisions?.close();await owners.suggestions?.close();await owners.versions?.close();await owners.session?.close();owners.uploads?.close();await release(db,leases);this.#closed=true;}finally{this.#busy=false;}}
