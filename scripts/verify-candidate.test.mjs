@@ -441,6 +441,11 @@ test("isolated release matrices preserve the full plan's commands and report the
   ["default-matrix",["default-package-release-matrix"]],
   ["editor-browser-matrix",["relay-native-dependency-notices","default-typescript-build","installed-editor-browser-matrix"]],
   ["rich-browser-matrix",["default-typescript-build","paired-local-runtime","rich-browser-build","rich-browser-chromium","rich-browser-firefox","rich-browser-webkit"]],
+  ["shared-browser-matrix",[
+   "relay-native-dependency-notices","default-typescript-build","paired-local-runtime","rich-browser-build",
+   "shared-browser-wasm-build","shared-browser-wasm-bindgen","shared-browser-native-fixtures","shared-browser-vector",
+   "shared-browser-raster-fixtures","shared-browser-typescript-build","shared-browser-matrix",
+  ]],
   ["dependency-inventories",["relay-native-dependency-notices","paired-local-runtime","paired-shared-runtime"]],
   ["installed-feature-browser",[
    "default-typescript-build","paired-local-runtime","paired-shared-runtime","rich-browser-build","collaboration-build","editor-build",

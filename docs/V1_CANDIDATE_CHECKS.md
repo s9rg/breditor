@@ -59,6 +59,12 @@ Each engine has a separate Playwright process and stage budget. The candidate
 manifest retains each report and the workflow keeps failed traces. This matrix
 is also required by the full candidate plan.
 
+Select `shared-browser-matrix` to run the shared collaboration browser suite
+with the research Wasm probe and fixtures built from the candidate. Its network
+cases use the same hash-verified release relay as the installed editor matrix.
+The profile retains the three-engine Playwright reports and failed traces.
+The full plan requires this suite along with the installed SDK checks.
+
 ## Dependency inventories
 
 Select `dependency-inventories` to build the rich and shared Wasm notice

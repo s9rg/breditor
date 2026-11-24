@@ -17,7 +17,7 @@ import {reconciledPacketCaseIds,reconciledPacketReport,reconciledPacketSelection
 import {metadataReconciliationHostReceipt} from "./metadata-reconciliation-hosts.mjs";
 export const repository=resolve(dirname(fileURLToPath(import.meta.url)),"../..");
 export const deferredFunctionalGates=Object.freeze([
- "default-package-release-matrix","installed-editor-browser-matrix",
+ "default-package-release-matrix","installed-editor-browser-matrix","shared-browser-matrix",
  "native-clipboard-ime-screen-reader-mobile","performance-size-long-session",
  "public-deployment-auth-isolation","storage-lifecycle-and-restore-drills",
  "dependency-license-review","catalog-parity-and-final-rc-approval",
@@ -28,6 +28,11 @@ const focusedStageIds = {
  "default-matrix": ["default-package-release-matrix"],
  "editor-browser-matrix": ["relay-native-dependency-notices","default-typescript-build","installed-editor-browser-matrix"],
  "rich-browser-matrix": ["default-typescript-build","paired-local-runtime","rich-browser-build",...richBrowserEngines.map(engine=>"rich-browser-"+engine)],
+ "shared-browser-matrix": [
+  "relay-native-dependency-notices","default-typescript-build","paired-local-runtime","rich-browser-build",
+  "shared-browser-wasm-build","shared-browser-wasm-bindgen","shared-browser-native-fixtures","shared-browser-vector",
+  "shared-browser-raster-fixtures","shared-browser-typescript-build","shared-browser-matrix",
+ ],
  "dependency-inventories": ["relay-native-dependency-notices","paired-local-runtime","paired-shared-runtime"],
  "installed-feature-browser": [
   "default-typescript-build","paired-local-runtime","paired-shared-runtime","rich-browser-build","collaboration-build","editor-build",
@@ -46,6 +51,9 @@ export function candidateReleasePlan({profile="full",environment=process.env}={}
  // Select once, then pass the same tools through every nested build and record them.
  const tools={CARGO_BIN:cargo,BREDITOR_CARGO:cargo,RUSTC_BIN:rustc,BREDITOR_RUSTC:rustc,RUSTC:rustc,WASM_BINDGEN_BIN:bindgen,BREDITOR_WASM_BINDGEN:bindgen,WASM_BINDGEN_TEST_RUNNER_BIN:runner,NPM_BIN:npm,NODE_BIN:node};
  const shared=resolve(repository,"target/historical-source-native"),relay=resolve(repository,"target/owned-history-relay-native"),wasm=resolve(repository,"target/promoted-shared-wasm");
+ const sharedBrowserManifest="experiments/collaboration/Cargo.toml";
+ const sharedBrowserWasmTarget="target/collaboration-feasibility",sharedBrowserWeb="target/collaboration-feasibility-web";
+ const sharedBrowserNativeEnv={CARGO_TARGET_DIR:resolve(repository,"target/collaboration-native"),CARGO_PROFILE_DEV_DEBUG:"0",CARGO_INCREMENTAL:"0"};
  const executablePath=name=>`target/owned-history-relay-native/release/examples/${name}${process.platform==="win32"?".exe":""}`,executable=name=>resolve(repository,executablePath(name)),stage=(id,command,args,env={},artifacts=[],timeoutMs=1800000)=>Object.freeze({id,command,args:Object.freeze(args),env:Object.freeze({...tools,...env}),artifacts:Object.freeze(artifacts.map(value=>Object.freeze(typeof value==="string"?{path:value}:value))),timeoutMs});
  const script=(id,file,args=[],artifacts=[],timeout)=>stage(id,node,[`scripts/${file}`,...args],{},artifacts,timeout);
  const retainedRuntimeNotices=directory=>runtimeNoticeFiles.map(file=>({path:`${directory}/${file}`,fresh:true,retain:true}));
@@ -855,6 +863,23 @@ export function candidateReleasePlan({profile="full",environment=process.env}={}
     "--project="+(engine==="webkit"?"webkit*":engine),"--output="+output,"--reporter=line,json"],
     {PLAYWRIGHT_JSON_OUTPUT_FILE:report},[{path:report,fresh:true,retain:true}],1800000);
   }),
+  // This browser suite exercises research probe exports. Keep it separate from the installed SDK run.
+  stage("shared-browser-wasm-build",cargo,["build","--manifest-path",sharedBrowserManifest,"--locked","--offline","--target","wasm32-unknown-unknown","--release"],
+   {CARGO_TARGET_DIR:resolve(repository,sharedBrowserWasmTarget)},
+   [sharedBrowserWasmTarget+"/wasm32-unknown-unknown/release/breditor_collab_feasibility.wasm"]),
+  stage("shared-browser-wasm-bindgen",bindgen,["--target","web","--out-dir",sharedBrowserWeb,
+   sharedBrowserWasmTarget+"/wasm32-unknown-unknown/release/breditor_collab_feasibility.wasm"],{},
+   ["breditor_collab_feasibility.js","breditor_collab_feasibility_bg.wasm"].map(path=>({path:sharedBrowserWeb+"/"+path,fresh:true}))),
+  stage("shared-browser-native-fixtures",cargo,["build","--manifest-path",sharedBrowserManifest,
+   "--locked","--offline","--example","relay_contract_driver"],sharedBrowserNativeEnv,
+   ["target/collaboration-native/debug/examples/relay_contract_driver"+(process.platform==="win32"?".exe":"")]),
+  stage("shared-browser-vector",cargo,["run","--manifest-path",sharedBrowserManifest,"--locked","--offline",
+   "--example","export_vector","--",sharedBrowserWeb+"/native-vector.json"],sharedBrowserNativeEnv,
+   [{path:sharedBrowserWeb+"/native-vector.json",fresh:true}]),
+  relayCargo("shared-browser-raster-fixtures",["run","--locked","--offline","--release","--example","raster_fixtures",
+   "--","target/relay-raster-fixtures.json"],[{path:"target/relay-raster-fixtures.json",fresh:true}]),
+  stage("shared-browser-typescript-build",node,["node_modules/typescript/bin/tsc","-p","packages/breditor-experimental-collaboration/tsconfig.json"]),
+  script("shared-browser-matrix","check-shared-browser-matrix.mjs",["--candidate-relay"],[{path:"target/shared-browser-report.json",fresh:true,retain:true}],5400000),
   script("rich-demo-latency","record-rich-demo-latency.mjs",[],[{path:richDemoLatencyReport,fresh:true,retain:true}],240000),
   script("installed-search-browser","check-search-browser.mjs",[],[{path:"target/search-installed-browser.json",fresh:true}]),
   script("installed-placeholder-browser","check-placeholder-browser.mjs",[],[{path:"target/placeholder-installed-browser.json",fresh:true}]),
@@ -874,5 +899,5 @@ export function candidateReleasePlan({profile="full",environment=process.env}={}
   return Object.freeze({profile,qualification:"candidate-checks-not-release-approval",v1Ready:false,
    deferred:Object.freeze(["full-candidate-qualification"]),checks:Object.freeze(selected)});
  }
- return Object.freeze({profile,qualification:"candidate-checks-not-release-approval",v1Ready:false,deferred:profile==="functional"?deferredFunctionalGates:Object.freeze(deferredFunctionalGates.filter(id=>!["default-package-release-matrix","installed-editor-browser-matrix"].includes(id))),checks:Object.freeze(checks)});
+ return Object.freeze({profile,qualification:"candidate-checks-not-release-approval",v1Ready:false,deferred:profile==="functional"?deferredFunctionalGates:Object.freeze(deferredFunctionalGates.filter(id=>!["default-package-release-matrix","installed-editor-browser-matrix","shared-browser-matrix"].includes(id))),checks:Object.freeze(checks)});
 }
