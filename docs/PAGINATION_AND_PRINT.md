@@ -145,9 +145,11 @@ printable page height. Each mounted
 screen preview uses its own layout. By default the print styles for the same
 layout are installed too (`print: false` to skip). For a shadow-root surface,
 the preview adds the `@page` rule to the owner document. The browser applies
-page size and margins to the whole printed document. `update(options)` changes the
-surface's preview layout and `dispose()` restores the element. Editing continues
-normally during preview.
+page size and margins to the whole printed document. `update(options)` changes
+the layout and moves the preview styles to the surface's current tree. Call it
+after moving a mounted surface between the document and a shadow root.
+`dispose()` restores the element's prior attributes and removes the preview
+styles. Editing continues normally during preview.
 
 ### Static export
 

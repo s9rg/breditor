@@ -189,6 +189,50 @@ test("a print preview inside a closed shadow root applies screen and print style
  expect(after).toEqual({initial:[["letter","portrait","12.7mm"]],updated:[["a4","landscape","38.1mm"]],disposed:[],previewStyles:0});
 });
 
+test("updating a print preview after a DOM move follows the surface and restores its original attributes",async({page})=>{
+ const result=await page.evaluate(()=>{
+  const t=window.dt;
+  t.mount(true);
+  const {core,editor,host}=t,surface=editor.surface,before=core.checkpointJson();
+  const attachments=[document.createElement("section"),document.createElement("section")];
+  document.body.append(...attachments);
+  const roots=attachments.map(attachment=>attachment.attachShadow({mode:"closed"}));
+  surface.setAttribute("aria-description","Original description");
+  surface.setAttribute("data-breditor-print-size","Original size");
+  const preview=t.api.mountRichPrintPreview(surface);
+  const read=()=>{
+   const styles=getComputedStyle(surface),mm=px=>Math.round(parseFloat(px)*25.4/96*10)/10;
+   return {width:mm(styles.width),padding:mm(styles.paddingTop),
+    styles:[document.head,...roots].map(root=>root.querySelectorAll("style[data-breditor-print-preview]").length),
+    pageRules:[...document.styleSheets].flatMap(sheet=>[...sheet.cssRules]).filter(rule=>rule.type===CSSRule.PAGE_RULE).length};
+  };
+  try{
+   const mount=read();
+   roots[0].append(host);
+   preview.update({size:"Letter",margin:"narrow"});
+   const firstShadow=read();
+   roots[1].append(host);
+   preview.update({orientation:"landscape",margin:"wide"});
+   const secondShadow=read();
+   document.body.append(host);
+   preview.update({margin:"normal"});
+   const back=read();
+   preview.dispose();
+   const {styles,pageRules}=read();
+   return {mount,firstShadow,secondShadow,back,styles,pageRules,unchanged:core.checkpointJson()===before,
+    previous:[surface.getAttribute("aria-description"),surface.getAttribute("data-breditor-print-size")],
+    active:surface.hasAttribute("data-breditor-print-preview")};
+  }finally{preview.dispose();for(const attachment of attachments)attachment.remove();}
+ });
+ expect(result).toEqual({
+  mount:{width:159.2,padding:25.4,styles:[1,0,0],pageRules:1},
+  firstShadow:{width:190.5,padding:12.7,styles:[0,1,0],pageRules:1},
+  secondShadow:{width:220.8,padding:38.1,styles:[0,0,1],pageRules:1},
+  back:{width:159.2,padding:25.4,styles:[1,0,0],pageRules:1},
+  styles:[0,0,0],pageRules:0,unchanged:true,previous:["Original description","Original size"],active:false,
+ });
+});
+
 test("static export embeds print CSS and repeats header rows under print media",async({page})=>{
  await page.emulateMedia({media:"print"});
  const result=await page.evaluate(()=>{const t=window.dt,frame=document.createElement("section");
