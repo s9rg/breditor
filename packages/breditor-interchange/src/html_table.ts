@@ -12,7 +12,23 @@ export function importTable(c:HtmlConversion,node:HtmlElement,state:StyleState):
   // V4 owners keep the first <caption> as the table's caption paragraph (see `tableCaption`).
   let caption:Element|undefined,captioned=false;
   let group=0;
-  const addColumns=(parent:HtmlElement)=>{for(const n of parent.childNodes){if(!isElement(n))continue;if(n.tagName!=="col")fail("malformed-table");if(c.excluded(n))fail("unsupported-content");c.style(n,state);const count=span(attribute(n,"span"),limits.columns);if(colWidths.length+count>limits.columns)fail("resource-limit");const raw=c.css(n).get("width")??attribute(n,"width"),width=pixels(raw);if(raw!==undefined&&width===null)c.b.loss("table-width");for(let i=0;i<count;i++)colWidths.push(width);}};
+  const widthHint=(node:HtmlElement,fallback:number|null=null)=>{
+    const raw=c.css(node).get("width")??attribute(node,"width");if(raw===undefined)return fallback;
+    const width=pixels(raw);if(width===null)c.b.loss("table-width");return width;
+  };
+  const addWidth=(rawSpan:string|undefined,width:number|null)=>{
+    const count=span(rawSpan,limits.columns);if(colWidths.length+count>limits.columns)fail("resource-limit");
+    for(let i=0;i<count;i++)colWidths.push(width);
+  };
+  const addColumns=(parent:HtmlElement)=>{
+    const children=parent.childNodes.filter(isElement),groupSpan=attribute(parent,"span"),groupWidth=widthHint(parent);
+    if(!children.length){addWidth(groupSpan,groupWidth);return;}
+    if(groupSpan!==undefined)c.b.loss("table-geometry");
+    for(const child of children){
+      if(child.tagName!=="col")fail("malformed-table");if(c.excluded(child))fail("unsupported-content");
+      c.style(child,state);addWidth(attribute(child,"span"),widthHint(child,groupWidth));
+    }
+  };
   for(const n of node.childNodes){
     if(!isElement(n)){if(plainText(n).trim())fail("malformed-table");continue;}
     if(c.excluded(n))fail("unsupported-content");

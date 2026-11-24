@@ -196,3 +196,39 @@ test("portable HTML renders its semantic table caption below the grid",async({pa
  });
  expect(result).toEqual({first:true,afterGrid:true,side:"bottom",text:"Legend",losses:[],roundTrip:true,unchanged:true});
 });
+
+test("column groups retain declared spans and fallback widths without shifting source cells",async({page})=>{
+ const result=await page.evaluate(()=>{
+  const t=window.dt,adapter=t.createRichInterchange(t.core),before=t.core.checkpointJson();
+  const table=(group,rows)=>`<table>${group}${rows}</table>`;
+  const shape=value=>{
+   const node=JSON.parse(value.value.structuredJson).document.root.children[0];
+   const texts=n=>n.kind==="text"?n.text:n.children.map(texts).join("");
+   return {widths:node.properties["breditor/columns"].map(c=>c.width),merges:node.properties["breditor/merges"].length,
+    rows:node.children.map(row=>row.children.map(cell=>[cell.properties["breditor/header"],texts(cell)]))};
+  };
+  const cases=[
+   table('<colgroup span="3" width="71" style="width:90px"></colgroup>',"<tr><th colspan=2>A</th><td>B</td></tr><tr><td>C</td><td>D</td><td>E</td></tr>"),
+   table('<colgroup width="90"><col><col span="2" width="132" style="width:144px"></colgroup>',"<tr><td>A</td><td>B</td><td>C</td></tr>"),
+   table('<colgroup span="3" width="90"></colgroup>',"<tr><td>One</td></tr>"),
+   table('<colgroup span="2" style="width:50%"></colgroup>',"<tr><td>A</td><td>B</td></tr>"),
+   table('<colgroup span="12" width="90"><col width="130"></colgroup>',"<tr><td>A</td></tr>"),
+  ];
+  const admitted=cases.map(source=>{
+   const value=adapter.importHtml(source),exported=adapter.exportHtml(value.value.structuredJson);
+   return {shape:shape(value),losses:value.losses,roundTrip:JSON.stringify(shape(adapter.importHtml(exported.value)))===JSON.stringify(shape(value))};
+  });
+  const refused=[0,129].map(span=>adapter.importHtml(table(`<colgroup span="${span}"></colgroup>`,"<tr><td>A</td></tr>")));
+  return {admitted,refused,unchanged:t.core.checkpointJson()===before};
+ });
+ const cells=(...values)=>values.map(value=>[false,value]);
+ const check=(widths,rows,merges=0,losses=[])=>({shape:{widths,merges,rows},losses,roundTrip:true});
+ const loss=(code,count)=>({code,count,effect:"loss"});
+ expect(result).toEqual({admitted:[
+  check([90,90,90],[[[true,"A"],[true,""],[false,"B"]],cells("C","D","E")],1),
+  check([90,144,144],[cells("A","B","C")]),
+  check([90,90,90],[cells("One","","")],0,[loss("table-geometry",3)]),
+  check([120,120],[cells("A","B")],0,[loss("table-width",1)]),
+  check([130],[cells("A")],0,[loss("table-geometry",1)]),
+ ],refused:[{ok:false,error:"malformed-table",losses:[]},{ok:false,error:"resource-limit",losses:[]}],unchanged:true});
+});
