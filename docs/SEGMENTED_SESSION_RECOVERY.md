@@ -41,7 +41,8 @@ second delivery leaves the full checkpoint unchanged. The drill traverses
 all three pre-cut history items, including a Redo item that stayed untouched
 through both seals, while preserving the other writer's work.
 
-The portable recovery drill exports both segmented cuts after the second seal
+The [portable recovery drill](qualification/2026-11-24-installed-chrome-portable-history-restore.json)
+exports both segmented cuts after the second seal
 and restores each into a fresh IndexedDB database after its writer closes. It
 checks that live writers and occupied destinations refuse recovery before native
 replay, that both segmented sources retain their exact recovery records, and
