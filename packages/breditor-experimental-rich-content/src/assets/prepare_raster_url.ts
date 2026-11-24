@@ -1,5 +1,5 @@
 import {canonicalImageLinkHrefV1} from "@breditor/browser/presentation";
-import {inspectRichRaster,type RichRasterInspection,type RichRasterInspectionOptions} from "./inspect_raster.js";
+import {inspectRasterDisplay,type RichRasterDisplaySize,type RichRasterInspection,type RichRasterInspectionOptions} from "./inspect_raster.js";
 import {checkedAssetLimits} from "./limits.js";
 import {awaitRasterOperation,checkRasterSignal} from "./raster_decode.js";
 
@@ -28,14 +28,22 @@ export class RichRasterUrlError extends Error {
 }
 
 const rasterTypes=new Set(["image/png","image/jpeg","image/webp"]);
+export function isPinnedRasterAsset(value:unknown):value is string {
+ return typeof value==="string"&&value.length===71&&/^sha256:[0-9a-f]{64}$/.test(value);
+}
 
 /** Inspect only host-approved HTTPS bytes against a pinned content address. */
 export async function prepareRichRasterUrl(source:string,options:RichRasterUrlOptions):Promise<RichRasterInspection>{
- const {allowUrl,load,expectedAsset,signal,limits:supplied}=options;
+ const signal=options.signal,result=await prepareRasterUrlDisplay(source,options,signal);
+ checkRasterSignal(signal);
+ return result.raster;
+}
+export async function prepareRasterUrlDisplay(source:string,options:RichRasterUrlOptions,signal:AbortSignal|undefined):Promise<RichRasterDisplaySize&{readonly raster:RichRasterInspection}>{
+ const {allowUrl,load,expectedAsset,limits:supplied}=options;
  checkRasterSignal(signal);
  const url=canonicalImageLinkHrefV1(source);
  if(url===null||!url.startsWith("https://")||url.includes("#"))throw new RichRasterUrlError("url","Expected a credential-free HTTPS raster URL without a fragment");
- if(typeof expectedAsset!=="string"||expectedAsset.length!==71||!/^sha256:[0-9a-f]{64}$/.test(expectedAsset)){
+ if(!isPinnedRasterAsset(expectedAsset)){
   throw new RichRasterUrlError("integrity","Expected the pinned SHA-256 raster address");
  }
  const limits=checkedAssetLimits(supplied);
@@ -55,10 +63,10 @@ export async function prepareRichRasterUrl(source:string,options:RichRasterUrlOp
  if(responseUrl!==url)throw new RichRasterUrlError("redirect","The loaded raster URL differs from the approved URL");
  if(!(blob instanceof Blob)||!rasterTypes.has(blob.type))throw new RichRasterUrlError("raster","Expected immutable PNG, JPEG or WebP bytes");
  if(blob.size<1||blob.size>limits.maxFileBytes)throw new RichRasterUrlError("budget","Raster bytes exceeded the admitted size limit");
- let inspected:RichRasterInspection;
- try{inspected=await inspectRichRaster(blob,{limits,...(signal===undefined?{}:{signal})});}
+ let inspected:Awaited<ReturnType<typeof inspectRasterDisplay>>;
+ try{inspected=await inspectRasterDisplay(blob,{limits,...(signal===undefined?{}:{signal})});}
  catch{checkRasterSignal(signal);throw new RichRasterUrlError("raster","Raster bytes failed image admission");}
  checkRasterSignal(signal);
- if(inspected.asset!==expectedAsset)throw new RichRasterUrlError("integrity","The loaded raster differs from the pinned asset");
+ if(inspected.raster.asset!==expectedAsset)throw new RichRasterUrlError("integrity","The loaded raster differs from the pinned asset");
  return inspected;
 }

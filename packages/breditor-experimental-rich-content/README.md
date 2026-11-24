@@ -833,3 +833,22 @@ insertion workflow. Preparation performs no network or storage operation of
 its own and does not mutate an editor. Cancellation stops waiting and
 discards late host responses. The host is responsible for honouring the
 signal in its loader.
+
+## Prepare a host-pinned display rendition
+
+`prepareRichRasterRendition(originalBlob, options)` verifies the native
+image's `originalAsset` against its immutable original bytes. Supply the
+needed `requestedWidth` in whole pixels, up to 16 pinned
+`{width, url, expectedAsset}` candidates, and the explicit HTTPS loader
+and policy used by `prepareRichRasterUrl`. It chooses the smallest candidate
+that meets the request and is narrower than the original. The candidate
+must keep the original's decoded aspect ratio at the chosen pixel width
+and use fewer encoded bytes. Browser-decoded display geometry accounts
+for orientation carried in the raster.
+
+The result keeps `originalAsset` separate from the prepared `raster.asset`.
+A denied, unavailable or incompatible candidate returns the verified original
+with a fallback reason. The host can use the result in its live and static
+asset resolvers while retaining the original native asset binding and stored
+bytes. Cancelling ends preparation, and the host keeps storage and network
+custody.

@@ -49,7 +49,8 @@ function header(bytes: Uint8Array): Raster {
   throw Error("Only valid PNG, JPEG and WebP raster files are supported");
 }
 
-export async function admitRaster(file: Blob, limits: Readonly<AssetLimits>, signal?:AbortSignal): Promise<Raster & {payload: ArrayBuffer; asset: string}> {
+export async function admitRaster(file: Blob, limits: Readonly<AssetLimits>, signal?:AbortSignal,
+  observeDisplaySize?:(width:number,height:number)=>void): Promise<Raster & {payload: ArrayBuffer; asset: string}> {
   checkRasterSignal(signal);
   if (file.size === 0 || file.size > limits.maxFileBytes) throw Error("Image exceeds the encoded file budget");
   const bytes = new Uint8Array(await file.arrayBuffer());checkRasterSignal(signal);const raster = header(bytes);
@@ -62,6 +63,7 @@ export async function admitRaster(file: Blob, limits: Readonly<AssetLimits>, sig
     await decodeRaster(image,signal);checkRasterSignal(signal);
     if (!image.naturalWidth || !image.naturalHeight || image.naturalWidth * image.naturalHeight > limits.maxPixels
       || image.naturalWidth > limits.maxDimension || image.naturalHeight > limits.maxDimension) throw Error("Image decode exceeds its budget");
+    observeDisplaySize?.(image.naturalWidth,image.naturalHeight);
   } catch { throw Error("Image decode failed or exceeded its budget"); }
   finally { URL.revokeObjectURL(url); }
   checkRasterSignal(signal);const digest = await crypto.subtle.digest("SHA-256", bytes);checkRasterSignal(signal);

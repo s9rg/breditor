@@ -8,11 +8,22 @@ export interface RichRasterInspection {
  readonly asset:string;readonly mime:RasterMime;readonly width:number;readonly height:number;
  readonly bytes:number;readonly blob:Blob;
 }
+export interface RichRasterDisplaySize {readonly displayWidth:number;readonly displayHeight:number}
 /** Snapshot Blob bytes before asynchronous decoding. Returned metadata and payload are immutable. */
 export async function inspectRichRaster(input:Blob,options:RichRasterInspectionOptions={}):Promise<RichRasterInspection>{
+ const selected={...options},result=await inspectRasterDisplay(input,selected);
+ checkAssetBackupSignal(selected.signal);
+ return result.raster;
+}
+/** The browser's decoded size can differ from header dimensions, for example after EXIF orientation. */
+export async function inspectRasterDisplay(input:Blob,options:RichRasterInspectionOptions):Promise<RichRasterDisplaySize&{readonly raster:RichRasterInspection}>{
  const {signal,limits:supplied}={...options},limits=checkedAssetLimits(supplied);checkAssetBackupSignal(signal);
  if(!(input instanceof Blob))throw new RichAssetBackupError("asset_backup_raster","Expected immutable raster bytes");
  const snapshot=new Blob([input],{type:input.type});let admitted:Awaited<ReturnType<typeof admitRaster>>;
- try{admitted=await admitRaster(snapshot,limits,signal);}catch{checkAssetBackupSignal(signal);throw new RichAssetBackupError("asset_backup_raster","Raster bytes failed ordinary image admission");}
- checkAssetBackupSignal(signal);return Object.freeze({asset:admitted.asset,mime:admitted.mime,width:admitted.width,height:admitted.height,bytes:admitted.payload.byteLength,blob:Object.freeze(new Blob([admitted.payload],{type:admitted.mime}))});
+ let displayWidth=0,displayHeight=0;
+ try{admitted=await admitRaster(snapshot,limits,signal,(width,height)=>{displayWidth=width;displayHeight=height;});}
+ catch{checkAssetBackupSignal(signal);throw new RichAssetBackupError("asset_backup_raster","Raster bytes failed ordinary image admission");}
+ checkAssetBackupSignal(signal);
+ const raster=Object.freeze({asset:admitted.asset,mime:admitted.mime,width:admitted.width,height:admitted.height,bytes:admitted.payload.byteLength,blob:Object.freeze(new Blob([admitted.payload],{type:admitted.mime}))});
+ return Object.freeze({raster,displayWidth,displayHeight});
 }

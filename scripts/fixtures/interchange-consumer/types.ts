@@ -1,11 +1,12 @@
 import {createRichInterchange} from "@breditor/interchange";
 import {exportPortableHtml,type PortableHtmlRasterOptions} from "@breditor/interchange/portable-html";
-import {prepareRichRasterUrl,type LocalEditorOptions,type LocalDocumentEditorOptions,type RichClipboardInterchangeReport,type RichRasterUrlOptions} from "@breditor/editor";
+import {prepareRichRasterUrl,prepareRichRasterRendition,type LocalEditorOptions,type LocalDocumentEditorOptions,type RichClipboardInterchangeReport,type RichRasterUrlOptions} from "@breditor/editor";
 import type {SharedEditorSessionOptions,SharedDocumentEditorSessionOptions} from "@breditor/editor/collaboration";
 import type {BreditorEditorProps,BreditorDocumentEditorProps} from "@breditor/editor/react";
 import type {BreditorSharedEditorProps,BreditorSharedDocumentEditorProps} from "@breditor/editor/collaboration/react";
 const rasterUrlOptions:RichRasterUrlOptions={expectedAsset:"sha256:"+"0".repeat(64),allowUrl:url=>url.startsWith("https:"),load:request=>({url:request.url,blob:new Blob()})};
 void prepareRichRasterUrl("https://example.test/asset.png",rasterUrlOptions);
+void prepareRichRasterRendition(new Blob(),{...rasterUrlOptions,originalAsset:rasterUrlOptions.expectedAsset,requestedWidth:40,candidates:[]});
 const onInterchange=(report:RichClipboardInterchangeReport):void=>{const operation:"copy"|"cut"|"paste"=report.operation;void operation;};
 const local={clipboardInterchange:core=>createRichInterchange(core),onInterchange} satisfies Pick<LocalEditorOptions,"clipboardInterchange"|"onInterchange">;
 const document={clipboardInterchange:core=>createRichInterchange(core),onInterchange} satisfies Pick<LocalDocumentEditorOptions,"clipboardInterchange"|"onInterchange">;
