@@ -1,0 +1,223 @@
+{
+  "format": "breditor/installed-shared-range-policy-latency",
+  "formatVersion": 1,
+  "date": "2026-11-24",
+  "fixtureCommit": "465552e857f8e8cfceef4c030e1cf242ba2bab1f",
+  "archiveSourceCommit": "b09dc475fba6632903d78e9a438039d340e9e2f8",
+  "reportSha256": "9be017313d33f34587b8e7a455e4d4a555ddf4843d83aa795e78fd8331c7d6d7",
+  "chromeVersion": "158.0.8127.37",
+  "platform": "darwin",
+  "arch": "arm64",
+  "host": {
+    "cpu": "Apple M1 Pro",
+    "osRelease": "25.6.0",
+    "osVersion": "Darwin Kernel Version 25.6.0: Fri Jul 31 19:18:49 PDT 2026; root:xnu-12377.161.14~5/RELEASE_ARM64_T6000"
+  },
+  "macOS": "26.6.2",
+  "fixture": {
+    "documentSha256": "d395e33e14975713d414b75922457566d305e53b89947acd28fad239ef90aa36",
+    "documentBytes": 2825,
+    "topLevelBlocks": 3
+  },
+  "archives": [
+    {
+      "filename": "breditor-browser-0.3.0-alpha.22.tgz",
+      "sha256": "1199d14fe5b3d5b2e0318642a9bbf9f5b84773e97265597f72e190be43869ae0"
+    },
+    {
+      "filename": "breditor-experimental-rich-content-0.3.0-alpha.22.tgz",
+      "sha256": "41bef48450af2d2ddc3e8d5b159205bf0d4ed836627690b992d393cfdd12016a"
+    },
+    {
+      "filename": "breditor-collaboration-0.3.0-alpha.22.tgz",
+      "sha256": "a0ed9422649deac8b190413a6f7f06191c22298d907bdfc672eb9c446f8fe65f"
+    },
+    {
+      "filename": "breditor-editor-0.3.0-alpha.22.tgz",
+      "sha256": "ff50188718a1587bc21fda0e0700a2f4de61085ae00d083cf569789d29c713dd"
+    }
+  ],
+  "wasm": {
+    "sha256": "8f39c742c461006c90e209e0287f7db137574843f316ccddbe2aaa141ca00401",
+    "bytes": 14567299
+  },
+  "scope": "The same installed SDK, Wasm, original document, explicit history, and direct two-peer frame exchange in both Chrome projects. Each fresh context flushes, closes, and reopens its exact checkpoints. These samples describe one fixture and host. They do not qualify relay latency, operating-system input, or supported release workload limits.",
+  "policies": [
+    {
+      "project": "chrome",
+      "rangeEditing": "original",
+      "durationMs": 74290,
+      "navigationToReadyMs": 368.3415,
+      "latency": [
+        {
+          "firstRound": 1,
+          "lastRound": 10,
+          "typing": {
+            "samples": 10,
+            "p50Ms": 33.39999997615814,
+            "p95Ms": 41.5
+          },
+          "undo": {
+            "samples": 10,
+            "p50Ms": 32.799999952316284,
+            "p95Ms": 39.700000047683716
+          },
+          "frameSync": {
+            "samples": 10,
+            "p50Ms": 46,
+            "p95Ms": 63.39999997615814
+          }
+        },
+        {
+          "firstRound": 11,
+          "lastRound": 25,
+          "typing": {
+            "samples": 15,
+            "p50Ms": 54.60000002384186,
+            "p95Ms": 68.70000004768372
+          },
+          "undo": {
+            "samples": 15,
+            "p50Ms": 54.800000071525574,
+            "p95Ms": 70.80000007152557
+          },
+          "frameSync": {
+            "samples": 15,
+            "p50Ms": 86.69999992847443,
+            "p95Ms": 114.30000007152557
+          }
+        },
+        {
+          "firstRound": 26,
+          "lastRound": 50,
+          "typing": {
+            "samples": 25,
+            "p50Ms": 93.29999995231628,
+            "p95Ms": 119.59999990463257
+          },
+          "undo": {
+            "samples": 25,
+            "p50Ms": 93.89999997615814,
+            "p95Ms": 116.79999995231628
+          },
+          "frameSync": {
+            "samples": 25,
+            "p50Ms": 158.80000007152557,
+            "p95Ms": 201.10000002384186
+          }
+        },
+        {
+          "firstRound": 51,
+          "lastRound": 100,
+          "typing": {
+            "samples": 50,
+            "p50Ms": 173,
+            "p95Ms": 223.60000002384186
+          },
+          "undo": {
+            "samples": 50,
+            "p50Ms": 172.69999992847443,
+            "p95Ms": 228.10000002384186
+          },
+          "frameSync": {
+            "samples": 50,
+            "p50Ms": 308.5,
+            "p95Ms": 399.5
+          }
+        }
+      ],
+      "editUndoRounds": 100,
+      "checkpointCodeUnits": 30040753,
+      "releasedBackingStorage": 30045692,
+      "exactReopenedCheckpoints": 2
+    },
+    {
+      "project": "chrome-general-ranges",
+      "rangeEditing": "general-v1",
+      "durationMs": 12587,
+      "navigationToReadyMs": 376.655125,
+      "latency": [
+        {
+          "firstRound": 1,
+          "lastRound": 10,
+          "typing": {
+            "samples": 10,
+            "p50Ms": 24.90000009536743,
+            "p95Ms": 34.5
+          },
+          "undo": {
+            "samples": 10,
+            "p50Ms": 23.399999976158142,
+            "p95Ms": 27.700000047683716
+          },
+          "frameSync": {
+            "samples": 10,
+            "p50Ms": 14.599999904632568,
+            "p95Ms": 21.199999928474426
+          }
+        },
+        {
+          "firstRound": 11,
+          "lastRound": 25,
+          "typing": {
+            "samples": 15,
+            "p50Ms": 25.100000023841858,
+            "p95Ms": 26.100000023841858
+          },
+          "undo": {
+            "samples": 15,
+            "p50Ms": 23.699999928474426,
+            "p95Ms": 26
+          },
+          "frameSync": {
+            "samples": 15,
+            "p50Ms": 15.299999952316284,
+            "p95Ms": 16.5
+          }
+        },
+        {
+          "firstRound": 26,
+          "lastRound": 50,
+          "typing": {
+            "samples": 25,
+            "p50Ms": 26.300000071525574,
+            "p95Ms": 28.399999976158142
+          },
+          "undo": {
+            "samples": 25,
+            "p50Ms": 25.399999976158142,
+            "p95Ms": 27
+          },
+          "frameSync": {
+            "samples": 25,
+            "p50Ms": 16.100000023841858,
+            "p95Ms": 17.5
+          }
+        },
+        {
+          "firstRound": 51,
+          "lastRound": 100,
+          "typing": {
+            "samples": 50,
+            "p50Ms": 29.800000071525574,
+            "p95Ms": 32.200000047683716
+          },
+          "undo": {
+            "samples": 50,
+            "p50Ms": 29.40000009536743,
+            "p95Ms": 32.199999928474426
+          },
+          "frameSync": {
+            "samples": 50,
+            "p50Ms": 18.200000047683716,
+            "p95Ms": 19.699999928474426
+          }
+        }
+      ],
+      "editUndoRounds": 100,
+      "checkpointCodeUnits": 703624,
+      "releasedBackingStorage": 708563,
+      "exactReopenedCheckpoints": 2
+    }
+  ]
+}
