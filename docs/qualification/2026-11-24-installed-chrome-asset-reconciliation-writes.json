@@ -1,0 +1,176 @@
+{
+  "format": "breditor/installed-asset-reconciliation-comparison",
+  "formatVersion": 1,
+  "scope": "One installed Chrome workload. Counts cover logical raster payload bytes on IndexedDB asset row write requests only.",
+  "eliminatedRows": 11,
+  "eliminatedPayloadBytes": 16495802,
+  "baseline": {
+    "format": "breditor/installed-asset-reconciliation-writes",
+    "source": {
+      "commit": "0947ff5ac264a2a260ab09fe5bd88357ac3a98c1",
+      "dirty": false,
+      "sha256": "8a56e1e2d8e1021a59e8594716e86628700e3f8dab9504f5248e3919d1e6abb4",
+      "files": 9688,
+      "bytes": 83035922
+    },
+    "producer": {
+      "commit": "fa89ccde29a6363045d2a0cec6569d72fc1a7e62",
+      "dirty": false,
+      "sha256": "3e5bbed00b0030a99993680e27ed68b467eaf1983afb00ef4f4b1aebb263070f",
+      "files": 9688,
+      "bytes": 83035170
+    },
+    "browser": "158.0.8127.37",
+    "localWasmSha256": "f100599f39805586d465961161bf751e0bd51e8d524ad2ab653001946347200e",
+    "fixtureProof": [
+      {
+        "path": "scripts/fixtures/retained-asset-open-measurement/reconciliation.html",
+        "sha256": "8756189535a9557ee2b5be8f7feb7a7ee18801268588410ea173690c3593fa28"
+      },
+      {
+        "path": "scripts/fixtures/retained-asset-open-measurement/measure.mjs",
+        "sha256": "13e9750971a7dedef4a92871ff90496cb3820d22eb91ae2fe3c911ad7d519219"
+      },
+      {
+        "path": "scripts/fixtures/retained-asset-open-measurement/reconciliation.mjs",
+        "sha256": "22bd037aca06afce0b76b3d55d8e36b50a3168107654a3122cfc7fb428dd3d92"
+      }
+    ],
+    "registryArtifactsPinnedToProducer": 45,
+    "archives": [
+      {
+        "name": "@breditor/browser",
+        "sha256": "1199d14fe5b3d5b2e0318642a9bbf9f5b84773e97265597f72e190be43869ae0"
+      },
+      {
+        "name": "@breditor/experimental-rich-content",
+        "sha256": "9573be4e1a34381d2409d1369602d70e3bb40165dfb48941e5bb26b26cb25649"
+      },
+      {
+        "name": "@breditor/editor",
+        "sha256": "9091ec60bb7ab80ddbdfcdfa5cde8756fdf33b16a16e1d78d792151c0db49b08"
+      }
+    ],
+    "passed": true,
+    "firstApply": {
+      "rows": 13,
+      "payloadBytes": 19494940,
+      "assets": [
+        "sha256:1798787117f5d66db4eacf39a4c65235bb07d3b38cff15108dea4f53b97e3bf6",
+        "sha256:209e8bc5442f8a7fa78ae04aefe504f72b5ef1a3946e87c289d890b443f5abc4",
+        "sha256:29cb7f3a8fd2336164cc86c6c63d2b2e29bfe4efc0dd289988a17803b7408a89",
+        "sha256:46d9a9942e2d1a68610ac10021c0c25f8dd1ad0d9f96fd76afa77afdad99e4c7",
+        "sha256:5b8c8894e95a1f0d6ad6631e745abf0f3a610c467a862ad3473a0c5ea2f70747",
+        "sha256:67cef452c7816449bf45a4cd873560eaa499266ff261c22ac2a257ee4365933f",
+        "sha256:ba8929baafb497dfefb882b2ace7dc8e7369bf65e46c137242e12d40469036ab",
+        "sha256:bc7267c7febccb3e0a81e742f8dc72fff04ebb852f39c787a82416a4d32d62cc",
+        "sha256:cbb814d0586e66ab9e436dfe25a20b9f3a02cfbd85d7b475b442633468dbead5",
+        "sha256:ce5a355eb71a24c7557c8c38e17cc8a85d49da39b406b50ce28db2856164a756",
+        "sha256:e101d2aba6addc1fa6d6cedf6b9939db3c03a94bc8eb2885964d0751466232d6",
+        "sha256:e2304b66769ae5d594f04f59bdcbd0329a821fe88137abcc5adde5bbe97d6795",
+        "sha256:e57116d54b74beed7903ee64d098072cd54adad8b9291563fe6c0252875fde7c"
+      ]
+    },
+    "coldRetry": {
+      "rows": 0,
+      "payloadBytes": 0,
+      "assets": []
+    },
+    "requiredWrites": [
+      "sha256:46d9a9942e2d1a68610ac10021c0c25f8dd1ad0d9f96fd76afa77afdad99e4c7",
+      "sha256:ba8929baafb497dfefb882b2ace7dc8e7369bf65e46c137242e12d40469036ab"
+    ],
+    "changedRasterBytes": 2999138,
+    "newRaster": "sha256:46d9a9942e2d1a68610ac10021c0c25f8dd1ad0d9f96fd76afa77afdad99e4c7",
+    "unionRasters": 13,
+    "archiveBytes": 19498213,
+    "archiveSha256": "25341436f94004fb15986cd8e2b8abc2ae4c79cafde824c88afcb6fc2d2d31d2",
+    "inputHashes": [
+      "f1d67ce42d06de8886277cc31fd08d5319eb01bd8de489bf4c2beedee09ee453",
+      "507c4384f49ca72c6d1d582eb4786caf64fbe0a3f27b11edea48aa1d760b8eb6"
+    ],
+    "checkpointSha256": "507f18a283251d663307a5981a01199ee32afb299b4a5e361b7dc08271bca110",
+    "queueSha256": "67c25aa1788aed4438e74e46a69d9916ac04b2cdb254d44f5f00d6587d1ecfd3",
+    "exactRestore": true,
+    "nativeUndoRedo": true
+  },
+  "candidate": {
+    "format": "breditor/installed-asset-reconciliation-writes",
+    "source": {
+      "commit": "0947ff5ac264a2a260ab09fe5bd88357ac3a98c1",
+      "dirty": false,
+      "sha256": "8a56e1e2d8e1021a59e8594716e86628700e3f8dab9504f5248e3919d1e6abb4",
+      "files": 9688,
+      "bytes": 83035922
+    },
+    "producer": {
+      "commit": "b2f51207f23466edc59a27b7f127420c943d1f1d",
+      "dirty": false,
+      "sha256": "e017e4c67be31c54e403c3aea6a1b997b6b4e1521f0dbe9f3b42682cf1c41c7c",
+      "files": 9688,
+      "bytes": 83035627
+    },
+    "browser": "158.0.8127.37",
+    "localWasmSha256": "f100599f39805586d465961161bf751e0bd51e8d524ad2ab653001946347200e",
+    "fixtureProof": [
+      {
+        "path": "scripts/fixtures/retained-asset-open-measurement/reconciliation.html",
+        "sha256": "8756189535a9557ee2b5be8f7feb7a7ee18801268588410ea173690c3593fa28"
+      },
+      {
+        "path": "scripts/fixtures/retained-asset-open-measurement/measure.mjs",
+        "sha256": "13e9750971a7dedef4a92871ff90496cb3820d22eb91ae2fe3c911ad7d519219"
+      },
+      {
+        "path": "scripts/fixtures/retained-asset-open-measurement/reconciliation.mjs",
+        "sha256": "22bd037aca06afce0b76b3d55d8e36b50a3168107654a3122cfc7fb428dd3d92"
+      }
+    ],
+    "registryArtifactsPinnedToProducer": 45,
+    "archives": [
+      {
+        "name": "@breditor/browser",
+        "sha256": "1199d14fe5b3d5b2e0318642a9bbf9f5b84773e97265597f72e190be43869ae0"
+      },
+      {
+        "name": "@breditor/experimental-rich-content",
+        "sha256": "fd2af296aab7483cf7be6908824703376e53c16fd13fdb253e1143b8a5ea50f7"
+      },
+      {
+        "name": "@breditor/editor",
+        "sha256": "9091ec60bb7ab80ddbdfcdfa5cde8756fdf33b16a16e1d78d792151c0db49b08"
+      }
+    ],
+    "passed": true,
+    "firstApply": {
+      "rows": 2,
+      "payloadBytes": 2999138,
+      "assets": [
+        "sha256:46d9a9942e2d1a68610ac10021c0c25f8dd1ad0d9f96fd76afa77afdad99e4c7",
+        "sha256:ba8929baafb497dfefb882b2ace7dc8e7369bf65e46c137242e12d40469036ab"
+      ]
+    },
+    "coldRetry": {
+      "rows": 0,
+      "payloadBytes": 0,
+      "assets": []
+    },
+    "requiredWrites": [
+      "sha256:46d9a9942e2d1a68610ac10021c0c25f8dd1ad0d9f96fd76afa77afdad99e4c7",
+      "sha256:ba8929baafb497dfefb882b2ace7dc8e7369bf65e46c137242e12d40469036ab"
+    ],
+    "changedRasterBytes": 2999138,
+    "newRaster": "sha256:46d9a9942e2d1a68610ac10021c0c25f8dd1ad0d9f96fd76afa77afdad99e4c7",
+    "unionRasters": 13,
+    "archiveBytes": 19498213,
+    "archiveSha256": "25341436f94004fb15986cd8e2b8abc2ae4c79cafde824c88afcb6fc2d2d31d2",
+    "inputHashes": [
+      "f1d67ce42d06de8886277cc31fd08d5319eb01bd8de489bf4c2beedee09ee453",
+      "507c4384f49ca72c6d1d582eb4786caf64fbe0a3f27b11edea48aa1d760b8eb6"
+    ],
+    "checkpointSha256": "507f18a283251d663307a5981a01199ee32afb299b4a5e361b7dc08271bca110",
+    "queueSha256": "67c25aa1788aed4438e74e46a69d9916ac04b2cdb254d44f5f00d6587d1ecfd3",
+    "exactRestore": true,
+    "nativeUndoRedo": true
+  }
+}

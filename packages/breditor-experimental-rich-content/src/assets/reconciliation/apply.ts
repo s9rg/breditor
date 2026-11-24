@@ -12,7 +12,14 @@ export function applyRetainedAssetPlan(db: IDBDatabase, before: readonly AssetRe
   const sorted = (rows: readonly AssetRecord[]) => [...rows].sort((a, b) => a.asset < b.asset ? -1 : a.asset > b.asset ? 1 : 0), old = sorted(before), next = sorted(after), nextIds = new Map<string, AssetRecord>(); let expectedBytes = 0;
   for (const row of next) {assetArchiveEntry(row, expectedBytes, limits); expectedBytes += row.bytes; if (nextIds.has(row.asset)) throw new RichAssetReconciliationError("asset_reconciliation_format", "Recovery output has duplicate assets"); nextIds.set(row.asset, row);}
   if (expectedBytes > limits.maxStoredBytes) throw new RichAssetReconciliationError("asset_reconciliation_budget", "Recovery output exceeds the existing store budget");
-  if (old.some(row => !nextIds.has(row.asset) || !sameAssetPayload(row, nextIds.get(row.asset)!))) throw new RichAssetReconciliationError("asset_reconciliation_immutable", "Recovery cannot remove or replace retained raster bytes");
+  const changedIds = new Set(nextIds.keys());
+  for (const row of old) {
+    const replacement = nextIds.get(row.asset);
+    if (!replacement || !sameAssetPayload(row, replacement)) throw new RichAssetReconciliationError("asset_reconciliation_immutable", "Recovery cannot remove or replace retained raster bytes");
+    // Immutable equality is already proved. Reclone the raster only if its queue record changes.
+    if (row.status === replacement.status && row.attempts === replacement.attempts && row.epoch === replacement.epoch &&
+        row.failure === replacement.failure && row.storageRef === replacement.storageRef) changedIds.delete(row.asset);
+  }
   return new Promise((resolve, reject) => {
     const tx = db.transaction(["assets", "metadata"], "readwrite"), assets = tx.objectStore("assets"), metadata = tx.objectStore("metadata");
     let actual: AssetRecord[] | undefined, budget: unknown, keys: IDBValidKey[] | undefined, readBudget = false, failure: unknown, result: "applied" | "already-applied" | undefined;
@@ -30,7 +37,7 @@ export function applyRetainedAssetPlan(db: IDBDatabase, before: readonly AssetRe
         if (equal(next)) {result = "already-applied"; return;}
         if (!equal(old)) throw new RichAssetReconciliationError("asset_reconciliation_target_changed", "The target asset records changed after the retained snapshot");
         checkAssetReconciliationSource(check, signal);
-        for (const row of next) assets.put(row);
+        for (const row of next) if (changedIds.has(row.asset)) assets.put(row);
         metadata.put(expectedBytes, "bytes"); result = "applied";
       } catch (error) {failure = error; try {tx.abort();} catch {}}
     };
