@@ -132,7 +132,7 @@ export class DocxWriter {
 
   /** Strip XML-invalid controls (reported) and map hard breaks/tabs to run content. */
   #runContent(text:string):string {
-    let removed=0;const clean=text.replace(invalidXml,()=>{removed++;return "";}).replace(/\r/g,()=>{removed++;return "";});
+    let removed=0;const clean=text.replace(/\r\n?/g,"\n").replace(invalidXml,()=>{removed++;return "";});
     if(removed)this.losses.add("removed-content",removed);
     let out="";
     for(const piece of clean.split(/(\n|\t)/)){
@@ -188,6 +188,15 @@ export class DocxWriter {
       if(n.kind==="text"){pieces.push({text:n.text,formats:n.formats});continue;}
       if(n.type==="breditor/page-break"){pieces.push({text:"",formats:[],pageBreak:true});continue;}
       this.losses.add("block-structure");pieces.push({text:textOf(n),formats:[]});
+    }
+    // A CRLF can straddle styled runs. Keep the break in the run that owns the CR.
+    let previousEndedWithCr=false;
+    for(const piece of pieces){
+      if(piece.pageBreak)previousEndedWithCr=false;
+      if(!piece.text)continue;
+      const endsWithCr=piece.text.endsWith("\r");
+      if(previousEndedWithCr&&piece.text.startsWith("\n"))piece.text=piece.text.slice(1);
+      previousEndedWithCr=endsWithCr;
     }
     // Opt-in ruby extension: the annotation leaves the run formats and becomes a `w:ruby` around the base runs.
     const ruby=pieces.map(piece=>{

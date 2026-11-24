@@ -221,8 +221,22 @@ describe("DOCX export (@breditor/interchange/docx)",()=>{
   it("escapes text and strips XML-invalid controls with a report",()=>{
     const result=exportDocx(doc(p(t("a\u0001b\u000bc\rd]]></w:t><x>&amp;")),el("image",{"image-id":"i","asset-id":"a","asset-generation":"g","decorative":false,"alt-text":"q\"<'\u0002"})),{image:()=>PNG});
     const {xml}=open(ok(result)),document=xml("word/document.xml");
-    findParagraph(document,"abcd]]></w:t><x>&amp;");expect(all(document,"wp:docPr")[0]!.attributes["descr"]).toBe("q\"<'");
-    expect(codes(result)).toEqual({"removed-content":4});
+    findParagraph(document,"abc\nd]]></w:t><x>&amp;");expect(all(document,"wp:docPr")[0]!.attributes["descr"]).toBe("q\"<'");
+    expect(codes(result)).toEqual({"removed-content":3});
+  });
+  it("preserves CR, LF and CRLF line breaks, including across styled runs",()=>{
+    const result=exportDocx(doc(
+      p(t("A\r"),t("\nB\tC",f("breditor/strong")),t("\rD\r\nE\nF")),
+      el("code-block",{},[t("line 1\rline 2\r\nline 3\nline 4")]),
+    ));
+    const document=open(ok(result)).xml("word/document.xml");
+    const paragraph=findParagraph(document,"A\nB\tC\nD\nE\nF");
+    expect(all(paragraph,"w:br")).toHaveLength(4);
+    expect(all(paragraph,"w:tab")).toHaveLength(1);
+    expect(all(paragraph,"w:b")).toHaveLength(1);
+    const code=findParagraph(document,"line 1\nline 2\nline 3\nline 4");
+    expect(all(code,"w:br")).toHaveLength(3);
+    expect(codes(result)).toEqual({});
   });
   it("collects bindings and loads bytes asynchronously in document order",async()=>{
     ids=0;const pic=(asset:string)=>el("image",{"image-id":asset,"asset-id":asset,"asset-generation":"g","decorative":false,"alt-text":asset});
