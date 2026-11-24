@@ -2,13 +2,13 @@
 import test,{before,after} from 'node:test';
 import assert from 'node:assert/strict';
 import {readFileSync} from 'node:fs';
-import {IDBFactory,IDBDatabase} from 'fake-indexeddb';
+import {IDBFactory,IDBDatabase,IDBObjectStore} from 'fake-indexeddb';
 import {SharedSegmentedPersistentSession,SharedRichEditor} from '../packages/breditor-collaboration/dist/index.js';
 import {openSegmentedDatabase,readSegmentedCut} from '../packages/breditor-collaboration/dist/persistence/segmented_database.js';
 import {openSessionDatabase,writeCheckpoint,readCheckpoint} from '../packages/breditor-collaboration/dist/persistence/session_database.js';
 const key=['room','101'],host={held:new Set(),request(name,_options,work){return Promise.resolve().then(async()=>{if(host.held.has(name))return work(null);host.held.add(name);try{return await work({name});}finally{host.held.delete(name);}});}};
 const globals=new Map(['indexedDB','navigator'].map(n=>[n,Object.getOwnPropertyDescriptor(globalThis,n)]));
-let wasm,fault='none',counter=0;const originalTransaction=IDBDatabase.prototype.transaction;
+let wasm,fault='none',counter=0;const originalTransaction=IDBDatabase.prototype.transaction,originalPut=IDBObjectStore.prototype.put;
 before(async()=>{
  Object.defineProperty(globalThis,'indexedDB',{value:new IDBFactory(),configurable:true});Object.defineProperty(globalThis,'navigator',{value:{locks:host},configurable:true});
  wasm=await import('../target/promoted-shared-web/breditor_shared.js');await wasm.default({module_or_path:readFileSync(new URL('../target/promoted-shared-web/breditor_shared_bg.wasm',import.meta.url))});
@@ -16,8 +16,15 @@ before(async()=>{
   if(fault==='abort')queueMicrotask(()=>{try{tx.abort();}catch{}});
   if(fault==='lost-ack'){fault='none';Object.defineProperty(tx,'oncomplete',{configurable:true,set(){tx.addEventListener('complete',event=>{tx.onabort?.(event);});}});}
  }return tx;};
+ IDBObjectStore.prototype.put=function(...args){
+  const request=originalPut.apply(this,args);
+  if(fault==='abort-staged-head'&&this.name==='generation_heads'){
+   fault='none';request.addEventListener('success',()=>this.transaction.abort(),{once:true});
+  }
+  return request;
+ };
 });
-after(()=>{IDBDatabase.prototype.transaction=originalTransaction;for(const[n,v]of globals){if(v)Object.defineProperty(globalThis,n,v);else delete globalThis[n];}assert.equal(host.held.size,0);});
+after(()=>{IDBDatabase.prototype.transaction=originalTransaction;IDBObjectStore.prototype.put=originalPut;for(const[n,v]of globals){if(v)Object.defineProperty(globalThis,n,v);else delete globalThis[n];}assert.equal(host.held.size,0);});
 async function setup(t,{paired=true}={}){
  const p=wasm.SharedRichProfile.from_standard_configuration_json_v3(JSON.stringify({format:'breditor/shared-rich-profile',formatVersion:3,schema:{name:'example/generation-faults',version:1},extensions:[]})),d=JSON.parse(p.descriptor_json());
  const doc=JSON.stringify({format:'breditor/document',formatVersion:2,schema:d.schema,schemaFingerprint:d.schemaFingerprint,root:{kind:'element',type:'breditor/document',entityId:null,properties:{'breditor/document-id':'room'},children:[{kind:'element',type:'breditor/paragraph',entityId:null,properties:{'breditor/block-id':'p'},children:[{kind:'text',text:'seed',formats:[]}]}]}});
@@ -39,6 +46,58 @@ test('lost commit acknowledgement is reconciled before a newer pending capture',
  const h=await setup(t);fault='lost-ack';insert(h.session.core,'first ');await assert.rejects(h.session.flush());const committed=await readSegmentedCut(h.db,key);assert.equal(committed.checkpoint,h.session.core.checkpointJson());
  fault='abort';insert(h.session.core,'newer ');await assert.rejects(h.session.flush());assert.equal((await readSegmentedCut(h.db,key)).head,committed.head);
  const exact=h.session.exportRecovery();fault='none';await h.session.retry();assert.equal((await readSegmentedCut(h.db,key)).checkpoint,exact.checkpoint);await h.session.close();h.session=await SharedSegmentedPersistentSession.open(h.options);assert.equal(h.session.core.checkpointJson(),exact.checkpoint);
+});
+test('generation seals roll back staged immutable files and reconcile a committed seal before newer history',async t=>{
+ const h=await setup(t),core=h.session.core,original=core.documentJson();
+ insert(core,'first ');const edited=core.documentJson();
+ const anchor=core.captureReviewAnchor({kind:'selection',selection:{kind:'node',block:'p'}});
+ assert.equal(core.dispatchReview({kind:'create_thread',data:{anchorJson:anchor,body:'Retain this discussion'}}).kind,'committed');
+ h.session.saveVersion('Before the first seal','1792450000000');
+ await h.session.flush();
+ const before=await readSegmentedCut(h.db,key),oneKey=[...key,'one'],twoKey=[...key,'two'];
+ fault='abort-staged-head';
+ await assert.rejects(h.session.sealGeneration('two'),/Generation write aborted|AbortError/);
+ assert.equal(fault,'none','the new head must have been staged before aborting');
+ assert.deepEqual(await readSegmentedCut(h.db,key),before);
+ assert.equal(await get(h.db,'generation_files',oneKey),undefined);
+ assert.equal(core.segmentedHistoryInfo().activeGeneration,'two');
+ const firstSeal=h.session.exportRecovery();
+ await h.session.retry();
+ const recoveredSeal=await readSegmentedCut(h.db,key),one=await get(h.db,'generation_files',oneKey);
+ assert.equal(recoveredSeal.checkpoint,firstSeal.checkpoint);
+ assert.equal(one,JSON.stringify(recoveredSeal.files.find(file=>file.generation==='one')));
+ assert.ok(one);
+
+ assert.equal(core.undo(),true);
+ assert.equal(core.documentJson(),original);
+ await h.session.flush();
+ fault='lost-ack';
+ await assert.rejects(h.session.sealGeneration('three'),/Generation write aborted|AbortError/);
+ const committed=await readSegmentedCut(h.db,key),two=await get(h.db,'generation_files',twoKey);
+ assert.equal(core.segmentedHistoryInfo().activeGeneration,'three');
+ assert.equal(committed.checkpoint,core.checkpointJson());
+ assert.equal(two,JSON.stringify(committed.files.find(file=>file.generation==='two')));
+ assert.ok(two);
+
+ fault='abort';
+ assert.equal(core.redo(),true);
+ assert.equal(core.documentJson(),edited);
+ await assert.rejects(h.session.flush());
+ assert.deepEqual(await readSegmentedCut(h.db,key),committed);
+ fault='none';
+ const current=h.session.exportRecovery();
+ await h.session.retry();
+ const latest=await readSegmentedCut(h.db,key);
+ assert.notEqual(latest.head,committed.head);
+ assert.equal(latest.checkpoint,current.checkpoint);
+ assert.equal(await get(h.db,'generation_files',oneKey),one);
+ assert.equal(await get(h.db,'generation_files',twoKey),two);
+ assert.deepEqual(current.versions,firstSeal.versions);
+ assert.equal(current.reviewCheckpoint,firstSeal.reviewCheckpoint);
+ await h.session.close();h.session=await SharedSegmentedPersistentSession.open(h.options);
+ assert.deepEqual(h.session.exportRecovery(),current);
+ assert.equal(h.session.core.undo(),true);
+ assert.equal(h.session.core.documentJson(),original);
 });
 test('changed immutable file refuses without repair, and exact exported histories recover into a new absent destination',async t=>{
  const h=await setup(t);insert(h.session.core,'retained ');await h.session.sealGeneration('two');const before=await readSegmentedCut(h.db,key),fileKey=[...key,before.files[0].generation],original=await get(h.db,'generation_files',fileKey),file=JSON.parse(original);file.json+=' ';const changed=JSON.stringify(file);await put(h.db,'generation_files',fileKey,changed);
