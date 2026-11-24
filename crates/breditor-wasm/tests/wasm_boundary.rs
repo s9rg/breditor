@@ -775,6 +775,94 @@ fn v010_checkpoint_reader_rejects_an_unknown_version_and_a_foreign_schema() -> T
     Ok(())
 }
 
+const V021_HIGHLIGHT_CHECKPOINT: &str = include_str!("fixtures/v0.2.1/history.json");
+const HIGHLIGHT_FINGERPRINT: &str =
+    "sha256:374d5f058129ab8916d052866e37f3b3540dbb754ba560e55086415a3c58f741";
+
+#[cfg_attr(target_arch = "wasm32", wasm_bindgen_test)]
+#[cfg_attr(not(target_arch = "wasm32"), test)]
+fn v021_highlight_checkpoint_preserves_profile_and_every_history_cursor() -> TestResult {
+    let checkpoint = V021_HIGHLIGHT_CHECKPOINT.trim_end_matches('\n');
+    let historical: Value = serde_json::from_str(checkpoint)?;
+    let profile = BreditorCompiledProfile::from_bootstrap_json(PROFILE_BOOTSTRAP_JSON)
+        .take_profile()
+        .ok_or_else(|| test_error("Highlight profile was absent"))?;
+    let generation = profile.generation();
+    assert_eq!(profile.descriptor().schema_fingerprint(), HIGHLIGHT_FINGERPRINT);
+    let mut engine =
+        require_engine(&mut profile.create_engine_from_session_checkpoint_json(checkpoint))?;
+    assert!(engine.matches_profile_generation(&generation));
+    assert_eq!(require_string(engine.session_checkpoint_json())?, checkpoint);
+
+    let verify_cursor =
+        |engine: &BreditorEngine, cursor: u32, text: &str, highlighted: bool| -> TestResult {
+            let observation = engine.observation();
+            assert_eq!(observation.snapshot_lineage(), "release-v021-highlight");
+            assert_eq!(observation.undo_depth(), cursor);
+            assert_eq!(observation.redo_depth(), 2 - cursor);
+            let state: Value = serde_json::from_str(&require_string(engine.state_json())?)?;
+            assert_eq!(state["schemaFingerprint"], HIGHLIGHT_FINGERPRINT);
+            let formats = if highlighted {
+                serde_json::json!([{"type":"example/highlight","properties":{}}])
+            } else {
+                serde_json::json!([])
+            };
+            assert_eq!(
+                state["document"]["root"]["children"][0]["children"],
+                serde_json::json!([{"kind":"text","text":text,"formats":formats}])
+            );
+            let selection = if cursor == 0 {
+                &historical["historyBase"]["selection"]
+            } else {
+                &historical["entries"][usize::try_from(cursor - 1)?]["resultSelection"]
+            };
+            assert_eq!(&state["selection"], selection);
+            assert!(state["pendingFormats"].is_null());
+            Ok(())
+        };
+
+    verify_cursor(&engine, 1, "north", true)?;
+    assert_eq!(engine.redo(&engine.observation(), false).status(), "committed");
+    verify_cursor(&engine, 2, "north 🧭", true)?;
+    for cursor in [1, 0] {
+        assert_eq!(engine.undo(&engine.observation(), false).status(), "committed");
+        verify_cursor(&engine, cursor, "north", cursor == 1)?;
+    }
+    for (cursor, text) in [(1, "north"), (2, "north 🧭")] {
+        assert_eq!(engine.redo(&engine.observation(), false).status(), "committed");
+        verify_cursor(&engine, cursor, text, true)?;
+    }
+    Ok(())
+}
+
+#[cfg_attr(target_arch = "wasm32", wasm_bindgen_test)]
+#[cfg_attr(not(target_arch = "wasm32"), test)]
+fn v021_checkpoint_requires_its_original_format_and_profile_fingerprint() -> TestResult {
+    let original = BreditorCompiledProfile::from_bootstrap_json(PROFILE_BOOTSTRAP_JSON)
+        .take_profile()
+        .ok_or_else(|| test_error("Highlight profile was absent"))?;
+    let changed_bootstrap = PROFILE_BOOTSTRAP_JSON.replace(r#""revision":7"#, r#""revision":8"#);
+    let different = BreditorCompiledProfile::from_bootstrap_json(&changed_bootstrap)
+        .take_profile()
+        .ok_or_else(|| test_error("different Highlight profile was absent"))?;
+    assert_ne!(different.descriptor().schema_fingerprint(), HIGHLIGHT_FINGERPRINT);
+    let mut wrong_profile =
+        different.create_engine_from_session_checkpoint_json(V021_HIGHLIGHT_CHECKPOINT);
+    assert_engine_error(&wrong_profile, "codec.schema_mismatch", "north")?;
+    assert!(wrong_profile.take_engine().is_none());
+
+    let mut wrong_factory = BreditorEngine::from_session_checkpoint_json(V021_HIGHLIGHT_CHECKPOINT);
+    assert_engine_error(&wrong_factory, "codec.unsupported_format_version", "north")?;
+    assert!(wrong_factory.take_engine().is_none());
+    let future =
+        V021_HIGHLIGHT_CHECKPOINT.replacen(r#""formatVersion":2"#, r#""formatVersion":99"#, 1);
+    assert_ne!(future, V021_HIGHLIGHT_CHECKPOINT);
+    let mut wrong_version = original.create_engine_from_session_checkpoint_json(&future);
+    assert_engine_error(&wrong_version, "codec.unsupported_format_version", "north")?;
+    assert!(wrong_version.take_engine().is_none());
+    Ok(())
+}
+
 #[cfg_attr(target_arch = "wasm32", wasm_bindgen_test)]
 #[cfg_attr(not(target_arch = "wasm32"), test)]
 fn document_json_rejects_stale_history_and_foreign_observations_without_content_leakage()
