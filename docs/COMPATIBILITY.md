@@ -59,6 +59,10 @@ freeze is enforced by `crates/breditor-core/tests/support/rich_v4_frozen.rs` and
 its golden checkpoint ([RICH_LANGUAGE_V4.md](RICH_LANGUAGE_V4.md#freeze-and-durable-persistence)).
 The [pre-V4 checkpoint fixtures](../crates/breditor-core/tests/fixtures/pre-v4/README.md)
 exercise exact local history replay and cross-language refusal for languages 1–3.
+The installed interchange consumer check uses the same untouched captures with
+the packaged local Wasm and original profile compilers. It verifies the stored
+selection and pending-format state, traverses each history through the native
+SDK, and checks refusal by all other language profiles through V4.
 No automatic migration or stable arbitrary-node plugin contract is implied.
 
 The [November 22 archive and reader qualification](qualification/2026-11-22-v1-archive-and-support.json)
