@@ -1,5 +1,5 @@
 import {canonicalImageLinkHrefV1} from "@breditor/browser/presentation";
-import {inspectRichRaster,type RichRasterInspection,type RichRasterInspectionOptions} from "./inspect_raster.js";
+import {inspectRasterDisplay,type RichRasterDisplaySize,type RichRasterInspection,type RichRasterInspectionOptions} from "./inspect_raster.js";
 import {checkedAssetLimits} from "./limits.js";
 import {awaitRasterOperation,checkRasterSignal} from "./raster_decode.js";
 
@@ -31,6 +31,9 @@ const rasterTypes=new Set(["image/png","image/jpeg","image/webp"]);
 
 /** Inspect only host-approved HTTPS bytes against a pinned content address. */
 export async function prepareRichRasterUrl(source:string,options:RichRasterUrlOptions):Promise<RichRasterInspection>{
+ return (await prepareRasterUrlDisplay(source,options)).raster;
+}
+export async function prepareRasterUrlDisplay(source:string,options:RichRasterUrlOptions):Promise<RichRasterDisplaySize&{readonly raster:RichRasterInspection}>{
  const {allowUrl,load,expectedAsset,signal,limits:supplied}=options;
  checkRasterSignal(signal);
  const url=canonicalImageLinkHrefV1(source);
@@ -55,10 +58,10 @@ export async function prepareRichRasterUrl(source:string,options:RichRasterUrlOp
  if(responseUrl!==url)throw new RichRasterUrlError("redirect","The loaded raster URL differs from the approved URL");
  if(!(blob instanceof Blob)||!rasterTypes.has(blob.type))throw new RichRasterUrlError("raster","Expected immutable PNG, JPEG or WebP bytes");
  if(blob.size<1||blob.size>limits.maxFileBytes)throw new RichRasterUrlError("budget","Raster bytes exceeded the admitted size limit");
- let inspected:RichRasterInspection;
- try{inspected=await inspectRichRaster(blob,{limits,...(signal===undefined?{}:{signal})});}
+ let inspected:Awaited<ReturnType<typeof inspectRasterDisplay>>;
+ try{inspected=await inspectRasterDisplay(blob,{limits,...(signal===undefined?{}:{signal})});}
  catch{checkRasterSignal(signal);throw new RichRasterUrlError("raster","Raster bytes failed image admission");}
  checkRasterSignal(signal);
- if(inspected.asset!==expectedAsset)throw new RichRasterUrlError("integrity","The loaded raster differs from the pinned asset");
+ if(inspected.raster.asset!==expectedAsset)throw new RichRasterUrlError("integrity","The loaded raster differs from the pinned asset");
  return inspected;
 }

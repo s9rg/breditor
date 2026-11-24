@@ -62,6 +62,7 @@ export {RichAssetReconciledBase,RichAssetBaseError,ASSET_BASE_MIME} from './dist
 export {RichAssetStoreCustody,RichAssetCustodyError} from './dist/browser/index.js';
 export {checkRichAssetLimits,inspectRichRaster} from "./dist/browser/index.js";
 export {prepareRichRasterUrl,RichRasterUrlError} from "./dist/browser/index.js";
+export {prepareRichRasterRendition} from "./dist/browser/index.js";
 export {createRichInlinePresentation} from "./dist/browser/index.js";
 export {createStandardRichInlinePresentationV1,standardInlineKindsV1,standardInlinePropertiesV1,standardInlineStylesV1} from "./dist/browser/index.js";
 export {createStandardRichToolbarV1} from "./dist/browser/index.js";
