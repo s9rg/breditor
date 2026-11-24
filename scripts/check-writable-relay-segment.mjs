@@ -1258,6 +1258,8 @@ const journalKind = terminalReceipts || opaque || competing || option === '--par
   : option === '--independent-delivery' ? 'independentDelivery' : 'pairedSession';
 const source = sourceEvidence(root);
 assert.equal(source.dirty, false);
+const reportsDirectory = join(root, 'target');
+mkdirSync(reportsDirectory, {recursive: true});
 const sandbox = mkdtempSync(join(tmpdir(), 'breditor-writable-segment-'));
 try {
   const reports = {};
@@ -1297,7 +1299,7 @@ try {
     : journalKind === 'independentParticipant' ? 'qualified-participant-archive-segment.json'
     : journalKind === 'independentDelivery' ? 'qualified-independent-delivery-segment.json'
       : 'qualified-writable-relay-segment.json';
-  saveEvidence(join(root, 'target', reportFile), report);
+  saveEvidence(join(reportsDirectory, reportFile), report);
   console.log(JSON.stringify(report, null, 2));
 } finally {
   rmSync(sandbox, {recursive: true, force: true});
