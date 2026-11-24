@@ -73,7 +73,10 @@ export class HtmlExport {
         case "breditor/blockquote":return `<blockquote>${body()}</blockquote>`;
         // V4 section: native disclosure; `open` only from the admitted `true` flag.
         case "breditor/details":{const open=property(node,"details-open");if(open!==undefined&&open!==true||node.children[0]?.kind!=="element"||node.children[0].type!=="breditor/details-summary")fail("native-admission");return `<details${open===true?" open":""}>${body()}</details>`;}
-        case "breditor/details-summary":return `<summary>${this.inline(node.children)}</summary>`;
+        case "breditor/details-summary":{
+          const preserve=/^ | $| {2}|[\t\n\f\r]/.test(nodeText(node));
+          return `<summary${preserve?' style="white-space:pre-wrap"':''}>${this.inline(node.children)}</summary>`;
+        }
         case "breditor/code-block":{const language=property(node,"language");return `<pre${this.#anchor(node)}${this.#layout(node)}><code${typeof language==="string"?` class="language-${a(language)}"`:""}>${t(nodeText(node))}</code></pre>`;}
         case "breditor/horizontal-rule":return"<hr>";
         // V4 page break: an empty block forcing a page after it (modern and legacy CSS spellings).
