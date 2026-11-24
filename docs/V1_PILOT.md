@@ -68,8 +68,9 @@ that are at least 44 by 44 CSS pixels.
 4. Choose **Download checkpoint** and record the displayed SHA-256. Select
    the file under **Rehearse checkpoint recovery** while that writer is offline.
    Compare the digest, recovered text, and Undo/Redo counts. This rehearses
-   the document checkpoint in a temporary read-only owner. Image bytes and
-   relay state use their separate backup contracts.
+   the document checkpoint in a temporary read-only owner. The recovered view
+   preserves document structure, including table headers and cell order. Image
+   bytes and relay state use their separate backup contracts.
 5. Repeat an edit during a real relay restart. Start the launcher again on
    the same host and keep the same browser profiles. Record reconnect behavior
    and any pending edits or uploads as the participant sees them.

@@ -17,6 +17,13 @@ add("/relay-app-fixture.mjs",resolve(root,"experiments/shared-browser/relay-app-
 add("/raster-fixtures.json",resolve(root,"target/relay-raster-fixtures.json"),"application/json");
 add("/network-demo.mjs",resolve(root,"experiments/shared-browser/network-demo.mjs"));
 add("/pilot.mjs",resolve(root,"experiments/shared-browser/pilot.mjs"));
+if(application)add("/pilot-static.js",resolve(installed,"node_modules/@breditor/editor/dist/static_document.js"));
+else {
+ const {default:ts}=await import("typescript");
+ const source=readFileSync(resolve(root,"packages/breditor-editor/src/static_document.ts"),"utf8");
+ const {outputText}=ts.transpileModule(source,{compilerOptions:{module:ts.ModuleKind.ES2022,target:ts.ScriptTarget.ES2022}});
+ resources.set("/pilot-static.js",["text/javascript; charset=utf-8",Buffer.from(outputText)]);
+}
 add("/inline-presentation-fixture.mjs",resolve(root,"experiments/shared-browser/inline-presentation-fixture.mjs"));
 add("/standard-inline-fixture.mjs",resolve(root,"experiments/shared-browser/standard-inline-fixture.mjs"));
 add("/structural-fixture.mjs",resolve(root,"experiments/shared-browser/structural-fixture.mjs"));
