@@ -509,6 +509,10 @@ test("isolated release matrices preserve the full plan's commands and report the
    "installed-search-workflows","installed-placeholder-workflows","installed-fullscreen-workflows","installed-session-backups","installed-asset-backups",
    "rich-demo-latency","installed-search-browser","installed-placeholder-browser","installed-fullscreen-browser","installed-session-backups-browser","installed-asset-backups-browser",
   ]],
+  ["sdk-types",[
+   "default-typescript-build","paired-local-runtime","paired-shared-runtime","rich-browser-build","collaboration-build",
+   "workspace-types","rich-browser-types","collaboration-types","editor-types",
+  ]],
  ]){
   const run=spawnSync(process.execPath,[script,`--${profile}`,"--dry-run"],{cwd:tmpdir(),encoding:"utf8"});
   assert.equal(run.status,0,run.stderr);

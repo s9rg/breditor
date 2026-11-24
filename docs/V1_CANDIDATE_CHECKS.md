@@ -118,6 +118,15 @@ The session backup check uses a fresh installed consumer. The run retains
 its producer report with npm archive hashes and its browser report with
 Wasm and IndexedDB recovery evidence through a page reload.
 
+## SDK type checks
+
+Select `sdk-types` to run the full plan's workspace and promoted rich,
+collaboration and editor type checks in an independent job. It builds the
+default packages and the promoted dependencies first, including the local and
+shared Wasm declarations the editor imports. Use
+`node scripts/verify-candidate.mjs --sdk-types` to run the same stages locally.
+Installed workflows and browser behavior have their own qualification profiles.
+
 ## Candidate shards
 
 The manual full profile accepts an optional shard. The named shards cover the
