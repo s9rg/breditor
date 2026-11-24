@@ -2,9 +2,27 @@
 use super::Host;
 use crate::{Error, Result};
 use axum::{
+    body::{Body, Bytes},
     http::{HeaderMap, HeaderValue, StatusCode},
     response::{IntoResponse, Response},
 };
+use tokio::sync::OwnedSemaphorePermit;
+
+struct ResponsePayload {
+    bytes: Vec<u8>,
+    _permit: OwnedSemaphorePermit,
+}
+
+impl AsRef<[u8]> for ResponsePayload {
+    fn as_ref(&self) -> &[u8] {
+        &self.bytes
+    }
+}
+
+pub(super) fn retained_body(bytes: Vec<u8>, permit: OwnedSemaphorePermit) -> Body {
+    // The slot follows the payload while the transport retains or shares its bytes.
+    Body::from(Bytes::from_owner(ResponsePayload { bytes, _permit: permit }))
+}
 pub(super) fn origin<'a>(host: &Host, headers: &'a HeaderMap) -> Option<&'a str> {
     headers.get("origin").and_then(|h| h.to_str().ok()).filter(|o| host.authentication.origin(o))
 }

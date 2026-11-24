@@ -18,19 +18,21 @@ pub(in crate::server) async fn publish(State(host): State<Host>, request: Reques
         Ok(b) => b,
         Err(e) => return cors(failure(&e), allowed),
     };
+    let Ok(permit) = host.version_operations.clone().try_acquire_owned() else {
+        return cors(StatusCode::SERVICE_UNAVAILABLE.into_response(), allowed);
+    };
     let p = principal.clone();
     let b = binding.clone();
-    if let Err(error) = host
+    let permit = match host
         .transaction(move |room| {
             bound(room, &p, &b)?;
-            room.editor(&p)
+            room.editor(&p)?;
+            Ok(permit)
         })
         .await
     {
-        return cors(failure(&error), allowed);
-    }
-    let Ok(_permit) = host.version_operations.clone().try_acquire_owned() else {
-        return cors(StatusCode::SERVICE_UNAVAILABLE.into_response(), allowed);
+        Ok(permit) => permit,
+        Err(error) => return cors(failure(&error), allowed),
     };
     if parts.headers.get("content-type").and_then(|h| h.to_str().ok()) != Some("application/json") {
         return cors(failure(&Error::Contract("version packet content type")), allowed);
@@ -42,13 +44,22 @@ pub(in crate::server) async fn publish(State(host): State<Host>, request: Reques
     let Ok(packet) = String::from_utf8(bytes) else {
         return cors(failure(&Error::Contract("version packet encoding")), allowed);
     };
-    let result=host.transaction(move|room|{let descriptor=bound(room,&principal,&binding)?;let admission=room.publish_document_version(&principal,&packet)?;let changed=matches!(&admission,crate::DocumentVersionAdmission::Durable(receipt)if !receipt.duplicate);Ok((json!({"format":"breditor/relay-document-version-admission","formatVersion":1,"descriptor":descriptor,"admission":admission}),changed))}).await;
+    let result = host.transaction(move |room| {
+        let descriptor = bound(room, &principal, &binding)?;
+        let admission = room.publish_document_version(&principal, &packet)?;
+        let changed = matches!(&admission,crate::DocumentVersionAdmission::Durable(receipt)if !receipt.duplicate);
+        let bytes = serde_json::to_vec(&json!({
+            "format":"breditor/relay-document-version-admission", "formatVersion":1,
+            "descriptor":descriptor, "admission":admission,
+        }))?;
+        Ok((bytes, changed, permit))
+    }).await;
     let response = match result {
-        Ok((value, changed)) => {
+        Ok((bytes, changed, permit)) => {
             if changed {
                 host.notify_document_versions();
             }
-            super::json(value)
+            super::json(bytes, permit)
         }
         Err(error) => failure(&error),
     };
