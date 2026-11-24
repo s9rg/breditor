@@ -71,7 +71,10 @@ The destination schema may already exist when a later step fails. An interrupted
 operation may also commit before its caller receives a result: inspect and reopen
 an existing key with the ordinary matching factory, never an overwrite retry.
 Ordinary startup still prefers durable history over its initial seed and never
-automatically imports an archive.
+automatically imports an archive. If a journal appears after startup reads an
+empty key but before the first seed is committed, startup reports
+`session_destination_exists`. The existing journal remains available for a
+normal reopen.
 
 Restore does not connect to a relay. Fencing authority alone does not make an old
 checkpoint current: reconcile retained server suffixes and separate pending

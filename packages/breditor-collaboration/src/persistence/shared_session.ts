@@ -217,9 +217,20 @@ export class SharedPersistentSession<P extends SharedSelectionPolicy="original">
   this.#running=this.#drain().catch(error=>{if(!this.#storageChanged)this.#failed(error);}).finally(()=>{this.#running=undefined;this.#notify();if(!this.#failure)this.#start();});
  }
  async #drain():Promise<void>{
-  while(this.#pending&&!this.#closed&&!this.#storageChanged){this.#lease.assertLive();const next=this.#pending;this.#pending=undefined;
-   try{if(this.#search)await writeSearchRecord(this.#db,[this.#options.room,this.#options.writer],{format:"breditor/shared-search-checkpoint-record",formatVersion:1,history:this.#options.history??"explicit",rangeEditing:this.#options.rangeEditing??"original",selectionEditing:this.#selectionPolicy,richLanguage:this.#options.richLanguage??1,checkpointJson:next.json});else if(this.#selectionPolicy==="document-v1")await writeDocumentSessionCheckpoint(this.#db,[this.#options.room,this.#options.writer],next.json,this.#options.history??"explicit",this.#options.richLanguage??1);else if(this.#options.rangeEditing==="general-v1")await writeSessionCheckpoint(this.#db,[this.#options.room,this.#options.writer],next.json,this.#options.history??"explicit","general-v1",this.#options.richLanguage??1);else await writeSessionCheckpoint(this.#db,[this.#options.room,this.#options.writer],next.json,this.#options.history??"explicit");}
-   catch(error){this.#pending??=next;throw error;}
+  while(this.#pending&&!this.#closed&&!this.#storageChanged){
+   this.#lease.assertLive();const next=this.#pending;this.#pending=undefined;
+   const key=[this.#options.room,this.#options.writer] as const;
+   const history=this.#options.history??"explicit",language=this.#options.richLanguage??1,ranges=this.#options.rangeEditing??"original";
+   const insertOnly=!this.recovered&&this.#saved===undefined;
+   try{
+    if(this.#search)await writeSearchRecord(this.#db,key,{format:"breditor/shared-search-checkpoint-record",formatVersion:1,history,rangeEditing:ranges,selectionEditing:this.#selectionPolicy,richLanguage:language,checkpointJson:next.json},insertOnly);
+    else if(this.#selectionPolicy==="document-v1")await writeDocumentSessionCheckpoint(this.#db,key,next.json,history,language,insertOnly);
+    else await writeSessionCheckpoint(this.#db,key,next.json,history,ranges,language,insertOnly);
+   }catch(error){
+    this.#pending??=next;
+    if(insertOnly&&error instanceof Error&&error.name==="ConstraintError")throw new SharedEditorError("session_destination_exists","A journal was created while the shared session was opening");
+    throw error;
+   }
    // A late commit can advance the closed revision without retaining its journal.
    if(!this.#closed)this.#saved=next.json;
    this.#savedRevision=next.revision;

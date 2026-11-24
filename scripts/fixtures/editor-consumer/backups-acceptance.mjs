@@ -26,6 +26,54 @@ function readJournal(db){return new Promise((resolve,reject)=>{
  const tx=db.transaction("journals","readonly"),request=tx.objectStore("journals").get(["room","101"]);
  tx.oncomplete=()=>resolve(request.result);tx.onabort=()=>reject(tx.error);
 });}
+export async function recoverFreshOpenRaces(wasm){
+ const profile=wasm.SharedRichProfile.from_standard_configuration_json_v3(JSON.stringify(configuration));
+ const prefix=`installed-fresh-open-${crypto.randomUUID()}`;
+ let freshOpenRaceRefusals=0;
+ try{for(const family of ["original","paired-local"]){
+  const database=`${prefix}-${family}`,p=policy(profile,family,false,`${database}-winner`);
+  let owner,db;
+  try{
+   owner=await p.open(p.options);
+   const point={block:"z-intro",offset:"1",affinity:"after"};
+   owner.core.select({kind:"text",anchor:point,focus:point});
+   check(owner.core.type("Competing journal 🙂"),"The competing journal needs its own exact edit");
+   if(p.paired){
+    const anchorJson=owner.core.captureReviewAnchor({kind:"document"});
+    check(owner.core.dispatchReview({kind:"create_thread",data:{anchorJson,body:"Competing comment"}}).kind==="committed","The competing pair must retain a comment");
+   }
+   await owner.flush();
+   const expected=p.snapshot(owner);
+   db=await journalDatabase(p.options.database);
+   const committed=await readJournal(db);db.close();db=undefined;
+   await owner.close();owner=undefined;
+
+   let nativeFrees=0;
+   const create=async()=>{
+    const competing=await journalDatabase(database);
+    try{await new Promise((resolve,reject)=>{
+     const tx=competing.transaction("journals","readwrite");
+     tx.objectStore("journals").add(committed,["room","101"]);
+     tx.oncomplete=()=>resolve();tx.onabort=()=>reject(tx.error);
+    });}finally{competing.close();}
+    const raw=p.options.create(),free=raw.free.bind(raw);
+    raw.free=()=>{nativeFrees++;free();};
+    return raw;
+   };
+   await refuses(()=>p.open({...p.options,database,create}),"session_destination_exists");
+   check(nativeFrees===1,"The unpublished seed must be freed exactly once");
+   db=await journalDatabase(database);
+   same(await readJournal(db),committed,"Fresh startup must preserve the exact competing record");
+   owner=await p.open({...p.options,database});
+   check(owner.recovered&&p.snapshot(owner)===expected,"The exact competing history must reopen after the writer lease releases");
+   check(owner.core.undo(),"The competing document history must remain reversible");
+   if(p.paired)check(owner.core.undoReview().kind==="committed","The competing comment history must remain reversible");
+   await owner.close();owner=undefined;
+   freshOpenRaceRefusals++;
+  }finally{db?.close();await owner?.discardAndClose();}
+ }}finally{profile.free();}
+ return {freshOpenRaceRefusals};
+}
 async function recoverLiveUpgrade(p){
  const database=p.options.database;let source,target,inspection,upgraded;
  try{

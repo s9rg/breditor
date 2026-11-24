@@ -36,10 +36,10 @@ export function readReviewRecord(db:IDBDatabase,key:readonly[string,string]):Pro
  });
 }
 /** One committed transaction contains both exact journals and the immutable named-version catalog. */
-export function writeReviewRecord(db:IDBDatabase,key:readonly[string,string],record:ReviewCheckpointRecord):Promise<void> {
+export function writeReviewRecord(db:IDBDatabase,key:readonly[string,string],record:ReviewCheckpointRecord,insertOnly=false):Promise<void> {
  try{checkReviewRecord(record,key);}catch(error){return Promise.reject(error);}
  return new Promise((resolve,reject)=>{
   const tx=db.transaction("journals","readwrite");tx.oncomplete=()=>resolve();tx.onabort=()=>reject(tx.error??new SharedEditorError("review_record_write","Paired recovery transaction did not complete"));
-  try{tx.objectStore("journals").put(record,[...key]);}catch(error){tx.abort();reject(error);}
+  try{tx.objectStore("journals")[insertOnly?"add":"put"](record,[...key]);}catch(error){tx.abort();reject(error);}
  });
 }
