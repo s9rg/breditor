@@ -111,29 +111,35 @@ function offerRetiredJournal(peer, error) {
 
 function enableWorkspaceActions(app, peer, downloadNetworkCheckpoint) {
   const save = document.querySelector(`#save-${peer.key}`);
+  let pendingDownload;
   save.textContent = "Download checkpoint";
-  save.addEventListener("click", async () => {
+  save.addEventListener("click", () => {
     save.disabled = true;
     exportDigest.textContent = "";
-    try {
-      const checkpoint = downloadNetworkCheckpoint(peer);
-      const hash = await digest(new TextEncoder().encode(checkpoint));
-      exportDigest.textContent = `Downloaded checkpoint SHA-256 ${hash}.`;
-      activeReport.record("checkpointDownloads", hash);
-    } catch (error) {
-      showError(exportDigest, "The checkpoint digest is unavailable.", error);
-    } finally {
-      save.disabled = false;
-    }
+    pendingDownload = (async () => {
+      try {
+        const checkpoint = downloadNetworkCheckpoint(peer);
+        const hash = await digest(new TextEncoder().encode(checkpoint));
+        exportDigest.textContent = `Downloaded checkpoint SHA-256 ${hash}.`;
+        activeReport.record("checkpointDownloads", hash);
+      } catch (error) {
+        showError(exportDigest, "The checkpoint digest is unavailable.", error);
+      } finally {
+        save.disabled = reload.disabled;
+      }
+    })();
   });
   reload.addEventListener("click", async () => {
     reload.disabled = true;
+    save.disabled = true;
     try {
+      await pendingDownload;
       await app.close();
       activeReport.record("savedReloads");
       location.reload();
     } catch (error) {
       reload.disabled = false;
+      save.disabled = false;
       offerCheckpointRecovery(peer, "Local save did not finish. Use Download checkpoint before leaving.", error);
     }
   });
@@ -176,10 +182,11 @@ async function startPilot(bootstrap) {
     status.textContent = "Opening your editor…";
     const pauseKey = `breditor-pilot-paused-${principal}`;
     try {
+      const codeSha256 = await digest(new TextEncoder().encode(token));
       const app = await openNetworkDemo(bootstrap, principal, {
         pilot: true,
         tokenFor: account => account === principal ? token : undefined,
-        codeSha256: await digest(new TextEncoder().encode(token)),
+        codeSha256,
         paused: sessionStorage.getItem(pauseKey) === "1",
         onPause: paused => {
           sessionStorage.setItem(pauseKey, paused ? "1" : "0");
@@ -188,7 +195,7 @@ async function startPilot(bootstrap) {
         onJournalRetired: offerRetiredJournal,
       });
       const peer = Object.values(app.peers)[0];
-      activeReport = openPilotSessionReport(principal, sessionStorage);
+      activeReport = openPilotSessionReport({participant:principal,endpoint:bootstrap.endpoint,codeSha256}, sessionStorage);
       activeReport.record("opens");
       form.hidden = true;
       enableWorkspaceActions(app, peer, downloadNetworkCheckpoint);

@@ -86,9 +86,9 @@ Record the tested source commit, installed archive hashes from
 `target/editor-installed-consumer.json`, browser versions, workflow, incidents,
 data integrity observations, and the document, history, and image sizes
 actually exercised. **Download session report** collects observations from this
-participant's browser tab and its reloads, including action counts, browser
-identification, and the last downloaded and verified checkpoint hashes. Its
-JSON contains neither participant codes nor document contents. Include each
+participant's browser tab and its reloads for the current pilot, including
+action counts, browser identification, and the last downloaded and verified
+checkpoint hashes. The JSON contains only session observations. Include each
 participant's observations and recorded incidents. The automated
 two-context rehearsal is a repeatable check of this app. The pilot gate records
 the sustained participant run and its observed operating limits.

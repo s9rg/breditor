@@ -4,8 +4,8 @@ const counterNames = [
 const hash = value => typeof value === "string" && value.length === 64 && /^[0-9a-f]{64}$/.test(value) ? value : null;
 
 /** A participant's observations in one browser tab, including its reloads. */
-export function openPilotSessionReport(participant, storage) {
-  const key = `breditor-pilot-session-report-v1:${participant}`;
+export function openPilotSessionReport({participant, endpoint, codeSha256}, storage) {
+  const key = `breditor-pilot-session-report-v1:${JSON.stringify([endpoint, participant, codeSha256])}`;
   let saved;
   try { saved = JSON.parse(storage.getItem(key)); } catch { /* Keep an in-memory report. */ }
   const previousDate = new Date(typeof saved?.openedAt === "string" ? saved.openedAt : NaN);
