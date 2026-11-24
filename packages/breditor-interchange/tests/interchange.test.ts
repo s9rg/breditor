@@ -197,14 +197,27 @@ describe("explicit parser staging contracts",()=>{
   });
   it("reports unrepresented shorthand components and preserves the closed fields",()=>{
     const {adapter}=staging();
-    const result=adapter.importHtml('<p style="font:small-caps condensed 16px serif">A</p><p style="font:menu">B</p>');
+    const result=adapter.importHtml('<p style="font:small-caps condensed 16px serif">A</p><p style="font:menu">B</p><p style="font:initial">C</p>');
     const [partial,unavailable]=root(result).children;
-    expect(result.losses).toEqual([{code:"unsupported-style",count:3,effect:"loss"}]);
+    expect(result.losses).toEqual([{code:"unsupported-style",count:4,effect:"loss"}]);
     expect(partial.children[0].formats).toEqual([
       {type:"breditor-inline/font-family",properties:{"breditor-inline/family":3}},
       {type:"breditor-inline/text-size",properties:{"breditor-inline/pixels":16}},
     ]);
     expect(unavailable.children[0].formats).toEqual([]);
+  });
+  it("overrides intrinsic mark styling when the shorthand inherits the parent font",()=>{
+    const result=staging().adapter.importHtml(`<p><strong style="font:inherit">A</strong><em style="font:unset">B</em><strong>C</strong></p>
+      <p style="font:italic bold 20px serif"><span style="font:inherit">D</span></p>`);
+    expect(result.losses).toEqual([]);
+    const [plain,styled]=root(result).children;
+    expect(plain.children).toEqual([
+      {kind:"text",text:"AB",formats:[]},
+      {kind:"text",text:"C",formats:[{type:"breditor/strong",properties:{}}]},
+    ]);
+    expect(styled.children[0].formats.map((mark:any)=>mark.type)).toEqual([
+      "breditor-inline/font-family","breditor-inline/italic","breditor-inline/text-size","breditor/strong",
+    ]);
   });
   it("does not treat inherited object keys as known tags, colors or layout values",()=>{
     const result=staging().adapter.importHtml('<constructor><span style="color:constructor;font-family:__proto__;text-align:constructor;direction:constructor">A</span></constructor>');

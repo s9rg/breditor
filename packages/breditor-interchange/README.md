@@ -109,7 +109,8 @@ normal`, `vertical-align: baseline`, `background-color: transparent`, native
 `list-style-type` values report `list-numbering`. Unrecognized `mso-*` producer
 properties retain their notices. The `font` shorthand expands before the CSS
 cascade and uses the same bounded conversion as the matching longhand properties.
-System fonts and unrepresented components report `unsupported-style`.
+The `inherit` and `unset` values use the parent font. System fonts,
+`initial`, `revert` and unrepresented components report `unsupported-style`.
 
 ### Ordered-list numbering (rich V4 owners)
 

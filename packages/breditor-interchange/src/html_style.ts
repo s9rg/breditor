@@ -89,7 +89,13 @@ export function styleFor(node:HtmlElement,parent:StyleState,b:Budget,css:Map<str
   if(rawAlign){if(typeof align[rawAlign]==="number")state.layout["breditor/block-align"]=align[rawAlign];else b.loss("unsupported-attribute");}
   if(rawDir){if(typeof direction[rawDir]==="number")state.layout["breditor/block-direction"]=direction[rawDir];else b.loss("unsupported-attribute");}
   for(const [name,source]of css){
-    const value=source.trim().toLowerCase();if(value==="inherit")continue;
+    const value=source.trim().toLowerCase();
+    if(value==="inherit"){
+      // Font longhands override the element's intrinsic emphasis and weight.
+      if(name==="font-weight"&&!parent.formats.has("breditor/strong"))remove("strong");
+      if(name==="font-style"&&!parent.formats.has("breditor-inline/italic"))remove("italic");
+      continue;
+    }
     switch(name){
       case "font-weight":if(value==="bold"||value==="bolder"||/^([6-9]00|1000)$/.test(value))set("strong");else if(value==="normal"||/^[1-5]00$/.test(value))remove("strong");else b.loss("unsupported-style");break;
       // Initial/no-op values Office and Docs write on every run are not presentation loss.
