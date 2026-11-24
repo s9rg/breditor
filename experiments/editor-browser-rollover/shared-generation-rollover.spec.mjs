@@ -11,7 +11,7 @@ test("installed original journals retain offline edits and both history directio
  });
  expect(report,report.reason).toMatchObject({
   passed:true,rounds:115,exactLegacyRoots:2,explicitSeals:4,exactPeerReopens:6,
-  legacyDatabasesReopened:2,offlineEditPreserved:true,preCutRedoPreserved:true,preBoundaryUndoAndRedoPreserved:true,
+  legacyDatabasesReopened:2,offlineEditPreserved:true,preCutRedoItemsRestored:2,preBoundaryUndoAndRedoPreserved:true,
  });
  expect(report.legacyBytes.every(bytes=>bytes<=16*1024*1024)).toBe(true);
  expect(report.archiveBytes.every(bytes=>bytes>16*1024*1024)).toBe(true);

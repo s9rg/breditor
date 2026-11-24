@@ -33,11 +33,12 @@ after it receives its first journal entry.
 
 The [initial installed Chrome drill](qualification/2026-11-23-installed-chrome-shared-journal-rollover.json)
 reopened both archives and checked history across the original journal
-boundary. The current drill keeps both an Undo item and a Redo item from
-that original cut and adds two explicit seals per writer. After a byte-exact
-cold reopen, the peers resend the previously undelivered edit and compare
-the complete document. The drill traverses both pre-cut history items and
-checks that each writer's Undo leaves the other writer's work in place.
+boundary. The current drill keeps one Undo and two Redo items from that
+original cut and adds two explicit seals per writer. After a byte-exact
+cold reopen, the peers resend the exact pre-cut frame and verify that its
+second delivery leaves the full checkpoint unchanged. The drill traverses
+all three pre-cut history items, including a Redo item that stayed untouched
+through both seals, while preserving the other writer's work.
 Storage-lifecycle qualification still requires coordinated room and relay
 cutover, backup restoration, and asset retention under release operating limits.
 

@@ -60,7 +60,11 @@ async function verify(){
   alice.core.select(range("first-head",0));
   check(alice.core.type("y"),"The second legacy edit must commit");
   const secondEdit=alice.core.documentJson();
-  check(alice.core.undo()&&alice.core.documentJson()===firstEdit,"The original cut must have a Redo ahead of its Undo");
+  alice.core.select(range("deep-head",0));
+  check(alice.core.type("w"),"The third legacy edit must commit");
+  const thirdEdit=alice.core.documentJson();
+  check(alice.core.undo()&&alice.core.documentJson()===secondEdit,"Undo must place the third edit on the legacy Redo stack");
+  check(alice.core.undo()&&alice.core.documentJson()===firstEdit,"Undo must place the second edit ahead of the third Redo");
   bob.core.select(range("intro",0));
   check(bob.core.type("offline "),"Disconnected peer must durably author its edit");
   const offlineEdit=bob.core.documentJson();
@@ -78,9 +82,9 @@ async function verify(){
    return [undoItems,redoItems];
   };
   const preCutFrontier=frontier();
-  check(preCutFrontier.every(count=>count>0),"The recovered legacy cut must have both an Undo and a Redo");
+  check(preCutFrontier[0]>0&&preCutFrontier[1]===2,"The recovered legacy cut must have an Undo and both Redo items");
   for(const [index,next] of ["two","three"].entries()){
-   // Author records in each active segment without delivering the offline edit.
+   // Populate each segment without touching the deeper Redo or delivering the offline edit.
    check(alice.core.redo()&&alice.core.documentJson()===secondEdit,"The pre-cut Redo must replay the second edit");
    check(alice.core.undo()&&alice.core.documentJson()===firstEdit,"Undo must restore the pre-cut Redo frontier");
    bob.core.select(range("second-head",0));
@@ -100,17 +104,23 @@ async function verify(){
   check(!await alice.core.receiveFrame(offlineFrame)&&alice.core.checkpointJson()===afterDelivery,
    "Repeating the exact frame must leave the complete checkpoint unchanged");
   await sync();
-  const redoWithOffline=secondEdit.replace('"SDK heading"','"offline SDK heading"');
-  check(redoWithOffline!==secondEdit,"The seeded heading must be present");
+  const withOffline=document=>document.replace('"SDK heading"','"offline SDK heading"');
+  check(withOffline(original)!==original,"The seeded heading must be present");
   check(alice.core.redo(),"The pre-cut Redo must survive both sealed segments and a cold open");
   await sync();
-  check(bob.core.documentJson()===redoWithOffline,"Pre-cut Redo must restore the second edit without changing the offline edit");
+  check(bob.core.documentJson()===withOffline(secondEdit),"Pre-cut Redo must restore the second edit without changing the offline edit");
+  check(alice.core.redo(),"The untouched pre-cut Redo must survive both sealed segments and a cold open");
+  await sync();
+  check(bob.core.documentJson()===withOffline(thirdEdit),"The untouched Redo must restore the third edit alongside the offline edit");
+  check(alice.core.undo(),"Undo must reverse the third edit");
+  await sync();
+  check(bob.core.documentJson()===withOffline(secondEdit),"Undo of the third edit must leave both other edits intact");
   check(alice.core.undo(),"Undo must reverse the second edit");
   await sync();
   check(bob.core.documentJson()===offlineEdit,"Undo of the second edit must leave the rest of the shared document intact");
   check(alice.core.undo(),"Pre-boundary Undo must survive the generation and reopen");
   await sync();
-  check(alice.core.documentJson()===original.replace('"SDK heading"','"offline SDK heading"'),"Pre-cut Undo must keep the other author's offline edit");
+  check(alice.core.documentJson()===withOffline(original),"Pre-cut Undo must keep the other author's offline edit");
   check(bob.core.undo(),"The offline edit must retain author-local Undo across rollover");
   await sync();
   check(alice.core.documentJson()===original,"Both author-local Undos must restore the original document");
@@ -130,7 +140,7 @@ async function verify(){
    "The original databases must remain available for exact recovery");
   return {passed:true,rounds:completed,exactLegacyRoots:2,explicitSeals:4,exactPeerReopens:6,legacyDatabasesReopened:2,
    legacyBytes:legacy.map(value=>new TextEncoder().encode(value).length),
-   offlineEditPreserved:true,preCutRedoPreserved:true,preBoundaryUndoAndRedoPreserved:true,
+   offlineEditPreserved:true,preCutRedoItemsRestored:2,preBoundaryUndoAndRedoPreserved:true,
    archiveBytes:retained.map(value=>new TextEncoder().encode(value).length)};
  }finally{
   await Promise.all([alice?.discardAndClose(),bob?.discardAndClose()]);
