@@ -7,7 +7,9 @@ import {tmpdir} from "node:os";
 import {fileURLToPath} from "node:url";
 import {build} from "vite";
 import {installedArchiveDigests} from "./installed-archive-digests.mjs";
+import {sourceEvidence} from "./candidate-release/evidence.mjs";
 const root=resolve(dirname(fileURLToPath(import.meta.url)),".."),temporary=mkdtempSync(join(tmpdir(),"breditor-interchange-consumer-")),archives=join(temporary,"archives"),consumer=join(temporary,"consumer");
+const source=sourceEvidence(root);
 const run=(command,args,cwd=root)=>execFileSync(command,args,{cwd,stdio:"inherit"});
 for(const name of ["breditor-experimental-rich-content","breditor-collaboration","breditor-editor","breditor-interchange"])run(process.execPath,["node_modules/typescript/bin/tsc","-p",`packages/${name}/tsconfig.json`]);
 mkdirSync(archives);cpSync(join(root,"scripts/fixtures/interchange-consumer"),consumer,{recursive:true});
@@ -60,6 +62,7 @@ assert.equal(xmlForeignParserModules,0,"The installed XML entry must not import 
 assert.equal(result.xmlExports,2,"Expected XML export from cold-restored native local and shared editors");
 assert.equal(result.documentXmlExports,2,"Expected source-bound XML from cold-restored native local and shared editors");
 assert.deepEqual(installedArchiveDigests(archives,packs,names),archiveEvidence,"Installed archives changed during qualification");
-const report={format:"breditor/interchange-installed-consumer",formatVersion:1,passed:true,consumer,archives:archiveEvidence.map((archive,i)=>({...archive,path:paths[i]})),installedInterchangeLicenses:true,strictConsumerTypes:true,workspaceLinks:false,defaultForeignParserModules:modules.default.filter(foreign).length,optInForeignParserModules:modules.interchange.filter(foreign).length,docxForeignParserModules,xmlForeignParserModules,installedDocxExport:true,historicalRichReaders,functionalProbe:{...result,scope:"Installed archives with bare package imports and bundled paired Wasm; compiled managed SDK/React synthetic DOM/clipboard/IDB/locks. Not OS clipboard, captured Office applications, cross-browser, IME, accessibility or release qualification."}};
+assert.deepEqual(sourceEvidence(root),source,"Source files changed during the installed probe");
+const report={format:"breditor/interchange-installed-consumer",formatVersion:1,passed:true,source,consumer,archives:archiveEvidence.map((archive,i)=>({...archive,path:paths[i]})),installedInterchangeLicenses:true,strictConsumerTypes:true,workspaceLinks:false,defaultForeignParserModules:modules.default.filter(foreign).length,optInForeignParserModules:modules.interchange.filter(foreign).length,docxForeignParserModules,xmlForeignParserModules,installedDocxExport:true,historicalRichReaders,functionalProbe:{...result,scope:"Installed archives with bare package imports and bundled paired Wasm; compiled managed SDK/React synthetic DOM/clipboard/IDB/locks. Not OS clipboard, captured Office applications, cross-browser, IME, accessibility or release qualification."}};
 mkdirSync(join(root,"target"),{recursive:true});
 writeFileSync(join(root,"target/interchange-installed-consumer.json"),JSON.stringify(report,null,2)+"\n");console.log(JSON.stringify(report,null,2));

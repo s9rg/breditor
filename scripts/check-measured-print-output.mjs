@@ -2,8 +2,8 @@
 import assert from "node:assert/strict";
 import {execFileSync} from "node:child_process";
 import {createHash} from "node:crypto";
-import {copyFileSync, mkdirSync, readFileSync, realpathSync, writeFileSync} from "node:fs";
-import {join} from "node:path";
+import {copyFileSync, mkdirSync, mkdtempSync, readFileSync, realpathSync, renameSync, rmSync, writeFileSync} from "node:fs";
+import {join, relative} from "node:path";
 import {fileURLToPath} from "node:url";
 import {chromium} from "playwright";
 import {rolldown} from "rolldown";
@@ -18,22 +18,20 @@ const install = JSON.parse(readFileSync(join(target,"interchange-installed-consu
 assert.equal(install.format,"breditor/interchange-installed-consumer");
 assert.equal(install.passed,true);
 assert.equal(install.workspaceLinks,false);
+assert.deepEqual(install.source,source,"Build the installed interchange consumer from this source first");
 const consumer = realpathSync(install.consumer);
 const digest = bytes => createHash("sha256").update(bytes).digest("hex");
-const required = ["@breditor/editor","@breditor/experimental-rich-content"];
+const required = ["@breditor/browser","@breditor/editor","@breditor/experimental-rich-content"];
 const archives = required.map(name=>{
   const archive = install.archives.find(candidate=>candidate.name===name);
   assert.ok(archive);
   assert.equal(digest(readFileSync(archive.path)),archive.sha256,`Installed archive changed: ${name}`);
   assert.ok(realpathSync(join(consumer,"node_modules",name)).startsWith(`${consumer}/node_modules/`));
-  return {name,sha256:archive.sha256};
+  return {name,path:archive.path,sha256:archive.sha256};
 });
-for(const [name,filename] of [["breditor-editor","static_document.js"],["breditor-experimental-rich-content","browser/print.js"]]){
-  const distFile = join("dist",filename);
-  assert.ok(readFileSync(join(root,"packages",name,distFile)).equals(
-    readFileSync(join(consumer,"node_modules/@breditor",name.slice("breditor-".length),distFile))),`Compiled ${filename} differs from the installed file`);
-}
-const wasm = readFileSync(join(consumer,"node_modules/@breditor/experimental-rich-content/dist/breditor_wasm_bg.wasm"));
+const installedScope = join(consumer,"node_modules/@breditor");
+const wasmPath = join(installedScope,"experimental-rich-content/dist/breditor_wasm_bg.wasm");
+const wasm = readFileSync(wasmPath);
 assert.equal(digest(wasm),install.functionalProbe.localWasmSha256);
 
 const entry = join(consumer,"measured-print-output.mjs");
@@ -42,6 +40,26 @@ const bundle = await rolldown({input:entry,platform:"browser",logLevel:"silent"}
 const {output} = await bundle.generate({format:"esm",codeSplitting:false});
 await bundle.close();
 assert.equal(output.length,1);
+const archiveProof = mkdtempSync(join(target,"print-archive-check-"));
+try {
+  const packed = new Map();
+  for(const archive of archives){
+    const name = archive.name.slice("@breditor/".length);
+    const directory = join(archiveProof,name);
+    mkdirSync(directory);
+    execFileSync("/usr/bin/tar",["-xf",archive.path,"-C",directory],{timeout:10000});
+    packed.set(name,join(directory,"package"));
+  }
+  const installedModules = Object.keys(output[0].modules).filter(path=>path.startsWith(`${installedScope}/`));
+  assert.ok(installedModules.includes(join(installedScope,"experimental-rich-content/dist/browser/print.js")));
+  assert.ok(installedModules.includes(join(installedScope,"editor/dist/static_document.js")));
+  for(const path of [...installedModules,wasmPath]){
+    const modulePath = relative(installedScope,path);
+    const [name,...parts] = modulePath.split("/");
+    assert.ok(packed.has(name),`Evidence uses an unpinned archive: ${name}`);
+    assert.ok(readFileSync(path).equals(readFileSync(join(packed.get(name),...parts))),`Installed ${modulePath} differs from its archive`);
+  }
+} finally {rmSync(archiveProof,{recursive:true,force:true});}
 
 const fixtureOrigin = "http://127.0.0.1:49839";
 const html = `<!doctype html><meta charset="utf-8"><style>
@@ -55,13 +73,13 @@ const readPdfPages = `function run(args) {
   for (let index=0; index<file.pageCount; index++) pages.push(ObjC.unwrap(file.pageAtIndex(index).string));
   return JSON.stringify(pages);
 }`;
-const pdfRoot = join(target,"measured-print-output");
-mkdirSync(pdfRoot,{recursive:true});
+const pdfRoot = mkdtempSync(join(target,"measured-print-output-"));
 const browser = await chromium.launch();
 try {
   const page = await browser.newPage();
-  await page.route(`${fixtureOrigin}/**`,route=>{
-    const path = new URL(route.request().url()).pathname;
+  await page.route("**/*",route=>{
+    const {origin,pathname:path} = new URL(route.request().url());
+    if(origin!==fixtureOrigin)return route.abort();
     if(path==="/")return route.fulfill({contentType:"text/html",body:html});
     if(path==="/fixture.mjs")return route.fulfill({contentType:"text/javascript",body:output[0].code});
     if(path==="/fixture.wasm")return route.fulfill({contentType:"application/wasm",body:wasm});
@@ -94,10 +112,12 @@ try {
     assert.ok(pages[forcedIndex].includes("AfterForcedBreak"));
     assert.ok(pages.slice(forcedIndex).every(text=>text.includes("RepeatFixtureHeader")));
     const rowsPerPage = pages.map(text=>[...text.matchAll(/FixtureRow(\d{2})/g)].map(match=>match[1]));
+    assert.ok(rowsPerPage.slice(0,forcedIndex).every(rows=>rows.length===0));
     assert.deepEqual(rowsPerPage.flat(),expectedRows,scenario);
     assert.equal(rowsPerPage.at(-1).at(-1),"16");
     results[scenario]={screen:screen.measured,rasterHeight:screen.rasterHeight,pdfPages:pages.length,
-      forcedPage:forcedIndex+1,repeatedHeaderPages:pages.length-forcedIndex,rowsPerPage:rowsPerPage.map(rows=>rows.length),pdfSha256:digest(pdf)};
+      forcedPage:forcedIndex+1,repeatedHeaderPages:pages.length-forcedIndex,rowsPerPage:rowsPerPage.map(rows=>rows.length),
+      pdfPath:relative(target,path),pdfSha256:digest(pdf)};
   }
   assert.deepEqual(results.undone.screen,results.initial.screen);
   assert.deepEqual(results.reopened.screen,results.initial.screen);
@@ -108,7 +128,9 @@ try {
   assert.deepEqual(sourceEvidence(root),source);
   const evidence={format:"breditor/measured-print-output",formatVersion:1,source,browser:browser.version(),font:"Menlo 14px/20px",
     os:execFileSync("/usr/bin/sw_vers",["-productVersion"],{encoding:"utf8"}).trim(),
-    wasmSha256:digest(wasm),archives,native,results};
-  writeFileSync(join(target,"measured-print-output.json"),JSON.stringify(evidence,null,2)+"\n");
+    wasmSha256:digest(wasm),archives:archives.map(({name,sha256})=>({name,sha256})),native,results};
+  const pendingReceipt = join(pdfRoot,"measured-print-output.json");
+  writeFileSync(pendingReceipt,JSON.stringify(evidence,null,2)+"\n");
+  renameSync(pendingReceipt,join(target,"measured-print-output.json"));
   console.log(JSON.stringify(evidence,null,2));
 } finally {await browser.close();}
