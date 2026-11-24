@@ -7,3 +7,10 @@ export function sharedBrowserRuns(configured,discovered){
  // so the wildcard runs the single file once, in its own fresh process.
  return runs.map(run=>({...run,projects:run.projects.map(project=>project==="webkit"?"webkit*":project),patterns:run.specs.map(spec=>`(^|[/\\\\])${spec.replaceAll(".","\\.")}$`)}));
 }
+
+export function sharedBrowserWebKitGroups(files){
+ const sorted=[...files].sort(),groups=Math.max(1,Math.ceil(sorted.length/5));
+ return Array.from({length:groups},(_,group)=>({
+  name:`webkit-${group+1}`,testMatch:sorted.filter((_,index)=>index%groups===group).map(name=>`**/${name}`),
+ }));
+}

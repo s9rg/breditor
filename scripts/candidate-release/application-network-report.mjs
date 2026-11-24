@@ -1,5 +1,16 @@
 /** Validate actual results across Playwright’s separate project/file suites. */
 import assert from "node:assert/strict";
+import {createHash} from "node:crypto";
+import {readFileSync} from "node:fs";
+import {resolve} from "node:path";
+import {installedNetworkSpecs} from "../../experiments/shared-browser/installed-network-specs.mjs";
+import {sharedBrowserWebKitGroups} from "../shared-browser-runs.mjs";
+import {sharedBrowserBatchProjects,validateSharedBrowserReport} from "./shared-browser-report.mjs";
+
+const reportPath="target/shared-application-browser-report.json";
+const projects=sharedBrowserBatchProjects({projects:["webkit*"],specs:installedNetworkSpecs},installedNetworkSpecs,
+ sharedBrowserWebKitGroups(installedNetworkSpecs));
+for(const [file,webkit] of projects)projects.set(file,["chromium","firefox",...webkit]);
 
 export function validateApplicationNetworkReport(report){
  const {expected,skipped,unexpected,flaky}=report.stats;
@@ -19,4 +30,18 @@ export function validateApplicationNetworkReport(report){
   }).sort();
   assert.deepEqual(engines,["chromium","firefox","webkit"],title);
  }
+ validateSharedBrowserReport(report,projects);
+}
+
+export function verifyApplicationNetworkStage(directory,stage){
+ if(stage.id!=="installed-application-network-matrix")return;
+ const record=stage.artifacts.find(artifact=>artifact.path===reportPath);
+ const retainedPath=`artifacts/${stage.id}/${reportPath}`;
+ assert.ok(record?.retainedPath===retainedPath,"Missing retained application network report");
+ const bytes=readFileSync(resolve(directory,retainedPath));
+ assert.equal(createHash("sha256").update(bytes).digest("hex"),record.sha256,"Retained application network report changed");
+ const evidence=JSON.parse(bytes);
+ assert.equal(evidence.format,"breditor/installed-application-network");
+ assert.equal(evidence.formatVersion,1);
+ validateApplicationNetworkReport(evidence.report);
 }
