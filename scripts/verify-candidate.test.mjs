@@ -36,8 +36,9 @@ test("candidate coverage requires one clean source, complete selected stages and
   git(["add",".gitignore",workflowPath]);
   git(["-c","user.name=Candidate Fixture","-c","user.email=fixture@example.test","commit","-qm","Candidate source"]);
   const fullFixture=candidateReleasePlan({profile:"portable-relay-recovery",environment:{BREDITOR_NPM:join(root,"build tools","npm")}});
-  const selected={...fullFixture,checks:fullFixture.checks.map(check=>({...check,args:check.args.map(argument=>
-   argument.startsWith(repository+sep)?root+argument.slice(repository.length):argument)}))};
+  const relocate=value=>value.startsWith(repository+sep)?root+value.slice(repository.length):value;
+  const selected={...fullFixture,checks:fullFixture.checks.map(check=>({...check,args:check.args.map(relocate),
+   env:Object.fromEntries(Object.entries(check.env).map(([key,value])=>[key,relocate(value)]))}))};
   const run=await runCandidateChecks(selected,{root,report:()=>{},execute:async(check,{logPath})=>{
    writeFileSync(logPath,check.id);
    for(const artifact of check.artifacts){
@@ -192,6 +193,18 @@ test("candidate coverage requires one clean source, complete selected stages and
   saveEvidence(run.manifest,manifest);
   assert.throws(()=>candidateCoverage(root,[run.manifest]),/Stage arguments differ from the plan for portable-relay-relocation/);
   runtimeStage.args[1]=originalArgument;
+  const transcript=runtimeStage.env.BREDITOR_EXPECT_DISCUSSION_TRANSCRIPT;
+  delete runtimeStage.env.BREDITOR_EXPECT_DISCUSSION_TRANSCRIPT;
+  saveEvidence(run.manifest,manifest);
+  assert.throws(()=>candidateCoverage(root,[run.manifest]),/Stage environment differs from the plan for portable-relay-relocation \(BREDITOR_EXPECT_DISCUSSION_TRANSCRIPT\)/);
+  runtimeStage.env.BREDITOR_EXPECT_DISCUSSION_TRANSCRIPT=transcript;
+  const nativeBuild=manifest.stages.find(stage=>stage.id==="functional-native-fixtures");
+  const cargoTarget=nativeBuild.env.CARGO_TARGET_DIR;
+  assert.equal(cargoTarget,join(root,"target/owned-history-relay-native"));
+  nativeBuild.env.CARGO_TARGET_DIR=join(root,"target/alternate");
+  saveEvidence(run.manifest,manifest);
+  assert.throws(()=>candidateCoverage(root,[run.manifest]),/Stage environment differs from the plan for functional-native-fixtures \(CARGO_TARGET_DIR\)/);
+  nativeBuild.env.CARGO_TARGET_DIR=cargoTarget;
   const originalRuntime=runtimeStage.sharedRuntimeReceiptSha256;
   runtimeStage.sharedRuntimeReceiptSha256="0".repeat(64);
   saveEvidence(run.manifest,manifest);

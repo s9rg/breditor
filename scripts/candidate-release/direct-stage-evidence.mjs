@@ -4,6 +4,12 @@ import path,{posix,win32} from "node:path";
 import {isDeepStrictEqual} from "node:util";
 
 const toolNames={NODE_BIN:"node",NPM_BIN:"npm",CARGO_BIN:"cargo",WASM_BINDGEN_BIN:"wasm-bindgen"};
+// Bind fixed stage settings without freezing caller tools, generated remaps or runtime receipts.
+const plannedProofVariables=[
+ "BREDITOR_EXPECT_DISCUSSION_TRANSCRIPT","BREDITOR_NATIVE_INPUT_SOURCE_RUNTIME",
+ "CARGO_TARGET_DIR","CARGO_PROFILE_DEV_DEBUG","CARGO_INCREMENTAL","RUSTDOCFLAGS","RUST_TEST_THREADS",
+ "PLAYWRIGHT_JSON_OUTPUT_FILE",
+];
 
 function recordedCheckout(stage,log,paths){
  assert.ok(typeof stage.logPath==="string"&&paths.isAbsolute(stage.logPath),`Missing absolute log path for ${stage.id}`);
@@ -15,10 +21,10 @@ function recordedCheckout(stage,log,paths){
  return paths.resolve(absolute.slice(0,-suffix.length));
 }
 
-function checkoutArgument(argument,checkout,paths){
- if(!paths.isAbsolute(argument))return argument;
- const relative=paths.relative(checkout,argument);
- if(paths.isAbsolute(relative)||relative.split(paths.sep)[0]==="..")return argument;
+function checkoutValue(value,checkout,paths){
+ if(!paths.isAbsolute(value))return value;
+ const relative=paths.relative(checkout,value);
+ if(paths.isAbsolute(relative)||relative.split(paths.sep)[0]==="..")return value;
  return {checkoutPath:relative.split(paths.sep).join("/")};
 }
 
@@ -33,7 +39,13 @@ export function verifyDirectStageEvidence(check,stage,{log,platform,repository,r
   assert.ok(paths.basename(command)===toolNames[tool],`Unexpected hosted tool for ${check.id}`);
  }
  assert.ok(Array.isArray(stage.args)&&stage.args.every(argument=>typeof argument==="string"),`Missing stage arguments for ${check.id}`);
- assert.ok(isDeepStrictEqual(stage.args.map(argument=>checkoutArgument(argument,checkout,paths)),
-  check.args.map(argument=>checkoutArgument(argument,repository,path))),`Stage arguments differ from the plan for ${check.id}`);
+ assert.ok(isDeepStrictEqual(stage.args.map(argument=>checkoutValue(argument,checkout,paths)),
+  check.args.map(argument=>checkoutValue(argument,repository,path))),`Stage arguments differ from the plan for ${check.id}`);
+ for(const name of plannedProofVariables){
+  if(!Object.hasOwn(check.env,name))continue;
+  const value=stage.env?.[name];
+  assert.ok(typeof value==="string"&&isDeepStrictEqual(checkoutValue(value,checkout,paths),
+   checkoutValue(check.env[name],repository,path)),`Stage environment differs from the plan for ${check.id} (${name})`);
+ }
  return checkout;
 }
