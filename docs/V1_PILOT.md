@@ -84,8 +84,10 @@ that are at least 44 by 44 CSS pixels.
    the file under **Rehearse checkpoint recovery** while that writer is offline.
    Compare the digest, recovered text, and Undo/Redo counts. This rehearses
    the document checkpoint in a temporary read-only owner. The recovered view
-   preserves document structure, including table headers and cell order. Image
-   bytes and relay state use their separate backup contracts.
+   preserves document structure, including table headers and cell order. If
+   another checkpoint fails verification, the last verified preview and its
+   digest remain visible. Image bytes and relay state use their separate backup
+   contracts.
 5. Repeat an edit during a real relay restart. Start the launcher again on
    the same host and keep the same browser profiles. Record reconnect behavior
    and any pending edits or uploads as the participant sees them.

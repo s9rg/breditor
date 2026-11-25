@@ -67,15 +67,15 @@ function inspectCheckpoint(wasm, {compileSharedProfile, initializeSharedReadOnly
 }
 
 function enableRecovery(wasm, shared, configuration, renderStaticDocument) {
+  let lastVerifiedSha256;
   backup.disabled = false;
   backup.addEventListener("change", async () => {
     const file = backup.files[0];
     backup.value = "";
-    preview.hidden = true;
-    preview.replaceChildren();
     if (!file) return;
     const hadFocus = document.activeElement === backup;
-    verification.textContent = "Checking checkpoint…";
+    const prior = lastVerifiedSha256 ? ` The last verified preview has SHA-256 ${lastVerifiedSha256}.` : "";
+    verification.textContent = `Checking checkpoint…${prior}`;
     backup.disabled = true;
     try {
       if (file.size === 0 || file.size > maxCheckpointBytes) throw Error("Checkpoint size");
@@ -85,10 +85,11 @@ function enableRecovery(wasm, shared, configuration, renderStaticDocument) {
       const hash = await digest(bytes);
       preview.innerHTML = renderStaticDocument(recovered.documentJson, {blockIds: false});
       preview.hidden = false;
+      lastVerifiedSha256 = hash;
       verification.textContent = `Exact read-only replay verified. Undo ${recovered.undoDepth}. Redo ${recovered.redoDepth}. SHA-256 ${hash}.`;
       activeReport?.record("verifiedRecoveries", hash);
     } catch (error) {
-      showError(verification, "This checkpoint could not be recovered in the pilot.", error);
+      showError(verification, `This checkpoint could not be recovered in the pilot.${prior}`, error);
     } finally {
       backup.disabled = false;
       if (hadFocus && document.activeElement === document.body) backup.focus({preventScroll: true});

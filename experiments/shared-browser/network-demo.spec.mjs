@@ -656,6 +656,28 @@ test("the pilot supports keyboard sign-in and checkpoint recovery at a narrow vi
  await expect(recovered.getByRole("table")).toBeVisible();
  await page.keyboard.press(tab);
  await expect(recovered).toBeFocused();
+ const digest=createHash("sha256").update(checkpoint).digest("hex");
+ const verification=page.locator("#pilot-verification");
+ await page.evaluate(()=>{
+  const read=File.prototype.arrayBuffer;
+  let release;
+  const held=new Promise(resolve=>{release=resolve;});
+  File.prototype.arrayBuffer=async function(){
+   if(this.name==="invalid.json")await held;
+   return read.call(this);
+  };
+  window.releaseRecoveryFile=()=>{File.prototype.arrayBuffer=read;release();};
+ });
+ await backup.focus();
+ await backup.setInputFiles({name:"invalid.json",mimeType:"application/json",buffer:Buffer.from("{}")});
+ await expect(verification).toContainText("Checking checkpoint");
+ await expect(verification).toContainText(digest);
+ await expect(recovered.getByRole("table")).toBeVisible();
+ await page.evaluate(()=>window.releaseRecoveryFile());
+ await expect(verification).toContainText("This checkpoint could not be recovered");
+ await expect(backup).toBeFocused();
+ await expect(recovered.getByRole("table")).toBeVisible({timeout:1500});
+ await expect(verification).toContainText(digest);
  expect(await page.evaluate(()=>document.documentElement.scrollWidth)).toBe(320);
  expect((await new AxeBuilder({page}).analyze()).violations).toEqual([]);
 });
