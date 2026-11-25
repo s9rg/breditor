@@ -274,6 +274,7 @@ pub fn router_with_observed_isolated_assets(
     let worker = raster_worker::Worker::new(executable)?;
     let monitor = worker.monitor();
     host.asset_operations = Arc::new(assets::Operations::new(Some(worker)));
+    let monitor = monitor.with_transfer_slots(host.asset_operations.transfer_slots());
     Ok((routes(host), monitor))
 }
 fn build(

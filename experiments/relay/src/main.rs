@@ -82,6 +82,7 @@ async fn run_reference_cli(args: &[&str]) -> Result<(), Box<dyn std::error::Erro
             println!("{}", json!({"kind":"listening","address":listener.local_addr()?.to_string(),"recovery":recovery}));
             axum::serve(listener, router).with_graceful_shutdown(async { let _ = tokio::signal::ctrl_c().await; }).await?;
             if let Some(monitor) = raster_monitor {
+                monitor.wait_for_idle().await;
                 println!("{}", json!({"kind":"raster-worker-stats","stats":monitor.snapshot()}));
             }
         }
