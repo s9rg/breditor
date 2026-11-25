@@ -2,7 +2,7 @@
 import assert from "node:assert/strict";
 import {spawnSync} from "node:child_process";
 import {createHash} from "node:crypto";
-import {readFileSync,realpathSync} from "node:fs";
+import {readFileSync,readdirSync,realpathSync} from "node:fs";
 import {basename,join,resolve} from "node:path";
 import {fileURLToPath} from "node:url";
 import {saveEvidence,sourceEvidence} from "./candidate-release/evidence.mjs";
@@ -15,6 +15,14 @@ const digest=path=>sha(readFileSync(path));
 const source=sourceEvidence(root);
 assert.ok(source.commit&&!source.dirty,"Check out one clean source for the installed input measurement");
 
+function servedFiles(directory,prefix=""){
+ return readdirSync(directory,{withFileTypes:true}).sort((a,b)=>a.name.localeCompare(b.name)).flatMap(entry=>{
+  const path=`${prefix}/${entry.name}`,local=join(directory,entry.name);
+  if(entry.isDirectory())return servedFiles(local,path);
+  return entry.isFile()&&/\.(?:html|js|css|wasm)$/u.test(entry.name)?[{path,sha256:digest(local)}]:[];
+ });
+}
+
 function installedInput(){
  const bytes=readFileSync(receipt),installed=JSON.parse(bytes),consumer=realpathSync(installed.consumer);
  assert.deepEqual(installed.archiveEvidence.map(archive=>archive.name),
@@ -26,7 +34,8 @@ function installedInput(){
   assert.equal(digest(path),sha256,`Installed archive changed: ${filename}`);
   return {name,filename,sha256};
  });
- return {consumer,archives,receiptSha256:sha(bytes),wasmSha256:digest(join(consumer,"node_modules/@breditor/experimental-rich-content/dist/breditor_wasm_bg.wasm"))};
+ const bundle=servedFiles(join(consumer,"dist"));
+ return {consumer,archives,bundle,receiptSha256:sha(bytes),wasmSha256:digest(join(consumer,"node_modules/@breditor/experimental-rich-content/dist/breditor_wasm_bg.wasm"))};
 }
 const inputs=installedInput();
 const {status,stdout,stderr,error}=spawnSync(process.execPath,["node_modules/@playwright/test/cli.js","test","-c",
@@ -42,6 +51,12 @@ assert.equal(records.length,1);
 const measured=JSON.parse(records[0]);
 assert.equal(measured.formatVersion,1);
 assert.equal(measured.wasmSha256,inputs.wasmSha256,"Chrome loaded different local Wasm bytes");
+const files=new Map(inputs.bundle.map(({path,sha256})=>[path,sha256]));
+assert.ok(measured.served.some(({path})=>path==="/")&&measured.served.some(({path})=>path.endsWith(".js"))&&
+ measured.served.some(({path})=>path.endsWith(".wasm")),"Missing observed installed assets");
+for(const {path,sha256} of measured.served){
+ assert.equal(sha256,files.get(path==="/"?"/index.html":path),`Chrome loaded different bytes for ${path}`);
+}
 assert.deepEqual(measured.rows.map(row=>row.paragraphs),[16,128]);
 assert.equal(measured.pasteBytes,1000);
 for(const row of measured.rows){
@@ -55,4 +70,4 @@ for(const row of measured.rows){
 assert.deepEqual(installedInput(),inputs,"Installed input measurement changed its inputs");
 assert.deepEqual(sourceEvidence(root),source,"Source changed during installed input measurement");
 saveEvidence(resolve(root,"target/installed-input-latency.json"),{...measured,source,
- installed:{receiptSha256:inputs.receiptSha256,archives:inputs.archives}});
+ installed:{receiptSha256:inputs.receiptSha256,archives:inputs.archives,bundleSha256:sha(JSON.stringify(inputs.bundle))}});

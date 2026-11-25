@@ -10,7 +10,14 @@ function percentiles(values){
  return {samples:sorted.length,p50:sorted[Math.ceil(sorted.length*.5)-1],p95:sorted[Math.ceil(sorted.length*.95)-1]};
 }
 
-test("measure installed local typing, paste and Undo through browser input",async({page,browser},info)=>{
+test("measure installed local typing, paste and Undo through browser input",async({page,browser,baseURL},info)=>{
+ const observed=[];
+ page.on("response",response=>{
+  const url=new URL(response.url());
+  if(response.ok()&&url.origin===new URL(baseURL).origin&&(url.pathname==="/"||/\.(?:html|js|css|wasm)$/u.test(url.pathname))){
+   observed.push(response.body().then(bytes=>({path:url.pathname,sha256:sha256(bytes)})));
+  }
+ });
  const wasmResponse=page.waitForResponse(response=>new URL(response.url()).pathname.endsWith(".wasm")&&response.ok());
  const started=performance.now();
  await page.goto("/");
@@ -55,7 +62,7 @@ test("measure installed local typing, paste and Undo through browser input",asyn
     editor.surface.addEventListener(event,begin,true);
     observer.observe(editor.surface,{subtree:true,childList:true,characterData:true});
    });
-   window.inputTiming={editor,errors,baseline,text,arm,select:()=>{
+   window.inputTiming={editor,errors,baseline,block,text,arm,select:()=>{
     editor.focus();editor.execute({kind:"setSelection",selection:sdk.range(block,0)});
    }};
    return {baseline,openMs,topLevelBlocks:content.root.children.length};
@@ -69,7 +76,7 @@ test("measure installed local typing, paste and Undo through browser input",asyn
    });
    await page.keyboard.press("x");
    const typing=await page.evaluate(()=>window.inputTiming.pending);
-   const undoTyping=await undo(page,undoKey);
+   const undoTyping=await undo(page,undoKey,"x");
    await page.evaluate(text=>{
     const timing=window.inputTiming;timing.select();
     timing.pending=timing.arm("paste",text+timing.text,false);
@@ -77,7 +84,7 @@ test("measure installed local typing, paste and Undo through browser input",asyn
     if(timing.editor.surface.dispatchEvent(new ClipboardEvent("paste",{bubbles:true,cancelable:true,clipboardData})))throw Error("Paste was not consumed");
    },paste);
    const pasteMs=await page.evaluate(()=>window.inputTiming.pending);
-   const undoPaste=await undo(page,undoKey);
+   const undoPaste=await undo(page,undoKey,paste);
    if(index>0){samples.typing.push(typing);samples.undoTyping.push(undoTyping);samples.paste.push(pasteMs);samples.undoPaste.push(undoPaste);}
   }
   expect(await page.evaluate(()=>window.inputTiming.errors)).toEqual([]);
@@ -86,16 +93,20 @@ test("measure installed local typing, paste and Undo through browser input",asyn
  }
  const report={format,formatVersion:1,browser:browser.version(),platform:process.platform,arch:process.arch,
   host:{cpu:cpus()[0]?.model??"unknown",logicalCpus:cpus().length,memoryBytes:totalmem(),osRelease:release(),osVersion:version()},
-  pageReadyMs,pasteBytes:Buffer.byteLength(paste),wasmSha256,rows};
+  pageReadyMs,pasteBytes:Buffer.byteLength(paste),wasmSha256,served:await Promise.all(observed),rows};
  const body=JSON.stringify(report);
  await info.attach("installed-input-latency",{contentType:"application/json",body});
  console.log(body);
 });
 
-async function undo(page,key){
- await page.evaluate(()=>{
-  const timing=window.inputTiming;timing.pending=timing.arm("keydown",timing.text,true);
- });
+async function undo(page,key,inserted){
+ await page.evaluate(inserted=>{
+  const timing=window.inputTiming;
+  const blocks=JSON.parse(timing.editor.view().documentJson).root.children;
+  const edited=blocks.find(block=>block.properties["breditor/block-id"]===timing.block);
+  if(edited?.children.map(child=>child.text).join("")!==inserted+timing.text)throw Error("The observed DOM edit did not commit in the native document");
+  timing.pending=timing.arm("keydown",timing.text,true);
+ },inserted);
  await page.keyboard.press(key);
  return page.evaluate(async()=>{
   const timing=window.inputTiming,duration=await timing.pending;
