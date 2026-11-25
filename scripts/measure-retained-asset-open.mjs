@@ -2,7 +2,7 @@
 import assert from 'node:assert/strict';
 import {execFileSync} from 'node:child_process';
 import {createHash} from 'node:crypto';
-import {cpSync,mkdirSync,mkdtempSync,readFileSync,rmSync,writeFileSync} from 'node:fs';
+import {cpSync,mkdirSync,mkdtempSync,readFileSync,rmSync,unlinkSync,writeFileSync} from 'node:fs';
 import {tmpdir} from 'node:os';
 import {join,resolve} from 'node:path';
 import {fileURLToPath} from 'node:url';
@@ -13,6 +13,7 @@ import {searchConsumerLock,verifySearchConsumerRegistry} from './search-consumer
 
 const root=fileURLToPath(new URL('..',import.meta.url));
 const args=process.argv.slice(2),modes=new Map([
+ ['--archive-read-payloads',{entry:'archive-reader.html',method:'measureArchiveReadPayloads',format:'installed-raster-archive-read-payloads',files:['archive-reader.mjs']}],
  ['--reconciliation-writes',{entry:'reconciliation.html',method:'measureReconciledAssetWrites',format:'installed-asset-reconciliation-writes',files:['reconciliation.mjs','raster-write-count.mjs']}],
  ['--upload-queue-writes',{entry:'upload-queue.html',method:'measureUploadQueueWrites',format:'installed-asset-upload-queue-writes',files:['upload-queue.mjs','raster-write-count.mjs']}],
 ]);
@@ -54,6 +55,22 @@ try{
  await page.waitForFunction(name=>typeof window[name]==='function',method);
  const measurements=await page.evaluate(name=>window[name](),method);
  assert.equal(measurements.passed,true);
+ if(method==='measureArchiveReadPayloads'){
+  const download=page.waitForEvent('download');
+  await page.evaluate(()=>window.downloadFilesystemArchive());
+  const direct=join(temporary,'selected.rasters'),nested=join(temporary,'nested.rasters');
+  await (await download).saveAs(direct);
+  cpSync(direct,nested);
+  for(const [path,wrap] of [[direct,false],[nested,true]]){
+   await page.setInputFiles('#archive-file',path);
+   await page.evaluate(wrap=>window.holdFilesystemArchive(wrap),wrap);
+   if(wrap){const replacement=readFileSync(path);replacement[0]^=1;writeFileSync(path,replacement);}
+   else unlinkSync(path);
+   assert.equal(await page.evaluate(()=>window.verifyFilesystemPayload()),true);
+  }
+  measurements.detachedFromRemovedSelectedFile=true;
+  measurements.detachedFromRewrittenNestedFile=true;
+ }
  assert.deepEqual(errors,[]);
  assert.deepEqual([...new Set(await Promise.all(wasm))],[report.localWasmSha256]);
  assert.deepEqual(sourceEvidence(root),source);

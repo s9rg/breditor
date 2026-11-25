@@ -2,6 +2,7 @@ import type {AssetLimits, RasterMime} from "./types.js";
 import {checkRasterSignal,decodeRaster} from './raster_decode.js';
 
 interface Raster {mime: RasterMime; width: number; height: number}
+type AdmittedRaster=Raster&{payload:ArrayBuffer;asset:string;blob:Blob};
 const u16 = (bytes: Uint8Array, at: number): number => ((bytes[at] ?? 0) << 8) | (bytes[at + 1] ?? 0);
 const be32 = (bytes: Uint8Array, at: number): number => new DataView(bytes.buffer, bytes.byteOffset, bytes.byteLength).getUint32(at);
 const le24 = (bytes: Uint8Array, at: number): number => (bytes[at] ?? 0) | ((bytes[at + 1] ?? 0) << 8) | ((bytes[at + 2] ?? 0) << 16);
@@ -50,7 +51,7 @@ function header(bytes: Uint8Array): Raster {
 }
 
 export async function admitRaster(file: Blob, limits: Readonly<AssetLimits>, signal?:AbortSignal,
-  observeDisplaySize?:(width:number,height:number)=>void): Promise<Raster & {payload: ArrayBuffer; asset: string}> {
+  observeDisplaySize?:(width:number,height:number)=>void): Promise<AdmittedRaster> {
   checkRasterSignal(signal);
   if (file.size === 0 || file.size > limits.maxFileBytes) throw Error("Image exceeds the encoded file budget");
   return admitOwnedRaster(await file.arrayBuffer(),file.type,limits,signal,observeDisplaySize);
@@ -58,7 +59,7 @@ export async function admitRaster(file: Blob, limits: Readonly<AssetLimits>, sig
 
 /** The caller owns these bytes and does not publish or modify them during admission. */
 export async function admitOwnedRaster(payload:ArrayBuffer,mime:string,limits:Readonly<AssetLimits>,signal?:AbortSignal,
-  observeDisplaySize?:(width:number,height:number)=>void):Promise<Raster & {payload:ArrayBuffer;asset:string}> {
+  observeDisplaySize?:(width:number,height:number)=>void):Promise<AdmittedRaster> {
   checkRasterSignal(signal);
   if (payload.byteLength === 0 || payload.byteLength > limits.maxFileBytes) throw Error("Image exceeds the encoded file budget");
   const bytes = new Uint8Array(payload),raster = header(bytes);
@@ -76,5 +77,5 @@ export async function admitOwnedRaster(payload:ArrayBuffer,mime:string,limits:Re
   finally { URL.revokeObjectURL(url); }
   checkRasterSignal(signal);const digest = await crypto.subtle.digest("SHA-256", bytes);checkRasterSignal(signal);
   const hash = [...new Uint8Array(digest)].map(value => value.toString(16).padStart(2, "0")).join("");
-  return {...raster, payload, asset: `sha256:${hash}`};
+  return {...raster, payload, asset: `sha256:${hash}`, blob};
 }

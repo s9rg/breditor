@@ -27,7 +27,7 @@ async function replacePayload(database,asset){
   tx.oncomplete=()=>resolve();tx.onabort=()=>reject(tx.error);
  });}finally{db.close();}
 }
-async function measureRasterAdmission(operation){
+export async function measureRasterAdmission(operation){
  const NativeBlob=globalThis.Blob,arrayBuffer=NativeBlob.prototype.arrayBuffer;
  let wholeArchiveBlobs=0,wholeArchiveBlobBytes=0,rasterBlobs=0,rasterBlobBytes=0,rasterReads=0,rasterReadBytes=0;
  globalThis.Blob=new Proxy(NativeBlob,{construct(target,args,newTarget){
