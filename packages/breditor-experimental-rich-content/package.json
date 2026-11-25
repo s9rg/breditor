@@ -9,6 +9,9 @@
   "sideEffects": false,
   "main": "./index.js",
   "types": "./index.d.ts",
+  "scripts": {
+    "build": "tsc -p tsconfig.json"
+  },
   "files": ["index.js", "index.d.ts", "commands.d.ts", "rendering.js", "rendering.d.ts", "dist", "README.md", "LICENSE", "LICENSE-MIT", "LICENSE-APACHE"],
   "exports": {
     ".": {"types": "./index.d.ts", "import": "./index.js"},
