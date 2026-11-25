@@ -117,7 +117,9 @@ function enableWorkspaceActions(app, peer, downloadNetworkCheckpoint) {
   let pendingDownload, pendingLegacyRecovery;
   save.textContent = "Download checkpoint";
   save.addEventListener("click", () => {
-    save.disabled = true;
+    if (save.disabled || save.hasAttribute("aria-disabled")) return;
+    // Keep keyboard focus during digest verification while blocking duplicate actions.
+    save.setAttribute("aria-disabled", "true");
     exportDigest.textContent = "";
     pendingDownload = (async () => {
       try {
@@ -128,7 +130,7 @@ function enableWorkspaceActions(app, peer, downloadNetworkCheckpoint) {
       } catch (error) {
         showError(exportDigest, "The checkpoint digest is unavailable.", error);
       } finally {
-        save.disabled = reload.disabled;
+        save.removeAttribute("aria-disabled");
       }
     })();
   });
