@@ -4,7 +4,7 @@ import {createHash} from "node:crypto";
 import {mkdtempSync,rmSync,symlinkSync,writeFileSync} from "node:fs";
 import {tmpdir} from "node:os";
 import {join} from "node:path";
-import {installedArchiveDigests} from "./installed-archive-digests.mjs";
+import {installedArchiveDigests,verifyInstalledArchiveBindings} from "./installed-archive-digests.mjs";
 
 test("installed archive evidence preserves requested package order and catches byte changes",()=>{
  const directory=mkdtempSync(join(tmpdir(),"breditor-archive-digests-"));
@@ -21,6 +21,20 @@ test("installed archive evidence preserves requested package order and catches b
   const browser=evidence[0];
   assert.equal(browser.sha256,createHash("sha256").update(names[0]).digest("hex"));
   assert.equal(browser.bytes,Buffer.byteLength(names[0]));
+  const lock={packages:Object.fromEntries(evidence.map(archive=>[`node_modules/${archive.name}`,{
+   resolved:`file:${archive.filename}`,version:archive.version,integrity:archive.integrity,
+  }]))};
+  verifyInstalledArchiveBindings(directory,directory,lock,evidence);
+  const browserLock=lock.packages["node_modules/@breditor/browser"];
+  assert.throws(()=>verifyInstalledArchiveBindings(directory,directory,{packages:{}},evidence),/Missing installed archive binding/);
+  browserLock.resolved="file:editor.tgz";
+  assert.throws(()=>verifyInstalledArchiveBindings(directory,directory,lock,evidence),/Installed archive path differs/);
+  browserLock.resolved="file:browser.tgz";
+  browserLock.version="1.0.1";
+  assert.throws(()=>verifyInstalledArchiveBindings(directory,directory,lock,evidence),/Installed archive version differs/);
+  browserLock.version=browser.version;
+  browserLock.integrity=evidence[1].integrity;
+  assert.throws(()=>verifyInstalledArchiveBindings(directory,directory,lock,evidence),/Installed archive integrity differs/);
   writeFileSync(join(directory,browser.filename),Buffer.alloc(browser.bytes));
   assert.throws(()=>installedArchiveDigests(directory,packs,names),/Archive integrity changed/);
   writeFileSync(join(directory,browser.filename),"short");
