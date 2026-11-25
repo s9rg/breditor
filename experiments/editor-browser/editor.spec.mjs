@@ -6,6 +6,17 @@ test("installed local checkpoint families preserve malformed occupied rows and e
   freshFamilies:3,malformedReads:12,malformedWrites:11,exactMalformedRows:11,exactNativeReopens:3,
  });
 });
+test("installed repeated local checkpoint saves skip identical writes and keep exact recovery",async({page},testInfo)=>{
+ await ready(page);
+ const rows=await page.evaluate(()=>window.sdk.measureLocalCheckpointWrites());
+ await testInfo.attach("local-checkpoint-writes",{body:JSON.stringify(rows),contentType:"application/json"});
+ expect(rows.map(row=>row.family)).toEqual(["original",3,4]);
+ for(const row of rows){
+  expect(row.repeated).toEqual({rows:0,payloadBytes:0});
+  expect(row.changed.rows).toBe(2);
+  expect(row.nativeUndoRedo).toBe(true);
+ }
+});
 // Observe startup rejection metadata without preventing errors or retrying startup.
 // Only the closed numeric schema diagnostic is retained, never document content.
 test.beforeEach(async({page})=>{
