@@ -67,6 +67,17 @@ scroll buttons. The skip link takes keyboard focus to the pilot workspace.
 On touch screens, the pilot's sign-in and session controls have tap targets
 that are at least 44 by 44 CSS pixels.
 
+## Measure the installed pilot
+
+After preparing the candidate, run `node scripts/measure-pilot-readiness.mjs`.
+The command starts private synthetic pilot rooms and records startup, saved
+reload, and reconnect on installed Chromium, Firefox, and WebKit. It counts
+first-party HTTP routes before sign-in and checks the exact saved checkpoint
+and convergence when one profile edits offline while the other stays
+connected. The report
+under `target/pilot-readiness-*` identifies the host, candidate, and individual
+samples. Time and route counts describe this workload on this host.
+
 ## Exercise the handoff
 
 1. Give each participant a part of the handoff to own. Exercise ordinary writing
