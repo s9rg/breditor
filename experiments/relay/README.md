@@ -197,6 +197,15 @@ budgets, not a public-host memory/CPU guarantee: the decoder's allocation limit
 is [best effort](https://docs.rs/image/0.25.10/image/struct.Limits.html), and the
 resource-limited worker remains a public deployment gate.
 
+The loopback CLI can opt in to a one-shot subprocess for HTTP raster admission
+with `serve LOG AUTH_JSON LOOPBACK_ADDRESS --isolated-raster`. The child receives
+the bounded encoded upload and returns a small typed receipt. Worker failures
+or timeouts refuse publication. The server retains the transfer slot until the
+child exits, checks the receipt against its original bytes, and rechecks room
+permission before it writes. The subprocess has a 15-second admission deadline.
+Public deployment still requires separate OS memory, CPU, filesystem and
+network containment, and isolation for the other native import paths.
+
 The private directory uses an exclusive lock, a room manifest and immutable
 `BRASSET1` records. Creation requests Unix directory mode 0700 and file mode 0600.
 A complete staging file is synced, atomically hard-linked without overwrite to

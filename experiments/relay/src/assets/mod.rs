@@ -5,6 +5,8 @@ mod record;
 pub(crate) use record::decode as decode_raster_record;
 mod store;
 mod types;
+#[cfg(feature = "server")]
+pub(crate) use prepare::encoded_input;
 pub use prepare::{PreparedAsset, asset_id, prepare_asset};
 pub use store::AssetStore;
 #[cfg(feature = "server")]

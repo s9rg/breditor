@@ -25,6 +25,24 @@ impl PreparedAsset {
     pub const fn info(&self) -> &AssetInfo {
         &self.info
     }
+
+    #[cfg(feature = "server")]
+    pub(crate) fn from_worker(
+        info: AssetInfo,
+        expected: &str,
+        mime: &str,
+        bytes: Vec<u8>,
+    ) -> Result<Self> {
+        info.validate().map_err(|_| Error::NeedsRecovery)?;
+        if info.asset != expected
+            || info.mime.as_str() != mime
+            || u64::try_from(bytes.len()).ok() != Some(info.bytes)
+            || asset_id(&bytes) != expected
+        {
+            return Err(Error::NeedsRecovery);
+        }
+        Ok(Self { info, bytes })
+    }
 }
 fn reader(bytes: &[u8]) -> Result<ImageReader<Cursor<&[u8]>>> {
     let mut reader = ImageReader::new(Cursor::new(bytes)).with_guessed_format()?;
@@ -36,17 +54,22 @@ fn reader(bytes: &[u8]) -> Result<ImageReader<Cursor<&[u8]>>> {
     reader.limits(limits);
     Ok(reader)
 }
-/// Admit exact digest, encoding, geometry and native decoding before any persistence.
-/// # Errors
-/// Rejects wrong digest/MIME, invalid/unsupported images, existing byte/dimension/pixel ceilings
-/// and codec failures. Decoding is in-process; public-host resource isolation remains required.
-pub fn prepare_asset(expected: &str, mime: &str, bytes: Vec<u8>) -> Result<PreparedAsset> {
+pub(crate) fn encoded_input(expected: &str, mime: &str, size: usize) -> Result<(RasterMime, u64)> {
     key(expected)?;
     let mime = RasterMime::parse(mime)?;
-    let length = u64::try_from(bytes.len()).map_err(|_| Error::Contract("asset bytes"))?;
+    let length = u64::try_from(size).map_err(|_| Error::Contract("asset bytes"))?;
     if length == 0 || length > super::MAX_ASSET_BYTES {
         return Err(Error::Contract("asset encoded byte budget"));
     }
+    Ok((mime, length))
+}
+
+/// Admit exact digest, encoding, geometry and native decoding before any persistence.
+/// # Errors
+/// Rejects wrong digest/MIME, invalid/unsupported images, existing byte/dimension/pixel ceilings
+/// and codec failures. This function decodes in the calling process.
+pub fn prepare_asset(expected: &str, mime: &str, bytes: Vec<u8>) -> Result<PreparedAsset> {
+    let (mime, length) = encoded_input(expected, mime, bytes.len())?;
     if asset_id(&bytes) != expected {
         return Err(Error::Contract("asset payload digest"));
     }

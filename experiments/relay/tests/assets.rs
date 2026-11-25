@@ -104,6 +104,73 @@ fn admission_checks_hash_mime_geometry_and_real_decode_before_storage() -> Resul
     }
     Ok(())
 }
+
+#[cfg(feature = "server")]
+#[tokio::test]
+async fn isolated_http_raster_round_trips_the_original_bytes() -> Result {
+    use axum::{
+        ServiceExt,
+        body::{Body, to_bytes},
+        http::{Request, StatusCode},
+        response::Response,
+    };
+    use breditor_collab_relay::server::{Authentication, router_with_isolated_assets};
+    use std::{convert::Infallible, future::poll_fn};
+
+    async fn send(
+        service: &mut impl ServiceExt<Request<Body>, Response = Response, Error = Infallible>,
+        request: Request<Body>,
+    ) -> Result<Response> {
+        poll_fn(|ctx| service.poll_ready(ctx)).await?;
+        Ok(service.call(request).await?)
+    }
+
+    const ORIGIN: &str = "http://127.0.0.1:49809";
+    let files = Files::new()?;
+    let room = room(&files, "room.log", "owner")?;
+    let store = AssetStore::open(&files.0.join("assets"), room.asset_binding())?;
+    let (token, hash) = Authentication::issue_token()?;
+    let authentication = Authentication::from_json(
+        &json!({
+            "format":"breditor/relay-auth", "formatVersion":1, "origins":[ORIGIN],
+            "accounts":[{"principal":"owner", "tokenHash":hash}],
+        })
+        .to_string(),
+    )?;
+    let executable = PathBuf::from(env!("CARGO_BIN_EXE_breditor-collab-relay"));
+    let mut router = router_with_isolated_assets(room, authentication, store, executable)?;
+    let bytes = raster(ImageFormat::Png)?;
+    let uri = format!("/assets/{}", asset_id(&bytes));
+    let request = |method, mime, body| {
+        Request::builder()
+            .method(method)
+            .uri(uri.as_str())
+            .header("origin", ORIGIN)
+            .header("authorization", format!("Bearer {token}"))
+            .header("x-breditor-principal", "owner")
+            .header("content-type", mime)
+            .body(body)
+    };
+    let refused =
+        send(&mut router, request("PUT", "image/jpeg", Body::from(bytes.clone()))?).await?;
+    assert_eq!(refused.status(), StatusCode::BAD_REQUEST);
+    let absent = send(&mut router, request("GET", "image/png", Body::empty())?).await?;
+    assert_eq!(absent.status(), StatusCode::NOT_FOUND);
+    for duplicate in [false, true] {
+        let upload =
+            send(&mut router, request("PUT", "image/png", Body::from(bytes.clone()))?).await?;
+        assert_eq!(upload.status(), StatusCode::OK);
+        let response = to_bytes(upload.into_body(), 1024).await?;
+        let receipt: Value = serde_json::from_slice(&response)?;
+        assert_eq!(receipt["duplicate"], duplicate);
+        assert_eq!((receipt["width"].as_u64(), receipt["height"].as_u64()), (Some(2), Some(3)));
+    }
+    let download = send(&mut router, request("GET", "image/png", Body::empty())?).await?;
+    assert_eq!(download.status(), StatusCode::OK);
+    assert_eq!(to_bytes(download.into_body(), bytes.len()).await?.as_ref(), bytes);
+    Ok(())
+}
+
 #[test]
 fn room_permission_binding_and_blob_storage_do_not_mutate_document_history() -> Result {
     let files = Files::new()?;
