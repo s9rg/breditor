@@ -19,10 +19,21 @@ fn bounded(path: &str, max: u64) -> Result<String, Box<dyn std::error::Error>> {
     }
     Ok(value)
 }
-#[tokio::main(worker_threads = 2)]
-async fn main() -> Result<(), Box<dyn std::error::Error>> {
+fn main() -> Result<(), Box<dyn std::error::Error>> {
     let args: Vec<String> = std::env::args().skip(1).collect();
-    match args.iter().map(String::as_str).collect::<Vec<_>>().as_slice() {
+    let args: Vec<&str> = args.iter().map(String::as_str).collect();
+    if let ["raster-worker-v1", asset, mime] = args.as_slice() {
+        #[cfg(unix)]
+        raster_worker_limits::apply()?;
+        server::run_raster_worker(asset, mime)?;
+        return Ok(());
+    }
+    run_reference_cli(&args)
+}
+
+#[tokio::main(worker_threads = 2)]
+async fn run_reference_cli(args: &[&str]) -> Result<(), Box<dyn std::error::Error>> {
+    match args {
         ["token"] => {
             let (token, hash) = Authentication::issue_token()?;
             println!("{}", json!({"token":token,"tokenHash":hash}));
@@ -54,11 +65,6 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
         ["init-standard-v4", log, config, document, owner] => {
             Room::create_standard_language_v4(Path::new(log), &bounded(config, 256 * 1024)?, &bounded(document, 4 * 1024 * 1024)?, owner)?;
             println!("{}", json!({"kind":"created","richLanguageVersion":4}));
-        }
-        ["raster-worker-v1", asset, mime] => {
-            #[cfg(unix)]
-            raster_worker_limits::apply()?;
-            server::run_raster_worker(asset, mime)?;
         }
         ["serve", log, auth, bind] | ["serve", log, auth, bind, "--isolated-raster"] => {
             let address: SocketAddr = bind.parse()?;
