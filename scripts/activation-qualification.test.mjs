@@ -1,5 +1,6 @@
 import assert from "node:assert/strict";
 import {execFileSync, spawnSync} from "node:child_process";
+import {createHash} from "node:crypto";
 import {
  chmodSync, existsSync, mkdirSync, mkdtempSync, readFileSync, realpathSync, rmSync, symlinkSync, utimesSync, writeFileSync,
 } from "node:fs";
@@ -20,6 +21,7 @@ import {activationReportName, retainActivationShard, verifyActivationShards} fro
 import {fileEvidence, saveEvidence, sourceEvidence} from "./candidate-release/evidence.mjs";
 import {runCandidateChecks} from "./verify-candidate.mjs";
 import {candidateCoverage} from "./check-candidate-coverage.mjs";
+import {verifyHostedActivationArtifact} from "./check-hosted-activation-artifact.mjs";
 
 const handoverHost = "target/handover-activation-native/release/examples/native_handover_activation_sdk_functional";
 const handoverReport = "target/handover-native-activation-native-build.json";
@@ -286,6 +288,44 @@ test("aggregation requires six matching results and checks retained logs and pac
  assert.equal(result.v1Ready, false);
  assert.deepEqual(result.stages.map(row => row.stage), activationStageIds);
  assert.throws(() => verifyActivationShards(reports, {...bundle, sha256:"0".repeat(64)}), /different shard or input bundle/);
+
+ await t.test("hosted archive verification requires the same exact attempt and verified aggregate", async () => {
+  const owner = {id:42, full_name:"s9rg/breditor"};
+  const run = {id:521, run_attempt:2, repository:owner, head_repository:owner, head_sha:bundle.source.commit,
+   path:".github/workflows/activation-qualification.yml", event:"workflow_dispatch", status:"completed", conclusion:"success"};
+  const artifactMetadata = join(directory, "github-artifact.json");
+  const runMetadata = join(directory, "github-run-attempt.json");
+  const member = "activation-qualification.json";
+  function inputs(name, aggregate = result, runAttempt = run) {
+   // Model the verified-job ZIP and the separately downloaded GitHub API records.
+   saveEvidence(join(directory, member), aggregate);
+   const archive = join(directory, name + ".zip");
+   execFileSync("zip", ["-q", archive, member], {cwd:directory});
+   const bytes = readFileSync(archive);
+   saveEvidence(runMetadata, runAttempt);
+   saveEvidence(artifactMetadata, {id:789, expired:false, name:"activation-qualification-2",
+    url:"https://api.github.com/repos/s9rg/breditor/actions/artifacts/789",
+    size_in_bytes:bytes.length, digest:"sha256:" + createHash("sha256").update(bytes).digest("hex"),
+    workflow_run:{id:run.id, repository_id:owner.id, head_repository_id:owner.id, head_sha:run.head_sha},
+   });
+   return {repository:owner.full_name, artifactMetadata, runMetadata, archive, inputs:bundleDirectory, reports};
+  }
+  const hosted = await verifyHostedActivationArtifact(root, inputs("matching"));
+  assert.deepEqual(hosted.qualification, result);
+  assert.equal(hosted.githubArtifact.id, 789);
+  await assert.rejects(verifyHostedActivationArtifact(root, inputs("wrong-attempt", result, {...run, run_attempt:1})),
+   /name differs from the selected candidate attempt/);
+  await assert.rejects(verifyHostedActivationArtifact(root, inputs("wrong-workflow", result, {...run, path:".github/workflows/candidate-qualification.yml"})),
+   /did not succeed in the whole-room activation workflow/);
+  await assert.rejects(verifyHostedActivationArtifact(root, inputs("wrong-source", result, {...run, head_sha:"0".repeat(40)})),
+   /GitHub run revision differs from the candidate/);
+  const stages = structuredClone(result.stages);
+  stages[0].logSha256 = "0".repeat(64);
+  await assert.rejects(verifyHostedActivationArtifact(root, inputs("wrong-log", {...result, stages})),
+   /Verified activation shards differ from the archived aggregate/);
+  await assert.rejects(verifyHostedActivationArtifact(root, inputs("wrong-inputs", {...result, inputSha256:"0".repeat(64)})),
+   /Activation bundle differs from the producer's receipt/);
+ });
 
  restoreActivationInputs(worker, bundleDirectory, bundle.sha256);
  const localReport = join(worker, handoverReport);
