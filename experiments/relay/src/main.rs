@@ -7,6 +7,8 @@ use breditor_collab_relay::{
 use serde_json::json;
 use std::{fs::File, io::Read, net::SocketAddr, path::Path};
 
+#[cfg(unix)]
+mod raster_worker_limits;
 mod sealed_inspection;
 
 fn bounded(path: &str, max: u64) -> Result<String, Box<dyn std::error::Error>> {
@@ -53,7 +55,11 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
             Room::create_standard_language_v4(Path::new(log), &bounded(config, 256 * 1024)?, &bounded(document, 4 * 1024 * 1024)?, owner)?;
             println!("{}", json!({"kind":"created","richLanguageVersion":4}));
         }
-        ["raster-worker-v1", asset, mime] => server::run_raster_worker(asset, mime)?,
+        ["raster-worker-v1", asset, mime] => {
+            #[cfg(unix)]
+            raster_worker_limits::apply()?;
+            server::run_raster_worker(asset, mime)?;
+        }
         ["serve", log, auth, bind] | ["serve", log, auth, bind, "--isolated-raster"] => {
             let address: SocketAddr = bind.parse()?;
             if !address.ip().is_loopback() { return Err("reference relay currently requires loopback binding".into()); }
