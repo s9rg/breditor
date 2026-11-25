@@ -1,5 +1,9 @@
 # Browser support and accessibility gate
 
+The [November 24 installed Safari check](qualification/2026-11-24-installed-native-safari-typing-cycle.md)
+verified keyboard focus, system paste, repeated Undo and Redo, and retained
+typing history after saving and reloading the exact installed vanilla editor.
+
 Most recent completed shipping qualification, October 3: the unpublished
 `0.3.0-alpha.22` source plus selection fix `5a6e57a` passes all 17 local release
 gates, including 165 browser and 39 demo cases. The reproduced selection-u32
