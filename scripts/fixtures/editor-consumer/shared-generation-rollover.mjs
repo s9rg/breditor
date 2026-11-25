@@ -1,6 +1,7 @@
 import {createSharedProfile} from "@breditor/editor/collaboration";
 import {SharedPersistentSession,SharedSegmentedPersistentSession,SharedIndependentHistoryPersistentSession,restoreSharedSegmentedEditor} from "@breditor/collaboration";
 import {seed,range} from "./seed.mjs";
+import {verifyOccupiedGenerationFile} from "./generation-file-occupancy.mjs";
 
 const check=(ok,stage)=>{if(!ok)throw new Error(stage);};
 async function verify(){
@@ -533,7 +534,8 @@ async function verifyRetirement(scenario){
  }
 }
 const query=new URLSearchParams(location.search),scenario=query.get("retirement");
-const result=await (query.has("independentHead")?verifyIndependentHeadAdmission():query.has("independentUpgrade")?verifyIndependentUpgrade(query.get("independentUpgrade")==="rejected"):
+const result=await (query.has("occupiedFile")?verifyOccupiedGenerationFile(query.get("occupiedFile")==="independent"):
+ query.has("independentHead")?verifyIndependentHeadAdmission():query.has("independentUpgrade")?verifyIndependentUpgrade(query.get("independentUpgrade")==="rejected"):
  query.has("headAdmission")?verifyHeadAdmission():scenario===null?verify():verifyRetirement(scenario))
  .catch(error=>({passed:false,reason:String(error).slice(0,250)}));
 document.querySelector("#result").textContent=JSON.stringify(result);
