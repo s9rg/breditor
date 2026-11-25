@@ -1,0 +1,154 @@
+{
+  "format": "breditor/installed-raster-archive-reader-comparison",
+  "formatVersion": 1,
+  "passed": true,
+  "browser": "158.0.8127.37",
+  "localWasmSha256": "f100599f39805586d465961161bf751e0bd51e8d524ad2ab653001946347200e",
+  "fixtureProof": [
+    {
+      "path": "scripts/fixtures/retained-asset-open-measurement/archive-reader.html",
+      "sha256": "ea56c2ea8d07dd3a3eba8b457e5be4984eb363ea47081129ec61f825edeb4b53"
+    },
+    {
+      "path": "scripts/fixtures/retained-asset-open-measurement/measure.mjs",
+      "sha256": "0fb1687113ddb95d2dbeac1a3ca41bac5b160d458144aa6837f04babc34be751"
+    },
+    {
+      "path": "scripts/fixtures/retained-asset-open-measurement/archive-reader.mjs",
+      "sha256": "2365c6db0fd162618409fb918dde81a459ed3a4c56a928d926947546cb1492ef"
+    }
+  ],
+  "registryArtifactsPinnedToProducer": 45,
+  "assets": 12,
+  "rasterBytes": 17995358,
+  "archiveBytes": 17998473,
+  "archiveSha256": "808c7e4d57c6be7bd8e6d118c6681202da5594210a784bda82092fe658adeeab",
+  "checkpointSha256": "e27888a23dfac8fc8809c5516df2d00b8690b6c92033c8dcc97aa48e1632b921",
+  "entriesSha256": "ba11521f6c5a6ed78321531931cd3451167ff619a4e688370148aabae36c9864",
+  "sliceHashes": [
+    "1798787117f5d66db4eacf39a4c65235bb07d3b38cff15108dea4f53b97e3bf6",
+    "209e8bc5442f8a7fa78ae04aefe504f72b5ef1a3946e87c289d890b443f5abc4",
+    "29cb7f3a8fd2336164cc86c6c63d2b2e29bfe4efc0dd289988a17803b7408a89",
+    "5b8c8894e95a1f0d6ad6631e745abf0f3a610c467a862ad3473a0c5ea2f70747",
+    "67cef452c7816449bf45a4cd873560eaa499266ff261c22ac2a257ee4365933f",
+    "ba8929baafb497dfefb882b2ace7dc8e7369bf65e46c137242e12d40469036ab",
+    "bc7267c7febccb3e0a81e742f8dc72fff04ebb852f39c787a82416a4d32d62cc",
+    "cbb814d0586e66ab9e436dfe25a20b9f3a02cfbd85d7b475b442633468dbead5",
+    "ce5a355eb71a24c7557c8c38e17cc8a85d49da39b406b50ce28db2856164a756",
+    "e101d2aba6addc1fa6d6cedf6b9939db3c03a94bc8eb2885964d0751466232d6",
+    "e2304b66769ae5d594f04f59bdcbd0329a821fe88137abcc5adde5bbe97d6795",
+    "e57116d54b74beed7903ee64d098072cd54adad8b9291563fe6c0252875fde7c"
+  ],
+  "exactArchive": true,
+  "exactQueue": true,
+  "coldNativeUndoRedo": true,
+  "corruptFinalRasterRefused": true,
+  "disposedAccessRefused": true,
+  "baseline": {
+    "source": {
+      "commit": "353df3ced1aa941f998771b1bbacde23ed1a8b31",
+      "dirty": false,
+      "sha256": "388335ec6c0ed1f438da20d3c961e9ba732c67271b50ace2ca2ddc27de7797c4",
+      "files": 9737,
+      "bytes": 83370116
+    },
+    "archives": [
+      {
+        "name": "@breditor/browser",
+        "sha256": "1199d14fe5b3d5b2e0318642a9bbf9f5b84773e97265597f72e190be43869ae0"
+      },
+      {
+        "name": "@breditor/experimental-rich-content",
+        "sha256": "176743e813065e9916814f60e020b89bc267d4f59755629baa783b30f1add16b"
+      },
+      {
+        "name": "@breditor/editor",
+        "sha256": "9091ec60bb7ab80ddbdfcdfa5cde8756fdf33b16a16e1d78d792151c0db49b08"
+      }
+    ],
+    "samples": [
+      {
+        "wholeArchiveBlobs": 1,
+        "wholeArchiveBlobBytes": 17998473,
+        "rasterBlobs": 24,
+        "rasterBlobBytes": 35990716,
+        "rasterReads": 12,
+        "rasterReadBytes": 17995358,
+        "readMs": 302.2999999523163
+      },
+      {
+        "wholeArchiveBlobs": 1,
+        "wholeArchiveBlobBytes": 17998473,
+        "rasterBlobs": 24,
+        "rasterBlobBytes": 35990716,
+        "rasterReads": 12,
+        "rasterReadBytes": 17995358,
+        "readMs": 184.60000002384186
+      },
+      {
+        "wholeArchiveBlobs": 1,
+        "wholeArchiveBlobBytes": 17998473,
+        "rasterBlobs": 24,
+        "rasterBlobBytes": 35990716,
+        "rasterReads": 12,
+        "rasterReadBytes": 17995358,
+        "readMs": 221
+      }
+    ],
+    "reportSha256": "5f162acb030cb8cac67fa84ff22c1e80c691530b9742238f7b0b2c540d97a5fa"
+  },
+  "candidate": {
+    "source": {
+      "commit": "ab24b3ef53670eb543cf369db91ec197c2559d5f",
+      "dirty": false,
+      "sha256": "2184af2183094fc45b728992d60f549f6f638d656b482a3c98c201af7b835916",
+      "files": 9737,
+      "bytes": 83370575
+    },
+    "archives": [
+      {
+        "name": "@breditor/browser",
+        "sha256": "1199d14fe5b3d5b2e0318642a9bbf9f5b84773e97265597f72e190be43869ae0"
+      },
+      {
+        "name": "@breditor/experimental-rich-content",
+        "sha256": "9ebaa64b30d9f2fabf0e206928ad410a079e881f6f48535d59f2b923e4ea2bbf"
+      },
+      {
+        "name": "@breditor/editor",
+        "sha256": "9091ec60bb7ab80ddbdfcdfa5cde8756fdf33b16a16e1d78d792151c0db49b08"
+      }
+    ],
+    "samples": [
+      {
+        "wholeArchiveBlobs": 1,
+        "wholeArchiveBlobBytes": 17998473,
+        "rasterBlobs": 12,
+        "rasterBlobBytes": 17995358,
+        "rasterReads": 12,
+        "rasterReadBytes": 17995358,
+        "readMs": 252.19999992847443
+      },
+      {
+        "wholeArchiveBlobs": 1,
+        "wholeArchiveBlobBytes": 17998473,
+        "rasterBlobs": 12,
+        "rasterBlobBytes": 17995358,
+        "rasterReads": 12,
+        "rasterReadBytes": 17995358,
+        "readMs": 158.59999990463257
+      },
+      {
+        "wholeArchiveBlobs": 1,
+        "wholeArchiveBlobBytes": 17998473,
+        "rasterBlobs": 12,
+        "rasterBlobBytes": 17995358,
+        "rasterReads": 12,
+        "rasterReadBytes": 17995358,
+        "readMs": 343.5
+      }
+    ],
+    "reportSha256": "33690b854e4017ee65a16a9ece055715440a5bc2c24ff741e853fa7040be0f81"
+  },
+  "scope": "Three repetitions on one installed Chrome host with a 12-PNG archive. The observer counts logical bytes passed to raster Blob constructors and read through Blob.arrayBuffer, including the existing decoder Blob. Filesystem IO, physical allocation, RSS and general latency are outside this measurement. The package installs reused matching native runtime bytes."
+}
