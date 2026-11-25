@@ -9,6 +9,7 @@ import {saveEvidence} from "./candidate-release/evidence.mjs";
 import {checkInstalledStaticBundle} from "./check-installed-static-bundle.mjs";
 import {installedArchiveDigests} from "./installed-archive-digests.mjs";
 const root=resolve(dirname(fileURLToPath(import.meta.url)),".."),temporary=mkdtempSync(join(tmpdir(),"breditor-editor-consumer-")),archives=resolve(temporary,"archives"),minimal=resolve(temporary,"minimal"),sharedOnly=resolve(temporary,"shared-only"),consumer=resolve(temporary,"consumer");
+const localReact=resolve(temporary,"local-react");
 const run=(cmd,args,cwd=root)=>execFileSync(cmd,args,{cwd,stdio:"inherit"});
 run(process.execPath,["scripts/build-rich-runtime.mjs"]);run(process.execPath,["scripts/build-collaboration-runtime.mjs"]);
 // Run in a child process so clock injection cannot affect packing/builds or other consumers.
@@ -17,6 +18,7 @@ run(resolve(root,"node_modules/.bin/tsc"),["-p","packages/breditor-experimental-
 const licenses=["LICENSE-MIT","LICENSE-APACHE"];
 for(const directory of ["breditor-editor","breditor-collaboration"])for(const name of licenses)cpSync(resolve(root,name),resolve(root,"packages",directory,name));
 mkdirSync(archives);for(const directory of [minimal,sharedOnly,consumer]){cpSync(resolve(root,"scripts/fixtures/editor-consumer"),directory,{recursive:true});cpSync(resolve(root,"crates/breditor-core/tests/fixtures/rich-local-root.json"),resolve(directory,"root.json"));cpSync(resolve(root,"crates/breditor-core/tests/fixtures/rich-code-exit-root.json"),resolve(directory,"code-exit-root.json"));}
+mkdirSync(localReact);for(const file of ["package.json","local-react-only.mjs"])cpSync(resolve(root,"scripts/fixtures/editor-consumer",file),resolve(localReact,file));
 const names=["@breditor/browser","@breditor/experimental-rich-content","@breditor/collaboration","@breditor/editor"],packs=JSON.parse(execFileSync("npm",["pack","--ignore-scripts","--json","--pack-destination",archives,...names.flatMap(name=>["--workspace",name])],{cwd:root,encoding:"utf8"}));
 const archiveEvidence=installedArchiveDigests(archives,packs,names);
 const paths=archiveEvidence.map(archive=>resolve(archives,archive.filename));
@@ -28,6 +30,10 @@ const types=["--noEmit","--strict","--target","ES2022","--module","NodeNext","--
 run(resolve(root,"node_modules/.bin/tsc"),[...types,"types.ts"],minimal);
 run("npm",[...install,...paths],sharedOnly);run(process.execPath,["shared-only.mjs"],sharedOnly);
 run(resolve(root,"node_modules/.bin/tsc"),[...types,"types-shared.ts"],sharedOnly);
+const collaborationBoundary=JSON.parse(execFileSync(process.execPath,["collaboration-boundary.mjs"],{cwd:sharedOnly,encoding:"utf8"}));
+run(resolve(root,"node_modules/.bin/tsc"),[...types,"--exactOptionalPropertyTypes","--lib","ES2022,DOM,ESNext.Disposable","types-collaboration-boundary.mts"],sharedOnly);
+run("npm",[...install,...paths.filter((_p,i)=>i!==2),"react@19.2.8","react-dom@19.2.8"],localReact);
+const localReactBoundary=JSON.parse(execFileSync(process.execPath,["local-react-only.mjs"],{cwd:localReact,encoding:"utf8"}));
 run("npm",[...install,...paths,"react@19.2.8","react-dom@19.2.8","@types/react@19.2.18"],consumer);
 const licenseExpression=JSON.parse(readFileSync(resolve(root,"package.json"),"utf8")).license;
 const canonicalLicenses=licenses.map(filename=>[filename,readFileSync(resolve(root,filename))]);
@@ -46,5 +52,5 @@ run(process.execPath,["layout-runtime.mjs"],consumer);
 run(resolve(root,"node_modules/.bin/tsc"),[...types,"--lib","ES2022,DOM,ESNext.Disposable","types-wasm.ts"],consumer);
 run(resolve(root,"node_modules/.bin/vite"),["build","--config","vite.config.mjs"],consumer);
 assert.deepEqual(installedArchiveDigests(archives,packs,names),archiveEvidence,"Installed archives changed during qualification");
-saveEvidence(resolve(root,"target/editor-installed-consumer.json"),{consumer,minimal,sharedOnly,archives:paths,archiveEvidence,staticBundle,sourceBoundary});
+saveEvidence(resolve(root,"target/editor-installed-consumer.json"),{consumer,minimal,sharedOnly,localReact,archives:paths,archiveEvidence,staticBundle,sourceBoundary,collaborationBoundary:{...collaborationBoundary,strictProfileTypes:true,...localReactBoundary}});
 console.log(`Retained installed SDK proof: ${temporary}`);

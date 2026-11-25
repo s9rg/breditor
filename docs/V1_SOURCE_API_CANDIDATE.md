@@ -28,6 +28,15 @@ signatures with strict TypeScript. Three intentionally private paths must be
 refused by package resolution. The report records these checks with the
 archive digests.
 
+The same check exercises the direct `@breditor/collaboration` package and its
+explicit Wasm entry and binary. The shared-only consumer imports the direct
+package and editor facade without React and verifies the stock V1 through V4
+schema fingerprints, original journal versions, exact native restores, and
+refusals across languages. The local React consumer renders the local entry
+without collaboration and verifies that the shared entry requires its peer.
+These observations qualify the current matching archive set and document the
+separate shared profile and optional peer boundaries.
+
 Edits affecting this inventory require review of the corresponding application
 entry. In a fresh installed fixture, `node source-boundary.mjs --print` prints
 the observed routes and values for comparison. Verification still compares to
