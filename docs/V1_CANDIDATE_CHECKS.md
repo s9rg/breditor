@@ -33,6 +33,19 @@ The GitHub Actions job summary identifies failed setup or the last recorded
 candidate stage. It gives the stage log's path within the uploaded artifact
 when available.
 
+For an archived failure, save the authenticated attempt and artifact API
+responses alongside the downloaded ZIP. Extract the ZIP, check out the exact
+clean candidate, and verify the failed run and the stage logs it recorded.
+
+```sh
+node scripts/check-hosted-candidate-artifact.mjs --failed OWNER/REPO artifact.json run-attempt.json artifact.zip extracted
+```
+
+The failure report identifies the stopped workflow step, candidate result and
+verified log digests when present. Setup failures can have only runner context.
+The failure report carries diagnostic evidence and contributes zero passing
+engineering stages.
+
 Each running stage reports its elapsed time and captured log size once a
 minute in the live job output. Detailed command output stays in the
 stage log, which the workflow retains with the final evidence.
