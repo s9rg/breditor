@@ -13,6 +13,7 @@ import {searchConsumerLock,verifySearchConsumerRegistry} from './search-consumer
 
 const root=fileURLToPath(new URL('..',import.meta.url));
 const args=process.argv.slice(2),modes=new Map([
+ ['--archive-read-payloads',{entry:'archive-reader.html',method:'measureArchiveReadPayloads',format:'installed-raster-archive-read-payloads',files:['archive-reader.mjs']}],
  ['--reconciliation-writes',{entry:'reconciliation.html',method:'measureReconciledAssetWrites',format:'installed-asset-reconciliation-writes',files:['reconciliation.mjs','raster-write-count.mjs']}],
  ['--upload-queue-writes',{entry:'upload-queue.html',method:'measureUploadQueueWrites',format:'installed-asset-upload-queue-writes',files:['upload-queue.mjs','raster-write-count.mjs']}],
 ]);
