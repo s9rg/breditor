@@ -10,7 +10,7 @@ import {fileEvidence,sourceEvidence} from "./candidate-release/evidence.mjs";
 import {verifyHostedContext} from "./candidate-release/hosted-context.mjs";
 import {candidateStageReceipts} from "./candidate-release/runtime-stage-policy.mjs";
 import {verifyDirectStageEvidence} from "./candidate-release/direct-stage-evidence.mjs";
-import {verifyRichBrowserStage} from "./candidate-release/rich-browser-report.mjs";
+import {usesRichBrowserDiscovery,verifyRichBrowserStage} from "./candidate-release/rich-browser-report.mjs";
 import {verifyApplicationNetworkStage} from "./candidate-release/application-network-report.mjs";
 import {
  sharedRuntimeBuildFormat,sharedRuntimeBuildReport,sharedRuntimeReceiptVariable,
@@ -39,7 +39,8 @@ export function candidateCoverage(root,manifests,{requireHosted=false}={}) {
  assert.ok(manifests.length,"Supply at least one retained qualification result.json");
  const source=sourceEvidence(root);
  assert.ok(source.commit&&!source.dirty,"Check out one clean candidate before reviewing its evidence");
- const full=candidateReleasePlan({environment:{}}),covered=new Set(),evidence=[];
+ const options={environment:{},richBrowserDiscovery:usesRichBrowserDiscovery(root)};
+ const full=candidateReleasePlan(options),covered=new Set(),evidence=[];
  for(const input of manifests){
   const path=resolve(input),directory=dirname(path);
   const record=fileEvidence(directory,basename(path));
@@ -53,7 +54,7 @@ export function candidateCoverage(root,manifests,{requireHosted=false}={}) {
   assert.equal(receipt.selectedChecksPassed,true,`Missing completed-stage result in ${input}`);
   assert.ok(receipt.activationQualification===undefined,
    "Candidate coverage requires directly executed stages. Review adopted workers with qualify-activation-shard verify");
-  const plan=receipt.shard?candidateShardPlan(full,receipt.shard.id):candidateReleasePlan({profile:receipt.profile,environment:{}});
+  const plan=receipt.shard?candidateShardPlan(full,receipt.shard.id):candidateReleasePlan({...options,profile:receipt.profile});
   assert.equal(receipt.profile,plan.profile);
   assert.deepEqual(receipt.shard,plan.shard);
   assert.deepEqual(receipt.stages.map(stage=>stage.id),plan.checks.map(check=>check.id),
