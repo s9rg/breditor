@@ -6,9 +6,12 @@ import {resolve,dirname,join} from "node:path";
 import {fileURLToPath} from "node:url";
 import {createHash} from "node:crypto";
 import {runtimeNoticeFiles} from "./build-runtime-notices.mjs";
+import {verifyInterchangeConsumerReuse} from "./interchange-consumer-lock.mjs";
 const root=resolve(dirname(fileURLToPath(import.meta.url)),".."),args=process.argv.slice(2),reuse=args.includes("--reuse-installed"),binary=resolve(args.find(a=>a!=="--reuse-installed")??join(root,"target/relay-native/release/examples/transport_v2_functional"));
 if(!reuse)execFileSync(process.execPath,["scripts/check-interchange-package.mjs"],{cwd:root,stdio:"inherit"});
-const installed=JSON.parse(readFileSync(join(root,"target/interchange-installed-consumer.json"),"utf8"));assert.equal(installed.passed,true);const consumer=installed.consumer,hash=b=>createHash("sha256").update(b).digest("hex");
+const installed=JSON.parse(readFileSync(join(root,"target/interchange-installed-consumer.json"),"utf8"));
+verifyInterchangeConsumerReuse(root,installed);
+const consumer=installed.consumer,hash=b=>createHash("sha256").update(b).digest("hex");
 let compared=0;
 function compareFiles(path,relative=""){
  for(const entry of readdirSync(join(path,relative),{withFileTypes:true})){
@@ -28,6 +31,7 @@ for(const history of ["explicit","typing-v1"]){
  catch(error){console.error(error.stderr?.slice(-6000)??error.message);process.exit(1);}
 }
 for(const run of runs){assert.equal(run.sharedWasmSha256,runs[0].sharedWasmSha256);assert.equal(run.nativeRelaySha256,runs[0].nativeRelaySha256);}
+verifyInterchangeConsumerReuse(root,installed);
 const result={...runs[0],histories:runs.flatMap(r=>r.histories),hostStartups:runs.flatMap(r=>r.hostStartups.map(s=>({history:r.histories[0],...s}))),maximumJournalBytes:Math.max(...runs.map(r=>r.maximumJournalBytes)),retainedDirectories:runs.flatMap(r=>r.retainedDirectories)};
 for(const name of ["consumerProcesses","cases","comparisons","exactRestores","exactFutureWriterCheckpoints","uploads","downloads","serverRestarts","foreignPastes","atomicEnters","compositions","knownNoopAdmissions"])result[name]=runs.reduce((sum,r)=>sum+r[name],0);
-const report={...result,historyProcessIsolation:true,perHistoryTimeoutMs:600000,currentInstalledArtifactFilesCompared:compared,consumer,archives:installed.archives,strictConsumerTypes:installed.strictConsumerTypes,defaultForeignParserModules:installed.defaultForeignParserModules};writeFileSync(join(root,"target/editor-mixed-workflows.json"),JSON.stringify(report,null,2)+"\n");console.log(JSON.stringify(report,null,2));
+const report={...result,historyProcessIsolation:true,perHistoryTimeoutMs:600000,currentInstalledArtifactFilesCompared:compared,consumer,archives:installed.archives,registryArtifacts:installed.registryArtifacts,consumerLockSha256:installed.consumerLockSha256,strictConsumerTypes:installed.strictConsumerTypes,defaultForeignParserModules:installed.defaultForeignParserModules};writeFileSync(join(root,"target/editor-mixed-workflows.json"),JSON.stringify(report,null,2)+"\n");console.log(JSON.stringify(report,null,2));
