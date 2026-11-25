@@ -89,6 +89,12 @@ installed Wasm readers recover its original model 12/journal 13 bytes and
 both history branches, then save and reopen an additional edit. Other rooms,
 schema fingerprints and journal families refuse that capture.
 
+The [first shared layout SDK journal](../crates/breditor-collaboration/tests/fixtures/shared-v3-first-sdk/README.md)
+adds historical model 13/journal 14 coverage. The installed shared reader
+reopens the original journal byte-for-byte and matches five original future
+Undo/Redo checkpoints. The other writer's layout survives throughout. Foreign
+room/schema, another history policy and the adjacent language readers refuse it.
+
 Grammar, schema/profile configuration, selection scope, history policy and writer
 transport are separate choices. Choosing layout language 3 does not enable general
 ranges, whole-document selection, natural typing history or review metadata.
