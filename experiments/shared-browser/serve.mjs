@@ -1,10 +1,17 @@
 import {codeDemoResources} from "../code-demo/resources.mjs";
 import {contentsDemoResources} from "../contents-demo/resources.mjs";
 // Exact localhost functional host. This is not the reference collaboration relay.
+import {createHash} from "node:crypto";
 import {createServer} from "node:http";import {readFileSync,readdirSync} from "node:fs";import {resolve,dirname} from "node:path";import {fileURLToPath} from "node:url";
 const root=resolve(dirname(fileURLToPath(import.meta.url)),"../.."),artifacts=resolve(root,"target/collaboration-feasibility-web");
 const application=process.env["BREDITOR_SHARED_INSTALLED"]==="application";
-const installed=application?JSON.parse(readFileSync(resolve(root,"target/editor-installed-consumer.json"),"utf8")).consumer:process.env["BREDITOR_SHARED_INSTALLED"]==="1"?JSON.parse(readFileSync(resolve(root,"target/shared-installed-consumer.json"),"utf8")).consumer:undefined;
+function applicationConsumer(){
+ const bytes=readFileSync(resolve(root,"target/editor-installed-consumer.json"));
+ const expected=process.env["BREDITOR_SHARED_INSTALLED_RECEIPT_SHA256"];
+ if(expected!==undefined&&createHash("sha256").update(bytes).digest("hex")!==expected)throw Error("Installed application consumer receipt changed before browser startup");
+ return JSON.parse(bytes).consumer;
+}
+const installed=application?applicationConsumer():process.env["BREDITOR_SHARED_INSTALLED"]==="1"?JSON.parse(readFileSync(resolve(root,"target/shared-installed-consumer.json"),"utf8")).consumer:undefined;
 const local=installed?resolve(installed,"node_modules/@breditor/experimental-rich-content"):resolve(root,"packages/breditor-experimental-rich-content"),shared=installed?resolve(installed,application?"node_modules/@breditor/collaboration":"node_modules/@breditor/experimental-collaboration"):resolve(root,"packages/breditor-experimental-collaboration");
 const resources=new Map(),add=(url,path,type="text/javascript; charset=utf-8")=>resources.set(url,[type,readFileSync(path)]);
 const runtime=installed?resolve(shared,"dist/runtime"):artifacts,runtimeName=installed?"breditor_shared":"breditor_collab_feasibility";
