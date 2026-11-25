@@ -53,8 +53,16 @@ export async function admitRaster(file: Blob, limits: Readonly<AssetLimits>, sig
   observeDisplaySize?:(width:number,height:number)=>void): Promise<Raster & {payload: ArrayBuffer; asset: string}> {
   checkRasterSignal(signal);
   if (file.size === 0 || file.size > limits.maxFileBytes) throw Error("Image exceeds the encoded file budget");
-  const bytes = new Uint8Array(await file.arrayBuffer());checkRasterSignal(signal);const raster = header(bytes);
-  if (file.type && file.type !== raster.mime) throw Error("Image MIME does not match its bytes");
+  return admitOwnedRaster(await file.arrayBuffer(),file.type,limits,signal,observeDisplaySize);
+}
+
+/** The caller owns these bytes and does not publish or modify them during admission. */
+export async function admitOwnedRaster(payload:ArrayBuffer,mime:string,limits:Readonly<AssetLimits>,signal?:AbortSignal,
+  observeDisplaySize?:(width:number,height:number)=>void):Promise<Raster & {payload:ArrayBuffer;asset:string}> {
+  checkRasterSignal(signal);
+  if (payload.byteLength === 0 || payload.byteLength > limits.maxFileBytes) throw Error("Image exceeds the encoded file budget");
+  const bytes = new Uint8Array(payload),raster = header(bytes);
+  if (mime && mime !== raster.mime) throw Error("Image MIME does not match its bytes");
   if (!raster.width || !raster.height || raster.width > limits.maxDimension || raster.height > limits.maxDimension
     || raster.width * raster.height > limits.maxPixels) throw Error("Image exceeds the decoded dimension budget");
   const blob = new Blob([bytes], {type: raster.mime}), url = URL.createObjectURL(blob);
@@ -68,5 +76,5 @@ export async function admitRaster(file: Blob, limits: Readonly<AssetLimits>, sig
   finally { URL.revokeObjectURL(url); }
   checkRasterSignal(signal);const digest = await crypto.subtle.digest("SHA-256", bytes);checkRasterSignal(signal);
   const hash = [...new Uint8Array(digest)].map(value => value.toString(16).padStart(2, "0")).join("");
-  return {...raster, payload: bytes.buffer, asset: `sha256:${hash}`};
+  return {...raster, payload, asset: `sha256:${hash}`};
 }
