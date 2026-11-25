@@ -1,18 +1,20 @@
 import type {AssetRecord} from "./types.js";
 
 /** Version 1 owns immutable raster bytes and one atomically maintained byte budget. */
-export function openDatabase(name: string): Promise<IDBDatabase> {
+export function openDatabase(name: string, checkUpgrade?: () => void): Promise<IDBDatabase> {
   if (!name || name.length > 200) throw Error("Asset database name must contain 1–200 characters");
   return new Promise((resolve, reject) => {
     const request = indexedDB.open(name, 1);
-    let blocked = false;
+    let blocked = false, failure: unknown;
     request.onupgradeneeded = () => {
+      try { checkUpgrade?.(); }
+      catch (error) { failure = error; request.transaction!.abort(); return; }
       const db = request.result;
       db.createObjectStore("assets", {keyPath: "asset"});
       const metadata = db.createObjectStore("metadata");
       metadata.put(0, "bytes");
     };
-    request.onerror = () => reject(request.error ?? Error("Cannot open asset storage"));
+    request.onerror = () => reject(failure ?? request.error ?? Error("Cannot open asset storage"));
     request.onblocked = () => { blocked = true; reject(Error("Asset storage upgrade is blocked by another tab")); };
     request.onsuccess = () => {
       if (blocked) request.result.close();
