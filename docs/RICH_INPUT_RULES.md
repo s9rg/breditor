@@ -522,3 +522,33 @@ browser tests; the deliberately literal cases listed there remain literal. Final
 performance, storage, compatibility and release qualification remain part of the
 V1 goal. Synthetic composition and DOM tests do not qualify an OS input method,
 native clipboard, screen reader or the historical intermittent WebKit fault.
+
+### Pinned local checkpoint recovery
+
+The standalone local-reader probe uses both original local byte closures. A
+clean build from `40e498339b18082ba7b5058e5408a22f47ed8656` reproduces the
+pre-feature local files. A clean build from
+`04e01671e25e57746a652bd6e66a6efba2e5070b` reproduces the programmatic-only local
+files. Run `node scripts/build-rich-runtime.mjs` in each historical checkout
+and use its `packages/breditor-experimental-rich-content/dist` as the respective
+`earlier_local` and `programmatic_local` arguments below. The probe verifies the
+five original file digests for each reader before initializing either module.
+
+From the current checkout with the locked JavaScript dependencies installed:
+
+```sh
+node scripts/emit-browser-package.mjs
+npm run build --workspace @breditor/experimental-rich-content
+cargo build --locked -p breditor-core --features experimental-rich-content \
+  --example local_input_rules_checkpoint_probe
+node scripts/probe-input-rules-local-readers.mjs "$earlier_local" \
+  "$programmatic_local" target/debug/examples/local_input_rules_checkpoint_probe
+```
+
+Each reader restores all 16 native checkpoints, matches their 64 subsequent
+Undo/Redo checkpoints byte-for-byte, and refuses each checkpoint with a foreign
+schema or the other history policy. The pre-feature reader exposes no
+programmatic rule capability. The programmatic-only reader exposes that
+capability. Neither advertises browser routing. The default combined proof
+continues to require both original shared runtime closures and its browser
+routing cases.
