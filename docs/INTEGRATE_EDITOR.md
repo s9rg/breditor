@@ -4,7 +4,9 @@ Use the matching archive set from a single candidate build. The three local
 archives provide the production browser entry, its rich Wasm runtime and the
 SDK. Collaboration and React each add a separate import and dependency.
 The registry release and supported V1 API decisions are tracked in the
-[V1 readiness ledger](v1-readiness.json).
+[V1 readiness ledger](v1-readiness.json). The
+[candidate source API inventory](V1_SOURCE_API_CANDIDATE.md) records the
+installed browser and editor routes for that review.
 
 ## Install from the candidate archives
 
