@@ -241,6 +241,18 @@ copy of each counted stage log and required retained report. It validates the
 extracted copies with the regular coverage checker. The authenticated API
 responses supply the trusted repository and run metadata.
 
+For cumulative authenticated coverage, save a JSON array with an entry per
+archive. Each entry supplies `artifactMetadata`, `runMetadata`, `archive` and
+`manifest` paths. Relative paths resolve beside the list. Run the coverage check
+in the exact clean checkout to verify each archive and combine its stages.
+
+```sh
+node scripts/check-hosted-candidate-coverage.mjs --require-complete OWNER/REPO artifacts.json
+```
+
+Omit `--require-complete` to inspect partial coverage. The report records each
+authenticated archive and the stages still missing for the candidate.
+
 ## Whole-room activation jobs
 
 Select `portable-relay-recovery` to run both relocation checks in a dedicated
