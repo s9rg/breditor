@@ -79,6 +79,12 @@ boundary and the pinned earlier input-rule readers listed in the candidate plan.
 
 ### Opt-in rich and shared recovery
 
+The [historical shared structural V2 journal](../crates/breditor-collaboration/tests/fixtures/shared-v2-first-sdk/README.md)
+comes from a build of the first shared structural V2 SDK source. Native and
+installed Wasm readers recover its original model 12/journal 13 bytes and
+both history branches, then save and reopen an additional edit. Other rooms,
+schema fingerprints and journal families refuse that capture.
+
 Grammar, schema/profile configuration, selection scope, history policy and writer
 transport are separate choices. Choosing layout language 3 does not enable general
 ranges, whole-document selection, natural typing history or review metadata.
