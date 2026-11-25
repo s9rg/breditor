@@ -134,3 +134,10 @@ a fresh installed native-browser reload drill. The approved
 [long-session target](COMPATIBILITY.md#current-bounded-lifetime) preserves Undo/Redo
 and outstanding offline edits across generations; these archives do not implement
 that bridge or a history-resetting rollover.
+
+The [first producer fixture](../scripts/fixtures/asset-backup-consumer/historical/README.md)
+was captured from the source that introduced Raster Asset Archive V1. The
+current independent installed browser check verifies the four original raster
+identities, upload states, epochs and receipt, then restores and cold re-exports
+the exact archive. The preserve-policy and payload-identity controls refuse
+without creating a destination.
