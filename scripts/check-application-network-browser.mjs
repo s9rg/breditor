@@ -19,13 +19,14 @@ assert.ok(!args.length||lifecycle&&args.length===2&&/^[2-5]$/u.test(args[1]),
 const root=fileURLToPath(new URL("../",import.meta.url));
 const readJson=path=>JSON.parse(readFileSync(path,"utf8"));
 const digest=path=>createHash("sha256").update(readFileSync(path)).digest("hex");
-const installed=readJson(join(root,"target/editor-installed-consumer.json"));
+const installedReceipt=join(root,"target/editor-installed-consumer.json");
 const relay=candidateBrowserRelay(root);
-const consumer=realpathSync(installed.consumer);
 const wasmPath="node_modules/@breditor/collaboration/dist/runtime/breditor_shared_bg.wasm";
 const rawReport=join(root,"target/shared-application-browser-playwright.json");
 
 function measureInputs(){
+ const receipt=readFileSync(installedReceipt),installed=JSON.parse(receipt);
+ const consumer=realpathSync(installed.consumer);
  assert.equal(installed.archives.length,installed.archiveEvidence.length);
  const archives=installed.archiveEvidence.map(({filename,name,sha256},index)=>{
   const path=installed.archives[index];
@@ -34,6 +35,7 @@ function measureInputs(){
   return {name,filename,sha256};
  });
  return {
+  ...(lifecycle?{installedReceiptSha256:createHash("sha256").update(receipt).digest("hex"),consumer}:{}),
   archives,
   sharedWasmSha256:digest(join(consumer,wasmPath)),
   relaySha256:digest(relay),
@@ -45,8 +47,9 @@ function measureInputs(){
 const inputs=measureInputs();
 assert.equal(inputs.sharedWasmSha256,digest(join(root,"packages/breditor-collaboration/dist/runtime/breditor_shared_bg.wasm")));
 const command=["node_modules/@playwright/test/cli.js","test","--config","experiments/shared-browser/application-network.config.mjs"];
+const consumerPin=lifecycle?{BREDITOR_SHARED_INSTALLED_RECEIPT_SHA256:inputs.installedReceiptSha256}:{};
 const run=(parameters,output)=>execFileSync(process.execPath,[...command,...parameters],{
- cwd:root,env:{...process.env,BREDITOR_BROWSER_RELAY_EXE:relay,PLAYWRIGHT_JSON_OUTPUT_FILE:output},stdio:"inherit",
+ cwd:root,env:{...process.env,...consumerPin,BREDITOR_BROWSER_RELAY_EXE:relay,PLAYWRIGHT_JSON_OUTPUT_FILE:output},stdio:"inherit",
 });
 if(!lifecycle){
  run(["--reporter=line,json"],rawReport);
@@ -80,11 +83,17 @@ if(!lifecycle){
     cases=validateSharedBrowserDiscovery(discovered,readJson(output),expected).length;
    }catch(error){
     // Keep the other fresh rounds observable and preserve any failed JSON and traces.
+    record.reason="browser-round";
     console.error(`Installed lifecycle round ${round}: ${error.message}`);
    }
    if(existsSync(output))record.reportSha256=digest(output);
-   assert.deepEqual(sourceEvidence(root),source,"Source changed during installed lifecycle qualification");
-   assert.deepEqual(measureInputs(),inputs,"Installed application network inputs changed during lifecycle qualification");
+   try{
+    assert.deepEqual(sourceEvidence(root),source,"Source changed during installed lifecycle qualification");
+    assert.deepEqual(measureInputs(),inputs,"Installed application network inputs changed during lifecycle qualification");
+   }catch(error){
+    record.reason="input-provenance";
+    throw error;
+   }
    if(cases!==undefined)Object.assign(record,{status:"passed",cases});
    saveEvidence(manifest,result);
   }
