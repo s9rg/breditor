@@ -14,6 +14,7 @@ test("loopback demo launcher retains exact room and private accounts through a r
   demo=await startNetworkDemo({port,relayPort:0,directory});
   const response=await fetch(demo.url);assert.equal(response.status,200);assert.match(await response.text(),/Local developer accounts only/);
   assert.equal((await fetch(`${demo.url}?peer=alice`)).status,200);
+  assert.equal((await fetch(new URL("/pilot-entry.mjs",demo.url))).status,404);
   const bootstrap=await(await fetch(`http://127.0.0.1:${port}/relay-bootstrap.json`)).json();assert.equal(bootstrap.endpoint,demo.endpoint);assert.deepEqual(Object.keys(bootstrap.tokens).sort(),["alice","bob"]);
   const room=await readFile(join(directory,"room.log")),accounts=await readFile(join(directory,"accounts.json"));
   assert.equal((await stat(join(directory,"accounts.json"))).mode&0o777,0o600);
@@ -31,6 +32,20 @@ test("pilot launcher identifies the served candidate without exposing local inpu
  let demo;
  try{
   demo=await startNetworkDemo({pilot:true,port,relayPort:0,directory});
+  const html=await(await fetch(demo.url)).text();
+  assert.match(html,/<script type="module" src="\/pilot-entry\.mjs"><\/script>/u);
+  const entry=await fetch(new URL("/pilot-entry.mjs",url));
+  assert.equal(entry.status,200);
+  assert.match(entry.headers.get("content-type"),/^text\/javascript/u);
+  const code=await entry.text();
+  assert.match(code,/pilot-bootstrap\.json/u);
+  const chunks=[...new Set(code.match(/pilot-chunk-[a-z0-9_-]+\.mjs/giu))];
+  assert.ok(chunks.length>0);
+  for(const chunk of chunks){
+   const response=await fetch(new URL(`/${chunk}`,url));
+   assert.equal(response.status,200);
+   assert.match(response.headers.get("content-type"),/^text\/javascript/u);
+  }
   const response=await fetch(url),raw=await response.text();
   assert.equal(response.status,200);
   const {candidate,endpoint,...settings}=JSON.parse(raw);
@@ -38,7 +53,12 @@ test("pilot launcher identifies the served candidate without exposing local inpu
   assert.deepEqual(Object.keys(settings).sort(),["configuration","format","formatVersion"]);
   assert.deepEqual(Object.keys(candidate).sort(),["frontendSha256","packages","relaySha256"]);
   assert.match(candidate.frontendSha256,/^[0-9a-f]{64}$/u);
-  const {archives,archiveEvidence}=JSON.parse(await readFile(new URL("../../target/editor-installed-consumer.json",import.meta.url),"utf8"));
+  const {archives,archiveEvidence,consumer}=JSON.parse(await readFile(new URL("../../target/editor-installed-consumer.json",import.meta.url),"utf8"));
+  const wasmFile="breditor_shared_bg.wasm";
+  const wasm=await fetch(new URL(`/${wasmFile}`,url));
+  assert.equal(wasm.status,200);
+  assert.equal(wasm.headers.get("content-type"),"application/wasm");
+  assert.equal(sha256(Buffer.from(await wasm.arrayBuffer())),sha256(await readFile(join(consumer,"node_modules/@breditor/collaboration/dist/runtime",wasmFile))));
   assert.equal(candidate.packages.length,4);
   assert.deepEqual(candidate.packages,await Promise.all(archiveEvidence.map(async({name,version},index)=>({name,version,sha256:sha256(await readFile(archives[index]))}))));
   assert.equal(candidate.relaySha256,sha256(await readFile(new URL("../../target/relay-native/debug/examples/network_demo",import.meta.url))));

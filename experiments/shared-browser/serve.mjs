@@ -4,7 +4,7 @@ import {contentsDemoResources} from "../contents-demo/resources.mjs";
 import {pilotArchiveNames,pilotCandidateIdentity} from "./pilot-session-report.mjs";
 // Exact localhost functional host. This is not the reference collaboration relay.
 import {createHash} from "node:crypto";
-import {createServer} from "node:http";import {readFileSync,readdirSync} from "node:fs";import {basename,resolve,dirname} from "node:path";import {fileURLToPath} from "node:url";
+import {createServer} from "node:http";import {readFileSync,readdirSync} from "node:fs";import {basename,resolve,dirname,posix} from "node:path";import {fileURLToPath} from "node:url";
 const root=resolve(dirname(fileURLToPath(import.meta.url)),"../.."),artifacts=resolve(root,"target/collaboration-feasibility-web");
 const application=process.env["BREDITOR_SHARED_INSTALLED"]==="application";
 const receiptPin=process.env["BREDITOR_SHARED_INSTALLED_RECEIPT_SHA256"];
@@ -56,7 +56,12 @@ if(networkBootstrap)add("/relay-bootstrap.json",resolve(networkBootstrap),"appli
 function modules(directory,prefix){for(const file of readdirSync(directory,{withFileTypes:true})){if(file.isDirectory())modules(resolve(directory,file.name),`${prefix}/${file.name}`);else if(file.isFile()&&file.name.endsWith(".js"))add(`${prefix}/${file.name}`,resolve(directory,file.name));}}
 modules(resolve(shared,"dist"),"/dist");modules(resolve(local,"dist/browser"),"/dist/browser");
 modules(installed?resolve(installed,"node_modules/@breditor/browser/dist"):resolve(root,"packages/breditor-browser/dist"),"/presentation");
-const imports=`<script type="importmap">{"imports":{"@breditor/experimental-rich-content":"/rich.js","@breditor/experimental-rich-content/rendering":"/rendering.js","@breditor/browser/presentation":"/presentation/presentation.js"}}</script>`;
+const moduleAliases=new Map([
+ ["@breditor/experimental-rich-content","/rich.js"],
+ ["@breditor/experimental-rich-content/rendering","/rendering.js"],
+ ["@breditor/browser/presentation","/presentation/presentation.js"],
+]);
+const imports=`<script type="importmap">${JSON.stringify({imports:Object.fromEntries(moduleAliases)})}</script>`;
 resources.set("/",["text/html; charset=utf-8",Buffer.from(`<!doctype html><html lang="en"><meta charset="utf-8"><title>Breditor shared browser contracts</title>${imports}<p id="status">Loading…</p><main id="a"></main><main id="b"></main><textarea id="scratch" aria-label="Scratch area"></textarea><script type="module">import init,* as wasm from '/probe.js';import * as shared from '/shared.js';import {RichAssetStore} from '/rich.js';import {loadContractResources} from '/contract-startup.mjs';const vector=await loadContractResources(init,async()=>{const response=await fetch('/native-vector.json');if(!response.ok)throw Error('Native fixture request failed');return response.json();});window.sharedTools={wasm,...shared,RichAssetStore,vector};document.querySelector('#status').textContent='Ready';</script></html>`)]);
 resources.set("/demo",["text/html; charset=utf-8",Buffer.from(`<!doctype html><html lang="en"><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>Breditor shared rich editor demo</title>${imports}<style>body{background:#f2f5ef;color:#173d37;font:16px system-ui;margin:24px}header{max-width:1500px;margin:0 auto 20px}.editors{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:20px;max-width:1500px;margin:auto}@media(max-width:1000px){.editors{grid-template-columns:minmax(0,1fr)}}button{padding:6px 10px}textarea{width:100%;min-height:80px}.pane>header{display:flex;gap:10px;align-items:center;flex-wrap:wrap;margin:12px 0}.pane h2{margin:0;font-size:1rem}.skip-link{position:absolute;inset-block-start:8px;inset-inline-start:8px;transform:translateY(-200%);padding:8px 12px;background:#fff;color:#173d37;z-index:10}.skip-link:focus{transform:none}</style><a class="skip-link" href="#editor-area">Skip to editors</a><header><h1>breditor shared rich content</h1><p>Two exclusive Rust writers, one document. Edit either side; disconnect, edit both, then reconnect or reload. Each writer owns its Undo history. Wide tables have Left and Right scroll controls. Grid picks, toolbar controls, rich clipboard and image files use the shared core.</p><p>Opt-in tools: hover a block and drag its <kbd>⋮⋮</kbd> handle (or press <kbd>Alt+Shift+↑/↓</kbd>) to move it, select text for the floating toolbar, right-click or press <kbd>Shift+F10</kbd> for the context menu, and drag a table column edge to resize it.</p><p><a href="/code">Try code highlighting</a> · <a href="/contents">Try the table of contents</a></p><button id="connection">Disconnect editors</button><span id="state">Loading matching Wasm…</span><p>This opt-in demo exchanges updates within this page only. Exact journals and image bytes persist in IndexedDB; origin-wide locks exclude duplicate active writers. The authenticated reference relay and cross-host assets remain implementation work. No document data is sent to an external service.</p></header><main class="editors" id="editor-area" tabindex="-1"><section class="pane" aria-labelledby="writer-a"><header><h2 id="writer-a">Writer A</h2> <button id="save-a">Export journal</button><label>Image files <input id="files-a" type="file" multiple accept="image/png,image/jpeg,image/webp"></label></header><div id="a"></div></section><section class="pane" aria-labelledby="writer-b"><header><h2 id="writer-b">Writer B</h2> <button id="save-b">Export journal</button><label>Image files <input id="files-b" type="file" multiple accept="image/png,image/jpeg,image/webp"></label></header><div id="b"></div></section></main><script type="module" src="/demo.mjs"></script></html>`)]);
 const port=Number(process.env["BREDITOR_SHARED_PORT"]??49774);if(!Number.isInteger(port)||port<1024||port>65535)throw Error("Invalid shared demo port");
@@ -64,7 +69,33 @@ for(const [url,resource] of codeDemoResources("shared",imports))resources.set(ur
 for(const [url,resource] of contentsDemoResources("shared",imports))resources.set(url,resource);
 const networkPanes=[["a","alice"],["b","bob"]].map(([key,principal])=>`<section id="pane-${key}" class="pane" aria-labelledby="network-writer-${key}"><header><h2 id="network-writer-${key}">${principal}</h2><button id="connect-${key}">Go offline</button><button id="upload-${key}">Upload or retry pending images</button><button id="save-${key}">Export exact journal</button><label>Image files <input id="files-${key}" type="file" multiple accept="image/png,image/jpeg,image/webp"></label></header><p id="state-${key}" role="status" aria-label="${principal} synchronization">Opening exact local history…</p><output id="presence-${key}" aria-label="${principal} peer selection">No peer selection</output><div id="${key}"></div></section>`).join("");
 resources.set("/network-demo",["text/html; charset=utf-8",Buffer.from(`<!doctype html><html lang="en"><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>Breditor network rich editor demo</title>${imports}<style>body{background:#f2f5ef;color:#173d37;font:15px system-ui;margin:24px}body>header,.editors{max-width:1600px;margin:0 auto 20px}.editors{display:grid;grid-template-columns:1fr 1fr;gap:20px}@media(max-width:1100px){.editors{grid-template-columns:1fr}}button{padding:6px 10px}.pane>header{display:flex;gap:8px;align-items:center;flex-wrap:wrap}.pane h2{margin-right:auto}.pane output{display:block;min-height:1.5em}input[type=file]{max-width:230px}.skip-link{position:absolute;inset-block-start:8px;inset-inline-start:8px;transform:translateY(-200%);padding:8px 12px;background:#fff;color:#173d37;z-index:10}.skip-link:focus{position:relative;display:inline-block;inset:auto;transform:none;margin-bottom:.5rem}</style><a class="skip-link" href="#network-editors">Skip to network editors</a><header><h1>breditor network editor</h1><p>Real Rust relay, two separately saved writers, offline recovery, writer-local Undo/Redo, shared image bytes and live peer selections. Local journal, server acknowledgement and uploaded image states are separate.</p><p><strong>Local developer accounts only.</strong> This page receives both demo account tokens from a private loopback bootstrap. Do not expose this example publicly. The original same-page demo is preserved at <a href="/demo">/demo</a>. Open <a href="/network-demo?peer=alice">alice only</a> or <a href="/network-demo?peer=bob">bob only</a> in separate browser contexts; an active writer cannot be cloned in another tab.</p><p id="network-state" role="status">Loading matching Wasm…</p></header><main class="editors" id="network-editors" tabindex="-1">${networkPanes}</main><script type="module" src="/network-demo.mjs"></script></html>`)]);
-const pilotPage=readFileSync(resolve(root,"experiments/shared-browser/pilot.html"),"utf8");
+let pilotPage=readFileSync(resolve(root,"experiments/shared-browser/pilot.html"),"utf8");
+if(application&&pilotBootstrap){
+ // The pilot imports already buffered installed modules. Bundle those exact bytes while keeping
+ // dynamic imports lazy, so bootstrap validation still precedes initialization of the editor.
+ const {rolldown}=await import("rolldown");
+ const prefix="\0breditor-pilot:",entry="/pilot-entry.mjs";
+ const bundle=await rolldown({input:"/pilot.mjs",platform:"browser",logLevel:"silent",plugins:[{
+  name:"pilot-installed-routes",
+  resolveId(specifier,importer){
+   const path=moduleAliases.get(specifier)??(specifier.startsWith("/")?specifier:
+    specifier.startsWith(".")&&importer?.startsWith(prefix)?posix.resolve(posix.dirname(importer.slice(prefix.length)),specifier):undefined);
+   if(!path||!resources.get(path)?.[0].startsWith("text/javascript"))throw Error(`Unresolved pilot module: ${specifier}`);
+   return prefix+path;
+  },
+  load(id){if(id.startsWith(prefix))return resources.get(id.slice(prefix.length))[1].toString("utf8");},
+ }]});
+ try{
+  const {output}=await bundle.generate({format:"esm",entryFileNames:entry.slice(1),chunkFileNames:"pilot-chunk-[hash].mjs"});
+  for(const chunk of output){
+   const route=`/${chunk.fileName}`;
+   if(chunk.type!=="chunk"||resources.has(route))throw Error("Unexpected pilot bundle output");
+   resources.set(route,["text/javascript; charset=utf-8",Buffer.from(chunk.code)]);
+  }
+  if(!resources.has(entry))throw Error("Missing pilot bundle entry");
+ }finally{await bundle.close();}
+ pilotPage=pilotPage.replace('src="/pilot.mjs"',`src="${entry}"`);
+}
 resources.set("/pilot",["text/html; charset=utf-8",Buffer.from(pilotPage.replace("{{imports}}",imports).replace("{{networkPanes}}",networkPanes))]);
 if(pilotBootstrap){
  const settings=JSON.parse(readFileSync(resolve(pilotBootstrap),"utf8"));
