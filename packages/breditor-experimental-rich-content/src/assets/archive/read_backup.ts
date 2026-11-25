@@ -30,11 +30,11 @@ export class RichAssetArchive {
   const metadata:RichAssetArchiveEntry[]=[],payloads=new Map<string,Blob>();
   for(const entry of entries){
    checkAssetBackupSignal(signal);
-   const start=bodyOffset+entry.offset,payload=file.slice(start,start+entry.bytes,entry.mime);
-   const record=await verifyAssetArchiveRaster(entry,payload,limits,signal);
+   const start=bodyOffset+entry.offset;
+   const {record,blob}=await verifyAssetArchiveRaster(entry,file.slice(start,start+entry.bytes,entry.mime),limits,signal);
    metadata.push(Object.freeze({...assetInfo(record),epoch:record.epoch}));
-   // Keep the admitted immutable slice, so decoded byte buffers do not accumulate.
-   payloads.set(record.asset,payload);
+   // The decode Blob owns the exact verified bytes, even when the source file later changes.
+   payloads.set(record.asset,blob);
   }
   checkAssetBackupSignal(signal);
   return new RichAssetArchive(key,file,metadata,payloads);

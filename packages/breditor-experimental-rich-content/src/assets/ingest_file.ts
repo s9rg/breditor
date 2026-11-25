@@ -6,7 +6,7 @@ import {sameAssetPayload} from "./reconciliation/plan.js";
 
 /** Admit first, then atomically store bytes before a host inserts their reference. */
 export async function ingestFile(db: IDBDatabase, file: Blob, limits: Readonly<AssetLimits>, remote?: {asset:string;storageRef:string}): Promise<AssetRecord> {
-  const admitted = await admitRaster(file, limits);
+  const {blob:_decodedBlob,...admitted} = await admitRaster(file, limits);
   if (remote && admitted.asset !== remote.asset) throw Error("Downloaded asset digest differs");
   const record: AssetRecord = {...admitted, bytes: admitted.payload.byteLength, status: remote ? "uploaded" : "pending", attempts: 0, epoch: 0, storageRef: remote?.storageRef ?? null, failure: null};
   let conflict: Error | undefined;

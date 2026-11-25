@@ -11,11 +11,11 @@ export async function assetArchiveDigest(records:readonly AssetArchiveEntry[]):P
  const hash=await crypto.subtle.digest("SHA-256",bytes);return[...new Uint8Array(hash)].map(x=>x.toString(16).padStart(2,"0")).join("");
 }
 /** Reuse the ordinary byte/header/decoder/hash admission, with no network or upload effects. */
-export async function verifyAssetArchiveRaster(entry:AssetArchiveEntry,input:Blob|ArrayBuffer,limits:Readonly<AssetLimits>,signal?:AbortSignal):Promise<AssetRecord>{
+export async function verifyAssetArchiveRaster(entry:AssetArchiveEntry,input:Blob|ArrayBuffer,limits:Readonly<AssetLimits>,signal?:AbortSignal):Promise<{record:AssetRecord;blob:Blob}>{
  checkAssetBackupSignal(signal);let admitted:Awaited<ReturnType<typeof admitRaster>>;
  try{admitted=await (input instanceof Blob?admitRaster(input,limits,signal):admitOwnedRaster(input,entry.mime,limits,signal));}catch{checkAssetBackupSignal(signal);throw new RichAssetBackupError("asset_backup_raster","Raster archive payload failed image admission");}checkAssetBackupSignal(signal);
  if(admitted.asset!==entry.asset||admitted.mime!==entry.mime||admitted.width!==entry.width||admitted.height!==entry.height||admitted.payload.byteLength!==entry.bytes)throw new RichAssetBackupError("asset_backup_integrity","Raster archive bytes differ from their exact manifest");
- const {offset:_offset,...metadata}=entry;return{...metadata,payload:admitted.payload};
+ const {offset:_offset,...metadata}=entry;return{record:{...metadata,payload:admitted.payload},blob:admitted.blob};
 }
 /** Bounded framing before JSON or image decode; every body byte belongs to one sorted unique asset. */
 export async function readAssetArchiveHeader(file:Blob,limits:Readonly<AssetLimits>,signal?:AbortSignal):Promise<{entries:AssetArchiveEntry[];bodyOffset:number}>{
