@@ -34,7 +34,7 @@
   .skip-link { position: absolute; inset: .5rem auto auto .5rem; transform: translateY(-200%); padding: .55rem; background: white; color: #205044; }
   .skip-link:focus { transform: none; }
   @media (any-pointer: coarse) {
-    .fields :is(button, select, input), .pane > header button, #pilot-reload, #pilot-session-report,
+    .fields :is(button, select, input), .pane > header button, #pilot-reload, #pilot-session-report, #pilot-legacy-assets,
     input[type="file"]::file-selector-button { min-block-size: 44px; min-inline-size: 44px; }
   }
 </style>
@@ -69,6 +69,8 @@
       <button id="pilot-reload" type="button">Save and reload</button>
       <button id="pilot-session-report" type="button">Download session report</button>
       <output id="pilot-export-digest" aria-label="Downloaded checkpoint digest"></output>
+      <button id="pilot-legacy-assets" type="button" hidden>Recover legacy images</button>
+      <p id="pilot-legacy-asset-status" role="status" hidden></p>
     </section>
     <section class="panel" aria-labelledby="pilot-recovery-heading">
       <h2 id="pilot-recovery-heading">Rehearse checkpoint recovery</h2>

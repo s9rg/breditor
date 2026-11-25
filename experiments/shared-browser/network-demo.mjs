@@ -8,11 +8,67 @@ const app={peers:{},errors:[],ready:false,closed:false};window.breditorNetworkDe
 const status=document.querySelector("#network-state"),report=error=>{const message=error?.code??String(error);app.errors.push(message);status.textContent=message;};
 const reportPeerError=(peer,error)=>{if(!app.closed&&!peer.closing)report(error);};
 window.addEventListener("pagehide",()=>{app.closed=true;for(const peer of Object.values(app.peers)){retirePeer(peer);peer.session?.discardAndClose();peer.cache?.close();}},{once:true});
+function identityDatabase(database){
+ return new Promise((resolve,reject)=>{const r=indexedDB.open(database,1);r.onupgradeneeded=()=>r.result.createObjectStore("identities");r.onsuccess=()=>resolve(r.result);r.onerror=()=>reject(r.error);});
+}
 async function credentials(database,key,value){
- const db=await new Promise((resolve,reject)=>{const r=indexedDB.open(database,1);r.onupgradeneeded=()=>r.result.createObjectStore("identities");r.onsuccess=()=>resolve(r.result);r.onerror=()=>reject(r.error);});
+ const db=await identityDatabase(database);
  try{return await new Promise((resolve,reject)=>{const tx=db.transaction("identities",value?"readwrite":"readonly"),s=tx.objectStore("identities"),r=value?s.put(value,key):s.get(key);let result;r.onsuccess=()=>{result=r.result;};tx.oncomplete=()=>resolve(result);tx.onabort=()=>reject(tx.error);});}finally{db.close();}
 }
+async function requireUniqueLegacyWriter(database,identity){
+ const db=await identityDatabase(database);
+ try{
+  const count=await new Promise((resolve,reject)=>{
+   const tx=db.transaction("identities","readonly"),read=tx.objectStore("identities").openCursor();
+   let matches=0;
+   read.onsuccess=()=>{
+    const cursor=read.result;
+    if(!cursor)return;
+    const entry=cursor.value;
+    if(entry?.scopedStorageVersion===undefined&&entry?.identity?.room===identity.room&&entry.identity.writer===identity.writer&&++matches>1)return;
+    cursor.continue();
+   };
+   tx.oncomplete=()=>resolve(matches);
+   tx.onabort=()=>reject(tx.error);
+  });
+  if(count!==1)throw Object.assign(Error("The legacy journal has no unique pilot binding"),{code:"pilot_journal_ambiguous"});
+ }finally{db.close();}
+}
 const placeholder="data:image/svg+xml,"+encodeURIComponent('<svg xmlns="http://www.w3.org/2000/svg" width="240" height="120"><rect width="240" height="120" rx="10" fill="#d9eee2"/><text x="22" y="70" font-size="25" fill="#175c48">breditor image</text></svg>');
+async function sha256Hex(bytes){
+ const digest=new Uint8Array(await crypto.subtle.digest("SHA-256",bytes));
+ return Array.from(digest,byte=>byte.toString(16).padStart(2,"0")).join("");
+}
+async function pilotStorageScope(endpoint,principal,codeSha256){
+ const identity=new TextEncoder().encode(JSON.stringify([endpoint,principal,codeSha256]));
+ return sha256Hex(identity);
+}
+async function recoverLegacyPilotImages(peer){
+ if(peer.closing)throw Error("The pilot writer has closed");
+ const {core}=peer.session,inventory=core.retainedAssetReferences();
+ const assets=new Set(inventory.references.map(reference=>reference.asset).filter(asset=>/^sha256:[0-9a-f]{64}$/u.test(asset)));
+ if(!assets.size)return 0;
+ const check=()=>{
+  if(peer.closing)throw Error("The pilot writer has closed");
+  core.checkRetainedAssetReferences(inventory);
+ };
+ const legacy=await RichAssetStore.openRetained("breditor-pilot-assets-"+peer.principal);
+ try{
+  let recovered=0;
+  for(const asset of assets){
+   check();
+   if(await peer.cache.get(asset))continue;
+   const bytes=await legacy.blob(asset);
+   if(!bytes)continue;
+   if("sha256:"+await sha256Hex(await bytes.arrayBuffer())!==asset)throw Error("Legacy image bytes changed");
+   check();
+   // A legacy receipt or upload epoch cannot identify the provider that issued it.
+   await peer.cache.ingest(bytes);
+   recovered++;
+  }
+  return recovered;
+ }finally{legacy.close();}
+}
 function setStatusText(element,text){if(element.textContent!==text)element.textContent=text;}
 async function show(peer){
  if(!peer.session||!peer.cache||!peer.sync||app.closed||peer.closing)return;const generation=++peer.paint,assets=await peer.cache.list();if(generation!==peer.paint||app.closed||peer.closing)return;
@@ -32,6 +88,7 @@ export async function openNetworkDemo(bootstrap,chosen,{
  if(chosen)document.querySelector(".editors").style.gridTemplateColumns="1fr";
  const namespace=pilot?"breditor-pilot":"breditor-network-demo";
  const identityDb=`${namespace}-identities-v1`;
+ const pilotScope=pilot?await pilotStorageScope(bootstrap.endpoint,chosen,codeSha256):undefined;
  const profile=compileSharedProfile(wasm,bootstrap.configuration);
  try{for(const[key,principal]of[["a","alice"],["b","bob"]]){
   if(chosen&&chosen!==principal){
@@ -51,27 +108,32 @@ export async function openNetworkDemo(bootstrap,chosen,{
    }else onError(error);
   };
   const getToken=()=>tokenFor(principal),identityKey=[bootstrap.endpoint,principal];
+  let legacyAssetWriter=false;
   const openSession=async()=>{
    const saved=await credentials(identityDb,identityKey);
    if(pilot&&saved&&saved.codeSha256!==codeSha256)throw Error("Incorrect code for the saved pilot writer");
    if(pilot)peer.offline=isPaused(Boolean(saved));
+   legacyAssetWriter=pilot&&Boolean(saved?.identity)&&saved.scopedStorageVersion===undefined;
    let identity=pilot?saved?.identity:saved,registration;
    if(!identity){
     registration=await registerSharedRelayWriter({endpoint:bootstrap.endpoint,principal,room:"room",getToken,
-     saveIdentity:record=>credentials(identityDb,identityKey,pilot?{identity:record,codeSha256}:record)});
+     saveIdentity:record=>credentials(identityDb,identityKey,pilot?{identity:record,codeSha256,scopedStorageVersion:2}:record)});
     identity=registration.identity;
    }
    peer.identity=identity;
-   return SharedPersistentSession.open({database:`${namespace}-journals-v12`,room:identity.room,writer:identity.writer,create:()=>{if(!registration)throw Error("Exact saved writer journal is missing; refusing a new history");return profile.join_frame(identity.room,identity.writer,registration.frame);},restore:journal=>profile.restore(identity.room,journal),onState:()=>update(peer),onError:onJournalError});
+   if(legacyAssetWriter)await requireUniqueLegacyWriter(identityDb,identity);
+   const journal=pilotScope&&!legacyAssetWriter?`${namespace}-journals-v12-${pilotScope}`:`${namespace}-journals-v12`;
+   return SharedPersistentSession.open({database:journal,room:identity.room,writer:identity.writer,create:()=>{if(!registration)throw Error("Exact saved writer journal is missing; refusing a new history");return profile.join_frame(identity.room,identity.writer,registration.frame);},restore:journal=>profile.restore(identity.room,journal),onState:()=>update(peer),onError:onJournalError});
   };
   // Give the second tab the first tab's writer and the usual live journal lease check.
   // Keep the registration lock until the first exact local journal has been committed.
   peer.session=pilot?await navigator.locks.request(`breditor-pilot-login-v1:${JSON.stringify(identityKey)}`,openSession):await openSession();
   if(peer.journalRetirement)continue;
   const identity=peer.identity;
-  try{peer.cache=await RichAssetStore.open(`${namespace}-assets-${principal}`,{onChange:()=>update(peer)});}
+  try{peer.cache=await RichAssetStore.open(pilotScope?`${namespace}-assets-v2-${pilotScope}`:`${namespace}-assets-${principal}`,{onChange:()=>update(peer)});}
   catch(error){if(!peer.journalRetirement)throw error;}
   if(peer.journalRetirement){peer.cache?.close();peer.cache=undefined;continue;}
+  if(legacyAssetWriter&&peer.session.recovered)peer.recoverLegacyImages=()=>recoverLegacyPilotImages(peer);
   peer.assets=new SharedRelayAssets({endpoint:bootstrap.endpoint,principal,getToken,store:peer.cache});
   if(peer.offline)peer.assets.setOnline(false);
   peer.presence=new SharedPresence(peer.session.core,{onError});peer.presence.subscribe(()=>update(peer));

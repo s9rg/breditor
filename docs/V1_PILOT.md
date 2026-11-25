@@ -36,6 +36,15 @@ needs the code again after a reload. It retains the writer, journal, and a
 one-way check for the code on that browser profile.
 Close a participant's editor before opening the same participant in another
 tab in that profile. The second tab reopens the same writer and history.
+New journals, image bytes and upload state belong to the current pilot relay,
+participant and code. An older saved writer can still open its legacy journal
+when one saved workspace owns that journal identity. If several workspaces
+share the legacy journal identity, keep the browser data and consult the
+pilot operator before continuing. A writer who reopens an older journal can
+choose **Recover legacy images** to copy missing image bytes named in that
+writer's native history into the active pilot as pending uploads. The older
+image store stays intact. Use **Upload or retry pending images** to send the
+recovered images to the current pilot.
 
 On the same workstation, use independent browser profiles. On separate
 workstations, keep both services bound to loopback and forward both ports
