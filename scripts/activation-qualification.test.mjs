@@ -1,7 +1,7 @@
 import assert from "node:assert/strict";
 import {execFileSync, spawnSync} from "node:child_process";
 import {
- chmodSync, existsSync, mkdirSync, mkdtempSync, readFileSync, realpathSync, rmSync, symlinkSync, writeFileSync,
+ chmodSync, existsSync, mkdirSync, mkdtempSync, readFileSync, realpathSync, rmSync, symlinkSync, utimesSync, writeFileSync,
 } from "node:fs";
 import {tmpdir} from "node:os";
 import {dirname, join} from "node:path";
@@ -256,13 +256,19 @@ test("aggregation requires six matching results and checks retained logs and pac
   const outcome = await runCandidateChecks(activationPlan(stage), {
    root, report:() => {}, execute:async (check, {logPath}) => {
     writeFileSync(logPath, sourceLog);
-   for (const {path} of check.artifacts) saveEvidence(join(root, path), {
-     source:bundle.source, complete:true, passed:true, sourceUnchanged:true, wholeRoomActivated:true,
-     workspaceLinks:false, cases:22, logSha256:"c".repeat(64), runtime:installedRuntime,
-     sharedRuntimeReceiptSha256:check.env[sharedRuntimeReceiptVariable],
-     nativeHostBuildReceiptSha256:verifyNativeSuggestionBuild(root, bundle.source).sha256,
-     archives:selectedArchives,
-    });
+    for (const {path} of check.artifacts) {
+     const report = join(root, path);
+     saveEvidence(report, {
+      source:bundle.source, complete:true, passed:true, sourceUnchanged:true, wholeRoomActivated:true,
+      workspaceLinks:false, cases:22, logSha256:"c".repeat(64), runtime:installedRuntime,
+      sharedRuntimeReceiptSha256:check.env[sharedRuntimeReceiptVariable],
+      nativeHostBuildReceiptSha256:verifyNativeSuggestionBuild(root, bundle.source).sha256,
+      archives:selectedArchives,
+     });
+     // This immediate synthetic write can share a coarse filesystem clock tick with stage startup.
+     const fresh = new Date(Date.now() + 2000);
+     utimesSync(report, fresh, fresh);
+    }
     return {status:"passed", exitCode:0, signal:null};
    },
   });
