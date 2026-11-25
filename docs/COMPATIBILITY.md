@@ -30,6 +30,11 @@ the default ABI 5 or the older document/session wire families.
   checkpoint](../crates/breditor-wasm/tests/fixtures/v0.2.1/README.md) from the
   released ABI 3 source exercises the same guarantees through the matching
   fingerprint-bearing V2 profile factory and verifies refusal by the V1 reader.
+  The [ABI 4 typed-range checkpoint](../crates/breditor-wasm/tests/fixtures/v0.3.0-alpha.6/README.md)
+  from tagged alpha.6 source exercises the explicit V3 factory in the current
+  ABI 5 reader. It retains an earlier insertion and a typed cross-paragraph
+  Redo with exact properties and selection through every history cursor. Both
+  older factories, an unknown version and a different profile refuse it.
 - **Document schema.** The base Document V1 schema and the fingerprinted rich
   language profiles have distinct admission boundaries. Select the original
   language and fingerprint when reopening saved content.
@@ -41,9 +46,9 @@ the default ABI 5 or the older document/session wire families.
   framing, byte hashes, upload state and epoch data. Its restore policy is
   separate from loading a document or journal with asset references.
 
-The fixtures qualify the default V1 and Highlight V2 checkpoint paths. V1 SDK surface review,
-shared upgrade and rollback routes, and the historical input-rule reader
-qualification have separate evidence requirements.
+The fixtures qualify the default V1, Highlight V2 and typed V3 checkpoint paths.
+V1 SDK surface review, shared upgrade and rollback routes, and the historical
+input-rule reader qualification have separate evidence requirements.
 
 ### Rich language releases
 
