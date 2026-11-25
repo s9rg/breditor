@@ -180,21 +180,42 @@ async function startPilot(bootstrap) {
     }
     openButton.disabled = true;
     status.textContent = "Opening your editor…";
-    const pauseKey = `breditor-pilot-paused-${principal}`;
     try {
       const codeSha256 = await digest(new TextEncoder().encode(token));
+      const pauseKey = `breditor-pilot-paused-v2:${JSON.stringify([bootstrap.endpoint, principal, codeSha256])}`;
+      const legacyPauseKey = `breditor-pilot-paused-${principal}`;
+      let migrateLegacy = false;
+      const persistPause = paused => {
+        try {
+          sessionStorage.setItem(pauseKey, paused ? "1" : "0");
+          if (migrateLegacy) {
+            sessionStorage.removeItem(legacyPauseKey);
+            migrateLegacy = false;
+          }
+        }
+        catch { /* Keep the active connection control usable when storage is unavailable. */ }
+      };
       const app = await openNetworkDemo(bootstrap, principal, {
         pilot: true,
         tokenFor: account => account === principal ? token : undefined,
         codeSha256,
-        paused: sessionStorage.getItem(pauseKey) === "1",
+        isPaused: savedWriter => {
+          try {
+            const scoped = sessionStorage.getItem(pauseKey);
+            if (scoped !== null || !savedWriter) return scoped === "1";
+            const legacy = sessionStorage.getItem(legacyPauseKey);
+            migrateLegacy = legacy !== null;
+            return legacy === "1";
+          } catch { return savedWriter; }
+        },
         onPause: paused => {
-          sessionStorage.setItem(pauseKey, paused ? "1" : "0");
+          persistPause(paused);
           activeReport?.record(paused ? "disconnects" : "reconnectRequests");
         },
         onJournalRetired: offerRetiredJournal,
       });
       const peer = Object.values(app.peers)[0];
+      persistPause(peer.offline);
       activeReport = openPilotSessionReport({participant:principal,endpoint:bootstrap.endpoint,codeSha256}, sessionStorage);
       activeReport.record("opens");
       form.hidden = true;

@@ -260,7 +260,8 @@ test("the first-party pilot opens independent participants and verifies an offli
  await expect(page.getByLabel("Participant code")).toHaveValue("");
  await expect(page.getByLabel("Participant",{exact:true})).toHaveValue("alice");
  const savedKeys=await page.evaluate(()=>Object.entries(sessionStorage));
- expect(savedKeys).toEqual(expect.arrayContaining([["breditor-pilot-paused-alice","1"]]));
+ const pauseScope=`breditor-pilot-paused-v2:${JSON.stringify([pilotConfig.endpoint,"alice",createHash("sha256").update(bootstrap.tokens.alice).digest("hex")])}`;
+ expect(savedKeys).toEqual(expect.arrayContaining([[pauseScope,"1"]]));
  expect(JSON.stringify(savedKeys)).not.toContain(bootstrap.tokens.alice);
  await page.getByLabel("Participant code").fill("0".repeat(64));
  await page.getByRole("button",{name:"Open editor"}).click();
@@ -342,6 +343,49 @@ test("the first-party pilot opens independent participants and verifies an offli
    counts:{opens:1,disconnects:0,reconnectRequests:0,savedReloads:0,checkpointDownloads:0,verifiedRecoveries:0,retiredJournals:0},
    downloadedSha256:null,recoveredSha256:null});
  }finally{await priorRelay.dispose();}
+});
+
+test("a distinct pilot opens online after a different pilot was paused in the same tab",async({page})=>{
+ await provisionDemo(page,pilotRoot());
+ const first=relay,firstBootstrap=bootstrap;
+ const open=async()=>{
+  await routePilot(page);
+  await page.goto("/pilot");
+  await page.getByLabel("Participant code").fill(bootstrap.tokens.alice);
+  await page.getByRole("button",{name:"Open editor"}).click();
+  await expect(page.getByRole("region",{name:"Shared document"})).toBeVisible();
+ };
+ try{
+  await open();
+  await ready(page);
+  await page.getByRole("button",{name:"Go offline",exact:true}).click();
+  await expect(page.locator("#state-a")).toContainText("offline");
+  await page.evaluate(()=>window.breditorNetworkDemo.close());
+  await page.unroute("**/pilot-bootstrap.json");
+  await provisionDemo(page,pilotRoot());
+  expect(relay.url).not.toBe(first.url);
+  const secondBootstrap=bootstrap;
+  await open();
+  await ready(page);
+  await expect(page.getByRole("button",{name:"Go offline",exact:true})).toBeVisible();
+  await page.evaluate(async()=>{
+   // Two saved writers in different pilots predate the scoped pause record.
+   for(const key of Object.keys(sessionStorage))if(key.startsWith("breditor-pilot-paused-v2:"))sessionStorage.removeItem(key);
+   sessionStorage.setItem("breditor-pilot-paused-alice","1");
+   await window.breditorNetworkDemo.close();
+  });
+  await page.unroute("**/pilot-bootstrap.json");
+  bootstrap=firstBootstrap;
+  await open();
+  await expect(page.getByRole("button",{name:"Reconnect",exact:true})).toBeVisible();
+  expect(await page.evaluate(()=>sessionStorage.getItem("breditor-pilot-paused-alice"))).toBeNull();
+  await page.evaluate(()=>window.breditorNetworkDemo.close());
+  await page.unroute("**/pilot-bootstrap.json");
+  bootstrap=secondBootstrap;
+  await open();
+  await ready(page);
+  await expect(page.getByRole("button",{name:"Go offline",exact:true})).toBeVisible();
+ }finally{await first.dispose();}
 });
 
 test("simultaneous pilot sign-in in the same browser profile reuses one writer",async({page})=>{

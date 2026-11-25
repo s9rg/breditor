@@ -25,7 +25,7 @@ async function show(peer){
 const update=peer=>{void show(peer).catch(error=>reportPeerError(peer,error));};
 /** Mount the selected accounts using the shared demo controls. Pilot mode supplies one code. */
 export async function openNetworkDemo(bootstrap,chosen,{
- pilot=false,tokenFor=principal=>bootstrap.tokens[principal],codeSha256,paused=false,onPause=()=>{},onJournalRetired,
+ pilot=false,tokenFor=principal=>bootstrap.tokens[principal],codeSha256,isPaused=()=>false,onPause=()=>{},onJournalRetired,
 }={}){
  if(chosen&&!["alice","bob"].includes(chosen))throw Error("Choose peer=alice or peer=bob");
  if(pilot&&(!chosen||!codeSha256||!/^[a-f0-9]{64}$/.test(codeSha256)))throw Error("Choose one pilot participant and code");
@@ -40,7 +40,7 @@ export async function openNetworkDemo(bootstrap,chosen,{
    continue;
   }
   if(pilot)document.querySelector(`#pane-${key}`).hidden=false;
-  const peer={key,principal,paint:0,offline:paused,closing:false,journalRetirement:undefined,session:undefined,cache:undefined,sync:undefined,presence:undefined,assets:undefined,mounted:undefined,overlay:undefined};app.peers[key]=peer;
+  const peer={key,principal,paint:0,offline:false,closing:false,journalRetirement:undefined,session:undefined,cache:undefined,sync:undefined,presence:undefined,assets:undefined,mounted:undefined,overlay:undefined};app.peers[key]=peer;
   const onError=error=>reportPeerError(peer,error);
   const onJournalError=error=>{
    if(pilot&&onJournalRetired&&!app.closed&&!peer.closing&&error?.code==="session_versionchange"){
@@ -54,6 +54,7 @@ export async function openNetworkDemo(bootstrap,chosen,{
   const openSession=async()=>{
    const saved=await credentials(identityDb,identityKey);
    if(pilot&&saved&&saved.codeSha256!==codeSha256)throw Error("Incorrect code for the saved pilot writer");
+   if(pilot)peer.offline=isPaused(Boolean(saved));
    let identity=pilot?saved?.identity:saved,registration;
    if(!identity){
     registration=await registerSharedRelayWriter({endpoint:bootstrap.endpoint,principal,room:"room",getToken,
