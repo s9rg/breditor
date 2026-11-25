@@ -754,18 +754,34 @@ test("pilot keeps journals and assets scoped and recovers only explicitly select
   },{assets:owned.assets,journal:owned.journal,room:owned.room,writer:owned.writer,endpoint:configA.endpoint,otherEndpoint:configB.endpoint});
   await page.evaluate(()=>window.breditorNetworkDemo.close());
 
-  await page.addInitScript(()=>{
-   const open=IDBFactory.prototype.open;window.legacyJournalOpens=0;
+  await page.addInitScript(({endpoint,alias})=>{
+   const open=IDBFactory.prototype.open;
+   window.pilotStorageAttempts={journals:0,assets:0};
    IDBFactory.prototype.open=function(name,...args){
-    if(name==="breditor-pilot-journals-v12")window.legacyJournalOpens++;
+    if(name.startsWith("breditor-pilot-journals-v12"))window.pilotStorageAttempts.journals++;
+    if(name.startsWith("breditor-pilot-assets"))window.pilotStorageAttempts.assets++;
+    if(name==="breditor-pilot-journals-v12"&&sessionStorage.getItem("pilot-test-late-legacy-alias")==="1"){
+     sessionStorage.removeItem("pilot-test-late-legacy-alias");
+     // This request precedes the app's post-open identity read and follows lease acquisition.
+     window.latePilotAlias=new Promise((resolve,reject)=>{
+      const request=open.call(this,"breditor-pilot-identities-v1",1);
+      request.onsuccess=()=>{
+       const db=request.result,tx=db.transaction("identities","readwrite"),store=tx.objectStore("identities"),read=store.get([endpoint,"alice"]);
+       read.onsuccess=()=>store.add({...read.result,identity:{...read.result.identity,endpoint:alias[0],principal:alias[1]}},alias);
+       tx.oncomplete=()=>{db.close();resolve(true);};tx.onabort=()=>{db.close();reject(tx.error);};
+      };
+      request.onerror=()=>reject(request.error);
+     });
+    }
     return open.call(this,name,...args);
    };
-  });
+  },{endpoint:configA.endpoint,alias});
+  const attempts=()=>page.evaluate(()=>window.pilotStorageAttempts);
   await signIn(configA,tokenA);
   await expect(page.locator("#network-state")).toContainText("pilot_journal_ambiguous");
-  expect(await page.evaluate(()=>window.legacyJournalOpens)).toBe(0);
+  expect(await attempts()).toEqual({journals:0,assets:0});
   await expect(page.getByRole("region",{name:"Shared document"})).toBeHidden();
-  await page.evaluate(async alias=>{
+  const removeAlias=()=>page.evaluate(async alias=>{
    const open=indexedDB.open("breditor-pilot-identities-v1");
    const db=await new Promise((resolve,reject)=>{open.onsuccess=()=>resolve(open.result);open.onerror=()=>reject(open.error);});
    try{await new Promise((resolve,reject)=>{
@@ -773,6 +789,16 @@ test("pilot keeps journals and assets scoped and recovers only explicitly select
     tx.oncomplete=()=>resolve();tx.onabort=()=>reject(tx.error);
    });}finally{db.close();}
   },alias);
+  await removeAlias();
+  await page.evaluate(()=>sessionStorage.setItem("pilot-test-late-legacy-alias","1"));
+  await signIn(configA,tokenA);
+  await expect(page.locator("#network-state")).toContainText("pilot_journal_ambiguous");
+  expect(await page.evaluate(()=>window.latePilotAlias)).toBe(true);
+  expect(await attempts()).toEqual({journals:1,assets:0});
+  expect(await page.evaluate(async({room,writer})=>(await navigator.locks.query()).held.some(lock=>
+   lock.name==="breditor:shared-writer:"+JSON.stringify([room,writer])),{room:owned.room,writer:owned.writer})).toBe(false);
+  await expect(page.getByRole("region",{name:"Shared document"})).toBeHidden();
+  await removeAlias();
   await open(configA,tokenA);
   await expect(recovery).toBeVisible();
   expect(await queue()).toEqual([]);
@@ -801,5 +827,19 @@ test("pilot keeps journals and assets scoped and recovers only explicitly select
   await saved();await open(configA,tokenA);await ready(page);
   expect(await queue()).toEqual(receipt);
   await page.evaluate(()=>window.breditorNetworkDemo.close());
+  for(const version of [3,undefined]){
+   await page.evaluate(async({endpoint,version})=>{
+    const request=indexedDB.open("breditor-pilot-identities-v1");
+    const db=await new Promise((resolve,reject)=>{request.onsuccess=()=>resolve(request.result);request.onerror=()=>reject(request.error);});
+    try{await new Promise((resolve,reject)=>{
+     const tx=db.transaction("identities","readwrite"),store=tx.objectStore("identities"),key=[endpoint,"alice"],read=store.get(key);
+     read.onsuccess=()=>store.put({...read.result,scopedStorageVersion:version},key);
+     tx.oncomplete=()=>resolve();tx.onabort=()=>reject(tx.error);
+    });}finally{db.close();}
+   },{endpoint:configA.endpoint,version});
+   await signIn(configA,tokenA);
+   await expect(page.locator("#network-state")).toContainText("pilot_storage_version");
+   expect(await attempts()).toEqual({journals:0,assets:0});
+  }
  }finally{await relayA.dispose();}
 });

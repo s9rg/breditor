@@ -25,7 +25,7 @@ async function requireUniqueLegacyWriter(database,identity){
     const cursor=read.result;
     if(!cursor)return;
     const entry=cursor.value;
-    if(entry?.scopedStorageVersion===undefined&&entry?.identity?.room===identity.room&&entry.identity.writer===identity.writer&&++matches>1)return;
+    if(entry?.identity?.room===identity.room&&entry.identity.writer===identity.writer&&!Object.hasOwn(entry,"scopedStorageVersion")&&++matches>1)return;
     cursor.continue();
    };
    tx.oncomplete=()=>resolve(matches);
@@ -108,12 +108,14 @@ export async function openNetworkDemo(bootstrap,chosen,{
    }else onError(error);
   };
   const getToken=()=>tokenFor(principal),identityKey=[bootstrap.endpoint,principal];
-  let legacyAssetWriter=false;
+  let legacyWriter=false;
   const openSession=async()=>{
    const saved=await credentials(identityDb,identityKey);
    if(pilot&&saved&&saved.codeSha256!==codeSha256)throw Error("Incorrect code for the saved pilot writer");
    if(pilot)peer.offline=isPaused(Boolean(saved));
-   legacyAssetWriter=pilot&&Boolean(saved?.identity)&&saved.scopedStorageVersion===undefined;
+   const marked=pilot&&saved&&Object.hasOwn(saved,"scopedStorageVersion");
+   if(marked&&saved.scopedStorageVersion!==2)throw Object.assign(Error("Unsupported saved pilot storage version"),{code:"pilot_storage_version"});
+   legacyWriter=pilot&&Boolean(saved?.identity)&&!marked;
    let identity=pilot?saved?.identity:saved,registration;
    if(!identity){
     registration=await registerSharedRelayWriter({endpoint:bootstrap.endpoint,principal,room:"room",getToken,
@@ -121,9 +123,14 @@ export async function openNetworkDemo(bootstrap,chosen,{
     identity=registration.identity;
    }
    peer.identity=identity;
-   if(legacyAssetWriter)await requireUniqueLegacyWriter(identityDb,identity);
-   const journal=pilotScope&&!legacyAssetWriter?`${namespace}-journals-v12-${pilotScope}`:`${namespace}-journals-v12`;
-   return SharedPersistentSession.open({database:journal,room:identity.room,writer:identity.writer,create:()=>{if(!registration)throw Error("Exact saved writer journal is missing; refusing a new history");return profile.join_frame(identity.room,identity.writer,registration.frame);},restore:journal=>profile.restore(identity.room,journal),onState:()=>update(peer),onError:onJournalError});
+   if(legacyWriter)await requireUniqueLegacyWriter(identityDb,identity);
+   const journal=pilotScope&&!legacyWriter?`${namespace}-journals-v12-${pilotScope}`:`${namespace}-journals-v12`;
+   const opened=await SharedPersistentSession.open({database:journal,room:identity.room,writer:identity.writer,create:()=>{if(!registration)throw Error("Exact saved writer journal is missing; refusing a new history");return profile.join_frame(identity.room,identity.writer,registration.frame);},restore:journal=>profile.restore(identity.room,journal),onState:()=>update(peer),onError:onJournalError});
+   if(legacyWriter){
+    try{await requireUniqueLegacyWriter(identityDb,identity);}
+    catch(error){await opened.discardAndClose();throw error;}
+   }
+   return opened;
   };
   // Give the second tab the first tab's writer and the usual live journal lease check.
   // Keep the registration lock until the first exact local journal has been committed.
@@ -133,7 +140,7 @@ export async function openNetworkDemo(bootstrap,chosen,{
   try{peer.cache=await RichAssetStore.open(pilotScope?`${namespace}-assets-v2-${pilotScope}`:`${namespace}-assets-${principal}`,{onChange:()=>update(peer)});}
   catch(error){if(!peer.journalRetirement)throw error;}
   if(peer.journalRetirement){peer.cache?.close();peer.cache=undefined;continue;}
-  if(legacyAssetWriter&&peer.session.recovered)peer.recoverLegacyImages=()=>recoverLegacyPilotImages(peer);
+  if(legacyWriter&&peer.session.recovered)peer.recoverLegacyImages=()=>recoverLegacyPilotImages(peer);
   peer.assets=new SharedRelayAssets({endpoint:bootstrap.endpoint,principal,getToken,store:peer.cache});
   if(peer.offline)peer.assets.setOnline(false);
   peer.presence=new SharedPresence(peer.session.core,{onError});peer.presence.subscribe(()=>update(peer));
