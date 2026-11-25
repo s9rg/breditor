@@ -1,0 +1,215 @@
+{
+  "format": "breditor/installed-retained-raster-payload-comparison",
+  "formatVersion": 1,
+  "scope": "Twelve retained browser-encoded PNGs, one explicit export and three retained opens per build. Logical constructor and arrayBuffer payload bytes only.",
+  "savedLogicalBlobPayloadBytesPerPass": 17995358,
+  "savedLogicalReadBytesPerPass": 17995358,
+  "baseline": {
+    "format": "breditor/installed-retained-asset-open",
+    "source": {
+      "commit": "a471bb9fa4b60f669239d2e580e56bdd4ec37749",
+      "dirty": false,
+      "sha256": "5637064d2f609faa353c7af366d446aaa551ca2dff64802375c8d361bd2d88b9",
+      "files": 9694,
+      "bytes": 83100044
+    },
+    "producer": {
+      "commit": "a471bb9fa4b60f669239d2e580e56bdd4ec37749",
+      "dirty": false,
+      "sha256": "5637064d2f609faa353c7af366d446aaa551ca2dff64802375c8d361bd2d88b9",
+      "files": 9694,
+      "bytes": 83100044
+    },
+    "browser": "158.0.8127.37",
+    "localWasmSha256": "f100599f39805586d465961161bf751e0bd51e8d524ad2ab653001946347200e",
+    "fixtureProof": [
+      {
+        "path": "scripts/fixtures/retained-asset-open-measurement/index.html",
+        "sha256": "6969efd0aa85e7381608fc0453ab576edd572d9344f9f979bfe08f5537282480"
+      },
+      {
+        "path": "scripts/fixtures/retained-asset-open-measurement/measure.mjs",
+        "sha256": "9b7f67eeb582adddb8d07b3d3ebfded2fb6743ed6d65e714d66f54c964a3e795"
+      }
+    ],
+    "registryArtifactsPinnedToProducer": 45,
+    "archives": [
+      {
+        "name": "@breditor/browser",
+        "sha256": "1199d14fe5b3d5b2e0318642a9bbf9f5b84773e97265597f72e190be43869ae0"
+      },
+      {
+        "name": "@breditor/experimental-rich-content",
+        "sha256": "e0a75cb10ab89bd93177dd7a5c72ef7789db816e99d5fd88900de4ce6bae93af"
+      },
+      {
+        "name": "@breditor/editor",
+        "sha256": "9091ec60bb7ab80ddbdfcdfa5cde8756fdf33b16a16e1d78d792151c0db49b08"
+      }
+    ],
+    "passed": true,
+    "samples": [
+      {
+        "wholeArchiveBlobs": 0,
+        "wholeArchiveBlobBytes": 0,
+        "rasterBlobs": 24,
+        "rasterBlobBytes": 35990716,
+        "rasterReads": 12,
+        "rasterReadBytes": 17995358,
+        "openMs": 171.19999992847443
+      },
+      {
+        "wholeArchiveBlobs": 0,
+        "wholeArchiveBlobBytes": 0,
+        "rasterBlobs": 24,
+        "rasterBlobBytes": 35990716,
+        "rasterReads": 12,
+        "rasterReadBytes": 17995358,
+        "openMs": 172.39999997615814
+      },
+      {
+        "wholeArchiveBlobs": 0,
+        "wholeArchiveBlobBytes": 0,
+        "rasterBlobs": 24,
+        "rasterBlobBytes": 35990716,
+        "rasterReads": 12,
+        "rasterReadBytes": 17995358,
+        "openMs": 203.79999995231628
+      }
+    ],
+    "exportCounts": {
+      "wholeArchiveBlobs": 1,
+      "wholeArchiveBlobBytes": 17998472,
+      "rasterBlobs": 24,
+      "rasterBlobBytes": 35990716,
+      "rasterReads": 12,
+      "rasterReadBytes": 17995358
+    },
+    "assets": 12,
+    "rasterBytes": 17995358,
+    "archiveBytes": 17998472,
+    "archiveSha256": "d9069fe4c0c6c08537183133ec1083b9e21261100dec8d867adba5dbc834a3b0",
+    "checkpointSha256": "1dc3f5f106545aafc4e83f5cbae0045ff76d30d812db440f261de754a0eb72ae",
+    "queueStates": [
+      "cancelled",
+      "failed",
+      "failed",
+      "failed",
+      "failed",
+      "failed",
+      "failed",
+      "failed",
+      "failed",
+      "failed",
+      "pending",
+      "uploaded"
+    ],
+    "exactArchive": true,
+    "nativeUndoRedo": true,
+    "corruptRasterRefused": true
+  },
+  "candidate": {
+    "format": "breditor/installed-retained-asset-open",
+    "source": {
+      "commit": "58860ae126a9906514829aba43825cf9c6f763a2",
+      "dirty": false,
+      "sha256": "3c93fc08f1345c13dec0a494ed86a7269cd12f0b7a5c4ceed2afa3bd32d6c797",
+      "files": 9694,
+      "bytes": 83100620
+    },
+    "producer": {
+      "commit": "58860ae126a9906514829aba43825cf9c6f763a2",
+      "dirty": false,
+      "sha256": "3c93fc08f1345c13dec0a494ed86a7269cd12f0b7a5c4ceed2afa3bd32d6c797",
+      "files": 9694,
+      "bytes": 83100620
+    },
+    "browser": "158.0.8127.37",
+    "localWasmSha256": "f100599f39805586d465961161bf751e0bd51e8d524ad2ab653001946347200e",
+    "fixtureProof": [
+      {
+        "path": "scripts/fixtures/retained-asset-open-measurement/index.html",
+        "sha256": "6969efd0aa85e7381608fc0453ab576edd572d9344f9f979bfe08f5537282480"
+      },
+      {
+        "path": "scripts/fixtures/retained-asset-open-measurement/measure.mjs",
+        "sha256": "9b7f67eeb582adddb8d07b3d3ebfded2fb6743ed6d65e714d66f54c964a3e795"
+      }
+    ],
+    "registryArtifactsPinnedToProducer": 45,
+    "archives": [
+      {
+        "name": "@breditor/browser",
+        "sha256": "1199d14fe5b3d5b2e0318642a9bbf9f5b84773e97265597f72e190be43869ae0"
+      },
+      {
+        "name": "@breditor/experimental-rich-content",
+        "sha256": "758ec27c322eb79231dd640d2ebe7e884bab4841c28e97d7cbdbae02c4a857b9"
+      },
+      {
+        "name": "@breditor/editor",
+        "sha256": "9091ec60bb7ab80ddbdfcdfa5cde8756fdf33b16a16e1d78d792151c0db49b08"
+      }
+    ],
+    "passed": true,
+    "samples": [
+      {
+        "wholeArchiveBlobs": 0,
+        "wholeArchiveBlobBytes": 0,
+        "rasterBlobs": 12,
+        "rasterBlobBytes": 17995358,
+        "rasterReads": 0,
+        "rasterReadBytes": 0,
+        "openMs": 191
+      },
+      {
+        "wholeArchiveBlobs": 0,
+        "wholeArchiveBlobBytes": 0,
+        "rasterBlobs": 12,
+        "rasterBlobBytes": 17995358,
+        "rasterReads": 0,
+        "rasterReadBytes": 0,
+        "openMs": 143.80000007152557
+      },
+      {
+        "wholeArchiveBlobs": 0,
+        "wholeArchiveBlobBytes": 0,
+        "rasterBlobs": 12,
+        "rasterBlobBytes": 17995358,
+        "rasterReads": 0,
+        "rasterReadBytes": 0,
+        "openMs": 164.89999997615814
+      }
+    ],
+    "exportCounts": {
+      "wholeArchiveBlobs": 1,
+      "wholeArchiveBlobBytes": 17998472,
+      "rasterBlobs": 12,
+      "rasterBlobBytes": 17995358,
+      "rasterReads": 0,
+      "rasterReadBytes": 0
+    },
+    "assets": 12,
+    "rasterBytes": 17995358,
+    "archiveBytes": 17998472,
+    "archiveSha256": "d9069fe4c0c6c08537183133ec1083b9e21261100dec8d867adba5dbc834a3b0",
+    "checkpointSha256": "1dc3f5f106545aafc4e83f5cbae0045ff76d30d812db440f261de754a0eb72ae",
+    "queueStates": [
+      "cancelled",
+      "failed",
+      "failed",
+      "failed",
+      "failed",
+      "failed",
+      "failed",
+      "failed",
+      "failed",
+      "failed",
+      "pending",
+      "uploaded"
+    ],
+    "exactArchive": true,
+    "nativeUndoRedo": true,
+    "corruptRasterRefused": true
+  }
+}

@@ -696,6 +696,21 @@ node scripts/check-asset-backups-installed.mjs --reuse-runtime
 node scripts/measure-retained-asset-open.mjs
 ```
 
+## Retained raster validation payload reads
+
+An installed Chrome 158 workload opened twelve retained PNGs and exported
+the same store. Each candidate pass constructed twelve raster Blobs and
+performed zero raster `arrayBuffer()` reads. The earlier build constructed 24
+raster Blobs and performed twelve reads. Each avoided group accounted for
+17,995,358 logical payload bytes per pass. The decoder still receives the
+raster Blob and every asset is checked against its content hash.
+
+Both builds produced the same complete archive and native checkpoint digests.
+Cold restore preserved the upload queue and exact native Undo/Redo. Retained
+open and explicit export both refused a modified raster. The counts describe
+logical Blob constructor payload and read bytes for one workload.
+[Measurement and archive hashes](qualification/2026-11-24-installed-chrome-retained-raster-payload-reads.json)
+
 ## Installed retained asset reconciliation writes
 
 The installed Chrome 158 fixture reconciled 12 local PNGs with an incoming
