@@ -1,6 +1,6 @@
 import assert from "node:assert/strict";
 import {createHash} from "node:crypto";
-import {lstatSync,readFileSync} from "node:fs";
+import {lstatSync,readFileSync,realpathSync} from "node:fs";
 import {resolve} from "node:path";
 
 /** Verify and identify the exact archives selected for installation. */
@@ -24,4 +24,22 @@ export function installedArchiveDigests(directory,packs,names){
   assert.equal(actualIntegrity,integrity,`Archive integrity changed: ${filename}`);
   return {name,version,filename,bytes:bytes.length,sha256:createHash("sha256").update(bytes).digest("hex"),integrity};
  });
+}
+
+/** Require the reviewed local archives and registry sources throughout the installed lock. */
+export function verifyInstalledArchiveBindings(directory,consumer,lock,archives){
+ const paths=new Set(archives.map(archive=>`node_modules/${archive.name}`));
+ for(const [path,entry]of Object.entries(lock.packages)){
+  if(path===""||paths.has(path))continue;
+  assert.ok(typeof entry?.resolved==="string"&&entry.resolved.startsWith("https://registry.npmjs.org/"),
+   `Unexpected installed dependency source: ${path}`);
+ }
+ for(const archive of archives){
+  const entry=lock.packages[`node_modules/${archive.name}`];
+  assert.ok(entry&&!entry.link&&entry.resolved?.startsWith("file:"),`Missing installed archive binding: ${archive.name}`);
+  assert.equal(realpathSync(resolve(consumer,entry.resolved.slice(5))),realpathSync(resolve(directory,archive.filename)),
+   `Installed archive path differs for ${archive.name}`);
+  assert.equal(entry.version,archive.version,`Installed archive version differs for ${archive.name}`);
+  assert.equal(entry.integrity,archive.integrity,`Installed archive integrity differs for ${archive.name}`);
+ }
 }
