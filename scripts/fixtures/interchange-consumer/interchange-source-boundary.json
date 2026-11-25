@@ -1,0 +1,98 @@
+{
+  "@breditor/interchange": {
+    ".": {
+      "conditions": [
+        "import",
+        "types"
+      ],
+      "values": [
+        "createRichInterchange",
+        "exportHtmlPage",
+        "htmlPageMetadataLimits",
+        "importHtmlPage",
+        "interchangeContractV1",
+        "interchangeLimits"
+      ],
+      "typeOnly": [
+        "ClipboardTransfer",
+        "HtmlPageMetadata",
+        "ImageSource",
+        "ImportedAsset",
+        "ImportedHtmlPage",
+        "InterchangeErrorCode",
+        "InterchangeImportOptions",
+        "InterchangeLoss",
+        "InterchangeLossCode",
+        "InterchangeOptions",
+        "InterchangeOwner",
+        "InterchangeResult",
+        "RichInterchange"
+      ]
+    },
+    "./docx": {
+      "conditions": [
+        "import",
+        "types"
+      ],
+      "values": [
+        "docxContentType",
+        "docxContractV1",
+        "docxImageBindings",
+        "docxLimits",
+        "exportDocx",
+        "exportDocxWithImages"
+      ],
+      "typeOnly": [
+        "DocxAsyncExportOptions",
+        "DocxErrorCode",
+        "DocxExportOptions",
+        "DocxImageBinding",
+        "DocxLoss",
+        "DocxLossCode",
+        "DocxResult"
+      ]
+    },
+    "./portable-html": {
+      "conditions": [
+        "import",
+        "types"
+      ],
+      "values": [
+        "exportPortableHtml",
+        "portableHtmlRasterLimits"
+      ],
+      "typeOnly": [
+        "PortableHtmlRasterOptions"
+      ]
+    },
+    "./portable-html-import": {
+      "conditions": [
+        "import",
+        "types"
+      ],
+      "values": [
+        "preparePortableHtmlImport"
+      ],
+      "typeOnly": [
+        "PortableHtmlDocumentOwner",
+        "PortableHtmlImportResult",
+        "PreparedPortableHtmlImport"
+      ]
+    },
+    "./xml": {
+      "conditions": [
+        "import",
+        "types"
+      ],
+      "values": [
+        "documentXmlContractV1",
+        "exportDocumentXml",
+        "exportXml",
+        "xmlContractV1"
+      ],
+      "typeOnly": [
+        "XmlDocumentSource"
+      ]
+    }
+  }
+}

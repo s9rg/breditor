@@ -17,8 +17,9 @@ route.
   requirements.
 - The generated Wasm transport, native bindings, rich-runtime implementation,
   direct build paths and other packages have separate admission contracts.
-  Separate interchange and its explicit format subpaths need their own scope
-  decision.
+- The separate [interchange inventory](../scripts/fixtures/interchange-consumer/interchange-source-boundary.json)
+  records the adapter root and its explicit `/docx`, `/xml`, `/portable-html`,
+  and `/portable-html-import` routes for review.
 
 [The installed SDK check](../scripts/check-editor-package.mjs) verifies the
 inventory against its independent consumer after packing and installing the
@@ -39,6 +40,16 @@ refusals across languages. The local React consumer renders the local entry
 without collaboration and verifies that the shared entry requires its peer.
 These observations qualify the current matching archive set and document the
 separate shared profile and optional peer boundaries.
+
+The [installed interchange check](../scripts/check-interchange-package.mjs)
+uses the same inventory verifier in two independent installs. With the rich
+runtime peer installed it verifies all five routes, including type-only exports.
+The interchange-only install verifies the root, DOCX and XML routes and
+confirms that both portable raster imports require the rich runtime peer. The
+existing native conversion and selected strict type checks also run. To print
+the adapter inventory, run
+`node interchange-source-boundary.mjs /absolute/path/to/typescript/bin/tsc --print`
+from the installed fixture with the rich runtime peer.
 
 Edits affecting this inventory require review of the corresponding application
 entry. In a fresh installed fixture, run
