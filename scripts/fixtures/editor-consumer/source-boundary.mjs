@@ -2,6 +2,7 @@
 import assert from "node:assert/strict";
 import { execFileSync } from "node:child_process";
 import { readFileSync, realpathSync, writeFileSync } from "node:fs";
+import { createRequire } from "node:module";
 import { isAbsolute } from "node:path";
 import { fileURLToPath } from "node:url";
 
@@ -37,16 +38,66 @@ async function observeInstalledBoundary() {
   return observed;
 }
 
+async function addTypeOnlyExports(observed, compiler) {
+  const routes = Object.entries(observed).flatMap(([name, entries]) =>
+    Object.entries(entries).map(([route, entry]) => ({ specifier: route === "." ? name : `${name}${route.slice(1)}`, entry })));
+  const cwd = fileURLToPath(new URL("./", import.meta.url));
+  const config = fileURLToPath(new URL("source-boundary-tsconfig.json", import.meta.url));
+  const imports = fileURLToPath(new URL("source-boundary-imports.mts", import.meta.url));
+  writeFileSync(imports, routes.map(({ specifier }, index) =>
+    `import type * as Route${index} from ${JSON.stringify(specifier)};`).join("\n") + "\n");
+  writeFileSync(config, JSON.stringify({
+    compilerOptions: { module: "NodeNext", target: "ES2022", strict: true, lib: ["ES2022", "DOM", "ESNext.Disposable"] },
+    files: ["source-boundary-imports.mts"],
+  }));
+
+  // Use the same locked TypeScript distribution as the strict CLI contract below.
+  const { API, SymbolFlags } = await import(createRequire(compiler).resolve("typescript/unstable/sync"));
+  const api = new API({ cwd });
+  try {
+    const snapshot = api.updateSnapshot({ openProjects: [config] });
+    try {
+      const project = snapshot.getProject(config);
+      assert.ok(project, "TypeScript did not open the installed consumer project");
+      const { program, checker } = project;
+      const source = program.getSourceFile(imports);
+      assert.ok(source);
+      assert.equal(source.statements.length, routes.length);
+      const modules = checker.getSymbolAtLocation(source.statements.map(statement => statement.moduleSpecifier));
+      for (const [index, { specifier, entry }] of routes.entries()) {
+        const module = modules[index];
+        assert.ok(module, `TypeScript could not resolve the installed route ${specifier}`);
+        const values = new Set(entry.values);
+        const typeOnly = [];
+        for (const exported of checker.getExportsOfModule(module)) {
+          if (values.has(exported.name)) continue;
+          if (exported.flags & SymbolFlags.Alias) {
+            assert.ok(!checker.isUnknownSymbol(checker.getAliasedSymbol(exported)),
+              `TypeScript could not resolve ${exported.name} from ${specifier}`);
+          }
+          typeOnly.push(exported.name);
+        }
+        entry.typeOnly = typeOnly.sort();
+      }
+    } finally {
+      snapshot.dispose();
+    }
+  } finally {
+    api.close();
+  }
+}
+
+const [compiler, mode] = process.argv.slice(2);
+assert.ok(compiler && isAbsolute(compiler) && (mode === undefined || mode === "--print") && process.argv.length <= 4,
+  "Use the absolute TypeScript CLI path, optionally followed by --print for review");
 const observed = await observeInstalledBoundary();
+await addTypeOnlyExports(observed, compiler);
 const expected = new URL("source-boundary.json", import.meta.url);
-if (process.argv[2] === "--print" && process.argv.length === 3) {
+if (mode === "--print") {
   console.log(JSON.stringify(observed, null, 2));
 } else {
-  const compiler = process.argv[2];
-  assert.ok(compiler && isAbsolute(compiler) && process.argv.length === 3,
-    "Use the absolute TypeScript CLI path for verification or --print for review");
   assert.deepEqual(observed, JSON.parse(readFileSync(expected, "utf8")),
-    "Installed package routes or runtime names changed. Review the compatibility boundary with the API change.");
+    "Installed package routes, runtime names or type-only exports changed. Review the compatibility boundary with the API change.");
 
   // Compare the type-visible values against the exact installed ESM namespaces.
   const checks = Object.entries(observed).flatMap(([name, entries]) =>
@@ -66,5 +117,5 @@ if (process.argv[2] === "--print" && process.argv.length === 3) {
     "source-boundary-values.mts", "source-boundary-types.mts"],
     { cwd: fileURLToPath(new URL("./", import.meta.url)), stdio: "inherit" });
   console.log(JSON.stringify({ packages: packages.length, routes: checks.length, hiddenPathRefusals: hidden.length,
-    runtimeTypeNamesMatch: true, strictLifecycleTypes: true }));
+    runtimeTypeNamesMatch: true, typeOnlyNamesMatch: true, strictLifecycleTypes: true }));
 }
