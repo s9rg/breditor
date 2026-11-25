@@ -1,17 +1,22 @@
 import {codeDemoResources} from "../code-demo/resources.mjs";
+import {installedArchiveDigests} from "../../scripts/installed-archive-digests.mjs";
 import {contentsDemoResources} from "../contents-demo/resources.mjs";
+import {pilotArchiveNames,pilotCandidateIdentity} from "./pilot-session-report.mjs";
 // Exact localhost functional host. This is not the reference collaboration relay.
 import {createHash} from "node:crypto";
-import {createServer} from "node:http";import {readFileSync,readdirSync} from "node:fs";import {resolve,dirname} from "node:path";import {fileURLToPath} from "node:url";
+import {createServer} from "node:http";import {readFileSync,readdirSync} from "node:fs";import {basename,resolve,dirname} from "node:path";import {fileURLToPath} from "node:url";
 const root=resolve(dirname(fileURLToPath(import.meta.url)),"../.."),artifacts=resolve(root,"target/collaboration-feasibility-web");
 const application=process.env["BREDITOR_SHARED_INSTALLED"]==="application";
-function applicationConsumer(){
+const receiptPin=process.env["BREDITOR_SHARED_INSTALLED_RECEIPT_SHA256"];
+const relayPin=process.env["BREDITOR_PILOT_RELAY_SHA256"];
+const sha256=bytes=>createHash("sha256").update(bytes).digest("hex");
+function applicationReceipt(){
  const bytes=readFileSync(resolve(root,"target/editor-installed-consumer.json"));
- const expected=process.env["BREDITOR_SHARED_INSTALLED_RECEIPT_SHA256"];
- if(expected!==undefined&&createHash("sha256").update(bytes).digest("hex")!==expected)throw Error("Installed application consumer receipt changed before browser startup");
- return JSON.parse(bytes).consumer;
+ if(receiptPin!==undefined&&sha256(bytes)!==receiptPin)throw Error("Installed application consumer receipt changed before browser startup");
+ return JSON.parse(bytes);
 }
-const installed=application?applicationConsumer():process.env["BREDITOR_SHARED_INSTALLED"]==="1"?JSON.parse(readFileSync(resolve(root,"target/shared-installed-consumer.json"),"utf8")).consumer:undefined;
+const receipt=application?applicationReceipt():undefined;
+const installed=application?receipt.consumer:process.env["BREDITOR_SHARED_INSTALLED"]==="1"?JSON.parse(readFileSync(resolve(root,"target/shared-installed-consumer.json"),"utf8")).consumer:undefined;
 const local=installed?resolve(installed,"node_modules/@breditor/experimental-rich-content"):resolve(root,"packages/breditor-experimental-rich-content"),shared=installed?resolve(installed,application?"node_modules/@breditor/collaboration":"node_modules/@breditor/experimental-collaboration"):resolve(root,"packages/breditor-experimental-collaboration");
 const resources=new Map(),add=(url,path,type="text/javascript; charset=utf-8")=>resources.set(url,[type,readFileSync(path)]);
 const runtime=installed?resolve(shared,"dist/runtime"):artifacts,runtimeName=installed?"breditor_shared":"breditor_collab_feasibility";
@@ -47,14 +52,6 @@ add("/v4-fixture-productivity.mjs",resolve(root,"experiments/shared-browser/v4-f
 const pilotBootstrap=process.env["BREDITOR_PILOT_BOOTSTRAP"];
 const networkBootstrap=process.env["BREDITOR_NETWORK_BOOTSTRAP"];
 if(pilotBootstrap&&networkBootstrap)throw Error("Choose one demo bootstrap");
-if(pilotBootstrap){
- const settings=JSON.parse(readFileSync(resolve(pilotBootstrap),"utf8"));
- const keys=Object.keys(settings).sort();
- if(keys.join(",")!=="configuration,endpoint,format,formatVersion"||
-    settings.format!=="breditor/first-party-pilot"||settings.formatVersion!==1)
-  throw Error("Pilot bootstrap must contain only public settings");
- resources.set("/pilot-bootstrap.json",["application/json",Buffer.from(JSON.stringify(settings))]);
-}
 if(networkBootstrap)add("/relay-bootstrap.json",resolve(networkBootstrap),"application/json");
 function modules(directory,prefix){for(const file of readdirSync(directory,{withFileTypes:true})){if(file.isDirectory())modules(resolve(directory,file.name),`${prefix}/${file.name}`);else if(file.isFile()&&file.name.endsWith(".js"))add(`${prefix}/${file.name}`,resolve(directory,file.name));}}
 modules(resolve(shared,"dist"),"/dist");modules(resolve(local,"dist/browser"),"/dist/browser");
@@ -69,4 +66,29 @@ const networkPanes=[["a","alice"],["b","bob"]].map(([key,principal])=>`<section 
 resources.set("/network-demo",["text/html; charset=utf-8",Buffer.from(`<!doctype html><html lang="en"><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>Breditor network rich editor demo</title>${imports}<style>body{background:#f2f5ef;color:#173d37;font:15px system-ui;margin:24px}body>header,.editors{max-width:1600px;margin:0 auto 20px}.editors{display:grid;grid-template-columns:1fr 1fr;gap:20px}@media(max-width:1100px){.editors{grid-template-columns:1fr}}button{padding:6px 10px}.pane>header{display:flex;gap:8px;align-items:center;flex-wrap:wrap}.pane h2{margin-right:auto}.pane output{display:block;min-height:1.5em}input[type=file]{max-width:230px}.skip-link{position:absolute;inset-block-start:8px;inset-inline-start:8px;transform:translateY(-200%);padding:8px 12px;background:#fff;color:#173d37;z-index:10}.skip-link:focus{position:relative;display:inline-block;inset:auto;transform:none;margin-bottom:.5rem}</style><a class="skip-link" href="#network-editors">Skip to network editors</a><header><h1>breditor network editor</h1><p>Real Rust relay, two separately saved writers, offline recovery, writer-local Undo/Redo, shared image bytes and live peer selections. Local journal, server acknowledgement and uploaded image states are separate.</p><p><strong>Local developer accounts only.</strong> This page receives both demo account tokens from a private loopback bootstrap. Do not expose this example publicly. The original same-page demo is preserved at <a href="/demo">/demo</a>. Open <a href="/network-demo?peer=alice">alice only</a> or <a href="/network-demo?peer=bob">bob only</a> in separate browser contexts; an active writer cannot be cloned in another tab.</p><p id="network-state" role="status">Loading matching Wasm…</p></header><main class="editors" id="network-editors" tabindex="-1">${networkPanes}</main><script type="module" src="/network-demo.mjs"></script></html>`)]);
 const pilotPage=readFileSync(resolve(root,"experiments/shared-browser/pilot.html"),"utf8");
 resources.set("/pilot",["text/html; charset=utf-8",Buffer.from(pilotPage.replace("{{imports}}",imports).replace("{{networkPanes}}",networkPanes))]);
+if(pilotBootstrap){
+ const settings=JSON.parse(readFileSync(resolve(pilotBootstrap),"utf8"));
+ const keys=Object.keys(settings).sort();
+ if(keys.join(",")!=="configuration,endpoint,format,formatVersion"||
+    settings.format!=="breditor/first-party-pilot"||settings.formatVersion!==1)
+  throw Error("Pilot bootstrap must contain only public settings");
+ if(relayPin!==undefined){
+  if(!receiptPin||!receipt||!/^[0-9a-f]{64}$/u.test(relayPin))throw Error("Pilot requires pinned installed inputs");
+  const {archiveEvidence,archives}=receipt;
+  const archiveDirectory=dirname(archives[0]);
+  if(archives.length!==pilotArchiveNames.length||archiveEvidence.length!==pilotArchiveNames.length||
+     archives.some((path,index)=>dirname(path)!==archiveDirectory||basename(path)!==archiveEvidence[index].filename))
+   throw Error("Pilot installed archive paths changed");
+  const packages=installedArchiveDigests(archiveDirectory,archiveEvidence.map(entry=>({...entry,size:entry.bytes})),pilotArchiveNames)
+   .map(({name,version,sha256})=>{
+    if(archiveEvidence.find(entry=>entry.name===name).sha256!==sha256)throw Error("Pilot installed archive digest changed");
+    return {name,version,sha256};
+   });
+  // Fingerprint the buffered scripts, Wasm, and pilot HTML without including bootstrap or fixture data.
+  const paths=[...resources.keys()].filter(path=>path==="/pilot"||/javascript|wasm/u.test(resources.get(path)[0])).sort();
+  const frontendSha256=sha256(JSON.stringify(paths.map(path=>[path,sha256(resources.get(path)[1])])));
+  settings.candidate=pilotCandidateIdentity({frontendSha256,relaySha256:relayPin,packages});
+ }
+ resources.set("/pilot-bootstrap.json",["application/json",Buffer.from(JSON.stringify(settings))]);
+}
 const server=createServer((request,response)=>{const resource=request.method==="GET"?resources.get(request.url?.split("?")[0]):undefined;if(!resource){response.writeHead(404);response.end("Not found");return;}response.writeHead(200,{"Content-Type":resource[0],"Cache-Control":"no-store","X-Content-Type-Options":"nosniff"});response.end(resource[1]);});server.listen(port,"127.0.0.1",()=>console.log(`Shared editor functional host: http://127.0.0.1:${port}/demo`));for(const signal of["SIGINT","SIGTERM"])process.on(signal,()=>server.close(()=>process.exit(0)));

@@ -103,7 +103,10 @@ data integrity observations, and the document, history, and image sizes
 actually exercised. **Download session report** collects observations from this
 participant's browser tab and its reloads for the current pilot, including
 action counts, browser identification, and the last downloaded and verified
-checkpoint hashes. The JSON contains only session observations. Include each
-participant's observations and recorded incidents. The automated
+checkpoint hashes. The report identifies the verified SDK archives, the pilot
+relay executable, and the frontend bytes buffered by the host. A candidate
+change starts a fresh observation record. The report omits local paths,
+participant codes, and checkpoint bytes. Include each participant's
+observations and recorded incidents. The automated
 two-context rehearsal is a repeatable check of this app. The pilot gate records
 the sustained participant run and its observed operating limits.
