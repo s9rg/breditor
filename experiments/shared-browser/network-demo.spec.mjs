@@ -347,7 +347,7 @@ test("the first-party pilot opens independent participants and verifies an offli
 
 test("a distinct pilot opens online after a different pilot was paused in the same tab",async({page})=>{
  await provisionDemo(page,pilotRoot());
- const first=relay;
+ const first=relay,firstBootstrap=bootstrap;
  const open=async()=>{
   await routePilot(page);
   await page.goto("/pilot");
@@ -360,19 +360,28 @@ test("a distinct pilot opens online after a different pilot was paused in the sa
   await ready(page);
   await page.getByRole("button",{name:"Go offline",exact:true}).click();
   await expect(page.locator("#state-a")).toContainText("offline");
+  await page.evaluate(()=>window.breditorNetworkDemo.close());
+  await page.unroute("**/pilot-bootstrap.json");
+  await provisionDemo(page,pilotRoot());
+  expect(relay.url).not.toBe(first.url);
+  const secondBootstrap=bootstrap;
+  await open();
+  await ready(page);
+  await expect(page.getByRole("button",{name:"Go offline",exact:true})).toBeVisible();
   await page.evaluate(async()=>{
-   // Simulate a saved writer upgrading from the original pause record.
+   // Two saved writers in different pilots predate the scoped pause record.
    for(const key of Object.keys(sessionStorage))if(key.startsWith("breditor-pilot-paused-v2:"))sessionStorage.removeItem(key);
    sessionStorage.setItem("breditor-pilot-paused-alice","1");
    await window.breditorNetworkDemo.close();
   });
   await page.unroute("**/pilot-bootstrap.json");
+  bootstrap=firstBootstrap;
   await open();
   await expect(page.getByRole("button",{name:"Reconnect",exact:true})).toBeVisible();
+  expect(await page.evaluate(()=>sessionStorage.getItem("breditor-pilot-paused-alice"))).toBeNull();
   await page.evaluate(()=>window.breditorNetworkDemo.close());
   await page.unroute("**/pilot-bootstrap.json");
-  await provisionDemo(page,pilotRoot());
-  expect(relay.url).not.toBe(first.url);
+  bootstrap=secondBootstrap;
   await open();
   await ready(page);
   await expect(page.getByRole("button",{name:"Go offline",exact:true})).toBeVisible();

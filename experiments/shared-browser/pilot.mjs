@@ -183,8 +183,16 @@ async function startPilot(bootstrap) {
     try {
       const codeSha256 = await digest(new TextEncoder().encode(token));
       const pauseKey = `breditor-pilot-paused-v2:${JSON.stringify([bootstrap.endpoint, principal, codeSha256])}`;
+      const legacyPauseKey = `breditor-pilot-paused-${principal}`;
+      let migrateLegacy = false;
       const persistPause = paused => {
-        try { sessionStorage.setItem(pauseKey, paused ? "1" : "0"); }
+        try {
+          sessionStorage.setItem(pauseKey, paused ? "1" : "0");
+          if (migrateLegacy) {
+            sessionStorage.removeItem(legacyPauseKey);
+            migrateLegacy = false;
+          }
+        }
         catch { /* Keep the active connection control usable when storage is unavailable. */ }
       };
       const app = await openNetworkDemo(bootstrap, principal, {
@@ -194,7 +202,10 @@ async function startPilot(bootstrap) {
         isPaused: savedWriter => {
           try {
             const scoped = sessionStorage.getItem(pauseKey);
-            return (scoped ?? (savedWriter ? sessionStorage.getItem(`breditor-pilot-paused-${principal}`) : null)) === "1";
+            if (scoped !== null || !savedWriter) return scoped === "1";
+            const legacy = sessionStorage.getItem(legacyPauseKey);
+            migrateLegacy = legacy !== null;
+            return legacy === "1";
           } catch { return savedWriter; }
         },
         onPause: paused => {

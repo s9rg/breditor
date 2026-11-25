@@ -66,6 +66,8 @@ that are at least 44 by 44 CSS pixels.
    the paused writer make an edit and use **Save and reload**. Re-enter that
    writer's code and check that their local content and paused state survived.
    The tab remembers this choice for the current pilot relay and participant.
+   An older pause setting identified only the participant. The first saved
+   writer opened after upgrade adopts that setting once.
 3. Use **Reconnect** and **Upload or retry pending images** as needed. Compare
    the rendered document and image statuses in both profiles. Exercise Undo and
    Redo on each writer and confirm the other participant's work survives.
