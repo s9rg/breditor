@@ -4,6 +4,29 @@ import {file,measureRasterAdmission,nativeOptions,sha} from './measure.mjs';
 const check=(condition,message)=>{if(!condition)throw Error(message);};
 const rejection=async operation=>{try{await operation();return null;}catch(error){return error.code;}};
 const sorted=rows=>[...rows].sort((a,b)=>a.asset<b.asset?-1:a.asset>b.asset?1:0);
+let filesystem;
+
+globalThis.downloadFilesystemArchive=async()=>{
+ const store=await RichAssetStore.open('archive-reader-filesystem-source');
+ try{
+  await store.ingest(await file(20));
+  const url=URL.createObjectURL(await store.exportBackup()),link=document.createElement('a');
+  link.href=url;link.download='archive.rasters';link.click();setTimeout(()=>URL.revokeObjectURL(url),1000);
+ }finally{store.close();}
+};
+globalThis.holdFilesystemArchive=async wrap=>{
+ const selected=document.querySelector('#archive-file').files[0];
+ check(selected instanceof File&&selected.size>1024*1024,'Use real Chromium file selection with an encoded raster');
+ const archive=await readRichAssetBackup(wrap?new Blob([selected],{type:ASSET_BACKUP_MIME}):selected);
+ const [entry]=archive.entries(),payload=archive.blob(entry.asset);
+ check(payload?.size===entry.bytes&&'sha256:'+await sha(await payload.arrayBuffer())===entry.asset,'The file-backed archive must first admit its exact raster');
+ filesystem={archive,entry,payload};
+};
+globalThis.verifyFilesystemPayload=async()=>{
+ const {archive,entry,payload}=filesystem;
+ try{return archive.blob(entry.asset)===payload&&'sha256:'+await sha(await payload.arrayBuffer())===entry.asset;}
+ finally{archive.dispose();filesystem=undefined;}
+};
 
 globalThis.measureArchiveReadPayloads=async()=>{
  let store,editor,archive;
