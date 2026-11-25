@@ -13,6 +13,8 @@ const preview = document.querySelector("#pilot-preview");
 const exportDigest = document.querySelector("#pilot-export-digest");
 const reload = document.querySelector("#pilot-reload");
 const report = document.querySelector("#pilot-session-report");
+const legacyRecovery = document.querySelector("#pilot-legacy-assets");
+const legacyStatus = document.querySelector("#pilot-legacy-asset-status");
 const participants = new Set(["alice", "bob"]);
 let activeReport;
 
@@ -95,6 +97,7 @@ function enableRecovery(wasm, shared, configuration, renderStaticDocument) {
 
 function offerCheckpointRecovery(peer, message, error) {
   showError(status, message, error);
+  legacyRecovery.disabled = true;
   document.querySelector(`#${peer.key}`).inert = true;
   for (const action of ["connect", "upload", "files"]) {
     document.querySelector(`#${action}-${peer.key}`).disabled = true;
@@ -111,7 +114,7 @@ function offerRetiredJournal(peer, error) {
 
 function enableWorkspaceActions(app, peer, downloadNetworkCheckpoint) {
   const save = document.querySelector(`#save-${peer.key}`);
-  let pendingDownload;
+  let pendingDownload, pendingLegacyRecovery;
   save.textContent = "Download checkpoint";
   save.addEventListener("click", () => {
     save.disabled = true;
@@ -132,8 +135,10 @@ function enableWorkspaceActions(app, peer, downloadNetworkCheckpoint) {
   reload.addEventListener("click", async () => {
     reload.disabled = true;
     save.disabled = true;
+    legacyRecovery.disabled = true;
     try {
       await pendingDownload;
+      await pendingLegacyRecovery;
       await app.close();
       activeReport.record("savedReloads");
       location.reload();
@@ -143,6 +148,25 @@ function enableWorkspaceActions(app, peer, downloadNetworkCheckpoint) {
       offerCheckpointRecovery(peer, "Local save did not finish. Use Download checkpoint before leaving.", error);
     }
   });
+  if (peer.recoverLegacyImages) {
+    legacyRecovery.hidden = false;
+    legacyStatus.hidden = false;
+    legacyRecovery.addEventListener("click", () => {
+      legacyRecovery.disabled = true;
+      legacyStatus.textContent = "Checking retained legacy images…";
+      pendingLegacyRecovery = (async () => {
+        try {
+          const count = await peer.recoverLegacyImages();
+          peer.mounted?.refreshAssets();
+          legacyStatus.textContent = count ? `Recovered ${count} legacy image${count === 1 ? "" : "s"}. Use Upload or retry pending images to send them to this pilot.` : "No missing legacy images were found.";
+        } catch (error) {
+          showError(legacyStatus, "Legacy image recovery did not finish.", error);
+        } finally {
+          legacyRecovery.disabled = reload.disabled || peer.closing;
+        }
+      })();
+    });
+  }
   report.addEventListener("click", () => {
     const payload = JSON.stringify(activeReport.snapshot(), null, 2) + "\n";
     const url = URL.createObjectURL(new Blob([payload], {type:"application/json"}));
@@ -226,7 +250,9 @@ async function startPilot(bootstrap) {
         // The account menu can default to its first entry next time.
       }
     } catch (error) {
-      showError(status, "The editor could not open. Check the code and any other open tab for this account.", error);
+      showError(status, error?.code==="pilot_journal_ambiguous"
+        ? "Multiple saved pilots share this legacy journal. Keep this browser data and consult the pilot operator."
+        : "The editor could not open. Check the code and any other open tab for this account.", error);
       openButton.disabled = false;
       tokenField.focus();
     }
