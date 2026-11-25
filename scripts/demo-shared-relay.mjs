@@ -1,7 +1,7 @@
 // Loopback demo and pilot. The developer UI receives its demo tokens. Pilot participants
 // enter their separately supplied code and the browser bootstrap contains no credentials.
 import {spawn} from "node:child_process";
-import {constants} from "node:fs";
+import {constants,createReadStream} from "node:fs";
 import {mkdir,readFile,writeFile,lstat,open,mkdtemp,rename,rm} from "node:fs/promises";
 import {randomBytes,createHash} from "node:crypto";
 import {resolve,dirname,join,basename} from "node:path";
@@ -9,6 +9,11 @@ import {fileURLToPath} from "node:url";
 const root=resolve(dirname(fileURLToPath(import.meta.url)),".."),binary=resolve(root,"target/relay-native/debug/examples/network_demo");
 const equalJson=(a,b)=>JSON.stringify(JSON.parse(a))===JSON.stringify(JSON.parse(b));
 const readText=path=>readFile(path,"utf8");
+async function fileSha256(path){
+ const digest=createHash("sha256");
+ for await(const bytes of createReadStream(path))digest.update(bytes);
+ return digest.digest("hex");
+}
 const writeState=(path,value)=>writeFile(path,value,{mode:0o600});
 function assertPrivatePilotFile(path,stats){
  if(!stats.isFile()||(process.platform!=="win32"&&(stats.mode&0o077)!==0)){
@@ -47,8 +52,9 @@ export async function startNetworkDemo({
  directory=resolve(root,pilot?"target/pilot-model11-journal12-v1":"target/network-demo-model11-journal12-v1"),
 }={}){
  if(typeof pilot!=="boolean")throw TypeError("Expected a Boolean pilot option");
+ const receipt=resolve(root,"target/editor-installed-consumer.json");
  if(pilot){
-  try{await lstat(resolve(root,"target/editor-installed-consumer.json"));}
+  try{await lstat(receipt);}
   catch(error){if(error.code!=="ENOENT")throw error;throw Error("Prepare the installed SDK with node scripts/check-editor-package.mjs first");}
  }
  if(!Number.isInteger(port)||port<1024||port>65535||!Number.isInteger(relayPort)||relayPort<0||relayPort>65535||port===relayPort)throw Error("Invalid local demo ports");
@@ -57,6 +63,8 @@ export async function startNetworkDemo({
  if(!state.isDirectory()||(pilot&&process.platform!=="win32"&&(state.mode&0o077)!==0))throw Error("Private demo directory required");
  const profile=join(directory,"profile.json"),document=join(directory,"document.json"),credentials=join(directory,"accounts.json"),auth=join(directory,"server-auth.json"),bootstrap=join(directory,"browser-bootstrap.json");
  if(pilot)await Promise.all([profile,document,credentials,auth,bootstrap].map(path=>checkPilotFile(path,true)));
+ const receiptSha256=pilot?await fileSha256(receipt):undefined;
+ const relaySha256=pilot?await fileSha256(binary):undefined;
  const read=pilot?readPilotFile:readText,write=pilot?replacePilotFile:writeState;
  const vector=JSON.parse(await readFile(resolve(root,"target/collaboration-feasibility-web/native-vector.json"),"utf8")).shared_profile;
  let input=vector.input;
@@ -78,11 +86,15 @@ export async function startNetworkDemo({
   const frontendEnv={...process.env,BREDITOR_SHARED_PORT:String(port)};
   delete frontendEnv.BREDITOR_NETWORK_BOOTSTRAP;
   delete frontendEnv.BREDITOR_PILOT_BOOTSTRAP;
+  delete frontendEnv.BREDITOR_PILOT_RELAY_SHA256;
   if(pilot){
    frontendEnv.BREDITOR_PILOT_BOOTSTRAP=bootstrap;
    frontendEnv.BREDITOR_SHARED_INSTALLED="application";
+   frontendEnv.BREDITOR_SHARED_INSTALLED_RECEIPT_SHA256=receiptSha256;
+   frontendEnv.BREDITOR_PILOT_RELAY_SHA256=relaySha256;
   }else frontendEnv.BREDITOR_NETWORK_BOOTSTRAP=bootstrap;
   frontend=await launch(process.execPath,["experiments/shared-browser/serve.mjs"],frontendEnv,line=>line.startsWith("Shared editor functional host:")?true:undefined);
+  if(pilot&&await fileSha256(binary)!==relaySha256)throw Error("Pilot relay executable changed during startup");
   let stopped=false;
   return{url:`http://127.0.0.1:${port}/${pilot?"pilot":"network-demo"}`,endpoint,directory,async stop(){if(stopped)return;stopped=true;await frontend.stop();await relay.stop();},closed:Promise.race([relay.exit,frontend.exit])};
  }catch(error){await frontend?.stop();await relay?.stop();throw error;}

@@ -1,4 +1,4 @@
-import {openPilotSessionReport} from "./pilot-session-report.mjs";
+import {openPilotSessionReport,pilotCandidateIdentity} from "./pilot-session-report.mjs";
 
 const maxCheckpointBytes = 16 * 1024 * 1024;
 const form = document.querySelector("#pilot-account");
@@ -41,6 +41,7 @@ async function readBootstrap() {
       endpoint.username || endpoint.password || endpoint.search || endpoint.hash) {
     throw Error("Invalid pilot endpoint");
   }
+  value.candidate = pilotCandidateIdentity(value.candidate);
   return value;
 }
 
@@ -240,7 +241,7 @@ async function startPilot(bootstrap) {
       });
       const peer = Object.values(app.peers)[0];
       persistPause(peer.offline);
-      activeReport = openPilotSessionReport({participant:principal,endpoint:bootstrap.endpoint,codeSha256}, sessionStorage);
+      activeReport = openPilotSessionReport({participant:principal,endpoint:bootstrap.endpoint,codeSha256,candidate:bootstrap.candidate}, sessionStorage);
       activeReport.record("opens");
       form.hidden = true;
       enableWorkspaceActions(app, peer, downloadNetworkCheckpoint);
