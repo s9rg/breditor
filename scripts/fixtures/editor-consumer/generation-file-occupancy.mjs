@@ -60,7 +60,7 @@ export async function verifyOccupiedGenerationFile(independent){
     return add.apply(this,args);
    };
    try{await (independent?owner.sealDocumentGeneration("two"):owner.sealGeneration("two"));}
-   catch(error){refusedCode=error.code??error.name;}
+   catch(error){refusedCode=typeof error.code==="string"?error.code:error.name;}
   }finally{IDBObjectStore.prototype.add=add;}
   const failed=owner.state(),sealed=owner.exportRecovery();
   check(refusedCode===(independent?"independent_history_storage":"segmented_storage")&&occupiedAdds===0,`The existing malformed immutable key must refuse before add (${refusedCode}, ${occupiedAdds} add calls)`);
