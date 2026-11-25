@@ -212,9 +212,49 @@ async function listMetadata(store,database){
  }finally{IDBObjectStore.prototype.getAll=getAll;}
 }
 function options(checkpointJson,assetStore){return{host,richLanguage:3,history:"typing-v1",toolbar:()=>[],resolveAsset:binding=>assetStore.resolve(binding.asset),onError:error=>errors.push(String(error)),initial:checkpointJson?{kind:"typingCheckpoint",checkpointJson}:{kind:"empty",blockId:"body"}};}
+async function duplicateRasterAdmission(file,database){
+ let owner=await RichAssetStore.open(database),raw,otherEditor;
+ const otherHost=document.createElement("section");document.body.append(otherHost);
+ try{
+  const {asset}=await owner.ingest(file);
+  await owner.flush(async()=>"existing-receipt");
+  const original=await owner.get(asset),archive=await owner.exportBackup(),archiveSha256=await sha(archive);
+  const duplicate=()=>owner.cacheRemote(asset,file,"unexpected-replacement-receipt");
+  same(await owner.ingest(file),original,"A valid local duplicate keeps its durable upload state");
+  same(await duplicate(),original,"A valid remote duplicate keeps its durable receipt");
+  check(await sha(await owner.exportBackup())===archiveSha256,"Valid duplicates retain every archive byte");
+  raw=await new Promise((resolve,reject)=>{const open=indexedDB.open(database);open.onsuccess=()=>resolve(open.result);open.onerror=()=>reject(open.error);});
+  const transact=(mode,issue)=>new Promise((resolve,reject)=>{
+   const tx=raw.transaction("assets",mode),request=issue(tx.objectStore("assets"));
+   tx.oncomplete=()=>resolve(request.result);tx.onabort=()=>reject(tx.error);
+  });
+  const row=await transact("readonly",assets=>assets.get(asset));
+  const payload=row.payload.slice(0);
+  const corrupt=new Uint8Array(payload);corrupt[corrupt.length-1]^=1;
+  await transact("readwrite",assets=>assets.put({...row,payload}));
+
+  otherEditor=await openLocalEditor({...options(null,owner),host:otherHost});
+  const before=otherEditor.checkpointJson(),outcomes=[];
+  for(const operation of [()=>owner.ingest(file),duplicate,
+   ()=>otherEditor.insertImageFiles(owner,[file],{parent:{kind:"document"},before:null})]){
+   try{await operation();outcomes.push("accepted");}catch(error){outcomes.push(error.code??error.name);}
+  }
+  same(outcomes,["asset_raster_conflict","asset_raster_conflict","asset_raster_conflict"],
+   "Corrupt retained bytes must refuse duplicate admission before publishing a native reference");
+  check(otherEditor.checkpointJson()===before,"The refused raster must preserve native history");
+  const retained=await transact("readonly",assets=>assets.get(asset));
+  same({...retained,payload:Array.from(new Uint8Array(retained.payload))},{...row,payload:Array.from(corrupt)},
+   "Duplicate refusal must preserve the occupied row and its receipt");
+  await transact("readwrite",assets=>assets.put(row));
+  owner.close();owner=await RichAssetStore.openRetained(database);
+  check(await sha(await owner.exportBackup())===archiveSha256,"The later exact cold open must preserve the original archive");
+  return true;
+ }finally{otherEditor?.dispose();otherHost.remove();raw?.close();owner?.close();}
+}
 async function run(){
  check(RichAssetStore===DirectStore,"Public entry points must share the same asset class");const prefix=`asset-backup-browser-${crypto.randomUUID()}`,source=await RichAssetStore.open(`${prefix}-source`);let target,extra,winner;try{
   const providerCloseFence=await closeBeforeUploadProvider(await imageFile("image/png","#245912"),prefix+"-provider-close");
+  await duplicateRasterAdmission(await imageFile("image/png","#412656"),prefix+"-duplicate-admission");
   editor=await openLocalEditor(options(null,source));const png=await imageFile("image/png","#346799"),jpeg=await imageFile("image/jpeg","#a64080"),webp=await imageFile("image/webp","#249f35"),fourth=await imageFile("image/png","#7930ba"),images=await editor.insertImageFiles(source,[png,jpeg],{parent:{kind:"document"},before:null}),webpInfo=await source.ingest(webp);await source.ingest(fourth);const opaqueReceipt="host-receipt:"+String.fromCharCode(0xd800,0,0xdc00)+":🙂";let uploadCalls=0;await source.flush(async info=>{uploadCalls++;if(info.asset===images[0].asset)return opaqueReceipt;throw Error("fixture offline upload");});await source.cancel(images[1].asset);await source.retry(webpInfo.asset);
   const metadata=await listMetadata(source,`${prefix}-source`);same(metadata.map(r=>r.status).sort(),["cancelled","failed","pending","uploaded"],"Retain all four queue states");editor.execute({kind:"undo"});const checkpoint=editor.checkpointJson();check(!editor.view().documentJson.includes(images[0].asset),"Undo removes references, not retained bytes");
   check(editor.supportsRetainedAssetReferences(),"Managed installed owner must expose native retained-image reads");const inventory=editor.retainedAssetReferences();editor.checkRetainedAssetReferences(inventory);same(inventory.references.map(r=>r.asset).sort(),images.map(r=>r.asset).sort(),"Inventory includes invisible Redo images, not unrelated store files");check([inventory,inventory.schema,inventory.references,...inventory.references].every(Object.isFrozen),"Inventory is immutable");refusesInventory(()=>editor.checkRetainedAssetReferences(structuredClone(inventory)));check(editor.checkpointJson()===checkpoint,"Native inventory must not publish a history action");
