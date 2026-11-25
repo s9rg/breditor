@@ -92,8 +92,10 @@ that are at least 44 by 44 CSS pixels.
 
 If the local journal is retired by a browser storage upgrade or the local save
 for **Save and reload** fails, the workspace stays visible with **Download
-checkpoint** available. Keyboard focus moves to the checkpoint action, and
-editing, reconnect, and upload controls are disabled.
+checkpoint** available. Editing, reconnect, and upload controls are disabled.
+Focus moves to the checkpoint action when sign-in opens a retired writer, the
+focused save action fails, or retirement disables the focused control. The
+separate recovery picker stays focused if it was already in use.
 If storage changes while opening a saved writer, the pilot stops the initial
 relay connection and opens the same checkpoint recovery controls.
 

@@ -451,6 +451,27 @@ const retirePilotJournal=page=>page.evaluate(async()=>{
  });
 });
 
+test("a live pilot journal retirement preserves focus on the independent recovery picker",async({page})=>{
+ await provisionDemo(page,pilotRoot());
+ await routePilot(page);
+ await page.goto("/pilot");
+ await page.getByLabel("Participant code").fill(bootstrap.tokens.alice);
+ await page.getByRole("button",{name:"Open editor"}).click();
+ await ready(page);
+ const checkpoint=await page.evaluate(()=>window.breditorNetworkDemo.peers.a.session.core.checkpointJson());
+ const recovery=page.getByLabel("Document checkpoint");
+ await recovery.focus();
+ await expect(recovery).toBeFocused();
+ await retirePilotJournal(page);
+ await expect(page.locator("#network-state")).toContainText("Local storage changed");
+ await expect(page.locator("#a")).toHaveJSProperty("inert",true);
+ await expect(page.getByRole("button",{name:"Download checkpoint"})).toBeEnabled();
+ await expect(recovery).toBeFocused({timeout:1500});
+ await recovery.setInputFiles({name:"checkpoint.json",mimeType:"application/json",buffer:Buffer.from(checkpoint)});
+ await expect(page.locator("#pilot-verification")).toContainText(createHash("sha256").update(checkpoint).digest("hex"));
+ await expect(recovery).toBeFocused();
+});
+
 test("a journal retired during pilot sign-in offers the exact saved checkpoint",async({page})=>{
  await provisionDemo(page,pilotRoot());
  await routePilot(page);

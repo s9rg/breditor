@@ -96,21 +96,25 @@ function enableRecovery(wasm, shared, configuration, renderStaticDocument) {
   });
 }
 
-function offerCheckpointRecovery(peer, message, error) {
+function offerCheckpointRecovery(peer, message, error, {focusCheckpoint = false, failedControl} = {}) {
   showError(status, message, error);
-  legacyRecovery.disabled = true;
-  document.querySelector(`#${peer.key}`).inert = true;
-  for (const action of ["connect", "upload", "files"]) {
-    document.querySelector(`#${action}-${peer.key}`).disabled = true;
+  const focused = document.activeElement;
+  const editor = document.querySelector(`#${peer.key}`);
+  const disabledControls = [legacyRecovery, ...["connect", "upload", "files"].map(action => document.querySelector(`#${action}-${peer.key}`))];
+  const moveFocus = focusCheckpoint || !focused || focused === document.body || focused === workspace || focused === failedControl ||
+    (form.hidden && form.contains(focused)) || editor.contains(focused) || disabledControls.includes(focused);
+  editor.inert = true;
+  for (const control of disabledControls) control.disabled = true;
+  if (moveFocus) {
+    const save = document.querySelector(`#save-${peer.key}`);
+    const nextControl = save.disabled ? reload : save;
+    nextControl.focus({preventScroll: true});
   }
-  const save = document.querySelector(`#save-${peer.key}`);
-  const nextControl = save.disabled ? reload : save;
-  nextControl.focus({preventScroll: true});
 }
 
-function offerRetiredJournal(peer, error) {
+function offerRetiredJournal(peer, error, options) {
   activeReport?.record("retiredJournals");
-  offerCheckpointRecovery(peer, "Local storage changed. Use Download checkpoint before leaving.", error);
+  offerCheckpointRecovery(peer, "Local storage changed. Use Download checkpoint before leaving.", error, options);
 }
 
 function enableWorkspaceActions(app, peer, downloadNetworkCheckpoint) {
@@ -148,7 +152,7 @@ function enableWorkspaceActions(app, peer, downloadNetworkCheckpoint) {
     } catch (error) {
       reload.disabled = false;
       save.disabled = false;
-      offerCheckpointRecovery(peer, "Local save did not finish. Use Download checkpoint before leaving.", error);
+      offerCheckpointRecovery(peer, "Local save did not finish. Use Download checkpoint before leaving.", error, {failedControl:reload});
     }
   });
   if (peer.recoverLegacyImages) {
@@ -181,7 +185,7 @@ function enableWorkspaceActions(app, peer, downloadNetworkCheckpoint) {
   });
   workspace.hidden = false;
   workspace.tabIndex = -1;
-  if (peer.journalRetirement) offerRetiredJournal(peer, peer.journalRetirement);
+  if (peer.journalRetirement) offerRetiredJournal(peer, peer.journalRetirement, {focusCheckpoint:true});
   else workspace.focus();
 }
 
