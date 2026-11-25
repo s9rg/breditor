@@ -1,8 +1,15 @@
 import assert from "node:assert/strict";
-import {writeFileSync} from "node:fs";
+import {existsSync,mkdirSync,mkdtempSync,readFileSync,rmSync,writeFileSync} from "node:fs";
+import {tmpdir} from "node:os";
+import {join} from "node:path";
 import {test} from "node:test";
 import {validateDefaultBrowserReport} from "./candidate-release/default-browser-report.mjs";
 import {releaseChecks,runReleaseChecks} from "./verify-release.mjs";
+import {candidateReleasePlan} from "./candidate-release/plan.mjs";
+import {fileEvidence,retainStageArtifact} from "./candidate-release/evidence.mjs";
+import {
+ defaultReleaseBrowserChecks,defaultReleaseBrowserPath,verifyDefaultReleaseBrowserStage,
+} from "./candidate-release/default-release-browser-evidence.mjs";
 
 const projects=["chromium","firefox","webkit"];
 function sample(){
@@ -45,4 +52,39 @@ test("zero-exit Playwright with skipped work stops the default verifier",()=>{
  assert.equal(invocations.length,2);
  assert.match(logs.join("\n"),/browser-matrix evidence rejected/);
  assert.match(logs.at(-1),/FAILED browser-matrix/);
+});
+
+test("candidate default evidence replays both reports and retains a failed pair without stale outputs",t=>{
+ const root=mkdtempSync(join(tmpdir(),"breditor-default-browser-evidence-"));
+ t.after(()=>rmSync(root,{recursive:true,force:true}));
+ mkdirSync(join(root,"scripts/candidate-release"),{recursive:true});
+ writeFileSync(join(root,"scripts/candidate-release/default-release-browser-evidence.mjs"),"");
+ const checks=releaseChecks({}).filter(check=>defaultReleaseBrowserChecks.includes(check.id));
+ const output=id=>join(root,defaultReleaseBrowserPath(id));
+ const run=failed=>(_command,args,options)=>{
+  const listing=args.includes("--list"),value=sample();
+  if(failed&&!listing)value.stats.unexpected=1;
+  writeFileSync(options.env.PLAYWRIGHT_JSON_OUTPUT_FILE,JSON.stringify(value));
+  return {status:failed&&!listing?7:0};
+ };
+ assert.equal(runReleaseChecks(checks,run(false),()=>{},{evidenceRoot:root}),0);
+ const plan=candidateReleasePlan({profile:"default-matrix"}).checks[0];
+ assert.deepEqual(plan.args,["scripts/verify-release.mjs","--candidate-evidence"]);
+ assert.deepEqual(plan.artifacts,defaultReleaseBrowserChecks.map(id=>({path:defaultReleaseBrowserPath(id),fresh:true,retain:true})));
+ assert.deepEqual(candidateReleasePlan({profile:"default-matrix",defaultBrowserEvidence:false}).checks[0].artifacts,[]);
+ const proof=join(root,"stage"),stage={id:plan.id,artifacts:plan.artifacts.map(({path})=>
+  retainStageArtifact(root,proof,plan.id,fileEvidence(root,path)))};
+ verifyDefaultReleaseBrowserStage(root,proof,stage);
+ const dropped=JSON.parse(readFileSync(output("demo-matrix")));
+ dropped.report.suites.pop();
+ dropped.report.stats.expected=3;
+ const path=stage.artifacts[1].retainedPath;
+ writeFileSync(join(proof,path),JSON.stringify(dropped));
+ stage.artifacts[1].sha256=fileEvidence(proof,path).sha256;
+ assert.throws(()=>verifyDefaultReleaseBrowserStage(root,proof,stage),/case inventory/);
+ assert.equal(runReleaseChecks(checks,run(true),()=>{},{evidenceRoot:root}),7);
+ assert.equal(existsSync(output("demo-matrix")),false);
+ const retained=JSON.parse(readFileSync(output("browser-matrix")));
+ assert.equal(retained.discovery.stats.expected,6);
+ assert.equal(retained.report.stats.unexpected,1);
 });

@@ -11,6 +11,7 @@ import {verifyHostedContext} from "./candidate-release/hosted-context.mjs";
 import {candidateStageReceipts} from "./candidate-release/runtime-stage-policy.mjs";
 import {verifyDirectStageEvidence} from "./candidate-release/direct-stage-evidence.mjs";
 import {usesRichBrowserDiscovery,verifyRichBrowserStage} from "./candidate-release/rich-browser-report.mjs";
+import {usesDefaultReleaseBrowserEvidence,verifyDefaultReleaseBrowserStage} from "./candidate-release/default-release-browser-evidence.mjs";
 import {verifyApplicationNetworkStage} from "./candidate-release/application-network-report.mjs";
 import {
  sharedRuntimeBuildFormat,sharedRuntimeBuildReport,sharedRuntimeReceiptVariable,
@@ -39,7 +40,8 @@ export function candidateCoverage(root,manifests,{requireHosted=false}={}) {
  assert.ok(manifests.length,"Supply at least one retained qualification result.json");
  const source=sourceEvidence(root);
  assert.ok(source.commit&&!source.dirty,"Check out one clean candidate before reviewing its evidence");
- const options={environment:{},richBrowserDiscovery:usesRichBrowserDiscovery(root)};
+ const options={environment:{},richBrowserDiscovery:usesRichBrowserDiscovery(root),
+  defaultBrowserEvidence:usesDefaultReleaseBrowserEvidence(root)};
  const full=candidateReleasePlan(options),covered=new Set(),evidence=[];
  for(const input of manifests){
   const path=resolve(input),directory=dirname(path);
@@ -79,6 +81,7 @@ export function candidateCoverage(root,manifests,{requireHosted=false}={}) {
     requireRetainedBytes(directory,retained,observed);
    }
    verifyRichBrowserStage(root,directory,stage);
+   verifyDefaultReleaseBrowserStage(root,directory,stage);
    if(check.id==="installed-application-network-matrix")verifyApplicationNetworkStage(directory,stage,receipt.stages.slice(0,index));
    if(check.id==="paired-shared-runtime")sharedRuntimeSha256=verifyRuntimeProducer(directory,stage,source);
    const {sharedRuntime,nativeFixture}=candidateStageReceipts(check);

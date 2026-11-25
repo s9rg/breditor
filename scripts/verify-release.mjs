@@ -1,15 +1,17 @@
 /** One local, non-publishing release gate. Requires the documented toolchain. */
 import { spawnSync } from "node:child_process";
-import { mkdtempSync, readFileSync, realpathSync, rmSync, statSync } from "node:fs";
+import { existsSync, mkdirSync, mkdtempSync, readFileSync, realpathSync, rmSync, statSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { dirname, join } from "node:path";
 import { fileURLToPath } from "node:url";
 import { validateDefaultBrowserReport } from "./candidate-release/default-browser-report.mjs";
+import { defaultReleaseBrowserChecks, defaultReleaseBrowserEvidence, defaultReleaseBrowserPath } from "./candidate-release/default-release-browser-evidence.mjs";
+import { saveEvidence } from "./candidate-release/evidence.mjs";
 
 export const repository = dirname(dirname(fileURLToPath(import.meta.url)));
 /** This pipeline builds default outputs, not the separately assembled nested archive. */
 export const releaseScope = "default-packages";
-const browserChecks = new Set(["browser-matrix", "demo-matrix"]);
+const browserChecks = new Set(defaultReleaseBrowserChecks);
 const passed = result => !result.error && !result.signal && result.status === 0;
 
 /** Explicit argv avoids shell interpolation, including executable overrides. */
@@ -54,7 +56,7 @@ function browserReport(path) {
   return JSON.parse(readFileSync(path, "utf8"));
 }
 
-function runBrowserCheck(check, options, run, report) {
+function runBrowserCheck(check, options, run, report, evidenceRoot) {
   const directory = mkdtempSync(join(tmpdir(), "breditor-default-browser-"));
   try {
     const invoke = (args, filename) => run(check.command, [...check.args, ...args], {
@@ -64,9 +66,22 @@ function runBrowserCheck(check, options, run, report) {
     const discovery = invoke(["--list", "--reporter=json"], discoveryFile);
     if (!passed(discovery)) return discovery;
     const inventory = browserReport(discoveryFile);
+    const retained = evidenceRoot && join(evidenceRoot, defaultReleaseBrowserPath(check.id));
+    if (retained) saveEvidence(retained, defaultReleaseBrowserEvidence(check.id, inventory));
     const result = invoke(["--reporter=line,json"], resultsFile);
-    if (!passed(result)) return result;
-    const verified = validateDefaultBrowserReport(inventory, browserReport(resultsFile));
+    if (!passed(result)) {
+      if (retained && existsSync(resultsFile)) {
+        try {
+          saveEvidence(retained, defaultReleaseBrowserEvidence(check.id, inventory, browserReport(resultsFile)));
+        } catch (error) {
+          report(`verify-release: ${check.id} failed-result evidence unavailable: ${error.message}`);
+        }
+      }
+      return result;
+    }
+    const execution = browserReport(resultsFile);
+    if (retained) saveEvidence(retained, defaultReleaseBrowserEvidence(check.id, inventory, execution));
+    const verified = validateDefaultBrowserReport(inventory, execution);
     report(`verify-release: ${check.id} verified ${verified.count} passing results in ${verified.projects.join(", ")}`);
     return result;
   } catch (error) {
@@ -78,7 +93,14 @@ function runBrowserCheck(check, options, run, report) {
 }
 
 /** Stop on the first unsuccessful or interrupted process; never report it green. */
-export function runReleaseChecks(checks, run = spawnSync, report = console.log) {
+export function runReleaseChecks(checks, run = spawnSync, report = console.log, { evidenceRoot } = {}) {
+  if (evidenceRoot) {
+    for (const id of defaultReleaseBrowserChecks) {
+      const path = join(evidenceRoot, defaultReleaseBrowserPath(id));
+      mkdirSync(dirname(path), { recursive: true });
+      rmSync(path, { force: true });
+    }
+  }
   for (const [index, check] of checks.entries()) {
     report(`verify-release: [${index + 1}/${checks.length}] ${check.id}`);
     const options = {
@@ -87,7 +109,7 @@ export function runReleaseChecks(checks, run = spawnSync, report = console.log) 
       stdio: "inherit",
       shell: false,
     };
-    const result = browserChecks.has(check.id) ? runBrowserCheck(check, options, run, report) : run(check.command, check.args, options);
+    const result = browserChecks.has(check.id) ? runBrowserCheck(check, options, run, report, evidenceRoot) : run(check.command, check.args, options);
     if (!passed(result)) {
       report(`verify-release: FAILED ${check.id}; later gates were not run.`);
       return result.signal === "SIGINT" ? 130
@@ -101,10 +123,10 @@ export function runReleaseChecks(checks, run = spawnSync, report = console.log) 
 
 function main(args) {
   if (args.length === 1 && args[0] === "--help") {
-    console.log("Usage: node scripts/verify-release.mjs [--dry-run]\nRuns default-package release checks; never publishes packages. Opt-in nested lists, physical input and nested budget acceptance require separate qualification. --dry-run only prints the plan.");
+    console.log("Usage: node scripts/verify-release.mjs [--dry-run | --candidate-evidence]\nRuns default-package release checks; never publishes packages. Opt-in nested lists, physical input and nested budget acceptance require separate qualification. --dry-run only prints the plan.");
     return 0;
   }
-  if (args.length > 1 || (args.length === 1 && args[0] !== "--dry-run")) {
+  if (args.length > 1 || (args.length === 1 && !["--dry-run","--candidate-evidence"].includes(args[0]))) {
     console.error("verify-release: unknown argument; use --help.");
     return 2;
   }
@@ -113,7 +135,7 @@ function main(args) {
     console.log(JSON.stringify({ executed: false, scope: releaseScope, experimentalNestedListsQualified: false, cwd: repository, checks }, null, 2));
     return 0;
   }
-  return runReleaseChecks(checks);
+  return runReleaseChecks(checks, spawnSync, console.log, { evidenceRoot: args[0] === "--candidate-evidence" ? repository : undefined });
 }
 
 if (process.argv[1] && realpathSync(process.argv[1]) === fileURLToPath(import.meta.url)) {

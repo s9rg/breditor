@@ -9,6 +9,7 @@ import {candidateShardIds} from "./candidate-release/shards.mjs";
 import {candidateReleasePlan} from "./candidate-release/plan.mjs";
 import {retainCandidateBrowserReports} from "./retain-candidate-browser-reports.mjs";
 import {richBrowserDiscoveryPath,richBrowserRunner} from "./candidate-release/rich-browser-report.mjs";
+import {defaultReleaseBrowserPath} from "./candidate-release/default-release-browser-evidence.mjs";
 
 const workflow=JSON.parse(readFileSync(new URL("../.github/workflows/candidate-qualification.yml",import.meta.url),"utf8"));
 const job=workflow.jobs.qualify,steps=job.steps;
@@ -184,6 +185,23 @@ test("failed rich browser diagnostics retain the current execution and its exact
     readFileSync(join(root,"target/v1-candidate-runs",row.retainedPath)));
   }finally{rmSync(root,{recursive:true,force:true});}
  }
+});
+
+test("failed default release diagnostics retain both ordered browser reports from the selected attempt",()=>{
+ const root=mkdtempSync(join(tmpdir(),"breditor-default-browser-failure-"));
+ try{
+  seedBrowserFailure(root,"default-matrix","default-package-release-matrix");
+  mkdirSync(join(root,"scripts/candidate-release"),{recursive:true});
+  writeFileSync(join(root,"scripts/candidate-release/default-release-browser-evidence.mjs"),"");
+  const browser=defaultReleaseBrowserPath("browser-matrix"),demo=defaultReleaseBrowserPath("demo-matrix");
+  mkdirSync(join(root,"target/default-release-browser-evidence"),{recursive:true});
+  for(const path of [browser,demo]){
+   writeFileSync(join(root,path),'{"discovery":{},"report":{}}');
+   browserStageTime(join(root,path));
+  }
+  const proof=retainCandidateBrowserReports(root);
+  assert.deepEqual(proof.reports.map(row=>row.path),[browser,demo]);
+ }finally{rmSync(root,{recursive:true,force:true});}
 });
 
 test("browser failure retention refuses a different attempt, stage sequence or ambiguous manifest",()=>{

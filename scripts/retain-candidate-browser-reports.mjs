@@ -8,6 +8,7 @@ import {readHostedRunnerContext} from "./candidate-release/hosted-context.mjs";
 import {candidateReleasePlan} from "./candidate-release/plan.mjs";
 import {candidateShardPlan} from "./candidate-release/shards.mjs";
 import {richBrowserDiscoveryPath,usesRichBrowserDiscovery} from "./candidate-release/rich-browser-report.mjs";
+import {defaultReleaseBrowserChecks,defaultReleaseBrowserPath,usesDefaultReleaseBrowserEvidence} from "./candidate-release/default-release-browser-evidence.mjs";
 
 const sharedDirectory="target/shared-browser-results";
 const maximumFileBytes=8*1024*1024;
@@ -53,6 +54,7 @@ function failureReportPaths(root,failure){
  const {stage,check}=failure;
  const rich=/^rich-browser-(chromium|firefox|webkit)$/u.exec(stage);
  if(rich)return [check.env.PLAYWRIGHT_JSON_OUTPUT_FILE,...(usesRichBrowserDiscovery(root)?[richBrowserDiscoveryPath(rich[1])]:[])];
+ if(stage==="default-package-release-matrix"&&usesDefaultReleaseBrowserEvidence(root))return defaultReleaseBrowserChecks.map(defaultReleaseBrowserPath);
  if(stage==="installed-application-network-matrix")return ["target/shared-application-browser-playwright.json"];
  if(stage!=="shared-browser-matrix")return [];
  const specs=readdirSync(join(root,"experiments/shared-browser"),{withFileTypes:true})

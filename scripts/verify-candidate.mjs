@@ -11,6 +11,7 @@ import {sharedRuntimeForActivation} from "./candidate-release/shared-runtime-evi
 import {candidateStageReceipts} from "./candidate-release/runtime-stage-policy.mjs";
 import {verifyNativeSuggestionBuild} from "./candidate-release/native-suggestion-build-evidence.mjs";
 import {verifyRichBrowserStage} from "./candidate-release/rich-browser-report.mjs";
+import {verifyDefaultReleaseBrowserStage} from "./candidate-release/default-release-browser-evidence.mjs";
 
 function hostedRunIdentity(environment){
  const {GITHUB_ACTIONS:hosted,GITHUB_RUN_ID:runId,GITHUB_RUN_ATTEMPT:runAttempt}=environment;
@@ -56,6 +57,7 @@ export async function runCandidateChecks(plan,{root=repository,signal,report=con
     if(entry.status==="passed"){
      entry.artifacts=check.artifacts.map(artifact=>{const evidence=fileEvidence(root,artifact.path);if(artifact.fresh&&evidence.modifiedAtMs<Date.parse(entry.startedAt))throw Error(`Stale stage report: ${artifact.path}`);return artifact.retain===true?retainStageArtifact(root,directory,check.id,evidence):evidence;});
      verifyRichBrowserStage(root,directory,entry);
+     verifyDefaultReleaseBrowserStage(root,directory,entry);
     }
    }
    checkSource();

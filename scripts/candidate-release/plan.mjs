@@ -16,6 +16,7 @@ import {nativeColdCaseIds,nativeColdReport,nativeColdSelection} from "../native-
 import {reconciledPacketCaseIds,reconciledPacketReport,reconciledPacketSelection} from "../reconciled-packet-recovery-plan.mjs";
 import {metadataReconciliationHostReceipt} from "./metadata-reconciliation-hosts.mjs";
 import {richBrowserCommand,richBrowserEngines,richBrowserRunner} from "./rich-browser-report.mjs";
+import {defaultReleaseBrowserChecks,defaultReleaseBrowserPath} from "./default-release-browser-evidence.mjs";
 export const repository=resolve(dirname(fileURLToPath(import.meta.url)),"../..");
 export const deferredFunctionalGates=Object.freeze([
  "default-package-release-matrix","installed-editor-browser-matrix","shared-browser-matrix",
@@ -65,7 +66,7 @@ const focusedStageIds = {
 export const candidateCheckProfiles=Object.freeze(["full","functional",...Object.keys(focusedStageIds)]);
 /** Functional success is deliberately not V1 readiness. Full adds existing browser/default
  * release checks and the fail-closed readiness ledger; it cannot approve manual gates. */
-export function candidateReleasePlan({profile="full",environment=process.env,richBrowserDiscovery=true}={}){
+export function candidateReleasePlan({profile="full",environment=process.env,richBrowserDiscovery=true,defaultBrowserEvidence=true}={}){
  if(!candidateCheckProfiles.includes(profile))throw Error("Unknown candidate verification profile");
  const tool=(name,override)=>{const local=resolve(homedir(),`.cargo/bin/${name}`);return override??(existsSync(local)?local:name);};
  const cargo=tool("cargo",environment.BREDITOR_CARGO??environment.CARGO_BIN),rustc=tool("rustc",environment.BREDITOR_RUSTC??environment.RUSTC_BIN??environment.RUSTC),bindgen=tool("wasm-bindgen",environment.BREDITOR_WASM_BINDGEN??environment.WASM_BINDGEN_BIN),runner=tool("wasm-bindgen-test-runner",environment.WASM_BINDGEN_TEST_RUNNER_BIN),npm=environment.BREDITOR_NPM??environment.NPM_BIN??"npm",node=process.execPath;
@@ -908,7 +909,8 @@ export function candidateReleasePlan({profile="full",environment=process.env,ric
   script("installed-fullscreen-browser","check-fullscreen-browser.mjs",[],[{path:"target/fullscreen-installed-browser.json",fresh:true,retain:true}]),
   script("installed-session-backups-browser","check-session-backups-browser.mjs",[],[{path:"target/session-backups-installed-browser.json",fresh:true,retain:true}]),
   script("installed-asset-backups-browser","check-asset-backups-browser.mjs",[],[{path:"target/asset-backups-installed-browser.json",fresh:true,retain:true}]),
-  script("default-package-release-matrix","verify-release.mjs",[],[],7200000),
+  script("default-package-release-matrix","verify-release.mjs",defaultBrowserEvidence?["--candidate-evidence"]:[],
+   defaultBrowserEvidence?defaultReleaseBrowserChecks.map(check=>({path:defaultReleaseBrowserPath(check),fresh:true,retain:true})):[],7200000),
   script("installed-editor-browser-matrix","check-editor-browser.mjs",["--candidate-relay"],[{path:"target/editor-installed-consumer.json",fresh:true,retain:true}],7200000),
   script("reviewed-v1-readiness","check-v1-readiness.mjs",["--require-ready"]),
  );
