@@ -20,29 +20,42 @@ export function applyRetainedAssetPlan(db: IDBDatabase, before: readonly AssetRe
     if (row.status === replacement.status && row.attempts === replacement.attempts && row.epoch === replacement.epoch &&
         row.failure === replacement.failure && row.storageRef === replacement.storageRef) changedIds.delete(row.asset);
   }
+  const oldBytes=old.reduce((sum,row)=>sum+row.bytes,0);
   return new Promise((resolve, reject) => {
     const tx = db.transaction(["assets", "metadata"], "readwrite"), assets = tx.objectStore("assets"), metadata = tx.objectStore("metadata");
-    let actual: AssetRecord[] | undefined, budget: unknown, keys: IDBValidKey[] | undefined, readBudget = false, failure: unknown, result: "applied" | "already-applied" | undefined;
+    let count:number|undefined,budget:unknown,keys:IDBValidKey[]|undefined,readBudget=false,failure:unknown,result:"applied"|"already-applied"|undefined;
+    const diverged=()=>new RichAssetReconciliationError("asset_reconciliation_target_changed", "The target asset records or exact byte budget changed after the retained snapshot");
     const abort = () => {failure = new RichAssetReconciliationError("asset_reconciliation_aborted", "Asset reconciliation was cancelled"); try {tx.abort();} catch {}};
     signal?.addEventListener("abort", abort, {once: true});
     tx.oncomplete = () => {signal?.removeEventListener("abort", abort); if (!result) reject(new RichAssetReconciliationError("asset_reconciliation_storage", "Asset recovery did not compare its target")); else resolve(result);};
     tx.onabort = () => {signal?.removeEventListener("abort", abort); reject(failure ?? new RichAssetReconciliationError("asset_reconciliation_storage", "Asset recovery did not commit"));};
     try {checkAssetReconciliationSchema(db,tx);} catch(error) {failure=error;tx.abort();return;}
-    const ready = () => {
-      if (!actual || !keys || !readBudget) return;
+    const fail=(error:unknown)=>{failure=error;try{tx.abort();}catch{}};
+    const compare=(actual:AssetRecord[])=>{
       try {
         checkAssetReconciliationSource(check, signal);
-        if (keys.length !== 1 || keys[0] !== "bytes" || budget !== actual.reduce((sum, row) => sum + row.bytes, 0)) throw new RichAssetReconciliationError("asset_reconciliation_target_changed", "The target asset budget or metadata changed");
+        if (count!==actual.length||budget!==actual.reduce((sum,row)=>sum+row.bytes,0))throw diverged();
         const current = sorted(actual), equal = (rows: readonly AssetRecord[]) => rows.length === current.length && rows.every((row, i) => sameAssetRecord(row, current[i]!, limits));
         if (equal(next)) {result = "already-applied"; return;}
-        if (!equal(old)) throw new RichAssetReconciliationError("asset_reconciliation_target_changed", "The target asset records changed after the retained snapshot");
+        if (!equal(old)) throw diverged();
         checkAssetReconciliationSource(check, signal);
         for (const row of next) if (changedIds.has(row.asset)) assets.put(row);
         metadata.put(expectedBytes, "bytes"); result = "applied";
-      } catch (error) {failure = error; try {tx.abort();} catch {}}
+      } catch (error) {fail(error);}
     };
-    assets.getAll().onsuccess = event => {actual = (event.target as IDBRequest<AssetRecord[]>).result; ready();};
+    const ready=()=>{
+      if(count===undefined||!keys||!readBudget)return;
+      try{
+        checkAssetReconciliationSource(check,signal);
+        if(keys.length!==1||keys[0]!=="bytes"||
+           !(count===old.length&&budget===oldBytes||count===next.length&&budget===expectedBytes))throw diverged();
+        // Compare every eligible payload in the same transaction before issuing any writes.
+        if(count===0)compare([]);
+        else {const read=assets.getAll(undefined,count);read.onsuccess=()=>compare(read.result);}
+      }catch(error){fail(error);}
+    };
+    assets.count().onsuccess = event => {count = (event.target as IDBRequest<number>).result; ready();};
     metadata.get("bytes").onsuccess = event => {budget = (event.target as IDBRequest).result; readBudget = true; ready();};
-    metadata.getAllKeys().onsuccess = event => {keys = (event.target as IDBRequest<IDBValidKey[]>).result; ready();};
+    metadata.getAllKeys(undefined,2).onsuccess = event => {keys = (event.target as IDBRequest<IDBValidKey[]>).result; ready();};
   });
 }
