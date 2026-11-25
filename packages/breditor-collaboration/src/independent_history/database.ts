@@ -111,12 +111,12 @@ export function writePairedHistoryCut(
       };
       if(left===0){publish();return;}
       for(const file of cut.files){
-       const fileKey=[...key,file.lane,file.generation],json=JSON.stringify(file),read=files.get(fileKey);
+       const fileKey=[...key,file.lane,file.generation],json=JSON.stringify(file),read=files.getAll(fileKey,1);
        read.onsuccess=()=>{
         try{
          checkCurrent?.();
-         if(read.result!==undefined&&read.result!==json)throw fail('Immutable native file already has different bytes in this lane');
-         if(read.result===undefined){
+         if(read.result.length&&read.result[0]!==json)throw fail('Immutable native file already has different bytes in this lane');
+         if(!read.result.length){
           if(already)throw fail('An acknowledged cut lost a native file; refusing silent repair');
           files.add(json,fileKey);
          }

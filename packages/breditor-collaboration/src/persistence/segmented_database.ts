@@ -151,12 +151,12 @@ export function writeSegmentedCut(
       if(!already&&actual!==expected)throw fail("Generation head changed since the last acknowledged cut");
       let left=cut.files.length;
       for(const file of cut.files){
-       const fileKey=[...key,file.generation],json=JSON.stringify(file),request=files.get(fileKey);
+       const fileKey=[...key,file.generation],json=JSON.stringify(file),request=files.getAll(fileKey,1);
        request.onsuccess=()=>{
         try{
          bootstrap?.check();
-         if(request.result!==undefined&&request.result!==json)throw fail("Immutable generation identity already contains different bytes");
-         if(request.result===undefined){
+         if(request.result.length&&request.result[0]!==json)throw fail("Immutable generation identity already contains different bytes");
+         if(!request.result.length){
           if(already||originalFiles?.has(file.generation))throw fail("An acknowledged cut lost its immutable file; refusing repair");
           files.add(json,fileKey);
          }
