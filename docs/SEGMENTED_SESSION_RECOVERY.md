@@ -51,6 +51,13 @@ offline frame. Storage-lifecycle qualification still requires coordinated room
 and relay cutover, coordinated backup restoration, and asset retention under
 release operating limits.
 
+The [phase-timed installed Chrome run](qualification/2026-11-24-installed-chrome-journal-rollover-progress.json)
+completed all 115 rounds. The initial 105 rounds took 70.1 seconds, both
+portable destinations opened by 113.3 seconds, and the exact source reopens
+finished at 202.1 seconds. Playwright logs the most recent verified milestone
+during the drill and attaches the milestones to its report. This locates an
+interruption even when the browser never returns a full acceptance result.
+
 Rebuild the installed SDK fixture with the optional rollover page, then run
 the drill with Chrome installed on the host.
 

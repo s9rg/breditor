@@ -8,6 +8,12 @@ async function verify(){
  const document=seed(JSON.parse(peer.descriptor_json()));
  let alice,bob;
  let completed=0, segmented=false, legacy;
+ const progress=[],started=performance.now();
+ const mark=stage=>{
+  const entry={stage,round:completed,elapsedMs:Math.round(performance.now()-started)};
+  progress.push(entry);
+  console.info("breditor-rollover "+JSON.stringify(entry));
+ };
  let segmentedDatabase="native-rollover-";
  const options=writer=>({
   database:(segmented?segmentedDatabase:"original-before-rollover-")+writer,room:"room",writer,richLanguage:1,history:"explicit",
@@ -56,6 +62,7 @@ async function verify(){
  };
  try{
   await open();
+  mark("legacy-opened");
   const original=alice.core.documentJson();
   const edit=async()=>{
    alice.core.select(range("deep-head",0));
@@ -69,8 +76,10 @@ async function verify(){
    await sync();
    check(alice.core.documentJson()===original,"Native Undo must recover the complete original document");
    completed++;
+   if(completed%10===0)mark("rounds");
   };
   while(completed<105)await round();
+  mark("legacy-rounds-completed");
   await edit();
   const firstEdit=alice.core.documentJson();
   alice.core.select(range("first-head",0));
@@ -93,6 +102,7 @@ async function verify(){
   check(JSON.parse(alice.core.checkpointJson()).rootCheckpoint===legacy[0]&&
    JSON.parse(bob.core.checkpointJson()).rootCheckpoint===legacy[1],"Exact legacy journals must become immutable roots");
   await reopenExactly();
+  mark("roots-cold-reopened");
   const frontier=()=>{
    const {undoItems,redoItems}=alice.core.segmentedHistoryInfo();
    return [undoItems,redoItems];
@@ -110,10 +120,12 @@ async function verify(){
     const info=core.segmentedHistoryInfo();
     check(info.activeGeneration===next&&info.sealedGenerations===index+2,"Both owners must seal the actual active segment");
    }
+   mark("sealed-"+next);
   }
   const sourceCut=await reopenExactly();
   check(frontier().every((count,index)=>count===preCutFrontier[index]),"Cold open after two seals must preserve the pre-cut frontier");
   check(alice.core.documentJson()===firstEdit&&bob.core.documentJson()===offlineEdit,"The peer must still be offline after the second seal");
+  mark("sealed-cut-cold-reopened");
   const recovery=structuredClone([alice.exportRecovery(),bob.exportRecovery()]);
   check(recovery.every((backup,index)=>backup.checkpoint===sourceCut[index]),"Portable backups must carry both exact source cuts");
   await expectRestoreRefusal("101",recovery[0],"writer_in_use");
@@ -126,6 +138,7 @@ async function verify(){
    "Each fresh destination must restore the entire exact recovery record");
   check(frontier().every((count,index)=>count===preCutFrontier[index]),"Portable recovery must preserve the exact history frontier");
   check(alice.core.documentJson()===firstEdit&&bob.core.documentJson()===offlineEdit,"Portable recovery must preserve each offline document");
+  mark("destinations-restored");
   check(await alice.core.receiveFrame(offlineFrame),"The exact pre-cut frame must deliver after two seals");
   check(alice.core.documentJson()===offlineEdit,"The pre-cut frame must restore the offline edit");
   const afterDelivery=alice.core.checkpointJson();
@@ -159,9 +172,11 @@ async function verify(){
   await sync();
   check(alice.core.documentJson()===original,"Cross-boundary Undo must recover the original document");
   completed++;
+  mark("offline-frame-and-history-verified");
   while(completed<115)await round();
   const retained=await reopenExactly();
   await close();
+  mark("restored-cut-cold-reopened");
   check(retained.every((checkpoint,index)=>checkpoint!==sourceCut[index]),"Both restored destinations must have newer contents");
   await expectRestoreRefusal("101",recovery[0],"segmented_destination_exists");
   await expectRestoreRefusal("202",recovery[1],"segmented_destination_exists");
@@ -169,6 +184,7 @@ async function verify(){
   check([alice,bob].every((session,index)=>session.recovered&&session.core.checkpointJson()===retained[index]),
    "Refusing overwrites must preserve each newer recovery destination byte-for-byte");
   await close();
+  mark("newer-destinations-verified");
   segmentedDatabase="native-rollover-";
   await open();
   check([alice,bob].every((session,index)=>matchesRecovery(session,recovery[index])),
@@ -179,11 +195,12 @@ async function verify(){
   check(alice.recovered&&bob.recovered&&alice.core.checkpointJson()===legacy[0]&&bob.core.checkpointJson()===legacy[1],
    "The original databases must remain available for exact recovery");
   await close();
+  mark("sources-cold-reopened");
   return {passed:true,rounds:completed,exactLegacyRoots:2,explicitSeals:4,exactPeerReopens:6,legacyDatabasesReopened:2,
    portableRecoveryRestores:2,heldWriterRefusals:2,occupiedDestinationRefusals:2,unchangedSegmentedSources:2,
    legacyBytes:legacy.map(value=>new TextEncoder().encode(value).length),
    offlineEditPreserved:true,preCutRedoItemsRestored:2,preBoundaryUndoAndRedoPreserved:true,
-   archiveBytes:retained.map(value=>new TextEncoder().encode(value).length)};
+   archiveBytes:retained.map(value=>new TextEncoder().encode(value).length),progress};
  }finally{
   await Promise.all([alice?.discardAndClose(),bob?.discardAndClose()]);
   peer.free();

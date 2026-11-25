@@ -1,0 +1,247 @@
+{
+  "format": "breditor/installed-chrome-journal-rollover-progress",
+  "formatVersion": 1,
+  "source": {
+    "commit": "6b61e2d8107f946dd002c41802a0c3e613b367d1",
+    "dirty": false,
+    "sha256": "a84f730a7e658a01714861addbebae498a6918c1d5fdf8d238e7f79c8f145636",
+    "files": 9694,
+    "bytes": 83100394
+  },
+  "archives": [
+    {
+      "name": "@breditor/browser",
+      "version": "0.3.0-alpha.22",
+      "filename": "breditor-browser-0.3.0-alpha.22.tgz",
+      "bytes": 263467,
+      "sha256": "1199d14fe5b3d5b2e0318642a9bbf9f5b84773e97265597f72e190be43869ae0",
+      "integrity": "sha512-7+cZz512vt0NT15KNMA6NgsHSfGDuIGrqSkh/+4BftdKHIyLv9mItPgT6fSwd10v6te5q8Nj1Dt4iy0JACVI5g=="
+    },
+    {
+      "name": "@breditor/experimental-rich-content",
+      "version": "0.3.0-alpha.22",
+      "filename": "breditor-experimental-rich-content-0.3.0-alpha.22.tgz",
+      "bytes": 2346048,
+      "sha256": "e0a75cb10ab89bd93177dd7a5c72ef7789db816e99d5fd88900de4ce6bae93af",
+      "integrity": "sha512-+h095RdlgCaAWLiXQSgpXXKVCoddTX+oj4l80pMuJKcvjXcdZV4OLjrNPs8ToiPrXE648h2vBS1zVe+K/i+DwQ=="
+    },
+    {
+      "name": "@breditor/collaboration",
+      "version": "0.3.0-alpha.22",
+      "filename": "breditor-collaboration-0.3.0-alpha.22.tgz",
+      "bytes": 5627223,
+      "sha256": "1faab896a7d49fee21d1ff781e27fc6104e8088a5e8c6ffa319f3546a9793678",
+      "integrity": "sha512-aB+Zevatu/lTJm/+Qtfs2K4UV38ubm3y9cEsyYPoIW/vGjjy6l/ruyaHAD20BaqguN0qyskXSmsDs99QX2L8ZQ=="
+    },
+    {
+      "name": "@breditor/editor",
+      "version": "0.3.0-alpha.22",
+      "filename": "breditor-editor-0.3.0-alpha.22.tgz",
+      "bytes": 83563,
+      "sha256": "9091ec60bb7ab80ddbdfcdfa5cde8756fdf33b16a16e1d78d792151c0db49b08",
+      "integrity": "sha512-Q618xpYW2P+fWSrUjt0ub3btVo856gNghAk2xxPrMD/dkren1D6rurZg9CoFz9xru/SjuJn/j5uf5ncxNrEQSw=="
+    }
+  ],
+  "fixtures": [
+    {
+      "path": "scripts/fixtures/editor-consumer/shared-generation-rollover.html",
+      "sha256": "92ff9d062ca2ced1163587660bd1bbfda027537a3e4b1d1ae1ad905ec59c12e9"
+    },
+    {
+      "path": "scripts/fixtures/editor-consumer/shared-generation-rollover.mjs",
+      "sha256": "c4155578193b71f73aa010b136873ba9fd721950fef3c53c2784d1e03168445b"
+    },
+    {
+      "path": "scripts/fixtures/editor-consumer/seed.mjs",
+      "sha256": "653dc89aef4e64016aa50ad54293afd1f078a7cd7afba162af52aaa7ba2d78d6"
+    },
+    {
+      "path": "crates/breditor-core/tests/fixtures/rich-local-root.json",
+      "sha256": "761ce4641bafcca82c10081d79e318a9dab5bf33aa11919c0c69909dbc8f2eca"
+    },
+    {
+      "path": "scripts/fixtures/editor-consumer/vite.config.mjs",
+      "sha256": "d5db3d1da9b5e2ebf74275ebdfdec52c5efdb192debe06d8bd7fb38067350d89"
+    }
+  ],
+  "sharedWasmSha256": "8f39c742c461006c90e209e0287f7db137574843f316ccddbe2aaa141ca00401",
+  "browser": "158.0.8127.37",
+  "environment": {
+    "platform": "darwin",
+    "arch": "arm64",
+    "node": "v22.14.0"
+  },
+  "reportSha256": "f9e6c12bf9afc944a0a923cdb64bb9f3d27d583eda0ac5bb041270f00f2a005b",
+  "elapsedMs": 226990.936,
+  "observed": {
+    "passed": true,
+    "rounds": 115,
+    "exactLegacyRoots": 2,
+    "explicitSeals": 4,
+    "exactPeerReopens": 6,
+    "legacyDatabasesReopened": 2,
+    "portableRecoveryRestores": 2,
+    "heldWriterRefusals": 2,
+    "occupiedDestinationRefusals": 2,
+    "unchangedSegmentedSources": 2,
+    "legacyBytes": [
+      16206396,
+      15700675
+    ],
+    "offlineEditPreserved": true,
+    "preCutRedoItemsRestored": 2,
+    "preBoundaryUndoAndRedoPreserved": true,
+    "archiveBytes": [
+      18687883,
+      17951030
+    ],
+    "progress": [
+      {
+        "stage": "legacy-opened",
+        "round": 0,
+        "elapsedMs": 282
+      },
+      {
+        "stage": "rounds",
+        "round": 10,
+        "elapsedMs": 1431
+      },
+      {
+        "stage": "rounds",
+        "round": 20,
+        "elapsedMs": 3590
+      },
+      {
+        "stage": "rounds",
+        "round": 30,
+        "elapsedMs": 6807
+      },
+      {
+        "stage": "rounds",
+        "round": 40,
+        "elapsedMs": 11178
+      },
+      {
+        "stage": "rounds",
+        "round": 50,
+        "elapsedMs": 16718
+      },
+      {
+        "stage": "rounds",
+        "round": 60,
+        "elapsedMs": 23493
+      },
+      {
+        "stage": "rounds",
+        "round": 70,
+        "elapsedMs": 31559
+      },
+      {
+        "stage": "rounds",
+        "round": 80,
+        "elapsedMs": 40886
+      },
+      {
+        "stage": "rounds",
+        "round": 90,
+        "elapsedMs": 51524
+      },
+      {
+        "stage": "rounds",
+        "round": 100,
+        "elapsedMs": 63612
+      },
+      {
+        "stage": "legacy-rounds-completed",
+        "round": 105,
+        "elapsedMs": 70140
+      },
+      {
+        "stage": "roots-cold-reopened",
+        "round": 105,
+        "elapsedMs": 85512
+      },
+      {
+        "stage": "sealed-two",
+        "round": 105,
+        "elapsedMs": 91520
+      },
+      {
+        "stage": "sealed-three",
+        "round": 105,
+        "elapsedMs": 96887
+      },
+      {
+        "stage": "sealed-cut-cold-reopened",
+        "round": 105,
+        "elapsedMs": 104702
+      },
+      {
+        "stage": "destinations-restored",
+        "round": 105,
+        "elapsedMs": 113300
+      },
+      {
+        "stage": "offline-frame-and-history-verified",
+        "round": 106,
+        "elapsedMs": 131460
+      },
+      {
+        "stage": "rounds",
+        "round": 110,
+        "elapsedMs": 148491
+      },
+      {
+        "stage": "restored-cut-cold-reopened",
+        "round": 115,
+        "elapsedMs": 180913
+      },
+      {
+        "stage": "newer-destinations-verified",
+        "round": 115,
+        "elapsedMs": 190683
+      },
+      {
+        "stage": "sources-cold-reopened",
+        "round": 115,
+        "elapsedMs": 202113
+      }
+    ],
+    "browserVersion": "158.0.8127.37"
+  },
+  "testResults": [
+    {
+      "title": "installed original journals retain offline edits and both history directions across two seals and portable recovery",
+      "durationMs": 203381
+    },
+    {
+      "title": "installed generation save fences an obsolete browser journal after upgrade",
+      "durationMs": 1964
+    },
+    {
+      "title": "installed generation save fences an obsolete browser journal after discard",
+      "durationMs": 1254
+    },
+    {
+      "title": "installed generation save fences an obsolete browser journal after discard-reject",
+      "durationMs": 1249
+    },
+    {
+      "title": "installed generation admission refuses existing malformed heads before native replay",
+      "durationMs": 1218
+    },
+    {
+      "title": "installed independent history refuses an occupied undefined head before native creation or replay",
+      "durationMs": 1297
+    },
+    {
+      "title": "installed independent history retires a completed save digest during upgrade",
+      "durationMs": 1193
+    },
+    {
+      "title": "installed independent history retires a rejected save digest during upgrade",
+      "durationMs": 1641
+    }
+  ],
+  "scope": "One installed Chrome workload running current JavaScript from fresh offline archives with a retained runtime. Relative phase time starts after profile creation. All original exact limits and recovery assertions ran. The timing characterizes this observed workflow."
+}
