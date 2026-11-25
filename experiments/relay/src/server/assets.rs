@@ -16,10 +16,22 @@ use axum::{
     response::{IntoResponse, Response},
 };
 use serde_json::json;
-use tokio::sync::OwnedSemaphorePermit;
+use std::sync::Arc;
+use tokio::sync::{OwnedSemaphorePermit, Semaphore};
 
 /// Whole-body deadline for one asset upload: about 1.4 Mbit/s for the 10 MiB maximum.
 const UPLOAD_BODY_TIMEOUT: std::time::Duration = std::time::Duration::from_secs(60);
+
+pub(super) struct Operations {
+    permits: Arc<Semaphore>,
+    worker: Option<Arc<super::raster_worker::Worker>>,
+}
+
+impl Operations {
+    pub(super) fn new(worker: Option<super::raster_worker::Worker>) -> Self {
+        Self { permits: Arc::new(Semaphore::new(4)), worker: worker.map(Arc::new) }
+    }
+}
 
 pub(super) async fn preflight(State(host): State<Host>, headers: HeaderMap) -> Response {
     let Some(allowed) = origin(&host, &headers) else {
@@ -72,7 +84,7 @@ pub(super) async fn download(
         Ok(p) => p,
         Err(e) => return cors(failure(&e), allowed),
     };
-    let Ok(permit) = host.asset_operations.clone().try_acquire_owned() else {
+    let Ok(permit) = host.asset_operations.permits.clone().try_acquire_owned() else {
         return cors(StatusCode::SERVICE_UNAVAILABLE.into_response(), allowed);
     };
     let result = host
@@ -107,7 +119,7 @@ pub(super) async fn upload(
         Ok(p) => p,
         Err(e) => return cors(failure(&e), allowed),
     };
-    let Ok(permit) = host.asset_operations.clone().try_acquire_owned() else {
+    let Ok(permit) = host.asset_operations.permits.clone().try_acquire_owned() else {
         return cors(StatusCode::SERVICE_UNAVAILABLE.into_response(), allowed);
     };
     let p = principal.clone();
@@ -131,7 +143,7 @@ pub(super) async fn upload(
         Ok(Err(_)) => return cors(StatusCode::PAYLOAD_TOO_LARGE.into_response(), allowed),
         Err(_) => return cors(StatusCode::REQUEST_TIMEOUT.into_response(), allowed),
     };
-    let prepared = if let Some(worker) = host.raster_worker.clone() {
+    let prepared = if let Some(worker) = host.asset_operations.worker.clone() {
         // Disconnecting the HTTP client does not cancel the supervised child or free its slot.
         tokio::spawn(async move { Ok((worker.prepare(&asset, &mime, bytes).await?, permit)) })
             .await
@@ -243,7 +255,7 @@ mod tests {
                 .header("content-type", "image/png")
                 .body(Body::empty())
         };
-        let occupied = host.asset_operations.clone().try_acquire_many_owned(3)?;
+        let occupied = host.asset_operations.permits.clone().try_acquire_many_owned(3)?;
         let response = download(
             State(host.clone()),
             Path(asset.clone()),
@@ -255,7 +267,7 @@ mod tests {
         assert_eq!(payload.as_ref(), bytes);
         let pending = payload.clone();
         drop(payload);
-        assert_eq!(host.asset_operations.available_permits(), 0);
+        assert_eq!(host.asset_operations.permits.available_permits(), 0);
         let no_code = upload(
             State(host.clone()),
             Path(asset.clone()),
@@ -269,7 +281,7 @@ mod tests {
         drop(pending);
         let denied = upload(State(host.clone()), Path(asset), request(auth_header)?).await;
         assert_eq!(denied.status(), StatusCode::FORBIDDEN);
-        assert_eq!(host.asset_operations.available_permits(), 1);
+        assert_eq!(host.asset_operations.permits.available_permits(), 1);
         drop(occupied);
         Ok(())
     }

@@ -140,8 +140,7 @@ pub(super) struct Host {
     continued_assets: Option<Arc<Mutex<crate::ContinuedAssetStore>>>,
     continued_custody: Option<Arc<crate::room::ContinuedServingCustody>>,
     assets_changed: watch::Sender<u64>,
-    asset_operations: Arc<Semaphore>,
-    raster_worker: Option<Arc<raster_worker::Worker>>,
+    asset_operations: Arc<assets::Operations>,
     presence_changed: watch::Sender<u64>,
     review_changed: watch::Sender<u64>,
     versions_changed: watch::Sender<u64>,
@@ -259,7 +258,8 @@ pub fn router_with_isolated_assets(
         return Err(Error::Contract("asset store room binding"));
     }
     let mut host = create_host(room, authentication, Some(assets));
-    host.raster_worker = Some(Arc::new(raster_worker::Worker::new(executable)?));
+    host.asset_operations =
+        Arc::new(assets::Operations::new(Some(raster_worker::Worker::new(executable)?)));
     Ok(routes(host))
 }
 fn build(
@@ -296,8 +296,7 @@ fn create_shared_host(
         continued_assets: None,
         continued_custody: None,
         assets_changed,
-        asset_operations: Arc::new(Semaphore::new(4)),
-        raster_worker: None,
+        asset_operations: Arc::new(assets::Operations::new(None)),
         presence_changed,
         review_changed,
         versions_changed,

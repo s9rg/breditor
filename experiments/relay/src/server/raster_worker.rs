@@ -131,15 +131,24 @@ mod tests {
         let executable = dir.join("wait-worker");
         let mut file =
             fs::OpenOptions::new().write(true).create_new(true).mode(0o700).open(&executable)?;
-        file.write_all(b"#!/bin/sh\nexec /bin/sleep 30\n")?;
+        file.write_all(b"#!/bin/sh\nprintf '%s\\n' \"$$\" > \"${0}.pid\"\nexec /bin/sleep 30\n")?;
         drop(file);
         let mut worker = Worker::new(executable)?;
-        worker.deadline = Duration::from_millis(100);
+        worker.deadline = Duration::from_millis(500);
         let bytes = b"fixture raster bytes".to_vec();
         let start = Instant::now();
         let result = worker.prepare(&assets::asset_id(&bytes), "image/png", bytes).await;
         assert!(matches!(result, Err(Error::NeedsRecovery)));
-        assert!(start.elapsed() < Duration::from_secs(5));
+        let elapsed = start.elapsed();
+        assert!(elapsed >= worker.deadline && elapsed < Duration::from_secs(5));
+        let pid: u32 = fs::read_to_string(dir.join("wait-worker.pid"))?
+            .trim()
+            .parse()
+            .map_err(io::Error::other)?;
+        assert!(pid > 0);
+        let observed =
+            std::process::Command::new("/bin/kill").args(["-0", &pid.to_string()]).output()?;
+        assert!(!observed.status.success(), "timed-out worker still exists");
         Ok(())
     }
 }
