@@ -21,6 +21,7 @@ use tokio::sync::{OwnedSemaphorePermit, Semaphore};
 
 /// Whole-body deadline for one asset upload: about 1.4 Mbit/s for the 10 MiB maximum.
 const UPLOAD_BODY_TIMEOUT: std::time::Duration = std::time::Duration::from_secs(60);
+pub(super) const TRANSFER_SLOTS: u32 = 4;
 
 pub(super) struct Operations {
     permits: Arc<Semaphore>,
@@ -29,7 +30,14 @@ pub(super) struct Operations {
 
 impl Operations {
     pub(super) fn new(worker: Option<super::raster_worker::Worker>) -> Self {
-        Self { permits: Arc::new(Semaphore::new(4)), worker: worker.map(Arc::new) }
+        Self {
+            permits: Arc::new(Semaphore::new(TRANSFER_SLOTS as usize)),
+            worker: worker.map(Arc::new),
+        }
+    }
+
+    pub(super) fn transfer_slots(&self) -> Arc<Semaphore> {
+        self.permits.clone()
     }
 }
 
@@ -222,6 +230,70 @@ mod tests {
         release.send(()).unwrap();
         assert!(slot_retained);
         let _released = timeout(deadline, slots.acquire()).await.unwrap().unwrap();
+    }
+
+    #[cfg(unix)]
+    #[tokio::test]
+    async fn idle_wait_includes_an_isolated_worker_after_its_upload_is_cancelled()
+    -> std::result::Result<(), Box<dyn std::error::Error>> {
+        use std::{fs, io::Write, os::unix::fs::OpenOptionsExt};
+
+        const ORIGIN: &str = "http://127.0.0.1:4187";
+        let (files, room, _) = segment_handover_test_source(1, false, false)?;
+        let path = files.room().with_extension("assets");
+        let store = assets::AssetStore::open(&path, room.asset_binding())?;
+        let executable = files.room().with_extension("worker");
+        let mut file =
+            fs::OpenOptions::new().write(true).create_new(true).mode(0o700).open(&executable)?;
+        file.write_all(
+            br#"#!/bin/sh
+/bin/cat >/dev/null
+: > "$0.started"
+while [ ! -f "$0.release" ]; do /bin/sleep 0.025; done
+printf '%s\n' '{"status":"rejected"}'
+"#,
+        )?;
+        drop(file);
+        let (token, hash) = Authentication::issue_token()?;
+        let auth = Authentication::from_json(
+            &json!({
+                "format":"breditor/relay-auth", "formatVersion":1, "origins":[ORIGIN],
+                "accounts":[{"principal":"owner", "tokenHash":hash}],
+            })
+            .to_string(),
+        )?;
+        let worker = super::super::raster_worker::Worker::new(executable.clone())?;
+        let monitor = worker.monitor();
+        let mut host = super::super::create_host(room, auth, Some(store));
+        host.asset_operations = Arc::new(Operations::new(Some(worker)));
+        let monitor = monitor.with_transfer_slots(host.asset_operations.transfer_slots());
+        let bytes = b"local rejected raster fixture";
+        let asset = assets::asset_id(bytes);
+        let request = HttpRequest::builder()
+            .header("origin", ORIGIN)
+            .header("x-breditor-principal", "owner")
+            .header("authorization", format!("Bearer {token}"))
+            .header("content-type", "image/png")
+            .body(Body::from(&bytes[..]))?;
+        let client = tokio::spawn(upload(State(host), Path(asset), request));
+        let started = executable.with_extension("worker.started");
+        timeout(Duration::from_secs(5), async {
+            while !started.exists() {
+                tokio::time::sleep(Duration::from_millis(10)).await;
+            }
+        })
+        .await?;
+        client.abort();
+        assert!(client.await.err().is_some_and(|error| error.is_cancelled()));
+        assert_eq!(monitor.snapshot().rejected, 0);
+        let mut drain = std::pin::pin!(monitor.wait_for_idle());
+        let waited_for_worker = timeout(Duration::from_millis(100), drain.as_mut()).await.is_err();
+        fs::write(executable.with_extension("worker.release"), [])?;
+        assert!(waited_for_worker, "shutdown must wait for an upload's detached worker");
+        timeout(Duration::from_secs(5), drain).await?;
+        let stats = monitor.snapshot();
+        assert_eq!((stats.admitted, stats.rejected, stats.timed_out, stats.failed), (0, 1, 0, 0));
+        Ok(())
     }
 
     #[tokio::test]

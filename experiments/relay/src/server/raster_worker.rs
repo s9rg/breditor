@@ -11,6 +11,7 @@ use std::{
 use tokio::{
     io::{AsyncReadExt, AsyncWriteExt},
     process::Command,
+    sync::Semaphore,
 };
 
 const WORKER_DEADLINE: Duration = Duration::from_secs(15);
@@ -52,16 +53,33 @@ pub struct RasterWorkerStats {
 
 /// A private, host-owned view of raster worker outcomes. No request data is retained.
 #[derive(Clone, Default)]
-pub struct RasterWorkerMonitor(Arc<Mutex<RasterWorkerStats>>);
+pub struct RasterWorkerMonitor {
+    stats: Arc<Mutex<RasterWorkerStats>>,
+    transfers: Option<Arc<Semaphore>>,
+}
 
 impl RasterWorkerMonitor {
     /// Copy the aggregate counters for this router instance.
     pub fn snapshot(&self) -> RasterWorkerStats {
-        *self.0.lock().unwrap_or_else(PoisonError::into_inner)
+        *self.stats.lock().unwrap_or_else(PoisonError::into_inner)
+    }
+
+    pub(super) fn with_transfer_slots(mut self, transfers: Arc<Semaphore>) -> Self {
+        self.transfers = Some(transfers);
+        self
+    }
+
+    /// After stopping HTTP ingress, wait for transfers and their detached workers to finish.
+    /// The existing upload-body and worker deadlines continue to apply.
+    pub async fn wait_for_idle(&self) {
+        if let Some(transfers) = &self.transfers {
+            // A cancelled upload keeps its owned slot until the supervised worker is reaped.
+            let _slots = transfers.acquire_many(super::assets::TRANSFER_SLOTS).await;
+        }
     }
 
     fn record(&self, result: &std::result::Result<assets::PreparedAsset, WorkerFailure>) {
-        let mut stats = self.0.lock().unwrap_or_else(PoisonError::into_inner);
+        let mut stats = self.stats.lock().unwrap_or_else(PoisonError::into_inner);
         let count = match result {
             Ok(_) => &mut stats.admitted,
             Err(WorkerFailure::Rejected(_)) => &mut stats.rejected,
