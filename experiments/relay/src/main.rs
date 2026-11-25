@@ -53,13 +53,18 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
             Room::create_standard_language_v4(Path::new(log), &bounded(config, 256 * 1024)?, &bounded(document, 4 * 1024 * 1024)?, owner)?;
             println!("{}", json!({"kind":"created","richLanguageVersion":4}));
         }
-        ["serve", log, auth, bind] => {
+        ["raster-worker-v1", asset, mime] => server::run_raster_worker(asset, mime)?,
+        ["serve", log, auth, bind] | ["serve", log, auth, bind, "--isolated-raster"] => {
             let address: SocketAddr = bind.parse()?;
             if !address.ip().is_loopback() { return Err("reference relay currently requires loopback binding".into()); }
             let auth = Authentication::from_json(&bounded(auth, 256 * 1024)?)?;
             let (room, recovery) = Room::open(Path::new(log))?;
             let assets = AssetStore::open(Path::new(&format!("{log}.assets")),room.asset_binding())?;
-            let router = server::router_with_assets(room,auth,assets)?;
+            let router = if args.len() == 5 {
+                server::router_with_isolated_assets(room, auth, assets, std::env::current_exe()?)?
+            } else {
+                server::router_with_assets(room, auth, assets)?
+            };
             let listener = tokio::net::TcpListener::bind(address).await?;
             println!("{}", json!({"kind":"listening","address":listener.local_addr()?.to_string(),"recovery":recovery}));
             axum::serve(listener, router).with_graceful_shutdown(async { let _ = tokio::signal::ctrl_c().await; }).await?;
@@ -83,7 +88,7 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
                 selection_sha256, Path::new(output),
             ).await?;
         }
-        _ => return Err("usage: breditor-collab-relay token | init|init-v2|init-standard-v2|init-v3|init-standard-v3 LOG PROFILE_JSON DOCUMENT_JSON OWNER | serve LOG AUTH_JSON LOOPBACK_ADDRESS | serve-documents ROOMS_DIR AUTH_JSON DOCUMENT_API_JSON LOOPBACK_ADDRESS | inspect-sealed-room REQUEST_JSON AUTH_JSON NEW_EVIDENCE_DIR | repair-sealed-room REQUEST_JSON AUTH_JSON EVIDENCE_DIR SELECTION_SHA256 NEW_EVIDENCE_DIR".into()),
+        _ => return Err("usage: breditor-collab-relay token | init|init-v2|init-standard-v2|init-v3|init-standard-v3 LOG PROFILE_JSON DOCUMENT_JSON OWNER | serve LOG AUTH_JSON LOOPBACK_ADDRESS [--isolated-raster] | serve-documents ROOMS_DIR AUTH_JSON DOCUMENT_API_JSON LOOPBACK_ADDRESS | inspect-sealed-room REQUEST_JSON AUTH_JSON NEW_EVIDENCE_DIR | repair-sealed-room REQUEST_JSON AUTH_JSON EVIDENCE_DIR SELECTION_SHA256 NEW_EVIDENCE_DIR".into()),
     }
     Ok(())
 }

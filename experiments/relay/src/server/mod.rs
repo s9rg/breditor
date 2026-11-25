@@ -126,6 +126,10 @@ pub use segment_handover::{
 use std::sync::{Arc, Mutex};
 use tokio::sync::{Semaphore, watch};
 
+mod raster_worker;
+#[doc(hidden)]
+pub use raster_worker::run_worker as run_raster_worker;
+
 #[derive(Clone)]
 pub(super) struct Host {
     room: Arc<Mutex<Room>>,
@@ -137,6 +141,7 @@ pub(super) struct Host {
     continued_custody: Option<Arc<crate::room::ContinuedServingCustody>>,
     assets_changed: watch::Sender<u64>,
     asset_operations: Arc<Semaphore>,
+    raster_worker: Option<Arc<raster_worker::Worker>>,
     presence_changed: watch::Sender<u64>,
     review_changed: watch::Sender<u64>,
     versions_changed: watch::Sender<u64>,
@@ -239,6 +244,24 @@ pub fn router_with_assets(
     }
     Ok(build(room, authentication, Some(assets)))
 }
+
+/// Use one trusted local decoder process per authenticated raster upload.
+/// The executable must implement this release's `raster-worker-v1` mode.
+/// # Errors
+/// Rejects an incompatible store or a worker path that is not absolute.
+pub fn router_with_isolated_assets(
+    room: Room,
+    authentication: Authentication,
+    assets: crate::assets::AssetStore,
+    executable: std::path::PathBuf,
+) -> Result<Router> {
+    if room.asset_binding() != assets.binding() {
+        return Err(Error::Contract("asset store room binding"));
+    }
+    let mut host = create_host(room, authentication, Some(assets));
+    host.raster_worker = Some(Arc::new(raster_worker::Worker::new(executable)?));
+    Ok(routes(host))
+}
 fn build(
     room: Room,
     authentication: Authentication,
@@ -274,6 +297,7 @@ fn create_shared_host(
         continued_custody: None,
         assets_changed,
         asset_operations: Arc::new(Semaphore::new(4)),
+        raster_worker: None,
         presence_changed,
         review_changed,
         versions_changed,

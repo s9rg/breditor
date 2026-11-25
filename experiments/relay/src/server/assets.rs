@@ -131,11 +131,18 @@ pub(super) async fn upload(
         Ok(Err(_)) => return cors(StatusCode::PAYLOAD_TOO_LARGE.into_response(), allowed),
         Err(_) => return cors(StatusCode::REQUEST_TIMEOUT.into_response(), allowed),
     };
-    let (prepared, permit) =
-        match prepare_upload(permit, move || assets::prepare_asset(&asset, &mime, bytes)).await {
-            Ok(value) => value,
-            Err(e) => return cors(failure(&e), allowed),
-        };
+    let prepared = if let Some(worker) = host.raster_worker.clone() {
+        // Disconnecting the HTTP client does not cancel the supervised child or free its slot.
+        tokio::spawn(async move { Ok((worker.prepare(&asset, &mime, bytes).await?, permit)) })
+            .await
+            .unwrap_or(Err(Error::NeedsRecovery))
+    } else {
+        prepare_upload(permit, move || assets::prepare_asset(&asset, &mime, bytes)).await
+    };
+    let (prepared, permit) = match prepared {
+        Ok(value) => value,
+        Err(e) => return cors(failure(&e), allowed),
+    };
     let result = host
         .transaction(move |room| {
             let receipt = store.put(room, &principal, prepared)?;
