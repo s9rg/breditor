@@ -70,7 +70,7 @@ export class RichAssetStore {
     const {uploadState,signal,...supplied}={...input};if(uploadState!=="preserve")throw new RichAssetBackupError("asset_backup_policy","Explicit preservation of archived upload state is required");
     const options={...supplied,limits:checkedAssetLimits(supplied.limits)},records=await importAssetBackup(backup,options.limits,signal);checkAssetBackupSignal(signal);
     let store:RichAssetStore|undefined,db:IDBDatabase|undefined;
-    try{const factory=globalThis.indexedDB;db=await openDatabase(name);store=new RichAssetStore(db,name,options,factory);const target=db;
+    try{const factory=globalThis.indexedDB;db=await openDatabase(name,()=>checkAssetBackupSignal(signal));checkAssetBackupSignal(signal);store=new RichAssetStore(db,name,options,factory);const target=db;
       // The transaction owns cancellation until commit. Deliver the committed owner after that point.
       await store.#write(()=>insertAssetArchive(target,records,signal));store.#live();return store;}
     catch(error){store?.close();db?.close();if(error instanceof RichAssetBackupError)throw error;throw new RichAssetBackupError("asset_backup_storage","Asset archive destination could not commit");}
