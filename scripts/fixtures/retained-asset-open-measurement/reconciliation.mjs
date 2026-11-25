@@ -1,23 +1,11 @@
 import {RichAssetStore,openLocalEditor} from '@breditor/editor';
 import {file,nativeOptions,sha} from './measure.mjs';
+import {countRasterWrites} from './raster-write-count.mjs';
 
 const check=(condition,message)=>{if(!condition)throw Error(message);};
 const fileHash=async blob=>sha(await blob.arrayBuffer());
 const ids=rows=>rows.map(row=>row.asset).sort();
 const nativeHash=text=>sha(new TextEncoder().encode(text));
-async function countRasterWrites(database,operation){
- const prototype=IDBObjectStore.prototype,{put,add}=prototype,writes=[];
- const count=method=>function(...args){
-  const request=method.apply(this,args);
-  if(this.name==='assets'&&this.transaction.db.name===database)writes.push({asset:args[0].asset,bytes:args[0].payload.byteLength});
-  return request;
- };
- prototype.put=count(put);prototype.add=count(add);
- try{
-  await operation();
-  return {rows:writes.length,payloadBytes:writes.reduce((total,row)=>total+row.bytes,0),assets:ids(writes)};
- }finally{prototype.put=put;prototype.add=add;}
-}
 
 globalThis.measureReconciledAssetWrites=async()=>{
  const database='measure-reconciled-assets',options={database:database+'-attempt',checkSource(){}};

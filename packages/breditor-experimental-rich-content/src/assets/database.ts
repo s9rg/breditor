@@ -44,9 +44,9 @@ export function readAsset(db: IDBDatabase, asset: string): Promise<AssetRecord |
   });
 }
 
-/** Atomic compare/update is used for upload epochs; callbacks must not await. */
+/** Atomic compare/update for upload epochs. Undefined leaves the durable row untouched. */
 export function updateAsset(db: IDBDatabase, asset: string,
-  update: (record: AssetRecord) => AssetRecord): Promise<AssetRecord> {
+  update: (record: Readonly<AssetRecord>) => AssetRecord | undefined): Promise<AssetRecord> {
   return transact(db, "readwrite", (tx, result) => {
     const store = tx.objectStore("assets"), request = store.get(asset);
     request.onsuccess = () => {
@@ -54,8 +54,8 @@ export function updateAsset(db: IDBDatabase, asset: string,
       if (!current) { tx.abort(); return; }
       try {
         const next = update(current);
-        store.put(next);
-        result(next);
+        if (next !== undefined) store.put(next);
+        result(next ?? current);
       } catch { tx.abort(); }
     };
   });

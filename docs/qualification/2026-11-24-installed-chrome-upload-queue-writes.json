@@ -1,0 +1,170 @@
+{
+  "format": "breditor/installed-asset-upload-queue-write-comparison",
+  "formatVersion": 1,
+  "scope": "Twelve browser-encoded PNGs and eighteen idempotent public queue operations plus two actual state mutations in installed Chrome. Counts cover logical payload attached to IndexedDB asset writes.",
+  "eliminatedRows": 18,
+  "eliminatedPayloadBytes": 26993090,
+  "baseline": {
+    "format": "breditor/installed-asset-upload-queue-writes",
+    "source": {
+      "commit": "3681b3685bf6268ad865477b01703c781ddf3e8a",
+      "dirty": false,
+      "sha256": "adbefca4f93d52ec02bc1bb8bcfe23747b577941049506c90f33de0286ee710e",
+      "files": 9710,
+      "bytes": 83217103
+    },
+    "producer": {
+      "commit": "3681b3685bf6268ad865477b01703c781ddf3e8a",
+      "dirty": false,
+      "sha256": "adbefca4f93d52ec02bc1bb8bcfe23747b577941049506c90f33de0286ee710e",
+      "files": 9710,
+      "bytes": 83217103
+    },
+    "browser": "158.0.8127.37",
+    "localWasmSha256": "f100599f39805586d465961161bf751e0bd51e8d524ad2ab653001946347200e",
+    "fixtureProof": [
+      {
+        "path": "scripts/fixtures/retained-asset-open-measurement/upload-queue.html",
+        "sha256": "37c16029a206092338af989c6e93a535060b5e3ce35a5aef51fe8e438d86f675"
+      },
+      {
+        "path": "scripts/fixtures/retained-asset-open-measurement/measure.mjs",
+        "sha256": "9b7f67eeb582adddb8d07b3d3ebfded2fb6743ed6d65e714d66f54c964a3e795"
+      },
+      {
+        "path": "scripts/fixtures/retained-asset-open-measurement/upload-queue.mjs",
+        "sha256": "64114bdb46d3d106105275520c89ba93947957f6b610d041f9bb5cb517d0747f"
+      },
+      {
+        "path": "scripts/fixtures/retained-asset-open-measurement/raster-write-count.mjs",
+        "sha256": "51e30b10cffc120a1ca38013e21cb0df062690fd4e98560a48fce828722c6de5"
+      }
+    ],
+    "registryArtifactsPinnedToProducer": 45,
+    "archives": [
+      {
+        "name": "@breditor/browser",
+        "sha256": "1199d14fe5b3d5b2e0318642a9bbf9f5b84773e97265597f72e190be43869ae0"
+      },
+      {
+        "name": "@breditor/experimental-rich-content",
+        "sha256": "b0333bd0c8a68897eeea5370c6be256ea63c1fea4b1a06559f83b6a5b934d005"
+      },
+      {
+        "name": "@breditor/editor",
+        "sha256": "9091ec60bb7ab80ddbdfcdfa5cde8756fdf33b16a16e1d78d792151c0db49b08"
+      }
+    ],
+    "passed": true,
+    "noOp": {
+      "rows": 18,
+      "payloadBytes": 26993090,
+      "assets": [
+        "sha256:1798787117f5d66db4eacf39a4c65235bb07d3b38cff15108dea4f53b97e3bf6",
+        "sha256:1798787117f5d66db4eacf39a4c65235bb07d3b38cff15108dea4f53b97e3bf6",
+        "sha256:209e8bc5442f8a7fa78ae04aefe504f72b5ef1a3946e87c289d890b443f5abc4",
+        "sha256:209e8bc5442f8a7fa78ae04aefe504f72b5ef1a3946e87c289d890b443f5abc4",
+        "sha256:29cb7f3a8fd2336164cc86c6c63d2b2e29bfe4efc0dd289988a17803b7408a89",
+        "sha256:29cb7f3a8fd2336164cc86c6c63d2b2e29bfe4efc0dd289988a17803b7408a89",
+        "sha256:5b8c8894e95a1f0d6ad6631e745abf0f3a610c467a862ad3473a0c5ea2f70747",
+        "sha256:5b8c8894e95a1f0d6ad6631e745abf0f3a610c467a862ad3473a0c5ea2f70747",
+        "sha256:67cef452c7816449bf45a4cd873560eaa499266ff261c22ac2a257ee4365933f",
+        "sha256:67cef452c7816449bf45a4cd873560eaa499266ff261c22ac2a257ee4365933f",
+        "sha256:ba8929baafb497dfefb882b2ace7dc8e7369bf65e46c137242e12d40469036ab",
+        "sha256:ba8929baafb497dfefb882b2ace7dc8e7369bf65e46c137242e12d40469036ab",
+        "sha256:bc7267c7febccb3e0a81e742f8dc72fff04ebb852f39c787a82416a4d32d62cc",
+        "sha256:cbb814d0586e66ab9e436dfe25a20b9f3a02cfbd85d7b475b442633468dbead5",
+        "sha256:ce5a355eb71a24c7557c8c38e17cc8a85d49da39b406b50ce28db2856164a756",
+        "sha256:e101d2aba6addc1fa6d6cedf6b9939db3c03a94bc8eb2885964d0751466232d6",
+        "sha256:e2304b66769ae5d594f04f59bdcbd0329a821fe88137abcc5adde5bbe97d6795",
+        "sha256:e57116d54b74beed7903ee64d098072cd54adad8b9291563fe6c0252875fde7c"
+      ]
+    },
+    "changed": {
+      "rows": 2,
+      "payloadBytes": 2999284,
+      "assets": [
+        "sha256:bc7267c7febccb3e0a81e742f8dc72fff04ebb852f39c787a82416a4d32d62cc",
+        "sha256:bc7267c7febccb3e0a81e742f8dc72fff04ebb852f39c787a82416a4d32d62cc"
+      ]
+    },
+    "nativeUndoRedo": true,
+    "assets": 12,
+    "noOpNotifications": 18,
+    "archiveSha256": "ece0812a0da41da8a27ed8844546864f0a4aea11f2d646c97f9fb0975a5babaf",
+    "finalSha256": "d7d69deb8c665b9f0c9c3d5a9ae075d2f2fa32c9f3960da7c8b585995a70449b",
+    "checkpointSha256": "b7ffe4b8f3fccc790cd75f80b75e3c553911e98d52bb25b01b25ac5b11e46b54"
+  },
+  "candidate": {
+    "format": "breditor/installed-asset-upload-queue-writes",
+    "source": {
+      "commit": "4ef38606bfdca5f9183790745487f55b21a32a5a",
+      "dirty": false,
+      "sha256": "00c38f905e6dd9deeb70abe69d8fd8b8dbe80ccc1ba601ce6de6304666932ef0",
+      "files": 9710,
+      "bytes": 83217187
+    },
+    "producer": {
+      "commit": "4ef38606bfdca5f9183790745487f55b21a32a5a",
+      "dirty": false,
+      "sha256": "00c38f905e6dd9deeb70abe69d8fd8b8dbe80ccc1ba601ce6de6304666932ef0",
+      "files": 9710,
+      "bytes": 83217187
+    },
+    "browser": "158.0.8127.37",
+    "localWasmSha256": "f100599f39805586d465961161bf751e0bd51e8d524ad2ab653001946347200e",
+    "fixtureProof": [
+      {
+        "path": "scripts/fixtures/retained-asset-open-measurement/upload-queue.html",
+        "sha256": "37c16029a206092338af989c6e93a535060b5e3ce35a5aef51fe8e438d86f675"
+      },
+      {
+        "path": "scripts/fixtures/retained-asset-open-measurement/measure.mjs",
+        "sha256": "9b7f67eeb582adddb8d07b3d3ebfded2fb6743ed6d65e714d66f54c964a3e795"
+      },
+      {
+        "path": "scripts/fixtures/retained-asset-open-measurement/upload-queue.mjs",
+        "sha256": "64114bdb46d3d106105275520c89ba93947957f6b610d041f9bb5cb517d0747f"
+      },
+      {
+        "path": "scripts/fixtures/retained-asset-open-measurement/raster-write-count.mjs",
+        "sha256": "51e30b10cffc120a1ca38013e21cb0df062690fd4e98560a48fce828722c6de5"
+      }
+    ],
+    "registryArtifactsPinnedToProducer": 45,
+    "archives": [
+      {
+        "name": "@breditor/browser",
+        "sha256": "1199d14fe5b3d5b2e0318642a9bbf9f5b84773e97265597f72e190be43869ae0"
+      },
+      {
+        "name": "@breditor/experimental-rich-content",
+        "sha256": "8b6a0003309eac9c9246b38844e93edc2234ea7f2cbdcd4b007ae08f903bd49b"
+      },
+      {
+        "name": "@breditor/editor",
+        "sha256": "9091ec60bb7ab80ddbdfcdfa5cde8756fdf33b16a16e1d78d792151c0db49b08"
+      }
+    ],
+    "passed": true,
+    "noOp": {
+      "rows": 0,
+      "payloadBytes": 0,
+      "assets": []
+    },
+    "changed": {
+      "rows": 2,
+      "payloadBytes": 2999284,
+      "assets": [
+        "sha256:bc7267c7febccb3e0a81e742f8dc72fff04ebb852f39c787a82416a4d32d62cc",
+        "sha256:bc7267c7febccb3e0a81e742f8dc72fff04ebb852f39c787a82416a4d32d62cc"
+      ]
+    },
+    "nativeUndoRedo": true,
+    "assets": 12,
+    "noOpNotifications": 18,
+    "archiveSha256": "ece0812a0da41da8a27ed8844546864f0a4aea11f2d646c97f9fb0975a5babaf",
+    "finalSha256": "d7d69deb8c665b9f0c9c3d5a9ae075d2f2fa32c9f3960da7c8b585995a70449b",
+    "checkpointSha256": "b7ffe4b8f3fccc790cd75f80b75e3c553911e98d52bb25b01b25ac5b11e46b54"
+  }
+}

@@ -732,3 +732,23 @@ disk I/O.
 node scripts/check-asset-backups-installed.mjs --reuse-runtime
 node scripts/measure-retained-asset-open.mjs --reconciliation-writes
 ```
+
+## Installed upload queue writes
+
+Cancel and retry calls on six uploaded rasters and retry calls on six pending
+rasters left the queue unchanged. The earlier build submitted 18 asset rows
+carrying 26,993,090 logical payload bytes to IndexedDB. The candidate
+submitted zero asset rows for those calls. Both builds emitted all 18
+existing status notifications.
+
+A real cancel and retry on one pending raster still submitted two rows
+carrying 2,999,284 bytes in both builds. The two complete backup snapshots
+and native checkpoints had identical digests across the builds. Cold
+restore kept the exact queue, receipts and native Undo and Redo. These
+counts cover the raster payload on IndexedDB write requests.
+[Measurement and archive hashes](qualification/2026-11-24-installed-chrome-upload-queue-writes.json)
+
+```sh
+node scripts/check-asset-backups-installed.mjs --reuse-runtime
+node scripts/measure-retained-asset-open.mjs --upload-queue-writes
+```
