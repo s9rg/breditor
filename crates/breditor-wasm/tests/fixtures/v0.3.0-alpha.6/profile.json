@@ -1,0 +1,27 @@
+{
+  "format": "breditor/profile-bootstrap",
+  "formatVersion": 2,
+  "schema": {"name": "example/link-editor", "version": 1},
+  "extensions": [{
+    "id": {"name": "example/link-extension", "version": 1},
+    "dependencies": [],
+    "conflicts": [],
+    "inlineFormats": [{"kind": "example/link", "revision": 1}],
+    "inlineFormatPropertyContracts": [{
+      "formatKind": "example/link",
+      "properties": [{
+        "name": "example/href",
+        "presence": "required",
+        "valueType": {"kind": "string", "minimumUtf8Bytes": 1, "maximumUtf8Bytes": 2048}
+      }]
+    }],
+    "inlineFormatToggles": [],
+    "inlineFormatSets": [{
+      "formatKind": "example/link",
+      "actionId": "example/set-link",
+      "intentId": "example/set-link-intent",
+      "bindingId": "example/set-link-binding",
+      "actionStateId": "example/link-presence"
+    }]
+  }]
+}

@@ -863,6 +863,122 @@ fn v021_checkpoint_requires_its_original_format_and_profile_fingerprint() -> Tes
     Ok(())
 }
 
+const ALPHA6_PROFILE: &str = include_str!("fixtures/v0.3.0-alpha.6/profile.json");
+const ALPHA6_CHECKPOINT: &str = include_str!("fixtures/v0.3.0-alpha.6/history.json");
+const ALPHA6_FINGERPRINT: &str =
+    "sha256:4a9b7288eb8f8e628710030c23e816ba95dbab9b8dbc3ec3378f7a53ac7cb783";
+
+#[cfg_attr(target_arch = "wasm32", wasm_bindgen_test)]
+#[cfg_attr(not(target_arch = "wasm32"), test)]
+fn alpha6_typed_range_checkpoint_restores_every_history_cursor() -> TestResult {
+    use serde_json::json;
+
+    let checkpoint = ALPHA6_CHECKPOINT.trim_end_matches('\n');
+    let profile = BreditorCompiledProfile::from_bootstrap_json_v2(ALPHA6_PROFILE)
+        .take_profile()
+        .ok_or_else(|| test_error("ABI 4 fixture profile was absent"))?;
+    assert_eq!(profile.descriptor().schema_fingerprint(), ALPHA6_FINGERPRINT);
+    let mut owner =
+        require_engine(&mut profile.create_engine_from_session_checkpoint_json_v3(checkpoint))?;
+    assert_eq!(require_string(owner.session_checkpoint_json())?, checkpoint);
+
+    let strong = json!({"type": "breditor/strong", "properties": {}});
+    let link = json!({"type": "example/link", "properties": {"example/href": "https://example.test/route"}});
+    let run = |text, formats| json!({"kind": "text", "text": text, "formats": formats});
+    let selection = |anchor_path, anchor_offset, focus_path, focus_offset, focus_affinity| {
+        json!({"kind": "range",
+               "anchor": {"kind": "text", "textPath": anchor_path, "utf16Offset": anchor_offset, "affinity": "after"},
+               "focus": {"kind": "text", "textPath": focus_path, "utf16Offset": focus_offset, "affinity": focus_affinity}})
+    };
+    let verify = |owner: &BreditorEngine, cursor| -> TestResult {
+        let observed = owner.observation();
+        assert_eq!(observed.snapshot_lineage(), "release-alpha6-typed-range");
+        assert_eq!((observed.undo_depth(), observed.redo_depth()), (cursor, 2 - cursor));
+        let state: Value = serde_json::from_str(&require_string(owner.state_json())?)?;
+        let paragraphs = state["document"]["root"]["children"]
+            .as_array()
+            .ok_or_else(|| test_error("fixture paragraphs were absent"))?;
+        assert_eq!(state["schemaFingerprint"], ALPHA6_FINGERPRINT);
+        assert_eq!(paragraphs.len(), 3);
+        assert_eq!(paragraphs[1]["children"], json!([]));
+        let (first, last, expected_selection) = match cursor {
+            0 => (
+                json!([run("North", vec![strong.clone()])]),
+                json!([run("south", vec![])]),
+                selection([2, 0], 5, [2, 0], 5, "after"),
+            ),
+            1 => (
+                json!([run("North", vec![strong.clone()])]),
+                json!([run("south!", vec![])]),
+                selection([2, 0], 2, [0, 0], 1, "before"),
+            ),
+            2 => (
+                json!([
+                    run("N", vec![strong.clone()]),
+                    run("orth", vec![strong.clone(), link.clone()])
+                ]),
+                json!([run("so", vec![link.clone()]), run("uth!", vec![])]),
+                selection([2, 1], 0, [0, 1], 0, "before"),
+            ),
+            _ => return Err(test_error("unexpected ABI 4 fixture history cursor").into()),
+        };
+        assert_eq!(paragraphs[0]["children"], first);
+        assert_eq!(paragraphs[2]["children"], last);
+        assert_eq!(state["selection"], expected_selection);
+        assert!(state["pendingFormats"].is_null());
+        Ok(())
+    };
+
+    verify(&owner, 1)?;
+    let mut previous = 1;
+    for cursor in [2, 1, 0, 1, 2] {
+        let observed = owner.observation();
+        let command = if cursor < previous {
+            owner.undo(&observed, false)
+        } else {
+            owner.redo(&observed, false)
+        };
+        assert_eq!(command.status(), "committed");
+        let saved = require_string(owner.session_checkpoint_json())?;
+        let reopened =
+            require_engine(&mut profile.create_engine_from_session_checkpoint_json_v3(&saved))?;
+        assert_eq!(require_string(reopened.session_checkpoint_json())?, saved);
+        verify(&reopened, cursor)?;
+        owner = reopened;
+        previous = cursor;
+    }
+    Ok(())
+}
+
+#[cfg_attr(target_arch = "wasm32", wasm_bindgen_test)]
+#[cfg_attr(not(target_arch = "wasm32"), test)]
+fn alpha6_typed_range_checkpoint_refuses_other_generations_and_profiles() -> TestResult {
+    let profile = BreditorCompiledProfile::from_bootstrap_json_v2(ALPHA6_PROFILE)
+        .take_profile()
+        .ok_or_else(|| test_error("ABI 4 fixture profile was absent"))?;
+    let changed_bootstrap = ALPHA6_PROFILE.replace(r#""revision": 1"#, r#""revision": 2"#);
+    let different = BreditorCompiledProfile::from_bootstrap_json_v2(&changed_bootstrap)
+        .take_profile()
+        .ok_or_else(|| test_error("different ABI 4 fixture profile was absent"))?;
+    assert_ne!(different.descriptor().schema_fingerprint(), ALPHA6_FINGERPRINT);
+    let future = ALPHA6_CHECKPOINT.replacen(r#""formatVersion":3"#, r#""formatVersion":99"#, 1);
+    assert_ne!(future, ALPHA6_CHECKPOINT);
+    let unsupported = "codec.unsupported_format_version";
+    for (mut result, code) in [
+        (BreditorEngine::from_session_checkpoint_json(ALPHA6_CHECKPOINT), unsupported),
+        (profile.create_engine_from_session_checkpoint_json(ALPHA6_CHECKPOINT), unsupported),
+        (profile.create_engine_from_session_checkpoint_json_v3(&future), unsupported),
+        (
+            different.create_engine_from_session_checkpoint_json_v3(ALPHA6_CHECKPOINT),
+            "codec.schema_mismatch",
+        ),
+    ] {
+        assert_engine_error(&result, code, "https://example.test/route")?;
+        assert!(result.take_engine().is_none());
+    }
+    Ok(())
+}
+
 #[cfg_attr(target_arch = "wasm32", wasm_bindgen_test)]
 #[cfg_attr(not(target_arch = "wasm32"), test)]
 fn document_json_rejects_stale_history_and_foreign_observations_without_content_leakage()
