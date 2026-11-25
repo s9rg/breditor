@@ -606,6 +606,17 @@ test("the pilot supports keyboard sign-in and checkpoint recovery at a narrow vi
  await expect(page.getByRole("region",{name:"Table 1",exact:true})).toBeVisible();
  await expect(page.getByRole("button",{name:"Scroll table 1 right"})).toBeVisible();
  expect(await page.evaluate(()=>document.documentElement.scrollWidth)).toBe(320);
+ const downloadControl=page.getByRole("button",{name:"Download checkpoint",exact:true});
+ for(let step=0;step<12&&!(await downloadControl.evaluate(control=>document.activeElement===control));step++)await page.keyboard.press(tab);
+ await expect(downloadControl).toBeFocused();
+ const download=page.waitForEvent("download");
+ await page.keyboard.press("Enter");
+ const downloaded=await download;
+ const exactDownload=readFileSync(await downloaded.path(),"utf8");
+ await expect(page.getByLabel("Downloaded checkpoint digest")).toContainText(createHash("sha256").update(exactDownload).digest("hex"));
+ await expect(downloadControl).toBeFocused({timeout:1500});
+ await page.keyboard.press(tab);
+ await expect(page.locator("#pane-a").getByLabel("Image files")).toBeFocused();
  const backup=page.getByLabel("Document checkpoint");
  for(let step=0;step<40&&!(await backup.evaluate(input=>document.activeElement===input));step++)await page.keyboard.press(tab);
  await expect(backup).toBeFocused();
