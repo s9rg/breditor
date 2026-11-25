@@ -2,7 +2,7 @@ import assert from "node:assert/strict";
 import {execFileSync} from "node:child_process";
 import {mkdirSync,mkdtempSync,rmSync,writeFileSync} from "node:fs";
 import {tmpdir} from "node:os";
-import {join} from "node:path";
+import {dirname,join} from "node:path";
 import {test} from "node:test";
 import {sourceEvidence} from "./candidate-release/evidence.mjs";
 import {
@@ -16,7 +16,9 @@ test("mixed workflow reuse requires the current exact interchange install",t=>{
  for(const path of [root,consumer,archiveDirectory])mkdirSync(path);
  const registryPath="node_modules/parse5";
  const registry={version:"8.0.1",resolved:"https://registry.npmjs.org/parse5/-/parse5-8.0.1.tgz",integrity:"sha512-pinned"};
- const producer={lockfileVersion:3,packages:{[registryPath]:registry}};
+ const optional={version:"1.0.0",resolved:"https://registry.npmjs.org/platform-only/-/platform-only-1.0.0.tgz",
+  integrity:"sha512-platform",optional:true,os:["a-different-fixture-platform"]};
+ const producer={lockfileVersion:3,packages:{[registryPath]:registry,"node_modules/platform-only":optional}};
  writeFileSync(join(root,"package-lock.json"),JSON.stringify(producer));
  const git=(...args)=>execFileSync("git",args,{cwd:root,stdio:"ignore"});
  git("init","-q");
@@ -30,15 +32,25 @@ test("mixed workflow reuse requires the current exact interchange install",t=>{
   return {name,filename,path,version,integrity};
  });
  const write=contents=>writeFileSync(join(consumer,"package-lock.json"),contents);
+ const installed=join(consumer,registryPath,"package.json");
+ mkdirSync(dirname(installed),{recursive:true});
+ writeFileSync(installed,JSON.stringify({version:registry.version}));
  write(JSON.stringify(lock));
  const report={format:"breditor/interchange-installed-consumer",formatVersion:1,passed:true,source:sourceEvidence(root),
   consumer,archives,...interchangeConsumerLockEvidence(root,consumer,archives)};
  verifyInterchangeConsumerReuse(root,report);
+ writeFileSync(installed,JSON.stringify({version:"8.0.2"}));
+ assert.throws(()=>verifyInterchangeConsumerReuse(root,report),/Installed registry package version differs: node_modules\/parse5/);
+ writeFileSync(installed,JSON.stringify({version:registry.version}));
  assert.throws(()=>verifyInterchangeConsumerReuse(root,{...report,archives:[]}),/archive inventory differs/);
  assert.throws(()=>verifyInterchangeConsumerReuse(root,{...report,source:{...report.source,commit:"0".repeat(40)}}),
   /belongs to another candidate/);
  write(JSON.stringify(lock,null,2));
  assert.throws(()=>verifyInterchangeConsumerReuse(root,report),/consumer lock changed since qualification/);
+ lock.packages["node_modules/platform-only"].os=[process.platform];
+ write(JSON.stringify(lock));
+ assert.throws(()=>verifyInterchangeConsumerReuse(root,report),/Missing installed registry package manifest/);
+ lock.packages["node_modules/platform-only"].os=optional.os;
  lock.packages[registryPath].version="8.0.2";
  write(JSON.stringify(lock));
  assert.throws(()=>verifyInterchangeConsumerReuse(root,report),/registry artifact drifted/);

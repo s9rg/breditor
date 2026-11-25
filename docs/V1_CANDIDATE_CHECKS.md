@@ -122,8 +122,9 @@ native relay fixtures and run the installed interchange, mixed editing,
 suggestion, Reader and review asset workflows in an independent job. The mixed
 editing check reuses the interchange consumer produced in the same run. The
 interchange and standalone DOCX consumers use the candidate's registry lock.
-The mixed editing check validates the interchange source, archive bindings and
-consumer lock digest before and after reuse. The review checks pack and install
+The mixed editing check validates the interchange source, archive bindings,
+consumer lock digest and installed registry versions before and after reuse.
+The review checks pack and install
 their own clean consumers. The retained reports
 and stage logs include npm archive digests. The review checks seed their
 consumer lock from the candidate's registry lock, then verify the installed
