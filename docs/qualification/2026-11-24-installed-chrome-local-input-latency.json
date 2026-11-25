@@ -1,0 +1,109 @@
+{
+  "format": "breditor/installed-input-latency",
+  "formatVersion": 1,
+  "browser": "158.0.8127.37",
+  "platform": "darwin",
+  "arch": "arm64",
+  "host": {
+    "cpu": "Apple M1 Pro",
+    "logicalCpus": 10,
+    "memoryBytes": 34359738368,
+    "osRelease": "25.6.0",
+    "osVersion": "Darwin Kernel Version 25.6.0: Fri Jul 31 19:18:49 PDT 2026; root:xnu-12377.161.14~5/RELEASE_ARM64_T6000"
+  },
+  "pageReadyMs": 570.8874999999998,
+  "pasteBytes": 1000,
+  "wasmSha256": "f100599f39805586d465961161bf751e0bd51e8d524ad2ab653001946347200e",
+  "rows": [
+    {
+      "paragraphs": 16,
+      "documentBytes": 9487,
+      "documentSha256": "6b60dafe5e5deed5c692cb6a348721072cd923508f1bbd6e2087cec9b2680b87",
+      "topLevelBlocks": 19,
+      "openMs": 5.100000023841858,
+      "metrics": {
+        "typing": {
+          "samples": 20,
+          "p50": 2.399999976158142,
+          "p95": 2.899999976158142
+        },
+        "undoTyping": {
+          "samples": 20,
+          "p50": 2.399999976158142,
+          "p95": 3
+        },
+        "paste": {
+          "samples": 20,
+          "p50": 2.5999999046325684,
+          "p95": 2.8000000715255737
+        },
+        "undoPaste": {
+          "samples": 20,
+          "p50": 2.5,
+          "p95": 2.8000000715255737
+        }
+      }
+    },
+    {
+      "paragraphs": 128,
+      "documentBytes": 56219,
+      "documentSha256": "d00e748e18efc25528e7a4d235983ed603edd6f1e4a3c28b1af30563f0a69453",
+      "topLevelBlocks": 131,
+      "openMs": 6,
+      "metrics": {
+        "typing": {
+          "samples": 20,
+          "p50": 5.800000071525574,
+          "p95": 6
+        },
+        "undoTyping": {
+          "samples": 20,
+          "p50": 6.100000023841858,
+          "p95": 6.399999976158142
+        },
+        "paste": {
+          "samples": 20,
+          "p50": 6.200000047683716,
+          "p95": 6.5
+        },
+        "undoPaste": {
+          "samples": 20,
+          "p50": 6.199999928474426,
+          "p95": 6.400000095367432
+        }
+      }
+    }
+  ],
+  "source": {
+    "commit": "ec0b4df014db883875bb7fe98db1bc5070b857b4",
+    "dirty": false,
+    "sha256": "cc9a0631b1bf351c06d026f6872a3562fdd5a3cd17e83f10232a7d226744d390",
+    "files": 9710,
+    "bytes": 83221963
+  },
+  "installed": {
+    "receiptSha256": "545f692feab673a26d8f7bd0cfbe56c9f22a1f21ff87e4996c36dd88c75e8ecd",
+    "archives": [
+      {
+        "name": "@breditor/browser",
+        "filename": "breditor-browser-0.3.0-alpha.22.tgz",
+        "sha256": "1199d14fe5b3d5b2e0318642a9bbf9f5b84773e97265597f72e190be43869ae0"
+      },
+      {
+        "name": "@breditor/experimental-rich-content",
+        "filename": "breditor-experimental-rich-content-0.3.0-alpha.22.tgz",
+        "sha256": "b0333bd0c8a68897eeea5370c6be256ea63c1fea4b1a06559f83b6a5b934d005"
+      },
+      {
+        "name": "@breditor/collaboration",
+        "filename": "breditor-collaboration-0.3.0-alpha.22.tgz",
+        "sha256": "6af6292ed18edc7cd060673f5865c26ed3ba85e7cf0e4b8437840ba607ad849f"
+      },
+      {
+        "name": "@breditor/editor",
+        "filename": "breditor-editor-0.3.0-alpha.22.tgz",
+        "sha256": "9091ec60bb7ab80ddbdfcdfa5cde8756fdf33b16a16e1d78d792151c0db49b08"
+      }
+    ]
+  }
+}
