@@ -76,6 +76,10 @@ default chronological history, and the installed shared V4 journal. The
 reader tests exercise byte-exact restore and explicit mismatched-language
 refusal. Full compatibility approval also requires a reviewed V1 API
 boundary and the pinned earlier input-rule readers listed in the candidate plan.
+The [pinned local checkpoint probe](RICH_INPUT_RULES.md#pinned-local-checkpoint-recovery)
+exercises the original local pre-feature and programmatic-only readers against
+current native checkpoints. Shared reader and browser routing evidence still
+requires the combined qualification.
 
 ### Opt-in rich and shared recovery
 

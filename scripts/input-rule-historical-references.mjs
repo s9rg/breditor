@@ -18,22 +18,37 @@ export function readPinnedInputRuleArtifact(directory,{path,bytes,sha256}){
  return contents;
 }
 
-function readReferences(directories){
+function pairedPins(directories){
  if(directories.length!==2&&directories.length!==pins.length)throw Error("Expected the earlier local/shared pair or both pinned local/shared pairs");
+ return pins.slice(0,directories.length);
+}
+
+function readReferences(directories,selected){
  return directories.map((directory,index)=>{
-  const pin=pins[index];
+  const pin=selected[index];
   return {pin,files:pin.files.map(file=>({path:file.path,contents:readPinnedInputRuleArtifact(directory,file)}))};
  });
 }
 
 /** Check all required artifacts before a producer build or package install. */
 export function preflightHistoricalInputRuleRuntimes(directories){
- readReferences(directories);
+ readReferences(directories,pairedPins(directories));
 }
 
 /** Load only an isolated snapshot of the bytes verified against the historical receipts. */
 export async function loadHistoricalInputRuleRuntimes(directories){
- const references=readReferences(directories);
+ return loadReferences(readReferences(directories,pairedPins(directories)));
+}
+
+/** Explicit recovery proof using both original local readers and no shared reader. */
+export async function loadHistoricalLocalInputRuleRuntimes(earlierDirectory,programmaticDirectory){
+ const directories=[earlierDirectory,programmaticDirectory];
+ if(directories.some(directory=>typeof directory!=="string"||!directory||directory.startsWith("--")))throw Error("Expected the earlier and programmatic local reader directories");
+ const localPins=["earlier","programmatic"].map(generation=>pins.find(pin=>pin.runtime==="local"&&pin.generation===generation));
+ return loadReferences(readReferences(directories,localPins));
+}
+
+async function loadReferences(references){
  const scratch=mkdtempSync(resolve(tmpdir(),"breditor-input-rule-reference-"));
  try{
   writeFileSync(resolve(scratch,"package.json"),'{"type":"module"}\n',{flag:"wx"});
