@@ -20,6 +20,7 @@ function install(directory,fixture,{manifest,lock}){
 }
 for(const name of ["breditor-experimental-rich-content","breditor-collaboration","breditor-editor","breditor-interchange"])run(process.execPath,["node_modules/typescript/bin/tsc","-p",`packages/${name}/tsconfig.json`]);
 mkdirSync(archives);cpSync(join(root,"scripts/fixtures/interchange-consumer"),consumer,{recursive:true});
+cpSync(join(root,"scripts/fixtures/editor-consumer/source-boundary.mjs"),join(consumer,"source-boundary.mjs"));
 const names=interchangeConsumerPackages,packs=JSON.parse(execFileSync("npm",["pack","--ignore-scripts","--json","--pack-destination",archives,...names.flatMap(name=>["--workspace",name])],{cwd:root,encoding:"utf8"}));
 const archiveEvidence=installedArchiveDigests(archives,packs,names);
 const selectedArchives=archiveEvidence.map(archive=>({...archive,path:join(archives,archive.filename)}));
@@ -41,6 +42,7 @@ const standaloneDocx=join(temporary,"docx"),docxPackages=["@breditor/interchange
 const standaloneArchives=selectedArchives.filter(archive=>docxPackages.includes(archive.name));
 mkdirSync(standaloneDocx);
 for(const file of ["docx-runtime.mjs","docx-types.mts","pixel.mjs"]){cpSync(join(consumer,file),join(standaloneDocx,file));}
+for(const file of ["interchange-source-boundary.mjs","interchange-source-boundary.json","source-boundary.mjs"]){cpSync(join(consumer,file),join(standaloneDocx,file));}
 cpSync(join(root,"crates/breditor-core/tests/fixtures/rich-v4-frozen-checkpoint.json"),join(standaloneDocx,"native-v4-checkpoint.json"));
 install(standaloneDocx,{},installedConsumerLock(producer,standaloneArchives,{name:"breditor-docx-installed-proof",external:{}}));
 const standaloneLockEvidence=interchangeConsumerLockEvidence(root,standaloneDocx,standaloneArchives,docxPackages);
@@ -48,6 +50,10 @@ assert.equal(realpathSync(join(standaloneDocx,"node_modules/@breditor/interchang
 run(process.execPath,[join(root,"node_modules/typescript/bin/tsc"),"--noEmit","--strict","--exactOptionalPropertyTypes","--target","ES2022","--module","NodeNext","--lib","ES2022,DOM","docx-types.mts"],standaloneDocx);
 const docxStandalone=JSON.parse(execFileSync(process.execPath,["docx-runtime.mjs"],{cwd:standaloneDocx,encoding:"utf8"}));
 assert.deepEqual([docxStandalone.passed,docxStandalone.standalone,docxStandalone.matchedHostReceivers],[true,true,2]);
+const compiler=join(root,"node_modules/typescript/bin/tsc");
+const sourceBoundary=Object.fromEntries([["withRichPeer",consumer,[]],["withoutRichPeer",standaloneDocx,["--without-rich-peer"]]].map(([scope,directory,options])=>[
+ scope,JSON.parse(execFileSync(process.execPath,["interchange-source-boundary.mjs",compiler,...options],{cwd:directory,encoding:"utf8"})),
+]));
 cpSync(join(root,"crates/breditor-core/tests/fixtures/pre-v4"),join(consumer,"pre-v4"),{recursive:true});
 const historicalRichReaders=JSON.parse(execFileSync(process.execPath,["historical-rich-readers.mjs"],{cwd:consumer,encoding:"utf8",timeout:10000}));
 assert.equal(historicalRichReaders.passed,true);
@@ -90,6 +96,6 @@ assert.deepEqual(interchangeConsumerLockEvidence(root,consumer,selectedArchives)
 assert.deepEqual(interchangeConsumerLockEvidence(root,standaloneDocx,standaloneArchives,docxPackages),standaloneLockEvidence,
  "Installed DOCX lock changed during qualification");
 assert.deepEqual(sourceEvidence(root),source,"Source files changed during the installed probe");
-const report={format:"breditor/interchange-installed-consumer",formatVersion:1,passed:true,source,consumer,archives:selectedArchives,...lockEvidence,installedInterchangeLicenses:true,strictConsumerTypes:true,workspaceLinks:false,defaultForeignParserModules:modules.default.filter(foreign).length,optInForeignParserModules:modules.interchange.filter(foreign).length,docxForeignParserModules,xmlForeignParserModules,installedDocxExport:true,docxStandalone:{...docxStandalone,consumer:standaloneDocx,strictTypes:true,...standaloneLockEvidence},historicalRichReaders,historicalSharedReader,functionalProbe:{...result,scope:"Installed archives with bare package imports and bundled paired Wasm; compiled managed SDK/React synthetic DOM/clipboard/IDB/locks. Not OS clipboard, captured Office applications, cross-browser, IME, accessibility or release qualification."}};
+const report={format:"breditor/interchange-installed-consumer",formatVersion:1,passed:true,source,consumer,archives:selectedArchives,...lockEvidence,installedInterchangeLicenses:true,strictConsumerTypes:true,sourceBoundary,workspaceLinks:false,defaultForeignParserModules:modules.default.filter(foreign).length,optInForeignParserModules:modules.interchange.filter(foreign).length,docxForeignParserModules,xmlForeignParserModules,installedDocxExport:true,docxStandalone:{...docxStandalone,consumer:standaloneDocx,strictTypes:true,...standaloneLockEvidence},historicalRichReaders,historicalSharedReader,functionalProbe:{...result,scope:"Installed archives with bare package imports and bundled paired Wasm; compiled managed SDK/React synthetic DOM/clipboard/IDB/locks. Not OS clipboard, captured Office applications, cross-browser, IME, accessibility or release qualification."}};
 mkdirSync(join(root,"target"),{recursive:true});
 writeFileSync(join(root,"target/interchange-installed-consumer.json"),JSON.stringify(report,null,2)+"\n");console.log(JSON.stringify(report,null,2));

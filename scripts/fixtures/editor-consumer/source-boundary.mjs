@@ -13,7 +13,7 @@ const hidden = [
   "@breditor/editor/local",
 ];
 
-async function observeInstalledBoundary() {
+export async function observeInstalledBoundary(compiler, packages, hidden, unavailable = []) {
   const observed = {};
   const modules = new URL("node_modules/", import.meta.url);
   for (const name of packages) {
@@ -26,6 +26,7 @@ async function observeInstalledBoundary() {
       const conditions = Object.keys(exports[route]).sort();
       assert.ok(conditions.includes("types"), `${specifier} must declare types`);
       assert.ok(conditions.includes("import"), `${specifier} must declare an ESM entry`);
+      if (unavailable.includes(specifier)) continue;
       const module = await import(specifier);
       entries[route] = { conditions, values: Object.keys(module).sort() };
     }
@@ -35,6 +36,7 @@ async function observeInstalledBoundary() {
   for (const specifier of hidden) {
     await assert.rejects(import(specifier), { code: "ERR_PACKAGE_PATH_NOT_EXPORTED" });
   }
+  await addTypeOnlyExports(observed, compiler);
   return observed;
 }
 
@@ -88,18 +90,7 @@ async function addTypeOnlyExports(observed, compiler) {
   }
 }
 
-const [compiler, mode] = process.argv.slice(2);
-assert.ok(compiler && isAbsolute(compiler) && (mode === undefined || mode === "--print") && process.argv.length <= 4,
-  "Use the absolute TypeScript CLI path, optionally followed by --print for review");
-const observed = await observeInstalledBoundary();
-await addTypeOnlyExports(observed, compiler);
-const expected = new URL("source-boundary.json", import.meta.url);
-if (mode === "--print") {
-  console.log(JSON.stringify(observed, null, 2));
-} else {
-  assert.deepEqual(observed, JSON.parse(readFileSync(expected, "utf8")),
-    "Installed package routes, runtime names or type-only exports changed. Review the compatibility boundary with the API change.");
-
+export function verifyRuntimeValueTypes(observed, compiler, typeFixtures = []) {
   // Compare the type-visible values against the exact installed ESM namespaces.
   const checks = Object.entries(observed).flatMap(([name, entries]) =>
     Object.entries(entries).map(([route, { values }]) => {
@@ -110,13 +101,32 @@ if (mode === "--print") {
     }));
   const generated = new URL("source-boundary-values.mts", import.meta.url);
   writeFileSync(generated, [
-    'import type { Assert, Equal } from "./source-boundary-types.mjs";',
+    "type Assert<T extends true> = T;",
+    "type Equal<A, B> = [A] extends [B] ? [B] extends [A] ? true : false : false;",
     ...checks,
   ].join("\n") + "\n");
   execFileSync(process.execPath, [compiler, "--noEmit", "--strict", "--exactOptionalPropertyTypes",
     "--noUncheckedIndexedAccess", "--target", "ES2022", "--module", "NodeNext", "--lib", "ES2022,DOM,ESNext.Disposable",
-    "source-boundary-values.mts", "source-boundary-types.mts"],
+    "source-boundary-values.mts", ...typeFixtures],
     { cwd: fileURLToPath(new URL("./", import.meta.url)), stdio: "inherit" });
-  console.log(JSON.stringify({ packages: packages.length, routes: checks.length, hiddenPathRefusals: hidden.length,
+  return checks.length;
+}
+
+async function main() {
+  const [compiler, mode] = process.argv.slice(2);
+  assert.ok(compiler && isAbsolute(compiler) && (mode === undefined || mode === "--print") && process.argv.length <= 4,
+    "Use the absolute TypeScript CLI path, optionally followed by --print for review");
+  const observed = await observeInstalledBoundary(compiler, packages, hidden);
+  if (mode === "--print") {
+    console.log(JSON.stringify(observed, null, 2));
+    return;
+  }
+  const expected = new URL("source-boundary.json", import.meta.url);
+  assert.deepEqual(observed, JSON.parse(readFileSync(expected, "utf8")),
+    "Installed package routes, runtime names or type-only exports changed. Review the compatibility boundary with the API change.");
+  const checkedRoutes = verifyRuntimeValueTypes(observed, compiler, ["source-boundary-types.mts"]);
+  console.log(JSON.stringify({ packages: packages.length, routes: checkedRoutes, hiddenPathRefusals: hidden.length,
     runtimeTypeNamesMatch: true, typeOnlyNamesMatch: true, strictLifecycleTypes: true }));
 }
+
+if (process.argv[1] && realpathSync(process.argv[1]) === fileURLToPath(import.meta.url)) await main();
