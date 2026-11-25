@@ -1,0 +1,6 @@
+{
+  "format": "breditor/shared-rich-profile",
+  "formatVersion": 2,
+  "schema": { "name": "example/historical-shared-v2", "version": 1 },
+  "extensions": []
+}

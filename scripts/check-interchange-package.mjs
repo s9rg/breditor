@@ -32,6 +32,9 @@ cpSync(join(root,"crates/breditor-core/tests/fixtures/pre-v4"),join(consumer,"pr
 const historicalRichReaders=JSON.parse(execFileSync(process.execPath,["historical-rich-readers.mjs"],{cwd:consumer,encoding:"utf8",timeout:10000}));
 assert.equal(historicalRichReaders.passed,true);
 assert.deepEqual(historicalRichReaders.fixtures.map(({language,historySteps,crossProfileRefusals})=>[language,historySteps,crossProfileRefusals]),[[1,11,3],[2,11,3],[3,11,3]]);
+cpSync(join(root,"crates/breditor-collaboration/tests/fixtures/shared-v2-first-sdk"),join(consumer,"shared-v2-first-sdk"),{recursive:true});
+const historicalSharedReader=JSON.parse(execFileSync(process.execPath,["historical-shared-v2-reader.mjs"],{cwd:consumer,encoding:"utf8",timeout:30000}));
+assert.deepEqual([historicalSharedReader.passed,historicalSharedReader.journalVersion,historicalSharedReader.historySteps,historicalSharedReader.futureHistorySteps,historicalSharedReader.wrongReaderRefusals],[true,13,5,2,4]);
 // These are generated test artifacts, not modified product source. Only import/resource paths change.
 let probe=readFileSync(join(root,"scripts/probe-browser-interchange.mjs"),"utf8");
 const replacements=[
@@ -47,6 +50,7 @@ for(const [before,after]of replacements){assert.equal(probe.split(before).length
 writeFileSync(join(consumer,"probe.mjs"),probe);cpSync(join(root,"scripts/fixtures/editor-consumer/coverage-seed.mjs"),join(consumer,"coverage-seed.mjs"));cpSync(join(root,"packages/breditor-interchange/tests/fixtures/word.html"),join(consumer,"word.html"));
 const result=JSON.parse(execFileSync(process.execPath,["probe.mjs",join(consumer,"node_modules/@breditor/experimental-rich-content/dist"),join(consumer,"node_modules/@breditor/collaboration/dist/runtime")],{cwd:consumer,encoding:"utf8",timeout:360000,maxBuffer:1024*1024}));assert.equal(result.passed,true);
 assert.equal(historicalRichReaders.wasmSha256,result.localWasmSha256);
+assert.equal(historicalSharedReader.wasmSha256,result.sharedWasmSha256);
 const modules={};
 for(const [name,entry] of [["default","default-entry.ts"],["interchange","interchange-entry.ts"],["docx","docx-entry.ts"],["xml","xml-entry.ts"]]){
  const bundle=await build({configFile:false,root:consumer,logLevel:"error",build:{target:"es2022",write:false,minify:false,lib:{entry:join(consumer,entry),formats:["es"],fileName:name}}});
@@ -63,6 +67,6 @@ assert.equal(result.xmlExports,2,"Expected XML export from cold-restored native 
 assert.equal(result.documentXmlExports,2,"Expected source-bound XML from cold-restored native local and shared editors");
 assert.deepEqual(installedArchiveDigests(archives,packs,names),archiveEvidence,"Installed archives changed during qualification");
 assert.deepEqual(sourceEvidence(root),source,"Source files changed during the installed probe");
-const report={format:"breditor/interchange-installed-consumer",formatVersion:1,passed:true,source,consumer,archives:archiveEvidence.map((archive,i)=>({...archive,path:paths[i]})),installedInterchangeLicenses:true,strictConsumerTypes:true,workspaceLinks:false,defaultForeignParserModules:modules.default.filter(foreign).length,optInForeignParserModules:modules.interchange.filter(foreign).length,docxForeignParserModules,xmlForeignParserModules,installedDocxExport:true,historicalRichReaders,functionalProbe:{...result,scope:"Installed archives with bare package imports and bundled paired Wasm; compiled managed SDK/React synthetic DOM/clipboard/IDB/locks. Not OS clipboard, captured Office applications, cross-browser, IME, accessibility or release qualification."}};
+const report={format:"breditor/interchange-installed-consumer",formatVersion:1,passed:true,source,consumer,archives:archiveEvidence.map((archive,i)=>({...archive,path:paths[i]})),installedInterchangeLicenses:true,strictConsumerTypes:true,workspaceLinks:false,defaultForeignParserModules:modules.default.filter(foreign).length,optInForeignParserModules:modules.interchange.filter(foreign).length,docxForeignParserModules,xmlForeignParserModules,installedDocxExport:true,historicalRichReaders,historicalSharedReader,functionalProbe:{...result,scope:"Installed archives with bare package imports and bundled paired Wasm; compiled managed SDK/React synthetic DOM/clipboard/IDB/locks. Not OS clipboard, captured Office applications, cross-browser, IME, accessibility or release qualification."}};
 mkdirSync(join(root,"target"),{recursive:true});
 writeFileSync(join(root,"target/interchange-installed-consumer.json"),JSON.stringify(report,null,2)+"\n");console.log(JSON.stringify(report,null,2));
