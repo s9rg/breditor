@@ -5,6 +5,45 @@ const host=document.querySelector("#editor"),errors=[],check=(condition,message)
 const sha=async blob=>[...new Uint8Array(await crypto.subtle.digest("SHA-256",await blob.arrayBuffer()))].map(x=>x.toString(16).padStart(2,"0")).join("");
 async function imageFile(mime,color){const canvas=document.createElement("canvas");canvas.width=3;canvas.height=2;const paint=canvas.getContext("2d");paint.fillStyle=color;paint.fillRect(0,0,3,2);const blob=await new Promise(done=>canvas.toBlob(done,mime));check(blob?.type===mime,"Browser must encode the requested PNG/JPEG/WebP fixture");return new File([blob],`owned.${mime.split("/")[1]}`,{type:mime});}
 async function refuses(operation,code){let failure;try{const owner=await operation();owner?.close();}catch(error){failure=error;}check(failure?.code===code,`Expected ${code}; received ${failure?.code??"acceptance"}`);}
+async function exactEmptyAssetRestore(archive,expectedSha256,prefix){
+ for(const foreignMetadata of [true,false]){
+  const database=prefix+(foreignMetadata?"-foreign-metadata":"-foreign-index");
+  await new Promise((resolve,reject)=>{
+   const open=indexedDB.open(database,1);
+   open.onupgradeneeded=()=>{
+    const assets=open.result.createObjectStore("assets",{keyPath:"asset"});
+    if(!foreignMetadata)assets.createIndex("foreign","status");
+    const metadata=open.result.createObjectStore("metadata");
+    metadata.add(0,"bytes");
+    if(foreignMetadata)metadata.add({note:"keep exact foreign metadata",bytes:[8,1,4]},"foreign");
+   };
+   open.onsuccess=()=>{open.result.close();resolve();};open.onerror=()=>reject(open.error);
+  });
+  await refuses(()=>RichAssetStore.restoreBackup(database,archive,{uploadState:"preserve"}),foreignMetadata?"asset_backup_destination_exists":"asset_backup_storage");
+  const db=await new Promise((resolve,reject)=>{
+   const open=indexedDB.open(database);open.onsuccess=()=>resolve(open.result);open.onerror=()=>reject(open.error);
+  });
+  try{
+   const retained=await new Promise((resolve,reject)=>{
+    const tx=db.transaction(["assets","metadata"],"readonly"),assets=tx.objectStore("assets"),metadata=tx.objectStore("metadata");
+    const rows=assets.count(),keys=metadata.getAllKeys(),values=metadata.getAll(),indices=Array.from(assets.indexNames);
+    tx.oncomplete=()=>resolve({rows:rows.result,keys:keys.result,values:values.result,indices});
+    tx.onabort=()=>reject(tx.error);
+   });
+   same(retained,{rows:0,keys:foreignMetadata?["bytes","foreign"]:["bytes"],
+    values:foreignMetadata?[0,{note:"keep exact foreign metadata",bytes:[8,1,4]}]:[0],indices:foreignMetadata?[]:["foreign"]},
+    "Refused ordinary restore must preserve the destination exactly");
+  }finally{db.close();}
+ }
+ const empty=prefix+"-exact-empty",existing=await RichAssetStore.open(empty);existing.close();
+ const installed=await RichAssetStore.restoreBackup(empty,archive,{uploadState:"preserve"});
+ try{check(await sha(await installed.exportBackup())===expectedSha256,"An existing exact-empty destination must still accept the archive");}
+ finally{installed.close();}
+ const reopened=await RichAssetStore.openRetained(empty);
+ try{check(await sha(await reopened.exportBackup())===expectedSha256,"Accepted ordinary restore must cold reopen through retained admission");}
+ finally{reopened.close();}
+ return true;
+}
 async function assetRestoreBootstrapBoundary(archive,expectedSha256,prefix){
  const database=prefix+"-cancel-in-upgrade",controller=new AbortController(),open=IDBFactory.prototype.open;
  let upgrades=0;
@@ -134,12 +173,13 @@ async function run(){
   let sourceCuts=0;const joined=await source.captureBackup(()=>{sourceCuts++;return editor.checkpointJson();});check(sourceCuts===1&&joined.source===checkpoint,"Native source must be captured synchronously with the upload snapshot");check(await sha(joined.backup)===archiveSha256,"Coupled source capture retains the exact upload cut");const parsed=await readRichAssetBackup(joined.backup);try{same(parsed.entries().map(({epoch,...info})=>info),metadata,"Pure reader retains native raster metadata and upload states");for(const info of parsed.entries())check(await sha(parsed.blob(info.asset))===info.asset.slice(7),"Reader returns each exact native raster payload");}finally{parsed.dispose();}
   const restoreCommitBoundary=await assetRestoreCommitBoundary(archive,archiveSha256,prefix);
   const restoreBootstrapBoundary=await assetRestoreBootstrapBoundary(archive,archiveSha256,prefix);
+  const exactEmptyRestore=await exactEmptyAssetRestore(archive,archiveSha256,prefix);
   target=await RichAssetStore.restoreBackup(`${prefix}-target`,archive,{uploadState:"preserve"});same(await target.list(),metadata,"Exact queue recovery");check((await target.get(images[0].asset)).storageRef===opaqueReceipt,"Opaque receipt code units must not be replaced");check(await sha(await target.exportBackup())===archiveSha256,"Exact framed bytes, epochs and receipts");for(const info of metadata){const blob=await target.blob(info.asset);check(`sha256:${await sha(blob)}`===info.asset,"Exact restored raster identity");const image=new Image();image.src=await target.resolve(info.asset);await image.decode();same([image.naturalWidth,image.naturalHeight],[3,2],"Actual browser decode after restore");}
   await refuses(()=>RichAssetStore.restoreBackup(`${prefix}-target`,archive,{uploadState:"preserve"}),"asset_backup_destination_exists");check(await sha(await target.exportBackup())===archiveSha256,"Refusal cannot modify destination");
   const outcomes=await Promise.allSettled([RichAssetStore.restoreBackup(`${prefix}-race`,archive,{uploadState:"preserve"}),RichAssetStore.restoreBackup(`${prefix}-race`,archive,{uploadState:"preserve"})]);check(outcomes.filter(r=>r.status==="fulfilled").length===1,"Exactly one concurrent restore wins");const lost=outcomes.find(r=>r.status==="rejected");check(lost.reason.code==="asset_backup_destination_exists","A racing import cannot overwrite");winner=outcomes.find(r=>r.status==="fulfilled").value;check(await sha(await winner.exportBackup())===archiveSha256,"Racing winner is complete");winner.close();winner=undefined;
   const add=IDBObjectStore.prototype.add;let queuedAdds=0;try{IDBObjectStore.prototype.add=function(...args){const request=add.apply(this,args);if(this.name==="assets"){queuedAdds++;const tx=this.transaction;queueMicrotask(()=>{try{tx.abort();}catch{}});}return request;};await refuses(()=>RichAssetStore.restoreBackup(`${prefix}-abort`,archive,{uploadState:"preserve"}),"asset_backup_storage");}finally{IDBObjectStore.prototype.add=add;}check(queuedAdds===4,"Abort after every asset add has been queued");extra=await RichAssetStore.open(`${prefix}-abort`);same(await extra.list(),[],"No partial raster set survives");await extra.exportBackup();extra.close();extra=undefined;extra=await RichAssetStore.restoreBackup(`${prefix}-abort`,archive,{uploadState:"preserve"});check(await sha(await extra.exportBackup())===archiveSha256,"Aborted transaction can be retried exactly");extra.close();extra=undefined;
   const corrupted=new Uint8Array(await archive.arrayBuffer());corrupted[corrupted.length-1]^=1;let failed;try{extra=await RichAssetStore.restoreBackup(`${prefix}-corrupt`,new Blob([corrupted]),{uploadState:"preserve"});}catch(error){failed=error;}check(["asset_backup_raster","asset_backup_integrity"].includes(failed?.code),"Tampered raster bytes must fail admission");check(!(await indexedDB.databases()).some(db=>db.name===`${prefix}-corrupt`),"Invalid raster must not create a destination");
-  editor.dispose();editor=undefined;source.close();store=target;target=undefined;editor=await openLocalEditor(options(checkpoint,store));check(editor.checkpointJson()===checkpoint,"Recover exact native Redo with historical image bytes");refusesInventory(()=>editor.checkRetainedAssetReferences(inventory));same(editor.retainedAssetReferences().references,inventory.references,"New owner derives its own exact inventory");editor.execute({kind:"redo"});expected=editor.checkpointJson();check(editor.view().documentJson.includes(images[0].asset)&&editor.view().documentJson.includes(images[1].asset),"Redo recovers both image references");sessionStorage.setItem("asset-backup-reload",JSON.stringify({database:`${prefix}-target`,metadata,checkpoint,expected,archiveSha256,inventory}));return{passed:true,providerCloseFence,restoreCommitBoundary,restoreBootstrapBoundary,assets:metadata.length,mimes:[...new Set(metadata.map(r=>r.mime))].sort(),states:metadata.map(r=>r.status).sort(),exactRasterDecodes:metadata.length,binaryBytes:archive.size,uploadCalls,queuedAdds,concurrentRestoreWinners:1,occupiedRefusals:1,corruptRefusals:1,atomicAbortRetries:1,nativeUndoRedoWithRetainedAssets:true,nativeRetainedInventory:true,sourceCut:true,pureUploadReader:true,retainedImageBindings:inventory.references.length,inventorySourceRefusals:2};
+  editor.dispose();editor=undefined;source.close();store=target;target=undefined;editor=await openLocalEditor(options(checkpoint,store));check(editor.checkpointJson()===checkpoint,"Recover exact native Redo with historical image bytes");refusesInventory(()=>editor.checkRetainedAssetReferences(inventory));same(editor.retainedAssetReferences().references,inventory.references,"New owner derives its own exact inventory");editor.execute({kind:"redo"});expected=editor.checkpointJson();check(editor.view().documentJson.includes(images[0].asset)&&editor.view().documentJson.includes(images[1].asset),"Redo recovers both image references");sessionStorage.setItem("asset-backup-reload",JSON.stringify({database:`${prefix}-target`,metadata,checkpoint,expected,archiveSha256,inventory}));return{passed:true,providerCloseFence,restoreCommitBoundary,restoreBootstrapBoundary,exactEmptyRestore,assets:metadata.length,mimes:[...new Set(metadata.map(r=>r.mime))].sort(),states:metadata.map(r=>r.status).sort(),exactRasterDecodes:metadata.length,binaryBytes:archive.size,uploadCalls,queuedAdds,concurrentRestoreWinners:1,occupiedRefusals:1,corruptRefusals:1,atomicAbortRetries:1,nativeUndoRedoWithRetainedAssets:true,nativeRetainedInventory:true,sourceCut:true,pureUploadReader:true,retainedImageBindings:inventory.references.length,inventorySourceRefusals:2};
  }finally{source.close();target?.close();extra?.close();winner?.close();}
 }
 async function reopen(){const saved=JSON.parse(sessionStorage.getItem("asset-backup-reload"));store=await RichAssetStore.open(saved.database);same(await store.list(),saved.metadata,"Real reload preserves every upload state");check(await sha(await store.exportBackup())===saved.archiveSha256,"Real reload preserves the complete binary archive");editor=await openLocalEditor(options(saved.checkpoint,store));check(editor.checkpointJson()===saved.checkpoint,"Exact native history before future Redo");refusesInventory(()=>editor.checkRetainedAssetReferences(saved.inventory));const inventory=editor.retainedAssetReferences();same(inventory.references,saved.inventory.references,"Native inventory survives real reload without adopting serialized provenance");editor.checkRetainedAssetReferences(inventory);editor.execute({kind:"redo"});refusesInventory(()=>editor.checkRetainedAssetReferences(inventory));expected=saved.expected;check(editor.checkpointJson()===expected,"Exact future native history after reload");return{passed:true,retainedAssets:saved.metadata.length,exactArchiveAfterReload:true,exactFutureCheckpoint:true,nativeRetainedInventoryAfterReload:true,inventorySourceRefusals:2};}
