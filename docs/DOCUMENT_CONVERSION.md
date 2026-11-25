@@ -69,6 +69,10 @@ dangling table references, bad options), `resource-limit` (any bound below) and
 `docxImageBindings(documentJson)` lists the distinct bindings without converting,
 for hosts that prefetch. `docxLimits` exposes the bounds; `docxContractV1`
 versions this fidelity map independently of the HTML/Markdown grammar.
+The two image callbacks receive their calling options object as `this`, so a
+host can provide an options object with a method and its image registry. The
+installed Node check runs both forms with a retained native document and only
+the interchange archive installed.
 
 The rich demo (`experiments/rich-browser`, **Export Word (.docx)**) uses
 `exportDocxWithImages` with its canvas data URLs and local asset store, and
