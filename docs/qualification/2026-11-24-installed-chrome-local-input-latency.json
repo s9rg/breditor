@@ -1,0 +1,156 @@
+{
+  "format": "breditor/installed-input-latency",
+  "formatVersion": 1,
+  "browser": "158.0.8127.37",
+  "platform": "darwin",
+  "arch": "arm64",
+  "host": {
+    "cpu": "Apple M1 Pro",
+    "logicalCpus": 10,
+    "memoryBytes": 34359738368,
+    "osRelease": "25.6.0",
+    "osVersion": "Darwin Kernel Version 25.6.0: Fri Jul 31 19:18:49 PDT 2026; root:xnu-12377.161.14~5/RELEASE_ARM64_T6000"
+  },
+  "pageReadyMs": 383.071375,
+  "pasteBytes": 1000,
+  "wasmSha256": "f100599f39805586d465961161bf751e0bd51e8d524ad2ab653001946347200e",
+  "served": [
+    {
+      "path": "/",
+      "sha256": "916556b35772b74f9f712ebe4656d56dfe95bf601d52ee1990c5db71ffd92bf1"
+    },
+    {
+      "path": "/assets/local-blmJzGSn.js",
+      "sha256": "8f48f91c215d95ae4024c47cdd4db35afa24eb88175885523f00800c1139e272"
+    },
+    {
+      "path": "/assets/rolldown-runtime-8BhlS34s.js",
+      "sha256": "1cb5c6ead7e29370203f12e2d5cdf50ec1f02dd70ee2d050d909afbf2406f6b1"
+    },
+    {
+      "path": "/assets/store-DhFKsl9B.js",
+      "sha256": "30c94cf09ca0f1c4ee5eb179e3d0e3efa4bdc94af3481e7ee2964af4eccbaee4"
+    },
+    {
+      "path": "/assets/seed-cmF_MeMd.js",
+      "sha256": "7afd28ae19f62baa78c58e5337522b50879a578efd37be025045da4ff750d63a"
+    },
+    {
+      "path": "/assets/consumer-Dkks93Xp.js",
+      "sha256": "d4c7f7b83f9ee4a722ba46ab3a82122c89202d27aa208306d5627099ae8b575e"
+    },
+    {
+      "path": "/assets/clipboard_interchange-NRfh7Lqs.js",
+      "sha256": "17d09b00737344ed6d689fb2b8b3eb37e5667fb3cf16e5223a0c0db8acedf30b"
+    },
+    {
+      "path": "/assets/local-C0wQgBdl.js",
+      "sha256": "f7d27b6890ea03d0cc14a65a0609a86a1374dc4c9e28b33aba7c7c5cda2457f7"
+    },
+    {
+      "path": "/assets/shared_session-DMYPI5t0.js",
+      "sha256": "7c0c3d3a15818a06a995d7cc835e01ae78f96a5eae0d096ba935b25bb76ba881"
+    },
+    {
+      "path": "/assets/breditor_wasm-C87Dr-ng.js",
+      "sha256": "c8346458d287e53d0bd0a0bcc01df97da453c73907a9726bd7451780b352a7aa"
+    },
+    {
+      "path": "/assets/breditor_wasm_bg-1-1528MC.wasm",
+      "sha256": "f100599f39805586d465961161bf751e0bd51e8d524ad2ab653001946347200e"
+    }
+  ],
+  "rows": [
+    {
+      "paragraphs": 16,
+      "documentBytes": 9487,
+      "documentSha256": "6b60dafe5e5deed5c692cb6a348721072cd923508f1bbd6e2087cec9b2680b87",
+      "topLevelBlocks": 19,
+      "openMs": 4.800000071525574,
+      "metrics": {
+        "typing": {
+          "samples": 20,
+          "p50": 2.3000000715255737,
+          "p95": 2.5
+        },
+        "undoTyping": {
+          "samples": 20,
+          "p50": 2.3000000715255737,
+          "p95": 2.600000023841858
+        },
+        "paste": {
+          "samples": 20,
+          "p50": 2.399999976158142,
+          "p95": 2.6999999284744263
+        },
+        "undoPaste": {
+          "samples": 20,
+          "p50": 2.4000000953674316,
+          "p95": 2.6999999284744263
+        }
+      }
+    },
+    {
+      "paragraphs": 128,
+      "documentBytes": 56219,
+      "documentSha256": "d00e748e18efc25528e7a4d235983ed603edd6f1e4a3c28b1af30563f0a69453",
+      "topLevelBlocks": 131,
+      "openMs": 4.899999976158142,
+      "metrics": {
+        "typing": {
+          "samples": 20,
+          "p50": 5.600000023841858,
+          "p95": 5.800000071525574
+        },
+        "undoTyping": {
+          "samples": 20,
+          "p50": 6,
+          "p95": 6.200000047683716
+        },
+        "paste": {
+          "samples": 20,
+          "p50": 6,
+          "p95": 6.100000023841858
+        },
+        "undoPaste": {
+          "samples": 20,
+          "p50": 5.899999976158142,
+          "p95": 6.299999952316284
+        }
+      }
+    }
+  ],
+  "source": {
+    "commit": "aa5448f54e8a609ca582d86d1108fa06cf8c03bd",
+    "dirty": false,
+    "sha256": "beaa41763107c650d60a10b50c1cc9e2a7fe3223b5ad240c7c787b5c09e58439",
+    "files": 9711,
+    "bytes": 83227910
+  },
+  "installed": {
+    "receiptSha256": "545f692feab673a26d8f7bd0cfbe56c9f22a1f21ff87e4996c36dd88c75e8ecd",
+    "archives": [
+      {
+        "name": "@breditor/browser",
+        "filename": "breditor-browser-0.3.0-alpha.22.tgz",
+        "sha256": "1199d14fe5b3d5b2e0318642a9bbf9f5b84773e97265597f72e190be43869ae0"
+      },
+      {
+        "name": "@breditor/experimental-rich-content",
+        "filename": "breditor-experimental-rich-content-0.3.0-alpha.22.tgz",
+        "sha256": "b0333bd0c8a68897eeea5370c6be256ea63c1fea4b1a06559f83b6a5b934d005"
+      },
+      {
+        "name": "@breditor/collaboration",
+        "filename": "breditor-collaboration-0.3.0-alpha.22.tgz",
+        "sha256": "6af6292ed18edc7cd060673f5865c26ed3ba85e7cf0e4b8437840ba607ad849f"
+      },
+      {
+        "name": "@breditor/editor",
+        "filename": "breditor-editor-0.3.0-alpha.22.tgz",
+        "sha256": "9091ec60bb7ab80ddbdfcdfa5cde8756fdf33b16a16e1d78d792151c0db49b08"
+      }
+    ],
+    "bundleSha256": "122f1707f77f22f98f7d607a983b24bdec3bea295c5ac91a5c30be2d5c6e81e6"
+  }
+}

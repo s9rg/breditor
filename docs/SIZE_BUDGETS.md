@@ -541,6 +541,27 @@ peer renders the uploaded image. Relay restart starts when the stopped relay
 is relaunched and ends when both peers are ready and agree. Each sample names
 the browser version and host architecture. Both include test-runner polling.
 
+## Installed local input latency
+
+Build the independent installed consumer with
+`node scripts/check-editor-package.mjs`, then run
+`node scripts/record-installed-input-latency.mjs`. The Chrome sample records
+20 repetitions each of a trusted typed key, a 1,000-byte plain-text paste
+event, and keyboard Undo for each. The timer starts at the browser input event
+and ends when the matching text mutation is observable. The probe verifies the
+native edit and exact canonical document JSON after each Undo outside the
+timed interval. It hashes the browser's HTML, JavaScript and Wasm responses
+and checks them against the installed production bundle. The paste uses
+fixture clipboard data and the display refresh is outside the measurement.
+
+On the Apple M1 Pro with Chrome 158.0.8127.37, the 19-block, 9,487-byte
+document reached 2.5 ms p95 for typing and 2.7 ms for paste. The 131-block,
+56,219-byte document reached 5.8 ms for typing and 6.1 ms for paste. The
+initial installed fixture reached ready in 383 ms. This is one workstation
+sample under its ordinary workload. It supplies an installed fixture baseline
+for the supported size and latency review.
+[Source, archive hashes and measured results](qualification/2026-11-24-installed-chrome-local-input-latency.json)
+
 ## Installed shared editor memory sample
 
 The experiment requires the installed consumer produced by
