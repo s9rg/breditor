@@ -1,0 +1,132 @@
+{
+  "format": "breditor/installed-stale-asset-reconciliation-comparison",
+  "formatVersion": 1,
+  "passed": true,
+  "browser": "158.0.8127.37",
+  "localWasmSha256": "f100599f39805586d465961161bf751e0bd51e8d524ad2ab653001946347200e",
+  "fixtureProof": [
+    {
+      "path": "scripts/fixtures/retained-asset-open-measurement/reconciliation.html",
+      "sha256": "8756189535a9557ee2b5be8f7feb7a7ee18801268588410ea173690c3593fa28"
+    },
+    {
+      "path": "scripts/fixtures/retained-asset-open-measurement/measure.mjs",
+      "sha256": "0fb1687113ddb95d2dbeac1a3ca41bac5b160d458144aa6837f04babc34be751"
+    },
+    {
+      "path": "scripts/fixtures/retained-asset-open-measurement/reconciliation.mjs",
+      "sha256": "23b8f71cd650461485df068042e9bb9b37baec6baf4d90b040af2d81cc720b2f"
+    },
+    {
+      "path": "scripts/fixtures/retained-asset-open-measurement/raster-write-count.mjs",
+      "sha256": "51e30b10cffc120a1ca38013e21cb0df062690fd4e98560a48fce828722c6de5"
+    }
+  ],
+  "registryArtifactsPinnedToProducer": 45,
+  "archiveBytes": 19498213,
+  "archiveSha256": "25341436f94004fb15986cd8e2b8abc2ae4c79cafde824c88afcb6fc2d2d31d2",
+  "inputHashes": [
+    "f1d67ce42d06de8886277cc31fd08d5319eb01bd8de489bf4c2beedee09ee453",
+    "507c4384f49ca72c6d1d582eb4786caf64fbe0a3f27b11edea48aa1d760b8eb6"
+  ],
+  "checkpointSha256": "507f18a283251d663307a5981a01199ee32afb299b4a5e361b7dc08271bca110",
+  "queueSha256": "67c25aa1788aed4438e74e46a69d9916ac04b2cdb254d44f5f00d6587d1ecfd3",
+  "requiredWrites": [
+    "sha256:46d9a9942e2d1a68610ac10021c0c25f8dd1ad0d9f96fd76afa77afdad99e4c7",
+    "sha256:ba8929baafb497dfefb882b2ace7dc8e7369bf65e46c137242e12d40469036ab"
+  ],
+  "newRaster": "sha256:46d9a9942e2d1a68610ac10021c0c25f8dd1ad0d9f96fd76afa77afdad99e4c7",
+  "unionRasters": 13,
+  "firstApply": {
+    "rows": 2,
+    "payloadBytes": 2999138,
+    "assets": [
+      "sha256:46d9a9942e2d1a68610ac10021c0c25f8dd1ad0d9f96fd76afa77afdad99e4c7",
+      "sha256:ba8929baafb497dfefb882b2ace7dc8e7369bf65e46c137242e12d40469036ab"
+    ]
+  },
+  "coldRetry": {
+    "rows": 0,
+    "payloadBytes": 0,
+    "assets": []
+  },
+  "exactRestore": true,
+  "nativeUndoRedo": true,
+  "baseline": {
+    "source": {
+      "commit": "fcb926612f4bba30e984fc73527e8c24c1cc9cec",
+      "dirty": false,
+      "sha256": "bf3544a4b4ecd9d5cff298856ffcdc6cf2cb76b96cb32423f479cd37f3f02db6",
+      "files": 9748,
+      "bytes": 83498946
+    },
+    "producer": {
+      "commit": "fcb926612f4bba30e984fc73527e8c24c1cc9cec",
+      "dirty": false,
+      "sha256": "bf3544a4b4ecd9d5cff298856ffcdc6cf2cb76b96cb32423f479cd37f3f02db6",
+      "files": 9748,
+      "bytes": 83498946
+    },
+    "archives": [
+      {
+        "name": "@breditor/browser",
+        "sha256": "1199d14fe5b3d5b2e0318642a9bbf9f5b84773e97265597f72e190be43869ae0"
+      },
+      {
+        "name": "@breditor/experimental-rich-content",
+        "sha256": "1b778a532bd5b1afe28dff46f994ed2caad175d918d6db4d44cb2e193a25148a"
+      },
+      {
+        "name": "@breditor/editor",
+        "sha256": "9091ec60bb7ab80ddbdfcdfa5cde8756fdf33b16a16e1d78d792151c0db49b08"
+      }
+    ],
+    "stale": {
+      "refused": "asset_reconciliation_target_changed",
+      "reads": 1,
+      "rows": 14,
+      "payloadBytes": 20994520,
+      "rasterWrites": 0
+    },
+    "reportSha256": "19ad6f24a10a50763a27edc7218d1029be09b4e578f6f197d91bd06d550aba64"
+  },
+  "candidate": {
+    "source": {
+      "commit": "25a76881eda5e76560c56966e66538a3f26db413",
+      "dirty": false,
+      "sha256": "20a98f48f4edf7d881ccde59f7ddb294dfac64f9cb4c02d837c6717f8dfc76cf",
+      "files": 9748,
+      "bytes": 83499475
+    },
+    "producer": {
+      "commit": "25a76881eda5e76560c56966e66538a3f26db413",
+      "dirty": false,
+      "sha256": "20a98f48f4edf7d881ccde59f7ddb294dfac64f9cb4c02d837c6717f8dfc76cf",
+      "files": 9748,
+      "bytes": 83499475
+    },
+    "archives": [
+      {
+        "name": "@breditor/browser",
+        "sha256": "1199d14fe5b3d5b2e0318642a9bbf9f5b84773e97265597f72e190be43869ae0"
+      },
+      {
+        "name": "@breditor/experimental-rich-content",
+        "sha256": "c6a4f07340b32e4729f4bb00f94d6f0a3744a7d84185676ac362787fdce4cb5a"
+      },
+      {
+        "name": "@breditor/editor",
+        "sha256": "9091ec60bb7ab80ddbdfcdfa5cde8756fdf33b16a16e1d78d792151c0db49b08"
+      }
+    ],
+    "stale": {
+      "refused": "asset_reconciliation_target_changed",
+      "reads": 0,
+      "rows": 0,
+      "payloadBytes": 0,
+      "rasterWrites": 0
+    },
+    "reportSha256": "73a9bd8615777bfca90920edaf3f3a6381e841bd2ee14135da2bac90240ff180"
+  },
+  "scope": "Installed Chrome with real IndexedDB, 12 original target PNGs and two separately ingested fixture rasters. A refused stale compare records logical payload bytes in native IndexedDB getAll results and actual raster puts. The fixture restores the earlier exact target before the cold retry; the SDK never removes the new rasters to make a plan fit. Physical memory, disk reads, latency and platform limits are outside this measurement. Matching native runtime was reused."
+}

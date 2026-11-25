@@ -754,6 +754,26 @@ node scripts/check-asset-backups-installed.mjs --reuse-runtime
 node scripts/measure-retained-asset-open.mjs --reconciliation-writes
 ```
 
+## Installed stale asset reconciliation
+
+Two extra valid PNGs entered the target after an exact reconciliation plan
+had been retained in Chrome. The old compare fetched all 14 raster records
+and delivered 20,994,520 payload bytes before refusing. The candidate refused
+after reading the exact asset count and bounded metadata in the same write
+transaction, with zero raster payload reads. Both refused runs issued zero
+raster writes and left the changed target and the two retained inputs exact.
+
+The fixture removed only its extra rows before a cold retry of the same
+recorded decision. Both builds produced byte-identical queue and archive
+results, exact cold restore and native image Undo and Redo. The counts cover
+logical raster bytes delivered by IndexedDB in this workload.
+[Measurement and archive hashes](qualification/2026-11-24-installed-chrome-stale-asset-reconciliation.json)
+
+```sh
+node scripts/check-asset-backups-installed.mjs --reuse-runtime
+node scripts/measure-retained-asset-open.mjs --reconciliation-stale-reads
+```
+
 ## Installed upload queue writes
 
 Cancel and retry calls on six uploaded rasters and retry calls on six pending
