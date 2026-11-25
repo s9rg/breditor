@@ -92,6 +92,23 @@ without reproducing the original spontaneous Undo fault. That negative result
 does not close the original issue. The new deterministic regression establishes
 the narrower recovery guarantee above.
 
+## Repeat the installed network lifecycle
+
+After preparing the installed application browser inputs, run two to five
+fresh rounds of the network demo and first-party pilot in the configured
+Chromium, Firefox, and WebKit projects:
+
+```sh
+node scripts/check-application-network-browser.mjs --lifecycle-repetitions 2
+```
+
+Each round must execute every discovered case once. The runner keeps the
+source and installed input hashes, per-round reports and failure traces in one
+new `target/installed-network-lifecycle-*` directory. A failing round remains
+visible and causes a nonzero result, including when another round passes.
+This exercise covers automated lifecycle behavior. Native Safari, system
+clipboard and physical input require their own evidence.
+
 ## Verification and remaining release blocker
 
 The release verifier passed native Rust and real Wasm-target tests, 1,242
