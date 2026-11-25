@@ -40,10 +40,11 @@ for(const name of names){
  }
 }
 console.log(`Verified dual-license files in ${names.length} installed SDK packages`);
+const sourceBoundary=JSON.parse(execFileSync(process.execPath,["source-boundary.mjs",resolve(root,"node_modules/typescript/bin/tsc")],{cwd:consumer,encoding:"utf8"}));
 run(resolve(root,"node_modules/.bin/tsc"),[...types,"types.ts","types-full.ts","types-selection.ts","types-layout.ts","types-document.ts","types-search.ts"],consumer);run(process.execPath,["full-runtime.mjs"],consumer);
 run(process.execPath,["layout-runtime.mjs"],consumer);
 run(resolve(root,"node_modules/.bin/tsc"),[...types,"--lib","ES2022,DOM,ESNext.Disposable","types-wasm.ts"],consumer);
 run(resolve(root,"node_modules/.bin/vite"),["build","--config","vite.config.mjs"],consumer);
 assert.deepEqual(installedArchiveDigests(archives,packs,names),archiveEvidence,"Installed archives changed during qualification");
-saveEvidence(resolve(root,"target/editor-installed-consumer.json"),{consumer,minimal,sharedOnly,archives:paths,archiveEvidence,staticBundle});
+saveEvidence(resolve(root,"target/editor-installed-consumer.json"),{consumer,minimal,sharedOnly,archives:paths,archiveEvidence,staticBundle,sourceBoundary});
 console.log(`Retained installed SDK proof: ${temporary}`);
