@@ -72,14 +72,18 @@ async fn run_reference_cli(args: &[&str]) -> Result<(), Box<dyn std::error::Erro
             let auth = Authentication::from_json(&bounded(auth, 256 * 1024)?)?;
             let (room, recovery) = Room::open(Path::new(log))?;
             let assets = AssetStore::open(Path::new(&format!("{log}.assets")),room.asset_binding())?;
-            let router = if args.len() == 5 {
-                server::router_with_isolated_assets(room, auth, assets, std::env::current_exe()?)?
+            let (router, raster_monitor) = if args.len() == 5 {
+                let (router, monitor) = server::router_with_observed_isolated_assets(room, auth, assets, std::env::current_exe()?)?;
+                (router, Some(monitor))
             } else {
-                server::router_with_assets(room, auth, assets)?
+                (server::router_with_assets(room, auth, assets)?, None)
             };
             let listener = tokio::net::TcpListener::bind(address).await?;
             println!("{}", json!({"kind":"listening","address":listener.local_addr()?.to_string(),"recovery":recovery}));
             axum::serve(listener, router).with_graceful_shutdown(async { let _ = tokio::signal::ctrl_c().await; }).await?;
+            if let Some(monitor) = raster_monitor {
+                println!("{}", json!({"kind":"raster-worker-stats","stats":monitor.snapshot()}));
+            }
         }
         ["serve-documents", directory, auth, api, bind] => {
             let address: SocketAddr = bind.parse()?;

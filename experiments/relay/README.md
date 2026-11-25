@@ -207,8 +207,13 @@ On Unix, it lowers its inherited limits to at most 10 CPU seconds and 64 open
 files, with zero core dump and regular file growth budgets. On Linux it also
 caps its virtual address space at 768 MiB. Tighter inherited limits take
 precedence. If the worker cannot apply the supported limits it refuses the
-upload. Public deployment still requires host-wide quotas, filesystem and
-network containment, and isolation for the other native import paths.
+upload. The isolated CLI writes a `raster-worker-stats` record on graceful
+shutdown. An embedding host can take live snapshots through the monitor returned
+by `router_with_observed_isolated_assets`. The counters describe completed
+admission checks, including duplicate uploads, and carry no request data. Room
+publication follows a separate permission check. Public deployment still
+requires host-wide quotas, filesystem and network containment, and isolation for
+the other native import paths.
 
 The private directory uses an exclusive lock, a room manifest and immutable
 `BRASSET1` records. Creation requests Unix directory mode 0700 and file mode 0600.
