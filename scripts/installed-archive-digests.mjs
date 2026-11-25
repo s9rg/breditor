@@ -26,8 +26,14 @@ export function installedArchiveDigests(directory,packs,names){
  });
 }
 
-/** Verify that the installed lock resolved each workspace to the reviewed archive. */
+/** Require the reviewed local archives and registry sources throughout the installed lock. */
 export function verifyInstalledArchiveBindings(directory,consumer,lock,archives){
+ const paths=new Set(archives.map(archive=>`node_modules/${archive.name}`));
+ for(const [path,entry]of Object.entries(lock.packages)){
+  if(path===""||paths.has(path))continue;
+  assert.ok(typeof entry?.resolved==="string"&&entry.resolved.startsWith("https://registry.npmjs.org/"),
+   `Unexpected installed dependency source: ${path}`);
+ }
  for(const archive of archives){
   const entry=lock.packages[`node_modules/${archive.name}`];
   assert.ok(entry&&!entry.link&&entry.resolved?.startsWith("file:"),`Missing installed archive binding: ${archive.name}`);

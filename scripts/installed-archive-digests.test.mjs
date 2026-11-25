@@ -24,7 +24,15 @@ test("installed archive evidence preserves requested package order and catches b
   const lock={packages:Object.fromEntries(evidence.map(archive=>[`node_modules/${archive.name}`,{
    resolved:`file:${archive.filename}`,version:archive.version,integrity:archive.integrity,
   }]))};
+  lock.packages[""]={name:"consumer"};
+  lock.packages["node_modules/csstype"]={resolved:"https://registry.npmjs.org/csstype/-/csstype-3.2.3.tgz"};
   verifyInstalledArchiveBindings(directory,directory,lock,evidence);
+  for(const resolved of [undefined,"file:editor.tgz","git+https://example.test/module","https://example.test/module.tgz"]){
+   const extra=structuredClone(lock);
+   extra.packages["node_modules/unexpected"]={resolved};
+   assert.throws(()=>verifyInstalledArchiveBindings(directory,directory,extra,evidence),
+    /Unexpected installed dependency source: node_modules\/unexpected/);
+  }
   const browserLock=lock.packages["node_modules/@breditor/browser"];
   assert.throws(()=>verifyInstalledArchiveBindings(directory,directory,{packages:{}},evidence),/Missing installed archive binding/);
   browserLock.resolved="file:editor.tgz";
