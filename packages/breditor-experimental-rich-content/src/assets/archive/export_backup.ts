@@ -15,7 +15,7 @@ export async function validateRetainedAssetArchive(db:IDBDatabase,limits:Readonl
 
 async function validatedArchiveHeader(records:readonly AssetRecord[],limits:Readonly<AssetLimits>,signal?:AbortSignal){
  checkAssetBackupSignal(signal);let offset=0;const entries=records.map(record=>{const entry=assetArchiveEntry(record,offset,limits);offset+=record.bytes;return entry;});
- for(let i=0;i<records.length;i++)await verifyAssetArchiveRaster(entries[i]!,new Blob([records[i]!.payload],{type:records[i]!.mime}),limits,signal);
+ for(let i=0;i<records.length;i++)await verifyAssetArchiveRaster(entries[i]!,records[i]!.payload,limits,signal);
  const sha256=await assetArchiveDigest(entries),header=new TextEncoder().encode(JSON.stringify({...assetArchiveBody(entries),sha256}));checkAssetBackupSignal(signal);if(header.length>MAX_ASSET_BACKUP_HEADER_BYTES)throw new RichAssetBackupError("asset_backup_budget","Raster archive header exceeds its byte budget");
  if(ASSET_BACKUP_PREFIX_BYTES+header.length+offset>MAX_ASSET_BACKUP_BYTES)throw new RichAssetBackupError("asset_backup_budget","Raster archive exceeds its framed byte budget");
  return header;

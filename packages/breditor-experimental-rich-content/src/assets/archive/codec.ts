@@ -1,5 +1,5 @@
 import {defaultAssetLimits,type AssetLimits,type AssetRecord} from "../types.js";
-import {admitRaster} from "../admit_raster.js";
+import {admitOwnedRaster,admitRaster} from "../admit_raster.js";
 import {RichAssetBackupError,checkAssetBackupSignal} from "./error.js";
 import {checkAssetArchiveEntry,canonicalAssetArchiveEntry} from "./metadata.js";
 import {ASSET_BACKUP_MAGIC,ASSET_BACKUP_PREFIX_BYTES,MAX_ASSET_BACKUP_HEADER_BYTES,type AssetArchiveEntry} from "./types.js";
@@ -11,9 +11,9 @@ export async function assetArchiveDigest(records:readonly AssetArchiveEntry[]):P
  const hash=await crypto.subtle.digest("SHA-256",bytes);return[...new Uint8Array(hash)].map(x=>x.toString(16).padStart(2,"0")).join("");
 }
 /** Reuse the ordinary byte/header/decoder/hash admission, with no network or upload effects. */
-export async function verifyAssetArchiveRaster(entry:AssetArchiveEntry,file:Blob,limits:Readonly<AssetLimits>,signal?:AbortSignal):Promise<AssetRecord>{
+export async function verifyAssetArchiveRaster(entry:AssetArchiveEntry,input:Blob|ArrayBuffer,limits:Readonly<AssetLimits>,signal?:AbortSignal):Promise<AssetRecord>{
  checkAssetBackupSignal(signal);let admitted:Awaited<ReturnType<typeof admitRaster>>;
- try{admitted=await admitRaster(file,limits,signal);}catch{checkAssetBackupSignal(signal);throw new RichAssetBackupError("asset_backup_raster","Raster archive payload failed image admission");}checkAssetBackupSignal(signal);
+ try{admitted=await (input instanceof Blob?admitRaster(input,limits,signal):admitOwnedRaster(input,entry.mime,limits,signal));}catch{checkAssetBackupSignal(signal);throw new RichAssetBackupError("asset_backup_raster","Raster archive payload failed image admission");}checkAssetBackupSignal(signal);
  if(admitted.asset!==entry.asset||admitted.mime!==entry.mime||admitted.width!==entry.width||admitted.height!==entry.height||admitted.payload.byteLength!==entry.bytes)throw new RichAssetBackupError("asset_backup_integrity","Raster archive bytes differ from their exact manifest");
  const {offset:_offset,...metadata}=entry;return{...metadata,payload:admitted.payload};
 }
