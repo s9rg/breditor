@@ -11,6 +11,7 @@ import {
 import {readHostedRunnerContext} from "./candidate-release/hosted-context.mjs";
 import {candidateReleasePlan,repository as candidateRoot} from "./candidate-release/plan.mjs";
 import {candidateShardPlan} from "./candidate-release/shards.mjs";
+import {usesRichBrowserDiscovery} from "./candidate-release/rich-browser-report.mjs";
 
 const workflowPath=".github/workflows/candidate-qualification.yml";
 const failureConclusions=new Set(["failure","cancelled","timed_out"]);
@@ -41,7 +42,7 @@ export async function verifyHostedCandidateArtifact(root,{repository,artifactMet
  const {verifyEntry,verifyUnchanged}=await verifiedGitHubArchive(archive,artifact);
  verifyEntry("runner-context.tsv",evidence.hosted.contextSha256,8192);
  const receipt=JSON.parse(verifyEntry(`${runDirectory}/result.json`,evidence.sha256,32*1024*1024));
- const profilePlan=candidateReleasePlan({profile:evidence.profile,environment:{}});
+ const profilePlan=candidateReleasePlan({profile:evidence.profile,environment:{},richBrowserDiscovery:usesRichBrowserDiscovery(root)});
  const plan=evidence.shard?candidateShardPlan(profilePlan,evidence.shard):profilePlan;
  // candidateCoverage already checked these records against the same plan and the extracted bytes.
  for(const [index,check] of plan.checks.entries()){

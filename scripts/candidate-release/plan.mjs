@@ -15,6 +15,7 @@ import {candidateRuntimeSizeReport} from "../measure-candidate-runtime-size.mjs"
 import {nativeColdCaseIds,nativeColdReport,nativeColdSelection} from "../native-cold-restart-plan.mjs";
 import {reconciledPacketCaseIds,reconciledPacketReport,reconciledPacketSelection} from "../reconciled-packet-recovery-plan.mjs";
 import {metadataReconciliationHostReceipt} from "./metadata-reconciliation-hosts.mjs";
+import {richBrowserCommand,richBrowserEngines,richBrowserRunner} from "./rich-browser-report.mjs";
 export const repository=resolve(dirname(fileURLToPath(import.meta.url)),"../..");
 export const deferredFunctionalGates=Object.freeze([
  "default-package-release-matrix","installed-editor-browser-matrix","shared-browser-matrix",
@@ -23,7 +24,6 @@ export const deferredFunctionalGates=Object.freeze([
  "dependency-license-review","catalog-parity-and-final-rc-approval",
  "pinned-input-rule-historical-readers",
 ]);
-const richBrowserEngines=["chromium","firefox","webkit"];
 const focusedStageIds = {
  "default-matrix": ["default-package-release-matrix"],
  "editor-browser-matrix": ["relay-native-dependency-notices","default-typescript-build","installed-editor-browser-matrix"],
@@ -65,7 +65,7 @@ const focusedStageIds = {
 export const candidateCheckProfiles=Object.freeze(["full","functional",...Object.keys(focusedStageIds)]);
 /** Functional success is deliberately not V1 readiness. Full adds existing browser/default
  * release checks and the fail-closed readiness ledger; it cannot approve manual gates. */
-export function candidateReleasePlan({profile="full",environment=process.env}={}){
+export function candidateReleasePlan({profile="full",environment=process.env,richBrowserDiscovery=true}={}){
  if(!candidateCheckProfiles.includes(profile))throw Error("Unknown candidate verification profile");
  const tool=(name,override)=>{const local=resolve(homedir(),`.cargo/bin/${name}`);return override??(existsSync(local)?local:name);};
  const cargo=tool("cargo",environment.BREDITOR_CARGO??environment.CARGO_BIN),rustc=tool("rustc",environment.BREDITOR_RUSTC??environment.RUSTC_BIN??environment.RUSTC),bindgen=tool("wasm-bindgen",environment.BREDITOR_WASM_BINDGEN??environment.WASM_BINDGEN_BIN),runner=tool("wasm-bindgen-test-runner",environment.WASM_BINDGEN_TEST_RUNNER_BIN),npm=environment.BREDITOR_NPM??environment.NPM_BIN??"npm",node=process.execPath;
@@ -880,9 +880,9 @@ export function candidateReleasePlan({profile="full",environment=process.env}={}
  ];
  if(profile!=="functional")checks.push(
   ...richBrowserEngines.map(engine=>{
-   const output="target/rich-browser-results/"+engine,report="target/rich-browser-"+engine+"-report.json";
-   return stage("rich-browser-"+engine,node,["node_modules/@playwright/test/cli.js","test","--config","experiments/rich-browser/playwright.config.mjs",
-    "--project="+(engine==="webkit"?"webkit*":engine),"--output="+output,"--reporter=line,json"],
+   const report="target/rich-browser-"+engine+"-report.json";
+   const args=richBrowserDiscovery?[richBrowserRunner,engine]:[...richBrowserCommand(engine),"--reporter=line,json"];
+   return stage("rich-browser-"+engine,node,args,
     {PLAYWRIGHT_JSON_OUTPUT_FILE:report},[{path:report,fresh:true,retain:true}],1800000);
   }),
   // This browser suite exercises research probe exports. Keep it separate from the installed SDK run.

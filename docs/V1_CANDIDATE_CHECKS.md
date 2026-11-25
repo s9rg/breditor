@@ -82,8 +82,11 @@ That suite uses the exact shared runtime receipt from its candidate.
 Select `rich-browser-matrix` to build the candidate's local rich runtime and
 run the existing grouped rich browser suite in Chromium, Firefox and WebKit.
 Each engine has a separate Playwright process and stage budget. The candidate
-manifest retains each report and the workflow keeps failed traces. Qualification
-and coverage review require a passing result for every reported spec, zero
+manifest retains discovery and execution together. On failure the workflow
+keeps the available discovery, execution report and traces. Qualification and
+coverage review compare the discovered cases with
+execution in their selected projects. Archives from earlier checkouts retain
+their original report-only coverage. The current matrix requires zero
 skips or failures, and an executed suite for every candidate rich-browser spec
 file on each engine. The bounded WebKit projects provide that file coverage
 together. This matrix is also required by the full candidate plan.
