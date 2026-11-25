@@ -29,7 +29,8 @@ for(const filename of ["LICENSE-MIT","LICENSE-APACHE"]){
 }
 const standaloneDocx=join(temporary,"docx"),interchangeArchive=paths[names.indexOf("@breditor/interchange")];
 mkdirSync(standaloneDocx);
-for(const file of ["package.json","docx-runtime.mjs","docx-types.mts","pixel.mjs"]){cpSync(join(consumer,file),join(standaloneDocx,file));}
+writeFileSync(join(standaloneDocx,"package.json"),'{"name":"breditor-docx-installed-proof","private":true,"type":"module"}\n');
+for(const file of ["docx-runtime.mjs","docx-types.mts","pixel.mjs"]){cpSync(join(consumer,file),join(standaloneDocx,file));}
 cpSync(join(root,"crates/breditor-core/tests/fixtures/rich-v4-frozen-checkpoint.json"),join(standaloneDocx,"native-v4-checkpoint.json"));
 run("npm",["install","--offline","--ignore-scripts","--no-audit","--no-fund","--package-lock=false",interchangeArchive],standaloneDocx);
 assert.equal(realpathSync(join(standaloneDocx,"node_modules/@breditor/interchange")),join(realpathSync(standaloneDocx),"node_modules/@breditor/interchange"));

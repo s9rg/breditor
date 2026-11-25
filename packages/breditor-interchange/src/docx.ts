@@ -57,7 +57,7 @@ export function exportDocx(documentJson:string,options:DocxExportOptions={}):Doc
     const image=options.image;
     if(image!==undefined&&typeof image!=="function")return failure(new ConversionFailure("asset-policy"),ledger.list());
     const root=documentRoot(documentJson),page=pageSizes[pageSize];
-    const writer=new DocxWriter({image:image===undefined?undefined:binding=>image.call(options,binding),contentWidthTwips:page.width-2*pageMargin});ledger=writer.losses;
+    const writer=new DocxWriter({image:image===undefined?undefined:binding=>Reflect.apply(image,options,[binding]),contentWidthTwips:page.width-2*pageMargin});ledger=writer.losses;
     let lang:string|undefined;
     if(language!==undefined){if(isCanonicalLanguageTagV1(language))lang=language;else ledger.add("unsupported-attribute");}
     const body=writer.body(root);
@@ -90,7 +90,7 @@ export async function exportDocxWithImages(documentJson:string,options:DocxAsync
     let total=0;
     for(const binding of bindings.value){
       let value:Uint8Array|ArrayBuffer|Blob|undefined;
-      try{value=await loadImage.call(options,binding);}catch{return failure(new ConversionFailure("asset-policy"),[]);}
+      try{value=await Reflect.apply(loadImage,options,[binding]);}catch{return failure(new ConversionFailure("asset-policy"),[]);}
       try{
         let bytes:Uint8Array|undefined;
         if(value===undefined)bytes=undefined;

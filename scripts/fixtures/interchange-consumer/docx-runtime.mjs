@@ -40,6 +40,9 @@ const asynchronous={bytes:pixel,calls:[],async loadImage(binding){
   this.calls.push(binding);
   return new Blob([this.bytes],{type:"image/png"});
 }};
+// A function can shadow its inherited call method and remain callable.
+Object.defineProperty(sync.image,"call",{value:null});
+Object.defineProperty(asynchronous.loadImage,"call",{value:null});
 assert.deepEqual(exportDocx(documentJson,sync),expected);
 assert.deepEqual(await exportDocxWithImages(documentJson,asynchronous),expected);
 assert.deepEqual(sync.calls,bindings);
