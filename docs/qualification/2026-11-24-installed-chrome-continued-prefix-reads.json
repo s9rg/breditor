@@ -1,0 +1,154 @@
+{
+  "format": "breditor/installed-continued-prefix-read-comparison",
+  "formatVersion": 1,
+  "passed": true,
+  "browser": "158.0.8127.37",
+  "predecessorSha256": "366806966d83b8d8d69418e1d005b65bf68cb6dcae54e5ccfb539a0021746473",
+  "backupSha256": "ba99b2afb40776c3e6237ba45c5daa43faa184d42db7d7a0c233000d447b770b",
+  "predecessorMismatchRefused": true,
+  "exactBothCuts": true,
+  "coldNativeUndoRedoAndOffline": true,
+  "sharedWasmSha256": "8f39c742c461006c90e209e0287f7db137574843f316ccddbe2aaa141ca00401",
+  "fixtureProof": [
+    {
+      "path": "shared-generation-rollover.html",
+      "sha256": "92ff9d062ca2ced1163587660bd1bbfda027537a3e4b1d1ae1ad905ec59c12e9"
+    },
+    {
+      "path": "shared-generation-rollover.mjs",
+      "sha256": "c4155578193b71f73aa010b136873ba9fd721950fef3c53c2784d1e03168445b"
+    },
+    {
+      "path": "seed.mjs",
+      "sha256": "653dc89aef4e64016aa50ad54293afd1f078a7cd7afba162af52aaa7ba2d78d6"
+    },
+    {
+      "path": "continued-prefix-reads.html",
+      "sha256": "6e036e7f3f9bb4d520cf3d7dc898f326c0c042d7bb32abe1d525445889347971"
+    },
+    {
+      "path": "continued-prefix-reads.mjs",
+      "sha256": "b9f7e60677e0c81684330c81ed10b4be42df988b2873a98062f1422e04074838"
+    }
+  ],
+  "registryArtifactsPinnedToProducer": 45,
+  "baseline": {
+    "source": {
+      "commit": "48c7dec60b3e5afdc18035e7469b342621d9eb73",
+      "dirty": false,
+      "sha256": "3ccab7dea06a67bafa8b391983d1d0b9137655aede03296b2366c08511abc635",
+      "files": 9738,
+      "bytes": 83372693
+    },
+    "archives": [
+      {
+        "name": "@breditor/browser",
+        "sha256": "1199d14fe5b3d5b2e0318642a9bbf9f5b84773e97265597f72e190be43869ae0"
+      },
+      {
+        "name": "@breditor/experimental-rich-content",
+        "sha256": "176743e813065e9916814f60e020b89bc267d4f59755629baa783b30f1add16b"
+      },
+      {
+        "name": "@breditor/editor",
+        "sha256": "9091ec60bb7ab80ddbdfcdfa5cde8756fdf33b16a16e1d78d792151c0db49b08"
+      },
+      {
+        "name": "@breditor/collaboration",
+        "sha256": "1faab896a7d49fee21d1ff781e27fc6104e8088a5e8c6ffa319f3546a9793678"
+      }
+    ],
+    "playwrightReportSha256": "ba73d399674ee1891dc66bc42fe0556c68d2d22630c0ff5bea694d30c4a01536",
+    "open": [
+      {
+        "records": 12,
+        "logicalBytes": 149113,
+        "distinctRecords": 7
+      },
+      {
+        "records": 12,
+        "logicalBytes": 149113,
+        "distinctRecords": 7
+      }
+    ],
+    "export": [
+      {
+        "records": 12,
+        "logicalBytes": 149113,
+        "distinctRecords": 7
+      }
+    ],
+    "coldRestoredOpen": [
+      {
+        "records": 12,
+        "logicalBytes": 149113,
+        "distinctRecords": 7
+      },
+      {
+        "records": 12,
+        "logicalBytes": 149113,
+        "distinctRecords": 7
+      }
+    ]
+  },
+  "candidate": {
+    "source": {
+      "commit": "b48e789da57849e7c925ee277e06ef645ca1a025",
+      "dirty": false,
+      "sha256": "d57e6a7cea457fadbc69737b2b8b491bc26b38a3a963911d731edc2e494d4666",
+      "files": 9738,
+      "bytes": 83373114
+    },
+    "archives": [
+      {
+        "name": "@breditor/browser",
+        "sha256": "1199d14fe5b3d5b2e0318642a9bbf9f5b84773e97265597f72e190be43869ae0"
+      },
+      {
+        "name": "@breditor/experimental-rich-content",
+        "sha256": "176743e813065e9916814f60e020b89bc267d4f59755629baa783b30f1add16b"
+      },
+      {
+        "name": "@breditor/editor",
+        "sha256": "9091ec60bb7ab80ddbdfcdfa5cde8756fdf33b16a16e1d78d792151c0db49b08"
+      },
+      {
+        "name": "@breditor/collaboration",
+        "sha256": "a56a1162a2b8fa31891ae36019398de9e2b31a5588fcbbd8c50f4f31271a470c"
+      }
+    ],
+    "playwrightReportSha256": "85457af9cdc1dfc9b15b3f8c507e54faf314b2202d35b8bd44c4306ab14db060",
+    "open": [
+      {
+        "records": 7,
+        "logicalBytes": 82352,
+        "distinctRecords": 7
+      },
+      {
+        "records": 7,
+        "logicalBytes": 82352,
+        "distinctRecords": 7
+      }
+    ],
+    "export": [
+      {
+        "records": 7,
+        "logicalBytes": 82352,
+        "distinctRecords": 7
+      }
+    ],
+    "coldRestoredOpen": [
+      {
+        "records": 7,
+        "logicalBytes": 82352,
+        "distinctRecords": 7
+      },
+      {
+        "records": 7,
+        "logicalBytes": 82352,
+        "distinctRecords": 7
+      }
+    ]
+  },
+  "scope": "One installed Chrome host. Scope is immutable file requests and logical UTF-8 values observed on three continued-history operations, with five exact read transactions. Excludes physical IndexedDB I/O, timing, peak RAM, and production limits. Native runtime was reused with the same Wasm in both fresh installs. The baseline passed the recovery workflow and failed the new seven-request expectation."
+}

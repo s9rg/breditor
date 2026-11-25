@@ -37,6 +37,7 @@ function readStoredCuts(
   const tx=db.transaction(["generation_files","generation_heads"],"readonly");
   const heads=tx.objectStore("generation_heads"),files=tx.objectStore("generation_files");
   const result=readers.map<StoredGenerationFiles|null>(()=>null);
+  const fileRequests=new Map<string,IDBRequest<unknown>>();
   let failure:unknown;
   const abort=(error:unknown)=>{if(failure!==undefined)return;failure=error;tx.abort();};
   settleOwnedTransaction(tx,()=>result,()=>failure??tx.error??fail("Generation read aborted"),resolve,reject);
@@ -55,19 +56,27 @@ function readStoredCuts(
      if(parsed.identity.room!==key[0]||parsed.identity.writer!==key[1])throw fail("Generation head belongs to a different writer");
      const record:StoredGenerationFiles={head,files:[]};
      result[index]=record;
-     for(const ref of [parsed.root,...parsed.sealed]){
-      const file=files.get([...key,ref.generation]);
-      file.onsuccess=()=>{
+     for(const [fileIndex,ref] of [parsed.root,...parsed.sealed].entries()){
+      let file=fileRequests.get(ref.generation);
+      if(!file){
+       file=files.get([...key,ref.generation]);
+       fileRequests.set(ref.generation,file);
+      }
+      // Each head checks its own digest even when both reference the same immutable key.
+      const request=file;
+      const take=()=>{
        try{
-        if(typeof file.result!=="string")throw fail("Referenced generation file is absent");
-        const stored=JSON.parse(file.result) as SegmentedFile;
-        if(JSON.stringify(stored)!==file.result||Object.keys(stored).sort().join(",")!=="generation,json,kind,sha256"||
+        if(typeof request.result!=="string")throw fail("Referenced generation file is absent");
+        const stored=JSON.parse(request.result) as SegmentedFile;
+        if(JSON.stringify(stored)!==request.result||Object.keys(stored).sort().join(",")!=="generation,json,kind,sha256"||
            stored.generation!==ref.generation||stored.sha256!==ref.sha256||typeof stored.json!=="string"){
          throw fail("Referenced generation file differs");
         }
-        record.files.push(stored);
+        record.files[fileIndex]=stored;
        }catch(error){abort(error);}
       };
+      if(request.readyState==="done")take();
+      else request.addEventListener("success",take);
      }
     }catch(error){abort(error);}
    };

@@ -774,6 +774,26 @@ node scripts/check-asset-backups-installed.mjs --reuse-runtime
 node scripts/measure-retained-asset-open.mjs --upload-queue-writes
 ```
 
+## Installed continued generation reads
+
+The V2 history and V1 predecessor in the Chrome workload shared five immutable
+rows. The earlier build read 12 file records carrying 149,113 logical bytes
+per snapshot. The candidate read the same seven unique records once, carrying
+82,352 bytes. Cold open, backup export and reopening a separate restored store
+agreed across all five IndexedDB snapshots.
+
+The exact current and predecessor recovery hashes matched in both builds.
+An intentionally mismatched predecessor digest still refused. Cold restored
+native Undo and Redo preserved the original offline edit. The measurement
+covers UTF-8 record bytes delivered by observed IndexedDB requests. Physical
+I/O, memory and latency were outside its scope.
+[Measurement and archive hashes](qualification/2026-11-24-installed-chrome-continued-prefix-reads.json)
+
+Build an installed editor using
+`BREDITOR_EDITOR_ROLLOVER=1 node scripts/check-editor-package.mjs`, then run
+the `reads shared immutable prefix` test with
+`experiments/editor-browser-rollover/playwright.config.mjs`.
+
 ## Installed local checkpoint writes
 
 The installed Chrome workload submitted six identical saves for each of
