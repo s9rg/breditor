@@ -310,6 +310,21 @@ outputs must be absent so importing the build cannot overwrite them. Put the
 six `activation-check-*` report directories under one directory and run
 `node scripts/qualify-activation-shard.mjs verify <inputs-directory> <reports-directory>`.
 
+To authenticate a hosted result, keep the original ZIP for
+`activation-qualification-ATTEMPT` and the authenticated GitHub REST responses
+for its artifact and exact workflow attempt. Extract the prepared inputs and
+six worker artifacts into their usual verification directories. Run the
+verifier from a clean checkout of the commit on the matching host and Node
+version.
+
+```sh
+node scripts/check-hosted-activation-artifact.mjs OWNER/REPO artifact.json run-attempt.json aggregate.zip inputs reports
+```
+
+The verifier authenticates the aggregate ZIP, checks the prepared input
+digest and replays the six-report verification against the archived result.
+Release approval requires its own reviewed evidence.
+
 Pass the same inputs and six report directories to `node scripts/verify-candidate.mjs`
 with `--activation-evidence <inputs-directory> <reports-directory>` and the
 chosen profile. The verifier checks the reports before starting, then compares
