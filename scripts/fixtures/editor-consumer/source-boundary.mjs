@@ -4,7 +4,7 @@ import { execFileSync } from "node:child_process";
 import { readFileSync, realpathSync, writeFileSync } from "node:fs";
 import { createRequire } from "node:module";
 import { isAbsolute } from "node:path";
-import { fileURLToPath } from "node:url";
+import { fileURLToPath, pathToFileURL } from "node:url";
 
 const packages = ["@breditor/browser", "@breditor/editor"];
 const hidden = [
@@ -52,7 +52,8 @@ async function addTypeOnlyExports(observed, compiler) {
   }));
 
   // Use the same locked TypeScript distribution as the strict CLI contract below.
-  const { API, SymbolFlags } = await import(createRequire(compiler).resolve("typescript/unstable/sync"));
+  const checkerUrl = pathToFileURL(createRequire(compiler).resolve("typescript/unstable/sync"));
+  const { API, SymbolFlags } = await import(checkerUrl.href);
   const api = new API({ cwd });
   try {
     const snapshot = api.updateSnapshot({ openProjects: [config] });
