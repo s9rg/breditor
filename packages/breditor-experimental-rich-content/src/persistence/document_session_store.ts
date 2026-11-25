@@ -58,13 +58,17 @@ export class RichDocumentSessionStore {
   if(typeof value!=="string")throw Error("Unknown legacy local checkpoint value");
   if(new TextEncoder().encode(value).byteLength>this.maxBytes)throw Error("Local checkpoint exceeds its byte budget");return value;
  }
- /** One completed transaction writes only the separate document key, retaining old recovery bytes. */
+ /** One completed transaction acknowledges only the separate document key, retaining old recovery bytes. */
  save(checkpointJson:string):Promise<void>{
   this.#database.assertLive();const bytes=this.#check(checkpointJson);
   const record=this.#fingerprint===null
    ?{format:recordFormat,formatVersion:1,history:this.#history,richLanguage:this.#language,checkpointJson}
    :{format:recordFormat,formatVersion:2,history:this.#history,richLanguage:this.#language,schemaFingerprint:this.#fingerprint,checkpointJson};
-  return this.#database.write(documentKey,record,bytes,value=>this.#checkFamily(this.#storedCheckpoint(value)));
+  return this.#database.write(documentKey,record,bytes,value=>{
+   const stored=this.#storedCheckpoint(value);
+   if(stored===checkpointJson)return false;
+   this.#checkFamily(stored);return true;
+  });
  }
  flush():Promise<void>{return this.#database.flush();}
  close():void{this.#database.close();}

@@ -773,3 +773,21 @@ counts cover the raster payload on IndexedDB write requests.
 node scripts/check-asset-backups-installed.mjs --reuse-runtime
 node scripts/measure-retained-asset-open.mjs --upload-queue-writes
 ```
+
+## Installed local checkpoint writes
+
+The installed Chrome workload submitted six identical saves for each of
+the original, document V1 and fingerprinted document V2 records. The earlier
+build submitted 18 IndexedDB rows carrying 2,833,974 UTF-8 payload bytes.
+The candidate acknowledged all 18 saves using the current durable row and
+submitted zero writes. Each stored native checkpoint was about 154 KiB.
+
+Two handles also alternated between different checkpoints for each family.
+Both builds submitted the same six changed rows and exact payload sizes.
+Cold reopen recovered the original bytes and replayed native Undo and Redo.
+The counts cover logical UTF-8 payload bytes on checkpoint writes.
+[Measurement and archive hashes](qualification/2026-11-24-installed-chrome-local-checkpoint-writes.json)
+
+Build the vanilla installed SDK with `node scripts/check-editor-package.mjs`
+and run the `installed repeated local checkpoint saves` case in
+`experiments/editor-browser/playwright.config.mjs` to repeat the verification.

@@ -24,8 +24,8 @@ export class LocalCheckpointDatabase {
    tx.oncomplete=()=>resolve(request.result);tx.onabort=()=>reject(tx.error??Error("Local checkpoint read failed"));
   });
  }
- /** Bytes measure the exact native payload, not structured-clone record metadata. */
- write(key:string,value:unknown,bytes:number,checkExisting:(value:unknown)=>void):Promise<void>{
+ /** Bytes measure the exact native payload. The caller admits an occupied row before electing replacement. */
+ write(key:string,value:unknown,bytes:number,shouldReplace:(value:unknown)=>boolean):Promise<void>{
   this.assertLive();if(bytes>this.maxBytes)throw Error("Local checkpoint exceeds its byte budget");
   if(this.#pendingWrites>=64||this.#pendingBytes+bytes>32*1024*1024)throw Error("Local checkpoint write queue exceeds its budget");
   this.#pendingWrites++;this.#pendingBytes+=bytes;
@@ -37,7 +37,7 @@ export class LocalCheckpointDatabase {
     const request=store.getAll(key,1);
     request.onsuccess=()=>{try{
      // Check presence inside the write transaction, including a stored undefined.
-     if(request.result.length)checkExisting(request.result[0]);
+     if(request.result.length&&!shouldReplace(request.result[0]))return;
      store.put(value,key);
     }catch(error){failure=error;tx.abort();}};
    }catch(error){failure=error;tx.abort();}

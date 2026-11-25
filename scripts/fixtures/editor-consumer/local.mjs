@@ -61,5 +61,60 @@ window.sdk.verifyLocalCheckpointAdmission=async()=>{
   return receipt;
  }finally{host.remove();}
 };
+window.sdk.measureLocalCheckpointWrites=async()=>{
+ const check=(condition,message)=>{if(!condition)throw Error(message);};
+ const bytes=value=>new TextEncoder().encode(typeof value==="string"?value:value.checkpointJson);
+ const hash=async value=>Array.from(new Uint8Array(await crypto.subtle.digest("SHA-256",bytes(value))),b=>b.toString(16).padStart(2,"0")).join("");
+ const host=document.createElement("main"),results=[];document.body.append(host);
+ try{
+  for(const family of ["original",3,4]){
+   const original=family==="original",name="local-writes-"+family+"-"+crypto.randomUUID();
+   const policy={richLanguage:original?3:family,history:"typing-v1",...(family===4?{schemaFingerprint:standardSchemaFingerprintV4}:{})};
+   const settings={host,richLanguage:policy.richLanguage,history:policy.history,...(original?{}:{selectionEditing:"document-v1"})};
+   const open=original?openLocalEditor:openLocalDocumentEditor;
+   const openStore=()=>original?RichLocalSessionStore.open(name):RichDocumentSessionStore.open(name,policy);
+   let owner,first,second,put=IDBObjectStore.prototype.put,writes=[];
+   try{
+    first=await openStore();second=await openStore();
+    owner=await open({...settings,initial:{kind:"empty",documentId:"checkpoint-write-proof",blockId:"body"}});
+    const empty=owner.view().documentJson;
+    owner.execute({kind:"insertPlainText",text:"Durable draft 🙂 ".repeat(8192)});
+    const edited=owner.view().documentJson;
+    check(edited!==empty,"Native editor must commit the measured draft");
+    owner.execute({kind:"undo"});
+    const checkpoint=owner.checkpointJson(),undone=owner.view().documentJson;
+    check(bytes(checkpoint).byteLength>=128*1024,"A substantial exact checkpoint must be measured");
+    await first.save(checkpoint);
+    IDBObjectStore.prototype.put=function(value,...args){
+     const request=put.call(this,value,...args);
+     if(this.name==="checkpoint"&&this.transaction.db.name===name)writes.push(bytes(value).byteLength);
+     return request;
+    };
+    await Promise.all(Array.from({length:6},()=>first.save(checkpoint)));
+    check(await first.load()===checkpoint,"Repeated saves must acknowledge the same durable checkpoint");
+    const repeated={rows:writes.length,payloadBytes:writes.reduce((sum,size)=>sum+size,0)};
+    writes=[];
+    owner.execute({kind:"redo"});
+    const next=owner.checkpointJson();
+    check(next!==checkpoint&&owner.view().documentJson===edited,"Native Redo must produce a different durable cut");
+    await second.save(next);
+    check(await second.load()===next,"The second handle must commit the different cut");
+    await first.save(checkpoint);
+    check(await second.load()===checkpoint,"Re-saving the first cut must observe the other handle's actual durable change");
+    check(writes.length===2&&writes[0]===bytes(next).byteLength&&writes[1]===bytes(checkpoint).byteLength,"Two actual changes must submit their exact payloads");
+    const changed={rows:writes.length,payloadBytes:writes.reduce((sum,size)=>sum+size,0)};
+    owner.dispose();owner=undefined;first.close();first=undefined;second.close();second=await openStore();
+    const recovered=await second.load();
+    check(recovered===checkpoint,"Cold storage must return all prior native bytes");
+    owner=await open({...settings,initial:{kind:original?"typingCheckpoint":"documentTypingCheckpoint",checkpointJson:recovered}});
+    check(owner.checkpointJson()===checkpoint&&owner.view().documentJson===undone,"Cold native restore must be exact");
+    owner.execute({kind:"redo"});check(owner.view().documentJson===edited,"Cold native Redo must retain the draft");
+    owner.execute({kind:"undo"});check(owner.view().documentJson===undone,"Cold native Undo must retain the previous cut");
+    results.push({family,repeated,changed,checkpointBytes:bytes(checkpoint).byteLength,checkpointSha256:await hash(checkpoint),nativeUndoRedo:true});
+   }finally{IDBObjectStore.prototype.put=put;owner?.dispose();first?.close();second?.close();}
+  }
+  return results;
+ }finally{host.remove();}
+};
 document.querySelector("#files").addEventListener("change",async event=>{try{await editor.insertImageFiles(assets,[...event.currentTarget.files],{parent:{kind:"document"},before:null});}catch(error){errors.push(String(error));}});
 document.querySelector("#save").addEventListener("click",window.sdk.save);document.querySelector("#ready").textContent="Ready";

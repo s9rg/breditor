@@ -1,0 +1,187 @@
+{
+  "format": "breditor/installed-local-checkpoint-write-comparison",
+  "formatVersion": 1,
+  "scope": "Three installed native checkpoint families, repeated exact saves and two-handle changes. Counts cover logical UTF-8 checkpoint payload on IndexedDB puts.",
+  "eliminatedRows": 18,
+  "eliminatedPayloadBytes": 2833974,
+  "baseline": {
+    "format": "breditor/installed-local-checkpoint-writes",
+    "formatVersion": 1,
+    "source": {
+      "commit": "be18f9160c1489d075ec824ab06483d8503ea689",
+      "dirty": false,
+      "sha256": "62f196eb4175b94f8ec2486fab9f6b7d0fc1e087faa057d3fbed2765a07ccadf",
+      "files": 9726,
+      "bytes": 83311617
+    },
+    "registryArtifacts": 45,
+    "localWasmSha256": "f100599f39805586d465961161bf751e0bd51e8d524ad2ab653001946347200e",
+    "browser": "158.0.8127.37",
+    "archives": [
+      {
+        "name": "@breditor/browser",
+        "sha256": "1199d14fe5b3d5b2e0318642a9bbf9f5b84773e97265597f72e190be43869ae0"
+      },
+      {
+        "name": "@breditor/experimental-rich-content",
+        "sha256": "88dc5e523ea02d61015ff109936b1f6e6c8744f2d92b36cfc912bbb09f78e8c0"
+      },
+      {
+        "name": "@breditor/editor",
+        "sha256": "9091ec60bb7ab80ddbdfcdfa5cde8756fdf33b16a16e1d78d792151c0db49b08"
+      }
+    ],
+    "fixture": [
+      {
+        "path": "scripts/fixtures/editor-consumer/index.html",
+        "sha256": "75231dffb7429c1056fa08d8d4313297337f3a87802b2e6d1bfc2d7a8b0b98f8"
+      },
+      {
+        "path": "scripts/fixtures/editor-consumer/local.mjs",
+        "sha256": "6e9b1350b5b78c769236509d6c2ad6e7bfde7d30dbb61529bcbea70bc3ffd17b"
+      },
+      {
+        "path": "scripts/fixtures/editor-consumer/seed.mjs",
+        "sha256": "653dc89aef4e64016aa50ad54293afd1f078a7cd7afba162af52aaa7ba2d78d6"
+      },
+      {
+        "path": "crates/breditor-core/tests/fixtures/rich-local-root.json",
+        "sha256": "761ce4641bafcca82c10081d79e318a9dab5bf33aa11919c0c69909dbc8f2eca"
+      }
+    ],
+    "rows": [
+      {
+        "family": "original",
+        "repeated": {
+          "rows": 6,
+          "payloadBytes": 944610
+        },
+        "changed": {
+          "rows": 2,
+          "payloadBytes": 314878
+        },
+        "checkpointBytes": 157435,
+        "checkpointSha256": "f37c9ddf16b4d648ebccbd23b5fadd1542bbe5a6d6c58692bd09d3a8e4be1d09",
+        "nativeUndoRedo": true
+      },
+      {
+        "family": 3,
+        "repeated": {
+          "rows": 6,
+          "payloadBytes": 944682
+        },
+        "changed": {
+          "rows": 2,
+          "payloadBytes": 314902
+        },
+        "checkpointBytes": 157447,
+        "checkpointSha256": "9a47d9f61668745cbdbb2eabfaaa8df40704030c15c4476626ebac6e0a20213b",
+        "nativeUndoRedo": true
+      },
+      {
+        "family": 4,
+        "repeated": {
+          "rows": 6,
+          "payloadBytes": 944682
+        },
+        "changed": {
+          "rows": 2,
+          "payloadBytes": 314902
+        },
+        "checkpointBytes": 157447,
+        "checkpointSha256": "92b284ccdbd707feefe14b25d2dc2918cb19808a997b0af22ae44192e75243f2",
+        "nativeUndoRedo": true
+      }
+    ]
+  },
+  "candidate": {
+    "format": "breditor/installed-local-checkpoint-writes",
+    "formatVersion": 1,
+    "source": {
+      "commit": "d786afc2a3bbb777dde9f03c16f755af243d9062",
+      "dirty": false,
+      "sha256": "95b5277b7f7f5a4464a458621e9f3d28813d8fa6e500190ad2d14d11650db3bb",
+      "files": 9726,
+      "bytes": 83311786
+    },
+    "registryArtifacts": 45,
+    "localWasmSha256": "f100599f39805586d465961161bf751e0bd51e8d524ad2ab653001946347200e",
+    "browser": "158.0.8127.37",
+    "archives": [
+      {
+        "name": "@breditor/browser",
+        "sha256": "1199d14fe5b3d5b2e0318642a9bbf9f5b84773e97265597f72e190be43869ae0"
+      },
+      {
+        "name": "@breditor/experimental-rich-content",
+        "sha256": "ab015248bed74e716fcc8be0778ff434139479b0609fadf17e280e1d9d23d897"
+      },
+      {
+        "name": "@breditor/editor",
+        "sha256": "9091ec60bb7ab80ddbdfcdfa5cde8756fdf33b16a16e1d78d792151c0db49b08"
+      }
+    ],
+    "fixture": [
+      {
+        "path": "scripts/fixtures/editor-consumer/index.html",
+        "sha256": "75231dffb7429c1056fa08d8d4313297337f3a87802b2e6d1bfc2d7a8b0b98f8"
+      },
+      {
+        "path": "scripts/fixtures/editor-consumer/local.mjs",
+        "sha256": "6e9b1350b5b78c769236509d6c2ad6e7bfde7d30dbb61529bcbea70bc3ffd17b"
+      },
+      {
+        "path": "scripts/fixtures/editor-consumer/seed.mjs",
+        "sha256": "653dc89aef4e64016aa50ad54293afd1f078a7cd7afba162af52aaa7ba2d78d6"
+      },
+      {
+        "path": "crates/breditor-core/tests/fixtures/rich-local-root.json",
+        "sha256": "761ce4641bafcca82c10081d79e318a9dab5bf33aa11919c0c69909dbc8f2eca"
+      }
+    ],
+    "rows": [
+      {
+        "family": "original",
+        "repeated": {
+          "rows": 0,
+          "payloadBytes": 0
+        },
+        "changed": {
+          "rows": 2,
+          "payloadBytes": 314878
+        },
+        "checkpointBytes": 157435,
+        "checkpointSha256": "f37c9ddf16b4d648ebccbd23b5fadd1542bbe5a6d6c58692bd09d3a8e4be1d09",
+        "nativeUndoRedo": true
+      },
+      {
+        "family": 3,
+        "repeated": {
+          "rows": 0,
+          "payloadBytes": 0
+        },
+        "changed": {
+          "rows": 2,
+          "payloadBytes": 314902
+        },
+        "checkpointBytes": 157447,
+        "checkpointSha256": "9a47d9f61668745cbdbb2eabfaaa8df40704030c15c4476626ebac6e0a20213b",
+        "nativeUndoRedo": true
+      },
+      {
+        "family": 4,
+        "repeated": {
+          "rows": 0,
+          "payloadBytes": 0
+        },
+        "changed": {
+          "rows": 2,
+          "payloadBytes": 314902
+        },
+        "checkpointBytes": 157447,
+        "checkpointSha256": "92b284ccdbd707feefe14b25d2dc2918cb19808a997b0af22ae44192e75243f2",
+        "nativeUndoRedo": true
+      }
+    ]
+  }
+}
