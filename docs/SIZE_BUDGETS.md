@@ -798,13 +798,15 @@ The pure archive reader verified 12 PNGs and admitted the same 17,998,473-byte
 archive in both builds. Chrome observed 24 raster Blob constructions carrying
 35,990,716 payload bytes in the earlier build and 12 constructions carrying
 17,995,358 bytes in the candidate. Each build still read and verified all 12
-payloads. The reader now retains the verified typed source slices, so the
-decoded byte buffers do not accumulate during admission.
+payloads. The pure reader reuses the owned Blob created by image decode and
+retains no decoded byte buffers across records.
 
 All raster, archive and queue metadata digests matched, including the four
 upload states. A cold restore recovered exact native image Undo and Redo.
 The fixture also refused changed raster bytes and access after disposal.
-These are logical constructor payload counts for this workload. Physical
+The admitted raster stayed readable after removing the original selected
+file and after rewriting a selected file wrapped in another Blob. These are
+logical constructor payload counts for this workload. Physical
 memory use and general latency were outside the measurement.
 [Measurement and archive hashes](qualification/2026-11-24-installed-chrome-raster-archive-reader.json)
 

@@ -7,7 +7,7 @@
   "fixtureProof": [
     {
       "path": "scripts/fixtures/retained-asset-open-measurement/archive-reader.html",
-      "sha256": "ea56c2ea8d07dd3a3eba8b457e5be4984eb363ea47081129ec61f825edeb4b53"
+      "sha256": "39ade349412a68e21e1986d1f319009b1d7daebdfc0d31d8f9e4b1bcf6099b31"
     },
     {
       "path": "scripts/fixtures/retained-asset-open-measurement/measure.mjs",
@@ -15,7 +15,7 @@
     },
     {
       "path": "scripts/fixtures/retained-asset-open-measurement/archive-reader.mjs",
-      "sha256": "2365c6db0fd162618409fb918dde81a459ed3a4c56a928d926947546cb1492ef"
+      "sha256": "0d7c4ab21c3c22ef3e03151c51162fa326db165646559351fe68ceb3ca0033a4"
     }
   ],
   "registryArtifactsPinnedToProducer": 45,
@@ -44,8 +44,17 @@
   "coldNativeUndoRedo": true,
   "corruptFinalRasterRefused": true,
   "disposedAccessRefused": true,
+  "detachedFromRemovedSelectedFile": true,
+  "detachedFromRewrittenNestedFile": true,
   "baseline": {
-    "source": {
+    "testSource": {
+      "commit": "41f278c66aec9e50f23a304b627fcefa5c0150b2",
+      "dirty": false,
+      "sha256": "f534db5ba2b34ad439786951f341db3ccaae0094048dd241e004f699bc6c5352",
+      "files": 9738,
+      "bytes": 83379680
+    },
+    "producerSource": {
       "commit": "353df3ced1aa941f998771b1bbacde23ed1a8b31",
       "dirty": false,
       "sha256": "388335ec6c0ed1f438da20d3c961e9ba732c67271b50ace2ca2ddc27de7797c4",
@@ -74,7 +83,7 @@
         "rasterBlobBytes": 35990716,
         "rasterReads": 12,
         "rasterReadBytes": 17995358,
-        "readMs": 302.2999999523163
+        "readMs": 240.20000004768372
       },
       {
         "wholeArchiveBlobs": 1,
@@ -83,7 +92,7 @@
         "rasterBlobBytes": 35990716,
         "rasterReads": 12,
         "rasterReadBytes": 17995358,
-        "readMs": 184.60000002384186
+        "readMs": 254.5
       },
       {
         "wholeArchiveBlobs": 1,
@@ -92,18 +101,25 @@
         "rasterBlobBytes": 35990716,
         "rasterReads": 12,
         "rasterReadBytes": 17995358,
-        "readMs": 221
+        "readMs": 355.39999997615814
       }
     ],
-    "reportSha256": "5f162acb030cb8cac67fa84ff22c1e80c691530b9742238f7b0b2c540d97a5fa"
+    "reportSha256": "aa37987ec39b4eba581b26e71eef84576735e7a289ef52dec62bb4a91f61b5a8"
   },
   "candidate": {
-    "source": {
-      "commit": "ab24b3ef53670eb543cf369db91ec197c2559d5f",
+    "testSource": {
+      "commit": "41f278c66aec9e50f23a304b627fcefa5c0150b2",
       "dirty": false,
-      "sha256": "2184af2183094fc45b728992d60f549f6f638d656b482a3c98c201af7b835916",
-      "files": 9737,
-      "bytes": 83370575
+      "sha256": "f534db5ba2b34ad439786951f341db3ccaae0094048dd241e004f699bc6c5352",
+      "files": 9738,
+      "bytes": 83379680
+    },
+    "producerSource": {
+      "commit": "41f278c66aec9e50f23a304b627fcefa5c0150b2",
+      "dirty": false,
+      "sha256": "f534db5ba2b34ad439786951f341db3ccaae0094048dd241e004f699bc6c5352",
+      "files": 9738,
+      "bytes": 83379680
     },
     "archives": [
       {
@@ -112,7 +128,7 @@
       },
       {
         "name": "@breditor/experimental-rich-content",
-        "sha256": "9ebaa64b30d9f2fabf0e206928ad410a079e881f6f48535d59f2b923e4ea2bbf"
+        "sha256": "1b778a532bd5b1afe28dff46f994ed2caad175d918d6db4d44cb2e193a25148a"
       },
       {
         "name": "@breditor/editor",
@@ -127,7 +143,7 @@
         "rasterBlobBytes": 17995358,
         "rasterReads": 12,
         "rasterReadBytes": 17995358,
-        "readMs": 252.19999992847443
+        "readMs": 166.39999997615814
       },
       {
         "wholeArchiveBlobs": 1,
@@ -136,7 +152,7 @@
         "rasterBlobBytes": 17995358,
         "rasterReads": 12,
         "rasterReadBytes": 17995358,
-        "readMs": 158.59999990463257
+        "readMs": 166.10000002384186
       },
       {
         "wholeArchiveBlobs": 1,
@@ -145,10 +161,10 @@
         "rasterBlobBytes": 17995358,
         "rasterReads": 12,
         "rasterReadBytes": 17995358,
-        "readMs": 343.5
+        "readMs": 164.79999995231628
       }
     ],
-    "reportSha256": "33690b854e4017ee65a16a9ece055715440a5bc2c24ff741e853fa7040be0f81"
+    "reportSha256": "43f84e44bebf54abd305c04d38f3a66bc47fc8eb8d3de57611c4890689c2b107"
   },
-  "scope": "Three repetitions on one installed Chrome host with a 12-PNG archive. The observer counts logical bytes passed to raster Blob constructors and read through Blob.arrayBuffer, including the existing decoder Blob. Filesystem IO, physical allocation, RSS and general latency are outside this measurement. The package installs reused matching native runtime bytes."
+  "scope": "Three repetitions on one installed Chrome host with a 12-PNG archive. The observer counts logical bytes passed to raster Blob constructors and read through Blob.arrayBuffer, including the existing decoder Blob. Separate direct and nested real file selection controls verify admitted raster bytes after source removal or rewrite. Filesystem IO, physical allocation, RSS and general latency are outside the measurement. The package installs reused matching native runtime bytes."
 }
