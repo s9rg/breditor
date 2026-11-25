@@ -2,7 +2,6 @@ import {inheritActorLeaseInput} from '../persistence/actor_lease_input.js';
 /** Host selects factories and current policy. File/record fields select neither. */
 import {makeGenerationCut,makeSegmentedCut} from "../persistence/segmented_head.js";
 import type {SegmentedCut} from "../persistence/segmented_contract.js";
-import type {SegmentedSessionCompanion} from "../persistence/segmented_driver.js";
 import {participantAuthority} from "../participant_backup/policy.js";
 import {checkAssetBytesSignal} from "../asset_bytes/guards.js";
 import {generationIdentity,generationFields,freezeGeneration} from "../generation_source/identity.js";
@@ -13,7 +12,7 @@ import type {SharedSelectionPolicy} from "../types.js";
 import type {SharedGenerationParticipantResumeOptions,SharedGenerationRecoveryFactory} from "./recovery_contract.js";
 import type {SharedGenerationParticipantSelection} from './contract.js';
 import type {GenerationRecoveryRecord} from "./recovery_database.js";
-export interface PreparedGenerationRecovery<P extends SharedSelectionPolicy>{options:SharedGenerationParticipantResumeOptions<P>;session:SharedGenerationRecoveryFactory<P>;record:GenerationRecoveryRecord;backup:SharedGenerationParticipantBackup;cut:SegmentedCut;predecessor?:SegmentedCut;companion:SegmentedSessionCompanion|undefined;guard:()=>void}
+export interface PreparedGenerationRecovery<P extends SharedSelectionPolicy>{options:SharedGenerationParticipantResumeOptions<P>;session:SharedGenerationRecoveryFactory<P>;record:GenerationRecoveryRecord;backup:SharedGenerationParticipantBackup;cut:SegmentedCut;predecessor?:SegmentedCut;guard:()=>void}
 export const generationRecoveryName=(name:unknown):string=>{if(typeof name!=="string"||!name||name.length>200)throw fail("generation_participant_policy");return name;};
 export function snapshotGenerationRecovery<P extends SharedSelectionPolicy>(input:SharedGenerationParticipantResumeOptions<P>,begin:boolean):{options:SharedGenerationParticipantResumeOptions<P>;record:GenerationRecoveryRecord;guard:()=>void}{
  if(!input||typeof input!=="object"||Object.keys(input).some(k=>!["database","expected","destinations","session","checkAuthority","signal","limits",...(begin?["backup"]:[])].includes(k)))throw fail("generation_participant_policy");
@@ -45,7 +44,7 @@ export async function prepareGenerationRecovery<P extends SharedSelectionPolicy>
 const records=SharedGenerationParticipantBackup.prototype.records;
 export async function prepareGenerationRecoveryCuts(
  expected:SharedGenerationParticipantSelection,backup:SharedGenerationParticipantBackup,guard:()=>void,
-):Promise<Pick<PreparedGenerationRecovery<SharedSelectionPolicy>,'cut'|'predecessor'|'companion'>>{
+):Promise<Pick<PreparedGenerationRecovery<SharedSelectionPolicy>,'cut'|'predecessor'>>{
  const id=expected.identity.source,admitted=checkGenerationRecords(id,records.call(backup)),r=admitted.source;
  const review=(checkpoint:string|null)=>id.review?{...id.review,checkpoint:checkpoint!}:null;
  if(admitted.recovery.format==='breditor/shared-continued-history-backup'){
@@ -53,9 +52,9 @@ export async function prepareGenerationRecoveryCuts(
   const predecessor=await makeSegmentedCut(previous.checkpoint,id.native,review(previous.reviewCheckpoint),previous.versions);
   guard();
   const cut=await makeGenerationCut(r.checkpoint,id.native,review(r.reviewCheckpoint),r.versions,2);
-  guard();return {cut,predecessor,companion:undefined};
+  guard();return {cut,predecessor};
  }
  const local=await makeSegmentedCut(r.checkpoint,id.native,review(r.reviewCheckpoint),r.versions);guard();
  const companion=admitted.companion;
- return {cut:companion?{head:companion.wrap(JSON.parse(local.head),companion.capture()),files:local.files}:local,companion};
+ return {cut:companion?{head:companion.wrap(JSON.parse(local.head),companion.capture()),files:local.files}:local};
 }

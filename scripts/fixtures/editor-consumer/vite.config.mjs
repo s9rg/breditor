@@ -1,5 +1,5 @@
 import {resolve} from "node:path";
-const rollover=process.env.BREDITOR_EDITOR_ROLLOVER==="1"?{sharedGenerationRollover:resolve("shared-generation-rollover.html"),continuedPrefixReads:resolve("continued-prefix-reads.html")}:{};
+const rollover=process.env.BREDITOR_EDITOR_ROLLOVER==="1"?{sharedGenerationRollover:resolve("shared-generation-rollover.html"),continuedPrefixReads:resolve("continued-prefix-reads.html"),participantDestination:resolve("participant-destination.html")}:{};
 const pairedMemory=process.env.BREDITOR_EDITOR_PAIRED_MEMORY==="1"?{pairedMemory:resolve("paired-memory.html")}:{};
 // Entry pages have side effects. Never merge SDK exports into a different page
 // and execute its bootstrap when a consumer dynamically imports the package.
