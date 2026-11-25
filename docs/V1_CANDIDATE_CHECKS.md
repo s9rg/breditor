@@ -313,8 +313,9 @@ six `activation-check-*` report directories under one directory and run
 To authenticate a hosted result, keep the original ZIP for
 `activation-qualification-ATTEMPT` and the authenticated GitHub REST responses
 for its artifact and exact workflow attempt. Extract the prepared inputs and
-six worker artifacts into their usual verification directories. From a clean
-checkout of the run's commit on the matching host and Node version, run:
+six worker artifacts into their usual verification directories. Run the
+verifier from a clean checkout of the commit on the matching host and Node
+version.
 
 ```sh
 node scripts/check-hosted-activation-artifact.mjs OWNER/REPO artifact.json run-attempt.json aggregate.zip inputs reports
