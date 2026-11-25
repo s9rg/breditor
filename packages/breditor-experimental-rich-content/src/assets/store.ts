@@ -209,7 +209,7 @@ export class RichAssetStore {
   }
   async cancel(asset: string): Promise<AssetInfo> {
     return this.#write(async () => { this.#active.get(asset)?.abort();
-    const record = await updateAsset(this.#db, asset, value => value.status === "uploaded" ? value
+    const record = await updateAsset(this.#db, asset, value => value.status === "uploaded" ? undefined
       : {...value, status: "cancelled", epoch: value.epoch + 1, failure: null});
     this.#notify(record); return assetInfo(record);
     });
@@ -217,7 +217,7 @@ export class RichAssetStore {
   async retry(asset: string): Promise<AssetInfo> {
     return this.#write(async () => {
     const record = await updateAsset(this.#db, asset, value => value.status === "failed" || value.status === "cancelled"
-      ? {...value, status: "pending", epoch: value.epoch + 1, failure: null} : value);
+      ? {...value, status: "pending", epoch: value.epoch + 1, failure: null} : undefined);
     this.#notify(record); return assetInfo(record);
     });
   }

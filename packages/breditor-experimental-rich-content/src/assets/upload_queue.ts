@@ -21,17 +21,17 @@ export async function uploadAsset(db: IDBDatabase, asset: string, uploader: Asse
   const original = await readAsset(db, asset);
   if (!original || original.status !== "pending" || signal.aborted) return original;
   const started = await updateAsset(db, asset, record => record.status === "pending" && record.epoch === original.epoch
-    ? {...record, attempts: record.attempts + 1} : record);
+    ? {...record, attempts: record.attempts + 1} : undefined);
   if (started.status !== "pending" || started.epoch !== original.epoch) return started;
   try {
     const storageRef = await invokeProvider(uploader, started, signal);
     if (signal.aborted) return undefined;
     if (typeof storageRef !== "string" || storageRef.length === 0 || storageRef.length > 4096) throw Error("Invalid asset upload receipt");
     return updateAsset(db, asset, record => record.status === "pending" && record.epoch === started.epoch
-      ? {...record, status: "uploaded", storageRef, failure: null} : record);
+      ? {...record, status: "uploaded", storageRef, failure: null} : undefined);
   } catch {
     if (signal.aborted) return undefined;
     return updateAsset(db, asset, record => record.status === "pending" && record.epoch === started.epoch
-      ? {...record, status: "failed", failure: "upload_failed"} : record);
+      ? {...record, status: "failed", failure: "upload_failed"} : undefined);
   }
 }
