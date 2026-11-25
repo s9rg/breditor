@@ -2,10 +2,11 @@
 
 The [installed source inventory](../scripts/fixtures/editor-consumer/source-boundary.json)
 records the `@breditor/browser` and `@breditor/editor` package routes, their
-declared resolution conditions, and runtime export names. It is a candidate
-review baseline. The [compatibility policy](COMPATIBILITY.md) defines existing
-release promises. A V1 decision must approve the intended support surface and
-the change policy for each included route.
+declared resolution conditions, runtime export names, and TypeScript-only
+export names. It is a candidate review baseline. The [compatibility
+policy](COMPATIBILITY.md) defines existing release promises. A V1 decision must
+approve the intended support surface and the change policy for each included
+route.
 
 - `@breditor/browser` is the existing framework-neutral application entry.
   Its advanced, presentation and autosave subpaths appear separately in the
@@ -24,9 +25,11 @@ inventory against its independent consumer after packing and installing the
 candidate archives. It checks the JavaScript namespace using each bare
 specifier, compares the declarations’ value names, and compiles representative
 opening, checkpoint, autosave, close, React recovery and static rendering
-signatures with strict TypeScript. Three intentionally private paths must be
-refused by package resolution. The report records these checks with the
-archive digests.
+signatures with strict TypeScript. It also enumerates declaration exports using
+the locked TypeScript checker and the same bare specifiers, so an exported
+interface or alias can require review even when the JavaScript namespace is
+unchanged. Three intentionally private paths must be refused by package
+resolution. The report records these checks with the archive digests.
 
 The same check exercises the direct `@breditor/collaboration` package and its
 explicit Wasm entry and binary. The shared-only consumer imports the direct
@@ -38,9 +41,10 @@ These observations qualify the current matching archive set and document the
 separate shared profile and optional peer boundaries.
 
 Edits affecting this inventory require review of the corresponding application
-entry. In a fresh installed fixture, `node source-boundary.mjs --print` prints
-the observed routes and values for comparison. Verification still compares to
-the checked-in baseline and compiles the consumer contract. The inventory covers
-runtime names and selected type signatures. ABI pairing, schema and journal
+entry. In a fresh installed fixture, run
+`node source-boundary.mjs /absolute/path/to/typescript/bin/tsc --print` to print
+the observed routes and names. Verification compares to the checked-in
+baseline and compiles the consumer contract. Changes to the shape of an
+individual type still require review. ABI pairing, schema and journal
 compatibility, raster backup acceptance, optional peer isolation and complete
 V1 type and behavior review retain their own evidence.
