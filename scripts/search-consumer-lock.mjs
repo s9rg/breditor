@@ -1,9 +1,9 @@
 /** Seed independent npm resolution from the producer's exact registry lock, never workspace links. */
-export function installedConsumerLock(producer,archives,{name,external}){
+export function installedConsumerLock(producer,archives,{name,version="0.0.0",external}){
  if(producer?.lockfileVersion!==3||!producer.packages||typeof producer.packages!=="object")throw Error("Expected producer npm lock v3");
  for(const [name,version]of Object.entries(external))if(producer.packages[`node_modules/${name}`]?.version!==version)throw Error(`Consumer fixture version differs from producer lock: ${name}`);
  const dependencies={...external};for(const {name,path}of archives){if(typeof name!=="string"||!name.startsWith("@breditor/")||typeof path!=="string"||!path.endsWith(".tgz")||Object.hasOwn(dependencies,name))throw Error("Expected distinct candidate archives");dependencies[name]=`file:${path}`;}
- const manifest={name,version:"0.0.0",private:true,type:"module",dependencies};
+ const manifest={name,version,private:true,type:"module",dependencies};
  const packages={"":{name:manifest.name,version:manifest.version,dependencies}};
  for(const [path,entry]of Object.entries(producer.packages)){
   if(!path.startsWith("node_modules/")||!entry||entry.link||typeof entry.resolved!=="string"||!entry.resolved.startsWith("https://registry.npmjs.org/")||typeof entry.integrity!=="string")continue;
@@ -12,8 +12,8 @@ export function installedConsumerLock(producer,archives,{name,external}){
  return{manifest,lock:{name:manifest.name,version:manifest.version,lockfileVersion:3,requires:true,packages}};
 }
 
-export function searchConsumerLock(producer,archives){
- return installedConsumerLock(producer,archives,{name:"breditor-search-installed-proof",external:{
+export function searchConsumerLock(producer,archives,{name="breditor-search-installed-proof",version}={}){
+ return installedConsumerLock(producer,archives,{name,version,external:{
   react:"19.2.8","react-dom":"19.2.8","@types/react":"19.2.18",jsdom:"29.1.1","fake-indexeddb":"6.2.6",
  }});
 }
