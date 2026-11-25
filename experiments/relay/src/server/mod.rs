@@ -128,7 +128,7 @@ use tokio::sync::{Semaphore, watch};
 
 mod raster_worker;
 #[doc(hidden)]
-pub use raster_worker::run_worker as run_raster_worker;
+pub use raster_worker::{RasterWorkerMonitor, RasterWorkerStats, run_worker as run_raster_worker};
 
 #[derive(Clone)]
 pub(super) struct Host {
@@ -254,13 +254,27 @@ pub fn router_with_isolated_assets(
     assets: crate::assets::AssetStore,
     executable: std::path::PathBuf,
 ) -> Result<Router> {
+    router_with_observed_isolated_assets(room, authentication, assets, executable)
+        .map(|(router, _)| router)
+}
+
+/// Build an isolated raster router and retain a private operational counter handle.
+/// # Errors
+/// Rejects an incompatible store or a worker path that is not absolute.
+pub fn router_with_observed_isolated_assets(
+    room: Room,
+    authentication: Authentication,
+    assets: crate::assets::AssetStore,
+    executable: std::path::PathBuf,
+) -> Result<(Router, RasterWorkerMonitor)> {
     if room.asset_binding() != assets.binding() {
         return Err(Error::Contract("asset store room binding"));
     }
     let mut host = create_host(room, authentication, Some(assets));
-    host.asset_operations =
-        Arc::new(assets::Operations::new(Some(raster_worker::Worker::new(executable)?)));
-    Ok(routes(host))
+    let worker = raster_worker::Worker::new(executable)?;
+    let monitor = worker.monitor();
+    host.asset_operations = Arc::new(assets::Operations::new(Some(worker)));
+    Ok((routes(host), monitor))
 }
 fn build(
     room: Room,

@@ -114,7 +114,7 @@ async fn isolated_http_raster_round_trips_the_original_bytes() -> Result {
         http::{Request, StatusCode},
         response::Response,
     };
-    use breditor_collab_relay::server::{Authentication, router_with_isolated_assets};
+    use breditor_collab_relay::server::{Authentication, router_with_observed_isolated_assets};
     use std::{convert::Infallible, future::poll_fn};
 
     async fn send(
@@ -138,7 +138,8 @@ async fn isolated_http_raster_round_trips_the_original_bytes() -> Result {
         .to_string(),
     )?;
     let executable = PathBuf::from(env!("CARGO_BIN_EXE_breditor-collab-relay"));
-    let mut router = router_with_isolated_assets(room, authentication, store, executable)?;
+    let (mut router, monitor) =
+        router_with_observed_isolated_assets(room, authentication, store, executable)?;
     let bytes = raster(ImageFormat::Png)?;
     let uri = format!("/assets/{}", asset_id(&bytes));
     let request = |method, mime, body| {
@@ -151,6 +152,13 @@ async fn isolated_http_raster_round_trips_the_original_bytes() -> Result {
             .header("content-type", mime)
             .body(body)
     };
+    let unauthorized = Request::builder()
+        .method("PUT")
+        .uri(uri.as_str())
+        .header("origin", ORIGIN)
+        .header("content-type", "image/png")
+        .body(Body::from(bytes.clone()))?;
+    assert_eq!(send(&mut router, unauthorized).await?.status(), StatusCode::FORBIDDEN);
     let refused =
         send(&mut router, request("PUT", "image/jpeg", Body::from(bytes.clone()))?).await?;
     assert_eq!(refused.status(), StatusCode::BAD_REQUEST);
@@ -168,6 +176,10 @@ async fn isolated_http_raster_round_trips_the_original_bytes() -> Result {
     let download = send(&mut router, request("GET", "image/png", Body::empty())?).await?;
     assert_eq!(download.status(), StatusCode::OK);
     assert_eq!(to_bytes(download.into_body(), bytes.len()).await?.as_ref(), bytes);
+    let stats = monitor.snapshot();
+    assert_eq!((stats.admitted, stats.rejected, stats.timed_out, stats.failed), (2, 1, 0, 0));
+    let public = Request::builder().uri("/raster-worker-stats").body(Body::empty())?;
+    assert_eq!(send(&mut router, public).await?.status(), StatusCode::NOT_FOUND);
     Ok(())
 }
 
