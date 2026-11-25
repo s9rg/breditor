@@ -12,8 +12,13 @@ import {sourceEvidence,saveEvidence} from './candidate-release/evidence.mjs';
 import {searchConsumerLock,verifySearchConsumerRegistry} from './search-consumer-lock.mjs';
 
 const root=fileURLToPath(new URL('..',import.meta.url));
-const args=process.argv.slice(2),reconciliation=args[0]==='--reconciliation-writes';
-if(reconciliation)args.shift();
+const args=process.argv.slice(2),modes=new Map([
+ ['--reconciliation-writes',{entry:'reconciliation.html',method:'measureReconciledAssetWrites',format:'installed-asset-reconciliation-writes',files:['reconciliation.mjs','raster-write-count.mjs']}],
+ ['--upload-queue-writes',{entry:'upload-queue.html',method:'measureUploadQueueWrites',format:'installed-asset-upload-queue-writes',files:['upload-queue.mjs','raster-write-count.mjs']}],
+]);
+const mode=modes.get(args[0]);
+if(mode)args.shift();
+const {entry,method,format,files}=mode??{entry:'index.html',method:'measureRetainedAssetOpen',format:'installed-retained-asset-open',files:[]};
 assert.ok(args.length<=1);
 const report=JSON.parse(readFileSync(resolve(args[0]??join(root,'target/asset-backups-installed-consumer.json'))));
 assert.equal(report.passed,true);
@@ -31,8 +36,8 @@ try{
  writeFileSync(join(consumer,'package-lock.json'),JSON.stringify(locked.lock));
  execFileSync('npm',['install','--offline','--ignore-scripts','--no-audit','--no-fund'],{cwd:consumer,stdio:'inherit'});
  const registryArtifactsPinnedToProducer=verifySearchConsumerRegistry(producer,JSON.parse(readFileSync(join(consumer,'package-lock.json'))));
- const fixtureProof=[],entry=reconciliation?'reconciliation.html':'index.html';
- for(const file of [entry,'measure.mjs',...(reconciliation?['reconciliation.mjs']:[])]){
+ const fixtureProof=[];
+ for(const file of [entry,'measure.mjs',...files]){
   const path=join('scripts/fixtures/retained-asset-open-measurement',file);
   cpSync(join(root,path),join(consumer,file));
   const sha256=sha(readFileSync(join(consumer,file)));
@@ -45,7 +50,6 @@ try{
  const page=await browser.newPage(),errors=[],wasm=[];
  page.on('pageerror',error=>errors.push(String(error)));
  page.on('response',response=>{if(new URL(response.url()).pathname.endsWith('.wasm'))wasm.push(response.body().then(sha));});
- const method=reconciliation?'measureReconciledAssetWrites':'measureRetainedAssetOpen';
  await page.goto(`http://127.0.0.1:${server.httpServer.address().port}/${entry}`);
  await page.waitForFunction(name=>typeof window[name]==='function',method);
  const measurements=await page.evaluate(name=>window[name](),method);
@@ -53,7 +57,6 @@ try{
  assert.deepEqual(errors,[]);
  assert.deepEqual([...new Set(await Promise.all(wasm))],[report.localWasmSha256]);
  assert.deepEqual(sourceEvidence(root),source);
- const format=reconciliation?'installed-asset-reconciliation-writes':'installed-retained-asset-open';
  const result={format:'breditor/'+format,source,producer:report.source,browser:browser.version(),
   localWasmSha256:report.localWasmSha256,fixtureProof,registryArtifactsPinnedToProducer,
   archives:report.archives.map(({name,sha256})=>({name,sha256})),...measurements};
