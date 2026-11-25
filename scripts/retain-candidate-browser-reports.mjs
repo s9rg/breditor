@@ -7,6 +7,7 @@ import {fileEvidence,retainStageArtifact,saveEvidence} from "./candidate-release
 import {readHostedRunnerContext} from "./candidate-release/hosted-context.mjs";
 import {candidateReleasePlan} from "./candidate-release/plan.mjs";
 import {candidateShardPlan} from "./candidate-release/shards.mjs";
+import {richBrowserDiscoveryPath,usesRichBrowserDiscovery} from "./candidate-release/rich-browser-report.mjs";
 
 const sharedDirectory="target/shared-browser-results";
 const maximumFileBytes=8*1024*1024;
@@ -50,7 +51,8 @@ function selectedFailure(directory){
 function failureReportPaths(root,failure){
  if(!failure)return [];
  const {stage,check}=failure;
- if(/^rich-browser-(chromium|firefox|webkit)$/u.test(stage))return [check.env.PLAYWRIGHT_JSON_OUTPUT_FILE];
+ const rich=/^rich-browser-(chromium|firefox|webkit)$/u.exec(stage);
+ if(rich)return [check.env.PLAYWRIGHT_JSON_OUTPUT_FILE,...(usesRichBrowserDiscovery(root)?[richBrowserDiscoveryPath(rich[1])]:[])];
  if(stage==="installed-application-network-matrix")return ["target/shared-application-browser-playwright.json"];
  if(stage!=="shared-browser-matrix")return [];
  const specs=readdirSync(join(root,"experiments/shared-browser"),{withFileTypes:true})

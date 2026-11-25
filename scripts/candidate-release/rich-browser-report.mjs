@@ -8,6 +8,7 @@ export const richBrowserEngines=Object.freeze(["chromium","firefox","webkit"]);
 export const richBrowserRunner="scripts/check-rich-browser-engine.mjs";
 const evidenceFormat="breditor/rich-browser-case-report";
 export const usesRichBrowserDiscovery=root=>existsSync(resolve(root,richBrowserRunner));
+export const richBrowserDiscoveryPath=engine=>`target/rich-browser-${engine}-discovery.json`;
 
 export function richBrowserCommand(engine){
  assert.ok(richBrowserEngines.includes(engine),"Choose chromium, firefox or webkit");

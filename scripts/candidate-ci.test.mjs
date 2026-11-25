@@ -8,6 +8,7 @@ import {fileURLToPath} from "node:url";
 import {candidateShardIds} from "./candidate-release/shards.mjs";
 import {candidateReleasePlan} from "./candidate-release/plan.mjs";
 import {retainCandidateBrowserReports} from "./retain-candidate-browser-reports.mjs";
+import {richBrowserDiscoveryPath,richBrowserRunner} from "./candidate-release/rich-browser-report.mjs";
 
 const workflow=JSON.parse(readFileSync(new URL("../.github/workflows/candidate-qualification.yml",import.meta.url),"utf8"));
 const job=workflow.jobs.qualify,steps=job.steps;
@@ -159,6 +160,30 @@ test("browser failure reports stop at the total artifact budget",()=>{
   assert.equal(proof.reports.reduce((total,report)=>total+report.bytes,0),4*maximumFileBytes);
   assert.deepEqual(proof.omitted,[{path:omitted,reason:"size-bound"}]);
  }finally{rmSync(root,{recursive:true,force:true});}
+});
+
+test("failed rich browser diagnostics retain the current execution and its exact discovery",()=>{
+ const discovery=richBrowserDiscoveryPath("webkit"),execution="target/rich-browser-webkit-report.json";
+ for(const mode of ["current","stale","legacy"]){
+  const root=mkdtempSync(join(tmpdir(),"breditor-rich-browser-failure-"));
+  try{
+   seedBrowserFailure(root,"rich-browser-matrix","rich-browser-webkit");
+   if(mode!=="legacy"){
+    mkdirSync(join(root,"scripts"));
+    writeFileSync(join(root,richBrowserRunner),"");
+   }
+   writeFileSync(join(root,discovery),'{"discovery":true}');
+   writeFileSync(join(root,execution),'{"failed":true}');
+   browserStageTime(join(root,execution));
+   if(mode==="stale")utimesSync(join(root,discovery),1,1);
+   else browserStageTime(join(root,discovery));
+   const proof=retainCandidateBrowserReports(root);
+   assert.deepEqual(proof.reports.map(report=>report.path),mode==="current"?[execution,discovery]:[execution]);
+   assert.deepEqual(proof.omitted,mode==="stale"?[{path:discovery,reason:"outside-browser-stage-window"}]:[]);
+   for(const row of proof.reports)assert.deepEqual(readFileSync(join(root,row.path)),
+    readFileSync(join(root,"target/v1-candidate-runs",row.retainedPath)));
+  }finally{rmSync(root,{recursive:true,force:true});}
+ }
 });
 
 test("browser failure retention refuses a different attempt, stage sequence or ambiguous manifest",()=>{
