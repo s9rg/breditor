@@ -65,9 +65,9 @@ test("measure installed local typing, paste and Undo through browser input",asyn
   for(let index=0;index<=sampleCount;index++){
    await page.evaluate(()=>{
     const timing=window.inputTiming;timing.select();
-    timing.pending=timing.arm("beforeinput","X"+timing.text,true);
+    timing.pending=timing.arm("beforeinput","x"+timing.text,true);
    });
-   await page.keyboard.press("Shift+x");
+   await page.keyboard.press("x");
    const typing=await page.evaluate(()=>window.inputTiming.pending);
    const undoTyping=await undo(page,undoKey);
    await page.evaluate(text=>{
