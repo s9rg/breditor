@@ -28,10 +28,15 @@ export function captureAssetArchiveSnapshot<T>(db:IDBDatabase,limits:Readonly<As
 /** Empty-store compare and every add/byte counter share one transaction; no existing asset is replaced. */
 export function insertAssetArchive(db:IDBDatabase,records:readonly AssetRecord[],signal?:AbortSignal):Promise<void>{
  checkAssetBackupSignal(signal);
+ if(db.version!==1||[...db.objectStoreNames].sort().join(",")!=="assets,metadata")throw new RichAssetBackupError("asset_backup_storage","Restore requires the exact asset storage family");
  return new Promise((resolve,reject)=>{
-  const tx=db.transaction(["assets","metadata"],"readwrite"),assets=tx.objectStore("assets"),metadata=tx.objectStore("metadata");let count:number|undefined,budget:unknown,readBudget=false,failure:unknown;
+  const tx=db.transaction(["assets","metadata"],"readwrite"),assets=tx.objectStore("assets"),metadata=tx.objectStore("metadata");let count:number|undefined,budget:unknown,keys:IDBValidKey[]|undefined,readBudget=false,failure:unknown;
   const abort=()=>{failure=new RichAssetBackupError("asset_backup_aborted","Asset archive work was cancelled");try{tx.abort();}catch{}};signal?.addEventListener("abort",abort,{once:true});tx.oncomplete=()=>{signal?.removeEventListener("abort",abort);resolve();};tx.onabort=()=>{signal?.removeEventListener("abort",abort);reject(failure??new RichAssetBackupError("asset_backup_storage","Asset archive insertion did not commit"));};
-  const ready=()=>{if(count===undefined||!readBudget)return;try{checkAssetBackupSignal(signal);if(count!==0||budget!==0)throw new RichAssetBackupError("asset_backup_destination_exists","Asset archive destination is not empty");for(const record of records)assets.add(record);metadata.put(records.reduce((sum,r)=>sum+r.bytes,0),"bytes");}catch(error){failure=error;tx.abort();}};
+  if(assets.keyPath!=="asset"||assets.autoIncrement||assets.indexNames.length||metadata.keyPath!==null||metadata.autoIncrement||metadata.indexNames.length){
+   failure=new RichAssetBackupError("asset_backup_storage","Restore storage layout differs");tx.abort();return;
+  }
+  const ready=()=>{if(count===undefined||!readBudget||!keys)return;try{checkAssetBackupSignal(signal);if(count!==0||budget!==0||keys.length!==1||keys[0]!=="bytes")throw new RichAssetBackupError("asset_backup_destination_exists","Asset archive destination is not exactly empty");for(const record of records)assets.add(record);metadata.put(records.reduce((sum,r)=>sum+r.bytes,0),"bytes");}catch(error){failure=error;tx.abort();}};
   const countRequest=assets.count();countRequest.onsuccess=()=>{count=countRequest.result;ready();};const budgetRequest=metadata.get("bytes");budgetRequest.onsuccess=()=>{budget=budgetRequest.result;readBudget=true;ready();};
+  const keyRequest=metadata.getAllKeys(undefined,2);keyRequest.onsuccess=()=>{keys=keyRequest.result;ready();};
  });
 }
