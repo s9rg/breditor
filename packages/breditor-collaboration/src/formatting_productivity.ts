@@ -1,9 +1,10 @@
 /**
- * Shared formatting-productivity controls: special characters, case change and the format painter.
+ * Shared formatting-productivity controls: special characters, case change, the format painter and named
+ * formatting presets.
  *
  * The same owner-agnostic specs as the local toolbar, published through existing native shared commands:
  * special characters are ordinary shared text input, case change is the guarded native
- * `change_selection_case` command and painting is one native selection-format change. Each is one
+ * `change_selection_case` command and painting or a named preset is one native selection-format change. Each is one
  * writer-local Undo step. See docs/FORMATTING_PRODUCTIVITY.md.
  */
 import {formattingProductivityControls,type RichFormattingProductivityOptions,type RichInlinePresentation} from "@breditor/experimental-rich-content/rendering";
@@ -14,6 +15,7 @@ import type {SharedSelectionPolicy} from "./types.js";
 /** Toolbar controls bound to one shared owner; omit what the owner cannot do (case change, painter). */
 export function createSharedFormattingProductivityToolbar<P extends SharedSelectionPolicy="original">(core:SharedRichEditor<P>,presentation:RichInlinePresentation,options:RichFormattingProductivityOptions={}):readonly SharedToolbarControl<P>[]{
  return Object.freeze(formattingProductivityControls(core,presentation,options).map(spec=>Object.freeze({id:spec.id,label:spec.label,owner:core,
+  ...(spec.fields?{fields:spec.fields}:{}),...(spec.mixedHint?{mixedHint:spec.mixedHint}:{}),
   ...(spec.panel?{panel:spec.panel}:{}),...(spec.attach?{attach:spec.attach}:{}),
   read:()=>spec.read(),
   enabled:(context:ActionContext<P>)=>spec.enabled(context.model.view.selection as never,context.model.view.readOnly===true),

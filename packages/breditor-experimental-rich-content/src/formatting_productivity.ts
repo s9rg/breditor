@@ -1,8 +1,10 @@
 /**
- * Opt-in formatting-productivity toolbar controls: special characters, case change and the format painter.
+ * Opt-in formatting-productivity toolbar controls: special characters, case change, the format painter and
+ * named formatting presets (named styles and highlight presets).
  *
  * Every edit is an existing native command with exact history: special characters are ordinary text input,
- * case change is the native `changeSelectionCase` command and painting is one native selection-format change.
+ * case change is the native `changeSelectionCase` command and painting or applying/removing a named preset
+ * is one native selection-format change.
  * The specs are DOM-free and owner-agnostic; `createFormattingProductivityToolbar` adapts them to a local
  * owner and `@breditor/collaboration` adapts the same specs to a shared owner. See
  * docs/FORMATTING_PRODUCTIVITY.md.
@@ -13,7 +15,8 @@ import type {RichCommand} from "./commands.js";
 import {requireRichInlinePresentation,type RichInlinePresentation} from "./inline_presentation.js";
 import {standardInlineKindsV1} from "./standard_inline_v1.js";
 import {selectionFormatChanges,type StandardInlineChange} from "./standard_inline_controls.js";
-import type {RichControlAttachPort,RichControlPanelPort,RichToolbarReading} from "./toolbar_control_view.js";
+import type {RichControlAttachPort,RichControlPanelPort,RichToolbarField,RichToolbarReading} from "./toolbar_control_view.js";
+import {createNamedFormatPresetRegistry,namedFormatPresetApplyChanges,namedFormatPresetRemoveChanges,namedFormatPresetState,RICH_NAMED_PRESET_REMOVE,type RichNamedFormatPreset,type RichNamedFormatPresetOptions} from "./named_format_presets.js";
 import {createSpecialCharacterCatalog,mountSpecialCharacterPicker,type RichSpecialCharacterCatalog,type RichSpecialCharacterOptions} from "./special_characters.js";
 
 export type RichCaseChangeMode="upper"|"lower"|"title"|"cycle";
@@ -40,6 +43,8 @@ type Selection=RichSelection|{kind:"document"}|null;
 /** One owner-agnostic control. `intent` may also change local painter state and then return null. */
 export interface RichProductivityControlSpec {
  readonly id:string;readonly label:string;
+ /** Ordinary toolbar fields (the named-preset dropdowns); applied through `intent`. */
+ readonly fields?:readonly RichToolbarField[];readonly mixedHint?:string;
  readonly panel?:(body:HTMLElement,port:RichControlPanelPort)=>void;
  readonly attach?:(port:RichControlAttachPort)=>void;
  read():RichToolbarReading;
@@ -58,6 +63,11 @@ export interface RichFormattingProductivityOptions {
  readonly caseChange?:false|{readonly locale?:string;readonly titleMinorWords?:readonly string[];readonly shortcut?:boolean};
  /** Format painter (default on when the owner reads native selection formats). */
  readonly formatPainter?:false|{readonly shortcuts?:boolean};
+ /**
+  * Named styles and highlight presets (default off). Each nonempty group adds one dropdown
+  * (`named-styles`, `highlight-presets`) when the owner reads native selection formats.
+  */
+ readonly namedPresets?:false|RichNamedFormatPresetOptions;
 }
 
 const caseIds={upper:"case-upper",lower:"case-lower",title:"case-title"} as const;
@@ -71,15 +81,26 @@ function modAlt(event:KeyboardEvent,code:string):boolean{
 /** One listener set per surface even when a control is also borrowed by context UI. */
 function once(seen:WeakSet<HTMLElement>,port:RichControlAttachPort,install:()=>void):void{if(seen.has(port.surface))return;seen.add(port.surface);install();}
 
-/** The three specs in toolbar order (special characters, case change, painter), filtered by capability. */
+/** The specs in toolbar order (special characters, case change, painter, named presets), filtered by capability. */
 export function formattingProductivityControls(core:RichProductivityReader,presentation:RichInlinePresentation,options:RichFormattingProductivityOptions={}):readonly RichProductivityControlSpec[]{
- for(const key of Object.keys(options))if(!["specialCharacters","caseChange","formatPainter"].includes(key))throw new TypeError(`Unknown formatting-productivity option ${JSON.stringify(key)}`);
+ for(const key of Object.keys(options))if(!["specialCharacters","caseChange","formatPainter","namedPresets"].includes(key))throw new TypeError(`Unknown formatting-productivity option ${JSON.stringify(key)}`);
  const specs:RichProductivityControlSpec[]=[];
  if(options.specialCharacters!==false)specs.push(specialCharacterSpec(createSpecialCharacterCatalog(options.specialCharacters??{})));
  if(options.caseChange!==false&&core.supportsCaseChange?.()===true)specs.push(...caseSpecs(options.caseChange??{}));
  if(options.formatPainter!==false&&core.supportsSelectionFormatting?.()===true&&typeof core.selectionFormatState==="function"){
   requireRichInlinePresentation(presentation,presentation.schema);
   specs.push(painterSpec(core,presentation,options.formatPainter??{}));
+ }
+ if(options.namedPresets!==undefined&&options.namedPresets!==false){
+  // Validate the registry even when the owner cannot use it, so a bad host configuration never hides.
+  const registry=createNamedFormatPresetRegistry(options.namedPresets);
+  if(core.supportsSelectionFormatting?.()===true&&typeof core.selectionFormatState==="function"){
+   requireRichInlinePresentation(presentation,presentation.schema);
+   const rendered=new Set(paintedKinds(presentation));
+   for(const preset of [...registry.styles,...registry.highlights])for(const format of preset.formats)if(!rendered.has(format.type))throw new TypeError(`Named preset ${JSON.stringify(preset.id)} uses ${format.type}, which this presentation does not render`);
+   if(registry.styles.length)specs.push(presetSpec(core,"named-styles","Named styles","Remove named style",registry.styles));
+   if(registry.highlights.length)specs.push(presetSpec(core,"highlight-presets","Highlight","Remove highlight",registry.highlights));
+  }
  }
  return Object.freeze(specs.map(spec=>Object.freeze(spec)));
 }
@@ -188,9 +209,38 @@ function painterSpec(core:RichProductivityReader,presentation:RichInlinePresenta
   }};
 }
 
-/** Local toolbar controls for one owner: special characters, case change and the format painter. */
+/**
+ * One named-preset dropdown. The select lists the group's presets and a final remove choice; its reading
+ * shows the first active preset (uniform), `mixed` when a preset is partly present, otherwise unset.
+ */
+function presetSpec(core:RichProductivityReader,id:string,label:string,removeLabel:string,presets:readonly RichNamedFormatPreset[]):RichProductivityControlSpec{
+ const read=(kind:string)=>core.selectionFormatState!(kind).state;
+ const fields:readonly RichToolbarField[]=Object.freeze([Object.freeze({id:"preset",label,type:"select" as const,options:Object.freeze([...presets.map(preset=>Object.freeze({value:preset.id,label:preset.label})),Object.freeze({value:RICH_NAMED_PRESET_REMOVE,label:removeLabel})])})]);
+ const reading=():RichToolbarReading=>{
+  const states=presets.map(preset=>namedFormatPresetState(read,preset));
+  if(states.every(state=>state==="unavailable"))return {kind:"unavailable",values:{}};
+  const active=states.indexOf("active");
+  if(active>=0)return {kind:"uniform",values:{preset:presets[active]!.id}};
+  return {kind:states.includes("mixed")?"mixed":"unset",values:{}};
+ };
+ return {id,label,fields,mixedHint:"Part of the selection has one of these presets. Choose one to apply it to the whole selection, or remove it.",
+  read:reading,
+  enabled:(selection,readOnly)=>!readOnly&&selection!==null&&selection.kind!=="document"&&reading().kind!=="unavailable",
+  intent(values,selection,readOnly){
+   if(readOnly||selection===null||selection.kind==="document")return null;
+   const choice=values["preset"]??"";
+   if(!choice)throw new TypeError("Choose a named preset");
+   let list:readonly StandardInlineChange[];
+   if(choice===RICH_NAMED_PRESET_REMOVE)list=namedFormatPresetRemoveChanges(read,presets);
+   else{const preset=presets.find(candidate=>candidate.id===choice);if(!preset)throw new TypeError(`Unknown named preset ${JSON.stringify(choice)}`);list=namedFormatPresetApplyChanges(read,preset);}
+   return list.length?{kind:"changeFormats",changes:selectionFormatChanges(list)}:null;
+  }};
+}
+
+/** Local toolbar controls for one owner: special characters, case change, the format painter and named presets. */
 export function createFormattingProductivityToolbar<P extends RichSelectionPolicy="original">(core:RichProductivityReader&object,presentation:RichInlinePresentation,options:RichFormattingProductivityOptions={}):readonly ToolbarControl<P>[]{
  return Object.freeze(formattingProductivityControls(core,presentation,options).map(spec=>Object.freeze({id:spec.id,label:spec.label,
+  ...(spec.fields?{fields:spec.fields}:{}),...(spec.mixedHint?{mixedHint:spec.mixedHint}:{}),
   ...(spec.panel?{panel:spec.panel}:{}),...(spec.attach?{attach:spec.attach}:{}),
   read:()=>spec.read(),
   enabled:(c:ActionContext<P>)=>spec.enabled(c.model.view.selection as Selection,c.model.view.readOnly===true),

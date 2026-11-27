@@ -1,12 +1,14 @@
-# Formatting productivity: special characters, case change and format painter
+# Formatting productivity: special characters, case change, format painter and named presets
 
 Status: implemented opt-in contract for the unpublished `0.3.0-alpha.22` source
 checkpoint (local and shared rich editors)
 
-Three opt-in toolbar tools compared against CKEditor 5's
+Opt-in toolbar tools compared against CKEditor 5's
 [special characters](https://ckeditor.com/docs/ckeditor5/latest/features/special-characters.html),
-[case change](https://ckeditor.com/docs/ckeditor5/latest/features/case-change.html) and
-[format painter](https://ckeditor.com/docs/ckeditor5/latest/features/format-painter.html).
+[case change](https://ckeditor.com/docs/ckeditor5/latest/features/case-change.html),
+[format painter](https://ckeditor.com/docs/ckeditor5/latest/features/format-painter.html),
+[style](https://ckeditor.com/docs/ckeditor5/latest/features/style.html) (inline styles) and
+[highlight](https://ckeditor.com/docs/ckeditor5/latest/features/highlight.html).
 Every edit is an existing or new **native** command with exact history (one Undo
 step per user action); local and shared editors behave the same; the default
 toolbars, documents, checkpoints and profile descriptors are unchanged unless a
@@ -17,21 +19,25 @@ import {createRichToolbarV4,createFormattingProductivityToolbar} from "@breditor
 const toolbar=[...createRichToolbarV4(core,presentation),...createFormattingProductivityToolbar(core,presentation,{
   specialCharacters:{categories:[{id:"emoji",label:"Emoji",characters:[{character:"👍",name:"Thumbs up"}]}],order:["text"]},
   caseChange:{locale:"tr",titleMinorWords:["a","an","the","of"]},
+  namedPresets:{styles:[{id:"big-red",label:"Big red",marks:["bold"],textColor:"#FF0000",textSize:24}],highlights:richDefaultHighlightPresets},
 })];
 // Shared owners: createSharedFormattingProductivityToolbar(sharedCore,presentation,options) from @breditor/collaboration.
 ```
 
 Options: `specialCharacters` (`false` omits; otherwise catalog options),
 `caseChange` (`false`; `locale`, `titleMinorWords`, `shortcut:false` drops
-Shift+F3) and `formatPainter` (`false`; `shortcuts:false` drops Mod+Alt+C/V).
+Shift+F3), `formatPainter` (`false`; `shortcuts:false` drops Mod+Alt+C/V) and
+`namedPresets` (default off; `{styles,highlights}` registry, see below).
 Case change is included only when the owner reports `supportsCaseChange()`; the
-painter only when it reads native selection formats (`supportsSelectionFormatting()`).
+painter and the named-preset dropdowns only when it reads native selection
+formats (`supportsSelectionFormatting()`).
 
 | Control id | Kind | Command |
 | --- | --- | --- |
 | `special-characters` | panel (picker) | local `insertPlainText` at a caret / `replaceTextRange` over a range; shared `type` / `replace` |
 | `case-upper`, `case-lower`, `case-title` | buttons | local `changeSelectionCase`; shared `change_selection_case` |
 | `format-painter` | toggle button (`aria-pressed`) | local `changeSelectionFormats`; shared `changeSelectionFormats` |
+| `named-styles`, `highlight-presets` | dropdown (select field + Apply) | local `changeSelectionFormats`; shared `changeSelectionFormats` |
 
 ## Special characters
 
@@ -135,7 +141,8 @@ Follows CKEditor: copies **inline text formatting only**—the standard inline
 formats the presentation renders (bold, italic, underline, strike, inline code,
 sub/superscript, text and background color, text size, font family). Links,
 mentions and text language are content/semantics and are never copied or
-painted; block layout and named styles are not painted.
+painted; block layout is not painted. Named presets are not a format of their
+own, so the painter copies the typed formats a preset produced, never the preset.
 
 - Click the button: copy the formats that are uniform at the caret or across the
   selection; the button becomes `aria-pressed=true` (single use).
@@ -167,13 +174,77 @@ syncs the native selection and runs the command path, `port.activate()` acts lik
 the button). Local and shared coordinators pass their surface to
 `mountToolbarControl`. Existing controls are unaffected.
 
-## Named styles (intentional difference)
+## Named styles and highlight presets
 
-CKEditor's style dropdown / named highlight presets are not implemented. Inline
-formats remain a fixed typed set by design: a named style would be a host-defined
-bundle of formats with no native identity, so it cannot be validated, replayed
-or merged like the typed formats. Hosts can compose presets from the existing
-typed format commands.
+Catalog case `named-formatting-presets@1`. A host registers **named inline
+styles** ("Big red", "Code-ish") and **highlight presets** ("Yellow marker",
+"Red pen"). A preset is only a validated, frozen bundle of the existing typed
+standard-profile formats; it has no document identity, so the document,
+history, checkpoints, interchange and the shared protocol are unchanged.
+
+```js
+namedPresets:{
+  styles:[{id:"big-red",label:"Big red",marks:["bold"],textColor:"#FF0000",textSize:24},
+          {id:"code-ish",label:"Code-ish",marks:["code"],fontFamily:"mono"}],
+  highlights:richDefaultHighlightPresets, // or the host's own list
+}
+```
+
+**Registry** (`createNamedFormatPresetRegistry`, also run by the toolbar
+factories; any error is a `TypeError` naming the entry). Plain objects only, no
+accessors or unknown keys. Each preset: `id` matching `[a-z][a-z0-9-]{0,31}`,
+unique within its group, `remove` reserved; `label` a nonempty single line of at
+most 64 characters (the host localizes it); and at least one of `marks` (`bold`,
+`italic`, `underline`, `strike`, `code`, `subscript`, `superscript`; no repeats,
+not both scripts), `textColor`/`backgroundColor` (`#RRGGBB`, RGB24), `textSize`
+(integer pixels 8–96) and `fontFamily` (`system`, `sans`, `serif`, `mono`).
+Links, mentions, text language and block formats cannot be part of a preset. At
+most 32 presets per group. Every preset format must be rendered by the mounted
+inline presentation. `richDefaultHighlightPresets` (four markers and two pens,
+CKEditor's defaults) is exported but never installed implicitly.
+
+**Controls.** Each nonempty group adds one dropdown with the existing toolbar
+control contract (a `details` panel, one `select` field `preset`, an Apply
+button, Escape/Enter, stale-draft guard): `named-styles` and
+`highlight-presets`. The select lists the group's presets and a final
+**remove** choice ("Remove named style" / "Remove highlight"). Control,
+field and option labels (including `remove`) are localized through
+`RichUiOptions.controls`, for example
+`{"named-styles":{label:"Formatvorlagen",fields:{preset:{options:{remove:"Formatvorlage entfernen"}}}}}`.
+
+**State** is derived from Rust: each preset kind is read with the native
+`selectionFormatState` (covering a range, node and grid selection, or the
+caret's effective formats). A preset is *active* when every format it sets is
+uniform with exactly its value; *mixed* when one of its formats covers only part
+of the selection or a kind it sets has mixed values; otherwise inactive. The
+dropdown reads `uniform` with the first active preset selected, `mixed` (with
+the mixed hint) when no preset is active but one is mixed, otherwise `unset`;
+`unavailable` (disabled) when no kind can be formatted there. Read-only owners
+and document selections disable the dropdowns.
+
+**Apply** is one native `changeSelectionFormats` request: one selection-format
+change and one Undo step, locally and in shared editors (shared: one guarded
+writer-local dispatch). It sets each preset format the selection does not
+already carry exactly, removing the opposite script first; all other formats
+are kept, so presets of different kinds compose (CKEditor styles also stack),
+and a preset of the same kind replaces the value (one highlight replaces
+another). At a caret it sets the pending typing formats. Nothing is published
+when the selection already matches. Ineligible content inside a range (for
+example a non-text node) is handled by native selection coverage exactly like
+the standard format controls; a selection with no formattable text is
+unavailable and stays unchanged.
+
+**Remove** (the remove choice) removes, for every preset of that group that is
+active or mixed, each kind it sets whose state matches the preset's value or is
+mixed — again as one `changeSelectionFormats` request and one Undo step. A kind
+uniformly carrying a different value (the author's own red text) is kept;
+because the native read reports only that a kind is mixed, not which values it
+holds, a mixed kind is removed as a whole. Nothing is published when no preset
+is present.
+
+**Interchange.** The result is ordinary typed formats, so it exports, reopens,
+replays from a checkpoint and merges exactly like formats applied with the
+individual standard controls; reopening a document never needs the registry.
 
 ## Tests
 
@@ -183,6 +254,9 @@ typed format commands.
   requests, read-only); `crates/breditor-collaboration/tests/shared_case_change_contracts.rs`
   (one Undo step, mentions, cycle, V1 rooms, convergence with concurrent typing,
   writer-local Undo, checkpoint restore).
-- Vitest: `packages/breditor-experimental-rich-content/tests/formatting_productivity.test.ts`.
-- Browser: `experiments/rich-browser/formatting-productivity.spec.mjs` and
+- Vitest: `packages/breditor-experimental-rich-content/tests/formatting_productivity.test.ts`
+  (including the named-preset registry, state derivation, apply/remove intents
+  and the local adapter) and `packages/breditor-editor/tests/shared_formatting_productivity.test.ts`.
+- Browser: `experiments/rich-browser/formatting-productivity.spec.mjs`,
+  `experiments/rich-browser/named-formatting-presets.spec.mjs` and
   `experiments/shared-browser/formatting-productivity.spec.mjs`.

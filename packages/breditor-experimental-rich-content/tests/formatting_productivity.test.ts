@@ -4,6 +4,7 @@ import {createStandardRichInlinePresentationV1,standardInlineKindsV1 as k} from 
 import {createFormattingProductivityToolbar,encodeCaseChangeIntent,formattingProductivityControls,type RichProductivityReader} from "../src/formatting_productivity.js";
 import {createSpecialCharacterCatalog,filterSpecialCharacters,richSpecialCharacterCategories,specialCharacterCode} from "../src/special_characters.js";
 import {mountToolbarControl} from "../src/toolbar_control_view.js";
+import {createNamedFormatPresetRegistry,namedFormatPresetState,richDefaultHighlightPresets} from "../src/named_format_presets.js";
 import {resolveRichUi} from "../src/ui_locale.js";
 import type {RichInlineFormatState,RichSelection} from "../src/core.js";
 import {staticInlineCatalogV4} from "../../breditor-editor/src/static_document.js";
@@ -161,5 +162,87 @@ describe("format painter",()=>{
   const owner=reader({[k.strong]:{kind:"uniform",format:strong}}),painter=spec(owner,"format-painter"),run=vi.fn(),{surface}=mount(painter,run);
   surface.dispatchEvent(new KeyboardEvent("keydown",{key:"ç",code:"KeyC",ctrlKey:true,altKey:true,bubbles:true,cancelable:true}));
   expect(run).toHaveBeenCalledWith(undefined,{painter:"copy"});
+ });
+});
+
+describe("named formatting presets",()=>{
+ const rgb="breditor-inline/rgb24";
+ const yellow={type:k.backgroundColor,properties:{[rgb]:0xFDFD77}};
+ const red={type:k.textColor,properties:{[rgb]:0xFF0000}},big={type:k.textSize,properties:{"breditor-inline/pixels":24}};
+ const mono={type:k.fontFamily,properties:{"breditor-inline/family":4}},code={type:k.code,properties:{}};
+ const namedPresets={styles:[{id:"big-red",label:"Big red",marks:["bold"] as const,textColor:"#ff0000",textSize:24},{id:"code-ish",label:"Code-ish",marks:["code"] as const,fontFamily:"mono" as const}],highlights:richDefaultHighlightPresets};
+ const controls=(owner:RichProductivityReader)=>formattingProductivityControls(owner,presentation,{namedPresets});
+ const byId=(owner:RichProductivityReader,id:string)=>controls(owner).find(c=>c.id===id)!;
+ it("validates and freezes a host registry of typed standard formats",()=>{
+  const registry=createNamedFormatPresetRegistry(namedPresets);
+  expect(registry.styles[0]).toEqual({id:"big-red",label:"Big red",group:"style",formats:[strong,red,big].sort((a,b)=>a.type<b.type?-1:1)});
+  expect(registry.highlights.map(p=>p.id)).toEqual(["marker-yellow","marker-green","marker-pink","marker-blue","pen-red","pen-green"]);
+  expect(Object.isFrozen(registry.styles[0]!.formats[0]!.properties)).toBe(true);
+  const bad=[{id:"x",label:"X"},{id:"remove",label:"R",marks:["bold"]},{id:"Bad",label:"B",marks:["bold"]},{id:"x",label:"",marks:["bold"]},{id:"x",label:"a\nb",marks:["bold"]},
+   {id:"x",label:"X",marks:["blink"]},{id:"x",label:"X",marks:["bold","bold"]},{id:"x",label:"X",marks:["subscript","superscript"]},{id:"x",label:"X",textColor:"red"},
+   {id:"x",label:"X",textSize:7},{id:"x",label:"X",textSize:97},{id:"x",label:"X",textSize:12.5},{id:"x",label:"X",fontFamily:"comic"},{id:"x",label:"X",marks:["bold"],href:"https://x"}];
+  for(const preset of bad)expect(()=>createNamedFormatPresetRegistry({styles:[preset as never]})).toThrow(TypeError);
+  expect(()=>createNamedFormatPresetRegistry({styles:[{id:"x",label:"X",marks:["bold"]},{id:"x",label:"Y",marks:["italic"]}]})).toThrow("Duplicate");
+  expect(()=>createNamedFormatPresetRegistry({styles:Array.from({length:33},(_,i)=>({id:`s${i}`,label:"S",marks:["bold"]}))} as never)).toThrow("At most 32");
+  expect(()=>createNamedFormatPresetRegistry({colors:[]} as never)).toThrow("Unknown");
+  // The registry is validated even when the owner cannot read selection formats.
+  expect(()=>formattingProductivityControls({},presentation,{namedPresets:{styles:[{id:"x",label:"X"}]}})).toThrow(TypeError);
+  expect(formattingProductivityControls({},presentation,{namedPresets}).map(c=>c.id)).toEqual(["special-characters"]);
+ });
+ it("is opt-in and adds one borrowed dropdown per nonempty group",()=>{
+  expect(formattingProductivityControls(reader({}),presentation).map(c=>c.id)).not.toContain("named-styles");
+  expect(controls(reader({})).map(c=>c.id).slice(-2)).toEqual(["named-styles","highlight-presets"]);
+  expect(formattingProductivityControls(reader({}),presentation,{namedPresets:{highlights:richDefaultHighlightPresets}}).map(c=>c.id).at(-1)).toBe("highlight-presets");
+  const styles=byId(reader({}),"named-styles");
+  expect(styles.fields).toEqual([{id:"preset",label:"Named styles",type:"select",options:[{value:"big-red",label:"Big red"},{value:"code-ish",label:"Code-ish"},{value:"remove",label:"Remove named style"}]}]);
+  const {toolbar,view}=mount(styles);
+  expect(view.button.textContent).toBe("Apply Named styles");
+  expect([...toolbar.querySelectorAll("option")].map(o=>o.value)).toEqual(["","big-red","code-ish","remove"]);
+  // Localized through the ordinary controls catalog, including the remove choice.
+  const ui=resolveRichUi({controls:{"named-styles":{label:"Formatvorlagen",fields:{preset:{options:{remove:"Formatvorlage entfernen"}}}}}});
+  expect(ui.control(styles).fields![0]!.options!.at(-1)!.label).toBe("Formatvorlage entfernen");
+ });
+ it("derives active and mixed state from the native per-kind reads",()=>{
+  const owner=reader({[k.strong]:{kind:"uniform",format:strong},[k.textColor]:{kind:"uniform",format:red},[k.textSize]:{kind:"uniform",format:big}});
+  const registry=createNamedFormatPresetRegistry(namedPresets),read=(kind:string)=>owner.selectionFormatState!(kind).state;
+  expect(namedFormatPresetState(read,registry.styles[0]!)).toBe("active");
+  expect(byId(owner,"named-styles").read()).toEqual({kind:"uniform",values:{preset:"big-red"}});
+  expect(byId(owner,"highlight-presets").read()).toEqual({kind:"unset",values:{}});
+  owner.states={[k.strong]:{kind:"mixed",presentEverywhere:false}};
+  expect(namedFormatPresetState(read,registry.styles[0]!)).toBe("mixed");
+  expect(byId(owner,"named-styles").read().kind).toBe("mixed");
+  // A different uniform value is not this preset.
+  owner.states={[k.textColor]:{kind:"uniform",format:{type:k.textColor,properties:{[rgb]:1}}}};
+  expect(namedFormatPresetState(read,registry.styles[0]!)).toBe("inactive");
+  owner.states={[k.backgroundColor]:{kind:"mixed",presentEverywhere:true}};
+  expect(byId(owner,"highlight-presets").read().kind).toBe("mixed");
+  const unavailable=reader(Object.fromEntries(Object.values(k).map(kind=>[kind,{kind:"unavailable"}])));
+  expect(byId(unavailable,"named-styles").read().kind).toBe("unavailable");
+  expect(byId(unavailable,"named-styles").enabled(range,false)).toBe(false);
+  expect(byId(owner,"named-styles").enabled(range,true)).toBe(false);
+  expect(byId(owner,"named-styles").enabled({kind:"document"},false)).toBe(false);
+ });
+ it("applies a preset as one selection-format change and removes only matching kinds",()=>{
+  const owner=reader({[k.superscript]:{kind:"uniform",format:{type:k.superscript,properties:{}}},[k.textColor]:{kind:"uniform",format:red}});
+  const withSub=formattingProductivityControls(owner,presentation,{namedPresets:{styles:[{id:"low",label:"Low red",marks:["subscript"],textColor:"#FF0000"}]}}).find(c=>c.id==="named-styles")!;
+  // Red is already there; the opposite script is removed before subscript is set.
+  expect(withSub.intent({preset:"low"},range,false)).toEqual({kind:"changeFormats",changes:[{kind:"remove",formatsJson:JSON.stringify([{type:k.superscript,properties:{}}])},{kind:"set",formatsJson:JSON.stringify([{type:k.subscript,properties:{}}])}]});
+  owner.states={[k.code]:{kind:"uniform",format:code},[k.fontFamily]:{kind:"uniform",format:mono}};
+  expect(byId(owner,"named-styles").intent({preset:"code-ish"},range,false)).toBeNull();
+  // Remove: code-ish is active; a foreign uniform text color is kept.
+  owner.states={[k.code]:{kind:"uniform",format:code},[k.fontFamily]:{kind:"uniform",format:mono},[k.textColor]:{kind:"uniform",format:{type:k.textColor,properties:{[rgb]:1}}}};
+  expect(byId(owner,"named-styles").intent({preset:"remove"},range,false)).toEqual({kind:"changeFormats",changes:[{kind:"remove",formatsJson:JSON.stringify([{type:k.code,properties:{}}])},{kind:"remove",formatsJson:JSON.stringify([{type:k.fontFamily,properties:{"breditor-inline/family":1}}])}]});
+  owner.states={[k.backgroundColor]:{kind:"mixed",presentEverywhere:false}};
+  expect(byId(owner,"highlight-presets").intent({preset:"remove"},caret,false)).toEqual({kind:"changeFormats",changes:[{kind:"remove",formatsJson:JSON.stringify([{type:k.backgroundColor,properties:{[rgb]:0}}])}]});
+  owner.states={};
+  expect(byId(owner,"highlight-presets").intent({preset:"remove"},range,false)).toBeNull();
+  expect(byId(owner,"highlight-presets").intent({preset:"marker-yellow"},caret,false)).toEqual({kind:"changeFormats",changes:[{kind:"set",formatsJson:JSON.stringify([yellow])}]});
+  expect(()=>byId(owner,"highlight-presets").intent({preset:""},range,false)).toThrow("Choose");
+  expect(()=>byId(owner,"highlight-presets").intent({preset:"nope"},range,false)).toThrow("Unknown");
+  expect(byId(owner,"highlight-presets").intent({preset:"marker-yellow"},range,true)).toBeNull();
+  // The local adapter lowers to exactly one native changeSelectionFormats command.
+  const local=createFormattingProductivityToolbar(owner,presentation,{namedPresets}).find(c=>c.id==="highlight-presets")!;
+  expect(local.fields?.[0]?.id).toBe("preset");
+  expect(local.command({core:owner,model:{view:{selection:range,readOnly:false}},allocate:()=>"x"} as never,undefined,{preset:"marker-yellow"})).toEqual({kind:"changeSelectionFormats",data:{changes:[{kind:"set",formatsJson:JSON.stringify([yellow])}]}});
  });
 });

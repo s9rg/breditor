@@ -66,3 +66,38 @@ test("the shared format painter copies and applies once as one Undo step; Escape
  expect(await page.evaluate(()=>window.fp.runs(window.fp.a,"q"))).toEqual([run("the lord of the rings")]);
  expect(await page.evaluate(()=>window.fp.errors)).toEqual([]);
 });
+
+test("shared named presets apply and remove as one writer-local Undo step each and converge",async({page})=>{
+ await page.evaluate(async()=>{
+  const {productivityFixtureV4}=await import("/v4-fixture-productivity.mjs");
+  window.fp.dispose();
+  window.fp=productivityFixtureV4(window.sharedTools,{specialCharacters:false,caseChange:false,formatPainter:false,namedPresets:{
+   styles:[{id:"big-red",label:"Big red",marks:["bold"],textColor:"#FF0000",textSize:24}],highlights:[{id:"marker-yellow",label:"Yellow marker",backgroundColor:"#FDFD77"}]}});
+ });
+ const red={type:"breditor-inline/text-color",properties:{"breditor-inline/rgb24":0xFF0000}},big={type:"breditor-inline/text-size",properties:{"breditor-inline/pixels":24}};
+ const yellow={type:"breditor-inline/background-color",properties:{"breditor-inline/rgb24":0xFDFD77}};
+ const sorted=formats=>[...formats].sort((x,y)=>x.type<y.type?-1:1);
+ const choose=async(writer,control,preset)=>{
+  const panel=page.locator(`#${writer} [data-shared-control="${control}"]`);
+  if(!await panel.evaluate(node=>node.open))await panel.locator("summary").click();
+  await page.locator(`#${writer} [data-shared-field="${control}-preset"]`).selectOption(preset);
+  await action(page,writer,control).click();
+ };
+ await page.evaluate(()=>{const t=window.fp;t.da.select(t.range("q",4,"q",8));});
+ const depth=await page.evaluate(()=>window.fp.a.view().undoDepth);
+ await choose("a","named-styles","big-red");
+ await expect.poll(()=>page.evaluate(()=>window.fp.runs(window.fp.a,"q"))).toEqual([run("the "),run("lord",sorted([strong,red,big])),run(" of the rings")]);
+ await expect(page.locator('#a [data-shared-control="named-styles"]')).toHaveAttribute("data-state","uniform");
+ // Writer B highlights a word before it receives A's change; both edits converge.
+ await page.evaluate(()=>{const t=window.fp;t.db.select(t.range("q",16,"q",21));});
+ await choose("b","highlight-presets","marker-yellow");
+ const merged=await page.evaluate(async(depth)=>{const t=window.fp;await t.synchronize();return {q:t.runs(t.b,"q"),depth:t.a.view().undoDepth-depth};},depth);
+ expect(merged).toEqual({q:[run("the "),run("lord",sorted([strong,red,big])),run(" of the "),run("rings",[yellow])],depth:1});
+ // B removes its highlight (one step); A's Undo removes only A's style.
+ await page.evaluate(()=>{const t=window.fp;t.db.select(t.range("q",16,"q",21));});
+ await expect(page.locator('#b [data-shared-control="highlight-presets"]')).toHaveAttribute("data-state","uniform");
+ await choose("b","highlight-presets","remove");
+ const final=await page.evaluate(async()=>{const t=window.fp;await t.synchronize();t.a.undo();await t.synchronize();return {a:t.runs(t.a,"q"),b:t.runs(t.b,"q")};});
+ expect(final).toEqual({a:[run("the lord of the rings")],b:[run("the lord of the rings")]});
+ expect(await page.evaluate(()=>window.fp.errors)).toEqual([]);
+});
