@@ -38,3 +38,6 @@ differences as parity work:
 The catalog review records zero approved exclusions or deviations. These
 capabilities stay in scope. Implementation and behavioral qualification are
 tracked in the readiness ledger's feature groups and remaining release gates.
+The November 27 scope reduction removes release qualification requirements
+(the application pilot, testing by outside people, and independent-writer and
+independent-consumer requirements). It does not exclude any catalog capability.

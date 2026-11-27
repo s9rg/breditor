@@ -26,7 +26,6 @@ const requiredReleaseGates = [
   "storage-lifecycle",
   "dependency-and-license-review",
   "integration-docs-and-support",
-  "pilot",
   "final-rc",
 ];
 const identifier = /^[a-z][a-z0-9]*(?:-[a-z0-9]+)*$/;

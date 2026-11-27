@@ -1,5 +1,8 @@
 # Run the Breditor pilot
 
+The pilot is not a V1 release requirement (scope reduction approved on
+November 27). The workspace remains available as a demo.
+
 The first-party pilot is a release handoff workspace built with the installed
 Breditor SDK and the native relay. Two participants edit the same document in
 separate browser profiles or private sessions. The workspace has a mixed-content
