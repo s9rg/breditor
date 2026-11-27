@@ -1,8 +1,16 @@
 import {test,expect} from "@playwright/test";
+import {fileURLToPath} from "node:url";
+import {rolldown} from "rolldown";
 // Opt-in editing aids (docs/EDITING_AIDS.md) over the real Rust/Wasm candidate V4 owner: show blocks, invisible
 // characters and the focused-block attribute are painted outside the editable DOM. Caret movement, typing, history
 // and Copy must be identical with the aids on and off, and toggling is never an Undo step.
+let statics="";
+test.beforeAll(async()=>{
+ const bundle=await rolldown({input:fileURLToPath(new URL("../../packages/breditor-editor/src/static_document.ts",import.meta.url)),platform:"browser",logLevel:"silent"});
+ statics=(await bundle.generate({format:"esm"})).output[0].code;await bundle.close();
+});
 test.beforeEach(async({page})=>{
+ await page.route("**/static.js",route=>route.fulfill({status:200,contentType:"text/javascript; charset=utf-8",body:statics}));
  await page.goto("/");await expect(page.locator("#status")).toHaveText("Ready");
  await page.evaluate(async()=>{
   const api=await import("/rich.js");
@@ -143,7 +151,7 @@ test("keyboard shortcuts and toolbar toggles are not edits and not Undo steps",a
  await page.keyboard.type("ab");
  const before=await page.evaluate(()=>({doc:window.core.documentJson(),undo:window.core.view().undoDepth,selection:JSON.stringify(window.core.view().selection)}));
  await page.keyboard.press("Control+Alt+Shift+KeyB");await page.keyboard.press("Control+Alt+Shift+KeyP");await settle(page);
- expect(await page.evaluate(()=>window.aids.state())).toEqual({showBlocks:true,invisibles:true,focus:false,disposed:false});
+ expect(await page.evaluate(()=>window.aids.state())).toEqual({showBlocks:true,invisibles:true,focus:false,minimap:false,disposed:false});
  await expect(toggle(page,"Show blocks")).toHaveAttribute("aria-pressed","true");
  await toggle(page,"Show invisible characters").click();
  expect(await page.evaluate(()=>window.aids.state().invisibles)).toBe(false);
@@ -179,4 +187,80 @@ test("only the visible part of the surface is painted and scrolling repaints",as
  expect(await labels()).toContain("tail");expect(await labels()).not.toContain("h");
  // Every painted marker stays inside the viewport.
  expect(await page.evaluate(()=>[...document.querySelectorAll("[data-breditor-editing-aids] > *")].every(node=>{const r=node.getBoundingClientRect();return r.bottom>=0&&r.top<=innerHeight;}))).toBe(true);
+});
+
+/** A fixed 120×(viewport) sidebar outside the editor that hosts the minimap. */
+const mountMinimap=(page,extra={})=>page.evaluate(extra=>{
+ document.querySelector("#minimap-host")?.remove();
+ const aside=document.createElement("aside");aside.id="minimap-host";aside.style.cssText="position:fixed;top:0;right:0;width:120px;height:100vh;background:#fafafa";document.body.append(aside);
+ window.dt.mount({minimap:{container:aside},...extra});
+},extra);
+
+test("the minimap is inert: typing, caret, history, Copy and static output are unchanged",async({page})=>{
+ await page.setViewportSize({width:1000,height:400});
+ await page.evaluate(()=>window.dt.mount(undefined));
+ const plain=await session(page);
+ await mountMinimap(page);await settle(page);
+ await expect.poll(()=>page.locator("[data-breditor-minimap] .breditor-minimap-block").count()).toBeGreaterThan(10);
+ const aided=await session(page);
+ expect(aided).toEqual(plain);expect(plain.state.errors).toEqual([]);
+ const read=()=>page.evaluate(async()=>{
+  const {renderStaticDocument}=await import("/static.js");
+  window.editor.execute({kind:"setSelection",selection:{kind:"text",anchor:{block:"qp",offset:"0",affinity:"after"},focus:{block:"qp",offset:"6",affinity:"after"}}});
+  const data=new DataTransfer(),event=new ClipboardEvent("copy",{bubbles:true,cancelable:true,clipboardData:data});window.editor.surface.dispatchEvent(event);
+  const source=event.clipboardData??data;
+  return {copy:Object.fromEntries(source.types.map(type=>[type,source.getData(type)])),static:renderStaticDocument(window.core.documentJson(),{fragment:true}),html:window.editor.surface.innerHTML.replace(/ data-breditor-focused=""/g,""),undo:window.core.view().undoDepth};
+ });
+ await mountMinimap(page);await settle(page);const on=await read();
+ await page.evaluate(()=>window.dt.mount(undefined));const off=await read();
+ expect(on).toEqual(off);expect(Object.keys(on.copy).length).toBeGreaterThan(0);expect(on.static).not.toContain("minimap");
+ // Nothing of the minimap is exposed: aria-hidden, no text, ids, focus stops or editable content, outside the surface.
+ await mountMinimap(page);await settle(page);
+ const exposed=await page.evaluate(()=>{const root=document.querySelector("[data-breditor-minimap]");return {hidden:root.getAttribute("aria-hidden"),text:root.textContent,interactive:root.querySelectorAll("[id],[tabindex],[contenteditable],a,button,input").length,inside:window.editor.surface.contains(root)};});
+ expect(exposed).toEqual({hidden:"true",text:"",interactive:0,inside:false});
+ expect(await page.locator("[data-breditor-minimap]").ariaSnapshot()).toBe("");
+});
+
+test("the minimap indicator tracks scrolling and click or drag scrolls the editor only",async({page})=>{
+ await page.setViewportSize({width:1000,height:300});
+ await mountMinimap(page);
+ await page.locator('[data-rich-text="p"]').click();
+ const selection=()=>page.evaluate(()=>JSON.stringify(window.core.view().selection));
+ const before={selection:await selection(),doc:await page.evaluate(()=>window.core.documentJson()),undo:await page.evaluate(()=>window.core.view().undoDepth)};
+ await page.evaluate(()=>window.scrollTo(0,0));await settle(page);
+ const view=()=>page.evaluate(()=>{const indicator=document.querySelector(".breditor-minimap-viewport"),surface=window.editor.surface.getBoundingClientRect();
+  return {top:Number(indicator.dataset.viewTop),bottom:Number(indicator.dataset.viewBottom),expectedTop:Math.min(Math.max(0,-surface.top),surface.height),expectedBottom:Math.min(Math.max(0,innerHeight-surface.top),surface.height),surfaceTop:surface.top+scrollY,scrollY,box:indicator.getBoundingClientRect().toJSON(),map:document.querySelector("[data-breditor-minimap]").getBoundingClientRect().toJSON()};});
+ const near=(a,b)=>Math.abs(a-b)<=1.5;
+ let v=await view();expect(near(v.top,v.expectedTop)&&near(v.bottom,v.expectedBottom)).toBe(true);
+ // Above the editor the indicator is a thin line at the top. The page scrolls into the editor; it follows.
+ expect(v.top).toBe(0);const into=Math.round(v.surfaceTop+100);
+ await page.evaluate(y=>window.scrollTo(0,y),into);await settle(page);
+ v=await view();expect(v.scrollY).toBe(into);expect(v.top).toBeGreaterThan(90);expect(near(v.top,v.expectedTop)&&near(v.bottom,v.expectedBottom)).toBe(true);
+ // Click near the bottom of the overview: the viewport moves down there.
+ const content=await page.locator(".breditor-minimap-content").boundingBox();
+ await page.mouse.click(content.x+content.width/2,content.y+content.height-2);await settle(page);
+ const clicked=await view();expect(clicked.scrollY).toBeGreaterThan(into);expect(near(clicked.top,clicked.expectedTop)).toBe(true);
+ // Drag the indicator back to the top.
+ await page.mouse.move(clicked.box.x+clicked.box.width/2,clicked.box.y+clicked.box.height/2);await page.mouse.down();
+ await page.mouse.move(clicked.box.x+clicked.box.width/2,clicked.map.y-50,{steps:5});await page.mouse.up();await settle(page);
+ v=await view();expect(v.scrollY).toBeLessThan(clicked.scrollY);expect(v.top).toBe(0);
+ // Focus, selection, document and history are untouched by minimap use.
+ expect(await page.evaluate(()=>window.editor.surface.contains(document.activeElement)||document.activeElement===window.editor.surface)).toBe(true);
+ expect({selection:await selection(),doc:await page.evaluate(()=>window.core.documentJson()),undo:await page.evaluate(()=>window.core.view().undoDepth)}).toEqual(before);
+ // Local edits rebuild the overview: a new paragraph adds a box.
+ const boxes=()=>page.locator("[data-breditor-minimap] .breditor-minimap-block").count();
+ const count=await boxes();
+ await page.locator('[data-rich-text="p"]').click();await page.keyboard.press("End");await page.keyboard.press("Enter");await page.keyboard.type("added");
+ await expect.poll(boxes).toBe(count+1);
+ // A scrolling surface is detected as the scroll container.
+ await page.evaluate(()=>{window.editor.surface.style.maxHeight="150px";window.editor.surface.style.overflowY="auto";window.scrollTo(0,0);});
+ await page.evaluate(()=>window.aids.refresh());await page.waitForTimeout(150);await settle(page);
+ await page.evaluate(()=>window.editor.surface.scrollTop=200);await settle(page);
+ await expect.poll(()=>page.evaluate(()=>Number(document.querySelector(".breditor-minimap-viewport").dataset.viewTop))).toBe(200);
+ const inner=await page.locator(".breditor-minimap-content").boundingBox();
+ await page.mouse.click(inner.x+inner.width/2,inner.y+2);
+ expect(await page.evaluate(()=>window.editor.surface.scrollTop)).toBe(0);
+ await page.evaluate(()=>window.aids.dispose());
+ await expect(page.locator("[data-breditor-minimap]")).toHaveCount(0);
+ expect(await page.evaluate(()=>window.errors)).toEqual([]);
 });

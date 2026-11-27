@@ -3,6 +3,7 @@ import {RichDomEditor} from "../../breditor-experimental-rich-content/src/contro
 import {render} from "../../breditor-experimental-rich-content/src/render.js";
 import {presentationModel} from "../../breditor-experimental-rich-content/src/model.js";
 import {mountRichEditingAids,mountRichEditingAidsControls,richBlockLabel,richFocusedBlockAttribute,type RichEditingAids} from "../../breditor-experimental-rich-content/src/editing_aids.js";
+import {richMinimapBlockKind,RICH_MINIMAP_REBUILD_INTERVAL} from "../../breditor-experimental-rich-content/src/editing_aids_minimap.js";
 import {resolveRichUi,richUiStringsEn} from "../../breditor-experimental-rich-content/src/ui_locale.js";
 import type {RichCoreEditor,RichView,RichSelection,RichCommand} from "../../breditor-experimental-rich-content/src/core.js";
 import {arabicUi} from "./ui_locale_ar.js";
@@ -140,7 +141,7 @@ describe("editing aids",()=>{
   expect(toggled.defaultPrevented).toBe(true);expect(aids.state().showBlocks).toBe(true);
   key("KeyP",{metaKey:true,altKey:true,shiftKey:true});expect(aids.state().invisibles).toBe(true);
   expect(f.closeTypingGroup).not.toHaveBeenCalled();expect(f.contentCommands()).toEqual([]);
-  expect(changes).toEqual([{showBlocks:true,invisibles:false,focus:false,disposed:false},{showBlocks:true,invisibles:true,focus:false,disposed:false}]);
+  expect(changes).toEqual([{showBlocks:true,invisibles:false,focus:false,minimap:false,disposed:false},{showBlocks:true,invisibles:true,focus:false,minimap:false,disposed:false}]);
   // Without Shift (or without Alt) the chord is the editor's, as before.
   key("KeyB",{ctrlKey:true,altKey:true});expect(aids.state().showBlocks).toBe(true);expect(f.closeTypingGroup).toHaveBeenCalled();
   aids.dispose();
@@ -174,5 +175,63 @@ describe("editing aids",()=>{
   aids.setFocus(true);expect(f.dom.surface.querySelectorAll(`[${richFocusedBlockAttribute}]`)).toHaveLength(1);
   aids.dispose();expect(f.dom.surface.querySelector(`[${richFocusedBlockAttribute}]`)).toBeNull();
   expect(f.contentCommands()).toEqual([]);
+ });
+
+ it("paints an inert, aria-hidden minimap of block boxes that scrolls the editor and nothing else",async()=>{
+  const f=fixture(),surface=f.dom.surface,container=document.createElement("aside");document.body.append(container);
+  // A 2000px-tall scrolled surface showing 600px; the minimap root measures 100×400.
+  let scrollTop=0;
+  Object.defineProperties(surface,{scrollHeight:{configurable:true,get:()=>2000},clientHeight:{configurable:true,get:()=>600},clientWidth:{configurable:true,get:()=>800},scrollTop:{configurable:true,get:()=>scrollTop,set:(value:number)=>{scrollTop=Math.max(0,Math.min(1400,value));}}});
+  const before={html:surface.innerHTML,view:JSON.stringify(f.core.view()),copy:copy(surface)},closes=f.closeTypingGroup.mock.calls.length;
+  for(const minimap of [null,{},{container:surface},{container:surface.firstElementChild},{container,maxBlocks:0},{container,visible:"yes"},{container,scroller:container}])
+   expect(()=>mountRichEditingAids(f.dom,{minimap} as never)).toThrow();
+  expect(container.childElementCount).toBe(0);expect(document.querySelector("[data-breditor-editing-aids]")).toBeNull();
+  const plain=mountRichEditingAids(f.dom);expect(plain.minimap).toBeUndefined();expect(()=>plain.setMinimap(true)).toThrow("No minimap");plain.dispose();
+  const changes:unknown[]=[];
+  const aids=mountRichEditingAids(f.dom,{minimap:{container,scroller:surface},onChange:state=>changes.push(state)});
+  const root=aids.minimap!;
+  Object.defineProperties(root,{clientWidth:{configurable:true,get:()=>100},clientHeight:{configurable:true,get:()=>400}});
+  for(const element of [root,root.firstElementChild!])Object.defineProperty(element,"getBoundingClientRect",{configurable:true,value:()=>rect(900,0,100,400)});
+  flush();
+  expect(aids.state()).toEqual({showBlocks:false,invisibles:false,focus:false,minimap:true,disposed:false});
+  // Outside the surface, hidden from assistive technology, no text, ids, focusable or editable descendants.
+  expect(container.contains(root)).toBe(true);expect(surface.contains(root)).toBe(false);expect(root.getAttribute("aria-hidden")).toBe("true");
+  expect(root.textContent).toBe("");expect(root.querySelector("[id],[tabindex],[contenteditable],button,a,input")).toBeNull();
+  // One box per rendered block (10 in the fixture), scaled by min(100/800, 400/2000) = 0.125.
+  const boxes=[...root.querySelectorAll<HTMLElement>(".breditor-minimap-block")];
+  expect(boxes).toHaveLength(surface.querySelectorAll("[data-rich-block]").length);expect(boxes).toHaveLength(10);
+  expect(boxes[0]!.style.cssText).toBe("left: 1.25px; top: 1.25px; width: 50px; height: 2.5px;");
+  expect(boxes.map(box=>box.dataset["minimapKind"])).toEqual(["heading","text","container","container","text","container","text","text","text","text"]);
+  const indicator=root.querySelector<HTMLElement>(".breditor-minimap-viewport")!;
+  expect([indicator.style.top,indicator.style.height]).toEqual(["0px","75px"]);
+  // Pointer down below the indicator centers the viewport there; dragging follows; nothing reaches the owner.
+  const pointer=(type:string,clientY:number,button=0)=>{const event=new MouseEvent(type,{bubbles:true,cancelable:true,clientY,button});Object.defineProperty(event,"pointerId",{value:1});root.dispatchEvent(event);return event;};
+  const down=pointer("pointerdown",200);expect(down.defaultPrevented).toBe(true);
+  expect(scrollTop).toBe(1600-300);
+  window.dispatchEvent(new Event("scroll"));flush();expect(indicator.style.top).toBe(`${1300*0.125}px`);
+  pointer("pointermove",100);expect(scrollTop).toBe(500);pointer("pointerup",100);
+  pointer("pointermove",300);expect(scrollTop).toBe(500);
+  // Pressing inside the indicator keeps the grab offset (no jump).
+  pointer("pointerdown",500*0.125+10);expect(scrollTop).toBe(500);pointer("pointermove",500*0.125+20);expect(scrollTop).toBe(580);pointer("pointercancel",0);
+  const mouse=new MouseEvent("mousedown",{bubbles:true,cancelable:true});root.dispatchEvent(mouse);expect(mouse.defaultPrevented).toBe(true);
+  expect(f.contentCommands()).toEqual([]);expect(f.closeTypingGroup).toHaveBeenCalledTimes(closes);
+  expect(surface.innerHTML).toBe(before.html);expect(JSON.stringify(f.core.view())).toBe(before.view);expect(copy(surface)).toBe(before.copy);
+  // DOM changes (local or peer renders) rebuild at most once per interval.
+  const extra=document.createElement("p");extra.dataset["richBlock"]="x";extra.dataset["richText"]="x";surface.append(extra);await Promise.resolve();
+  await new Promise(resolve=>setTimeout(resolve,RICH_MINIMAP_REBUILD_INTERVAL+20));flush();
+  expect(root.querySelectorAll(".breditor-minimap-block")).toHaveLength(11);expect(root.dataset["minimapBlocks"]).toBe("11");
+  extra.remove();
+  // Hiding is presentation state only; the minimap is bounded by maxBlocks.
+  aids.toggleMinimap();expect(root.hidden).toBe(true);expect(root.querySelectorAll(".breditor-minimap-block")).toHaveLength(0);
+  expect(changes.at(-1)).toMatchObject({minimap:false});
+  aids.setMinimap(true);flush();expect(root.querySelectorAll(".breditor-minimap-block")).toHaveLength(10);
+  aids.dispose();expect(root.isConnected).toBe(false);expect(container.childElementCount).toBe(0);
+  const bounded=mountRichEditingAids(f.dom,{minimap:{container,scroller:surface,maxBlocks:3,visible:false}});
+  expect(bounded.state().minimap).toBe(false);
+  Object.defineProperties(bounded.minimap!,{clientWidth:{get:()=>100},clientHeight:{get:()=>400}});
+  bounded.setMinimap(true);flush();expect(bounded.minimap!.querySelectorAll(".breditor-minimap-block")).toHaveLength(3);
+  bounded.dispose();
+  expect(f.contentCommands()).toEqual([]);expect(surface.innerHTML).toBe(before.html);
+  expect([richMinimapBlockKind(document.createElement("table")),richMinimapBlockKind(document.createElement("figure")),richMinimapBlockKind(document.createElement("hr")),richMinimapBlockKind(document.createElement("blockquote"))]).toEqual(["table","image","rule","container"]);
  });
 });
