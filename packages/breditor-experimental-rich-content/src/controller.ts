@@ -518,7 +518,7 @@ export class RichDomEditor<P extends RichSelectionPolicy="original"> {
    if(markdown){this.#typeMarkdown(markdown,event.data!);return;}
    const type=event.inputType;
    if(type!=="insertText"&&!type.startsWith("delete"))this.#boundary();
-   const action=({formatBold:"bold",formatItalic:"italic",formatUnderline:"underline",formatStrikeThrough:"strike",formatSubscript:"subscript",formatSuperscript:"superscript"} as Record<string,string>)[type],control=this.#controls.find(item=>item.control.id===action);if(control){control.view.activate();return;}
+   const action=({formatBold:"bold",formatItalic:"italic",formatUnderline:"underline",formatStrikeThrough:"strike",formatSubscript:"subscript",formatSuperscript:"superscript",formatRemove:"clear-inline"} as Record<string,string>)[type],control=this.#controls.find(item=>item.control.id===action);if(control){control.view.activate();return;}
    if(this.#selectionFormat(action))return;
    if(type==="historyUndo"||type==="historyRedo"){this.execute({kind:type==="historyUndo"?"undo":"redo"});return;}
    if(type==="formatBold"){const command=bold(this.#context());if(command)this.execute(command);return;}

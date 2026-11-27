@@ -16,7 +16,7 @@ export interface RichShortcutEntry {
  readonly keys:readonly RichShortcutChord[];
 }
 export const richShortcutGroups:readonly RichShortcutGroup[]=Object.freeze(["history","formatting","blocks","navigation","commands","interface"]);
-const inlineControls=new Set(["bold","italic","underline","strike","code","subscript","superscript","link","unlink","clear-inline"]);
+const inlineControls=new Set(["bold","italic","underline","strike","code","subscript","superscript","highlight","link","unlink","clear-inline"]);
 const chord=(key:string,mods:{primary?:boolean;alt?:boolean;shift?:boolean}={}):RichShortcutChord=>Object.freeze({key,...(mods.primary?{primary:true as const}:{}),...(mods.alt?{alt:true as const}:{}),...(mods.shift?{shift:true as const}:{})});
 const signature=(c:RichShortcutChord)=>`${c.primary?"p":""}${c.alt?"a":""}${c.shift?"s":""}:${c.key}`;
 /** Parse a toolbar control's existing `shortcut` (`"b"`, `"shift+x"`, `"enter"`): the primary modifier is implied. */

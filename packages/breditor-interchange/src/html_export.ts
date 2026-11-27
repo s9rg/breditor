@@ -45,7 +45,8 @@ export class HtmlExport {
     if(f.type===rubyFormat){this.b.loss("removed-content");return value;}
     if(f.type==="breditor/text-language"){const tag=p["breditor/language-tag"];if(isCanonicalLanguageTagV1(tag))return `<span lang="${a(tag)}">${value}</span>`;this.b.loss("unsupported-attribute");return value;}
     const rgb=p["breditor-inline/rgb24"],pixels=p["breditor-inline/pixels"],family=p["breditor-inline/family"];
-    if(["breditor-inline/text-color","breditor-inline/background-color"].includes(f.type)&&typeof rgb==="number"&&Number.isInteger(rgb)&&rgb>=0&&rgb<=0xffffff)return `<span style="${f.type==="breditor-inline/text-color"?"color":"background-color"}:#${rgb.toString(16).padStart(6,"0")}">${value}</span>`;
+    // Highlight is semantic `<mark>`; its exact colour rides along, so import (mark default, then the style) round-trips it.
+    if(["breditor-inline/text-color","breditor-inline/background-color"].includes(f.type)&&typeof rgb==="number"&&Number.isInteger(rgb)&&rgb>=0&&rgb<=0xffffff){const hex=rgb.toString(16).padStart(6,"0");return f.type==="breditor-inline/text-color"?`<span style="color:#${hex}">${value}</span>`:`<mark style="background-color:#${hex}">${value}</mark>`;}
     if(f.type==="breditor-inline/text-size"&&typeof pixels==="number"&&Number.isInteger(pixels)&&pixels>=8&&pixels<=96)return `<span style="font-size:${pixels}px">${value}</span>`;
     if(f.type==="breditor-inline/font-family"&&typeof family==="number"&&Number.isInteger(family)&&family>=1&&family<=4)return `<span style="font-family:${["","system-ui","sans-serif","serif","monospace"][family]}">${value}</span>`;
     this.b.loss("unsupported-style");return value;

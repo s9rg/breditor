@@ -208,3 +208,121 @@ The checkpoint is incomplete until tests demonstrate:
 - `formatRemove`, toolbar, mixed-format DOM projection, autosave reload,
   accessibility, cleanup, and clean package-root consumer behavior; and
 - unchanged schema fingerprints and durable-format generations.
+
+## Standard profile: catalog clear-formatting and highlight cases
+
+The sections above define the base-text `breditor/clear-inline-formats`
+action. The opt-in standard inline profile (`breditor-inline/standard`)
+adapts the same idea in its stock toolbar controls
+(`packages/breditor-experimental-rich-content/src/standard_inline_controls.ts`).
+Those controls lower to the existing typed format commands: one local
+`changeInlineFormats` / `changeSelectionFormats` command, or one shared
+`set_format` dispatch. There is no new action, operation, grammar or wire
+shape, so one control press is one Undo step locally and one selective-history
+group in a shared room.
+
+### Clear standard formatting (`clear-inline`)
+
+- **Clearable marks:** all twelve standard kinds: Bold, Italic, Underline,
+  Strike, inline code, Subscript, Superscript, Link, text color, background
+  color (highlight), text size and font family. Link and inline code are
+  cleared too, as Tiptap's `unsetAllMarks` does.
+- **Preserved marks:** everything outside the standard set: mentions
+  (`breditor/mention`, whose text is the entity label), text-run language,
+  ruby and any application-declared format such as a review mark. Block
+  types, block layout and entity identities are never touched.
+- **Range:** every selected text block is a target, so a range may run from
+  a table-cell paragraph into an image caption. Text before and after the
+  range keeps its exact formats and property maps. A Link that crosses an
+  endpoint keeps its href and target outside the range.
+- **Collapsed caret:** the control writes explicit pending formats. These
+  are the exact Rust caret formats minus the standard kinds, so typed text
+  keeps an inherited mention, language or application mark and drops
+  everything else.
+- **Nothing to clear:** no command and no history entry.
+- **Native input:** `beforeinput` with `inputType="formatRemove"` runs the
+  same control in both the local and shared controllers.
+- **Keyboard:** there is no default chord. The control-shortcut grammar
+  accepts only `Mod+[Shift+]letter/digit`. The usual `Mod+\` is therefore not
+  expressible without widening that grammar, and this slice does not widen
+  it.
+
+### Highlight (`highlight`)
+
+Highlight is the existing RGB24 `breditor-inline/background-color` format.
+There is no separate highlight mark kind. This keeps released documents, the
+schema fingerprint and collaboration wire unchanged.
+
+- **One-click toggle:** the `highlight` control (`Mod+Shift+H`, listed in the
+  Format menu and the shortcut help) applies the default highlight colour.
+  - Its `aria-pressed` is `true` when every selected character has some
+    highlight, whatever its colour, and `mixed` when only part of the range
+    has one.
+  - Pressing it on a fully highlighted range removes the highlight. On a
+    partial or plain range it applies the default.
+  - At a collapsed caret it changes pending formats only. Other marks are
+    never touched.
+- **Default colour:** `#ffff00`, exported as `standardDefaultHighlightColor`.
+  This is the same colour an imported HTML `<mark>` gets.
+- **Configured colours:** `createStandardRichToolbarV1`,
+  `createSelectionRichToolbarV1`, `createStandardSharedToolbarV1` and
+  `createSelectionSharedToolbarV1` accept an optional third argument of the
+  form `{highlight:{color?,colors?}}`, where `colors` lists `{label,color}`
+  entries.
+  - `color` sets the one-click default.
+  - `colors` (1 to 32 distinct `#rrggbb` entries) turns the Background
+    color field into a choice of exactly those colours. Any other value is
+    rejected with "Choose a configured highlight color".
+  - When `color` is omitted, the first palette entry is the default.
+  - Options are validated before any control exists. Unknown keys,
+    malformed colours, duplicates and a default outside the palette throw
+    `TypeError`.
+  - Without a palette, the field remains the free `#RRGGBB` input.
+- **Removing part of a highlight:** select the part, then press Highlight
+  (or Reset background color). Only that interval loses
+  `background-color`. Undo restores the exact previous colours.
+- **HTML export:** a highlight is written as a semantic
+  `<mark style="background-color:#rrggbb">`. Text color stays a `<span>`.
+- **HTML import:** `<mark>` reads as `#ffff00`, and a parseable
+  `background-color` declaration then sets the exact colour, so export and
+  re-import are lossless.
+- **Disallowed colours on import:**
+  - The schema admits every RGB24 value. A colour outside the import
+    grammar (alpha below 1, `hsl()` and other unsupported syntax) is
+    reported as `unsupported-style`.
+  - On a `<mark>`, the default yellow remains. On any other element, no
+    highlight is added.
+  - `transparent` paints nothing and is not reported.
+  - A configured palette limits only the toolbar. Imported or pasted
+    colours are still admitted.
+
+### Catalog case to test map
+
+| Catalog case | Requirement | Test |
+| --- | --- | --- |
+| `clear-formatting-mixed-range@1` | Range across two blocks with Bold, Italic, inline code, text color and Link; documented marks cleared, application mark kept, cross-boundary Link retained outside; one Undo step; exact Undo/Redo after checkpoint reload | `experiments/rich-browser/standard-toolbar-checks.mjs` "catalog clear-formatting-mixed-range…" (rich and shared specs) |
+| `clear-formatting-mixed-range@1` | Clearable set and order, Link/code included, plain range is a no-op | `packages/breditor-experimental-rich-content/tests/standard_inline_controls.test.ts` "clear-formatting-mixed-range@1" |
+| `clear-formatting-mixed-range@1` | Collapsed caret keeps mentions, language and application marks | same jsdom file; browser "caret controls preserve inherited application marks…" |
+| `clear-formatting-mixed-range@1` | Clearing inside a table cell and an image caption | browser "catalog clear-formatting-mixed-range…" (cell paragraph through caption) and "script switch and clear…" (caption) |
+| `clear-formatting-mixed-range@1` | Native `formatRemove` | browser "catalog clear-formatting: native formatRemove…" |
+| `inline-highlight-mark@1` | Default and configured colour on separate ranges, including text with another format | browser "catalog inline-highlight-mark: default and configured highlight…"; rich spec "configured highlight palette and default colour"; jsdom "uses a host-configured default…" |
+| `inline-highlight-mark@1` | Caret state and mixed state display | browser "catalog inline-highlight-mark: default and configured…" (`aria-pressed` false/true/mixed, typing at caret); jsdom "applies the default highlight, reports mixed state…" |
+| `inline-highlight-mark@1` | Remove highlight from part of a range, Undo restores only the targeted formatting | browser "catalog inline-highlight-mark: default and configured…" |
+| `inline-highlight-mark@1` | Keyboard shortcut | browser (`Control+Shift+H` at a caret and on a range); jsdom "registers Mod+Shift+H…" |
+| `inline-highlight-mark@1` | HTML round trip, `<mark>` output, admitted colours after import | `packages/breditor-interchange/tests/highlight.test.ts` "exports highlight as a mark…" |
+| `inline-highlight-mark@1` | Disallowed colour loss | `packages/breditor-interchange/tests/highlight.test.ts` "reports a colour outside the RGB24 grammar…"; jsdom palette rejection |
+| `inline-highlight-mark@1` | Internal clipboard round trip | browser "catalog inline-highlight-mark: highlight survives internal clipboard paste…" |
+| `inline-highlight-mark@1` | Two writers converge; selective Undo keeps the peer's highlight | `experiments/shared-browser/standard-toolbar.spec.mjs` "catalog inline-highlight-mark: two writers converge…" |
+
+### Limitations
+
+- **No highlight "pen" mode.** Neither catalog case requires a sticky mode
+  that keeps applying a colour to each new selection, and it is not
+  implemented. The format painter in
+  [FORMATTING_PRODUCTIVITY.md](FORMATTING_PRODUCTIVITY.md) is the nearest
+  existing tool.
+- **Palette configuration is V1-only.** The highlight options exist only on
+  the V1 toolbar factories listed above. The structural V2, layout V3 and
+  rich V4 toolbars compose those factories with the default yellow. A host
+  can still filter or replace the controls.
+- **Markdown has no highlight syntax.** Markdown export is unchanged.

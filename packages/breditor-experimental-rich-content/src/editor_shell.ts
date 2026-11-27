@@ -14,7 +14,7 @@ import type {RichBalloonBlockLayout,RichBalloonBlockLayoutOptions,RichFloatingMe
 export const richMenuBarDefaults:readonly RichMenuBarMenu[]=Object.freeze([
  {id:"edit",controls:["undo","redo","delete-node","remove-node"]},
  {id:"insert",controls:["link","unlink","table","horizontal-rule","page-break","details","table-caption","bookmark","link-bookmark","remove-bookmark"]},
- {id:"format",controls:["bold","italic","underline","strike","code","subscript","superscript","text-color","background-color","text-size","font-family","clear-inline","paragraph","heading","h1","h2","h3","blockquote","unquote","code-block","bullet","numbered","tasks","unlist","indent","outdent","list-numbering","block-alignment","block-direction","block-indent","block-line-height","reset-block-layout"]},
+ {id:"format",controls:["bold","italic","underline","strike","code","subscript","superscript","highlight","text-color","background-color","text-size","font-family","clear-inline","paragraph","heading","h1","h2","h3","blockquote","unquote","code-block","bullet","numbered","tasks","unlist","indent","outdent","list-numbering","block-alignment","block-direction","block-indent","block-line-height","reset-block-layout"]},
  {id:"table",controls:["row","add-row","row-up","row-down","column","add-column","column-left","column-right","delete-row","delete-column","merge","split","header","column-width"]},
 ].map(menu=>Object.freeze({...menu,controls:Object.freeze(menu.controls)})));
 /** Block insert controls offered at an empty paragraph, when admitted. */
