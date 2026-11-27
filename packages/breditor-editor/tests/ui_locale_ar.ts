@@ -72,7 +72,7 @@ mentionLabel:"الإشارات",mentionLoading:"جارٍ تحميل الاقتر
  // Editor shell (separate block).
  menuBarLabel:"قائمة المحرر",menuEdit:"تحرير",menuInsert:"إدراج",menuFormat:"تنسيق",menuTable:"جدول",
  menuTools:"أدوات",menuHelp:"مساعدة",menuKeyboardShortcuts:"اختصارات لوحة المفاتيح",
- floatingMenuLabel:"إدراج كتلة",
+ floatingMenuLabel:"إدراج كتلة",toolbarShowMoreItems:"عرض المزيد من العناصر",
  shortcutHelpTitle:"اختصارات لوحة المفاتيح",shortcutHelpIntro:"الاختصارات النشطة في هذا المحرر.",shortcutHelpClose:"إغلاق",shortcutHelpOr:"أو",shortcutHelpEmpty:"لا توجد اختصارات نشطة.",
  shortcutGroupHistory:"السجل",shortcutGroupFormatting:"تنسيق النص",shortcutGroupBlocks:"الكتل",
  shortcutGroupNavigation:"التنقل والتحديد",shortcutGroupCommands:"الأوامر",shortcutGroupInterface:"واجهة المحرر",

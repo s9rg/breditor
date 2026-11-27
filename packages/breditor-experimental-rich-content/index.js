@@ -32,6 +32,8 @@ export {mountRichSelectionToolbar,mountRichContextMenu,richSelectionToolbarDefau
 export {mountRichMenuBar,mountRichShortcutHelp,mountRichFloatingMenu,mountRichBalloonBlockLayout,richMenuBarDefaults,richFloatingMenuDefaults,richEditorShellStyles} from "./dist/browser/editor_shell.js";
 export {richActiveShortcuts,richCoordinatorShortcuts,richControlShortcutChord,formatRichShortcut,detectRichShortcutPlatform,richShortcutGroups} from "./dist/browser/shortcut_registry.js";
 export {richShellUiStringsEn} from "./dist/browser/ui_locale_shell.js";
+export {planRichToolbarLayout,RICH_TOOLBAR_LAYOUT_MAX_ENTRIES,RICH_TOOLBAR_GROUP_MAX_ITEMS} from "./dist/browser/toolbar_layout.js";
+export {richToolbarLayoutStyles} from "./dist/browser/toolbar_layout_view.js";
 export {mountRichSourceView} from "./dist/browser/source_view.js";
 export {mountRichAiTools} from "./dist/browser/ai_rewrite.js";
 export {mountRichLanguageCheck} from "./dist/browser/language_check.js";

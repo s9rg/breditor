@@ -7,6 +7,8 @@ export interface RichShellUiStrings {
  readonly menuBarLabel:string;readonly menuEdit:string;readonly menuInsert:string;readonly menuFormat:string;readonly menuTable:string;
  readonly menuTools:string;readonly menuHelp:string;readonly menuKeyboardShortcuts:string;
  readonly floatingMenuLabel:string;
+ /** Overflow button of an opt-in `groupWhenFull` toolbar layout (docs/TOOLBAR_LAYOUT.md). */
+ readonly toolbarShowMoreItems:string;
  readonly shortcutHelpTitle:string;readonly shortcutHelpIntro:string;readonly shortcutHelpClose:string;readonly shortcutHelpOr:string;readonly shortcutHelpEmpty:string;
  readonly shortcutGroupHistory:string;readonly shortcutGroupFormatting:string;readonly shortcutGroupBlocks:string;
  readonly shortcutGroupNavigation:string;readonly shortcutGroupCommands:string;readonly shortcutGroupInterface:string;
@@ -23,6 +25,7 @@ export const richShellUiStringsEn:Readonly<RichShellUiStrings>=Object.freeze({
  menuBarLabel:"Editor menu",menuEdit:"Edit",menuInsert:"Insert",menuFormat:"Format",menuTable:"Table",
  menuTools:"Tools",menuHelp:"Help",menuKeyboardShortcuts:"Keyboard shortcuts",
  floatingMenuLabel:"Insert block",
+ toolbarShowMoreItems:"Show more items",
  shortcutHelpTitle:"Keyboard shortcuts",shortcutHelpIntro:"Shortcuts active in this editor.",shortcutHelpClose:"Close",shortcutHelpOr:"or",shortcutHelpEmpty:"No keyboard shortcuts are active.",
  shortcutGroupHistory:"History",shortcutGroupFormatting:"Text formatting",shortcutGroupBlocks:"Blocks",
  shortcutGroupNavigation:"Navigation and selection",shortcutGroupCommands:"Commands",shortcutGroupInterface:"Editor interface",

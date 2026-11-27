@@ -103,6 +103,14 @@ selection toolbar and context menu register their chords (Alt+F10, Shift+F10,
 the Menu key, Escape) in the editor's read-only shortcut registry while mounted,
 so the help dialog lists them.
 
+## Toolbar layout
+
+The standard toolbar itself can be arranged into rows, separators, dropdown
+action groups and an opt-in "Show more items" overflow with the coordinator's
+`toolbarLayout` option ([TOOLBAR_LAYOUT.md](TOOLBAR_LAYOUT.md)). It moves the
+same admitted widgets, so every presentation above keeps the same state,
+command path, Undo step and focus return.
+
 ## Teardown
 
 `dispose()` aborts every borrowed widget (removing it from the coordinator's

@@ -15,6 +15,8 @@ import {standardInlineStylesV1} from "./standard_inline_v1.js";
 import {richRubyStyles} from "./ruby.js";
 import {richInlinePresentationHasRuby} from "./inline_presentation.js";
 import {mountToolbarControl,toolbarControlStyles,type RichControlView} from "./toolbar_control_view.js";
+import {planRichToolbarLayout,type RichToolbarLayout} from "./toolbar_layout.js";
+import {arrangeRichToolbar,richToolbarLayoutStyles,type RichToolbarLayoutState,type RichToolbarLayoutView} from "./toolbar_layout_view.js";
 import {resolveRichUi,type RichUiLocale,type RichUiOptions} from "./ui_locale.js";
 import {taskTab} from "./task_actions_v2.js";
 import {captionArrowCommands} from "./table_caption_navigation.js";
@@ -50,6 +52,8 @@ export interface RichEditorOptions<P extends RichSelectionPolicy="original"> ext
  /** Literal input committed, but native shortcut conversion was refused; never retry input. */
  onInputRuleRefused?:()=>void;
  toolbar?:readonly ToolbarControl<P>[];
+ /** Opt-in rows, separators, dropdown groups and "group when full" overflow for the admitted `toolbar` (docs/TOOLBAR_LAYOUT.md). */
+ toolbarLayout?:RichToolbarLayout;
  label?:string;
  /** Opt-in chrome catalog and chrome `dir`/`lang`. Never changes the editing surface or content direction. */
  ui?:RichUiOptions;
@@ -94,6 +98,7 @@ export class RichDomEditor<P extends RichSelectionPolicy="original"> {
  readonly #searchEvents=new RichSearchEvents();
  readonly #writingEvents=new RichWritingEvents();readonly #writingReads=new RichWritingReadRegistry();
  readonly #placeholder:RichPlaceholderPresentation|undefined;
+ #layout:RichToolbarLayoutView|undefined;
  constructor(root:HTMLElement,options:RichEditorOptions<P>&(P extends "document-v1"?RichDocumentEditorOptions:unknown)){
   const policy=options.selectionEditing??"original";
   if(policy!=="original"&&policy!=="document-v1")throw new TypeError("Expected selectionEditing original or document-v1");
@@ -111,19 +116,24 @@ export class RichDomEditor<P extends RichSelectionPolicy="original"> {
   if(this.#model.view.historyGrouping==="typing-v1"&&(options.core.supportsTypingHistory?.()!==true||!options.core.closeTypingGroup))throw Error("Use matching native natural typing history");
   for(const control of options.toolbar??defaultToolbarFor<P>())if(control.owner!==undefined&&control.owner!==options.core)throw Error("Toolbar control belongs to a different Rust owner");
   const ui=resolveRichUi(options.ui);ui.checkControls(options.toolbar??defaultToolbarFor<P>());this.#ui=ui;
+  const admitted=options.toolbar??defaultToolbarFor<P>(),seen=new Set<string>();
+  for(const control of admitted){if(seen.has(control.id))throw Error("Duplicate rich toolbar control identity");seen.add(control.id);}
+  const layout=options.toolbarLayout===undefined?undefined:planRichToolbarLayout(options.toolbarLayout,[...seen]);
   const document=root.ownerDocument;this.surface=document.createElement("div");this.surface.className="breditor-rich-surface";this.surface.contentEditable="true";this.surface.setAttribute("role","textbox");this.surface.setAttribute("aria-multiline","true");this.surface.setAttribute("aria-label",options.label??ui.text("richEditorLabel"));
   this.toolbar=document.createElement("div");this.toolbar.className="breditor-rich-toolbar";this.toolbar.setAttribute("role","toolbar");this.toolbar.setAttribute("aria-label",ui.text("richToolbarLabel"));ui.applyChrome(this.toolbar);
   this.status=document.createElement("p");this.status.className="breditor-rich-status";this.status.setAttribute("role","status");ui.applyChrome(this.status);
   this.#placeholder=placeholder?new RichPlaceholderPresentation(this.surface,placeholder.label):undefined;
-  const style=document.createElement("style");style.textContent=styles+standardInlineStylesV1+toolbarControlStyles+structuralBlockStylesV2+(options.scrollableTables?richTableScrollStyles:"")+richPageBreakStyles+richBookmarkStyles+richLegalListStyles+(this.#document?documentSelectionStyles:"")+(placeholder?richPlaceholderStyles:"")+(options.inlinePresentation&&richInlinePresentationHasRuby(options.inlinePresentation)?richRubyStyles:"");root.dataset["breditorRich"]="";root.replaceChildren(style,this.toolbar,this.#placeholder?.container??this.surface,this.status);
-  const seen=new Set<string>();
-  for(const control of options.toolbar??defaultToolbarFor<P>()){
-   if(seen.has(control.id))throw Error("Duplicate rich toolbar control identity");seen.add(control.id);
+  const style=document.createElement("style");style.textContent=styles+standardInlineStylesV1+toolbarControlStyles+structuralBlockStylesV2+(options.scrollableTables?richTableScrollStyles:"")+richPageBreakStyles+richBookmarkStyles+richLegalListStyles+(this.#document?documentSelectionStyles:"")+(placeholder?richPlaceholderStyles:"")+(options.inlinePresentation&&richInlinePresentationHasRuby(options.inlinePresentation)?richRubyStyles:"")+(layout?richToolbarLayoutStyles:"");root.dataset["breditorRich"]="";root.replaceChildren(style,this.toolbar,this.#placeholder?.container??this.surface,this.status);
+  if(layout){
+   const byId=new Map(admitted.map(control=>[control.id,control] as const));
+   this.#layout=arrangeRichToolbar({toolbar:this.toolbar,plan:layout,ui,signal:this.#abort.signal,focusEditor:()=>this.focus(),mount:(container,id)=>{const control=byId.get(id)!,view=this.#mountControl(container,control,this.#abort.signal);this.#controls.push({control,view});return view;}});
+   const order=[...seen];this.#controls.sort((a,b)=>order.indexOf(a.control.id)-order.indexOf(b.control.id));
+  }else for(const control of admitted){
    const view=this.#mountControl(this.toolbar,control,this.#abort.signal);
    this.#controls.push({control,view});
   }
   this.#bookmarks=options.core.supportsBookmarks?.()===true;
-  render(this.surface,this.#model,this.#renderOptions());this.#refreshControls();
+  render(this.surface,this.#model,this.#renderOptions());this.#refreshControls();this.#layout?.arrange();
   if(this.#placeholder){this.#placeholder.update(placeholder!.empty&&this.#model.view.readOnly!==true);this.#writingEvents.subscribe(()=>this.#refreshPlaceholder());}
   if(this.#model.view.readOnly===true)this.status.textContent=ui.text("richStatusReadOnly",{revision:this.#model.view.revision});
   this.surface.addEventListener("beforeinput",event=>this.#input(event as InputEvent),{signal:this.#abort.signal});
@@ -178,7 +188,10 @@ export class RichDomEditor<P extends RichSelectionPolicy="original"> {
  }
  #refreshControls(only?:{control:ToolbarControl<P>;view:RichControlView<ActionContext<P>>}):void {
   const context=this.#context(),stamp=JSON.stringify(this.#options.core.view());for(const {control,view} of only?[only]:[...this.#controls,...this.#borrowed])view.refresh(context,control.enabled(context)&&(this.#model.view.readOnly!==true&&this.#model.view.restricted?.selectionEditable!==false||control.readOnlySafe===true),stamp);
+  this.#layout?.update();
  }
+ /** Opt-in toolbar layout presentation state (open popup, overflowed items, aggregated group state); null without `toolbarLayout`. */
+ toolbarLayoutState():RichToolbarLayoutState|null{return this.#layout?.state()??null;}
  #reconcile():void {if(this.#disposed||this.#composition)return;this.#model=this.#read();this.#logicalSelection=this.#logical();render(this.surface,this.#model,this.#renderOptions());restoreDocumentNative(this.surface,this.#model.view.selection);this.#refreshControls();}
  #sync():void {
   if(this.#composition||this.#busy||this.#logicalSelection)return;
