@@ -407,7 +407,8 @@ yet covered (see below).
   Wasm build, and its `experiments/collaboration` crate did not compile for
   `wasm32-unknown-unknown` when this adapter landed (an outdated struct
   initializer unrelated to slash commands).
-- **Mentions.** Implemented for rich V4 only (native
-  `insertMention`, one Undo step); see RICH_LANGUAGE_V4.md slice 5. Shared
-  editors are V1–V3 and have no mention menu.
+- **Mentions.** Rich V4 only (native `insertMention` locally, guarded
+  `insert_mention` in shared V4, one Undo step); see RICH_LANGUAGE_V4.md slice 5
+  and SHARED_RICH_V4.md. Host-declared mention trigger feeds (`@`, `#`, …) run
+  beside this menu; a mention feed can never use the `/` trigger.
 - No default menu styling theme or hotkey to open the menu without typing `/`.
