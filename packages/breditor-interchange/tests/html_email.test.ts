@@ -48,7 +48,7 @@ const rich='<h1 style="text-align:center">Monthly <em>news</em></h1>'+
 describe("email HTML export",()=>{
   it("writes every presentation as inline styles without stylesheets, scripts or handlers",()=>{
     const {owner,options,transfer}=staging(),html=value(exportEmailHtml(owner,transfer(rich),{exportImage:options.exportImage}));
-    expect(html.startsWith('<div data-breditor-email="content" style="'+emailDecoration.div![0]+'">')).toBe(true);
+    expect(html.startsWith('<div data-breditor-email="content" style="'+emailDecoration["div"]![0]+'">')).toBe(true);
     expect(html).not.toMatch(/<style|<script|<link|\son[a-z]+=|javascript:/i);
     // Classes stay only as semantic carriers (code language, mention entity), never for presentation.
     expect([...html.matchAll(/class="([^"]*)"/g)].map(m=>m[1])).toEqual(["breditor-mention","language-ts"]);
@@ -141,7 +141,7 @@ describe("email HTML export",()=>{
     const tampered=adapter.importHtml('<div data-breditor-email="content" style="color:#000"><p style="margin:0 0 16px">x</p></div>');
     expect(tampered.losses).toEqual([{code:"unsupported-attribute",count:1,effect:"loss"},{code:"unsupported-style",count:1,effect:"loss"}]);
     // Only the fixed leading prefix is removed; other declarations convert normally.
-    const root=`<div data-breditor-email="content" style="${emailDecoration.div![0]}">`;
+    const root=`<div data-breditor-email="content" style="${emailDecoration["div"]![0]}">`;
     const extra=adapter.importHtml(root+'<p style="margin:0 0 16px;color:#123456;padding:3px">x</p></div>');
     expect(extra.losses).toEqual([{code:"unsupported-style",count:1,effect:"loss"}]);
     const run=JSON.parse(value(extra).structuredJson).document.root.children[0].children[0];

@@ -40,20 +40,22 @@ test("exports inline-style email HTML from a native V4 owner and re-imports the 
     scripts:doc.querySelectorAll("script,[onload],[onclick]").length,title:doc.title,
     column:doc.querySelector('table[role="presentation"] table').getBoundingClientRect().width,
     h1:style("h1","text-align"),red:style('span[style*="#cc0000"]',"color"),code:style("p code","font-family").includes("monospace"),
-    quote:style("blockquote","border-left-style"),cell:style("td","border-top-style"),th:style("th","font-weight"),
+    quote:style("blockquote","border-left-style"),cell:style('table[border="1"] td',"border-top-style"),th:style("th","font-weight"),
     marker:style("ol","list-style-type"),preheader:style('[data-breditor-email="preheader"]',"display")};
    frame.remove();
-   const page=importHtmlPage(owner,email.value),fragment=adapter.importHtml(email.value);
+   // Fragment import inherits a root `lang` into the body as for any page, so it reads the fragment form.
+   const fragmentEmail=exportEmailHtml(owner,transfer);if(!fragmentEmail.ok)throw Error(fragmentEmail.error);
+   const page=importHtmlPage(owner,email.value),fragment=adapter.importHtml(fragmentEmail.value);
    if(!page.ok||!fragment.ok)throw Error("Expected the email to re-import");
    const canonical=json=>{const value=adapter.exportHtml(json);if(!value.ok)throw Error(value.error);return value.value;};
    return {rendered,losses:[page.losses.length,fragment.losses.length],metadata:page.value.metadata,preset:page.value.email,
-    same:canonical(page.value.body.structuredJson)===canonical(transfer)&&canonical(fragment.value.structuredJson)===canonical(transfer),
+    same:[canonical(page.value.body.structuredJson)===canonical(transfer),canonical(fragment.value.structuredJson)===canonical(transfer)],
     stable:(()=>{const again=exportEmailHtml(owner,page.value.body.structuredJson,{page:page.value.metadata,preset:page.value.email});return again.ok&&again.value===email.value;})()};
   }finally{owner.dispose();profile.dispose();}
  });
  expect(result).toEqual({
   rendered:{stylesheets:0,classStyled:0,scripts:0,title:"Newsletter",column:600,h1:"center",red:"rgb(204, 0, 0)",code:true,quote:"solid",cell:"solid",th:"700",marker:"lower-alpha",preheader:"none"},
-  losses:[0,0],metadata:{title:"Newsletter",language:"en"},preset:{width:600,background:"#eef2f7",contentBackground:"#ffffff",preheader:"Preview text"},same:true,stable:true,
+  losses:[0,0],metadata:{title:"Newsletter",language:"en"},preset:{width:600,background:"#eef2f7",contentBackground:"#ffffff",preheader:"Preview text"},same:[true,true],stable:true,
  });
  expect(requests).toEqual([]);
 });
