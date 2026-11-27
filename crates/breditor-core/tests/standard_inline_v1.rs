@@ -12,8 +12,10 @@ use breditor_core::{
     identity::QualifiedName,
     position::{Affinity, TextOffset},
     rich_content::{
-        BlockId, RichDocument, RichLocalSession, RichSelectionKind, RichTextPoint,
-        STANDARD_INLINE_EXTENSION_V1_NAME, StandardInlineFormatV1, standard_inline_extension_v1,
+        BlockId, RichDocument, RichInlineFormatState, RichLocalSession, RichSelectionFormatChange,
+        RichSelectionKind, RichTextPoint, STANDARD_INLINE_EXTENSION_V1_NAME,
+        StandardInlineFormatV1, StandardScriptStateV1, inspect_selection_format,
+        inspect_standard_script_v1, standard_inline_extension_v1,
     },
     schema::{CompiledSchema, DocumentLimits, PersistedTypeRevision, SchemaId, SchemaVersion},
     session::HistoryCapacity,
@@ -273,5 +275,140 @@ fn preset_pending_typing_has_exact_history_and_cannot_be_restored_as_the_plain_s
     let plain =
         RichSessionJsonCodec::new(EditorContext::new(schema(vec![])?, DocumentLimits::default()));
     assert!(plain.decode(&saved).is_err());
+    Ok(())
+}
+
+fn script_owner(selection: (u64, u64)) -> Result<(EditorContext, RichLocalSession)> {
+    use StandardInlineFormatV1 as F;
+    let context = context()?;
+    let run = |text: &str, kinds: &[F]| json!({"kind":"text","text":text,"formats":kinds.iter().map(|k| literal(*k, json!({}))).collect::<Vec<_>>()});
+    let root = json!({"kind":"element","type":"breditor/document","entityId":null,"properties":{"breditor/document-id":"d"},"children":[
+        {"kind":"element","type":"breditor/paragraph","entityId":null,"properties":{"breditor/block-id":"p"},"children":[
+            run("ab", &[F::Subscript]), run("cd", &[F::Superscript]),
+            // A stored conflict still admits: the grammar is unchanged and never normalized.
+            run("ef", &[F::Subscript, F::Superscript]), run("gh", &[])
+        ]}
+    ]});
+    let input = json!({"format":"breditor/document","formatVersion":2,"schema":{"name":"example/standard-rich","version":1},"schemaFingerprint":context.schema().fingerprint().to_string(),"root":root}).to_string();
+    let document = RichDocument::try_admit(
+        context.schema(),
+        DocumentJsonCodecV2::new(context.schema().clone()).decode(&input)?,
+        context.limits(),
+    )?;
+    let point = |offset: u64| -> Result<RichTextPoint> {
+        Ok(RichTextPoint::new(
+            BlockId::try_new("p")?,
+            TextOffset::try_new(offset)?,
+            Affinity::After,
+        ))
+    };
+    let owner = RichLocalSession::try_new(
+        context.clone(),
+        document,
+        Some(RichSelectionKind::TextRange {
+            anchor: point(selection.0)?,
+            focus: point(selection.1)?,
+        }),
+        HistoryCapacity::try_new(20)?,
+    )?;
+    Ok((context, owner))
+}
+fn script_state(
+    context: &EditorContext,
+    owner: &RichLocalSession,
+) -> Result<StandardScriptStateV1> {
+    let state = owner.state();
+    Ok(inspect_standard_script_v1(
+        context,
+        state.document(),
+        state.selection(),
+        state.pending_formats(),
+    )?)
+}
+
+#[test]
+fn stored_script_conflicts_load_and_read_as_mixed_while_exclusive_runs_read_exactly() -> Result {
+    use StandardScriptStateV1 as S;
+    for (range, expected) in [
+        ((0, 2), S::Subscript),
+        ((2, 4), S::Superscript),
+        ((4, 6), S::Mixed { conflicting: true }),
+        ((6, 8), S::Baseline),
+        ((0, 4), S::Mixed { conflicting: false }),
+        ((3, 5), S::Mixed { conflicting: true }),
+        ((8, 0), S::Mixed { conflicting: true }),
+        // A caret inside the stored conflict inherits both literals.
+        ((5, 5), S::Mixed { conflicting: true }),
+        ((1, 1), S::Subscript),
+    ] {
+        let (context, owner) = script_owner(range)?;
+        assert_eq!(script_state(&context, &owner)?, expected, "{range:?}");
+    }
+    // The independent per-kind reads stay unchanged: both kinds are present on the conflict.
+    let (context, owner) = script_owner((4, 6))?;
+    let state = owner.state();
+    for kind in [StandardInlineFormatV1::Subscript, StandardInlineFormatV1::Superscript] {
+        assert!(matches!(
+            inspect_selection_format(
+                &context,
+                state.document(),
+                state.selection(),
+                None,
+                &kind.kind()
+            )?,
+            RichInlineFormatState::Uniform(_)
+        ));
+    }
+    Ok(())
+}
+
+#[test]
+fn exclusive_script_switch_is_one_undo_step_for_ranges_and_one_pending_change_for_carets() -> Result
+{
+    use StandardInlineFormatV1 as F;
+    use StandardScriptStateV1 as S;
+    let (context, mut owner) = script_owner((0, 2))?;
+    let codec = RichFormatsJsonCodec::new(context.clone());
+    let formats = codec.decode(
+        &json!([literal(F::Subscript, json!({})), literal(F::Superscript, json!({}))]).to_string(),
+    )?;
+    let sub = formats.get(&F::Subscript.kind()).ok_or("sub")?.clone();
+    let sup = formats.get(&F::Superscript.kind()).ok_or("sup")?.clone();
+    let before = owner.undo_depth();
+    // The control intent: remove the opposite script and set the requested one together.
+    owner.change_selection_formats(
+        &owner.snapshot(),
+        &[
+            RichSelectionFormatChange::Remove(sub.clone()),
+            RichSelectionFormatChange::Set(sup.clone()),
+        ],
+    )?;
+    assert_eq!(script_state(&context, &owner)?, S::Superscript);
+    assert_eq!(owner.undo_depth(), before + 1);
+    owner.undo(&owner.snapshot())?;
+    assert_eq!(script_state(&context, &owner)?, S::Subscript);
+    owner.redo(&owner.snapshot())?;
+    assert_eq!(script_state(&context, &owner)?, S::Superscript);
+    // A stored conflict normalizes to the requested script in one step.
+    let (conflict_context, mut conflicted) = script_owner((4, 6))?;
+    let depth = conflicted.undo_depth();
+    conflicted.change_selection_formats(
+        &conflicted.snapshot(),
+        &[
+            RichSelectionFormatChange::Remove(sup.clone()),
+            RichSelectionFormatChange::Set(sub.clone()),
+        ],
+    )?;
+    assert_eq!(script_state(&conflict_context, &conflicted)?, S::Subscript);
+    assert_eq!(conflicted.undo_depth(), depth + 1);
+    // Caret: the same intent only replaces pending formats, never history.
+    let (caret_context, mut caret) = script_owner((1, 1))?;
+    let depth = caret.undo_depth();
+    caret.change_selection_formats(
+        &caret.snapshot(),
+        &[RichSelectionFormatChange::Remove(sub), RichSelectionFormatChange::Set(sup)],
+    )?;
+    assert_eq!(script_state(&caret_context, &caret)?, S::Superscript);
+    assert_eq!(caret.undo_depth(), depth);
     Ok(())
 }

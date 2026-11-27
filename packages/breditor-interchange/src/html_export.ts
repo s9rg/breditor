@@ -7,6 +7,17 @@ import {isImageLinkHrefV1} from "./image_link_href.js";
 import {mentionUnits} from "./mention.js";
 import {rubyFormat,rubyUnits} from "./ruby.js";
 import {bookmarkIdPrefix,internalLinkOf,isBookmarkName} from "./bookmark.js";
+export const subscriptFormat="breditor-inline/subscript",superscriptFormat="breditor-inline/superscript";
+/**
+ * Subscript and superscript are mutually exclusive presentations. A stored run carrying both
+ * literals (admitted, never silently normalized in the document) exports as superscript only,
+ * matching its canonical render nesting (`<sub>` outside, innermost `<sup>` wins) and reporting
+ * `style-approximation`.
+ */
+export function scriptResolved(formats:readonly Literal[],b:Budget):readonly Literal[] {
+  if(!formats.some(f=>f.type===superscriptFormat)||!formats.some(f=>f.type===subscriptFormat))return formats;
+  b.loss("style-approximation");return formats.filter(f=>f.type!==subscriptFormat);
+}
 /** Export only native-admitted DTOs. Every output tag, attribute and CSS property is library-owned. */
 export class HtmlExport {
   /** `bookmarks`: the source owner is bookmark-capable (V4), so anchors and internal links are
@@ -25,7 +36,7 @@ export class HtmlExport {
     if(unit.kind==="mention")return `<span class="breditor-mention" data-mention-kind="${a(unit.mention.kind)}" data-mention-id="${a(unit.mention.id)}">${this.inline(unit.pieces)}</span>`;
     const n=unit.node;
     this.#visit();if(n.kind!=="text"){this.b.loss("block-structure");return t(nodeText(n));}
-    let value=t(n.text);for(const f of [...n.formats].reverse())value=this.#format(value,f);return value;
+    let value=t(n.text);for(const f of [...scriptResolved(n.formats,this.b)].reverse())value=this.#format(value,f);return value;
   }).join("");}
   #format(value:string,f:Literal):string {
     const simple:Readonly<Record<string,string>>={"breditor/strong":"strong","breditor-inline/italic":"em","breditor-inline/underline":"u","breditor-inline/strike":"s","breditor-inline/code":"code","breditor-inline/subscript":"sub","breditor-inline/superscript":"sup"};

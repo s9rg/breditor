@@ -153,8 +153,9 @@ export class DocxWriter {
         case "breditor-inline/underline":underline=true;break;
         case "breditor-inline/strike":strike=true;break;
         case "breditor-inline/code":code=true;break;
-        case "breditor-inline/subscript":if(vert!=="superscript")vert="subscript";break;
-        case "breditor-inline/superscript":vert="superscript";break;
+        // Exclusive scripts: a stored run with both exports superscript (the HTML rule) and reports it.
+        case "breditor-inline/subscript":if(vert==="superscript")this.losses.add("style-approximation");else vert="subscript";break;
+        case "breditor-inline/superscript":if(vert==="subscript")this.losses.add("style-approximation");vert="superscript";break;
         case "breditor-inline/link":break;
         case "breditor-inline/text-color":case "breditor-inline/background-color":{
           const rgb=p["breditor-inline/rgb24"];if(!intIn(rgb,0,0xffffff)){this.losses.add("unsupported-style");break;}

@@ -52,6 +52,7 @@ mod selection_coverage;
 mod selection_format_change;
 mod selection_format_state;
 mod standard_inline_v1;
+mod standard_script_state_v1;
 mod structural_drafts;
 pub(crate) mod table_caption;
 mod table_draft;
@@ -171,6 +172,7 @@ pub use standard_inline_v1::{
     STANDARD_INLINE_NEW_WINDOW_V1, STANDARD_INLINE_PIXELS_V1, STANDARD_INLINE_RGB24_V1,
     StandardInlineFormatV1, standard_inline_extension_v1,
 };
+pub use standard_script_state_v1::{StandardScriptStateV1, inspect_standard_script_v1};
 pub use structural_drafts::{RichTaskItemDraft, RichTaskListDraft};
 pub use table_caption::RichTableCaptionError;
 pub use table_draft::TableDraft;

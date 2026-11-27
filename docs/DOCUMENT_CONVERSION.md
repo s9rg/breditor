@@ -102,7 +102,7 @@ and pagination are Word's.
 | Heading 1–6 | `w:p` with built-in `Heading1`…`Heading6` (outline levels 0–5) | invalid level → `unsupported-attribute`, paragraph |
 | Bold, italic, underline, strike | `w:b`/`w:bCs`, `w:i`/`w:iCs`, `w:u single`, `w:strike` | — |
 | Inline code | `Courier New` run font | — |
-| Subscript / superscript | `w:vertAlign` | — |
+| Subscript / superscript | `w:vertAlign` | a run storing both → `superscript`, `style-approximation` |
 | Text / background colour | `w:color`, `w:shd` fill | invalid value → `unsupported-style` |
 | Text size (px) | `w:sz` half-points (px × 1.5) | invalid value → `unsupported-style` |
 | Font family (system-ui / sans-serif / serif / monospace) | `Segoe UI` / `Arial` / `Times New Roman` / `Courier New` | — (generic → concrete font, documented approximation) |

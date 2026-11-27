@@ -99,7 +99,15 @@ export function styleFor(node:HtmlElement,parent:StyleState,b:Budget,css:Map<str
   const state:StyleState={formats:new Map(parent.formats),layout:{...parent.layout},whiteSpace:parent.whiteSpace};
   const set=(name:string,properties:Record<string,unknown>={})=>{const f=format(name,properties);state.formats.set(f.type,f);};
   const remove=(name:string)=>state.formats.delete(format(name).type);
+  /** Exactly one script (or none) after this element; the other is removed in the same step. */
+  const script=(value:string):boolean=>{
+    if(value==="super"){remove("subscript");set("superscript");}else if(value==="sub"){remove("superscript");set("subscript");}
+    else if(value==="baseline"){remove("superscript");remove("subscript");}else return false;
+    return true;
+  };
   const initial=freeTags[node.tagName];if(typeof initial==="string")set(initial);
+  // Scripts are mutually exclusive: the innermost `<sub>`/`<sup>` (or vertical-align) wins.
+  if(node.tagName==="sub")remove("superscript");else if(node.tagName==="sup")remove("subscript");
   if(node.tagName==="mark")set("background-color",{"breditor-inline/rgb24":0xffff00});
   if(node.tagName==="a"){
     const target=attribute(node,"target")?.toLowerCase(),newWindow=target==="_blank",rel=(attribute(node,"rel")??"").toLowerCase().split(/\s+/).filter(Boolean);
@@ -118,6 +126,7 @@ export function styleFor(node:HtmlElement,parent:StyleState,b:Budget,css:Map<str
       // Font longhands override the element's intrinsic emphasis and weight.
       if(name==="font-weight"&&!parent.formats.has("breditor/strong"))remove("strong");
       if(name==="font-style"&&!parent.formats.has("breditor-inline/italic"))remove("italic");
+      if(name==="vertical-align")script(parent.formats.has("breditor-inline/superscript")?"super":parent.formats.has("breditor-inline/subscript")?"sub":"baseline");
       if(centered&&name==="text-align"){
         const inherited=parent.layout["breditor/block-align"];
         if(inherited===undefined)delete state.layout["breditor/block-align"];
@@ -130,8 +139,8 @@ export function styleFor(node:HtmlElement,parent:StyleState,b:Budget,css:Map<str
       // Initial/no-op values Office and Docs write on every run are not presentation loss.
       case "font-variant":case "font-stretch":if(value!=="normal")b.loss("unsupported-style");break;
       case "vertical-align":
-        if(value==="super"){remove("subscript");set("superscript");}else if(value==="sub"){remove("superscript");set("subscript");}
-        else if(value==="baseline"){remove("superscript");remove("subscript");}else b.loss("unsupported-style");break;
+        // `initial`/`unset` compute to `baseline` (vertical-align is not inherited).
+        if(!script(value==="initial"||value==="unset"?"baseline":value))b.loss("unsupported-style");break;
       case "list-style-type":
         if(!["ul","ol","li"].includes(node.tagName))b.loss("unsupported-style");
         // An `<ol>` marker family is decided by list conversion, which knows the target owner's capability.

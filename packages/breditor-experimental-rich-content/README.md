@@ -411,8 +411,32 @@ The twelve V1 formats have fixed semantic identities and domains:
 `standardInlineKindsV1` and `standardInlinePropertiesV1` expose the names for typed
 commands. Native hosts can compose `standard_inline_extension_v1()` into their
 own extension set. The manifest contains no action callbacks or DOM policy.
-Subscript and superscript are independent admitted literals; changing one does
-not silently remove the other. The standard toolbar switches scripts with an explicit group.
+Subscript and superscript are independent admitted literals; admission never
+silently removes one. Commands treat them as mutually exclusive (next section).
+
+### Subscript and superscript
+
+- **Commands.** Applying Subscript removes superscript over the same targets in
+  the same intent, and the reverse: one `changeInlineFormats` batch, one Undo
+  step, local and shared (the collaboration toolbar and native `formatSubscript`/
+  `formatSuperscript` input reuse the same controls). An active script toggles
+  off only when the other script is absent; otherwise activation applies the
+  requested script exclusively, normalizing a stored conflict.
+- **Caret.** The same intent replaces pending formats (`pendingStandardFormats`),
+  so typing after switching carries exactly one script and creates no history.
+- **State.** A selection or caret where both scripts appear (any stored conflict,
+  or one script everywhere while the other appears somewhere) reads `mixed` on
+  both controls. Native hosts can read the exact combined value with
+  `inspect_standard_script_v1` (`Baseline`, `Subscript`, `Superscript`,
+  `Mixed { conflicting }`), which reports a run carrying both as
+  `Mixed { conflicting: true }`.
+- **Stored conflicts.** The stored grammar is unchanged: an older document or
+  foreign producer may still store both literals on one run, and it loads
+  unchanged. Rendering is deterministic by recipe order: `<sub>` outside, `<sup>`
+  inside. Every single-valued export (HTML, Markdown's HTML, DOCX `w:vertAlign`)
+  resolves such a run to superscript and reports `style-approximation`; the
+  lossless XML export keeps both literals. See
+  [rich interchange](../../docs/RICH_INTERCHANGE.md#subscript-and-superscript).
 
 The standard renderer pins every standard format revision to 1. Additional
 application recipes use its optional second argument, an ordinary complete
@@ -462,7 +486,8 @@ formats and focus affinity. It rejects a non-caret or output beyond 64 KiB witho
 truncation. Standard caret controls preserve those custom formats; Clear standard
 formatting removes only the standard kinds. Range controls use one compound
 history group. Subscript/Superscript explicitly remove the opposite kind in that
-group, without changing the underlying schema's independent-literal contract.
+group (and in pending caret formats), without changing the underlying schema's
+independent-literal contract.
 Resetting absent formats is a true no-op that preserves history and pending state.
 Existing command/document budgets apply; oversized selections reject rather than truncate.
 Typing at a browser target matching the current caret uses ordinary typing and
