@@ -28,6 +28,10 @@ export interface RichContextUiHost {
  contextShortcuts?():readonly import("./shortcut_registry.js").RichShortcutEntry[];
  /** Optional chrome catalog; the floating widgets take their labels and `dir`/`lang` from it. */
  uiLocale?():import("./ui_locale.js").RichUiLocale;
+ /** Decoupled layout: move the coordinator's standard toolbar into a host container (docs/EDITOR_SHELL.md). */
+ mountToolbar?(container:HTMLElement):import("./external_toolbar.js").RichExternalToolbar;
+ /** The current external toolbar mount (including the `toolbarContainer` startup option), or null. */
+ externalToolbar?():import("./external_toolbar.js").RichExternalToolbar|null;
 }
 export interface RichContextUiOptions {
  /** Explicit admitted control ids, in order. Unknown ids reject. Omitted uses the defaults present in the toolbar. */

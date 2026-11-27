@@ -63,6 +63,10 @@ React: `BreditorMenuBar`, `BreditorShortcutHelp` and `BreditorFloatingMenu` from
 `editor={editor.contextUi()}`, `initialOptions` and `sessionKey`, like the
 context UI components. One of each per editor (a second mount rejects).
 
+The standard toolbar itself can live in a host element outside the editor root
+(`toolbarContainer`, `mountToolbar`, `BreditorToolbarSlot`); see
+[External toolbar container](#external-toolbar-container-decoupled-layout).
+
 ## Menu bar
 
 `mountRichMenuBar(host, options)` inserts a WAI-ARIA `role="menubar"` before the
@@ -193,7 +197,7 @@ presentations around the same coordinator.
 | CKEditor type | Breditor composition |
 | --- | --- |
 | Classic | The coordinator's fixed toolbar (default), optionally with the menu bar |
-| Decoupled | The fixed toolbar is a separate element; move it, or mount the menu bar into any `container` |
+| Decoupled | `toolbarContainer` / `mountToolbar(container)` ([External toolbar container](#external-toolbar-container-decoupled-layout)), optionally the menu bar in any `container` |
 | Balloon | `mountSelectionToolbar` + hide the fixed toolbar |
 | Balloon block | Balloon + `mountFloatingMenu` (empty lines) + the block drag handle (`mountRichBlockDrag` / `mountSharedBlockDrag`) for the per-block handle |
 | Inline | The fixed toolbar or menu bar mounted into a host container shown on focus |
@@ -205,6 +209,84 @@ receive its options) and hides the fixed toolbar (`hideToolbar`, default
 disposes what it mounted and restores the toolbar's `hidden` state. The drag
 handle stays a separate mount because it needs the coordinator itself
 (`RichDomEditor` / `SharedDomEditor`), not the context UI port.
+
+## External toolbar container (decoupled layout)
+
+A host page can place the editor's standard toolbar anywhere on the page (an
+app header, a sticky bar, a side panel) while the editing surface stays in the
+editor root. This is the coordinator's **own toolbar element** moved into the
+host container: no widget is re-created, copied or borrowed, so it keeps the
+same admitted controls, Rust-derived `read()`/`enabled()` state and read-only
+gate, the same command path (`execute` locally, one guarded `run` for shared
+owners), one Undo step per command, the stale-draft check of field forms and
+the focus return to the editor.
+
+```ts
+// At startup (validated before the editor root changes):
+const editor = await openLocalEditor({host, toolbarContainer: header, ...});
+// or later, on any local, document, shared or shared-document coordinator:
+const toolbar = mountExternalToolbar(editor.contextUi(), header);  // = editor.contextUi().mountToolbar(header)
+toolbar.focus();                 // first enabled control
+toolbar.dispose();               // back into the editor root, in front of the text
+editor.contextUi().externalToolbar?.(); // current mount (including the startup option) or null
+```
+
+Entry points: the `toolbarContainer` option of `RichDomEditor` /
+`mountRichEditor` / `mountDocumentRichEditor`, `SharedDomEditor` /
+`mountSharedEditor` / `mountSharedDocumentEditor` and therefore of every
+`@breditor/editor` open function (`openLocalEditor`, `openLocalDocumentEditor`,
+`openSharedEditor`, `openSharedDocumentEditor`, which also check it before any
+runtime work); the coordinators' `mountToolbar(container)` and
+`externalToolbar()`; and `mountRichExternalToolbar(host, container)`
+(`mountExternalToolbar` in `@breditor/editor` and
+`@breditor/editor/collaboration`, `mountSharedExternalToolbar` in
+`@breditor/collaboration`). React: `BreditorToolbarSlot` from
+`@breditor/editor/react` or `@breditor/editor/collaboration/react` renders one
+empty `<div data-breditor-toolbar-slot>` (`className` prop) and mounts the
+toolbar of `editor={editor.contextUi()}` into it; unmounting or a new
+`sessionKey` disposes the mount. React never reconciles the moved toolbar.
+
+Validation at mount (each failure throws and changes nothing): `TypeError` when
+the container is not an element; `Error` when it belongs to another document,
+is not connected, is the editor root or inside it, is inside editable content
+(`contenteditable` other than `false`), is inside another editor (a rich or
+shared root, another external toolbar wrapper or a multi-root editor) or
+already holds another editor's external toolbar. One external mount per editor
+at a time: a second `mountToolbar` rejects until the first is disposed, so
+moving to another container is `dispose()` then `mountToolbar(other)`. A
+disposed editor rejects.
+
+Structure: the toolbar is wrapped in `<div class="breditor-external-toolbar"
+data-breditor-external-toolbar>` carrying the coordinator's root attribute
+(`data-breditor-rich` or `data-breditor-shared`) so the editor's scoped toolbar
+styles still apply; the wrapper is appended to the container. A small
+stylesheet addition (`richExternalToolbarStyles`) is added to the editor's own
+style element only when an external mount happens, so editors that never use it
+render byte-identical DOM.
+
+Keyboard:
+
+| Where | Key | Effect |
+| --- | --- | --- |
+| Editor root (surface, menu bar, status) | Alt+F10 | Focus the first enabled toolbar control (skipped while the selection toolbar or the empty-line block menu is visible: they own Alt+F10 then) |
+| External toolbar (outside a field form) | Escape | Return focus (and the Rust selection) to the editor |
+| Field form | Enter / Escape | Unchanged: apply once / cancel the draft and return to the editor |
+
+Tab order inside the toolbar is the browser's, as in the classic layout. The
+shortcut registry lists Alt+F10 as `ui:editor-toolbar` ("Move focus to the
+editor toolbar", catalog key `shortcutFocusEditorToolbar`) while mounted.
+
+Cleanup: `dispose()` (idempotent) moves the toolbar back in front of the text
+(after a menu bar, if one is mounted), removes the wrapper and the keyboard
+bridge, releases the registry entries and returns focus to the editor when it
+was inside the toolbar. Disposing the editor removes the wrapper from the host
+container. Two editors on one page each own their wrapper; a container is never
+shared, and each toolbar only drives its own editor.
+
+The menu bar still inserts itself into the editor root (or its own
+`container`), and the balloon-block preset hides only a toolbar that is in the
+editor root. `mountRichMultiRootEditor` already places its roots' toolbars in its
+own shared strip, so its editors reject `mountToolbar`.
 
 ## Localization
 
@@ -222,6 +304,13 @@ come from the catalog's `controls` entries. Chrome elements take the catalog's
   Firefox and WebKit (`experiments/rich-browser/editor-shell.spec.mjs`) and a
   shared two-writer check (`experiments/shared-browser/editor-shell.spec.mjs`).
   Screen-reader announcement has not been qualified with assistive technology.
+- The external toolbar container is covered by
+  `packages/breditor-editor/tests/external_toolbar_contract.test.ts` (local and
+  shared), `external_toolbar_react.test.tsx` and the real Rust/Wasm check
+  `experiments/rich-browser/external-toolbar.spec.mjs`. Alt+F9 and Alt+0 are
+  listened for on the editor root, so they do not fire while focus is in an
+  external toolbar (Alt+F10 / Escape go back first). A container inside a shadow
+  root needs the toolbar styles in that shadow root.
 - Browser or operating-system reservations can intercept Alt+F9 / Alt+0 (for
   example some Linux window managers); both chords are configurable.
 - Fixed positioning of the block menu and the dialog assumes no transformed

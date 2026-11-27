@@ -103,6 +103,14 @@ selection toolbar and context menu register their chords (Alt+F10, Shift+F10,
 the Menu key, Escape) in the editor's read-only shortcut registry while mounted,
 so the help dialog lists them.
 
+The standard toolbar can also be mounted into a host container outside the
+editor root (decoupled layout: `toolbarContainer`, `mountToolbar(container)`,
+`BreditorToolbarSlot`; see
+[EDITOR_SHELL.md](EDITOR_SHELL.md#external-toolbar-container-decoupled-layout)).
+That moves the coordinator's own toolbar element, so the contextual UI keeps
+borrowing the same widgets. While the selection toolbar is visible it keeps
+Alt+F10; otherwise Alt+F10 reaches the external toolbar.
+
 ## Teardown
 
 `dispose()` aborts every borrowed widget (removing it from the coordinator's

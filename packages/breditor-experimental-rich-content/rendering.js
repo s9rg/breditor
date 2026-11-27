@@ -43,6 +43,8 @@ export {richPrintStyles,resolveRichPrintLayout,richPrintPageSizes,richPrintOrien
 export {richMentionFormat,richMentionKindProperty,richMentionIdProperty,richMentionLabelProperty,richMentionKinds,richMentionClass,richMentionStyles,isRichMentionId,isRichMentionKind,isRichMentionLabel,mentionOf,mentionText,mentionFormat,groupMentionRuns,mentionChipAttributes,createMentionChip} from "./dist/browser/mention.js";
 // Editor shell registry: coordinators describe the chords their own keydown routing owns.
 export {richCoordinatorShortcuts} from "./dist/browser/shortcut_registry.js";
+// Decoupled toolbar: coordinators move their own standard toolbar into a validated host container.
+export {attachRichExternalToolbar,checkRichToolbarContainer,richExternalToolbarStyles} from "./dist/browser/external_toolbar.js";
 export * from "./dist/browser/formatting_productivity.js";
 export * from "./dist/browser/special_characters.js";
 export {richRubyExtensionName,richRubyFormat,richRubyAnnotationProperty,richRubyAnnotationMaxBytes,richRubyClass,richRubyStyles,richRubyBootstrapExtensionV1,richRubySharedExtensionV1,withRichRubyBootstrapV1,withRichRubySharedConfigurationV1,isRichRubyAnnotation,isRichRubyDeclaration,rubyAnnotationOf,rubyFormat,groupRubyRuns,createRubyElement,rubyGroupAt,rubyControls,rubyCommand,rubyToolbarControls} from "./dist/browser/ruby.js";

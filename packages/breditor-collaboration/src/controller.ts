@@ -25,6 +25,7 @@ import type {RichWritingToolsRead} from "@breditor/experimental-rich-content";
 import {RichWritingEvents,RichWritingReadRegistry,type RichWritingToolsHostState} from "@breditor/experimental-rich-content/rendering";
 import {prepareRichPlaceholder,RichPlaceholderPresentation,richPlaceholderStyles} from "@breditor/experimental-rich-content/rendering";
 import {richCoordinatorShortcuts,type RichShortcutEntry} from "@breditor/experimental-rich-content/rendering";
+import {attachRichExternalToolbar,checkRichToolbarContainer,richExternalToolbarStyles,type RichExternalToolbar} from "@breditor/experimental-rich-content/rendering";
 import {mountSharedV4BlockFieldDom,sharedV4RenderOptions} from "./v4_block_fields_dom.js";
 export interface SharedDomOptions<P extends SharedSelectionPolicy="original"> extends RenderOptions {
  core:SharedRichEditor<P>;toolbar?:readonly SharedToolbarControl<P>[];label?:string;image?:{asset:string;alt:string};
@@ -50,6 +51,11 @@ export interface SharedDomOptions<P extends SharedSelectionPolicy="original"> ex
  onFiles?:(files:readonly File[],position:{parent:string|null;before:string|null},revision:string)=>void|Promise<void>;
  /** Document-aware asset replacement retains this guard and submits one native rich paste. */
  onDocumentFiles?:(files:readonly File[],revision:string)=>void|Promise<void>;
+ /**
+  * Opt-in decoupled layout: the standard toolbar is mounted into this host element instead of the editor root
+  * (see `mountToolbar`). Validated before the root changes; docs/EDITOR_SHELL.md.
+  */
+ toolbarContainer?:HTMLElement;
 }
 export type SharedDocumentDomOptions=Omit<SharedDomOptions<"document-v1">,"selectionEditing">&{selectionEditing:"document-v1"};
 interface Work<P extends SharedSelectionPolicy> {run:(context:ActionContext<P>)=>void;revision:string;focus:boolean;boundary:boolean;accepted?:((display:boolean)=>void)|undefined;completion?:RichSearchCompletion|undefined}
@@ -69,6 +75,7 @@ export class SharedDomEditor<P extends SharedSelectionPolicy="original"> {
  readonly #searchEvents=new RichSearchEvents();
  readonly #writingEvents=new RichWritingEvents();readonly #writingReads=new RichWritingReadRegistry();
  readonly #placeholder:RichPlaceholderPresentation|undefined;
+ #external:RichExternalToolbar|undefined;
  #prefix=`shared:${crypto.randomUUID()}`;#counter=0n;#controls:{control:SharedToolbarControl<P>;view:RichControlView<ActionContext<P>>}[]=[];
  readonly #borrowed=new Set<{control:SharedToolbarControl<P>;view:RichControlView<ActionContext<P>>}>();
  readonly #selectionPolicy:P;readonly #document:SharedRichEditor<"document-v1">|undefined;
@@ -87,6 +94,7 @@ export class SharedDomEditor<P extends SharedSelectionPolicy="original"> {
   if(this.#model.view.historyGrouping==="typing-v1"&&!options.core.supportsTypingHistory())throw Error("Use matching native shared typing history");
   for(const control of options.toolbar??[...defaultSharedToolbarFor<P>(),...moveSharedToolbarFor<P>()])if(control.owner!==undefined&&control.owner!==options.core)throw Error("Toolbar control belongs to a different Rust owner");
   const ui=resolveRichUi(options.ui);ui.checkControls(options.toolbar??[...defaultSharedToolbarFor<P>(),...moveSharedToolbarFor<P>()]);this.#ui=ui;
+  if(options.toolbarContainer!==undefined)checkRichToolbarContainer(options.toolbarContainer,root);
   const d=root.ownerDocument,style=d.createElement("style");style.textContent=styles+standardInlineStylesV1+toolbarControlStyles+(structuralBlockStylesV2+richPageBreakStyles+richLegalListStyles).replaceAll("[data-breditor-rich]","[data-breditor-shared]")+(options.scrollableTables?richTableScrollStyles:"")+(this.#document?sharedDocumentSelectionStyles:"")+(placeholder?richPlaceholderStyles:"")+(options.inlinePresentation&&richInlinePresentationHasRuby(options.inlinePresentation)?richRubyStyles:"");root.dataset["breditorShared"]="";
   this.surface=d.createElement("div");this.surface.contentEditable="true";this.surface.className="breditor-shared-surface";this.surface.setAttribute("role","textbox");this.surface.setAttribute("aria-multiline","true");this.surface.setAttribute("aria-label",options.label??ui.text("sharedEditorLabel"));
   this.toolbar=d.createElement("div");this.toolbar.className="breditor-shared-toolbar";this.toolbar.setAttribute("role","toolbar");this.toolbar.setAttribute("aria-label",ui.text("sharedToolbarLabel"));ui.applyChrome(this.toolbar);this.status=d.createElement("p");this.status.setAttribute("role","status");ui.applyChrome(this.status);
@@ -114,7 +122,21 @@ export class SharedDomEditor<P extends SharedSelectionPolicy="original"> {
   this.surface.addEventListener("compositionstart",()=>this.#startComposition(),{signal});this.surface.addEventListener("compositionend",event=>this.#endComposition(event.data),{signal});
   d.addEventListener("selectionchange",()=>{if(!this.#busy&&!this.#composition)this.#attempt(()=>this.#sync());},{signal});
   this.#placeholder?.activate();
+  if(options.toolbarContainer!==undefined)this.mountToolbar(options.toolbarContainer);
  }
+ /**
+  * Decoupled layout: move this editor's standard toolbar (the same admitted widgets) into a host container outside
+  * the editor root. Alt+F10 in the editor focuses it and Escape returns to the text. One external mount at a time;
+  * its `dispose()` (or editor disposal) puts the toolbar back. See docs/EDITOR_SHELL.md.
+  */
+ mountToolbar(container:HTMLElement):RichExternalToolbar{
+  this.#live();if(this.#external)throw Error("This editor's toolbar is already mounted in an external container");
+  const mounted:RichExternalToolbar=attachRichExternalToolbar({root:this.#root,surface:this.surface,toolbar:this.toolbar,attribute:"breditorShared",ui:this.#ui,editor:this.#abort.signal,container,anchor:()=>this.#placeholder?.container??this.surface,focusEditor:()=>{if(!this.#disposed)this.focus();},onDispose:()=>{if(this.#external===mounted)this.#external=undefined;}});
+  const style=this.#root.querySelector<HTMLStyleElement>(":scope>style");if(style&&!style.textContent?.includes(richExternalToolbarStyles))style.textContent+=richExternalToolbarStyles;
+  this.#external=mounted;return mounted;
+ }
+ /** The current external toolbar mount (including one made by the `toolbarContainer` option), or null. */
+ externalToolbar():RichExternalToolbar|null{return this.#external??null;}
  #read():RichModel<P>{return sharedPresentationModel<P>(this.#options.core.view(),this.#selectionPolicy);}
  #isLogical():boolean{return ["grid","node","document"].includes(this.#model.view.selection?.kind??"");}
  #live():void{if(this.#disposed)throw new SharedEditorError("disposed","The shared DOM editor is disposed");}
