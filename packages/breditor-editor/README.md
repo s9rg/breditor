@@ -658,6 +658,23 @@ const mentions = mountMentions(editor, {items: async (query, {signal}) => (await
 editor.execute({kind: 'insertMention', data: {selection, mention: {kind: 'user', id: 'u-1', label: 'Ann Lee'}}});
 ```
 
+Several trigger characters: pass `feeds` instead of `items` (local `mountMentions`
+and the shared one in `@breditor/editor/collaboration`). Each feed maps one
+grapheme to closed kinds and has its own cancellable source; feeds are validated
+when mounted (one grapheme, no white space, unique, never `/`). Whatever the
+trigger, the stored text is `@` + label; the optional `mentionPresentation` editor
+and `renderStaticDocument` option decorates chips (display text such as `#design`,
+title, classes, `data-mention-host-*`) without changing that text.
+
+```js
+const mentions = mountMentions(editor, {feeds: [
+  {trigger: '@', kinds: ['user', 'page'], items: searchPeopleAndPages},
+  {trigger: '#', kinds: ['tag'], items: searchTags, label: 'Tags'},
+]});
+const editor = await openLocalEditor({host, richLanguage: 4,
+  mentionPresentation: (m) => m.kind === 'tag' ? {text: `#${m.label}`} : undefined});
+```
+
 V4 adds table captions: one optional caption paragraph per table, shown below
 the rows (`<caption>` with `caption-side: bottom`). The **Table caption** toolbar
 control adds an empty caption and moves the caret into it, or removes it; Enter in

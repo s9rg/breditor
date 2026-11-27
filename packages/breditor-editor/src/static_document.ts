@@ -18,7 +18,8 @@ import {
  compileInlineFormatRecipes,createInlineFormatRenderManifest,resolveInlineFormatRenderAttributes,isCanonicalLanguageTagV1,isImageLinkHrefV1,imageLinkRenderAttributesV1,
  type BrowserProfileFormatDescriptor,type InlineFormatRenderRecipe,type InlineFormatRenderAttribute,
 } from "@breditor/experimental-rich-content/rendering";
-import {groupMentionRuns,mentionChipAttributes,mentionOf,richMentionFormat,richMentionIdProperty,richMentionKindProperty,richMentionLabelProperty} from "@breditor/experimental-rich-content/rendering";
+import {groupMentionRuns,mentionOf,richMentionFormat,richMentionIdProperty,richMentionKindProperty,richMentionLabelProperty} from "@breditor/experimental-rich-content/rendering";
+import {requireRichMentionRenderer,richMentionChipPresentation,richMentionDisplayStyles,richMentionTextAttribute,type RichMentionRenderer} from "@breditor/experimental-rich-content/rendering";
 import {bookmarkAttributes,internalLinkAttributes,internalLinkOf,isBookmarkName} from "@breditor/experimental-rich-content/rendering";
 import {groupRubyRuns,richRubyAnnotationMaxBytes,richRubyAnnotationProperty,richRubyClass,richRubyFormat} from "@breditor/experimental-rich-content/rendering";
 import {legalListMarkersWith,richLegalListStyles} from "@breditor/experimental-rich-content/rendering";
@@ -82,6 +83,15 @@ export interface StaticRenderOptions {
  tableOfContents?:boolean|StaticTableOfContentsOptions;
  /** Color syntax in labeled code blocks using the bounded live editor language set. */
  codeHighlighting?:boolean;
+ /**
+  * Optional V4 mention chip decoration, the same hook and sanitizer as the live
+  * `mentionPresentation` option (display text, title, class tokens, `data-mention-host-*`). The chip
+  * text stays the stored `@label`; display text adds `data-mention-display` and wraps the stored
+  * pieces in `<span data-mention-text>`, and the wrapper then carries a
+  * `<style data-breditor-mentions>` with `richMentionDisplayStyles` (fragments carry no stylesheet).
+  * A hook that throws or returns an invalid value leaves that chip at its default output.
+  */
+ mentionPresentation?:RichMentionRenderer;
 }
 
 export type StaticImageState="ready"|"unresolved"|"rejected"|"error";
@@ -136,6 +146,7 @@ function renderContents(document:unknown,options:StaticRenderOptions,includeStyl
   renderer.print?`<style data-breditor-print="">${richPrintStyles(renderer.print)}</style>`:"",
   options.legalListNumbering===true?`<style data-breditor-legal-lists="">${richLegalListStyles}</style>`:"",
   renderer.hasCodeColors?`<style data-breditor-code-highlighting="">${staticCodeHighlightingStyles}</style>`:"",
+  renderer.hasMentionDisplay?`<style data-breditor-mentions="">${richMentionDisplayStyles}</style>`:"",
  ].join(""):"";
  return {html:style+body,report:Object.freeze({skipped:Object.freeze(renderer.skipped),images:Object.freeze(renderer.images),hiddenTables:Object.freeze(renderer.hiddenTables),inactiveMerges:Object.freeze(renderer.inactiveMerges)})};
 }
@@ -358,6 +369,9 @@ class Renderer {
  readonly #codeBudget:CodeSyntaxBudget|undefined;
  #hasCodeColors=false;
  get hasCodeColors():boolean{return this.#hasCodeColors;}
+ readonly #mentionPresentation:RichMentionRenderer|undefined;
+ #hasMentionDisplay=false;
+ get hasMentionDisplay():boolean{return this.#hasMentionDisplay;}
  constructor(options:StaticRenderOptions){
   if(typeof options!=="object"||options===null||Array.isArray(options))throw new TypeError("Static render options must be an object");
   if(options.unknown!==undefined&&options.unknown!=="error"&&options.unknown!=="skip")throw new TypeError("unknown must be \"error\" or \"skip\"");
@@ -371,6 +385,7 @@ class Renderer {
   this.#contentsOptions=contentsOptions(options.tableOfContents);
   if(options.codeHighlighting!==undefined&&typeof options.codeHighlighting!=="boolean")throw new TypeError("codeHighlighting must be a Boolean");
   this.#codeBudget=options.codeHighlighting?new CodeSyntaxBudget():undefined;
+  this.#mentionPresentation=requireRichMentionRenderer(options.mentionPresentation);
   if(options.print!==undefined&&typeof options.print!=="boolean"&&(typeof options.print!=="object"||options.print===null))throw new TypeError("print must be a Boolean or print options");
   this.print=options.print===undefined||options.print===false?undefined:resolveRichPrintLayout(options.print===true?{}:options.print);
   const limits=options.limits??{};
@@ -630,8 +645,11 @@ class Renderer {
   catch{return this.#fail("grammar","Mention text must be whole copies of @ plus its label",node.path);}
   const mentions=(list:ReturnType<typeof groupMentionRuns<Text>>)=>list.map(item=>{
    if(item.kind==="run")return this.#inline(item.run);
-   const open=mentionChipAttributes(item.mention).map(({name,value})=>` ${name}="${escapeHtmlAttribute(value)}"`).join("");
-   return `<span${open}>${item.pieces.map(piece=>this.#inline(piece)).join("")}</span>`;
+   const chip=richMentionChipPresentation(item.mention,this.#mentionPresentation);
+   const open=chip.attributes.map(({name,value})=>` ${name}="${escapeHtmlAttribute(value)}"`).join(""),pieces=item.pieces.map(piece=>this.#inline(piece)).join("");
+   if(chip.display===undefined)return `<span${open}>${pieces}</span>`;
+   this.#hasMentionDisplay=true;
+   return `<span${open}><span ${richMentionTextAttribute}="">${pieces}</span></span>`;
   }).join("");
   // Opt-in ruby extension: group equal annotations; mentions are grouped within each segment.
   if(!runs.some(run=>run.formats.some(format=>format.type===richRubyFormat)))return mentions(items);

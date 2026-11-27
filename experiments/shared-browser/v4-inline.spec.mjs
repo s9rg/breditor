@@ -7,7 +7,9 @@ test.beforeEach(async({page})=>{
  await page.evaluate(async()=>{
   const {v4InlineFixture,paragraph,mention,tagged,image}=await import("/v4-fixture-inline.mjs"),shared=window.sharedTools;
   const t=v4InlineFixture(shared,{children:[paragraph("intro","Hello world"),paragraph("people","Hi ",mention("Ann","u-ann")," said ",tagged("bonjour","fr-CA")),
-   image("fig",{link:"https://example.com/chart",newWindow:true}),image("deco",{decorative:true}),paragraph("tail","Tail")]});
+   image("fig",{link:"https://example.com/chart",newWindow:true}),image("deco",{decorative:true}),paragraph("tail","Tail")],
+   // Presentation only: tag chips show a `#` marker; every other chip keeps the default output.
+   mentionPresentation:entity=>entity.kind==="tag"?{text:`#${entity.label}`,title:`Tag ${entity.label}`}:undefined});
   const cancels=[],executions=[];
   const people=[{kind:"user",id:"u-ann",label:"Ann Lee"},{kind:"user",id:"u-bo",label:"Bo"},{kind:"page",id:"p-road",label:"Roadmap"}];
   const mentions=shared.mountSharedMentions(t.da,{items:people,core:t.a,onCancel:reason=>cancels.push(reason),onExecute:execution=>executions.push(execution.request.commands.map(command=>command.kind))});
@@ -76,6 +78,35 @@ test("choosing an @ suggestion replaces the trigger with one chip in one Undo st
  await page.keyboard.press("Backspace");
  const deleted=await page.evaluate(async()=>{const t=window.v4;await t.synchronize();return t.runs(t.b,"tail");});
  expect(deleted).toEqual([["Tail  ok",null,null]]);
+});
+
+test("host-declared # feed inserts a tag through one guarded insert_mention; peers decorate it alike",async({page})=>{
+ const mounted=await page.evaluate(()=>{const t=window.v4;t.mentions.dispose();
+  const tags=[{kind:"tag",id:"t-bug",label:"bug"},{kind:"tag",id:"t-build",label:"build"}],queries=[];
+  t.mentions=window.sharedTools.mountSharedMentions(t.da,{core:t.a,feeds:[{trigger:"@",kinds:["user"],items:[{kind:"user",id:"u-ann",label:"Ann Lee"}]},{trigger:"#",kinds:["tag"],label:"Tags",
+   items:(query,request)=>{queries.push([query,request.signal]);return new Promise(resolve=>setTimeout(()=>{if(!request.signal.aborted)resolve(tags.filter(tag=>tag.label.startsWith(query)));},5));}}],
+   onExecute:execution=>t.executions.push(execution.request.commands.map(command=>command.kind))});
+  t.queries=queries;return document.querySelectorAll("[data-breditor-mention]").length;});
+ expect(mounted).toBe(2);
+ await page.evaluate(()=>{const t=window.v4;t.da.select(t.caret("tail",4));});
+ await page.keyboard.type(" #bu");
+ const tagMenu=page.locator("[data-breditor-mention][data-mention-trigger='#']");
+ await expect(tagMenu.getByRole("option")).toHaveText(["bug","build"]);
+ await expect(tagMenu.getByRole("listbox")).toHaveAttribute("aria-label","Tags");
+ expect(await page.evaluate(()=>({feed:window.v4.mentions.state().feed,aborted:window.v4.queries.slice(0,-1).every(([,signal])=>signal.aborted),queries:window.v4.queries.map(([query])=>query)}))).toEqual({feed:"#",aborted:true,queries:["","b","bu"]});
+ const depth=await page.evaluate(()=>window.v4.a.view().undoDepth);
+ await page.keyboard.press("ArrowDown");await page.keyboard.press("Enter");
+ await expect(tagMenu).toBeHidden();
+ const chosen=await page.evaluate(async()=>{const t=window.v4;await t.synchronize();return {runs:t.runs(t.b,"tail"),kind:t.find(t.b,"tail").children[1].formats[0].properties["breditor/mention-kind"],depth:t.a.view().undoDepth,executions:t.executions,errors:t.errors};});
+ // The stored grammar is unchanged: `@build` of kind tag, whatever the trigger.
+ expect(chosen).toEqual({runs:[["Tail ",null,null],["@build","build",null],[" ",null,null]],kind:"tag",depth:depth+1,executions:[["insert_mention"]],errors:[]});
+ for(const pane of ["#a","#b"]){
+  const chip=page.locator(`${pane} span.breditor-mention[data-mention-id="t-build"]`);
+  await expect(chip).toHaveAttribute("data-mention-display","#build");await expect(chip).toHaveAttribute("title","Tag build");
+  expect(await chip.evaluate(element=>[getComputedStyle(element,"::before").content,element.textContent])).toEqual(['"#build"',"@build"]);
+ }
+ const undone=await page.evaluate(async()=>{const t=window.v4;t.a.undo();await t.synchronize();return t.runs(t.b,"tail");});
+ expect(undone).toEqual([["Tail #bu",null,null]]);
 });
 
 test("a peer edit to the typed @ trigger cancels the menu and choosing publishes nothing",async({page})=>{

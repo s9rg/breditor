@@ -169,6 +169,30 @@ describe("shared @ mention menu",()=>{
   expect(t.mentions.state()).toMatchObject({open:false,lastCancel:"trigger-invalidated"});expect(t.onCancel).toHaveBeenCalledWith("trigger-invalidated");
   expect(t.dispatched).toEqual([]);
  });
+ it("routes host-declared trigger feeds to their own provider and one guarded insert_mention",async()=>{
+  const t=fakeOwner([p("a","Fix "),p("b","second")],{selection:caret("a",4)});
+  const core=new SharedRichEditor(t.raw as unknown as SharedRustOwner),host=document.createElement("div");document.body.append(host);
+  const dom=mountSharedEditor(host,{core,coreOwnership:"borrow",toolbar:[]} as never);
+  const signals:AbortSignal[]=[];
+  const tags=vi.fn(async(query:string,request:{signal:AbortSignal})=>{signals.push(request.signal);return [{kind:"tag" as const,id:"t-bug",label:"bug"},{kind:"tag" as const,id:"t-build",label:"build"}].filter(tag=>tag.label.startsWith(query));});
+  const mentions=mountSharedMentions(dom,{feeds:[{trigger:"@",kinds:["user","page"],items:people},{trigger:"#",kinds:["tag"],items:tags,label:"Tags"}],core});
+  mounted.push(()=>{mentions.dispose();dom.dispose();core.dispose();host.remove();});
+  type(dom,"#bu");
+  expect(mentions.state()).toMatchObject({open:true,feed:"#",trigger:{block:"a",start:4},query:"bu",loading:true});
+  // Each query change aborts the feed's previous request.
+  expect(tags.mock.calls.map(call=>call[0])).toEqual(["","b","bu"]);expect(signals.slice(0,2).every(signal=>signal.aborted)).toBe(true);
+  await Promise.resolve();await Promise.resolve();
+  expect(mentions.state().items.map(item=>item.id)).toEqual(["tag:t-bug","tag:t-build"]);
+  expect(document.querySelector("[data-breditor-mention][data-mention-trigger='#'] [role=listbox]")!.getAttribute("aria-label")).toBe("Tags");
+  const typed=JSON.stringify(t.root());
+  mentions.choose(1);
+  expect(t.dispatched).toEqual([{commands:[{kind:"insert_mention",data:{anchor:{block:"a",offset:"4",affinity:"after"},focus:{block:"a",offset:"7",affinity:"after"},mention:{kind:"tag",id:"t-build",label:"build"}}}],selectionUpdate:{kind:"set",value:caret("a",4+1+5+1)}}]);
+  // The stored grammar is unchanged: the mention text is `@` + label whatever the trigger.
+  expect(textOf(t.need("a"))).toBe("Fix @build ");
+  core.undo();expect(JSON.stringify(t.root())).toBe(typed);
+  // The `@` feed keeps its own static source.
+  type(dom," @r");expect(mentions.state()).toMatchObject({open:true,feed:"@",query:"r"});expect(mentions.state().items.map(item=>item.id)).toEqual(["page:p-road"]);
+ });
  it("refuses to mount for an owner without native mentions; the SDK helper borrows a session",()=>{
   const t=fakeOwner([p("a","")],{inline:false}),core=new SharedRichEditor(t.raw as unknown as SharedRustOwner),host=document.createElement("div");document.body.append(host);
   const dom=mountSharedEditor(host,{core,coreOwnership:"borrow",toolbar:[]} as never);mounted.push(()=>{dom.dispose();core.dispose();host.remove();});

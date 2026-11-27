@@ -166,6 +166,17 @@ published. Code lives in `rich_replica/v4_inline.rs` (owner entry points),
   ONE guarded dispatch `{commands:[insert_mention], selectionUpdate:set(caret)}` at
   the checked revision (a Rust contract proves it equals the native command); a
   peer edit that invalidates the trigger closes the menu and publishes nothing.
+- **Trigger feeds.** `mountSharedMentions(host, {feeds, core?})` takes the same
+  validated host-declared feeds as the local menu (for example `@` for users and
+  pages, `#` for tags; one grapheme, no white space, unique, never `/`; see
+  RICH_LANGUAGE_V4.md "Trigger feeds"). Each feed has its own menu and its own
+  AbortSignal-cancelled provider; choosing from any feed publishes the same ONE
+  guarded `insert_mention` over the typed `<trigger><query>`, so the replicated
+  text is the frozen `@label` and one Undo restores `#query` for its writer.
+- **Presentation hook.** The shared DOM editor forwards the `mentionPresentation`
+  render option like the local one (sanitized display text, title, classes and
+  `data-mention-host-*`; chip text stays the stored `@label`), so every peer can
+  decorate the same replicated mention its own way without touching the CRDT.
 - **Image links.** A link on a decorative image is refused with
   `a decorative image cannot be linked` (both the owner entry point and the shared
   command); clearing an absent link is an admitted no-op; non-canonical or unsafe

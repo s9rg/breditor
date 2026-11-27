@@ -122,11 +122,18 @@ export function groupMentionRuns<R extends MentionRun>(runs:readonly R[],rebuild
 export function mentionChipAttributes(mention:RichMention):readonly {name:string;value:string}[]{
  return [{name:"class",value:richMentionClass},{name:"data-mention-kind",value:mention.kind},{name:"data-mention-id",value:mention.id}];
 }
-/** Live inert chip: a non-editable island whose text is the stored `@label`. */
-export function createMentionChip(document:Document,mention:RichMention,children:readonly Node[]):HTMLElement{
+/**
+ * Live inert chip: a non-editable island whose text is the stored `@label`. An optional sanitized
+ * host presentation (`mention_presentation.ts`) adds attributes; with display text the stored
+ * pieces sit in one `<span data-mention-text>` so the DOM text (selection offsets) is unchanged.
+ */
+export function createMentionChip(document:Document,mention:RichMention,children:readonly Node[],presentation?:import("./mention_presentation.js").RichMentionChipPresentation):HTMLElement{
  const chip=document.createElement("span");
- for(const {name,value} of mentionChipAttributes(mention))chip.setAttribute(name,value);
- chip.setAttribute("contenteditable","false");chip.append(...children);return chip;
+ for(const {name,value} of presentation?.attributes??mentionChipAttributes(mention))chip.setAttribute(name,value);
+ chip.setAttribute("contenteditable","false");
+ if(presentation?.display!==undefined){const text=document.createElement("span");text.setAttribute("data-mention-text","");text.append(...children);chip.append(text);}
+ else chip.append(...children);
+ return chip;
 }
 /** Live/static chip CSS (optional host styling hook). */
 export const richMentionStyles=`.${richMentionClass}{border-radius:4px;padding:0 2px;background:#e3eefb;color:#173d6b;white-space:nowrap}`;
