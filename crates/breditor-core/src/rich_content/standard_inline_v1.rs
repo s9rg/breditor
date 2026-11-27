@@ -41,9 +41,11 @@ pub enum StandardInlineFormatV1 {
     Strike,
     /// Inline code, not a structural code block.
     Code,
-    /// Subscript. Controls may explicitly replace superscript in one group.
+    /// Subscript. Commands treat it as exclusive with superscript: applying it
+    /// removes superscript in the same intent (see `inspect_standard_script_v1`).
     Subscript,
-    /// Superscript. Admission does not silently delete another format.
+    /// Superscript. Admission does not silently delete subscript; a stored run with
+    /// both reads as a conflicting mixed script and resolves to superscript on export.
     Superscript,
     /// Required href and new-window flag.
     Link,

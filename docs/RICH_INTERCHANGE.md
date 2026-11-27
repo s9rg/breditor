@@ -147,6 +147,22 @@ application-native clipboard certification. They cover list metadata, stylesheet
 classes, Unicode, formatting, nested lists, merges, captions and asset references.
 Unsupported content has a loss, compatibility notice or closed rejection result.
 
+### Subscript and superscript
+
+The two scripts are exclusive in conversion, matching the editor commands
+(see the [standard profile](../packages/breditor-experimental-rich-content/README.md#subscript-and-superscript)).
+
+| Direction | Behavior |
+| --- | --- |
+| HTML import | `<sub>`/`<sup>` and `vertical-align: sub\|super` (inline style or a matched stylesheet rule, in cascade order) each set one script and remove the other. Nested scripts resolve innermost-wins: `<sup>a<sub>b</sub></sup>` is `a` superscript, `b` subscript. On one element the style beats the tag. `baseline`, `initial` and `unset` reset to no script; `inherit` restores the parent's script. Other values (`top`, `middle`, lengths) keep the inherited script and report `unsupported-style`. Word desktop `<sub>`/`<sup>` and `MsoFootnoteReference` class rules, Word Online `vertical-align` spans, and Google Docs `vertical-align:sub\|super\|baseline` spans use this same path. |
+| HTML export | `<sub>`/`<sup>`. A stored run carrying both literals exports as `<sup>` only, reporting `style-approximation`. A round trip then stays fixed. |
+| Markdown | CommonMark has no script syntax. Export keeps the block as sanitized raw HTML (`<sub>`/`<sup>`, `markdown-feature` compatibility notice). Import reads raw `<sub>`/`<sup>` through the HTML rules above. |
+| DOCX | `w:vertAlign w:val="subscript"\|"superscript"`. A stored conflict writes `superscript` and reports `style-approximation`. |
+| XML | Lossless: each stored literal, including both on one run, is a `breditor:format`. |
+
+Tests: `packages/breditor-interchange/tests/scripts.test.ts` (each direction,
+producer markup, HTML, Markdown and paste-to-DOCX round trips).
+
 ### Producer clipboard corpus
 
 `packages/breditor-interchange/tests/fixtures/producers/` adds full clipboard

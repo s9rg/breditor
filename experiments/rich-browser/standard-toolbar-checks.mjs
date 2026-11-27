@@ -35,6 +35,23 @@ export function standardToolbarChecks(prefix,host){
   await page.evaluate(()=>window.toolbarTest.undo());expect(await page.evaluate(()=>window.toolbarTest.owner.documentJson())).toBe(await page.evaluate(()=>window.toolbarTest.before));await page.evaluate(()=>window.toolbarTest.redo());
   const before=await page.evaluate(()=>window.toolbarTest.owner.documentJson());await page.locator(action("clear-inline")).click();await expect(page.locator(`${host} figcaption mark`)).toHaveText("x");await expect(page.locator(`${host} figcaption a,${host} figcaption sub`)).toHaveCount(0);await page.evaluate(()=>window.toolbarTest.undo());expect(await page.evaluate(()=>window.toolbarTest.owner.documentJson())).toBe(before);expect(await page.evaluate(()=>window.toolbarTest.errors)).toEqual([]);
  });
+ test("stored script conflicts read mixed and each script applies exclusively in one Undo step and at the caret",async({page})=>{
+  await page.evaluate(()=>{const t=window.toolbarTest;for(const kind of [t.k.subscript,t.k.superscript])t.set("caption",0,1,kind);t.select("caption",0,1);t.before=t.owner.documentJson();t.depth=t.owner.view().undoDepth;});
+  // A stored conflict loads unchanged, renders in canonical nesting order and reads as mixed on both controls.
+  await expect(page.locator(`${host} figcaption sub > sup`)).toHaveText("x");
+  for(const id of ["subscript","superscript"])await expect(page.locator(action(id))).toHaveAttribute("aria-pressed","mixed");
+  const depth=()=>page.evaluate(()=>window.toolbarTest.owner.view().undoDepth-window.toolbarTest.depth);
+  await page.locator(action("superscript")).click();await expect(page.locator(`${host} figcaption sup`)).toHaveText("x");await expect(page.locator(`${host} figcaption sub`)).toHaveCount(0);
+  await expect(page.locator(action("superscript"))).toHaveAttribute("aria-pressed","true");await expect(page.locator(action("subscript"))).toHaveAttribute("aria-pressed","false");expect(await depth()).toBe(1);
+  await page.locator(action("subscript")).click();await expect(page.locator(`${host} figcaption sub`)).toHaveText("x");await expect(page.locator(`${host} figcaption sup`)).toHaveCount(0);expect(await depth()).toBe(2);
+  await page.evaluate(()=>{window.toolbarTest.undo();window.toolbarTest.undo();});expect(await page.evaluate(()=>window.toolbarTest.owner.documentJson())).toBe(await page.evaluate(()=>window.toolbarTest.before));
+  // Caret inside the conflict: switching scripts edits pending formats only, and typed text carries exactly one script.
+  await page.evaluate(()=>window.toolbarTest.select("caption",1,1,"before"));for(const id of ["subscript","superscript"])await expect(page.locator(action(id))).toHaveAttribute("aria-pressed","mixed");
+  await page.locator(action("superscript")).click();await page.locator(action("subscript")).click();await expect(page.locator(action("subscript"))).toHaveAttribute("aria-pressed","true");expect(await depth()).toBe(0);
+  await page.keyboard.type("Q");
+  expect(await page.evaluate(()=>{const t=window.toolbarTest,runs=[],walk=n=>{if(n.kind==="text")runs.push(n);else for(const c of n.children??[])walk(c);};walk(JSON.parse(t.owner.documentJson()).root);return runs.find(r=>r.text==="Q")?.formats.map(f=>f.type).filter(type=>type===t.k.subscript||type===t.k.superscript);})).toEqual(["breditor-inline/subscript"]);
+  expect(await page.evaluate(()=>window.toolbarTest.errors)).toEqual([]);
+ });
  test("caret controls preserve inherited application marks and explicit pending plain while typing",async({page})=>{
   await page.evaluate(()=>{const t=window.toolbarTest;t.set("caption",0,1,"example/review");t.select("caption",1,1,"before");t.before=t.owner.documentJson();});
   await page.locator(action("italic")).click();await page.keyboard.type("Q");await expect(page.locator(`${host} figcaption em mark`)).toHaveText("Q");

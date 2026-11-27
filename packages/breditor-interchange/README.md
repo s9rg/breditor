@@ -149,7 +149,11 @@ and complete loss notices for each.
   and notices above exactly.
 - Google Docs' `<b style="font-weight:normal" id="docs-internal-guid-…">`
   wrapper bolds nothing; span `font-weight`, `font-style`, `text-decoration` and
-  `vertical-align: super|sub` become marks. A `ul`/`ol` placed directly inside a
+  `vertical-align: super|sub` become marks. Subscript and superscript are
+  exclusive: each `<sub>`/`<sup>` or `vertical-align` replaces the other script,
+  nested scripts resolve innermost-wins, and a stored run carrying both exports
+  as superscript (`style-approximation`); see `docs/RICH_INTERCHANGE.md`
+  "Subscript and superscript". A `ul`/`ol` placed directly inside a
   list (Docs, Cocoa) nests into the preceding item. A lone `<br>` between blocks is
   one empty paragraph; a trailing `Apple-interchange-newline` is dropped.
 - Spreadsheet tables keep displayed cell text, merges and column widths.
