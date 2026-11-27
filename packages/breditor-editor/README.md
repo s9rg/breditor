@@ -815,6 +815,107 @@ announcing readiness. StrictMode setup/cleanup is tested. React owns only the
 surrounding elements; it never reconciles the editable document children.
 Server rendering emits a starting placeholder without initializing Wasm.
 
+## Lifecycle contract for adapters
+
+Vue, Svelte, Angular, Solid and Custom Element hosts wrap `openLocalEditor`
+themselves. The repository's `examples/vanilla`, `examples/web-component`
+(`<breditor-editor>`) and `examples/vue` follow this contract, and
+`docs/STATIC_RENDERING.md` covers server rendering and adapter duties. These are
+the guarantees an adapter can rely on, and the duties it keeps, for the local
+owner in this candidate. They are not yet a frozen V1 API.
+
+**Open.** `openLocalEditor(options)` claims `host` synchronously, during the call
+and before its first `await`. Validation and host claims happen in that call, but
+every failure is delivered as a promise rejection, never a synchronous throw. A
+second opening on a host that already has a live owner or a pending opening
+rejects ("This host already has an editor or pending opening"). Open only on the
+client, after the host is connected. Render nothing into the host from the
+framework.
+
+**Ready.** The promise resolves exactly once, with an owner that is already mounted
+in the host. Resolution is readiness; there is no separate ready callback. Option
+callbacks (`onChange`, `onError` and the rest) can run as soon as the owner is
+mounted. Guard them with the adapter's own lifetime so a disposed owner's late
+callback is dropped.
+
+**Cancellation.** Pass a fresh `AbortController` signal per opening. Aborting before
+resolution rejects the promise with the signal's reason (an `AbortError` by
+default). The original host children are restored, and the claim is released
+before that rejection is delivered. Aborting does not cancel Wasm initialization
+shared with other openings. Treat a rejection after your own abort as
+cancellation, not as an error. An abort can race resolution, because the owner may
+already exist when your continuation runs. So after every `await`, check
+`signal.aborted` and call `dispose()` on a late owner instead of publishing it.
+
+**Dispose.** `dispose()` is synchronous and idempotent. It cancels queued commands,
+empties the host and releases the claim before returning, so a new opening on the
+same host can start immediately. Other methods throw after disposal. Nothing is
+saved implicitly. Call `checkpointJson()` first to keep content and future
+Undo/Redo, then reopen with `{kind: 'checkpoint', checkpointJson}`.
+
+**Serialize reopening on one host.** A cancelled opening keeps its claim until it
+settles. An adapter that can reopen on the same host element must chain the next
+opening after the previous promise settles, whether that promise was fulfilled or
+rejected. Examples are a Custom Element reconnect, a retry, or a close-and-reopen
+button. Adapters that create a fresh host element per mount, like the React, Vue
+and Svelte components, do not need this. They still need the abort check. This
+serialization is what makes React StrictMode double effects, Vue/Vite HMR module
+replacement and fast `v-if`/key flips safe.
+
+**Errors.** Invalid option shapes reject, mostly with `TypeError`. A profile,
+history or runtime mismatch, and runtime initialization failure, reject with an
+`Error`. The host is restored in every case, and nothing is retried implicitly. Faults after
+readiness arrive through `onError`. Policy methods such as `setReadOnly` throw
+synchronously for invalid input or a stale expected revision. Surface all of these
+as framework events or callbacks, keep the failed state visible, and offer an
+explicit retry with the same configuration.
+
+**Live and initial options.** `initial`, `richLanguage`, `history`, `label`, the
+profile and the toolbar are fixed for one owner. A pending opening uses the values
+it started with. Read-only is live: pass the current value as `readOnly` at open,
+re-read it after the promise resolves (it may have changed during startup) and
+then call `setReadOnly` on every change.
+
+**Moves.** The owner keeps working when its host moves within the same document,
+because its listeners stay attached. A wrapper should not tear down on a
+synchronous move. `<breditor-editor>` defers its teardown by one microtask for this.
+Adoption into another document needs a new owner.
+
+The durable shared owner differs in one point: `close()` is asynchronous and can
+fail with a recovery handle. Await it, or hand that handle on, before reopening the
+same writer, as `BreditorSharedEditor` does.
+
+### Proposed helper (not shipped)
+
+Every adapter above repeats the same 15 to 20 lines: an abort controller, the
+late-owner check, the per-host serial lane and idempotent teardown. A small helper
+could own that sequence. It is proposed here for review. It is not exported, and
+the example code does not depend on it.
+
+```ts
+// Proposal only: not part of @breditor/editor.
+interface LocalEditorLifetime {
+  /** Resolves with the live owner. Rejects with the opening error, or with an
+   * AbortError after dispose(). A late owner is disposed internally. */
+  readonly ready: Promise<LocalEditor>;
+  /** The live owner, or null while pending, failed or disposed. */
+  readonly editor: LocalEditor | null;
+  /** Synchronous and idempotent: aborts a pending opening or disposes the owner.
+   * Returns the owner's last checkpoint when one was live. */
+  dispose(): string | null;
+}
+declare function mountLocalEditor(
+  options: Omit<LocalEditorOptions, 'signal'>,
+): LocalEditorLifetime;
+```
+
+`mountLocalEditor` would queue behind any earlier lifetime on the same host,
+instead of rejecting as already claimed, and expose `isEditorOpeningAbort(error)`
+so adapters can ignore cancellation without string matching. Open questions before
+it could become stable API: whether `ready` should reject or stay pending after
+`dispose()`, whether the shared variant's asynchronous close fits the same shape,
+and whether `dispose()` should capture the checkpoint or leave that to the caller.
+
 ## Optional collaboration
 
 Install the exact matching `@breditor/collaboration` candidate and

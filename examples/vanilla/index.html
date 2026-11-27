@@ -1,0 +1,25 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Breditor · Vanilla example</title>
+  </head>
+  <body>
+    <main>
+      <h1>Breditor vanilla example</h1>
+      <p>
+        Status: <output id="status" aria-live="polite">Starting</output>
+        · Changes: <output id="changes">0</output>
+      </p>
+      <p>
+        <label><input id="read-only" type="checkbox" /> Read-only</label>
+        <button id="open" type="button">Open</button>
+        <button id="close" type="button">Close</button>
+        <button id="restart" type="button">Close and reopen</button>
+      </p>
+      <div id="editor"></div>
+    </main>
+    <script type="module" src="/src/main.ts"></script>
+  </body>
+</html>
