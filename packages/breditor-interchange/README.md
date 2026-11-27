@@ -539,6 +539,13 @@ if (result.ok) download(new Blob([result.value], {type: docxContentType}));
 // result.losses reports every feature Word cannot represent (for example reversed lists).
 ```
 
+Pass `contents: true` (or `{title, minLevel, maxLevel, position: "start",
+updateFields}`) to prepend a Word table of contents: a `TOC` field whose cached
+result already lists hyperlinked headings through hidden `_Toc…` bookmarks, so
+it reads correctly before Word updates fields. Labels and heading selection
+match the static HTML contents. Invalid options fail with `invalid-source`
+before the document is read; differing cached entries report `contents-entry`.
+
 See [docs/DOCUMENT_CONVERSION.md](../../docs/DOCUMENT_CONVERSION.md) for the
 fidelity map, loss codes, bounds, licensing and non-goals.
 

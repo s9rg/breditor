@@ -174,8 +174,25 @@ rendered headings, bounds each label to 512 UTF-16 units, and omits the
 navigation when there are no headings. Fragment output and
 `BreditorStaticDocument` accept the same option.
 
+For Word output, pass `contents` to the DOCX exporter. It writes a Word `TOC`
+field whose cached result already lists hyperlinked headings, using the same
+trimmed labels, block-identity deduplication and 512-entry bound as the
+static HTML contents.
+
+```js
+import {exportDocx} from '@breditor/interchange/docx';
+
+const result = exportDocx(editor.view().documentJson, {
+  contents: {title: 'Contents', maxLevel: 3},
+});
+```
+
+Page numbers appear when Word updates the field. `updateFields: true` asks
+Word to do that on open, at the cost of a prompt. See
+[Document conversion](DOCUMENT_CONVERSION.md#table-of-contents-opt-in).
+
 Placement is part of host presentation. A movable contents block in saved
-documents and DOCX or Markdown projection are separate parity work.
+documents and Markdown projection are separate parity work.
 
 ## Document placeholder
 
