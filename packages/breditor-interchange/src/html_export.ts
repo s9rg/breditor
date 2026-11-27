@@ -7,13 +7,23 @@ import {isImageLinkHrefV1} from "./image_link_href.js";
 import {mentionUnits} from "./mention.js";
 import {rubyFormat,rubyUnits} from "./ruby.js";
 import {bookmarkIdPrefix,internalLinkOf,isBookmarkName} from "./bookmark.js";
+import {emailStyle,emailTableAttributes} from "./html_email.js";
 /** Export only native-admitted DTOs. Every output tag, attribute and CSS property is library-owned. */
 export class HtmlExport {
   /** `bookmarks`: the source owner is bookmark-capable (V4), so anchors and internal links are
-   * exported; otherwise output is the original one. */
+   * exported; otherwise output is the original one. `email`: every element also carries the fixed
+   * inline decoration of `html_email.ts` (see `exportEmailRoot`). */
   constructor(readonly b:Budget,readonly options:InterchangeOptions,readonly bookmarks=false,
-    readonly preparedImage?:(binding:ImportedAsset)=>string|undefined){}
+    readonly preparedImage?:(binding:ImportedAsset)=>string|undefined,readonly email=false){}
   #visited=0;
+  /** Paragraph nesting inside list items, cells and captions: email uses the compact paragraph. */
+  #compact=0;
+  /** ` style="…"` with the email decoration first; the ordinary output when not email. */
+  #style(tag:string,semantic:readonly string[]=[],variant=0):string {
+    if(this.email)return ` style="${emailStyle(tag,semantic,variant)}"`;
+    return semantic.length?` style="${semantic.join(";")}"`:"";
+  }
+  #compactly(work:()=>string):string{this.#compact++;try{return work();}finally{this.#compact--;}}
   #visit():void{if(++this.#visited>limits.outputNodes)fail("resource-limit");}
   inline(nodes:readonly Node[]):string{
     // Opt-in ruby extension: each group of one equal annotation is one `<ruby>` around its base.
@@ -25,20 +35,22 @@ export class HtmlExport {
     if(unit.kind==="mention")return `<span class="breditor-mention" data-mention-kind="${a(unit.mention.kind)}" data-mention-id="${a(unit.mention.id)}">${this.inline(unit.pieces)}</span>`;
     const n=unit.node;
     this.#visit();if(n.kind!=="text"){this.b.loss("block-structure");return t(nodeText(n));}
-    let value=t(n.text);for(const f of [...n.formats].reverse())value=this.#format(value,f);return value;
+    let value=t(n.text);for(const f of [...n.formats].reverse())value=this.#format(value,f,n.formats);return value;
   }).join("");}
-  #format(value:string,f:Literal):string {
+  #format(value:string,f:Literal,run:readonly Literal[]=[]):string {
     const simple:Readonly<Record<string,string>>={"breditor/strong":"strong","breditor-inline/italic":"em","breditor-inline/underline":"u","breditor-inline/strike":"s","breditor-inline/code":"code","breditor-inline/subscript":"sub","breditor-inline/superscript":"sup"};
-    const tag=simple[f.type];if(typeof tag==="string")return `<${tag}>${value}</${tag}>`;
+    const tag=simple[f.type];if(typeof tag==="string")return `<${tag}${tag==="code"?this.#style("code"):""}>${value}</${tag}>`;
+    // Email link color yields to an authored text color on the same run.
+    const linkStyle=this.email&&!run.some(other=>other.type==="breditor-inline/text-color")?this.#style("a"):"";
     const p=f.properties;
     // V4 internal link `#name`: a fragment link to the exported anchor `bm-<name>`.
     const internal=this.bookmarks?internalLinkOf(f):undefined;
-    if(internal!==undefined)return `<a href="#${bookmarkIdPrefix}${a(internal)}">${value}</a>`;
+    if(internal!==undefined)return `<a href="#${bookmarkIdPrefix}${a(internal)}"${linkStyle}>${value}</a>`;
     if(f.type==="breditor-inline/link"){
       const source=p["breditor-inline/href"],href=typeof source==="string"?safeUrl(source):null;
       if(!href){this.b.loss("unsafe-link");return value;}
       if(href!==source)this.b.loss("style-approximation");
-      return `<a href="${a(href)}"${p["breditor-inline/new-window"]===true?' target="_blank" rel="noopener noreferrer"':""}>${value}</a>`;
+      return `<a href="${a(href)}"${p["breditor-inline/new-window"]===true?' target="_blank" rel="noopener noreferrer"':""}${linkStyle}>${value}</a>`;
     }
     // V4 text language: only an admitted canonical tag becomes an inert `lang` attribute.
     // A ruby literal reaching here is outside the annotation policy: the base is kept, the annotation dropped.
@@ -47,7 +59,7 @@ export class HtmlExport {
     const rgb=p["breditor-inline/rgb24"],pixels=p["breditor-inline/pixels"],family=p["breditor-inline/family"];
     if(["breditor-inline/text-color","breditor-inline/background-color"].includes(f.type)&&typeof rgb==="number"&&Number.isInteger(rgb)&&rgb>=0&&rgb<=0xffffff)return `<span style="${f.type==="breditor-inline/text-color"?"color":"background-color"}:#${rgb.toString(16).padStart(6,"0")}">${value}</span>`;
     if(f.type==="breditor-inline/text-size"&&typeof pixels==="number"&&Number.isInteger(pixels)&&pixels>=8&&pixels<=96)return `<span style="font-size:${pixels}px">${value}</span>`;
-    if(f.type==="breditor-inline/font-family"&&typeof family==="number"&&Number.isInteger(family)&&family>=1&&family<=4)return `<span style="font-family:${["","system-ui","sans-serif","serif","monospace"][family]}">${value}</span>`;
+    if(f.type==="breditor-inline/font-family"&&typeof family==="number"&&Number.isInteger(family)&&family>=1&&family<=4)return `<span style="font-family:${(this.email?emailFamilies:families)[family]}">${value}</span>`;
     this.b.loss("unsupported-style");return value;
   }
   /** V4 bookmark: `id="bm-<name>"` from an admitted name only. */
@@ -55,43 +67,49 @@ export class HtmlExport {
     const name=property(node,"bookmark");if(name===undefined||!this.bookmarks)return "";
     if(!isBookmarkName(name))fail("native-admission");return ` id="${bookmarkIdPrefix}${a(name)}"`;
   }
-  #layout(node:Element):string {
+  #layout(node:Element,tag:string,variant=0):string {
     const style=["white-space:pre-wrap"],align=property(node,"block-align"),dir=property(node,"block-direction"),indent=property(node,"block-indent"),height=property(node,"line-height-percent");
-    if(typeof align==="number"&&Number.isInteger(align)&&align>=1&&align<=6)style.push(`text-align:${["","start","center","end","justify","left","right"][align]}`);
+    if(typeof align==="number"&&Number.isInteger(align)&&align>=1&&align<=6){
+      // Email: a physical fallback precedes logical `start`/`end` for clients without logical values.
+      if(this.email&&(align===1||align===3)&&dir!==3)style.push(`text-align:${(align===1)===(dir!==2)?"left":"right"}`);
+      style.push(`text-align:${["","start","center","end","justify","left","right"][align]}`);
+    }
     if(typeof dir==="number"&&Number.isInteger(dir)&&dir>=1&&dir<=3){if(dir!==3)style.push(`direction:${dir===1?"ltr":"rtl"}`);}
     if(typeof indent==="number"&&Number.isInteger(indent)&&indent>=0&&indent<=12)style.push(`margin-inline-start:${indent*2}em`);
     if(typeof height==="number"&&Number.isInteger(height)&&height>=100&&height<=300)style.push(`line-height:${height}%`);
-    return ` style="${style.join(";")}"${dir===3?' dir="auto"':""}`;
+    return `${this.#style(tag,style,variant)}${dir===3?' dir="auto"':""}`;
   }
   blocks(nodes:readonly Node[],depth=0):string {
     if(depth>limits.depth)fail("resource-limit");return nodes.map(node=>{
       this.#visit();if(node.kind==="text"){this.b.loss("block-structure");return t(node.text);}
       const body=()=>this.blocks(node.children,depth+1);
       switch(node.type){
-        case "breditor/paragraph":return `<p${this.#anchor(node)}${this.#layout(node)}>${this.inline(node.children)}</p>`;
-        case "breditor/heading":{const rank=property(node,"level");if(typeof rank!=="number"||!Number.isInteger(rank)||rank<1||rank>6)fail("native-admission");return `<h${rank}${this.#anchor(node)}${this.#layout(node)}>${this.inline(node.children)}</h${rank}>`;}
-        case "breditor/blockquote":return `<blockquote>${body()}</blockquote>`;
+        case "breditor/paragraph":return `<p${this.#anchor(node)}${this.#layout(node,"p",this.#compact?1:0)}>${this.inline(node.children)}</p>`;
+        case "breditor/heading":{const rank=property(node,"level");if(typeof rank!=="number"||!Number.isInteger(rank)||rank<1||rank>6)fail("native-admission");return `<h${rank}${this.#anchor(node)}${this.#layout(node,`h${rank}`)}>${this.inline(node.children)}</h${rank}>`;}
+        case "breditor/blockquote":return `<blockquote${this.#style("blockquote")}>${body()}</blockquote>`;
         // V4 section: native disclosure; `open` only from the admitted `true` flag.
-        case "breditor/details":{const open=property(node,"details-open");if(open!==undefined&&open!==true||node.children[0]?.kind!=="element"||node.children[0].type!=="breditor/details-summary")fail("native-admission");return `<details${open===true?" open":""}>${body()}</details>`;}
+        case "breditor/details":{const open=property(node,"details-open");if(open!==undefined&&open!==true||node.children[0]?.kind!=="element"||node.children[0].type!=="breditor/details-summary")fail("native-admission");return `<details${open===true?" open":""}${this.#style("details")}>${body()}</details>`;}
         case "breditor/details-summary":{
           const preserve=/^ | $| {2}|[\t\n\f\r]/.test(nodeText(node));
-          return `<summary${preserve?' style="white-space:pre-wrap"':''}>${this.inline(node.children)}</summary>`;
+          return `<summary${this.#style("summary",preserve?["white-space:pre-wrap"]:[])}>${this.inline(node.children)}</summary>`;
         }
-        case "breditor/code-block":{const language=property(node,"language");return `<pre${this.#anchor(node)}${this.#layout(node)}><code${typeof language==="string"?` class="language-${a(language)}"`:""}>${t(nodeText(node))}</code></pre>`;}
-        case "breditor/horizontal-rule":return"<hr>";
+        case "breditor/code-block":{const language=property(node,"language");return `<pre${this.#anchor(node)}${this.#layout(node,"pre")}><code${typeof language==="string"?` class="language-${a(language)}"`:""}>${t(nodeText(node))}</code></pre>`;}
+        case "breditor/horizontal-rule":return `<hr${this.#style("hr")}>`;
         // V4 page break: an empty block forcing a page after it (modern and legacy CSS spellings).
         case "breditor/page-break":return '<div style="break-after:page;page-break-after:always"></div>';
-        case "breditor/bullet-list":return `<ul>${body()}</ul>`;
+        case "breditor/bullet-list":return `<ul${this.#style("ul")}>${body()}</ul>`;
         case "breditor/ordered-list":{
           const start=property(node,"start"),style=property(node,"list-style"),reversed=property(node,"list-reversed");
           if(typeof start!=="number"||!Number.isSafeInteger(start)||start<1)fail("native-admission");
           // V4 numbering is emitted only from admitted closed values: an HTML `type` token and `reversed`.
           if(style!==undefined&&(typeof style!=="number"||!Number.isInteger(style)||style<1||style>5)||reversed!==undefined&&reversed!==true)fail("native-admission");
-          return `<ol start="${start}"${typeof style==="number"?` type="${["1","a","A","i","I"][style-1]!}"`:""}${reversed===true?" reversed":""}>${body()}</ol>`;
+          // Email repeats an admitted marker style as CSS, which wins over `type` on re-import too.
+          const marker=this.email&&typeof style==="number"&&style>1?[`list-style-type:${["","decimal","lower-alpha","upper-alpha","lower-roman","upper-roman"][style]}`]:[];
+          return `<ol start="${start}"${typeof style==="number"?` type="${["1","a","A","i","I"][style-1]!}"`:""}${reversed===true?" reversed":""}${this.#style("ol",marker)}>${body()}</ol>`;
         }
-        case "breditor/task-list":return `<ul>${body()}</ul>`;
-        case "breditor/list-item":return `<li>${body()}</li>`;
-        case "breditor/task-item":{const first=node.children[0];if(first?.kind!=="element"||!['breditor/paragraph','breditor/heading'].includes(first.type))fail("native-admission");return `<li><input type="checkbox" disabled${property(node,"checked")===true?" checked":""}>${body()}</li>`;}
+        case "breditor/task-list":return `<ul${this.#style("ul",[],1)}>${body()}</ul>`;
+        case "breditor/list-item":return `<li${this.#style("li")}>${this.#compactly(body)}</li>`;
+        case "breditor/task-item":{const first=node.children[0];if(first?.kind!=="element"||!['breditor/paragraph','breditor/heading'].includes(first.type))fail("native-admission");return `<li${this.#style("li")}><input type="checkbox" disabled${property(node,"checked")===true?" checked":""}${this.#style("input")}>${this.#compactly(body)}</li>`;}
         case "breditor/image":return this.#image(node,depth);
         case "breditor/table":return this.#table(node,depth);
         default:this.b.loss("unsupported-element");return body();
@@ -105,12 +123,12 @@ export class HtmlExport {
     const safe=safeUrl(raw);if(!safe){this.b.loss("image-reference");return undefined;}return safe;
   }
   #image(node:Element,depth:number):string {
-    const src=this.imageUrl(node),alt=stringProperty(node,"alt-text"),caption=node.children.length?this.blocks(node.children,depth+1):"";
+    const src=this.imageUrl(node),alt=stringProperty(node,"alt-text"),caption=node.children.length?this.#compactly(()=>this.blocks(node.children,depth+1)):"";
     const link=imageLink(node);
-    if(!src)return `<p style="white-space:pre-wrap">${link?`${link.open}${t(alt)}</a>`:t(alt)}</p>${caption}`;
+    if(!src)return `<p${this.#style("p",["white-space:pre-wrap"],this.#compact?1:0)}>${link?`${link.open}${t(alt)}</a>`:t(alt)}</p>${caption}`;
     const width=property(node,"width"),height=property(node,"height"),size=typeof width==="number"&&typeof height==="number"&&Number.isInteger(width)&&Number.isInteger(height)&&width>=1&&height>=1&&width<=4096&&height<=4096?` width="${width}" height="${height}"`:"";
-    const image=`<img src="${a(src)}" alt="${a(alt)}"${size}>`;
-    return `<figure>${link?`${link.open}${image}</a>`:image}${caption?`<figcaption>${caption}</figcaption>`:""}</figure>`;
+    const image=`<img src="${a(src)}" alt="${a(alt)}"${size}${this.#style("img")}>`;
+    return `<figure${this.#style("figure")}>${link?`${link.open}${image}</a>`:image}${caption?`<figcaption${this.#style("figcaption")}>${caption}</figcaption>`:""}</figure>`;
   }
   #table(node:Element,depth:number):string {
     const elements=node.children.filter((n):n is Element=>n.kind==="element"),last=elements.at(-1);
@@ -118,7 +136,7 @@ export class HtmlExport {
     const captionNode=last?.type==="breditor/paragraph"?last:undefined,rows=captionNode?elements.slice(0,-1):elements;
     const columns=property(node,"columns") as {id:string;width:number}[],merges=property(node,"merges") as Record<string,unknown>[];
     if(!Array.isArray(columns)||!Array.isArray(merges))fail("native-admission");if(!rows.length){this.b.loss("table-geometry");return captionNode?this.blocks([captionNode],depth+1):"";}
-    const caption=captionNode?`<caption style="caption-side:bottom">${this.blocks([captionNode],depth+1)}</caption>`:"";
+    const caption=captionNode?`<caption${this.#style("caption",["caption-side:bottom"])}>${this.#compactly(()=>this.blocks([captionNode],depth+1))}</caption>`:"";
     const occupied=new Map<string,{r:number;c:number;rs:number;cs:number}>(),rowIds=rows.map(r=>stringProperty(r,"row-id")),columnIds=columns.map(c=>c.id);
     for(const merge of merges){const r=rowIds.indexOf(String(merge["first-row"])),endR=rowIds.indexOf(String(merge["last-row"])),c=columnIds.indexOf(String(merge["first-column"])),endC=columnIds.indexOf(String(merge["last-column"]));if(r<0||c<0||endR<r||endC<c)fail("native-admission");const bounds={r,c,rs:endR-r+1,cs:endC-c+1};for(let y=r;y<=endR;y++)for(let x=c;x<=endC;x++)occupied.set(`${y}:${x}`,bounds);}
     const cells=rows.map(row=>columnIds.map(column=>row.children.find((n):n is Element=>n.kind==="element"&&property(n,"column-id")===column)??fail("native-admission")));
@@ -126,11 +144,12 @@ export class HtmlExport {
       const merge=occupied.get(`${r}:${c}`);if(merge&&(merge.r!==r||merge.c!==c))return"";
       const cell=cells[r]![c]!,tag=property(cell,"header")===true?"th":"td";
       let content;
-      if(merge){const partitions:string[]=[];for(let y=r;y<r+merge.rs;y++)for(let x=c;x<c+merge.cs;x++){const source=cells[y]![x]!;partitions.push(`<div data-breditor-cell-partition="1" data-breditor-cell-row="${y-r}" data-breditor-cell-column="${x-c}" data-breditor-cell-header="${property(source,"header")===true?1:0}">${this.blocks(source.children,depth+1)}</div>`);}content=partitions.join("");}
-      else content=this.blocks(cell.children,depth+1);
-      return `<${tag}${merge?` rowspan="${merge.rs}" colspan="${merge.cs}"`:""}>${content}</${tag}>`;
+      if(merge){const partitions:string[]=[];for(let y=r;y<r+merge.rs;y++)for(let x=c;x<c+merge.cs;x++){const source=cells[y]![x]!;partitions.push(`<div data-breditor-cell-partition="1" data-breditor-cell-row="${y-r}" data-breditor-cell-column="${x-c}" data-breditor-cell-header="${property(source,"header")===true?1:0}">${this.#compactly(()=>this.blocks(source.children,depth+1))}</div>`);}content=partitions.join("");}
+      else content=this.#compactly(()=>this.blocks(cell.children,depth+1));
+      return `<${tag}${merge?` rowspan="${merge.rs}" colspan="${merge.cs}"`:""}${this.#style(tag)}>${content}</${tag}>`;
     }).join("")}</tr>`).join("");
-    return `<table>${caption}<colgroup>${columns.map(c=>{if(!Number.isInteger(c.width)||c.width<32||c.width>4096)fail("native-admission");return `<col width="${c.width}">`;}).join("")}</colgroup><tbody>${body}</tbody></table>`;
+    const legacy=this.email?emailTableAttributes.map(([name,value])=>` ${name}="${value}"`).join(""):"";
+    return `<table${legacy}${this.#style("table")}>${caption}<colgroup>${columns.map(c=>{if(!Number.isInteger(c.width)||c.width<32||c.width>4096)fail("native-admission");return `<col width="${c.width}">`;}).join("")}</colgroup><tbody>${body}</tbody></table>`;
   }
 }
 /** V4 image link: the opening `<a>` from admitted canonical values only (link wraps the image, not the caption). */
@@ -142,6 +161,15 @@ export function imageLink(node:Element):{href:string;newWindow:boolean;open:stri
 }
 export function imageBinding(node:Element):ImportedAsset {
   return Object.freeze({asset:stringProperty(node,"asset-id"),generation:stringProperty(node,"asset-generation")});
+}
+/** Ordinary font presets, and email stacks that keep the same generic family first. */
+const families=["","system-ui","sans-serif","serif","monospace"] as const;
+const emailFamilies=["","system-ui,-apple-system,'Segoe UI',Roboto,Arial,sans-serif","sans-serif","serif","monospace"] as const;
+/** Email body: block content with fixed inline decoration only; inline-only transfers become one paragraph. */
+export function exportEmailRoot(nodes:Node[],b:Budget,options:InterchangeOptions,kind:"text"|"flow"|"grid",bookmarks=false):string {
+  if(kind==="text")b.loss("block-structure");
+  const result=new HtmlExport(b,options,bookmarks,undefined,true).blocks(nodes);
+  if(result.length>limits.outputBytes||bytes(result)>limits.outputBytes)fail("resource-limit");return result;
 }
 export function exportHtmlRoot(nodes:Node[],b:Budget,options:InterchangeOptions,kind:"text"|"flow"|"grid",bookmarks=false,
   preparedImage?:(binding:ImportedAsset)=>string|undefined):string {

@@ -1,12 +1,15 @@
 export type * from "./types.js";
 export {htmlPageMetadataLimits,type HtmlPageMetadata,type ImportedHtmlPage} from "./html_page.js";
 export {limits as interchangeLimits} from "./budget.js";
+export {emailLimits as emailHtmlLimits,type EmailHtmlOptions,type EmailHtmlPreset,type ResolvedEmailPreset} from "./html_email.js";
 /** Conversion grammar revision, independent of native document/history/synchronization protocols. */
 export const interchangeContractV1=Object.freeze({version:1,html:"bounded-semantic-html-v1",markdown:"commonmark-tables-strike-tasks-and-sanitized-html-v1",markdownAutolinks:"opt-in-gfm-autolink-literals-autolink-v1",cellPartitionVersion:1} as const);
 import {Budget,bytes,ConversionFailure,fail,limits,sourceWithinBudget} from "./budget.js";
 import {importHtmlContent,importHtmlTree} from "./html_import.js";
 import {htmlTree} from "./html_tree.js";
-import {exportHtmlRoot} from "./html_export.js";
+import {exportEmailRoot,exportHtmlRoot} from "./html_export.js";
+import {emailBodyStyle,emailContent,emailLayout,emailViewport,resolveEmailPreset,type EmailHtmlOptions} from "./html_email.js";
+import {unwrapEmailPresentation} from "./html_email_import.js";
 import {htmlPageOpening,readHtmlPageMetadata,type HtmlPageMetadata,type ImportedHtmlPage} from "./html_page.js";
 import {exportMarkdownRoot,markdownHtml} from "./markdown.js";
 import type {Node} from "./wire.js";
@@ -56,14 +59,38 @@ export function exportHtmlPage(owner:InterchangeOwner,clipboardJson:string,metad
   }catch(error){return Object.freeze({ok:false,error:error instanceof ConversionFailure?error.code:"native-admission",losses});}
 }
 
+const emailOptionFields=new Set(["exportImage","page","preset"]);
+/**
+ * Serialize an admitted clipboard snapshot as email HTML: every presentation is an inline `style`
+ * (no `<style>`, class-based styling, script or event handler). With `page` the result is a
+ * complete page, and `preset` adds the centered fixed-width layout and preheader.
+ */
+export function exportEmailHtml(owner:InterchangeOwner,clipboardJson:string,options:EmailHtmlOptions={}):InterchangeResult<string> {
+  const budget=new Budget();
+  try{
+    if(!options||typeof options!=="object"||Array.isArray(options)||Object.keys(options).some(name=>!emailOptionFields.has(name)))fail("unsupported-content");
+    const {exportImage,page,preset}=options;
+    if(exportImage!==undefined&&typeof exportImage!=="function"||preset!==undefined&&page===undefined)fail("unsupported-content");
+    const layout=preset===undefined?undefined:resolveEmailPreset(preset);
+    const opening=page===undefined?"":htmlPageOpening(page,layout?{head:emailViewport,bodyStyle:emailBodyStyle(layout)}:{});
+    const {validate}=nativeInterchange(owner);
+    sourceWithinBudget(clipboardJson);
+    const admitted=validate.call(owner,clipboardJson),record=JSON.parse(admitted.structuredJson) as {document:{root:{children:Node[]}}};
+    const body=emailContent(exportEmailRoot(record.document.root.children,budget,Object.freeze({...(exportImage?{exportImage}:{})}),admitted.kind,owner.supportsBookmarks?.()===true));
+    const value=page===undefined?body:opening+(layout?emailLayout(layout,body,page.direction==="rtl"?"right":"left"):body)+"</body></html>";
+    if(value.length>limits.outputBytes||bytes(value)>limits.outputBytes)fail("resource-limit");
+    return Object.freeze({ok:true,value,losses:budget.losses()});
+  }catch(error){return Object.freeze({ok:false,error:error instanceof ConversionFailure?error.code:"native-admission",losses:budget.losses()});}
+}
+
 /** Stage a complete page's host metadata and admit its body as ordinary native flow. */
 export function importHtmlPage(owner:InterchangeOwner,source:string,
   options:Pick<InterchangeOptions,"resolveImage">={}):InterchangeResult<ImportedHtmlPage> {
   const budget=new Budget();
   try{
     const {admit}=nativeInterchange(owner),policy=Object.freeze({...options}),capabilities=ownerCapabilities(owner);
-    const nodes=htmlTree(source,budget),metadata=readHtmlPageMetadata(nodes,budget);
+    const nodes=htmlTree(source,budget),email=unwrapEmailPresentation(nodes),metadata=readHtmlPageMetadata(nodes,budget);
     const body=Object.freeze(admit.call(owner,"flow",importHtmlTree(nodes,budget,policy,capabilities).root));
-    return Object.freeze({ok:true,value:Object.freeze({metadata,body}),losses:budget.losses()});
+    return Object.freeze({ok:true,value:Object.freeze({metadata,body,...(email?{email}:{})}),losses:budget.losses()});
   }catch(error){return Object.freeze({ok:false,error:error instanceof ConversionFailure?error.code:"native-admission",losses:budget.losses()});}
 }

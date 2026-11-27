@@ -45,3 +45,11 @@ if(page.ok)void (page.value satisfies string);
 
 const importedPage=importHtmlPage(owner,"<title>Native page</title><p>Body</p>");
 if(importedPage.ok)void (importedPage.value.metadata satisfies HtmlPageMetadata);
+
+import {emailHtmlLimits,exportEmailHtml,type EmailHtmlOptions,type EmailHtmlPreset,type ResolvedEmailPreset} from "@breditor/interchange";
+const emailPreset:EmailHtmlPreset={width:600,background:"#f4f4f5",preheader:"Preview"};
+const emailOptions:EmailHtmlOptions={page:pageMetadata,preset:emailPreset};
+const email=exportEmailHtml(owner,"{}",emailOptions);
+if(email.ok)void (email.value satisfies string);
+void (emailHtmlLimits.maxWidth satisfies number);
+if(importedPage.ok&&importedPage.value.email)void (importedPage.value.email satisfies ResolvedEmailPreset);

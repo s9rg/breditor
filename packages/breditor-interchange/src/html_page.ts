@@ -3,6 +3,7 @@ import {attribute,isElement,plainText,type HtmlNode} from "./html_tree.js";
 import {canonicalLanguageTagV1} from "./language_tag.js";
 import {escapeAttribute,escapeText} from "./safe_url.js";
 import type {ClipboardTransfer} from "./types.js";
+import type {ResolvedEmailPreset} from "./html_email.js";
 
 export interface HtmlPageMetadata {
   readonly title:string;
@@ -14,6 +15,8 @@ export interface HtmlPageMetadata {
 export interface ImportedHtmlPage {
   readonly metadata:HtmlPageMetadata;
   readonly body:ClipboardTransfer;
+  /** Present only when the page is this library's exact email preset layout. */
+  readonly email?:ResolvedEmailPreset;
 }
 
 export const htmlPageMetadataLimits=Object.freeze({titleBytes:1024,descriptionBytes:4096});
@@ -65,7 +68,8 @@ export function readHtmlPageMetadata(nodes:readonly HtmlNode[],budget:Budget):Ht
   return Object.freeze({title:title??"",...(description===undefined?{}:{description}),...(language?{language}:{}),...(hasDirection?{direction}:{})});
 }
 
-export function htmlPageOpening(metadata:HtmlPageMetadata):string {
+/** `head` and `bodyStyle` are fixed library-owned markup (the email preset), never host text. */
+export function htmlPageOpening(metadata:HtmlPageMetadata,extra:{readonly head?:string;readonly bodyStyle?:string}={}):string {
   if(!metadata||typeof metadata!=="object"||Array.isArray(metadata)||
     Object.keys(metadata).some(name=>!metadataFields.has(name)))fail("unsupported-content");
   const {title,description,language,direction}=metadata;
@@ -74,5 +78,6 @@ export function htmlPageOpening(metadata:HtmlPageMetadata):string {
   const lang=language===undefined?undefined:canonicalLanguageTagV1(language);
   if(lang===null||direction!==undefined&&direction!=="ltr"&&direction!=="rtl"&&direction!=="auto")fail("unsupported-content");
   const langAttr=lang===undefined?"":` lang="${lang}"`,dirAttr=direction===undefined?"":` dir="${direction}"`;
-  return `<!doctype html><html${langAttr}${dirAttr}><head><meta charset="utf-8"><title>${safeTitle}</title>${safeDescription}</head><body>`;
+  const body=extra.bodyStyle===undefined?"<body>":`<body style="${extra.bodyStyle}">`;
+  return `<!doctype html><html${langAttr}${dirAttr}><head><meta charset="utf-8">${extra.head??""}<title>${safeTitle}</title>${safeDescription}</head>${body}`;
 }
