@@ -782,6 +782,20 @@ The host owns the storage key and any cross-tab exclusivity. The local
 checkpoint saves native content and Undo/Redo history. Keep asset bytes in the
 separate asset store.
 
+### Crash restart
+
+Pass `crashRecovery: {maxRestarts, windowMs, onCrash, onRestarted, onFailed}`
+to `openLocalEditor` or `openLocalDocumentEditor` to opt in. When the owner hits
+a Wasm trap, becomes a poisoned owner, or fails the SDK boundary check, the
+editor freezes its host. It then checks that the last exact checkpoint (from
+startup or any successful `checkpointJson()` read, which includes autosave
+reads) restores byte for byte, and reopens a fresh owner from it in the same
+host with its history. `recovery()` reports the phase and the edits since that
+checkpoint, and `verifiedCheckpointJson()` returns it in every phase. After
+`maxRestarts` restarts within `windowMs`, the editor stays frozen and read-only,
+and `onFailed` is called. Mount autosave and borrowed panels again in
+`onRestarted`. See `docs/CRASH_RECOVERY.md` in the repository.
+
 ## React ownership
 
 Install React separately and import only the React entry when using it.

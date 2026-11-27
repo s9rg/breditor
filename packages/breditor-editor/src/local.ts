@@ -7,6 +7,8 @@ import {initializeLocalRuntime,type RuntimeInput} from "./runtime.js";
 import {claimHost,awaitInitialization} from "./host.js";
 import {emptyDocumentJson} from "./empty_document.js";
 import {clipboardInterchangeOptions,type ClipboardInterchangeFactory} from "./clipboard_interchange.js";
+import {checkCrashRecoveryOptions,CrashSupervisor,type CrashRecoveryOptions} from "./crash_recovery.js";
+import {RecoverableLocalOwner,type RecoverableLocalEditor,type RecoveryPolicy} from "./crash_recovery_owner.js";
 export const standardProfileBootstrapJson=JSON.stringify({format:"breditor/profile-bootstrap",formatVersion:6,schema:{name:"breditor-editor/standard",version:1},extensions:[]});
 /** Explicit bootstrap V7; neither old schema selectors nor saved checkpoints migrate. */
 export const structuralProfileBootstrapJsonV2=JSON.stringify({format:"breditor/profile-bootstrap",formatVersion:7,schema:{name:"breditor-editor/standard",version:2},extensions:[]});
@@ -55,6 +57,8 @@ export interface LocalEditorOptions extends Omit<RichEditorOptions,"core"|"toolb
  toolbar?:(core:RichCoreEditor,standard:readonly ToolbarControl[],presentation:import("@breditor/experimental-rich-content").RichInlinePresentation)=>readonly ToolbarControl[];
  /** Explicit opt-in, configured for this owner before mount. Do not publish edits in the factory. */
  clipboardInterchange?:ClipboardInterchangeFactory<RichCoreEditor>;
+ /** Opt-in watchdog: restart a crashed owner in this host from its last exact checkpoint (docs/CRASH_RECOVERY.md). */
+ crashRecovery?:CrashRecoveryOptions;
 }
 export interface LocalEditor {
  supportsRetainedAssetReferences():boolean;
@@ -128,7 +132,10 @@ class LocalEditorOwner implements LocalEditor {
  dispose():void{if(this.#disposed)return;this.#disposed=true;try{this.#dom.dispose();}finally{this.#release();}}
 }
 /** One native local owner per host. Failed/cancelled openings retain the original host contents. */
+export function openLocalEditor(options:LocalEditorOptions&{crashRecovery:CrashRecoveryOptions}):Promise<RecoverableLocalEditor>;
+export function openLocalEditor(options:LocalEditorOptions):Promise<LocalEditor>;
 export async function openLocalEditor(options:LocalEditorOptions):Promise<LocalEditor>{
+ if(options.crashRecovery!==undefined)return openRecoverableLocalEditor(options,checkCrashRecoveryOptions(options.crashRecovery));
  options={...options};
  validateMarkdownInputPolicy(options.inputRules);
  validatePlaceholderOption(options.placeholder);resolveRichUi(options.ui);
@@ -168,4 +175,32 @@ export async function openLocalEditor(options:LocalEditorOptions):Promise<LocalE
   return new LocalEditorOwner(dom,claim.release,render);
  }catch(error){try{if(dom)dom.dispose();else core?.dispose();}finally{claim.rollback();}throw error;}
  finally{profile?.dispose();}
+}
+/** The checkpoint family this opening exports: natural typing history or explicit history. */
+function typingFamily(options:LocalEditorOptions):boolean{return options.history==="typing-v1"||options.initial?.kind==="typingCheckpoint";}
+/** Restore in a fresh headless owner of the same profile and require a byte-exact re-export. */
+async function verifyLocalCheckpoint(options:LocalEditorOptions,typing:boolean,checkpointJson:string):Promise<boolean>{
+ const profile=compileLocalLanguageProfile(await initializeLocalRuntime(options.runtimeInput),options.richLanguage??1,options.profileBootstrapJson);
+ let core:RichCoreEditor|undefined;
+ try{
+  if(typing){if(profile.supportsTypingHistory?.()!==true||!profile.restoreTypingEditor)return false;core=profile.restoreTypingEditor(checkpointJson);}
+  else core=profile.restoreEditor(checkpointJson);
+  return core.checkpointJson()===checkpointJson;
+ }finally{try{core?.dispose();}finally{profile.dispose();}}
+}
+async function openRecoverableLocalEditor(options:LocalEditorOptions,recovery:ReturnType<typeof checkCrashRecoveryOptions>):Promise<RecoverableLocalEditor>{
+ const {crashRecovery:_crashRecovery,signal,onChange,onError,...rest}=options,typing=typingFamily(options);
+ const policy:RecoveryPolicy={readOnly:options.readOnly,restricted:options.restrictedEditing};
+ const supervisor=await CrashSupervisor.open<LocalEditor>({
+  host:options.host,options:recovery,onChange:onChange as never,onError,
+  verify:checkpointJson=>verifyLocalCheckpoint(options,typing,checkpointJson),
+  open:(callbacks,restart)=>{
+   if(!restart)return openLocalEditor({...rest,...callbacks,...(signal?{signal}:{})});
+   const {readOnly:_readOnly,restrictedEditing:_restricted,...stable}=rest;
+   return openLocalEditor({...stable,...callbacks,signal:restart.signal,
+    initial:typing?{kind:"typingCheckpoint",checkpointJson:restart.checkpointJson}:{kind:"checkpoint",checkpointJson:restart.checkpointJson},
+    ...(policy.readOnly!==undefined?{readOnly:policy.readOnly}:{}),...(policy.restricted?{restrictedEditing:policy.restricted}:{})});
+  },
+ });
+ return new RecoverableLocalOwner(supervisor,policy);
 }
