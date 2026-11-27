@@ -199,7 +199,10 @@ Classes: `[data-breditor-minimap]` (minimap root, `data-dragging` while dragging
   scroll the page while focus, selection, document and history stay the same;
   Enter adds a box; a scrolling surface is detected and driven.
 - `experiments/shared-browser/editing-aids.spec.mjs` (Chromium, Firefox,
-  WebKit; 2 each) over two real shared V4 writers: toggling on one writer
+  WebKit; 3 each) over two real shared V4 writers: toggling on one writer
   produces no frame, revision or history change and leaves the peer's DOM
   byte-identical; typing with the aids on converges; the aided overlay repaints
-  for peer edits; shortcuts and Undo in the shared surface.
+  for peer edits; shortcuts and Undo in the shared surface; a minimap on one
+  writer scrolls that page without any frame, revision, history or peer DOM
+  change, is not rendered into either surface, and gains a box when a peer
+  splits a paragraph.

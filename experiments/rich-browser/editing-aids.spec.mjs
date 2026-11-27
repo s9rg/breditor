@@ -229,16 +229,17 @@ test("the minimap indicator tracks scrolling and click or drag scrolls the edito
  const before={selection:await selection(),doc:await page.evaluate(()=>window.core.documentJson()),undo:await page.evaluate(()=>window.core.view().undoDepth)};
  await page.evaluate(()=>window.scrollTo(0,0));await settle(page);
  const view=()=>page.evaluate(()=>{const indicator=document.querySelector(".breditor-minimap-viewport"),surface=window.editor.surface.getBoundingClientRect();
-  return {top:Number(indicator.dataset.viewTop),bottom:Number(indicator.dataset.viewBottom),expectedTop:Math.max(0,-surface.top),expectedBottom:Math.min(surface.height,innerHeight-surface.top),scrollY,box:indicator.getBoundingClientRect().toJSON(),map:document.querySelector("[data-breditor-minimap]").getBoundingClientRect().toJSON()};});
+  return {top:Number(indicator.dataset.viewTop),bottom:Number(indicator.dataset.viewBottom),expectedTop:Math.min(Math.max(0,-surface.top),surface.height),expectedBottom:Math.min(Math.max(0,innerHeight-surface.top),surface.height),surfaceTop:surface.top+scrollY,scrollY,box:indicator.getBoundingClientRect().toJSON(),map:document.querySelector("[data-breditor-minimap]").getBoundingClientRect().toJSON()};});
  const near=(a,b)=>Math.abs(a-b)<=1.5;
  let v=await view();expect(near(v.top,v.expectedTop)&&near(v.bottom,v.expectedBottom)).toBe(true);
- // The page scrolls; the indicator follows on the next frame.
- await page.evaluate(()=>window.scrollTo(0,250));await settle(page);
- v=await view();expect(v.scrollY).toBe(250);expect(near(v.top,v.expectedTop)&&near(v.bottom,v.expectedBottom)).toBe(true);
+ // Above the editor the indicator is a thin line at the top. The page scrolls into the editor; it follows.
+ expect(v.top).toBe(0);const into=Math.round(v.surfaceTop+100);
+ await page.evaluate(y=>window.scrollTo(0,y),into);await settle(page);
+ v=await view();expect(v.scrollY).toBe(into);expect(v.top).toBeGreaterThan(90);expect(near(v.top,v.expectedTop)&&near(v.bottom,v.expectedBottom)).toBe(true);
  // Click near the bottom of the overview: the viewport moves down there.
  const content=await page.locator(".breditor-minimap-content").boundingBox();
  await page.mouse.click(content.x+content.width/2,content.y+content.height-2);await settle(page);
- const clicked=await view();expect(clicked.scrollY).toBeGreaterThan(250);expect(near(clicked.top,clicked.expectedTop)).toBe(true);
+ const clicked=await view();expect(clicked.scrollY).toBeGreaterThan(into);expect(near(clicked.top,clicked.expectedTop)).toBe(true);
  // Drag the indicator back to the top.
  await page.mouse.move(clicked.box.x+clicked.box.width/2,clicked.box.y+clicked.box.height/2);await page.mouse.down();
  await page.mouse.move(clicked.box.x+clicked.box.width/2,clicked.map.y-50,{steps:5});await page.mouse.up();await settle(page);
