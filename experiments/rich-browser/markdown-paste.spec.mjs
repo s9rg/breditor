@@ -35,7 +35,7 @@ test.beforeEach(async({page})=>{
  });
 });
 const top=page=>page.evaluate(()=>window.mp.top());
-const literalTop=[{type:"paragraph",children:["Intro## Release notes"]},{type:"paragraph",children:[]},{type:"paragraph",children:["- First item"]},{type:"paragraph",children:["- Second **bold** item"]}];
+const literalTop=[{type:"paragraph",children:[`Intro${MARKDOWN}`]}];
 const expectConverted=async page=>{
  const blocks=await top(page);
  expect(blocks.map(block=>block.type)).toContain("heading");expect(blocks.map(block=>block.type)).toContain("bullet-list");
