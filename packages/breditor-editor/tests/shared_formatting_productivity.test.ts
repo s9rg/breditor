@@ -36,4 +36,21 @@ describe("shared formatting-productivity controls",()=>{
   expect(owner.changeSelectionFormats).toHaveBeenCalledWith([{kind:"set",formatsJson:JSON.stringify([{type:k.strong,properties:{}}])}],"7");
   expect(()=>byId("case-title").run(context({},range))).toThrow("different Rust owner");
  });
+ it("apply and remove named presets as one native selection-format change",()=>{
+  const owner=core(),controls=createSharedFormattingProductivityToolbar(owner as never,presentation,{namedPresets:{styles:[{id:"big-red",label:"Big red",marks:["bold"],textColor:"#FF0000",textSize:24}],highlights:[{id:"marker-yellow",label:"Yellow marker",backgroundColor:"#FDFD77"}]}});
+  expect(controls.map(c=>c.id).slice(-2)).toEqual(["named-styles","highlight-presets"]);
+  const styles=controls.find(c=>c.id==="named-styles")!,highlights=controls.find(c=>c.id==="highlight-presets")!;
+  expect(styles.fields?.[0]?.options?.map(o=>o.value)).toEqual(["big-red","remove"]);
+  // Bold is already uniform: only the missing color and size are set, in one dispatch.
+  styles.run(context(owner,range),undefined,{preset:"big-red"});
+  expect(owner.changeSelectionFormats).toHaveBeenCalledTimes(1);
+  expect(owner.changeSelectionFormats).toHaveBeenLastCalledWith([
+   {kind:"set",formatsJson:JSON.stringify([{type:k.textColor,properties:{"breditor-inline/rgb24":0xFF0000}}])},
+   {kind:"set",formatsJson:JSON.stringify([{type:k.textSize,properties:{"breditor-inline/pixels":24}}])}],"7");
+  owner.states[k.backgroundColor]={kind:"uniform",format:{type:k.backgroundColor,properties:{"breditor-inline/rgb24":0xFDFD77}}};
+  expect(highlights.read!(context(owner,range))).toEqual({kind:"uniform",values:{preset:"marker-yellow"}});
+  highlights.run(context(owner,range),undefined,{preset:"remove"});
+  expect(owner.changeSelectionFormats).toHaveBeenLastCalledWith([{kind:"remove",formatsJson:JSON.stringify([{type:k.backgroundColor,properties:{"breditor-inline/rgb24":0}}])}],"7");
+  expect(owner.changeSelectionFormats).toHaveBeenCalledTimes(2);
+ });
 });

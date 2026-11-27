@@ -287,4 +287,8 @@ the characters themselves (1–16 UTF-16 units without control characters, at mo
 4,096 entries); values follow the ordinary string rules. Entries for characters a
 picker does not show are inert. The picker searches localized and English names.
 Toolbar labels (`special-characters`, `case-upper`, `case-lower`, `case-title`,
-`format-painter`) use the ordinary `controls` catalog.
+`format-painter`) use the ordinary `controls` catalog. The named-preset dropdowns
+(`named-styles`, `highlight-presets`) add no strings: their control label, the
+`preset` field and its `remove` option are localized through `controls` (for
+example `fields:{preset:{options:{remove:"Formatvorlage entfernen"}}}`), and the
+host supplies preset labels already localized.
