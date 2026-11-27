@@ -87,7 +87,7 @@ test("at a caret a preset sets the pending typing formats; read-only disables th
  await page.keyboard.type("x");
  const mono={type:"breditor-inline/font-family",properties:{"breditor-inline/family":4}},code={type:"breditor-inline/code",properties:{}};
  await expect.poll(()=>page.evaluate(()=>window.t.runs("q"))).toEqual([run("the lord of the rings"),run("x",sorted([code,mono]))]);
- await page.evaluate(()=>window.t.core.setReadOnly(true));
+ await page.evaluate(()=>window.t.editor.setReadOnly(true));
  await expect(page.locator('[data-rich-action="named-styles"]')).toBeDisabled();
  await expect(page.locator('[data-rich-action="highlight-presets"]')).toBeDisabled();
  expect(await page.evaluate(()=>window.t.errors)).toEqual([]);
