@@ -18,7 +18,7 @@ test.beforeEach(async({page})=>{
   const inline=["bold","italic","underline","strike","code"].filter(id=>ids.includes(id)),lists=["bullet","numbered"].filter(id=>ids.includes(id));
   const toolbarLayout={groupWhenFull:true,items:["undo","redo","|",{kind:"group",id:"text",label:"Text style",items:inline},"|",...lists,"|","link"]};
   window.editor=api.mountRichEditor(host,{core,inlinePresentation:presentation,toolbar,toolbarLayout,onError:error=>window.errors.push(String(error))});window.core=core;
-  const blocks=()=>JSON.parse(core.view().documentJson).root.children.map(block=>`${block.type.replace("breditor/","")}:${block.children.filter(c=>c.kind==="text").map(c=>c.text+(c.formats.length?`[${c.formats.map(f=>f.type.replace("breditor/","")).join(",")}]`:"")).join("|")}`);
+  const blocks=()=>JSON.parse(core.view().documentJson).root.children.map(block=>`${block.type.replace("breditor/","")}:${block.children.filter(c=>c.kind==="text").map(c=>c.text+(c.formats.length?`[${c.formats.map(f=>f.type.replace(/^breditor(-inline)?\//u,"")).join(",")}]`:"")).join("|")}`);
   const select=(block,start,end=start)=>window.editor.execute({kind:"setSelection",selection:{kind:"text",anchor:{block,offset:String(start),affinity:"after"},focus:{block,offset:String(end),affinity:"after"}}},true);
   const more=()=>window.editor.toolbar.querySelector("[data-breditor-toolbar-more]");
   const active=()=>{const a=document.activeElement;if(a===window.editor.surface)return "surface";if(!a||!window.editor.toolbar.contains(a))return a?.tagName??"none";const where=a.closest(".breditor-toolbar-popup")?"popup":"bar";return `${where}:${a.dataset.richAction??a.dataset.breditorToolbarGroupButton??(a.hasAttribute("data-breditor-toolbar-more")?"more":a.tagName)}`;};
@@ -33,18 +33,20 @@ test("group when full: narrow widths move trailing items into Show more items an
  const total=await page.evaluate(()=>window.editor.contextControlIds().length);
  // Unlisted admitted controls follow the listed items, so even 1000px overflows a little.
  await expect.poll(()=>page.evaluate(()=>window.layout.state().overflow.length)).toBeGreaterThan(0);
- const wide=await page.evaluate(()=>window.layout.state().overflow.length);
+ const wide=await page.evaluate(()=>window.layout.state().overflow);
  await page.evaluate(()=>{window.layout.host.style.width="360px";});
- await expect.poll(()=>page.evaluate(()=>window.layout.state().overflow.length)).toBeGreaterThan(wide);
+ await expect.poll(()=>page.evaluate(()=>window.layout.state().overflow.length)).toBeGreaterThan(wide.length);
  const narrow=await page.evaluate(()=>{
   const row=window.editor.toolbar.querySelector(".breditor-toolbar-row"),box=row.getBoundingClientRect();
   return {state:window.layout.state(),fits:[...row.children].filter(c=>!c.hidden).every(c=>c.getBoundingClientRect().right<=box.right+0.5),rows:window.editor.toolbar.querySelectorAll(".breditor-toolbar-row").length};
  });
- expect(narrow.fits).toBe(true);expect(narrow.rows).toBe(1);expect(narrow.state.overflow).toContain("link");expect(narrow.state.overflow.length).toBeLessThan(total+1);
+ expect(narrow.fits).toBe(true);expect(narrow.rows).toBe(1);expect(narrow.state.overflow).toContain("link");expect(narrow.state.overflow.length).toBeLessThan(total);
+ // Every admitted control is either in the row or in the menu, exactly once.
+ expect(await page.evaluate(()=>[...window.editor.toolbar.querySelectorAll("[data-rich-control]")].length)).toBe(total);
  const more=toolbar.getByRole("button",{name:"Show more items"});await expect(more).toBeVisible();await expect(more).toHaveAttribute("aria-expanded","false");
- await page.evaluate(()=>{window.layout.host.style.width="2400px";});
- await expect.poll(()=>page.evaluate(()=>window.layout.state().overflow)).toEqual([]);
- await expect(more).toBeHidden();
+ // The coordinator caps its root at 1100px, so widening back restores exactly the wide arrangement.
+ await page.evaluate(()=>{window.layout.host.style.width="1000px";});
+ await expect.poll(()=>page.evaluate(()=>window.layout.state().overflow)).toEqual(wide);
  // Restored in declared order: the listed items lead the row.
  expect(await page.evaluate(()=>[...window.editor.toolbar.querySelector(".breditor-toolbar-row").children].slice(0,4).map(c=>c.dataset.richControl??c.dataset.breditorToolbarGroup??c.getAttribute("role")))).toEqual(["undo","redo","separator","text"]);
  expect(await page.evaluate(()=>window.errors)).toEqual([]);
@@ -55,10 +57,11 @@ test("keyboard: one roving tab stop, a dropdown group and the overflow menu run 
  await expect.poll(()=>page.evaluate(()=>window.layout.state().overflow.includes("bullet"))).toBe(true);
  expect(await page.evaluate(()=>window.layout.state().overflow.includes("text"))).toBe(false);
  expect(await page.evaluate(()=>window.layout.tabStops())).toBe(1);
- // Tab from the page into the toolbar lands on its single tab stop (Undo is disabled, so Redo).
+ // The single tab stop is the first enabled item: Undo and Redo have no history yet, so the text group.
  await page.evaluate(()=>window.editor.toolbar.querySelector("[tabindex='0']").focus());
- expect(await page.evaluate(()=>window.layout.active())).toBe("bar:redo");
- await page.keyboard.press("ArrowRight");expect(await page.evaluate(()=>window.layout.active())).toBe("bar:text");
+ expect(await page.evaluate(()=>window.layout.active())).toBe("bar:text");
+ await page.keyboard.press("ArrowRight");expect(await page.evaluate(()=>window.layout.active())).not.toBe("bar:text");
+ await page.keyboard.press("ArrowLeft");expect(await page.evaluate(()=>window.layout.active())).toBe("bar:text");
  const group=page.getByRole("button",{name:"Text style"});await expect(group).toHaveAttribute("aria-expanded","false");
  await expect(group).toHaveAttribute("data-breditor-group-state","inactive");
  await page.keyboard.press("ArrowDown");await expect(group).toHaveAttribute("aria-expanded","true");
@@ -70,7 +73,7 @@ test("keyboard: one roving tab stop, a dropdown group and the overflow menu run 
  await page.keyboard.press("Enter");expect(await page.evaluate(()=>window.layout.active())).toBe("popup:bold");
  await page.keyboard.press("Enter");
  expect(await page.evaluate(()=>window.layout.active())).toBe("surface");
- expect(await page.evaluate(()=>window.layout.blocks()[0])).toBe("paragraph:Hello[bold]| layout");
+ expect(await page.evaluate(()=>window.layout.blocks()[0])).toBe("paragraph:Hello[strong]| layout");
  expect(await page.evaluate(()=>window.layout.depth())).toBe(before+1);
  await expect(group).toHaveAttribute("data-breditor-group-state","active");await expect(group).toHaveAttribute("aria-expanded","false");
  // The overflow menu: End reaches "Show more items", ArrowDown opens onto its first enabled item.
@@ -92,7 +95,7 @@ test("keyboard: one roving tab stop, a dropdown group and the overflow menu run 
  expect(await page.evaluate(()=>window.layout.depth())).toBe(before+2);
  // Undo from the editor reverses exactly one step per toolbar command.
  const modifier=process.platform==="darwin"?"Meta":"Control";
- await page.keyboard.press(`${modifier}+z`);expect(await page.evaluate(()=>window.layout.blocks()[0])).toBe("paragraph:Hello[bold]| layout");
+ await page.keyboard.press(`${modifier}+z`);expect(await page.evaluate(()=>window.layout.blocks()[0])).toBe("paragraph:Hello[strong]| layout");
  await page.keyboard.press(`${modifier}+z`);expect(await page.evaluate(()=>window.layout.blocks()[0])).toBe("paragraph:Hello layout");
  await expect(page.getByRole("button",{name:"Text style"})).toHaveAttribute("data-breditor-group-state","inactive");
  expect(await page.evaluate(()=>window.errors)).toEqual([]);

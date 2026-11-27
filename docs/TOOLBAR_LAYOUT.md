@@ -91,9 +91,9 @@ when it moved into the menu hands focus to the overflow button.
 
 ## Keyboard (WAI-ARIA toolbar)
 
-- One roving tab stop across all rows: the first enabled item (or the last
-  focused one). Disabled items are skipped, as native disabled buttons are not
-  focusable.
+- One roving tab stop across all rows: the item the user last focused while
+  it stays enabled, otherwise the first enabled item. Disabled items are
+  skipped, as native disabled buttons are not focusable.
 - **Left/Right** (mirrored under RTL chrome) move between top-level items,
   **Home/End** jump to the ends; Left/Right inside a text field or select keep
   their editing meaning. A single-field control's stop is its field and Enter

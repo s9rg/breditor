@@ -111,8 +111,9 @@ export function arrangeRichToolbar<C>(o:{
   for(const element of toolbar.querySelectorAll<HTMLElement>(".breditor-toolbar-separator"))element.setAttribute("aria-orientation",element.parentElement?.classList.contains("breditor-toolbar-popup")?"horizontal":"vertical");
   const stops=topStops(),live=stops.filter(enabled);
   const focused=d.activeElement as HTMLElement|null;if(focused&&live.includes(focused))current=focused;
-  if(!current||!live.includes(current))current=live[0];
-  for(const stop of stops)stop.tabIndex=stop===current?0:-1;
+  // The last item the user focused keeps the stop while enabled; otherwise the first enabled item has it.
+  const stop=current&&live.includes(current)?current:live[0];
+  for(const candidate of stops)candidate.tabIndex=candidate===stop?0:-1;
   for(const popup of popups)for(const stop of stopsIn(popup.popup))stop.tabIndex=-1;
   // A single-field control's stop is its field (Enter applies); its Apply button is not a second tab stop.
   for(const element of keys.keys())if(element.tagName!=="DETAILS"&&element.querySelector(":scope>label>input,:scope>label>select")){const apply=element.querySelector<HTMLButtonElement>(":scope>button");if(apply)apply.tabIndex=-1;}
