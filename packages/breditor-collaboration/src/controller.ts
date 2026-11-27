@@ -26,6 +26,8 @@ import {RichWritingEvents,RichWritingReadRegistry,type RichWritingToolsHostState
 import {prepareRichPlaceholder,RichPlaceholderPresentation,richPlaceholderStyles} from "@breditor/experimental-rich-content/rendering";
 import {richCoordinatorShortcuts,type RichShortcutEntry} from "@breditor/experimental-rich-content/rendering";
 import {mountSharedV4BlockFieldDom,sharedV4RenderOptions} from "./v4_block_fields_dom.js";
+import {mountRichTextDragPort} from "@breditor/experimental-rich-content/rendering";
+import {sharedTextDrop} from "./text_drop.js";
 export interface SharedDomOptions<P extends SharedSelectionPolicy="original"> extends RenderOptions {
  core:SharedRichEditor<P>;toolbar?:readonly SharedToolbarControl<P>[];label?:string;image?:{asset:string;alt:string};
  /** Opt-in chrome catalog and chrome `dir`/`lang`. Never changes the editing surface or content direction. */
@@ -110,7 +112,14 @@ export class SharedDomEditor<P extends SharedSelectionPolicy="original"> {
   this.surface.addEventListener("click",event=>this.#taskCheck(event),{signal});
   mountSharedV4BlockFieldDom(this.surface,options.core,()=>this.#model,signal);
   this.surface.addEventListener("copy",event=>this.#copy(event,false),{signal});this.surface.addEventListener("cut",event=>this.#copy(event,true),{signal});this.surface.addEventListener("paste",event=>this.#paste(event),{signal});
-  this.surface.addEventListener("dragover",event=>{if(event.dataTransfer?.types.includes("Files"))event.preventDefault();},{signal});this.surface.addEventListener("drop",event=>{if(event.dataTransfer?.files.length){event.preventDefault();this.#files([...event.dataTransfer.files]);}},{signal});
+  // Native inline drag-and-drop; file drops keep the file path, foreign drops use the paste path.
+  mountRichTextDragPort({surface:this.surface,anchor:this.status,signal,
+   model:()=>this.#model,state:()=>({busy:this.#busy,composing:!!this.#composition}),
+   copy:data=>{this.#sync();return this.#transfer(data)!==null;},
+   closeTypingGroup:()=>this.#boundary(),
+   drop:(drop,revision)=>this.#attempt(()=>{const dispatch=sharedTextDrop(this.#model,drop);this.#perform(c=>{c.core.dispatch(dispatch,c.revision);},true,revision);}),
+   paste:(data,target)=>{this.#boundary();this.#attempt(()=>{this.#perform(c=>{c.core.select({kind:"text",anchor:target,focus:target},c.revision);},true);this.#pasteTransfer(data);});},
+   files:files=>this.#files(files)});
   this.surface.addEventListener("compositionstart",()=>this.#startComposition(),{signal});this.surface.addEventListener("compositionend",event=>this.#endComposition(event.data),{signal});
   d.addEventListener("selectionchange",()=>{if(!this.#busy&&!this.#composition)this.#attempt(()=>this.#sync());},{signal});
   this.#placeholder?.activate();
@@ -366,9 +375,17 @@ export class SharedDomEditor<P extends SharedSelectionPolicy="original"> {
  }
  #paste(event:ClipboardEvent):void{if(this.#model.view.readOnly===true){event.preventDefault();return;}if(!event.clipboardData)return;event.preventDefault();if(this.#composition||this.#busy)return;
   this.#boundary();
-  this.#attempt(()=>{const transfer=event.clipboardData!,foreign=this.#interchange&&transfer.types.some(t=>["application/x-breditor-rich+json","text/html","text/markdown"].includes(t)),files=[...transfer.files];if(files.length&&!foreign){this.#files(files);return;}
-   this.#pasteInput(grid=>readClipboardInput(transfer,this.#interchange,grid));
-  });
+  this.#attempt(()=>this.#pasteTransfer(event.clipboardData!));
+ }
+ /** The ordinary paste path for clipboard data and drops from outside this editor. */
+ #pasteTransfer(transfer:DataTransfer):void{
+  const foreign=this.#interchange&&transfer.types.some(t=>["application/x-breditor-rich+json","text/html","text/markdown"].includes(t)),files=[...transfer.files];if(files.length&&!foreign){this.#files(files);return;}
+  this.#pasteInput(grid=>readClipboardInput(transfer,this.#interchange,grid));
+ }
+ /** Write the exact Copy flavors of the current selection for a native drag; null when it has none. */
+ #transfer(data:DataTransfer):readonly RichInterchangeFormatReport[]|null{
+  const c=this.#context(),whole=c.model.view.selection?.kind==="document",general=c.model.view.rangeEditing==="general-v1",content=whole?this.#documentOwner().copyDocument():general?c.core.copyGeneral():c.core.copy();if(!content)return null;
+  const extra=exportClipboard(content.richJson,this.#interchange);writeClipboard(data,content.plainText,content.richJson,extra,whole);return extra?.formats??[];
  }
  #pasteInput(read:(grid:boolean)=>ClipboardInput):void {
   this.#sync();const revision=this.#model.view.revision,input=read(this.#model.view.selection?.kind==="grid"),fragment=input.fragment,plain=input.plain;if(!fragment&&!plain)return;

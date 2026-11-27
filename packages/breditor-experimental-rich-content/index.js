@@ -22,6 +22,7 @@ export {mountRichImageResize,richImageResizeCommit,clampRichImageDimension,scale
 export {createRichSlashCommands,filterRichSlashItems,standardRichSlashPicks} from "./dist/browser/slash_command_items.js";
 export {mountRichBlockDrag,mountRichBlockDragPort,richBlockDragStyles} from "./dist/browser/block_drag.js";
 export {resolveRichBlockMove,resolveRichBlockStep,richBlockDropTargets,richHandleBlock,richSelectionBlock,isMovableBlock} from "./dist/browser/block_move.js";
+export {mountRichTextDragPort,resolveRichTextDrop,richTextDropRuns,richTextDropPoint,richTextDropEffect,richTextDragStyles} from "./dist/browser/text_drag.js";
 export {mountRichSlashCommands} from "./dist/browser/slash_command_session.js";
 export {RichSuggestionSession} from "./dist/browser/suggestion_session.js";
 export {mountRichMentions,requireRichMentionSuggestions,filterRichMentionSuggestions} from "./dist/browser/mention_session.js";

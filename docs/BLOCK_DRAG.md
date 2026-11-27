@@ -85,3 +85,5 @@ reporting it to `onError`, so the handle catches it and only announces it.
 
 The same limits as the shared handle apply: no drag between editors or from outside the
 editor, no multi-block moves, no auto-scroll.
+
+Dragging selected inline text is separate and always on. See [INLINE_DRAG.md](INLINE_DRAG.md).

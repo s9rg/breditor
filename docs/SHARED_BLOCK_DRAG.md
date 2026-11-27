@@ -105,6 +105,10 @@ under `sibling-v1` it resolves to "before/after the blockquote".
 - Moving several selected blocks at once.
 - Auto-scrolling while dragging near the viewport edge.
 
+Native drag-and-drop of selected inline text (one guarded `replace_text_range` batch, a
+general drop cursor, and foreign drops through the paste path) is always on and documented
+in [INLINE_DRAG.md](INLINE_DRAG.md).
+
 The single-user `@breditor/experimental-rich-content` owner has the same handle through
 `mountRichBlockDrag`, backed by the local `moveBlock` action. See
 [BLOCK_DRAG.md](BLOCK_DRAG.md). Both editors share one handle and planner

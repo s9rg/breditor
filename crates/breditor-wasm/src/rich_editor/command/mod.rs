@@ -22,6 +22,7 @@ mod delete_table_row;
 mod delete_typing_range;
 mod details;
 mod drafts;
+mod drop_text;
 mod exit_code_block;
 mod exit_task_item;
 mod flow_direction;
@@ -159,6 +160,7 @@ enum CommandTag {
     DeleteTableRow,
     DeleteTableColumn,
     MoveBlock,
+    DropText,
     MoveTableRow,
     MoveTableColumn,
     ResizeTableColumn,
