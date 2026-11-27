@@ -29,6 +29,12 @@ import {exportDocx,docxContentType,type DocxResult,type DocxLossCode} from "@bre
 const docx:DocxResult<Uint8Array>=exportDocx("{}",{image:binding=>binding.asset?undefined:new Uint8Array(),pageSize:"a4"});
 const docxLoss:DocxLossCode|undefined=docx.losses[0]?.code;
 void [docx,docxLoss,docxContentType satisfies string];
+// Opt-in EPUB entry: installed subpath export and strict consumer types.
+import {exportEpub,epubContentType,type EpubResult,type EpubLossCode,type EpubSplit} from "@breditor/interchange/epub";
+const epubSplit:EpubSplit="page-break";
+const epub:EpubResult<Uint8Array>=exportEpub("{}",{title:"T",language:"en",identifier:"urn:x",modified:"2026-01-01T00:00:00Z",split:epubSplit,image:binding=>binding.asset?undefined:new Uint8Array()});
+const epubLoss:EpubLossCode|undefined=epub.losses[0]?.code;
+void [epub,epubLoss,epubContentType satisfies string];
 import {documentXmlContractV1,exportDocumentXml,exportXml,xmlContractV1} from "@breditor/interchange/xml";
 declare const owner: Parameters<NonNullable<LocalDocumentEditorOptions["clipboardInterchange"]>>[0];
 const xml=exportXml(owner,"{}");

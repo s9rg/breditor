@@ -17,6 +17,10 @@
       "types": "./dist/docx.d.ts",
       "import": "./dist/docx.js"
     },
+    "./epub": {
+      "types": "./dist/epub.d.ts",
+      "import": "./dist/epub.js"
+    },
     "./xml": {
       "types": "./dist/xml.d.ts",
       "import": "./dist/xml.js"

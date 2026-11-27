@@ -52,6 +52,31 @@
         "DocxResult"
       ]
     },
+    "./epub": {
+      "conditions": [
+        "import",
+        "types"
+      ],
+      "values": [
+        "epubContentType",
+        "epubContractV1",
+        "epubImageBindings",
+        "epubLimits",
+        "exportEpub",
+        "exportEpubWithImages"
+      ],
+      "typeOnly": [
+        "EpubAsyncExportOptions",
+        "EpubErrorCode",
+        "EpubExportOptions",
+        "EpubImageBinding",
+        "EpubLoss",
+        "EpubLossCode",
+        "EpubMetadata",
+        "EpubResult",
+        "EpubSplit"
+      ]
+    },
     "./portable-html": {
       "conditions": [
         "import",

@@ -1,7 +1,9 @@
-# Document conversion (DOCX export)
+# Document conversion (DOCX and EPUB export)
 
 Status: opt-in, **export only**. `@breditor/interchange/docx` converts a native
-rich document into a Word (`.docx`) package in the page or in Node. It adds no
+rich document into a Word (`.docx`) package in the page or in Node, and
+`@breditor/interchange/epub` converts it into an EPUB 3 publication (see
+[EPUB 3 export](#epub-3-export)). It adds no
 document format, command, history family, saved setting or Rust capability, and
 nothing loads unless a host imports the entry point.
 
@@ -179,3 +181,115 @@ source text, URL or asset identifier is echoed.
   page numbers or section breaks beyond one default section.
 - **No compression.** STORE only (see above); a deterministic deflater could be
   added later without changing the API.
+
+## EPUB 3 export
+
+`@breditor/interchange/epub` (`dist/epub.js`) is a second opt-in entry point of
+the same package. It writes a reflowable EPUB 3.3 publication from the same
+document envelopes the DOCX exporter accepts. Its content documents come from
+the **existing semantic HTML export** (`HtmlExport`, the code behind
+`exportHtml`), so EPUB and HTML export have the same element mapping and loss
+codes. The library-owned HTML is then serialized as XHTML. Like the DOCX entry,
+it imports none of the HTML/Markdown parser graph (`parse5`, `markdown-it`,
+`css-tree`); a unit test pins its module graph and the installed-consumer check
+bundles it and asserts the same.
+
+### Decisions
+
+| Question | Decision |
+| --- | --- |
+| Adapter | In-repo writer, no new dependency. It reuses the DOCX entry's STORE-only ZIP writer (`src/docx/zip.ts`), raster signature sniffing (`src/docx/image.ts`) and document-envelope validation (`src/docx/convert.ts`) without changing them. |
+| Container (OCF) | `mimetype` (`application/epub+zip`) is the first entry, stored, with no extra field. Next come `META-INF/container.xml` and `EPUB/package.opf`, then `EPUB/nav.xhtml`, `EPUB/style.css`, `EPUB/chapter-N.xhtml` and `EPUB/images/image-N.{png,jpg,gif}`, always in that order. Every entry is STORE with the fixed 1980-01-01 timestamp; OCF permits stored entries. |
+| Metadata | Caller-supplied and validated before any image callback runs. `title` (1–1,024 characters), `language` (canonical BCP 47), `identifier` (1–256 characters, no edge whitespace) and `modified` (`YYYY-MM-DDThh:mm:ssZ`, a real calendar date) are required; `author` (`dc:creator`, 1–1,024 characters) is optional. Text must not be blank or contain control characters or lone surrogates. The writer never reads a clock. The host keeps `identifier` stable across exports of the same publication. |
+| Content documents | `split` decides where a new XHTML document starts. `heading-1` (the default) starts one before every top-level heading 1. `page-break` starts one at every top-level `breditor/page-break`, and the break itself is consumed. `heading-1-and-page-break` does both, and `none` writes one document. Empty documents are skipped, so content before the first heading becomes its own front-matter document. A document with no content still gets one empty content document. A page break that does not split stays a CSS `break-after:page` block. |
+| XHTML | The HTML exporter output is rewritten through a closed tag/attribute allowlist. Void elements self-close, and boolean attributes get their XML form (`checked="checked"`, `reversed="reversed"`, `open="open"`, `disabled="disabled"`). The obsolete `<col width>` becomes `style="width:Npx"`. Each document is `<html xmlns=… lang xml:lang>`, with the bundled stylesheet linked. Anything outside the allowlist is an internal error, not output. |
+| Navigation | `nav.xhtml` holds an `epub:type="toc"` `<nav>` built from **top-level** headings (levels 1–6). A deeper heading nests under the nearest shallower one. A bookmarked heading keeps its `bm-<name>` id. Other headings get `heading-N` ids in document order. Headings with no text are left out. With no headings at all, the table of contents has one entry for the first content document, labelled with the title. Headings inside lists, quotes, tables or sections stay in the content but are not listed. |
+| Internal links | Bookmark anchors (`id="bm-<name>"`) are indexed across content documents and `#bm-<name>` links are rewritten to `chapter-N.xhtml#bm-<name>` when the anchor is in another document. A link to an anchor in no document keeps its text and reports `unsafe-link`. |
+| Images | Bytes come only from the host (`image` sync callback or `exportEpubWithImages` with an async `loadImage`), once per distinct `(asset-id, asset-generation)` binding in document order, and are copied. The type is decided by signature (PNG, JPEG, GIF), never by a declared MIME type. Admitted images are named `images/image-N.ext` in first-use order and shared by every use. Missing bytes report `image-reference` and other formats report `image-format`; both keep the alt text. |
+| Determinism | Identical document JSON, options and image bytes give identical bytes: fixed entry order, timestamps, file names, ids and manifest order. Unit tests compare two runs and four input envelopes byte for byte. |
+| Stylesheet | A small bundled CSS file (`style.css`, library-authored, no external resources or fonts) sets readable defaults for quotes, code, tables, figures and images (`max-width:100%`). |
+
+### API
+
+```ts
+import {exportEpubWithImages,epubContentType} from "@breditor/interchange/epub";
+
+const result = await exportEpubWithImages(editor.view().documentJson, {
+  title: "Quarterly report",
+  language: "en-US",
+  identifier: "urn:uuid:4f0c…",          // host-owned, stable per publication
+  author: "Finance team",                 // optional
+  modified: "2026-11-27T12:00:00Z",       // caller-supplied, never read from a clock
+  split: "heading-1",                     // or "page-break", "heading-1-and-page-break", "none"
+  loadImage: binding => assetStore.blob(binding.asset),
+});
+if (result.ok) download(new Blob([result.value], {type: epubContentType}));
+```
+
+`exportEpub(documentJson, {…, image})` is the synchronous form and
+`epubImageBindings(documentJson)` lists the distinct bindings in order.
+Results are `{ok:true, value, losses}` or `{ok:false, error, losses}`, and
+`error` is `invalid-source`, `resource-limit` or `asset-policy` (as for
+DOCX). `epubContractV1` versions this mapping, and `epubLimits` exposes the
+bounds. The image callbacks receive the options object as `this`.
+
+### Bounds
+
+| Bound | Value |
+| --- | --- |
+| Document JSON / visited nodes / depth | same as DOCX (8 Mi UTF-16 units / 65,536 / 48) |
+| Native nodes per content document | 16,384 (the HTML exporter's `outputNodes` bound) |
+| Content documents | 1,024 |
+| Distinct images, bytes per image, all images | 256, 10 MiB, 64 MiB |
+| Generated XHTML | 32 Mi UTF-16 units |
+| Title / author / identifier | 1,024 / 1,024 / 256 characters |
+
+### Losses
+
+The losses are the HTML exporter's interchange codes (for example
+`unsupported-element`, `unsupported-style`, `unsafe-link`, `image-reference`,
+`block-structure`). They are aggregated with three EPUB-specific sources:
+`image-format` (host bytes are not PNG, JPEG or GIF), `unsafe-link` for a
+dangling internal link, and `removed-content` for each XML-invalid control
+character removed from text, alt text or properties. Mentions keep their
+entity as `data-mention-*` attributes, and collapsible sections stay native
+`<details>`, so neither is reported as a loss. Whether a reading system shows
+`<details>` as collapsible is up to that reader.
+
+### Validation
+
+- `packages/breditor-interchange/tests/epub.test.ts` unzips every export with
+  the test-only reader (central/local header and CRC-32 cross-checks). It
+  checks the exact entry order, that `mimetype` comes first and is stored with
+  no extra field (raw local-header bytes), the fixed timestamps, and that every
+  XML/OPF/XHTML part is well-formed under the strict parser. It also checks
+  that manifest and archive match exactly, the spine order, metadata values,
+  nested navigation and that every nav and internal-link target exists. Other
+  checks cover every split mode, XHTML forms, image naming and sharing, the
+  exact loss report, byte-for-byte determinism across runs and envelopes,
+  option validation before any host image call, bounds, malformed input,
+  host-value failures, buffer copying, the Word/Google Docs/Excel importer
+  fixtures and the parser-free module graph. `BREDITOR_EPUB_DUMP=/path/out.epub`
+  writes the fixture for inspection. `xmllint --noout` also found every part
+  of that dump well-formed.
+- `scripts/check-interchange-package.mjs` bundles the installed
+  `@breditor/interchange/epub` entry (no parser modules) and runs
+  `epub-runtime.mjs`. That check exports a retained native V4 checkpoint with a
+  real PNG through installed archives only, with both sync and async host
+  receivers.
+- **Not run:** [EPUBCheck](https://github.com/w3c/epubcheck) (the W3C
+  conformance checker) was not available in the development environment and
+  was not downloaded, so conformance has **not** been verified with it. No
+  reading system (Apple Books, Thorium, Calibre, Kobo, Kindle conversion) has
+  been tried yet. Running EPUBCheck on the `BREDITOR_EPUB_DUMP` output is the
+  next fidelity check.
+
+### Non-goals (this slice)
+
+- No EPUB import, fixed-layout EPUB, EPUB 2 NCX fallback, cover image,
+  landmarks or page-list navigation, embedded fonts, media overlays, scripting
+  or accessibility metadata (`schema:accessMode` and related properties).
+  A host that needs accessibility metadata cannot add it yet.
+- No compression (STORE only, as for DOCX).
+- No WebP or SVG images. They are EPUB core media types, but this slice admits
+  only the raster signatures the DOCX writer already sniffs.
