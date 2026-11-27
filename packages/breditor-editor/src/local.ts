@@ -1,5 +1,5 @@
 import {compileStandardRichProfileV1,compileStandardStructuralRichProfileV2,compileStandardLayoutRichProfileV3,compileStandardRichProfileV4,createStandardRichInlinePresentationV1,createStandardRichToolbarV1,createStructuralRichToolbarV2,createLayoutRichToolbarV3,createRichToolbarV4,mountRichEditor,insertImageFiles,type RichCoreEditor,type RichCoreProfile,type RichDomEditor,type RichEditorOptions,type RichCommand,type RichView,type RichCommandOutcome,type RichAssetStore,type AssetInfo,type FlowPosition,type ToolbarControl,type RenderOptions} from "@breditor/experimental-rich-content";
-import {validatePlaceholderOption,resolveRichUi} from "@breditor/experimental-rich-content/rendering";
+import {validatePlaceholderOption,resolveRichUi,checkRichToolbarContainer} from "@breditor/experimental-rich-content/rendering";
 import {refreshAssets,validateMarkdownInputPolicy} from "@breditor/experimental-rich-content/rendering";
 import type {RichSearchHost} from "@breditor/experimental-rich-content";
 import {withRichRubyBootstrapV1} from "@breditor/experimental-rich-content/rendering";
@@ -131,7 +131,7 @@ class LocalEditorOwner implements LocalEditor {
 export async function openLocalEditor(options:LocalEditorOptions):Promise<LocalEditor>{
  options={...options};
  validateMarkdownInputPolicy(options.inputRules);
- validatePlaceholderOption(options.placeholder);resolveRichUi(options.ui);
+ validatePlaceholderOption(options.placeholder);resolveRichUi(options.ui);if(options.toolbarContainer!==undefined&&options.host?.nodeType===1)checkRichToolbarContainer(options.toolbarContainer,options.host);
  checkLocalRichLanguage(options.richLanguage);
  if(options.readOnly!==undefined&&typeof options.readOnly!=="boolean")throw new TypeError("readOnly must be Boolean");
  const restricted=options.restrictedEditing;

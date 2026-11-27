@@ -1,5 +1,5 @@
 /** Explicit top-level document session; ordinary/general startup and durable discriminators remain closed. */
-import {validatePlaceholderOption,resolveRichUi} from "@breditor/experimental-rich-content/rendering";
+import {validatePlaceholderOption,resolveRichUi,checkRichToolbarContainer} from "@breditor/experimental-rich-content/rendering";
 import {compileStandardSharedProfileV1,compileStandardStructuralSharedProfileV2,compileStandardLayoutSharedProfileV3,compileStandardRichSharedProfileV4,supportsSharedDocumentSelection,restoreSharedDocumentEditor,restoreSharedGeneralEditor,restoreSharedTypingEditor,SharedPersistentSession,SharedEditorError,mountSharedDocumentEditor,createStandardSharedToolbarV1,createStructuralSharedToolbarV2,createLayoutSharedToolbarV3,createRichSharedToolbarV4,type SharedRustProfile,type SharedProfileConfiguration,type SharedProfileConfigurationV2,type SharedProfileConfigurationV3,type SharedProfileConfigurationV4,type SharedProfileDescriptor,type SharedRustOwner,type SharedRichEditor,type SharedDomEditor,type SharedDocumentDomOptions,type SharedToolbarControl,type SharedEditorOptions,type SharedSaveState,type SharedDocumentView,type SharedDispatch} from "@breditor/collaboration";
 import {createStandardRichInlinePresentationV1} from "@breditor/experimental-rich-content";
 import type {RichSearchHost} from "@breditor/experimental-rich-content";
@@ -105,7 +105,7 @@ export async function openSharedDocumentSearchEditor(options:SharedDocumentSearc
 async function openDocumentEditorFamily(options:SharedDocumentEditorSessionOptions|SharedDocumentSearchEditorSessionOptions,search:boolean):Promise<SharedDocumentEditorSession>{
  options={...options};
  validateMarkdownInputPolicy(options.inputRules);
- validatePlaceholderOption(options.placeholder);resolveRichUi(options.ui);
+ validatePlaceholderOption(options.placeholder);resolveRichUi(options.ui);if(options.toolbarContainer!==undefined&&options.host?.nodeType===1)checkRichToolbarContainer(options.toolbarContainer,options.host);
  if(options.coreOptions&&"searchHistory" in options.coreOptions&&options.coreOptions.searchHistory!==undefined)throw new TypeError("Use the separately named search startup factory");
  if(options.selectionEditing!=="document-v1")throw new TypeError("Expected explicit selectionEditing document-v1");
  if(options.rangeEditing!==undefined&&options.rangeEditing!=="general-v1")throw new TypeError("Document editing requires general-v1 ranges");

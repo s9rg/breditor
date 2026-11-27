@@ -14,7 +14,7 @@ export interface RichShellUiStrings {
  readonly shortcutSelectAll:string;readonly shortcutHardBreak:string;readonly shortcutExitCode:string;
  readonly shortcutAlignLeft:string;readonly shortcutAlignCenter:string;readonly shortcutAlignRight:string;readonly shortcutAlignJustify:string;
  readonly shortcutFlowBefore:string;readonly shortcutFlowAfter:string;
- readonly shortcutFocusToolbar:string;readonly shortcutFocusBlockMenu:string;readonly shortcutContextMenu:string;readonly shortcutFocusMenuBar:string;
+ readonly shortcutFocusToolbar:string;readonly shortcutFocusEditorToolbar:string;readonly shortcutFocusBlockMenu:string;readonly shortcutContextMenu:string;readonly shortcutFocusMenuBar:string;
  readonly shortcutOpenHelp:string;readonly shortcutLeaveUi:string;readonly shortcutMoveBlockUp:string;readonly shortcutMoveBlockDown:string;
  readonly keyControl:string;readonly keyCommand:string;readonly keyAlt:string;readonly keyOption:string;readonly keyShift:string;
 }
@@ -30,7 +30,7 @@ export const richShellUiStringsEn:Readonly<RichShellUiStrings>=Object.freeze({
  shortcutSelectAll:"Select all",shortcutHardBreak:"Line break within the block",shortcutExitCode:"Leave the code block",
  shortcutAlignLeft:"Align left",shortcutAlignCenter:"Align center",shortcutAlignRight:"Align right",shortcutAlignJustify:"Justify",
  shortcutFlowBefore:"Move before the adjacent object",shortcutFlowAfter:"Move after the adjacent object",
- shortcutFocusToolbar:"Move focus to the floating toolbar",shortcutFocusBlockMenu:"Move focus to the empty-line block menu",shortcutContextMenu:"Open the context menu",shortcutFocusMenuBar:"Move focus to the menu bar",
+ shortcutFocusToolbar:"Move focus to the floating toolbar",shortcutFocusEditorToolbar:"Move focus to the editor toolbar",shortcutFocusBlockMenu:"Move focus to the empty-line block menu",shortcutContextMenu:"Open the context menu",shortcutFocusMenuBar:"Move focus to the menu bar",
  shortcutOpenHelp:"Show keyboard shortcuts",shortcutLeaveUi:"Close a menu or dialog and return to the text",shortcutMoveBlockUp:"Move the block up",shortcutMoveBlockDown:"Move the block down",
  keyControl:"Ctrl",keyCommand:"Command",keyAlt:"Alt",keyOption:"Option",keyShift:"Shift",
 });

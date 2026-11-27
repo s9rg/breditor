@@ -1,4 +1,4 @@
-import {validatePlaceholderOption,resolveRichUi} from "@breditor/experimental-rich-content/rendering";
+import {validatePlaceholderOption,resolveRichUi,checkRichToolbarContainer} from "@breditor/experimental-rich-content/rendering";
 import {
  compileStandardSharedProfileV1,compileStandardStructuralSharedProfileV2,compileStandardLayoutSharedProfileV3,compileStandardRichSharedProfileV4,restoreSharedTypingEditor,restoreSharedGeneralEditor,supportsSharedGeneralRanges,SharedPersistentSession,SharedEditorError,mountSharedEditor,createStandardSharedToolbarV1,createStructuralSharedToolbarV2,createLayoutSharedToolbarV3,createRichSharedToolbarV4,
  type SharedRustProfile,type SharedProfileConfiguration,type SharedProfileConfigurationV2,type SharedProfileConfigurationV3,type SharedProfileConfigurationV4,type SharedProfileDescriptor,
@@ -153,7 +153,7 @@ export async function openSharedSearchEditor(options:SharedSearchEditorSessionOp
 async function openSharedEditorFamily(options:SharedEditorSessionOptions|SharedSearchEditorSessionOptions,search:boolean):Promise<SharedEditorSession>{
  options={...options};
  validateMarkdownInputPolicy(options.inputRules);
- validatePlaceholderOption(options.placeholder);resolveRichUi(options.ui);
+ validatePlaceholderOption(options.placeholder);resolveRichUi(options.ui);if(options.toolbarContainer!==undefined&&options.host?.nodeType===1)checkRichToolbarContainer(options.toolbarContainer,options.host);
  if(options.coreOptions&&"searchHistory" in options.coreOptions&&options.coreOptions.searchHistory!==undefined)throw new TypeError("Use the separately named search startup factory");
  checkSharedRichLanguage(options.richLanguage);
  if(options.readOnly!==undefined&&typeof options.readOnly!=="boolean")throw new TypeError("readOnly must be Boolean");

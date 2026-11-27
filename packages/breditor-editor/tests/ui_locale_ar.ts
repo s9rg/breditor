@@ -80,7 +80,7 @@ mentionLabel:"الإشارات",mentionLoading:"جارٍ تحميل الاقتر
  shortcutSelectAll:"تحديد الكل",shortcutHardBreak:"سطر جديد داخل الكتلة",shortcutExitCode:"الخروج من الكتلة البرمجية",
  shortcutAlignLeft:"محاذاة لليسار",shortcutAlignCenter:"توسيط",shortcutAlignRight:"محاذاة لليمين",shortcutAlignJustify:"ضبط",
  shortcutFlowBefore:"الانتقال قبل الكائن المجاور",shortcutFlowAfter:"الانتقال بعد الكائن المجاور",
- shortcutFocusToolbar:"نقل التركيز إلى شريط الأدوات العائم",shortcutFocusBlockMenu:"نقل التركيز إلى قائمة الكتل في السطر الفارغ",shortcutContextMenu:"فتح قائمة السياق",shortcutFocusMenuBar:"نقل التركيز إلى شريط القوائم",
+ shortcutFocusToolbar:"نقل التركيز إلى شريط الأدوات العائم",shortcutFocusEditorToolbar:"نقل التركيز إلى شريط أدوات المحرر",shortcutFocusBlockMenu:"نقل التركيز إلى قائمة الكتل في السطر الفارغ",shortcutContextMenu:"فتح قائمة السياق",shortcutFocusMenuBar:"نقل التركيز إلى شريط القوائم",
  shortcutOpenHelp:"عرض اختصارات لوحة المفاتيح",shortcutLeaveUi:"إغلاق قائمة أو مربع حوار والعودة إلى النص",shortcutMoveBlockUp:"نقل الكتلة لأعلى",shortcutMoveBlockDown:"نقل الكتلة لأسفل",
  keyControl:"Ctrl",keyCommand:"Command",keyAlt:"Alt",keyOption:"Option",keyShift:"Shift",
  specialCharactersSearch:"البحث عن الرموز",specialCharactersCategory:"الفئة",specialCharactersAll:"كل الفئات",specialCharactersGrid:"رموز خاصة",

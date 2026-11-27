@@ -1,6 +1,7 @@
 /** React owns only the lease. Widgets attach beside the borrowed editor's toolbar and never reconcile document children. */
 import {forwardRef,useEffect,useImperativeHandle,useRef,useState,type ReactElement,type RefObject} from "react";
 import {mountRichMenuBar,mountRichShortcutHelp,mountRichFloatingMenu,type RichMenuBar,type RichMenuBarOptions,type RichShortcutHelp,type RichShortcutHelpOptions,type RichFloatingMenu,type RichFloatingMenuOptions} from "@breditor/experimental-rich-content";
+import {mountRichExternalToolbar,type RichExternalToolbar} from "@breditor/experimental-rich-content";
 import {mountRichSelectionToolbar,mountRichContextMenu,type RichContextUiHost,type RichSelectionToolbar,type RichSelectionToolbarOptions,type RichContextMenu,type RichContextMenuOptions} from "@breditor/experimental-rich-content";
 export interface BreditorSelectionToolbarProps {editor:RichContextUiHost;initialOptions?:RichSelectionToolbarOptions;sessionKey?:string;onError?:(error:unknown)=>void}
 export interface BreditorSelectionToolbarHandle {getToolbar():RichSelectionToolbar|null;focus():boolean;dismiss():void}
@@ -44,6 +45,23 @@ export const BreditorShortcutHelp=forwardRef<BreditorShortcutHelpHandle,Breditor
  const [lease,failure]=useLease<RichShortcutHelp,RichShortcutHelpOptions>(props,mountRichShortcutHelp,"Shortcut help");
  useImperativeHandle(ref,()=>({getHelp:()=>lease.current,open:()=>lease.current?.open()??false,close:()=>lease.current?.close()}),[lease]);
  return failure===null?null:<p role="alert">{failure}</p>;
+});
+export interface BreditorToolbarSlotProps {editor:RichContextUiHost;sessionKey?:string;className?:string;onError?:(error:unknown)=>void}
+export interface BreditorToolbarSlotHandle {getToolbar():RichExternalToolbar|null;focus():boolean}
+/**
+ * Decoupled layout (docs/EDITOR_SHELL.md): renders one empty `<div>` and moves the borrowed editor's standard toolbar
+ * into it while mounted. React never reconciles the moved toolbar; unmounting puts it back in the editor root.
+ */
+export const BreditorToolbarSlot=forwardRef<BreditorToolbarSlotHandle,BreditorToolbarSlotProps>(function BreditorToolbarSlot(props,ref):ReactElement{
+ const slot=useRef<HTMLDivElement|null>(null),lease=useRef<RichExternalToolbar|null>(null),callbacks=useRef(props),[failure,setFailure]=useState<string|null>(null);
+ useEffect(()=>{callbacks.current=props;});
+ useEffect(()=>{
+  const container=slot.current;setFailure(null);if(!container)return;
+  try{const mounted=mountRichExternalToolbar(props.editor,container);lease.current=mounted;return()=>{if(lease.current===mounted)lease.current=null;mounted.dispose();};}
+  catch(error){setFailure(`Toolbar could not start: ${error instanceof Error?error.message:String(error)}`);try{callbacks.current.onError?.(error);}catch{/* Reporting cannot alter editor ownership. */}return;}
+ },[props.editor,props.sessionKey]);
+ useImperativeHandle(ref,()=>({getToolbar:()=>lease.current,focus:()=>lease.current?.focus()??false}),[]);
+ return <>{failure===null?null:<p role="alert">{failure}</p>}<div ref={slot} className={props.className} data-breditor-toolbar-slot=""/></>;
 });
 export const BreditorFloatingMenu=forwardRef<BreditorFloatingMenuHandle,BreditorFloatingMenuProps>(function BreditorFloatingMenu(props,ref):ReactElement|null{
  const [lease,failure]=useLease<RichFloatingMenu,RichFloatingMenuOptions>(props,mountRichFloatingMenu,"Block menu");

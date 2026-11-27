@@ -31,6 +31,7 @@ export {richInlinePresentationHasRuby} from "./dist/browser/inline_presentation.
 export {mountRichSelectionToolbar,mountRichContextMenu,richSelectionToolbarDefaults,richContextMenuDefaults,richContextUiStyles} from "./dist/browser/context_ui.js";
 export {mountRichMenuBar,mountRichShortcutHelp,mountRichFloatingMenu,mountRichBalloonBlockLayout,richMenuBarDefaults,richFloatingMenuDefaults,richEditorShellStyles} from "./dist/browser/editor_shell.js";
 export {richActiveShortcuts,richCoordinatorShortcuts,richControlShortcutChord,formatRichShortcut,detectRichShortcutPlatform,richShortcutGroups} from "./dist/browser/shortcut_registry.js";
+export {mountRichExternalToolbar,checkRichToolbarContainer,richExternalToolbarStyles} from "./dist/browser/external_toolbar.js";
 export {richShellUiStringsEn} from "./dist/browser/ui_locale_shell.js";
 export {mountRichSourceView} from "./dist/browser/source_view.js";
 export {mountRichAiTools} from "./dist/browser/ai_rewrite.js";

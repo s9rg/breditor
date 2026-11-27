@@ -754,6 +754,7 @@
         "mountContextMenu",
         "mountEditingAids",
         "mountEditingAidsControls",
+        "mountExternalToolbar",
         "mountFloatingMenu",
         "mountFullscreenControls",
         "mountLanguageCheck",
@@ -856,6 +857,8 @@
         "RichDocumentSourcePreview",
         "RichDocumentSourceRead",
         "RichDocumentView",
+        "RichExternalToolbar",
+        "RichExternalToolbarState",
         "RichFloatingMenu",
         "RichFloatingMenuOptions",
         "RichFloatingMenuState",
@@ -1254,6 +1257,7 @@
         "mountContextMenu",
         "mountEditingAids",
         "mountEditingAidsControls",
+        "mountExternalToolbar",
         "mountFloatingMenu",
         "mountFullscreenControls",
         "mountMentions",
@@ -1265,6 +1269,7 @@
         "mountSharedContextMenu",
         "mountSharedDocumentEditor",
         "mountSharedEditor",
+        "mountSharedExternalToolbar",
         "mountSharedFloatingMenu",
         "mountSharedFullscreenControls",
         "mountSharedImageResize",
@@ -1536,6 +1541,8 @@
         "RichContextUiHost",
         "RichContextUiHostState",
         "RichContextUiOptions",
+        "RichExternalToolbar",
+        "RichExternalToolbarState",
         "RichFloatingMenu",
         "RichFloatingMenuOptions",
         "RichFloatingMenuState",
@@ -2215,6 +2222,7 @@
         "BreditorSharedSlashCommands",
         "BreditorSharedSuggestionPanel",
         "BreditorShortcutHelp",
+        "BreditorToolbarSlot",
         "BreditorWritingTools"
       ],
       "typeOnly": [
@@ -2248,6 +2256,8 @@
         "BreditorSharedSuggestionPanelProps",
         "BreditorShortcutHelpHandle",
         "BreditorShortcutHelpProps",
+        "BreditorToolbarSlotHandle",
+        "BreditorToolbarSlotProps",
         "BreditorWritingToolsHandle",
         "BreditorWritingToolsProps"
       ]
@@ -2272,6 +2282,7 @@
         "BreditorSlashCommands",
         "BreditorSourceView",
         "BreditorStaticDocument",
+        "BreditorToolbarSlot",
         "BreditorWritingTools"
       ],
       "typeOnly": [
@@ -2302,6 +2313,8 @@
         "BreditorSourceViewHandle",
         "BreditorSourceViewProps",
         "BreditorStaticDocumentProps",
+        "BreditorToolbarSlotHandle",
+        "BreditorToolbarSlotProps",
         "BreditorWritingToolsHandle",
         "BreditorWritingToolsProps"
       ]
