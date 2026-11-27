@@ -9,8 +9,8 @@ use breditor_core::{
     rich_content::{
         BlockId, RichDocument, RichLocalSession, RichSelectionKind, RichTextPoint,
         root_set::{
-            RichMultiRootSession, RichRootId, RichRootMeta, RichRootSet, RichRootSetCheckpoint,
-            RichRootSetError,
+            RICH_ROOT_STRUCTURE_STEPS_MAX, RichMultiRootSession, RichRootId, RichRootJournalEntry,
+            RichRootMeta, RichRootSet, RichRootSetCheckpoint, RichRootSetError,
         },
     },
     schema::{CompiledSchema, DocumentLimits, SchemaId, SchemaVersion},
@@ -86,6 +86,25 @@ fn text(owner: &RichMultiRootSession, root: &str) -> Result<String, Box<dyn std:
         .filter_map(breditor_core::document::NodeRef::as_text)
         .map(breditor_core::document::TextNode::text)
         .collect())
+}
+
+/// Journal as text: a root id for a content unit, `kind:root` for a structure step.
+fn journal(owner: &RichMultiRootSession) -> Vec<String> {
+    owner
+        .set()
+        .journal()
+        .iter()
+        .map(|entry| match entry {
+            RichRootJournalEntry::Unit(id) => id.as_str().to_owned(),
+            RichRootJournalEntry::Structure(step) => {
+                format!("{}:{}", step.kind(), step.root().as_str())
+            }
+        })
+        .collect()
+}
+
+fn order(owner: &RichMultiRootSession) -> Vec<String> {
+    owner.set().roots().map(|meta| meta.id().as_str().to_owned()).collect()
 }
 
 fn type_in(owner: &mut RichMultiRootSession, root: &str, value: &str) -> TestResult {
@@ -166,9 +185,9 @@ fn typing_bursts_group_per_root_and_stay_globally_ordered() -> TestResult {
     for (clock, value) in [(10, "h"), (20, "i")] {
         owner.dispatch(&id("a")?, |s| Ok(s.insert_typing_text(&s.snapshot(), value, clock)?))?;
     }
-    assert_eq!(owner.set().journal(), &[id("a")?]);
+    assert_eq!(journal(&owner), ["a"]);
     owner.dispatch(&id("b")?, |s| Ok(s.insert_typing_text(&s.snapshot(), "!", 30)?))?;
-    assert_eq!(owner.set().journal(), &[id("a")?, id("b")?]);
+    assert_eq!(journal(&owner), ["a", "b"]);
     assert_eq!(owner.undo()?, Some(id("b")?));
     assert_eq!(owner.undo()?, Some(id("a")?));
     assert_eq!(text(&owner, "a")?, "x");
@@ -182,7 +201,7 @@ fn capacity_eviction_drops_the_oldest_units_of_that_root_only() -> TestResult {
     for value in ["1", "2", "3"] {
         type_in(&mut owner, "a", value)?;
     }
-    assert_eq!(owner.set().journal(), &[id("b")?, id("a")?, id("a")?]);
+    assert_eq!(journal(&owner), ["b", "a", "a"]);
     Ok(())
 }
 
@@ -193,7 +212,7 @@ fn out_of_order_local_undo_is_reordered_not_lost() -> TestResult {
     type_in(&mut owner, "b", "2")?;
     // A host bypassing global routing undoes root a directly.
     owner.dispatch(&id("a")?, |s| Ok(s.undo(&s.snapshot())?))?;
-    assert_eq!(owner.set().journal(), &[id("b")?, id("a")?]);
+    assert_eq!(journal(&owner), ["b", "a"]);
     assert_eq!(owner.set().cursor(), 1);
     assert_eq!(owner.redo()?, Some(id("a")?));
     assert_eq!(text(&owner, "a")?, "x1");
@@ -231,7 +250,7 @@ fn roots_are_added_and_removed_outside_history() -> TestResult {
     let (meta, removed) = owner.remove_root(&id("b")?)?;
     assert_eq!(meta.id(), &id("b")?);
     assert_eq!(removed.undo_depth(), 1);
-    assert_eq!(owner.set().journal(), &[id("a")?]);
+    assert_eq!(journal(&owner), ["a"]);
     assert_eq!(owner.undo()?, Some(id("a")?));
     assert_eq!(owner.undo()?, None);
     assert!(matches!(owner.focus(&id("b")?), Err(RichRootSetError::UnknownRoot)));
@@ -240,16 +259,24 @@ fn roots_are_added_and_removed_outside_history() -> TestResult {
 
 #[test]
 fn checkpoint_restores_every_root_and_the_global_order() -> TestResult {
-    let mut owner = owner(&["header", "content"], 100)?;
+    let context = context()?;
+    let mut owner = owner_in(&context, &["header"], 100)?;
+    let mut attributes = BTreeMap::new();
+    attributes.insert("order".to_owned(), "10".to_owned());
+    // Initial composition metadata is not a history step.
+    owner.add_root(
+        RichRootMeta::try_new(id("content")?, None, attributes)?,
+        session(&context, "content", 100)?,
+        None,
+    )?;
     type_in(&mut owner, "header", "A")?;
     type_in(&mut owner, "content", "B")?;
     type_in(&mut owner, "header", "C")?;
     owner.undo()?;
-    let mut attributes = BTreeMap::new();
-    attributes.insert("order".to_owned(), "10".to_owned());
-    owner.set_attributes(&id("content")?, attributes)?;
     let encoded = owner.checkpoint()?;
-    let mut restored = RichMultiRootSession::restore(context()?, &encoded)?;
+    // Without structure steps the envelope is still written as version 1.
+    assert_eq!(serde_json::from_str::<serde_json::Value>(&encoded)?["formatVersion"], 1);
+    let mut restored = RichMultiRootSession::restore(context.clone(), &encoded)?;
     assert_eq!(restored.set().meta(&id("content")?).ok_or("meta")?.attributes()["order"], "10");
     assert_eq!(restored.set().active(), Some(&id("header")?));
     assert_eq!(restored.set().journal(), owner.set().journal());
@@ -266,14 +293,17 @@ fn checkpoint_restores_every_root_and_the_global_order() -> TestResult {
     let mut value: serde_json::Value = serde_json::from_str(&encoded)?;
     value["journal"] = json!(["content", "content", "header"]);
     assert!(matches!(
-        RichMultiRootSession::restore(context()?, &value.to_string()),
+        RichMultiRootSession::restore(context.clone(), &value.to_string()),
         Err(RichRootSetError::HistoryMismatch)
     ));
     for (field, bad) in [
         ("journal", json!(["nope"])),
         ("cursor", json!(9)),
         ("active", json!("missing")),
-        ("formatVersion", json!(2)),
+        ("formatVersion", json!(3)),
+        // Version 1 cannot carry structure steps or detached roots.
+        ("journal", json!([{"step":"move","root":"header","from":0,"to":1}])),
+        ("detached", json!([])),
     ] {
         let mut value: serde_json::Value = serde_json::from_str(&encoded)?;
         value[field] = bad;
@@ -310,5 +340,249 @@ fn root_identity_and_metadata_are_bounded() -> TestResult {
         set.add_root(RichRootMeta::bare(id("overflow")?), &root, None),
         Err(RichRootSetError::TooManyRoots)
     ));
+    Ok(())
+}
+
+#[test]
+fn undoable_removal_retains_the_root_and_undo_restores_it_exactly() -> TestResult {
+    let mut owner = owner(&["header", "content", "sidebar"], 100)?;
+    type_in(&mut owner, "content", "1")?;
+    type_in(&mut owner, "header", "2")?;
+    owner.focus(&id("content")?)?;
+    let meta = owner.remove_root_undoable(&id("content")?)?;
+    assert_eq!(meta.id(), &id("content")?);
+    assert_eq!(order(&owner), ["header", "sidebar"]);
+    // The removed root was active; its right neighbour takes over.
+    assert_eq!(owner.set().active(), Some(&id("sidebar")?));
+    assert_eq!(journal(&owner), ["content", "header", "remove:content"]);
+    assert!(owner.root(&id("content")?).is_none());
+    assert_eq!(owner.detached_root(&id("content")?).ok_or("retained")?.undo_depth(), 1);
+    // A detached root accepts no commands and cannot take focus.
+    assert!(matches!(owner.focus(&id("content")?), Err(RichRootSetError::UnknownRoot)));
+    assert!(matches!(
+        owner.dispatch(&id("content")?, |s| Ok(s.insert_plain_text(&s.snapshot(), "!")?)),
+        Err(RichRootSetError::UnknownRoot)
+    ));
+    type_in(&mut owner, "sidebar", "3")?;
+
+    assert_eq!(owner.undo()?, Some(id("sidebar")?));
+    assert_eq!(owner.undo()?, Some(id("content")?));
+    // Same id, same position, same document and history; it becomes active.
+    assert_eq!(order(&owner), ["header", "content", "sidebar"]);
+    assert_eq!(owner.set().active(), Some(&id("content")?));
+    assert_eq!(text(&owner, "content")?, "x1");
+    assert_eq!(owner.set().detached().count(), 0);
+    assert_eq!(owner.undo()?, Some(id("header")?));
+    assert_eq!(owner.undo()?, Some(id("content")?));
+    assert_eq!(text(&owner, "content")?, "x");
+    assert_eq!(owner.undo()?, None);
+
+    for _ in 0..3 {
+        owner.redo()?;
+    }
+    assert_eq!(order(&owner), ["header", "sidebar"]);
+    assert_eq!(owner.redo()?, Some(id("sidebar")?));
+    assert_eq!(text(&owner, "sidebar")?, "x3");
+    assert_eq!(owner.redo()?, None);
+    Ok(())
+}
+
+#[test]
+fn undoable_addition_detaches_on_undo_and_is_released_when_redo_is_cleared() -> TestResult {
+    let context = context()?;
+    let mut owner = owner_in(&context, &["a", "b"], 100)?;
+    owner.add_root_undoable(RichRootMeta::bare(id("c")?), session(&context, "c", 100)?, Some(1))?;
+    assert_eq!(order(&owner), ["a", "c", "b"]);
+    assert_eq!(owner.set().active(), Some(&id("c")?));
+    type_in(&mut owner, "c", "!")?;
+    assert_eq!(journal(&owner), ["add:c", "c"]);
+    assert_eq!(owner.undo()?, Some(id("c")?));
+    assert_eq!(owner.undo()?, Some(id("c")?));
+    assert_eq!(order(&owner), ["a", "b"]);
+    assert!(owner.detached_root(&id("c")?).is_some());
+    assert_eq!(owner.redo()?, Some(id("c")?));
+    assert_eq!(order(&owner), ["a", "c", "b"]);
+    assert_eq!(owner.redo()?, Some(id("c")?));
+    assert_eq!(text(&owner, "c")?, "x!");
+    owner.undo()?;
+    owner.undo()?;
+    // A new edit clears the global redo branch: the undone addition can never return.
+    type_in(&mut owner, "a", "1")?;
+    assert!(owner.detached_root(&id("c")?).is_none());
+    assert_eq!(owner.set().detached().count(), 0);
+    assert_eq!(journal(&owner), ["a"]);
+    // Its id is free again.
+    owner.add_root_undoable(RichRootMeta::bare(id("c")?), session(&context, "c2", 100)?, None)?;
+    assert_eq!(order(&owner), ["a", "b", "c"]);
+    Ok(())
+}
+
+#[test]
+fn root_moves_and_attribute_changes_are_global_undo_steps() -> TestResult {
+    let mut owner = owner(&["a", "b", "c"], 100)?;
+    type_in(&mut owner, "a", "1")?;
+    assert!(owner.move_root(&id("a")?, 2)?);
+    assert!(!owner.move_root(&id("a")?, 2)?);
+    assert_eq!(order(&owner), ["b", "c", "a"]);
+    assert!(owner.set_attribute(&id("b")?, "order", "1")?);
+    assert!(!owner.set_attribute(&id("b")?, "order", "1")?);
+    assert!(owner.set_attribute(&id("b")?, "section", "intro")?);
+    assert!(owner.remove_attribute(&id("b")?, "order")?);
+    assert!(!owner.remove_attribute(&id("b")?, "order")?);
+    assert_eq!(journal(&owner), ["a", "move:a", "attributes:b", "attributes:b", "attributes:b"]);
+    let attributes = |owner: &RichMultiRootSession| -> Result<Vec<String>, RichRootSetError> {
+        Ok(owner
+            .set()
+            .meta(&id("b")?)
+            .ok_or(RichRootSetError::UnknownRoot)?
+            .attributes()
+            .iter()
+            .map(|(key, value)| format!("{key}={value}"))
+            .collect())
+    };
+    assert_eq!(attributes(&owner)?, ["section=intro"]);
+    owner.undo()?;
+    assert_eq!(attributes(&owner)?, ["order=1", "section=intro"]);
+    owner.undo()?;
+    owner.undo()?;
+    assert!(attributes(&owner)?.is_empty());
+    assert_eq!(owner.undo()?, Some(id("a")?));
+    assert_eq!(order(&owner), ["a", "b", "c"]);
+    assert_eq!(owner.undo()?, Some(id("a")?));
+    assert_eq!(text(&owner, "a")?, "x");
+    for _ in 0..5 {
+        owner.redo()?;
+    }
+    assert_eq!(order(&owner), ["b", "c", "a"]);
+    assert_eq!(attributes(&owner)?, ["section=intro"]);
+    Ok(())
+}
+
+#[test]
+fn structure_steps_refuse_with_typed_errors_and_change_nothing() -> TestResult {
+    let context = context()?;
+    let mut empty = RichMultiRootSession::new(context.clone());
+    assert!(matches!(
+        empty.add_root_undoable(RichRootMeta::bare(id("a")?), session(&context, "a", 100)?, None),
+        Err(RichRootSetError::LastRoot)
+    ));
+    let mut owner = owner_in(&context, &["a", "b"], 100)?;
+    owner.remove_root_undoable(&id("b")?)?;
+    assert!(matches!(owner.remove_root_undoable(&id("a")?), Err(RichRootSetError::LastRoot)));
+    assert!(matches!(owner.remove_root(&id("a")?), Err(RichRootSetError::LastRoot)));
+    assert!(matches!(owner.remove_root_undoable(&id("b")?), Err(RichRootSetError::UnknownRoot)));
+    assert!(matches!(owner.remove_root_undoable(&id("zz")?), Err(RichRootSetError::UnknownRoot)));
+    // A removed root's id stays reserved while Undo can bring it back.
+    assert!(matches!(
+        owner.add_root_undoable(RichRootMeta::bare(id("b")?), session(&context, "b2", 100)?, None),
+        Err(RichRootSetError::DuplicateRoot)
+    ));
+    assert!(matches!(
+        owner.add_root(RichRootMeta::bare(id("a")?), session(&context, "a2", 100)?, None),
+        Err(RichRootSetError::DuplicateRoot)
+    ));
+    assert!(matches!(
+        owner.add_root_undoable(
+            RichRootMeta::bare(id("c")?),
+            session(&context, "c", 100)?,
+            Some(9)
+        ),
+        Err(RichRootSetError::IndexOutOfRange)
+    ));
+    assert!(matches!(owner.move_root(&id("a")?, 1), Err(RichRootSetError::IndexOutOfRange)));
+    let revision = owner.set().revision();
+    owner.set().check_revision(revision)?;
+    type_in(&mut owner, "a", "1")?;
+    assert!(matches!(owner.set().check_revision(revision), Err(RichRootSetError::StaleRevision)));
+    // The newest step is a's content unit: a structure undo is refused, not misapplied.
+    let mut set = owner.set().clone();
+    assert!(matches!(set.undo_structure(), Err(RichRootSetError::NoStructureStep)));
+    assert!(matches!(set.redo_structure(), Err(RichRootSetError::NoStructureStep)));
+    assert_eq!((set.cursor(), set.revision()), (owner.set().cursor(), owner.set().revision()));
+    Ok(())
+}
+
+#[test]
+fn a_change_outside_history_is_a_barrier_for_positional_steps() -> TestResult {
+    let context = context()?;
+    let mut owner = owner_in(&context, &["a", "b", "c"], 100)?;
+    type_in(&mut owner, "b", "1")?;
+    owner.remove_root_undoable(&id("b")?)?;
+    owner.set_attribute(&id("a")?, "k", "v")?;
+    owner.move_root(&id("c")?, 0)?;
+    owner.add_root(RichRootMeta::bare(id("d")?), session(&context, "d", 100)?, Some(0))?;
+    // Positions recorded before the outside change could no longer be exact.
+    assert_eq!(journal(&owner), ["attributes:a"]);
+    assert!(owner.detached_root(&id("b")?).is_none());
+    assert_eq!(owner.undo()?, Some(id("a")?));
+    assert_eq!(owner.undo()?, None);
+    assert_eq!(order(&owner), ["d", "c", "a"]);
+    Ok(())
+}
+
+#[test]
+fn structure_history_is_bounded_oldest_first() -> TestResult {
+    let mut owner = owner(&["a", "b"], 100)?;
+    owner.remove_root_undoable(&id("b")?)?;
+    for value in 0..RICH_ROOT_STRUCTURE_STEPS_MAX {
+        owner.set_attribute(&id("a")?, "n", &value.to_string())?;
+    }
+    assert_eq!(owner.set().journal().len(), RICH_ROOT_STRUCTURE_STEPS_MAX);
+    // The oldest step (b's removal) left history, so b was released.
+    assert_eq!(owner.set().detached().count(), 0);
+    assert!(owner.detached_root(&id("b")?).is_none());
+    Ok(())
+}
+
+#[test]
+fn version_2_checkpoint_persists_structure_steps_and_detached_roots() -> TestResult {
+    let mut owner = owner(&["header", "content", "sidebar"], 100)?;
+    type_in(&mut owner, "content", "1")?;
+    owner.set_attribute(&id("header")?, "order", "1")?;
+    owner.remove_root_undoable(&id("content")?)?;
+    owner.move_root(&id("sidebar")?, 0)?;
+    owner.undo()?;
+    let encoded = owner.checkpoint()?;
+    let value: serde_json::Value = serde_json::from_str(&encoded)?;
+    assert_eq!(value["formatVersion"], 2);
+    assert_eq!(value["detached"][0]["id"], "content");
+    assert_eq!(value["journal"][2], json!({"step":"remove","root":"content","index":1}));
+    let mut restored = RichMultiRootSession::restore(context()?, &encoded)?;
+    assert_eq!(restored.checkpoint()?, encoded);
+    assert_eq!(journal(&restored), journal(&owner));
+    assert_eq!(restored.redo()?, Some(id("sidebar")?));
+    assert_eq!(order(&restored), ["sidebar", "header"]);
+    restored.undo()?;
+    assert_eq!(restored.undo()?, Some(id("content")?));
+    assert_eq!(order(&restored), ["header", "content", "sidebar"]);
+    assert_eq!(text(&restored, "content")?, "x1");
+    restored.undo()?;
+    assert_eq!(restored.undo()?, Some(id("content")?));
+    assert_eq!(text(&restored, "content")?, "x");
+
+    let tamper = |edit: &dyn Fn(&mut serde_json::Value)| -> Result<bool, serde_json::Error> {
+        let mut value: serde_json::Value = serde_json::from_str(&encoded)?;
+        edit(&mut value);
+        Ok(RichRootSetCheckpoint::decode(&value.to_string()).is_err())
+    };
+    // A recorded position that does not replay exactly.
+    assert!(tamper(&|v| v["journal"][2]["index"] = json!(5))?);
+    assert!(tamper(&|v| v["journal"][3]["from"] = json!(0))?);
+    // Attributes that do not match the set at that point.
+    assert!(tamper(&|v| v["journal"][1]["after"] = json!({"order":"2"}))?);
+    // A detached root nothing can restore, or one that is also attached.
+    assert!(tamper(&|v| v["journal"][2] = json!("header"))?);
+    assert!(tamper(&|v| v["detached"][0]["id"] = json!("header"))?);
+    // Unknown step kinds and fields.
+    assert!(tamper(&|v| v["journal"][3]["step"] = json!("rename"))?);
+    assert!(tamper(&|v| v["journal"][3]["extra"] = json!(1))?);
+    // Version 2 requires the detached list.
+    assert!(tamper(&|v| {
+        if let Some(object) = v.as_object_mut() {
+            object.remove("detached");
+        }
+    })?);
+    // Untouched, it decodes.
+    assert!(!tamper(&|_| {})?);
     Ok(())
 }

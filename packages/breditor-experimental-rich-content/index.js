@@ -213,18 +213,26 @@ const rootOwners=new WeakMap();
 export function createRichRootSet(wasm){
   if(typeof wasm?.BreditorRichRootSet!=="function")throw new RichCommandError("breditor_rich.module","Use a matching Wasm module with multi-root support");
   const raw=new wasm.BreditorRichRootSet();
-  if(raw.rootSetVersion?.()!=="1"){raw.free();throw new RichCommandError("breditor_rich.module","Use a matching Wasm module with multi-root support");}
+  if(raw.rootSetVersion?.()!=="1"||raw.rootHistoryVersion?.()!=="1"){raw.free();throw new RichCommandError("breditor_rich.module","Use a matching Wasm module with multi-root support");}
   return new RichRootSet(raw);
 }
+const rootRevision=revision=>{if(revision!==undefined&&typeof revision!=="string")throw new TypeError("Expected a root set revision string");return revision;};
 class RichRootSet {
   #raw;
   constructor(raw){this.#raw=raw;}
   #live(){if(!this.#raw)throw new RichCommandError("breditor_rich.disposed","The rich root set is disposed");return this.#raw;}
   #owner(core){const owner=rootOwners.get(core);if(!owner)throw new RichCommandError("breditor_rich.root_owner","Expected a rich core editor from this module");return owner();}
   state(){return JSON.parse(this.#live().stateJson());}
-  addRoot(meta,core,index){return JSON.parse(read(this.#live().addRoot(JSON.stringify(meta),this.#owner(core),index)));}
-  removeRoot(id){return JSON.parse(read(this.#live().removeRoot(id)));}
-  setAttributes(id,attributes){return JSON.parse(read(this.#live().setAttributes(id,JSON.stringify(attributes))));}
+  /** `options.undoable` makes the addition one global Undo step; `options.revision` refuses a stale request. */
+  addRoot(meta,core,index,options){const raw=this.#live(),owner=this.#owner(core),json=JSON.stringify(meta);return JSON.parse(read(options?.undoable?raw.addRootUndoable(json,owner,index,rootRevision(options.revision)):raw.addRoot(json,owner,index)));}
+  /** An undoable removal keeps the root's editor bound (do not dispose it) while `state().detached` lists it. */
+  removeRoot(id,options){const raw=this.#live();return JSON.parse(read(options?.undoable?raw.removeRootUndoable(id,rootRevision(options.revision)):raw.removeRoot(id)));}
+  moveRoot(id,index,revision){return JSON.parse(read(this.#live().moveRoot(id,index,rootRevision(revision))));}
+  setAttributes(id,attributes,revision){return JSON.parse(read(this.#live().setAttributes(id,JSON.stringify(attributes),rootRevision(revision))));}
+  setAttribute(id,key,value,revision){return JSON.parse(read(this.#live().setAttribute(id,key,value,rootRevision(revision))));}
+  removeAttribute(id,key,revision){return JSON.parse(read(this.#live().removeAttribute(id,key,rootRevision(revision))));}
+  undoStructure(revision){return JSON.parse(read(this.#live().undoStructure(rootRevision(revision))));}
+  redoStructure(revision){return JSON.parse(read(this.#live().redoStructure(rootRevision(revision))));}
   focus(id){return JSON.parse(read(this.#live().focus(id)));}
   reconcile(id,core){return read(this.#live().reconcile(id,this.#owner(core)))==="true";}
   checkpointJson(parts){return read(this.#live().checkpointJson(JSON.stringify(parts)));}
