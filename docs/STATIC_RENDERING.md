@@ -224,9 +224,12 @@ const host=ref<HTMLElement>();const editor=shallowRef<LocalEditor>();const ready
 const preview=renderStaticDocument(props.documentJson,{fragment:true}); // runs during SSR too
 const controller=new AbortController();
 onMounted(async()=>{
- editor.value=await openLocalEditor({host:host.value!,signal:controller.signal,initial:{kind:"document",documentJson:props.documentJson},
-  onChange:view=>emit("change",view.documentJson)});
- ready.value=true;
+ try{
+  const opened=await openLocalEditor({host:host.value!,signal:controller.signal,initial:{kind:"document",documentJson:props.documentJson},
+   onChange:view=>emit("change",view.documentJson)});
+  if(controller.signal.aborted){opened.dispose();return;} // Unmounted while the owner was being created.
+  editor.value=opened;ready.value=true;
+ }catch(error){if(!controller.signal.aborted)throw error;} // Cancellation is not an error.
 });
 onBeforeUnmount(()=>{controller.abort();editor.value?.dispose();});
 </script>
@@ -251,7 +254,8 @@ Keep the editor host free of Vue children.
  onMount(()=>{
   const controller=new AbortController();let editor:LocalEditor|undefined;
   openLocalEditor({host,signal:controller.signal,initial:{kind:"document",documentJson},onChange:view=>onchange?.(view.documentJson)})
-   .then(value=>{editor=value;ready=true;},error=>{if(!controller.signal.aborted)throw error;});
+   .then(value=>{if(controller.signal.aborted){value.dispose();return;}editor=value;ready=true;},
+    error=>{if(!controller.signal.aborted)throw error;});
   return()=>{controller.abort();editor?.dispose();};
  });
 </script>
@@ -274,9 +278,13 @@ export class BreditorComponent implements AfterViewInit,OnDestroy {
  ngOnInit(){this.preview=this.sanitizer.bypassSecurityTrustHtml(renderStaticDocument(this.documentJson,{fragment:true}));}
  async ngAfterViewInit(){
   if(!isPlatformBrowser(this.platform))return;
-  this.#editor=await this.zone.runOutsideAngular(()=>openLocalEditor({host:this.host.nativeElement,signal:this.#controller.signal,
-   initial:{kind:"document",documentJson:this.documentJson},onChange:view=>this.zone.run(()=>this.change.emit(view.documentJson))}));
-  this.ready=true;
+  const signal=this.#controller.signal;
+  try{
+   const editor=await this.zone.runOutsideAngular(()=>openLocalEditor({host:this.host.nativeElement,signal,
+    initial:{kind:"document",documentJson:this.documentJson},onChange:view=>this.zone.run(()=>this.change.emit(view.documentJson))}));
+   if(signal.aborted){editor.dispose();return;} // Destroyed while the owner was being created.
+   this.#editor=editor;this.ready=true;
+  }catch(error){if(!signal.aborted)throw error;}
  }
  ngOnDestroy(){this.#controller.abort();this.#editor?.dispose();}
 }
@@ -290,10 +298,18 @@ re-enters the zone only to emit.
 ### Checklist for any adapter
 
 - Start the editor on the client only, once per host element, with an abort signal.
-  Dispose it on unmount.
+  Dispose it on unmount. After the opening resolves, dispose the owner instead of keeping
+  it if the signal was aborted meanwhile, and ignore the rejection your own abort causes.
+- If the adapter can reopen on the same host element (a Custom Element reconnect, a
+  retry), start the next opening only after the previous one has settled.
 - Do not let the framework manage the host element's children or attributes.
 - Treat options as initial values. Change live policy through editor methods.
 - Emit changes outward and never round-trip them into `initial`.
 - Render the SSR or no-JS fallback with `renderStaticDocument` in a separate element, and
   remove it once the editor is ready.
 - Include the editor CSS if the static output should look the same as the live editor.
+
+The full lifecycle contract (open, readiness, cancellation, idempotent disposal, error
+surfacing) is in the editor package README under "Lifecycle contract for adapters".
+Runnable, tested examples live in `examples/vanilla`, `examples/web-component` (a
+`<breditor-editor>` Custom Element) and `examples/vue`.

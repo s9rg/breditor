@@ -1,0 +1,26 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Breditor · Custom Element example</title>
+  </head>
+  <body>
+    <main>
+      <h1>&lt;breditor-editor&gt; example</h1>
+      <p>
+        Phase: <output id="status" aria-live="polite">idle</output>
+        · Changes: <output id="changes">0</output>
+      </p>
+      <p>
+        <label><input id="read-only" type="checkbox" /> Read-only</label>
+        <button id="move" type="button">Move to the other slot</button>
+        <button id="detach" type="button">Detach</button>
+        <button id="attach" type="button">Reattach</button>
+      </p>
+      <section id="slot-a" aria-label="Slot A"></section>
+      <section id="slot-b" aria-label="Slot B"></section>
+    </main>
+    <script type="module" src="/src/main.ts"></script>
+  </body>
+</html>

@@ -1,0 +1,16 @@
+{
+  "name": "@breditor/example-web-component",
+  "private": true,
+  "version": "0.3.0-alpha.22",
+  "type": "module",
+  "scripts": {
+    "build:example": "vite build",
+    "dev:example": "vite",
+    "preview:example": "vite preview",
+    "test": "vitest run",
+    "typecheck:example": "tsc -p tsconfig.json"
+  },
+  "dependencies": {
+    "@breditor/editor": "0.3.0-alpha.22"
+  }
+}
