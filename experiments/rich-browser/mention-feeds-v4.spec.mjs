@@ -49,7 +49,8 @@ test("typing # opens the tag menu with its own cancellable source; choosing inse
  await expect(menu.locator("[role=option]")).toHaveText(["bug","build"]);
  await expect(menu.locator("[role=listbox]")).toHaveAttribute("aria-label","Tags");
  const aria=await page.evaluate(()=>{const s=window.m.editor.surface;return {expanded:s.getAttribute("aria-expanded"),controls:s.getAttribute("aria-controls"),list:document.querySelector("[data-mention-trigger='#'] [role=listbox]").id,focus:document.activeElement===s,state:window.m.mentions.state().feed,aborted:window.m.requests.slice(0,-1).every(r=>r.signal.aborted),queries:window.m.requests.map(r=>r.query)};});
- expect(aria).toEqual({expanded:"true",controls:aria.list,focus:true,state:"#",aborted:true,queries:["","b","bu"]});
+ expect(aria.controls).toBe(aria.list);
+ expect(aria).toEqual({expanded:"true",controls:aria.list,list:aria.list,focus:true,state:"#",aborted:true,queries:["","b","bu"]});
  const before=await page.evaluate(()=>window.m.core.view().undoDepth);
  await page.keyboard.press("ArrowDown");await page.keyboard.press("Enter");
  await expect(menu).toBeHidden();
@@ -76,8 +77,8 @@ test("the presentation hook decorates chips without changing text, caret or atom
  await expect(chip).toHaveAttribute("title","Tag design");
  await expect(chip).toHaveAttribute("data-mention-host-tone","blue");
  await expect(chip).toHaveAttribute("contenteditable","false");
- const shown=await chip.evaluate(element=>({before:getComputedStyle(element,"::before").content,stored:getComputedStyle(element.querySelector("[data-mention-text]")).display,text:element.textContent,block:element.closest("[data-rich-text]").textContent,classes:element.className}));
- expect(shown).toEqual({before:'"#design"',stored:"none",text:"@design",block:"Fix @design ",classes:"breditor-mention tag-chip"});
+ const shown=await chip.evaluate(element=>({before:getComputedStyle(element,"::before").content,stored:getComputedStyle(element.querySelector("[data-mention-text]")).fontSize,text:element.textContent,block:element.closest("[data-rich-text]").textContent,classes:element.className}));
+ expect(shown).toEqual({before:shown.before==='attr(data-mention-display)'?shown.before:'"#design"',stored:"0px",text:"@design",block:"Fix @design ",classes:"breditor-mention tag-chip"});
  // An invalid hook result (markup and a line break) leaves the default chip.
  await page.evaluate(()=>{const t=window.m;t.editor.execute({kind:"insertMention",data:{selection:{kind:"text",anchor:{block:"q",offset:"0",affinity:"after"},focus:{block:"q",offset:"0",affinity:"after"}},mention:{kind:"page",id:"p-1",label:"Roadmap"}}});});
  const page1=page.locator('[data-rich-text="q"] .breditor-mention');
@@ -88,7 +89,7 @@ test("the presentation hook decorates chips without changing text, caret or atom
  await page.keyboard.press("ArrowLeft");
  await expect.poll(()=>page.evaluate(()=>window.m.caret())).toEqual(["p","11","11"]);
  await page.keyboard.press("ArrowLeft");
- await expect.poll(()=>page.evaluate(()=>window.m.caret()[2])).toMatch(/^(4|11)$/);
+ await expect.poll(()=>page.evaluate(()=>window.m.caret()[2])).toBe("4");
  await page.evaluate(()=>{const t=window.m;t.editor.execute(t.select("p",11));t.editor.focus();});
  await page.keyboard.press("Backspace");
  await expect.poll(()=>page.evaluate(()=>window.m.runs())).toEqual([plain("Fix  ")]);

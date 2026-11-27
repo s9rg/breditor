@@ -7,7 +7,7 @@
  * - The chip's DOM text stays the stored `@` + label snapshot, so selection offsets, caret
  *   placement beside the non-editable island, search, copy and interchange are unchanged.
  * - Optional display `text` is presentation only: the chip gets `data-mention-display` and the
- *   stored pieces move into one `<span data-mention-text>`, which `richMentionDisplayStyles` hides
+ *   stored pieces move into one `<span data-mention-text>`, which `richMentionDisplayStyles` collapses to zero font size (it stays laid out, so engines still step the caret over the chip as one unit)
  *   while a `::before` shows the display text. Without that stylesheet the stored `@label` shows.
  * - `title`, extra class tokens and `data-mention-host-*` attributes are validated plain strings;
  *   no markup, no event handler, no `style`, `href` or reserved attribute can be produced.
@@ -35,7 +35,7 @@ export interface RichMentionChipPresentation {readonly attributes:readonly {read
 export const richMentionDisplayAttribute="data-mention-display";
 export const richMentionTextAttribute="data-mention-text";
 /** Shows the display text of decorated chips and hides their stored pieces (layout only). */
-export const richMentionDisplayStyles=`.${richMentionClass}[${richMentionDisplayAttribute}]::before{content:attr(${richMentionDisplayAttribute})}.${richMentionClass}[${richMentionDisplayAttribute}]>[${richMentionTextAttribute}]{display:none}`;
+export const richMentionDisplayStyles=`.${richMentionClass}[${richMentionDisplayAttribute}]::before{content:attr(${richMentionDisplayAttribute})}.${richMentionClass}[${richMentionDisplayAttribute}]>[${richMentionTextAttribute}]{font-size:0;letter-spacing:0}`;
 
 const classToken=/^[A-Za-z_][A-Za-z0-9_-]{0,63}$/,dataKey=/^[a-z][a-z0-9-]{0,31}$/;
 const forbidden=/[\u0000-\u001F\u007F-\u009F\u2028\u2029\u202A-\u202E\u2066-\u2069]/u;

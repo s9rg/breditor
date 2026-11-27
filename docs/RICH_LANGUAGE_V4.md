@@ -976,8 +976,8 @@ the stored `@label` (selection offsets, caret placement beside the
 non-editable island, Backspace deleting it whole, search, copy and interchange
 are unchanged). Display `text` adds `data-mention-display="…"` and wraps the
 stored pieces in one `<span data-mention-text>`; `richMentionDisplayStyles`
-(injected by the live editors and by the static wrapper when used) hides that
-span and shows the display text with `::before`. Without the stylesheet (for
+(injected by the live editors and by the static wrapper when used) collapses that
+span to zero font size (still laid out, so every engine steps the caret over the chip as one unit) and shows the display text with `::before`. Without the stylesheet (for
 example in a static fragment) the stored `@label` shows.
 
 ### Rendering
