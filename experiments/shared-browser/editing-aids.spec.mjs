@@ -65,3 +65,32 @@ test("typing with the aids on converges exactly and the aided overlay follows pe
  await page.evaluate(()=>{window.v4.controls.dispose();window.v4.aids.dispose();});
  await expect(page.locator("[data-breditor-editing-aids], [data-breditor-focused], [data-breditor-editing-aids-controls]")).toHaveCount(0);
 });
+
+test("a minimap on one writer is per viewer, scrolls only that page and follows peer edits",async({page})=>{
+ await page.setViewportSize({width:1200,height:300});
+ await page.evaluate(async()=>{
+  const rich=await import("/rich.js"),t=window.v4;t.controls.dispose();t.aids.dispose();
+  const aside=document.createElement("aside");aside.style.cssText="position:fixed;top:0;right:0;width:100px;height:100vh";document.body.append(aside);
+  t.aids=rich.mountRichEditingAids(t.da,{minimap:{container:aside}});await t.synchronize();
+ });
+ const boxes=()=>page.locator("[data-breditor-minimap] .breditor-minimap-block").count();
+ await expect.poll(boxes).toBeGreaterThan(5);
+ const before=await snapshot(page);
+ // Toggling and using the minimap is not a shared edit.
+ await page.evaluate(()=>{window.v4.aids.toggleMinimap();window.v4.aids.toggleMinimap();window.scrollTo(0,0);});
+ await expect.poll(boxes).toBeGreaterThan(5);
+ const map=await page.locator(".breditor-minimap-content").boundingBox();
+ await page.mouse.click(map.x+map.width/2,map.y+map.height-2);await settle(page);
+ expect(await page.evaluate(()=>scrollY)).toBeGreaterThan(0);
+ expect(await page.evaluate(async()=>{await window.v4.synchronize();return window.v4.errors;})).toEqual([]);
+ expect(await snapshot(page)).toEqual(before);
+ expect(await page.locator("#a [data-breditor-minimap], #b [data-breditor-minimap]").count()).toBe(0);
+ expect(await page.locator("[data-breditor-minimap]").getAttribute("aria-hidden")).toBe("true");
+ // A peer split adds a block on A when the frame arrives, and A's overview rebuilds.
+ const count=await boxes();
+ await page.evaluate(async()=>{const t=window.v4;t.b.dispatch({commands:[{kind:"split_text_block",data:{block:"tail",offset:2,right:"tail-right",right_heading:null}}]});await t.synchronize();await t.frame();});
+ await expect(page.locator('#a [data-rich-block="tail-right"]')).toHaveCount(1);
+ await expect.poll(boxes).toBe(count+1);
+ await page.evaluate(()=>window.v4.aids.dispose());
+ await expect(page.locator("[data-breditor-minimap]")).toHaveCount(0);
+});
