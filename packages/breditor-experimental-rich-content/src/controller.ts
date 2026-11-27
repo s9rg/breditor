@@ -21,6 +21,7 @@ import {captionArrowCommands} from "./table_caption_navigation.js";
 import {flowEdgeEligible,selectedFlowAtom} from "./flow_controls.js";
 import {standardSelectionInlineControls,selectionFormatChanges} from "./standard_inline_controls.js";
 import {blockLayoutShortcut} from "./block_layout_controls.js";
+import {mountRichTextDragPort} from "./text_drag.js";
 import {encodeBlockLayoutPatch} from "./block_layout_serialization.js";
 import {encodeListNumberingPatch} from "./list_numbering_serialization.js";
 import type {RichClipboardTextProjection} from "./core.js";
@@ -144,8 +145,14 @@ export class RichDomEditor<P extends RichSelectionPolicy="original"> {
   this.surface.addEventListener("copy",event=>this.#copy(event,false),{signal:this.#abort.signal});
   this.surface.addEventListener("cut",event=>this.#copy(event,true),{signal:this.#abort.signal});
   this.surface.addEventListener("paste",event=>this.#paste(event),{signal:this.#abort.signal});
-  this.surface.addEventListener("dragover",event=>{if(event.dataTransfer?.types.includes("Files"))event.preventDefault();},{signal:this.#abort.signal});
-  this.surface.addEventListener("drop",event=>{if(event.dataTransfer?.files.length){event.preventDefault();this.#files([...event.dataTransfer.files]);}},{signal:this.#abort.signal});
+  // Native inline drag-and-drop; file drops keep the file path, foreign drops use the paste path.
+  mountRichTextDragPort({surface:this.surface,anchor:this.status,signal:this.#abort.signal,
+   model:()=>this.#model,state:()=>({busy:this.#busy,composing:!!this.#composition}),
+   copy:data=>{this.#sync();return this.#transfer(data)!==null;},
+   closeTypingGroup:()=>this.#boundary(),
+   drop:(drop,revision)=>this.#attempt(()=>{this.execute({kind:"dropText",data:{source:drop.source,target:drop.target,effect:drop.effect}},true,revision);}),
+   paste:(data,target)=>{this.#boundary();this.#attempt(()=>{this.execute({kind:"setSelection",selection:{kind:"text",anchor:target,focus:target}});this.#pasteTransfer(data);});},
+   files:files=>this.#files(files)});
   this.surface.addEventListener("compositionstart",()=>this.#startComposition(),{signal:this.#abort.signal});
   this.surface.addEventListener("compositionend",event=>this.#endComposition(event.data),{signal:this.#abort.signal});
   document.addEventListener("selectionchange",()=>{if(!this.#busy&&!this.#composition)this.#attempt(()=>this.#sync());},{signal:this.#abort.signal});
@@ -564,22 +571,31 @@ export class RichDomEditor<P extends RichSelectionPolicy="original"> {
   if(this.#interchange&&this.#busy){event.preventDefault();return;}
   if(this.#general)event.preventDefault();
   this.#boundary();
-  this.#attempt(()=>{this.#sync();const model=this.#model,revision=model.view.revision,whole=model.view.selection?.kind==="document",core=this.#options.core;if(this.#general&&(core.supportsGeneralCopy?.()!==true||typeof core.generalClipboard!=="function"))throw Error("Use matching native general clipboard copy");const transfer=whole?this.#document!.copyDocument():this.#general?core.generalClipboard!():core.clipboard();if(!transfer)return;
-   event.preventDefault();const extra=exportClipboard(transfer.structuredJson,this.#interchange);
-   writeClipboard(event.clipboardData!,transfer.plainText,transfer.structuredJson,extra,whole);
+  this.#attempt(()=>{this.#sync();const model=this.#model,revision=model.view.revision,whole=model.view.selection?.kind==="document",formats=this.#transfer(event.clipboardData!,()=>event.preventDefault());if(!formats)return;
    if(cut&&model.view.readOnly!==true){const selection=model.view.selection,context={...this.#context(),model},command:RichCommand|DocumentIntent|null=whole?{kind:"replaceDocumentPlainText",paragraph:this.#allocate("p"),text:""}:this.#general&&selection?.kind==="text"?{kind:"replaceGeneralRangePlainText",data:{selection,text:"",prefix:this.#allocate("range")}}:deleteSelection(context);
-    if(command){this.#executeIntent(command,true,revision,display=>this.#clipboardComplete("cut",revision,extra?.formats??[],undefined,display));return;}
+    if(command){this.#executeIntent(command,true,revision,display=>this.#clipboardComplete("cut",revision,formats,undefined,display));return;}
    }
-   this.#clipboardComplete("copy",revision,extra?.formats??[]);
+   this.#clipboardComplete("copy",revision,formats);
   });
+ }
+ /** Write the exact Copy flavors of the current selection; null when it has nothing to copy. */
+ #transfer(data:DataTransfer,claim:()=>void=()=>{}):readonly RichInterchangeFormatReport[]|null {
+  const whole=this.#model.view.selection?.kind==="document",core=this.#options.core;
+  if(this.#general&&(core.supportsGeneralCopy?.()!==true||typeof core.generalClipboard!=="function"))throw Error("Use matching native general clipboard copy");
+  const transfer=whole?this.#document!.copyDocument():this.#general?core.generalClipboard!():core.clipboard();if(!transfer)return null;
+  claim();const extra=exportClipboard(transfer.structuredJson,this.#interchange);
+  writeClipboard(data,transfer.plainText,transfer.structuredJson,extra,whole);return extra?.formats??[];
  }
  #paste(event:ClipboardEvent):void {
   if(this.#model.view.readOnly===true){event.preventDefault();return;}
   if(this.#composition||!event.clipboardData){if(this.#interchange)event.preventDefault();return;}event.preventDefault();
   this.#boundary();
-  this.#attempt(()=>{const data=event.clipboardData!,foreign=this.#interchange&&data.types.some(t=>["application/x-breditor-rich+json","text/html","text/markdown"].includes(t)),files=[...data.files];if(files.length&&!foreign){this.#files(files);return;}
-   this.#pasteInput(grid=>readClipboardInput(data,this.#interchange,grid));
-  });
+  this.#attempt(()=>this.#pasteTransfer(event.clipboardData!));
+ }
+ /** The ordinary paste path for clipboard data and drops from outside this editor. */
+ #pasteTransfer(data:DataTransfer):void {
+  const foreign=this.#interchange&&data.types.some(t=>["application/x-breditor-rich+json","text/html","text/markdown"].includes(t)),files=[...data.files];if(files.length&&!foreign){this.#files(files);return;}
+  this.#pasteInput(grid=>readClipboardInput(data,this.#interchange,grid));
  }
  #pasteInput(read:(grid:boolean)=>ClipboardInput):void {
   this.#sync();const model=this.#model,revision=model.view.revision,selection=model.view.selection,context={...this.#context(),model},input=read(selection?.kind==="grid"),clipboard=input.fragment;

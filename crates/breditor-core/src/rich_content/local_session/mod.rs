@@ -16,6 +16,7 @@ mod delete_atom;
 mod delete_typing_range;
 mod details;
 mod dispatch;
+mod drop_text;
 pub(crate) mod durable;
 mod enable_typing_history;
 mod error;
@@ -69,6 +70,7 @@ mod undo;
 mod validate_observation;
 
 pub use command_group::{RICH_COMMAND_GROUP_MAX_STEPS, RichCommandGroupError};
+pub use drop_text::{RichTextDropEffect, RichTextDropError};
 pub use error::RichLocalSessionError;
 pub use history_probe::RichHistoryProbe;
 pub use plan_general_range_plain_text::RichGeneralPlainRangePlan;

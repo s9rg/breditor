@@ -103,6 +103,9 @@ export type RichCommand =
  /** Move one retained block (never copied or deleted) into `parent` (null = document root) before
   * the direct child `before` (null = append), as one native history group. */
  |{kind:"moveBlock";data:{block:string;parent:string|null;before:string|null}}
+ /** Inline drag-and-drop: move (or copy) one nonempty single-block text range to a caret as one
+  * native history group. The dropped runs keep their formats and mentions; the result is selected. */
+ |{kind:"dropText";data:{source:Extract<RichSelection,{kind:"text"}>;target:RichPoint;effect:"move"|"copy"}}
  |{kind:"moveTableColumn";data:{table:string;column:string;before:string|null}}
  |{kind:"resizeTableColumn";data:{table:string;column:string;width:number}}
  |{kind:"mergeTableCells";data:{merge:string;replica:string;counter:string;lamport:string}}

@@ -65,6 +65,9 @@ pub enum RichLocalSessionError {
     /// Selection validation or mapping failed before publication.
     #[error(transparent)]
     Selection(#[from] crate::rich_content::RichSelectionError),
+    /// An inline text drop source or target was refused.
+    #[error(transparent)]
+    TextDrop(#[from] super::RichTextDropError),
     /// The exact monotonic revision has no representable successor.
     #[error(transparent)]
     Revision(#[from] crate::state::RevisionError),
