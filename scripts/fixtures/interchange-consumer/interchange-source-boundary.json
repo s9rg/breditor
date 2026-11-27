@@ -7,6 +7,8 @@
       ],
       "values": [
         "createRichInterchange",
+        "emailHtmlLimits",
+        "exportEmailHtml",
         "exportHtmlPage",
         "htmlPageMetadataLimits",
         "importHtmlPage",
@@ -15,6 +17,8 @@
       ],
       "typeOnly": [
         "ClipboardTransfer",
+        "EmailHtmlOptions",
+        "EmailHtmlPreset",
         "HtmlPageMetadata",
         "ImageSource",
         "ImportedAsset",
@@ -26,6 +30,7 @@
         "InterchangeOptions",
         "InterchangeOwner",
         "InterchangeResult",
+        "ResolvedEmailPreset",
         "RichInterchange"
       ]
     },

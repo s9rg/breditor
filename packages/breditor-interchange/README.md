@@ -85,6 +85,66 @@ directives such as base and refresh, and other unsupported head content
 are dropped with a conversion notice. Page import uses the same inert
 parser and explicit host image lookup as fragment import.
 
+### Email HTML with inline styles
+
+Call `exportEmailHtml(core, clipboardJson, options?)` for markup that mail
+clients can render without a stylesheet. It converts the same admitted
+content and reports the same notices as `exportHtml`. Every presentation is an
+inline `style` attribute, and the output has no `<style>`, `<link>`, script or
+event handler. Class names never carry presentation. Only two classes appear,
+as re-import hints: `language-*` on code blocks and `breditor-mention` on
+mentions.
+
+```ts
+import {exportEmailHtml} from "@breditor/interchange";
+
+const email = exportEmailHtml(core, clipboard.structuredJson, {
+  exportImage: binding => hostImageUrls.get(binding.asset),
+  page: {title: "November update", language: "en"},
+  preset: {width: 600, background: "#f4f4f5", preheader: "This month's highlights"},
+});
+```
+
+- Without `page`, the result is one content root fragment,
+  `<div data-breditor-email="content" style="…">`. With `page`, the
+  result is a complete page that uses the same head contract as
+  `exportHtmlPage`.
+- `preset` requires `page`. It adds the responsive viewport tag, a full-width
+  background table and a centered fixed-width content table. It can also add a
+  hidden preheader that inbox previews show. `width` is 320 to 1200 CSS
+  pixels and defaults to 600. `background` and `contentBackground` are
+  `#rrggbb` and default to `#f4f4f5` and `#ffffff`. `preheader` is limited to
+  512 bytes of UTF-8 and is escaped. Any other field, or an out-of-range value,
+  returns `unsupported-content` before the native owner is read.
+- The exporter writes alignment, direction, indent, line height, colors,
+  sizes and font presets as the same declarations that `exportHtml` uses.
+  Font presets use stacks that start with the generic family. Logical
+  `start`/`end` alignment is written after a physical `left`/`right` fallback.
+  Headings, paragraphs, quotes, code, rules, lists, task lists, figures,
+  captions, sections and data tables each get one fixed decoration: margins,
+  borders, cell padding, a monospace code panel or muted caption color.
+  Data tables keep `border="1" cellpadding="6" cellspacing="0"`, their
+  column widths and merged cells. Ordered lists repeat an admitted marker
+  style as `list-style-type`. Images keep `width`/`height` attributes and
+  scale down with `max-width:100%`. A link keeps an authored text color in
+  place of the default link color.
+- Clients differ in what they support. Task checkboxes are form controls that
+  some clients remove, and some clients ignore `<details>`, logical indent
+  and `white-space:pre-wrap`. The semantic markup is still kept, so the
+  content re-imports exactly.
+
+`importHtml` and `importHtmlPage` recognize this library's email output.
+Inside an exact content root, they remove each element's fixed decoration
+prefix and the fixed table attributes. The remaining markup converts like the
+`exportHtml` output, without notices. `importHtmlPage` replaces an exact preset
+wrapper with its content and returns `value.email` with `width`,
+`background`, `contentBackground` and optional `preheader`. Markup that does
+not match exactly is not recognized. Examples include an edited root style, a
+reordered decoration and a changed wrapper shape. That markup converts as
+ordinary HTML and reports the usual notices. The content root and preset tables
+add up to nine element levels. Those levels count toward the import depth
+limit, so content nested close to that limit may need the fragment form.
+
 ### Portable HTML with host-owned raster bytes
 
 In a browser, `@breditor/interchange/portable-html` can embed raster images

@@ -264,6 +264,28 @@ Word for the web non-decimal formats (reported, rendered as decimal),
 Excel/Sheets hidden rows and columns (still rejected), cell
 vertical alignment, and Word VML-only images without an `<img>` fallback.
 
+### Email HTML export
+
+`exportEmailHtml` writes admitted content as email HTML. Every presentation is
+an inline `style`, and there is no stylesheet, script, event handler or
+class-based styling. An optional preset adds a centered fixed-width wrapper
+table with a bounded width and backgrounds, plus a title and hidden preheader.
+Its notices are the ordinary HTML exporter's notices. An inline-only (`text`)
+transfer is written as one paragraph and reports `block-structure`.
+
+The design keeps decoration separate from meaning. Each element carries one
+fixed decoration prefix from a closed library table (`html_email.ts`),
+followed by the same semantic declarations that `exportHtml` writes. Margins,
+borders, code panels and caption colors are decoration. Alignment, colors,
+sizes, fonts, indent and list markers are semantic. On import, an exact
+`data-breditor-email="content"` root has its fixed prefixes and table
+attributes removed before ordinary conversion, so the output re-imports through
+`importHtml` or `importHtmlPage` with the same semantics and no notices.
+`importHtmlPage` also returns the preset geometry and preheader as
+`value.email`. Inexact markup is left to ordinary conversion and its notices.
+The [package README](../packages/breditor-interchange/README.md#email-html-with-inline-styles)
+lists the API, bounds and client limits.
+
 ## Enable browser clipboard conversion
 
 Direct local/shared DOM mounts accept `clipboardInterchange: adapter`. Managed

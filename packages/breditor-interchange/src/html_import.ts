@@ -10,6 +10,7 @@ import {imageHrefProperty,imageLinkNewWindowProperty,isImageLinkHrefV1} from "./
 import {mentionFormat,mentionFromSpan} from "./mention.js";
 import {isRubyAnnotation,rubyFormat,rubyLiteral} from "./ruby.js";
 import {anchorName,bookmarkProperty,internalLinkFormat} from "./bookmark.js";
+import {unwrapEmailPresentation} from "./html_email_import.js";
 /** Attributes consumed by a recognized V4 mention span. */
 const mentionAttributes:ReadonlySet<string>=new Set(["data-mention-kind","data-mention-id"]);
 const blocks=new Set(["p","div","h1","h2","h3","h4","h5","h6","ul","ol","li","pre","blockquote","table","figure","hr","section","article","main","header","footer"]);
@@ -624,7 +625,10 @@ function trailingInterchangeNewline(nodes:readonly HtmlNode[]):HtmlElement|undef
   return undefined;
 }
 export function importHtmlContent(source:string,b:Budget,options:InterchangeOptions,capabilities:ImportCapabilities={listNumbering:false}):{root:string;kind:"text"|"flow"} {
-  return importHtmlTree(htmlTree(source,b),b,options,capabilities);
+  const nodes=htmlTree(source,b);
+  // This library's own email output re-imports as its semantic body; fragment import keeps no preset.
+  unwrapEmailPresentation(nodes);
+  return importHtmlTree(nodes,b,options,capabilities);
 }
 export function importHtmlTree(sourceNodes:HtmlNode[],b:Budget,options:InterchangeOptions,capabilities:ImportCapabilities):{root:string;kind:"text"|"flow"} {
   const converter=new HtmlConversion(b,options,new Stylesheets(sourceNodes,b),capabilities,trailingInterchangeNewline(sourceNodes)),body=converter.pageBreakRoot(converter.flow(sourceNodes));
