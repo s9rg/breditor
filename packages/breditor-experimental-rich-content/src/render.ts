@@ -8,6 +8,7 @@ import {applyListNumbering} from "./list_numbering_presentation.js";
 import {legalListAttribute,legalListMarkerAttribute,legalListMarkers} from "./list_structure.js";
 import {wrapImageLink} from "./image_link.js";
 import {createMentionChip,groupMentionRuns} from "./mention.js";
+import {requireRichMentionRenderer,richMentionChipPresentation,type RichMentionRenderer} from "./mention_presentation.js";
 import {createPageBreakElement,richPageBreakKind} from "./page_break.js";
 import {bookmarkAttributes,bookmarkNames,bookmarkOf,internalLinkAttributes,internalLinkOf} from "./bookmark.js";
 import {resolveRichUi,type RichUiLocale,type RichUiOptions} from "./ui_locale.js";
@@ -30,6 +31,9 @@ export interface RenderOptions {
  legalListNumbering?:boolean;
  /** Opt-in horizontal table viewports for narrow editor layouts. */
  scrollableTables?:boolean;
+ /** Optional V4 mention chip decoration (display text, title, classes, host data); sanitized and
+  * presentation only — the chip text stays the stored `@label` (see `mention_presentation.ts`). */
+ mentionPresentation?:RichMentionRenderer;
 }
 const resolvedUi=new WeakMap<object,RichUiLocale>();
 /** Resolve (and cache per options object) the catalog that labels rendered chrome. */
@@ -43,6 +47,7 @@ function pageBreakLabel(options:RenderOptions):string{return renderUi(options).t
 export function requireRenderOptions(value:RichPresentationModel,options:RenderOptions):void {
  if(options.legalListNumbering!==undefined&&typeof options.legalListNumbering!=="boolean")throw new TypeError("legalListNumbering must be a boolean");
  if(options.scrollableTables!==undefined&&typeof options.scrollableTables!=="boolean")throw new TypeError("scrollableTables must be a boolean");
+ requireRichMentionRenderer(options.mentionPresentation);
  if(options.inlinePresentation){if(options.inlineTag)throw new TypeError("Use either inlinePresentation or inlineTag, not both");requireRichInlinePresentation(options.inlinePresentation,value.schema);}
 }
 /** A lone LF at the very end of a `pre-wrap` text block creates no line box after it, so Chromium
@@ -136,7 +141,7 @@ export function render(surface:HTMLElement,value:RichPresentationModel,options:R
  const legal=options.legalListNumbering===true?legalListMarkers(value.root):undefined;
  const anchor=(element:HTMLElement,node:ElementNode):void=>{const name=bookmarks?bookmarkOf(node):undefined;if(name!==undefined)for(const attribute of bookmarkAttributes(name))element.setAttribute(attribute.name,attribute.value);};
  // V4 mentions render as inert chips grouping their styled pieces (text blocks and summaries).
- const mentions=(runs:readonly TextNode[]):Node[]=>groupMentionRuns(runs,(run,text,formats)=>({...run,text,formats})).map(item=>item.kind==="run"?flow(item.run):createMentionChip(document,item.mention,item.pieces.map(flow)));
+ const mentions=(runs:readonly TextNode[]):Node[]=>groupMentionRuns(runs,(run,text,formats)=>({...run,text,formats})).map(item=>item.kind==="run"?flow(item.run):createMentionChip(document,item.mention,item.pieces.map(flow),options.mentionPresentation?richMentionChipPresentation(item.mention,options.mentionPresentation):undefined));
  // Opt-in ruby extension: each group of equal annotations is one `<ruby>` around its base pieces.
  const ruby=options.inlinePresentation!==undefined&&richInlinePresentationHasRuby(options.inlinePresentation);
  const appendInline=(target:HTMLElement,node:ElementNode):void=>{

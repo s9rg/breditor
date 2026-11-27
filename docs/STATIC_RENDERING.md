@@ -99,6 +99,7 @@ repairs a document.
 | `blockIds` | `true` | Emit `data-rich-block`, `data-rich-text`, `data-rich-task`, `data-task-check` and `data-rich-cell` hooks. |
 | `limits` | 16 MiB / depth 128 / 250 000 nodes | `maxInputBytes`, `maxDepth` and `maxNodes`. Each is clamped to a hard maximum (64 MiB, 512, 2 000 000). |
 | `legalListNumbering` | `false` | Legal multi-level markers (`1.`, `1.2.`, `1.2.3.`) on nested ordered lists, identical to the live option: `data-rich-legal` on lists, `data-rich-legal-marker` on items, and (unless `fragment`) a `<style data-breditor-legal-lists>` with `richLegalListStyles`. Presentation only; see [LIST_STRUCTURE.md](LIST_STRUCTURE.md). |
+| `mentionPresentation` | none | V4 mention chip hook, the same function and sanitizer as the live option: `(mention) => {text?, title?, classes?, data?}`. Adds class tokens, `title` and `data-mention-host-*` after `data-mention-id`; display `text` adds `data-mention-display` and wraps the stored `@label` pieces in `<span data-mention-text>`, and (unless `fragment`) the output then starts with a `<style data-breditor-mentions>` holding `richMentionDisplayStyles`. The chip text stays the stored `@label`; a hook that throws or returns an invalid value leaves that chip unchanged. See RICH_LANGUAGE_V4.md "Presentation hook". |
 
 `renderStaticDocumentWithReport` also returns a report with:
 

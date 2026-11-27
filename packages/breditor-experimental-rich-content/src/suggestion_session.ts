@@ -50,8 +50,10 @@ export interface RichSuggestionOptions<I,E> {
 export interface RichSuggestionCheck {readonly view:RichEditorView<RichSelectionPolicy>;readonly model:RichPresentationModel;readonly caret:number;readonly affinity:"before"|"after";readonly query:string}
 /** What a concrete menu (slash, mention) plugs into the shared session. */
 export interface RichSuggestionSpec<I extends {readonly id:string;readonly label:string;readonly description?:string},E> {
- /** One trigger character typed at a block start or after whitespace. */
+ /** One trigger grapheme (one or more UTF-16 units) typed at a block start or after whitespace. */
  readonly trigger:string;
+ /** Extra dataset entries on the menu root (for example the mention feed's trigger). */
+ readonly rootData?:Readonly<Record<string,string>>;
  /** Dataset keys: menu root, status line, option index and option identity. */
  readonly attributes:{readonly root:string;readonly status:string;readonly index:string;readonly item:string};
  /** DOM id prefix of the listbox and its options. */
@@ -105,7 +107,7 @@ export class RichSuggestionSession<I extends {readonly id:string;readonly label:
   this.#host=host;this.#options={...options};this.#spec=spec;this.#maxQuery=maxQuery;this.#maxItems=maxItems;
   const realm=window as unknown as {AbortController:typeof AbortController};this.#abort=new realm.AbortController();
   const unique=globalThis.crypto.randomUUID();this.#prefix=`${spec.idPrefix}-${unique.slice(0,8)}`;this.#namespace=`br:${unique}`;
-  this.#root=document.createElement("div");this.#root.dataset[attributes.root]="";this.#ui.applyChrome(this.#root);this.#root.hidden=true;
+  this.#root=document.createElement("div");this.#root.dataset[attributes.root]="";for(const [key,value] of Object.entries(spec.rootData??{}))this.#root.dataset[key]=value;this.#ui.applyChrome(this.#root);this.#root.hidden=true;
   this.#root.style.cssText="position:fixed;z-index:20;min-width:200px;max-width:320px;max-height:280px;overflow:auto;border:1px solid #aabbb3;border-radius:6px;background:#fff;color:#173d37;box-shadow:0 4px 16px #0002;font:14px system-ui,sans-serif;padding:4px";
   this.#list=document.createElement("div");this.#list.id=`${this.#prefix}-list`;this.#list.setAttribute("role","listbox");this.#list.setAttribute("aria-label",options.label??this.#ui.text(spec.strings.label));
   this.#status=document.createElement("p");this.#status.dataset[attributes.status]="";this.#status.setAttribute("role","status");this.#status.setAttribute("aria-live","polite");this.#status.style.cssText="margin:4px;font-size:12px;color:#4a615b";
@@ -142,11 +144,11 @@ export class RichSuggestionSession<I extends {readonly id:string;readonly label:
   if(state.closed)return {ok:false,reason:"editor-closed"};if(state.composing)return {ok:false,reason:"composition"};if(state.readOnly)return {ok:false,reason:"read-only"};
   const view=this.#host.view(),model=presentationModel(view,policyOf(view)),node=model.nodes.get(trigger.block);
   if(!node||!isProse(node)||model.parents.get(trigger.block)?.type==="breditor/image")return {ok:false,reason:"trigger-invalidated"};
-  const value=text(node);if(value.slice(0,trigger.start)!==trigger.prefix||value[trigger.start]!==mark)return {ok:false,reason:"trigger-invalidated"};
+  const value=text(node),after=trigger.start+mark.length;if(value.slice(0,trigger.start)!==trigger.prefix||value.slice(trigger.start,after)!==mark)return {ok:false,reason:"trigger-invalidated"};
   const selection=view.selection;
   if(selection?.kind!=="text"||selection.anchor.block!==trigger.block||selection.focus.block!==trigger.block||selection.anchor.offset!==selection.focus.offset)return {ok:false,reason:"selection-left"};
-  const caret=Number(selection.focus.offset);if(!Number.isSafeInteger(caret)||caret<=trigger.start||caret>value.length)return {ok:false,reason:"selection-left"};
-  const query=value.slice(trigger.start+1,caret);if(query.length>this.#maxQuery||space.test(query)||query.includes(mark))return {ok:false,reason:"query-ended"};
+  const caret=Number(selection.focus.offset);if(!Number.isSafeInteger(caret)||caret<after||caret>value.length)return {ok:false,reason:"selection-left"};
+  const query=value.slice(after,caret);if(query.length>this.#maxQuery||space.test(query)||query.includes(mark))return {ok:false,reason:"query-ended"};
   return {ok:true,view,model,caret,affinity:selection.focus.affinity,query};
  }
  #published():void{
@@ -170,8 +172,8 @@ export class RichSuggestionSession<I extends {readonly id:string;readonly label:
   const selection=view.selection;if(selection?.kind!=="text"||selection.anchor.block!==selection.focus.block||selection.anchor.offset!==selection.focus.offset)return;
   const model=presentationModel(view,policyOf(view)),node=model.nodes.get(selection.focus.block);
   if(!node||!isProse(node)||model.parents.get(id(node))?.type==="breditor/image")return;
-  const value=text(node),caret=Number(selection.focus.offset),start=caret-1;
-  if(!Number.isSafeInteger(caret)||start<0||value[start]!==this.#spec.trigger||start>0&&!space.test(value[start-1]!))return;
+  const mark=this.#spec.trigger,value=text(node),caret=Number(selection.focus.offset),start=caret-mark.length;
+  if(!Number.isSafeInteger(caret)||start<0||value.slice(start,caret)!==mark||start>0&&!space.test(value[start-1]!))return;
   const session:Session<I>={id:++this.#counter,trigger:Object.freeze({block:id(node),start,prefix:value.slice(0,start)}),query:"",items:[],active:0,loading:false,error:null,generation:0,abort:undefined};
   this.#session=session;this.#lastCancel=null;this.#setAria(true);
   const check=this.#check(session.trigger);if(!check.ok){this.cancel(check.reason);return;}

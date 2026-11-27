@@ -110,7 +110,12 @@ typed `@query` by the mention plus a space, so one Undo restores the trigger.
 Mentions render as inert `span.breditor-mention` chips
 (`data-mention-kind`/`data-mention-id`, `contenteditable="false"`). Catalog keys:
 `mentionLabel`, `mentionLoading`, `mentionCountOne`, `mentionCount`,
-`mentionEmpty`. See `docs/RICH_LANGUAGE_V4.md` (Slice 5).
+`mentionEmpty`. `feeds` (instead of `items`) declares several triggers, each
+`{trigger, kinds, items, label?}` with its own menu and cancellable source
+(`requireRichMentionFeeds` validates them at mount); every feed inserts the same
+stored `@label`. The `mentionPresentation` render option
+(`richMentionChipPresentation`, `richMentionDisplayStyles`) decorates chips
+without changing their text. See `docs/RICH_LANGUAGE_V4.md` (Slice 5).
 
 ## Table captions (rich V4)
 

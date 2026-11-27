@@ -906,6 +906,80 @@ New catalog keys (English defaults): `mentionLabel` "Mentions",
 available", `mentionCount` "{count} suggestions available", `mentionEmpty` "No
 matching suggestions". Existing strings are byte-identical.
 
+### Trigger feeds (several trigger characters)
+
+`options.items` keeps the original single `@` menu over every closed kind. A
+host may instead declare `options.feeds` (exactly one of the two), locally and
+in shared V4 (`mountSharedMentions` / SDK `mountMentions` take the same option):
+
+```ts
+mountMentions(editor, {feeds: [
+  {trigger: '@', kinds: ['user', 'page'], items: searchPeopleAndPages},
+  {trigger: '#', kinds: ['tag'], items: searchTags, label: 'Tags'},
+]});
+```
+
+- **Feed** `{trigger, kinds, items, label?}`: `kinds` is a non-empty, duplicate-free
+  subset of the closed kinds `user`, `page`, `tag`; `items` is that feed's own
+  static list or cancellable provider `(query, {signal, revision, session})`;
+  `label` names its listbox (default the `label` option or catalog `mentionLabel`).
+- **Mount-time validation** (`requireRichMentionFeeds`, `requireRichMentionTrigger`,
+  `TypeError` before any listener or menu exists): 1–8 feeds; each trigger is
+  exactly one grapheme (an astral or ZWJ emoji sequence or a combining sequence
+  counts as one; at most 32 UTF-16 units), contains no white space, control,
+  separator, surrogate, private-use or format character (ZWJ inside a sequence is
+  allowed), is unique among the feeds and is never the slash-command trigger
+  `/`. A static list must already fit the feed's kinds. One feed set per editing
+  surface (`This editing surface already has mentions`).
+- **Routing.** Each feed runs its own typed-trigger session, so it has its own
+  menu root (`data-breditor-mention data-mention-trigger="#"`), its own provider
+  request whose `AbortSignal` fires when the query changes or the menu closes,
+  and its own stale-result rejection. A trigger opens only at a block start or
+  after white space and white space ends every query, so at most one feed menu
+  is open. `state().feed` is the trigger of the menu the state describes.
+  Provider output of a kind outside the feed's `kinds` is refused like any other
+  malformed suggestion (`onError`, empty list) and is never inserted.
+- **Insertion is unchanged.** Choosing runs the same one guarded `insertMention`
+  (local) or `insert_mention` (shared) over the typed `<trigger><query>` range,
+  in one Undo step. The stored grammar is the frozen V4 one: whatever trigger
+  was typed, the document text is `@` + label and the kind/id/label properties are
+  exactly the suggestion's. One Undo restores the typed `#query`.
+
+### Rendered marker per kind
+
+The marker is part of the stored text, so it is the same for every kind and
+every trigger. A host changes what is *shown* only through the presentation hook
+below.
+
+| Kind | Stored text and default chip text | Typical trigger | With a presentation hook |
+|------|-----------------------------------|-----------------|--------------------------|
+| `user` | `@` + label (`@Ann Lee`) | `@` | host display text, e.g. `@Ann Lee (away)` |
+| `page` | `@` + label (`@Roadmap`) | `@` (or a host feed) | host display text, e.g. `📄 Roadmap` |
+| `tag` | `@` + label (`@design`), also when inserted from `#` | `#` | host display text, e.g. `#design` |
+
+### Presentation hook (output customization)
+
+`mentionPresentation(mention) => {text?, title?, classes?, data?} | undefined`
+is an optional render option of the local and shared DOM editors (and the SDK
+editors, which forward render options) and of `renderStaticDocument`. It is
+called per chip with a frozen copy of the stored `{kind, id, label}` and is
+sanitized (`richMentionChipPresentation`): `text` and `title` follow the label
+grammar (1–256 UTF-8 bytes, no controls, bidi controls or edge white space),
+`classes` are at most 8 tokens `[A-Za-z_][A-Za-z0-9_-]{0,63}`, and `data` is at
+most 8 keys `[a-z][a-z0-9-]{0,31}` emitted as `data-mention-host-<key>`. Any other
+field, a hook that throws or a value out of domain leaves that chip at its
+default output (fail closed). No markup, `style`, `href`, event handler or
+reserved attribute can be produced.
+
+The hook cannot break atomicity or the label snapshot: the chip's DOM text stays
+the stored `@label` (selection offsets, caret placement beside the
+non-editable island, Backspace deleting it whole, search, copy and interchange
+are unchanged). Display `text` adds `data-mention-display="…"` and wraps the
+stored pieces in one `<span data-mention-text>`; `richMentionDisplayStyles`
+(injected by the live editors and by the static wrapper when used) collapses that
+span to zero font size (still laid out, so every engine steps the caret over the chip as one unit) and shows the display text with `::before`. Without the stylesheet (for
+example in a static fragment) the stored `@label` shows.
+
 ### Rendering
 
 Live: `<span class="breditor-mention" data-mention-kind="…" data-mention-id="…" contenteditable="false">@label</span>`
@@ -913,7 +987,11 @@ grouping the unit's styled pieces (each piece keeps its other formats; the
 mention has no inline recipe). Restored carets rest beside a chip, never inside.
 Static (`renderStaticDocument`): the same span without `contenteditable`;
 partial mention text is a `grammar` error and out-of-domain values a `format`
-error. `richMentionStyles` is an optional host CSS hook.
+error. `richMentionStyles` is an optional host CSS hook. With the
+`mentionPresentation` hook both add the sanitized attributes after
+`data-mention-id` and, for display text, the inner `<span data-mention-text>`;
+the live chip equals the static chip apart from `contenteditable`. The
+interchange HTML export below never applies the hook.
 
 ### Interchange
 
@@ -941,8 +1019,11 @@ V1–V3 locks are unchanged.
 
 ### Not included
 
-Host-declared kinds, kind-specific prefixes (`#tag`), live label re-resolution
-inside the chip, mention links, and mention search by id. (The shared command and `@` menu are in
+New mention kinds (the kind set stays closed), stored per-kind prefixes (a `#`
+feed still stores `@label`; the `#` is presentation only, through the hook), live
+label re-resolution inside the stored chip text, mention links, mention search
+by id, and host decoration of the interchange HTML export (it stays the canonical
+round-trip span). (The shared command and menus are in
 [SHARED_RICH_V4.md](SHARED_RICH_V4.md).)
 
 ### Tests
@@ -962,7 +1043,8 @@ inside the chip, mention links, and mention search by id. (The shared command an
 - TypeScript: rich-content `tests/mention.test.ts` (grammar mirror, intent,
   grouping, live chips, static parity, caret restore, factory boundary, `@`
   session with async cancellation and one-step undo, coexistence with slash
-  commands), editor `tests/static_mention.test.ts` (static output, rejection,
+  commands, trigger-feed validation and routing with per-feed cancellation and
+  kind admission, presentation-hook sanitizing and live/static parity), editor `tests/static_mention.test.ts` (static output, rejection,
   live parity), interchange `tests/mention.test.ts` (grammar parity, per-profile
   import/export/Markdown fallback and round trip).
 - Playwright `experiments/rich-browser/mention-v4.spec.mjs` in Chromium, Firefox
@@ -971,6 +1053,12 @@ inside the chip, mention links, and mention search by id. (The shared command an
   typing after it, Backspace deleting it whole, one Undo restoring `@query`,
   snapping, copy/paste with plain text `@label` and V3 refusing the record, and
   interchange for V4 versus V3.
+- Playwright `experiments/rich-browser/mention-feeds-v4.spec.mjs` on a real Wasm V4
+  owner: mount-time feed validation, a `#` tag feed with its own aborted provider
+  requests and listbox name, one-step insertion of the stored `@label` and Undo
+  back to `#query`, the `@` feed alongside, and the presentation hook (display
+  text via `::before`, unchanged chip text, the caret stepping over and Backspace
+  deleting a decorated chip whole, invalid hook output falling back).
 
 ## Slice 6: table captions (audit gap `advanced-tables`, captions)
 

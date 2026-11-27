@@ -1,15 +1,15 @@
 /**
- * Shared rich V4 inline features: text-run language, `@` mentions and image links.
+ * Shared rich V4 inline features: text-run language, mentions (`@` or host-declared trigger feeds) and image links.
  *
  * Every publication is one native shared command with the local slice semantics and one Undo step:
  * `setTextLanguage` (selection formatting of `breditor/text-language`; a caret changes pending
- * formats only), `insertMention` (the `@query` trigger replaced by `@label` + one plain space) and
+ * formats only), `insertMention` (the typed `<trigger><query>` replaced by the stored `@label` + one plain space) and
  * `setImageLink` (href and new window as ONE paired replicated field). Rust admits every value again;
  * JavaScript only snapshots primitive intent.
  */
-import {textLanguageControls,imageLinkControls,RichSuggestionSession,requireRichMentionSuggestions,filterRichMentionSuggestions,
- type RichEditorView,type RichSelectionPolicy,type RichMention,type RichMentionKind,type RichMentionProvider,type RichMentionState,type RichMentionCancelReason,
- type RichSuggestionOptions,type RichSuggestionRun,type RichSuggestionSpec,type RichSuggestionContext} from "@breditor/experimental-rich-content";
+import {textLanguageControls,imageLinkControls,RichMentionMenus,requireRichMentionFeeds,
+ type RichEditorView,type RichSelectionPolicy,type RichMention,type RichMentionFeed,type RichMentionOption,type RichMentionProvider,type RichMentionState,type RichMentionCancelReason,
+ type RichSuggestionOptions,type RichSuggestionRun} from "@breditor/experimental-rich-content";
 import type {SharedRichEditor} from "./core.js";
 import type {ActionContext,SharedToolbarControl} from "./actions.js";
 import type {SharedSlashCommandHost} from "./slash_commands.js";
@@ -36,12 +36,13 @@ export function sharedInlineControlsV4<P extends SharedSelectionPolicy>(core:Sha
  return Object.freeze([...language,...links]);
 }
 
-/** One mention suggestion menu option. */
-interface Option {readonly id:string;readonly label:string;readonly description?:string;readonly mention:RichMention}
 /** One guarded publication: the exact `insert_mention` batch at the checked revision. */
 export interface SharedMentionExecution {readonly mention:RichMention;readonly request:SharedDispatch;readonly revision:string}
 export interface SharedMentionOptions extends Omit<RichSuggestionOptions<RichMention,SharedMentionExecution>,"items"|"core"> {
- items:RichMentionProvider;
+ /** One implicit `@` feed over every closed kind. Use exactly one of `items` and `feeds`. */
+ items?:RichMentionProvider;
+ /** Host-declared trigger feeds (1–8, unique single-grapheme triggers, never `/`), as locally. */
+ feeds?:readonly RichMentionFeed[];
  /** Pass the shared owner to refuse mounting on an owner without native V4 mentions. */
  core?:Pick<SharedRichEditor<SharedSelectionPolicy>,"supportsMentions">;
 }
@@ -59,43 +60,34 @@ function presentationView(view:SharedEditorView<SharedSelectionPolicy>):RichEdit
  return {...view,format:document?"breditor/rich-document-view":"breditor/rich-view"} as unknown as RichEditorView<RichSelectionPolicy>;
 }
 const caretAt=(block:string,offset:number):RichSelection=>({kind:"text",anchor:{block,offset:String(offset),affinity:"after"},focus:{block,offset:String(offset),affinity:"after"}});
-const surfaces=new WeakSet<HTMLElement>();
-function spec(host:SharedSlashCommandHost):RichSuggestionSpec<Option,SharedMentionExecution>{
- return Object.freeze({
-  trigger:"@",attributes:Object.freeze({root:"breditorMention",status:"mentionStatus",index:"mentionIndex",item:"mentionItem"}),idPrefix:"breditor-mention",surfaces,
-  strings:Object.freeze({label:"mentionLabel",loading:"mentionLoading",countOne:"mentionCountOne",count:"mentionCount",empty:"mentionEmpty"} as const),
-  messages:Object.freeze({live:"Mentions require a live document",duplicate:"This editing surface already has mentions",limits:"Expected bounded mention query and item limits",container:"Mention menus must be mounted outside the editing surface",closed:"Use an open editor for mentions",
-   disposed:"Mentions are disposed",none:"No mention session is open",loading:"Mention suggestions are still loading",choose:"Choose an available mention",busy:"Mentions wait for the current editor operation",invalid:"The mention trigger is no longer valid"}),
-  admit:(items:unknown):readonly Option[]=>requireRichMentionSuggestions(items).map(item=>Object.freeze({id:`${item.kind}:${item.id}`,label:item.label,...(item.description!==undefined?{description:item.description}:{}),mention:Object.freeze({kind:item.kind as RichMentionKind,id:item.id,label:item.label})})),
-  filter:(items:readonly Option[],query:string)=>filterRichMentionSuggestions(items.map(option=>({...option.mention,option})),query).map(entry=>entry.option),
-  enabled:(_item:Option,context:RichSuggestionContext)=>context.model.view.readOnly!==true,
-  unavailable:(item:Option)=>`@${item.label} cannot be inserted here`,
-  execute(item:Option,run:RichSuggestionRun):SharedMentionExecution{
-   const {check,trigger}=run,block=trigger.block,mention=item.mention,revision=check.view.revision;
-   // The checked trigger starts at a block start or after white space, never inside a mention, so
-   // the caret lands after `@` + label + one space (UTF-16 offsets, like Rust).
-   const command:SharedCommand={kind:"insert_mention",data:{anchor:{block,offset:String(trigger.start),affinity:"after"},focus:{block,offset:String(check.caret),affinity:check.affinity},mention:{kind:mention.kind,id:mention.id,label:mention.label}}};
-   const request:SharedDispatch={commands:[command],selectionUpdate:{kind:"set",value:caretAt(block,trigger.start+mention.label.length+2)}};
-   host.execute(request,true,revision);
-   return Object.freeze({mention,request,revision});
-  },
- });
+function execute(host:SharedSlashCommandHost){
+ return (item:RichMentionOption,run:RichSuggestionRun):SharedMentionExecution=>{
+  const {check,trigger}=run,block=trigger.block,mention=item.mention,revision=check.view.revision;
+  // The checked trigger starts at a block start or after white space, never inside a mention, so
+  // the caret lands after the stored `@` + label + one space (UTF-16 offsets, like Rust), whatever
+  // trigger grapheme was typed.
+  const command:SharedCommand={kind:"insert_mention",data:{anchor:{block,offset:String(trigger.start),affinity:"after"},focus:{block,offset:String(check.caret),affinity:check.affinity},mention:{kind:mention.kind,id:mention.id,label:mention.label}}};
+  const request:SharedDispatch={commands:[command],selectionUpdate:{kind:"set",value:caretAt(block,trigger.start+mention.label.length+2)}};
+  host.execute(request,true,revision);
+  return Object.freeze({mention,request,revision});
+ };
 }
 /**
- * Mount one opt-in `@` mention menu for a borrowed shared DOM coordinator over a V4 owner. Browser
- * routing and presentation are the local typed-trigger session (trigger detection, cancellation,
- * async providers with AbortSignal, accessible listbox, catalog strings); a peer edit that
- * invalidates the trigger closes the menu. Choosing publishes ONE guarded `insert_mention`
- * dispatch at the checked revision, so one Undo restores the typed `@query`.
+ * Mount opt-in mention menus (one `@` menu, or one per host-declared feed) for a borrowed shared DOM
+ * coordinator over a V4 owner. Browser routing and presentation are the local typed-trigger session
+ * (trigger detection, cancellation, async providers with AbortSignal, accessible listbox, catalog
+ * strings); a peer edit that invalidates the trigger closes the menu. Choosing publishes ONE guarded
+ * `insert_mention` dispatch at the checked revision, so one Undo restores the typed trigger and query.
  */
 export function mountSharedMentions(host:SharedSlashCommandHost,options:SharedMentionOptions):SharedMentions{
  if(options.core&&options.core.supportsMentions()!==true)throw Error("Use an explicitly selected matching shared V4 owner with native mentions");
- const {core:_core,...rest}=options;
+ const feeds=requireRichMentionFeeds(options);
+ const {core:_core,items:_items,feeds:_feeds,...rest}=options;
  const port=Object.freeze({
   surface:host.surface,searchState:()=>host.searchState(),subscribeSearch:(listener:()=>void)=>host.subscribeSearch(listener),
   view:()=>presentationView(host.view()),
   execute:()=>{throw Error("Shared mentions publish one shared dispatch");},
   focus:()=>host.focus(),...(host.uiLocale?{uiLocale:()=>host.uiLocale!()}:{}),
  });
- return new RichSuggestionSession<Option,SharedMentionExecution>(port,rest as unknown as RichSuggestionOptions<Option,SharedMentionExecution>,spec(host)) as unknown as SharedMentions;
+ return new RichMentionMenus<SharedMentionExecution>(port,rest as unknown as Omit<RichSuggestionOptions<RichMentionOption,SharedMentionExecution>,"items">,feeds,execute(host));
 }

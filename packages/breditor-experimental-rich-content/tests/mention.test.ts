@@ -8,7 +8,8 @@ import {defaultToolbar} from "../src/actions.js";
 import {createRichSlashCommands} from "../src/slash_command_items.js";
 import {mountRichSlashCommands} from "../src/slash_command_session.js";
 import {encodeMentionIntent,groupMentionRuns,isRichMentionId,isRichMentionKind,isRichMentionLabel,mentionOf,requireRichMention} from "../src/mention.js";
-import {filterRichMentionSuggestions,mountRichMentions,requireRichMentionSuggestions,type RichMentionOptions,type RichMentionSuggestion} from "../src/mention_session.js";
+import {filterRichMentionSuggestions,mountRichMentions,requireRichMentionFeeds,requireRichMentionSuggestions,requireRichMentionTrigger,type RichMentionOptions,type RichMentionSuggestion} from "../src/mention_session.js";
+import {requireRichMentionRenderer,richMentionChipPresentation,richMentionDisplayStyles,type RichMentionRenderer} from "../src/mention_presentation.js";
 import {createStandardRichInlinePresentationV1} from "../src/standard_inline_v1.js";
 import type {FormatLiteral,RichCommand,RichCoreEditor,RichSelection,RichView,RichWasmModule} from "../src/core.js";
 import {compileStandardRichProfileV4} from "../index.js";
@@ -195,5 +196,118 @@ describe("@ mention suggestion session",()=>{
   type(t.dom,"@");expect(t.mentions.state().open).toBe(true);expect(slash.state().open).toBe(false);key(t.dom,"Escape");
   type(t.dom," /");expect(slash.state().open).toBe(true);expect(t.mentions.state().open).toBe(false);
   expect(document.querySelector("[data-breditor-slash] [role=listbox]")!.getAttribute("aria-label")).toBe("Commands");
+ });
+});
+
+describe("host-declared mention trigger feeds",()=>{
+ const tags:readonly RichMentionSuggestion[]=[{kind:"tag",id:"t-1",label:"bug"},{kind:"tag",id:"t-2",label:"build"}];
+ const users=people.filter(item=>item.kind!=="tag");
+ it("validates feeds at mount: one grapheme, no white space, unique, never the slash trigger",()=>{
+  const feed=(trigger:unknown,extra:Record<string,unknown>={})=>({trigger,kinds:["tag"],items:tags,...extra});
+  expect(requireRichMentionTrigger("#")).toBe("#");expect(requireRichMentionTrigger("+")).toBe("+");
+  // Multi-unit graphemes are one trigger: an astral symbol, a ZWJ emoji sequence and a combining sequence.
+  for(const trigger of ["🏷","🏷️","👩‍💻","é"])expect(requireRichMentionTrigger(trigger)).toBe(trigger);
+  for(const bad of ["","##","ab"," "," ","　","\t","\n","​"," ","\u0007","\ud800",1,null])expect(()=>requireRichMentionTrigger(bad),String(bad)).toThrow(TypeError);
+  expect(()=>requireRichMentionTrigger("/")).toThrow("slash-command trigger");
+  expect(()=>requireRichMentionFeeds({feeds:[feed("#"),feed("#",{kinds:["user"]})]})).toThrow("Duplicate mention trigger #");
+  expect(()=>requireRichMentionFeeds({items:tags,feeds:[feed("#")]})).toThrow("either");
+  expect(()=>requireRichMentionFeeds({})).toThrow("items or feeds");
+  for(const bad of [[],[feed("#",{kinds:[]})],[feed("#",{kinds:["team"]})],[feed("#",{kinds:["tag","tag"]})],[feed("#",{items:"x"})],[feed("#",{label:" "})],[feed("#",{extra:1})],Array.from({length:9},(_,i)=>feed(String.fromCharCode(0x21+i)))])expect(()=>requireRichMentionFeeds({feeds:bad})).toThrow(TypeError);
+  expect(requireRichMentionFeeds({items:people})).toEqual([{trigger:"@",kinds:["user","page","tag"],items:people}]);
+  // Mount-time validation refuses before any listener or menu is installed.
+  const t=setup();t.mentions.dispose();
+  expect(()=>mountRichMentions(t.dom,{feeds:[feed("/")] as never})).toThrow("slash-command trigger");
+  expect(document.querySelectorAll("[data-breditor-mention]")).toHaveLength(0);
+  // A static list outside the feed's kinds is refused at mount.
+  expect(()=>mountRichMentions(t.dom,{feeds:[{trigger:"#",kinds:["tag"],items:people}]})).toThrow("offers only tag");
+  expect(document.querySelectorAll("[data-breditor-mention]")).toHaveLength(0);
+ });
+ it("opens the matching menu per trigger and inserts through one insertMention and one Undo step",()=>{
+  const t=setup("Fix ",{items:undefined,feeds:[{trigger:"@",kinds:["user","page"],items:users},{trigger:"#",kinds:["tag"],items:tags,label:"Tags"}]});
+  const menus=[...document.querySelectorAll<HTMLElement>("[data-breditor-mention]")];
+  expect(menus.map(root=>root.dataset["mentionTrigger"])).toEqual(["@","#"]);
+  type(t.dom,"#bu");
+  expect(t.mentions.state()).toMatchObject({open:true,feed:"#",trigger:{block:"a",start:4},query:"bu"});
+  expect(t.mentions.state().items.map(item=>item.id)).toEqual(["tag:t-1","tag:t-2"]);
+  const list=menus[1]!.querySelector("[role=listbox]")!;expect(list.getAttribute("aria-label")).toBe("Tags");
+  expect(t.dom.surface.getAttribute("aria-controls")).toBe(list.id);expect(menus[0]!.hidden).toBe(true);
+  key(t.dom,"ArrowDown");const before=t.log.length;expect(key(t.dom,"Enter").defaultPrevented).toBe(true);
+  expect(t.log.slice(before)).toEqual([{kind:"insertMention",data:{selection:{kind:"text",anchor:{block:"a",offset:"4",affinity:"after"},focus:{block:"a",offset:"7",affinity:"after"}},mention:{kind:"tag",id:"t-2",label:"build"}}}]);
+  // The stored grammar is unchanged: the mention text is `@` + label for every trigger.
+  expect(t.blocks()[0]!.text).toBe("Fix @build ");expect(t.mentions.state()).toMatchObject({open:false,feed:"#"});
+  t.dom.execute({kind:"undo"});expect(t.blocks()[0]!.text).toBe("Fix #bu");
+  // The other feed keeps its own source and kinds.
+  type(t.dom," @a");expect(t.mentions.state()).toMatchObject({open:true,feed:"@",query:"a"});
+  expect(t.mentions.state().items.map(item=>item.id)).toEqual(["user:u-1","user:u-2","page:p-1"]);
+  key(t.dom,"Escape");expect(t.mentions.state()).toMatchObject({open:false,feed:"@",lastCancel:"dismissed"});
+  // A typed `@` inside a `#` query does not open the `@` menu (it is not after white space).
+  type(t.dom," #b@");expect(t.mentions.state()).toMatchObject({open:true,feed:"#",query:"b@"});
+ });
+ it("gives each feed its own cancellable provider and refuses suggestions outside the feed's kinds",async()=>{
+  const requests:{feed:string;query:string;signal:AbortSignal;resolve:(items:readonly RichMentionSuggestion[])=>void}[]=[];
+  const provider=(feed:string)=>(query:string,request:{signal:AbortSignal})=>new Promise<readonly RichMentionSuggestion[]>(resolve=>{requests.push({feed,query,signal:request.signal,resolve});});
+  const onError=vi.fn();
+  const t=setup("",{items:undefined,onError,feeds:[{trigger:"@",kinds:["user"],items:provider("@")},{trigger:"🏷️",kinds:["tag"],items:provider("tag")}]});
+  t.dom.surface.dispatchEvent(new InputEvent("beforeinput",{inputType:"insertText",data:"🏷️",bubbles:true,cancelable:true}));type(t.dom,"b");
+  expect(t.mentions.state()).toMatchObject({open:true,feed:"🏷️",trigger:{block:"a",start:0},query:"b",loading:true});
+  expect(requests.map(entry=>[entry.feed,entry.query,entry.signal.aborted])).toEqual([["tag","",true],["tag","b",false]]);
+  requests[1]!.resolve(tags);await Promise.resolve();await Promise.resolve();
+  expect(t.mentions.state().items.map(item=>item.label)).toEqual(["bug","build"]);
+  t.mentions.choose(0);expect(t.blocks()[0]!.text).toBe("@bug ");
+  t.dom.execute({kind:"undo"});expect(t.blocks()[0]!.text).toBe("🏷️b");
+  type(t.dom," @");requests.at(-1)!.resolve(tags);await Promise.resolve();await Promise.resolve();
+  expect(onError).toHaveBeenCalledWith(expect.objectContaining({message:"The @ mention feed offers only user"}));
+  expect(t.mentions.state().items).toEqual([]);
+  key(t.dom,"Escape");expect(requests.at(-1)!.signal.aborted).toBe(true);
+ });
+ it("allows one feed set per surface and releases it on dispose",()=>{
+  const t=setup();
+  expect(()=>mountRichMentions(t.dom,{feeds:[{trigger:"#",kinds:["tag"],items:tags}]})).toThrow("already has mentions");
+  t.mentions.dispose();expect(t.mentions.state().disposed).toBe(true);expect(()=>t.mentions.choose()).toThrow("disposed");
+  const again=mountRichMentions(t.dom,{feeds:[{trigger:"#",kinds:["tag"],items:tags}]});mounted.push(()=>again.dispose());
+  type(t.dom,"#");expect(again.state()).toMatchObject({open:true,feed:"#"});
+ });
+});
+
+describe("mention presentation hook",()=>{
+ const decorate:RichMentionRenderer=mention=>mention.kind==="tag"?{text:`#${mention.label}`,title:`Tag ${mention.label}`,classes:["tag-chip"],data:{tone:"blue"}}:{title:mention.label};
+ const tagged=mention("tag","t-1","bug");
+ it("sanitizes host output and fails closed to the default chip",()=>{
+  const m={kind:"tag" as const,id:"t-1",label:"bug"},base=[{name:"class",value:"breditor-mention"},{name:"data-mention-kind",value:"tag"},{name:"data-mention-id",value:"t-1"}];
+  expect(richMentionChipPresentation(m)).toEqual({attributes:base,display:undefined});
+  expect(richMentionChipPresentation(m,decorate)).toEqual({display:"#bug",attributes:[{name:"class",value:"breditor-mention tag-chip"},base[1],base[2],{name:"data-mention-display",value:"#bug"},{name:"title",value:"Tag bug"},{name:"data-mention-host-tone",value:"blue"}]});
+  const seen:unknown[]=[];richMentionChipPresentation(m,value=>{seen.push(value);(value as {label:string}).label="x";return undefined;});
+  expect(seen).toEqual([{kind:"tag",id:"t-1",label:"bug"}]);expect(Object.isFrozen(seen[0])).toBe(true);
+  for(const bad of [{text:""},{text:" x"},{text:"a\nb"},{title:"<‮>"},{classes:["a b"]},{classes:["\"x"]},{classes:Array(9).fill("a")},{data:{"on-click":"x","Bad":"y"}},{data:{style:"a\u0000"}},{href:"https://x"},{style:"color:red"},"text",[],Object.create({text:"x"})])
+   expect(richMentionChipPresentation(m,()=>bad as never),JSON.stringify(bad)).toEqual({attributes:base,display:undefined});
+  expect(richMentionChipPresentation(m,()=>{throw Error("host bug");})).toEqual({attributes:base,display:undefined});
+  expect(()=>requireRichMentionRenderer("x")).toThrow(TypeError);
+ });
+ it("decorates live chips without changing their text, offsets or caret placement",()=>{
+  const surface=document.createElement("div");document.body.append(surface);
+  render(surface,presentationModel(view([run("See "),run("@bug",[tagged]),run(" and "),run("@Ann",[ann])]),"original"),{inlinePresentation:createStandardRichInlinePresentationV1(catalog),mentionPresentation:decorate});
+  const [tag,user]=[...surface.querySelectorAll<HTMLElement>(".breditor-mention")];
+  expect(tag!.getAttribute("data-mention-display")).toBe("#bug");expect(tag!.title).toBe("Tag bug");expect(tag!.className).toBe("breditor-mention tag-chip");
+  expect(tag!.getAttribute("contenteditable")).toBe("false");expect(tag!.dataset["mentionHostTone"]).toBe("blue");
+  expect(tag!.querySelector("[data-mention-text]")!.textContent).toBe("@bug");expect(tag!.textContent).toBe("@bug");
+  expect(user!.hasAttribute("data-mention-display")).toBe(false);expect(user!.title).toBe("Ann");expect(user!.querySelector("[data-mention-text]")).toBeNull();
+  expect(surface.querySelector("[data-rich-text]")!.textContent).toBe("See @bug and @Ann");
+  restoreNative(surface,caret("p",8));const native=document.getSelection()!;expect(native.anchorNode).toBe(surface.querySelector("p"));expect(surface.querySelector("p")!.childNodes[native.anchorOffset-1]).toBe(tag);
+  expect(()=>render(surface,presentationModel(view([]),"original"),{mentionPresentation:"x" as never})).toThrow("mentionPresentation");
+  surface.remove();
+ });
+ it("matches the static renderer, which adds the display stylesheet only when used",()=>{
+  const runs=[run("See "),run("@b",[tagged]),run("ug",[tagged,strong])];
+  const surface=document.createElement("div");render(surface,presentationModel(view(runs),"original"),{inlinePresentation:createStandardRichInlinePresentationV1(catalog),mentionPresentation:decorate});
+  for(const chip of surface.querySelectorAll(".breditor-mention"))chip.removeAttribute("contenteditable");
+  const fragment=renderStaticDocument(documentJson(runs),{fragment:true,mentionPresentation:decorate});
+  const host=document.createElement("div");host.innerHTML=fragment;expect(host.querySelector("p")!.innerHTML).toBe(surface.querySelector("p")!.innerHTML);
+  expect(host.querySelector(".breditor-mention")!.outerHTML).toBe('<span class="breditor-mention tag-chip" data-mention-kind="tag" data-mention-id="t-1" data-mention-display="#bug" title="Tag bug" data-mention-host-tone="blue"><span data-mention-text="">@b<strong data-rich-format="breditor/strong">ug</strong></span></span>');
+  expect(fragment).not.toContain("<style");
+  expect(renderStaticDocument(documentJson(runs),{mentionPresentation:decorate})).toContain(`<style data-breditor-mentions="">${richMentionDisplayStyles}</style>`);
+  expect(renderStaticDocument(documentJson(runs),{mentionPresentation:()=>({title:"x"})})).not.toContain("data-breditor-mentions");
+  // Without a hook the output is byte-for-byte the original chip.
+  expect(renderStaticDocument(documentJson(runs),{fragment:true})).toBe(renderStaticDocument(documentJson(runs),{fragment:true,mentionPresentation:()=>undefined}));
+  expect(()=>renderStaticDocument(documentJson(runs),{mentionPresentation:1 as never})).toThrow("mentionPresentation");
  });
 });
