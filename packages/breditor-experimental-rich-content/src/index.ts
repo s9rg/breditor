@@ -64,6 +64,8 @@ export type {RichMenuBar,RichMenuBarMenu,RichMenuBarOptions,RichMenuBarState,Ric
 export {mountRichMenuBar,mountRichShortcutHelp,mountRichFloatingMenu,mountRichBalloonBlockLayout,richMenuBarDefaults,richFloatingMenuDefaults,richEditorShellStyles} from "./editor_shell.js";
 export {richActiveShortcuts,richCoordinatorShortcuts,richControlShortcutChord,formatRichShortcut,detectRichShortcutPlatform,richShortcutGroups,type RichShortcutEntry,type RichShortcutChord,type RichShortcutGroup,type RichShortcutPlatform,type RichCoordinatorShortcutFacts} from "./shortcut_registry.js";
 export {richShellUiStringsEn,type RichShellUiStrings} from "./ui_locale_shell.js";
+export {planRichToolbarLayout,RICH_TOOLBAR_LAYOUT_MAX_ENTRIES,RICH_TOOLBAR_GROUP_MAX_ITEMS,type RichToolbarLayout,type RichToolbarLayoutEntry,type RichToolbarGroup,type RichToolbarSeparator,type RichToolbarRowBreak} from "./toolbar_layout.js";
+export {richToolbarLayoutStyles,type RichToolbarLayoutState,type RichToolbarGroupActivation} from "./toolbar_layout_view.js";
 export {mountRichSourceView,type RichSourceView,type RichSourceViewOptions,type RichSourceViewState} from "./source_view.js";
 export {mountRichAiTools,type RichAiTools,type RichAiToolsOptions,type RichAiToolsState,type RichAiReview,type RichAiPhase,type RichRewriteScope,type RichRewriteRequest,type RichRewriteOutput,type RichRewriteProvider,type RichRewriteProviderRequest} from "./ai_rewrite.js";
 export {mountRichLanguageCheck,type RichLanguageCheck,type RichLanguageCheckOptions,type RichLanguageCheckState,type RichLanguageCheckRequest,type RichLanguageIssue,type RichLanguageIssueKind,type RichLanguageIssueView,type RichLanguagePhase,type RichLanguageProvider,type RichLanguageProviderRequest} from "./language_check.js";

@@ -47,3 +47,5 @@ export * from "./dist/browser/formatting_productivity.js";
 export * from "./dist/browser/special_characters.js";
 export {richRubyExtensionName,richRubyFormat,richRubyAnnotationProperty,richRubyAnnotationMaxBytes,richRubyClass,richRubyStyles,richRubyBootstrapExtensionV1,richRubySharedExtensionV1,withRichRubyBootstrapV1,withRichRubySharedConfigurationV1,isRichRubyAnnotation,isRichRubyDeclaration,rubyAnnotationOf,rubyFormat,groupRubyRuns,createRubyElement,rubyGroupAt,rubyControls,rubyCommand,rubyToolbarControls} from "./dist/browser/ruby.js";
 export {richInlinePresentationHasRuby} from "./dist/browser/inline_presentation.js";
+export {planRichToolbarLayout,RICH_TOOLBAR_LAYOUT_MAX_ENTRIES,RICH_TOOLBAR_GROUP_MAX_ITEMS} from "./dist/browser/toolbar_layout.js";
+export {arrangeRichToolbar,richToolbarLayoutStyles} from "./dist/browser/toolbar_layout_view.js";

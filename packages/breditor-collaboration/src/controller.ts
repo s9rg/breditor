@@ -11,6 +11,7 @@ import type {RichClipboardTextProjection} from "./types.js";
 import {sharedTaskTab} from "./task_actions_v2.js";
 import {flowEdgeEligible,selectedFlowAtom} from "@breditor/experimental-rich-content/rendering";
 import {mountToolbarControl,toolbarControlStyles,isCurrentCaretTarget,type RichControlView} from "@breditor/experimental-rich-content/rendering";
+import {planRichToolbarLayout,arrangeRichToolbar,richToolbarLayoutStyles,type RichToolbarLayout,type RichToolbarLayoutState,type RichToolbarLayoutView} from "@breditor/experimental-rich-content/rendering";
 import {resolveRichUi,type RichUiLocale,type RichUiOptions} from "@breditor/experimental-rich-content/rendering";
 import {standardSelectionInlineControls,selectionFormatChanges} from "@breditor/experimental-rich-content/rendering";
 import {richRubyStyles,richInlinePresentationHasRuby} from "@breditor/experimental-rich-content/rendering";
@@ -28,6 +29,8 @@ import {richCoordinatorShortcuts,type RichShortcutEntry} from "@breditor/experim
 import {mountSharedV4BlockFieldDom,sharedV4RenderOptions} from "./v4_block_fields_dom.js";
 export interface SharedDomOptions<P extends SharedSelectionPolicy="original"> extends RenderOptions {
  core:SharedRichEditor<P>;toolbar?:readonly SharedToolbarControl<P>[];label?:string;image?:{asset:string;alt:string};
+ /** Opt-in rows, separators, dropdown groups and "group when full" overflow for the admitted `toolbar` (docs/TOOLBAR_LAYOUT.md). */
+ toolbarLayout?:RichToolbarLayout;
  /** Opt-in chrome catalog and chrome `dir`/`lang`. Never changes the editing surface or content direction. */
  ui?:RichUiOptions;
  /** Initial native-prompt label; mode is admitted at startup, never a saved setting. */
@@ -69,6 +72,7 @@ export class SharedDomEditor<P extends SharedSelectionPolicy="original"> {
  readonly #searchEvents=new RichSearchEvents();
  readonly #writingEvents=new RichWritingEvents();readonly #writingReads=new RichWritingReadRegistry();
  readonly #placeholder:RichPlaceholderPresentation|undefined;
+ #layout:RichToolbarLayoutView|undefined;
  #prefix=`shared:${crypto.randomUUID()}`;#counter=0n;#controls:{control:SharedToolbarControl<P>;view:RichControlView<ActionContext<P>>}[]=[];
  readonly #borrowed=new Set<{control:SharedToolbarControl<P>;view:RichControlView<ActionContext<P>>}>();
  readonly #selectionPolicy:P;readonly #document:SharedRichEditor<"document-v1">|undefined;
@@ -87,15 +91,19 @@ export class SharedDomEditor<P extends SharedSelectionPolicy="original"> {
   if(this.#model.view.historyGrouping==="typing-v1"&&!options.core.supportsTypingHistory())throw Error("Use matching native shared typing history");
   for(const control of options.toolbar??[...defaultSharedToolbarFor<P>(),...moveSharedToolbarFor<P>()])if(control.owner!==undefined&&control.owner!==options.core)throw Error("Toolbar control belongs to a different Rust owner");
   const ui=resolveRichUi(options.ui);ui.checkControls(options.toolbar??[...defaultSharedToolbarFor<P>(),...moveSharedToolbarFor<P>()]);this.#ui=ui;
-  const d=root.ownerDocument,style=d.createElement("style");style.textContent=styles+standardInlineStylesV1+toolbarControlStyles+(structuralBlockStylesV2+richPageBreakStyles+richLegalListStyles).replaceAll("[data-breditor-rich]","[data-breditor-shared]")+(options.scrollableTables?richTableScrollStyles:"")+(this.#document?sharedDocumentSelectionStyles:"")+(placeholder?richPlaceholderStyles:"")+(options.inlinePresentation&&richInlinePresentationHasRuby(options.inlinePresentation)?richRubyStyles:"");root.dataset["breditorShared"]="";
+  const admitted=options.toolbar??[...defaultSharedToolbarFor<P>(),...moveSharedToolbarFor<P>()],seen=new Set<string>();
+  for(const control of admitted){if(seen.has(control.id))throw Error("Duplicate shared toolbar control");seen.add(control.id);}
+  const layout=options.toolbarLayout===undefined?undefined:planRichToolbarLayout(options.toolbarLayout,[...seen]);
+  const d=root.ownerDocument,style=d.createElement("style");style.textContent=styles+standardInlineStylesV1+toolbarControlStyles+(structuralBlockStylesV2+richPageBreakStyles+richLegalListStyles).replaceAll("[data-breditor-rich]","[data-breditor-shared]")+(options.scrollableTables?richTableScrollStyles:"")+(this.#document?sharedDocumentSelectionStyles:"")+(placeholder?richPlaceholderStyles:"")+(options.inlinePresentation&&richInlinePresentationHasRuby(options.inlinePresentation)?richRubyStyles:"")+(layout?richToolbarLayoutStyles:"");root.dataset["breditorShared"]="";
   this.surface=d.createElement("div");this.surface.contentEditable="true";this.surface.className="breditor-shared-surface";this.surface.setAttribute("role","textbox");this.surface.setAttribute("aria-multiline","true");this.surface.setAttribute("aria-label",options.label??ui.text("sharedEditorLabel"));
   this.toolbar=d.createElement("div");this.toolbar.className="breditor-shared-toolbar";this.toolbar.setAttribute("role","toolbar");this.toolbar.setAttribute("aria-label",ui.text("sharedToolbarLabel"));ui.applyChrome(this.toolbar);this.status=d.createElement("p");this.status.setAttribute("role","status");ui.applyChrome(this.status);
-  const seen=new Set<string>();for(const control of options.toolbar??[...defaultSharedToolbarFor<P>(),...moveSharedToolbarFor<P>()]){
-   if(seen.has(control.id))throw Error("Duplicate shared toolbar control");seen.add(control.id);
-   const view=this.#mountControl(this.toolbar,control,this.#abort.signal);this.#controls.push({control,view});
-  }
+  if(layout){
+   const byId=new Map(admitted.map(control=>[control.id,control] as const));
+   this.#layout=arrangeRichToolbar({toolbar:this.toolbar,plan:layout,ui,signal:this.#abort.signal,focusEditor:()=>this.focus(),mount:(container,id)=>{const control=byId.get(id)!,view=this.#mountControl(container,control,this.#abort.signal);this.#controls.push({control,view});return view;}});
+   const order=[...seen];this.#controls.sort((a,b)=>order.indexOf(a.control.id)-order.indexOf(b.control.id));
+  }else for(const control of admitted){const view=this.#mountControl(this.toolbar,control,this.#abort.signal);this.#controls.push({control,view});}
   this.#placeholder=placeholder?new RichPlaceholderPresentation(this.surface,placeholder.label):undefined;
-  root.replaceChildren(style,this.toolbar,this.#placeholder?.container??this.surface,this.status);render(this.surface,this.#model,sharedV4RenderOptions(options.core,options));this.#refreshControls();
+  root.replaceChildren(style,this.toolbar,this.#placeholder?.container??this.surface,this.status);render(this.surface,this.#model,sharedV4RenderOptions(options.core,options));this.#refreshControls();this.#layout?.arrange();
   if(this.#placeholder){this.#placeholder.update(placeholder!.empty&&this.#model.view.readOnly!==true);this.#writingEvents.subscribe(()=>this.#refreshPlaceholder());}
   if(this.#model.view.readOnly===true)this.status.textContent=ui.text("sharedStatusReadOnly",{revision:this.#model.view.revision});
   this.#unsubscribe=options.core.subscribe(event=>{const policy=event.view.readOnlyRevision!==this.#model.view.readOnlyRevision||event.view.readOnly!==this.#model.view.readOnly;if(policy){const composition=this.#composition;this.#composition=undefined;this.#cancelQueue(Error("Editing policy cancelled queued search work"));composition?.release();this.#refresh(false);}else if(!this.#busy&&!this.#composition)this.#refresh(false);try{void Promise.resolve(options.onChange?.(event)).catch(error=>this.#report(error));}catch(error){this.#report(error);}});
@@ -149,7 +157,9 @@ export class SharedDomEditor<P extends SharedSelectionPolicy="original"> {
   this.#borrowed.add(entry);abort.signal.addEventListener("abort",()=>{this.#borrowed.delete(entry);element.remove();},{once:true});this.#refreshControls(entry);
   return Object.freeze({id,element,button:view.button,activate:()=>{if(!abort.signal.aborted)view.activate();}});
  }
- #refreshControls(only?:{control:SharedToolbarControl<P>;view:RichControlView<ActionContext<P>>}):void{const context=this.#context(),stamp=JSON.stringify(this.#options.core.view());for(const {control,view}of only?[only]:[...this.#controls,...this.#borrowed])view.refresh(context,control.enabled(context)&&(this.#model.view.readOnly!==true||control.readOnlySafe===true),stamp);}
+ #refreshControls(only?:{control:SharedToolbarControl<P>;view:RichControlView<ActionContext<P>>}):void{const context=this.#context(),stamp=JSON.stringify(this.#options.core.view());for(const {control,view}of only?[only]:[...this.#controls,...this.#borrowed])view.refresh(context,control.enabled(context)&&(this.#model.view.readOnly!==true||control.readOnlySafe===true),stamp);this.#layout?.update();}
+ /** Opt-in toolbar layout presentation state (open popup, overflowed items, aggregated group state); null without `toolbarLayout`. */
+ toolbarLayoutState():RichToolbarLayoutState|null{return this.#layout?.state()??null;}
  #refresh(focus:boolean,force=false):void{
   if(this.#disposed||this.#composition)return;this.#refreshing=true;try{const previous=this.#model.view.documentJson,policy=this.#model.view.readOnlyRevision,active=this.surface.ownerDocument.activeElement,ownedFocus=active===this.surface||!!active&&this.surface.contains(active);
   this.#model=this.#read();this.#logical=this.#isLogical();

@@ -35,6 +35,8 @@ export interface RichControlView<C> {
  readonly button:HTMLButtonElement;readonly control:RichControlPresentation<C>;
  refresh(context:C,enabled:boolean,stamp:string):void;
  activate():void;
+ /** Last refreshed gate and Rust-derived pressed reading; read-only input for aggregated presentations. */
+ state():Readonly<{enabled:boolean;pressed:boolean|"mixed"|undefined}>;
 }
 /** Scoped to coordinator toolbar widgets, never document content. */
 export const toolbarControlStyles=`:is([data-breditor-rich],[data-breditor-shared]) .breditor-inline-control{display:inline-flex;gap:4px;align-items:end}:is([data-breditor-rich],[data-breditor-shared]) details.breditor-inline-control{display:block;border:1px solid #a5b9af;border-radius:4px;padding:5px 8px;background:white}:is([data-breditor-rich],[data-breditor-shared]) .breditor-inline-control summary{cursor:pointer;font-size:13px}:is([data-breditor-rich],[data-breditor-shared]) .breditor-inline-control[open]>:not(summary){margin-top:6px}:is([data-breditor-rich],[data-breditor-shared]) .breditor-inline-control select{padding:5px;max-width:180px}:is([data-breditor-rich],[data-breditor-shared]) .breditor-inline-control small{display:block;max-width:210px}:is([data-breditor-rich],[data-breditor-shared]) .breditor-inline-control small[hidden]{display:none}:is([data-breditor-rich],[data-breditor-shared]) .breditor-inline-control [aria-pressed=true]{background:#cde9dd}:is([data-breditor-rich],[data-breditor-shared]) .breditor-inline-control [aria-pressed=mixed]{border-style:dashed}:is([data-breditor-rich],[data-breditor-shared]) .breditor-inline-control[data-stale]{outline:2px dashed #aa6b20}`;
@@ -109,7 +111,7 @@ export function mountToolbarControl<C>(toolbar:HTMLElement,source:RichControlPre
   if(event.key==="Escape"){event.preventDefault();draft=undefined;write();if(panel)panel.open=false;hooks.focus();}
   else if(event.key==="Enter"&&fields.size&&event.target!==summary&&event.target!==button){event.preventDefault();submit();}
  },{signal:hooks.signal});
- const view:RichControlView<C>={control:source,button,refresh(context,nextEnabled,stamp){lastContext=context;lastStamp=stamp;enabled=nextEnabled;lastReading=control.read?.(context);write();},activate(){if(!enabled)return;if(panel){panel.open=true;(body?.querySelector<HTMLElement>("input,button,[tabindex='0']")??fields.values().next().value)?.focus();}else submit();}};
+ const view:RichControlView<C>={control:source,button,refresh(context,nextEnabled,stamp){lastContext=context;lastStamp=stamp;enabled=nextEnabled;lastReading=control.read?.(context);write();},activate(){if(!enabled)return;if(panel){panel.open=true;(body?.querySelector<HTMLElement>("input,button,[tabindex='0']")??fields.values().next().value)?.focus();}else submit();},state:()=>Object.freeze({enabled,pressed:lastReading?.pressed})};
  if(control.attach&&hooks.surface)control.attach({surface:hooks.surface,button,signal:hooks.signal,ui,activate:()=>hooks.attempt(()=>{hooks.sync();view.activate();}),run:values=>hooks.attempt(()=>{hooks.sync();hooks.run(undefined,Object.freeze({...values}));})});
  return view;
 }
