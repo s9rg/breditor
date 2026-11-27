@@ -1,6 +1,7 @@
 /** Optional structural port only. Default editor imports never load a foreign parser. */
 import type {RichClipboardTextProjection,RichClipboardTransfer} from "./core.js";
 import {defaultRichUi,type RichUiLocale} from "./ui_locale.js";
+import {detectMarkdownPaste,type MarkdownPasteDetection} from "./markdown_paste_detection.js";
 export interface RichInterchangeNotice {readonly code:string;readonly count:number;readonly effect:"loss"|"compatibility"}
 export type RichInterchangeResult<T>=Readonly<{ok:true;value:T;losses:readonly RichInterchangeNotice[]}>|Readonly<{ok:false;error:string;losses:readonly RichInterchangeNotice[]}>;
 export interface RichClipboardInterchange {
@@ -16,7 +17,17 @@ export interface RichClipboardInterchangeReport {
  readonly formats:readonly RichInterchangeFormatReport[];
  readonly destination?:RichClipboardTextProjection;
 }
-export interface ClipboardInput {readonly fragment:string;readonly plain:string;readonly formats:readonly RichInterchangeFormatReport[]}
+export interface ClipboardInput {
+ readonly fragment:string;readonly plain:string;readonly formats:readonly RichInterchangeFormatReport[];
+ /** Present only when opted-in automatic detection converted an ordinary text/plain paste. */
+ readonly markdownPaste?:{readonly plain:string;readonly detection:MarkdownPasteDetection};
+}
+/**
+ * How an event reads a clipboard: `default` keeps text/plain literal, `detect` offers a text/plain-only
+ * clipboard to the Markdown import when `markdown-paste-detect-v1` accepts it, and `literal` is the one-shot
+ * paste-as-plain-text escape, which reads only text/plain and ignores private, HTML and Markdown flavors.
+ */
+export type ClipboardPlainTextMode="default"|"detect"|"literal";
 export type RichTextPasteIntent="literal"|"detect-markdown";
 export interface ClipboardExport {readonly html:string;readonly markdown:string;readonly formats:readonly RichInterchangeFormatReport[]}
 export const RICH_CLIPBOARD_MIME="application/x-breditor-rich+json";
@@ -37,9 +48,9 @@ function result<T>(value:RichInterchangeResult<T>,kind:string):Readonly<{value:T
  if(value?.ok!==true)throw Error(`Clipboard ${kind} conversion was rejected`);
  return{value:value.value,losses:notices(value.losses)};
 }
-function convertInput(source:string,kind:"html"|"markdown",adapter:RichClipboardInterchange,grid:boolean):ClipboardInput {
+function convertInput(source:string,kind:"html"|"markdown",adapter:RichClipboardInterchange,grid:boolean,imported?:RichInterchangeResult<RichClipboardTransfer>):ClipboardInput {
  if(!source)throw Error("Clipboard foreign content was empty");
- const converted=result(adapter[kind==="html"?"importHtml":"importMarkdown"](source,{kind:grid?"grid":"auto"}),kind),transfer=converted.value;
+ const converted=result(imported??adapter[kind==="html"?"importHtml":"importMarkdown"](source,{kind:grid?"grid":"auto"}),kind),transfer=converted.value;
  if(!transfer||transfer.format!=="breditor/rich-clipboard-transfer"||transfer.formatVersion!==1||!['text','flow','grid'].includes(transfer.kind))throw Error("Clipboard interchange transfer was invalid");
  return{fragment:string(transfer.structuredJson),plain:string(transfer.plainText),formats:Object.freeze([Object.freeze({kind,losses:converted.losses})])};
 }
@@ -57,15 +68,28 @@ export function readClipboardText(source:string,adapter:RichClipboardInterchange
  if(intent==="detect-markdown"&&adapter&&!grid&&isHeadingAndList(plain))return convertInput(plain,"markdown",adapter,false);
  return{fragment:"",plain,formats:[]};
 }
-/** Event-scoped data is detached before it can enter an editor queue. No rich failure retries as plain. */
-export function readClipboardInput(data:DataTransfer,adapter:RichClipboardInterchange|undefined,grid:boolean):ClipboardInput {
+/**
+ * Event-scoped data is detached before it can enter an editor queue. No rich failure retries as plain; only an
+ * automatically detected text/plain paste whose Markdown import is rejected stays literal, because the user
+ * never asked for Markdown.
+ */
+export function readClipboardInput(data:DataTransfer,adapter:RichClipboardInterchange|undefined,grid:boolean,plainText:ClipboardPlainTextMode="default"):ClipboardInput {
+ if(plainText!=="default"&&plainText!=="detect"&&plainText!=="literal")throw new TypeError("Unknown plain-text paste mode");
+ if(plainText==="literal")return{fragment:"",plain:data.getData("text/plain"),formats:[]};
  const fragment=data.getData(RICH_CLIPBOARD_MIME);
  if(fragment||adapter&&data.types.includes(RICH_CLIPBOARD_MIME)){if(!fragment)throw Error("Clipboard rich content was empty");return{fragment,plain:"",formats:[]};}
  if(adapter){
   const kind=data.types.includes("text/html")?"html":data.types.includes("text/markdown")?"markdown":undefined;
   if(kind)return convertInput(string(data.getData(kind==="html"?"text/html":"text/markdown")),kind,adapter,grid);
  }
- return{fragment:"",plain:data.getData("text/plain"),formats:[]};
+ const plain=data.getData("text/plain");
+ if(plainText==="detect"&&adapter&&!grid&&plain)return detectedInput(string(plain),adapter)??{fragment:"",plain,formats:[]};
+ return{fragment:"",plain,formats:[]};
+}
+function detectedInput(plain:string,adapter:RichClipboardInterchange):ClipboardInput|undefined {
+ const detection=detectMarkdownPaste(plain);if(!detection.markdown)return undefined;
+ const imported=adapter.importMarkdown(plain,{kind:"auto"});if(imported?.ok===false)return undefined;
+ return{...convertInput(plain,"markdown",adapter,false,imported),markdownPaste:Object.freeze({plain,detection})};
 }
 /** Prepare both outputs before touching the system clipboard or considering a Cut. */
 export function exportClipboard(clipboardJson:string,adapter:RichClipboardInterchange|undefined):ClipboardExport|undefined {

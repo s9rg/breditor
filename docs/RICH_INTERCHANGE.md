@@ -291,8 +291,9 @@ and must not publish edits. Startup failure uses the existing cleanup and host
 rollback contracts.
 
 Opted-in paste prefers private Breditor content, then advertised HTML, then
-advertised `text/markdown`. Ordinary plain text is never guessed as Markdown.
-Advertised empty rich/foreign content, conversion failure and native refusal do
+advertised `text/markdown`. By default ordinary plain text is never guessed as
+Markdown; the separate `markdownPaste: "detect"` opt-in below changes that only
+for a text/plain-only clipboard. Advertised empty rich/foreign content, conversion failure and native refusal do
 not fall through to another representation. Rich/foreign content wins over an
 accompanying image file; file-only insertion retains the explicit asset host.
 Grid selections request native grid admission, rejecting incompatible shapes
@@ -322,6 +323,101 @@ All four React wrappers take the factory in immutable `initialOptions` and expos
 Images use the programmatic adapter's explicit `resolveImage` and `exportImage`
 registry policies. Import does not acquire bytes from source URLs or clipboard
 companion files.
+
+## Automatic Markdown paste
+
+`markdownPaste: "detect"` is an immutable, off-by-default option on the local
+and shared DOM coordinators (and therefore the managed SDK openers and React
+`initialOptions`). It requires `clipboardInterchange`; mounting it without the
+port throws before any DOM mutation. `"literal"` or omission keeps today's
+behavior byte for byte.
+
+```ts
+openLocalEditor({
+  host,
+  clipboardInterchange: core => createRichInterchange(core),
+  markdownPaste: "detect",
+  markdownPasteNotice: true, // optional built-in "Undo to plain text" notice
+  onMarkdownPaste: event => showUndoToPlain(event), // optional host affordance
+});
+```
+
+Scope. Detection runs only for an ordinary paste event whose clipboard has
+text/plain and none of the private Breditor flavor, `text/html` or
+`text/markdown` (those keep their existing priority and never reach the
+detector). Grid selections never detect. When the text selection is in a code
+block, or the native caption/code projection would flatten the converted
+content, the coordinator pastes the original text literally instead.
+`dom.pasteText(text, "detect-markdown")` keeps its narrow heading-plus-bullets
+contract; it does not use this detector.
+
+Detector. `markdown-paste-detect-v1` (`detectMarkdownPaste`, exported from
+`@breditor/experimental-rich-content`) is a pure, deterministic line scanner
+over the version-one dialect's block and inline syntax. Closed fences are found
+first and their lines are masked from every other signal. Weights:
+
+| Signal | Weight | Notes |
+| --- | --- | --- |
+| `table` | 4 | GFM header row plus a delimiter row with the same 2+ columns |
+| `task-list` | 4 | 2+ consecutive `- [ ]` / `- [x]` items |
+| `fence` | 3 | at least one closed ```` ``` ```` or `~~~` fence |
+| `heading` | 2 each, 2 counted | ATX `#`..`######` + space, at the start or after a blank line, not followed by a code-like line |
+| `bullet-list` / `ordered-list` | 2 per run, 2 runs counted | 2+ consecutive items; a lone `* note` is no list |
+| `link` / `image` | 2 once | `[text](target)` with a scheme, `mailto:`, `/`, `./`, `../` or `#` target |
+| `strong`, `emphasis`, `strike`, `inline-code` | 1 each, 3 together | delimiters flanked by whitespace or punctuation |
+| `blockquote` | 1 once | `>` lines; e-mail replies quote this way |
+
+The paste converts when the score is at least 4 **and** at least two distinct
+kinds are present, or the only kind is `table` or `task-list`. Inline syntax
+alone (at most 3) never converts. Vetoes keep the text literal: fewer than two
+non-blank lines, more than 256 KiB, a unified diff, or a code-like body (two or
+more lines that are at least a fifth of the non-blank lines outside fences and
+look like source: statement keywords, trailing `;`/`{`/`}`, `=>`/`::`/`->`, a
+`$ ` prompt or a bare lowercase `key:` line). The checked-in corpus
+(`packages/breditor-editor/tests/fixtures/markdown-paste-corpus.json`) pins the
+positive samples and the negatives: prose, single lines, URLs, Unix/Windows
+paths and globs, `snake_case`, arithmetic, `*` footnotes, plain dash and
+numbered lists, e-mail replies and signatures, shell/Python/JavaScript/Rust
+snippets, YAML, unified diffs, psql/MySQL tables, CSV, hashtags, unclosed
+fences and log output. A changed rule is a new detector version.
+
+Conversion. A detected paste goes through the host's `importMarkdown` (the
+version-one dialect, its losses reported through `onInterchange` exactly like a
+`text/markdown` paste) and then one guarded native paste, so it is one Undo
+step and native schema validation still decides admission. If the adapter
+rejects the import, the paste stays literal (the user never asked for
+Markdown); a native refusal is reported like any other refused paste.
+
+Plain-text escape. With the option on, Ctrl+Shift+V (Command+Shift+V on Apple
+platforms) arms a one-shot literal paste that reads only text/plain, ignoring
+the private, HTML and Markdown flavors too. Where the browser delivers a paste
+event for the chord (Chrome/Edge/Firefox on Windows and Linux) that event is
+used; where it does not (Chrome and Safari on macOS) the coordinator reads
+`navigator.clipboard.readText()` on key release, which the browser may refuse,
+in which case nothing is pasted. A toolbar control bound to `shift+v` keeps the
+chord. The shortcut registry lists the chord as `paste-plain` when enabled.
+
+Undo to plain text. After an accepted conversion the coordinator calls
+`onMarkdownPaste` once (after `onInterchange`) with a frozen
+`breditor/markdown-paste-report` version 1 (`detector`, `sourceRevision`, the
+published `revision`, `score`, `signals`; no content) and an
+`undoToPlainText()` function. It performs one native Undo of the conversion and
+then one literal paste at the restored selection, returning `true`; it returns
+`false` and changes nothing once used, after any later publication (local,
+remote or policy), or while busy, composing, read-only or disposed. With
+`markdownPasteNotice: true` the coordinator shows a `role="status"` notice
+after its status line with a localized "Undo to plain text" button (catalog
+keys `markdownPasteNotice`, `markdownPasteUndo`, `shortcutPastePlain`); any
+later publication hides it. In shared editors a remote publication therefore
+retires the offer; ordinary Undo remains the user's own native history.
+
+Evidence. `packages/breditor-editor/tests/markdown_paste_detection.test.ts`
+runs the corpus and the routing contract. `scripts/probe-browser-interchange.mjs`
+covers local and shared document coordinators over real paired Wasm (one Undo
+step, report, notice, `undoToPlainText`, staleness, the escape and code-block
+literal paste). `experiments/rich-browser/markdown-paste.spec.mjs` performs a
+real system-clipboard Ctrl/Cmd+V and Ctrl/Cmd+Shift+V in Chromium and the
+dispatched-event contract in every engine. This is not release qualification.
 
 ## Functional checkpoint
 

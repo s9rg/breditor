@@ -30,6 +30,9 @@ export {mountRichAiTools,type RichAiTools,type RichAiToolsOptions,type RichAiToo
 export {mountRichLanguageCheck,type RichLanguageCheck,type RichLanguageCheckOptions,type RichLanguageCheckState,type RichLanguageCheckRequest,type RichLanguageIssue,type RichLanguageIssueKind,type RichLanguageIssueView,type RichLanguagePhase,type RichLanguageProvider,type RichLanguageProviderRequest} from "./dist/browser/language_check.js";
 export {mountRichEditingAids,mountRichEditingAidsControls,richBlockLabel,richInvisibleKinds,richInvisibleGlyphs,richFocusedBlockAttribute,richEditingAidsStyles,RICH_EDITING_AIDS_MAX_MARKERS,type RichEditingAids,type RichEditingAidsHost,type RichEditingAidsOptions,type RichEditingAidsState,type RichInvisibleKind,type RichEditingAidsControls,type RichEditingAidsControlsOptions} from "./dist/browser/editing_aids.js";
 export {richEditingAidsUiStringsEn,type RichEditingAidsUiStrings} from "./dist/browser/ui_locale_editing_aids.js";
+export {detectMarkdownPaste,markdownPasteDetectorV1,type MarkdownPasteDetection,type MarkdownPasteSignal,type MarkdownPasteVeto} from "./dist/browser/markdown_paste_detection.js";
+export {isPastePlainChord,type RichMarkdownPasteOption,type RichMarkdownPasteEvent,type RichMarkdownPasteReport} from "./dist/browser/markdown_paste.js";
+export {richPasteUiStringsEn,type RichPasteUiStrings} from "./dist/browser/ui_locale_paste.js";
 export {richAiToolsHost,RICH_AI_MAX_BYTES,RICH_AI_MAX_INSTRUCTION,RICH_AI_MAX_TIMEOUT_MS,type RichAiToolsHost,type RichAiHostState,type RichAiViewRead,type RichAiEditorPort,type RichAiScope,type RichAiSegment,type RichAiTransfer} from "./dist/browser/ai_tools_host.js";
 export {richAiUiStringsEn,type RichAiUiStrings} from "./dist/browser/ui_locale_ai.js";
 export {RICH_DOCUMENT_SOURCE_MAX_BYTES,type RichDocumentSourceHost,type RichDocumentSourceHostState,type RichDocumentSourceRead,type RichDocumentSourcePreview} from "./dist/browser/source_view_types.js";

@@ -28,6 +28,7 @@ export {requireMarkdownInputRules,requireInputRules,inputRuleSelection,inputRule
 export {isStructuralRichLanguage} from "./dist/browser/rich_language.js";
 export {requireClipboardInterchange,readClipboardInput,readClipboardText,exportClipboard,writeClipboard,clipboardInterchangeReport,clipboardInterchangeStatus} from "./dist/browser/clipboard_interchange.js";
 export {mountRichBlockDragPort,richBlockDragStyles} from "./dist/browser/block_drag.js";
+export {requireMarkdownPaste,isPastePlainChord,MarkdownPasteSession} from "./dist/browser/markdown_paste.js";
 export {resolveRichBlockMove,resolveRichBlockStep,richBlockDropTargets,richHandleBlock,richSelectionBlock,isMovableBlock} from "./dist/browser/block_move.js";
 // Profile-independent inline presentation helpers, re-exported so DOM-free renderers depend only on this package.
 export {compileInlineFormatRecipes,createInlineFormatRenderManifest,resolveInlineFormatRenderAttributes,canonicalLanguageTagV1,isCanonicalLanguageTagV1,isImageLinkHrefV1,canonicalImageLinkHrefV1,imageLinkRenderAttributesV1} from "@breditor/browser/presentation";

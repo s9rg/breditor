@@ -27,7 +27,7 @@ export async function probeBrowserInterchange(localDirectory,sharedDirectory){
  assert.equal(hash(localBytes),hash(readFileSync(new URL("../packages/breditor-experimental-rich-content/dist/breditor_wasm_bg.wasm",import.meta.url))));assert.equal(hash(sharedBytes),hash(readFileSync(new URL("../packages/breditor-collaboration/dist/runtime/breditor_shared_bg.wasm",import.meta.url))));
  const realm=new JSDOM("<!doctype html><body></body>",{pretendToBeVisual:true}),{window}=realm,saved=new Map(),locks=lockFixture(),globals={window,document:window.document,indexedDB:new IDBFactory(),navigator:{locks},IS_REACT_ACT_ENVIRONMENT:true};
  for(const name of ["HTMLElement","HTMLInputElement","HTMLSelectElement","Node","Element","AbortController"])globals[name]=window[name];for(const [name,value]of Object.entries(globals)){saved.set(name,Object.getOwnPropertyDescriptor(globalThis,name));Object.defineProperty(globalThis,name,{value,configurable:true,writable:true});}
- let serial=0,pastes=0,restores=0,future=0,retentionRefusals=0,priorityCases=0,staleRefusals=0,cutCases=0,readOnlyCases=0,reactOwners=0,queuedReports=0,failedConversions=0,durableResumes=0,assetCases=0,xmlExports=0,documentXmlExports=0;
+ let serial=0,pastes=0,restores=0,future=0,retentionRefusals=0,priorityCases=0,staleRefusals=0,cutCases=0,readOnlyCases=0,reactOwners=0,queuedReports=0,failedConversions=0,durableResumes=0,assetCases=0,xmlExports=0,documentXmlExports=0,markdownPasteCases=0;
  const host=()=>{const h=window.document.createElement("div");window.document.body.append(h);return h;},close=async editor=>{if(editor?.core)await editor.close();else editor?.dispose();},opener=(shared,document)=>shared?(document?openSharedDocumentEditor:openSharedEditor):(document?openLocalDocumentEditor:openLocalEditor);
  const select=(editor,selection)=>{window.document.getSelection().removeAllRanges();if(selection.kind==="document")editor.selectDocument();else if(editor.core)editor.select(selection,false);else editor.execute({kind:"setSelection",selection},false);};
  const history=(editor,kind)=>editor.core?editor.core[kind]():editor.execute({kind});
@@ -76,6 +76,46 @@ export async function probeBrowserInterchange(localDirectory,sharedDirectory){
     }
     if(shared)owner.undo();else dom.execute({kind:"undo"});assert.equal(owner.documentJson(),before);
     if(shared)owner.redo();else dom.execute({kind:"redo"});assert.equal(owner.documentJson(),changed);
+   }finally{dom.dispose();container.remove();}
+  }
+  // Opt-in automatic detection on an ordinary text/plain paste event (markdownPaste: "detect").
+  for(const shared of [false,true]){
+   const source=coverageSeed(shared?JSON.parse(sp.descriptor_json()):lp.descriptor()),owner=shared?createSharedDocumentEditor(sp.create(source,"101")):lp.createDocumentEditor(source);
+   assert.throws(()=>(shared?mountSharedDocumentEditor:mountDocumentRichEditor)(host(),{core:owner,toolbar:[],selectionEditing:"document-v1",markdownPaste:"detect"}),/clipboardInterchange/);
+   const container=host(),reports=[],errors=[],events=[];
+   const options={core:owner,toolbar:[],selectionEditing:"document-v1",inlinePresentation:createStandardRichInlinePresentationV1(shared?sp.inline_catalog_json():lp.inlineCatalogJson()),clipboardInterchange:createRichInterchange(owner),markdownPaste:"detect",markdownPasteNotice:true,onMarkdownPaste:event=>events.push(event),onInterchange:report=>reports.push(report),onError:error=>errors.push(error)};
+   const dom=shared?mountSharedDocumentEditor(container,options):mountDocumentRichEditor(container,options),notice=()=>container.querySelector(".breditor-markdown-paste-notice");
+   const types=()=>JSON.parse(owner.documentJson()).root.children.map(n=>n.type),literal=()=>JSON.parse(owner.documentJson()).root.children.map(n=>n.children.map(c=>c.text).join("")).join("\n");
+   const undo=()=>{if(shared)owner.undo();else dom.execute({kind:"undo"});},chord=(type,key)=>dom.surface.dispatchEvent(new window.KeyboardEvent(type,{key,ctrlKey:true,shiftKey:true,bubbles:true,cancelable:true}));
+   try{
+    // Pasting into code keeps the copied text: a detected conversion is never flattened into a code block.
+    const seed=owner.documentJson(),findCode=n=>n.properties?.["breditor/block-id"]==="code"?n:n.children?.map(findCode).find(Boolean);
+    if(shared)dom.select(range("code",1),false);else dom.execute({kind:"setSelection",selection:range("code",1)},false);
+    clipboard(window,dom.surface,"paste",{"text/plain":markdownText});assert.deepEqual(errors,[]);assert.equal(events.length,0);
+    assert.ok(findCode(JSON.parse(owner.documentJson()).root).children.map(c=>c.text).join("").includes(markdownText));undo();assert.equal(owner.documentJson(),seed);
+    dom.selectDocument();const before=owner.documentJson(),pasteRevision=owner.view().revision;
+    clipboard(window,dom.surface,"paste",{"text/plain":markdownText});
+    assert.deepEqual(errors,[]);assert.deepEqual(types(),["breditor/heading","breditor/bullet-list","breditor/paragraph"]);assert.equal(owner.view().undoDepth,1);
+    assert.deepEqual(reports.map(r=>[r.sourceRevision,r.formats[0].kind]),[[pasteRevision,"markdown"]]);
+    assert.equal(events.length,1);const event=events[0];
+    assert.deepEqual({...event.report,signals:[...event.report.signals]},{format:"breditor/markdown-paste-report",formatVersion:1,detector:"markdown-paste-detect-v1",sourceRevision:pasteRevision,revision:owner.view().revision,score:4,signals:["heading","bullet-list"]});
+    assert.equal(notice()?.hidden,false);
+    // One Undo removes the whole conversion.
+    undo();assert.equal(owner.documentJson(),before);assert.equal(notice()?.hidden,true);assert.equal(event.undoToPlainText(),false);
+    if(shared)owner.redo();else dom.execute({kind:"redo"});
+    // The stale event above stays refused; a fresh conversion offers its own exact "Undo to plain text".
+    dom.selectDocument();clipboard(window,dom.surface,"paste",{"text/plain":markdownText});const fresh=events.at(-1);assert.notEqual(fresh,event);
+    notice().querySelector("button").click();
+    assert.deepEqual(errors,[]);assert.ok(types().every(t=>t==="breditor/paragraph"));assert.equal(literal(),markdownText);assert.equal(fresh.undoToPlainText(),false);assert.equal(notice().hidden,true);
+    // Ordinary prose stays literal and reports nothing.
+    const eventCount=events.length;dom.selectDocument();clipboard(window,dom.surface,"paste",{"text/plain":"Just a sentence.\nAnd another one."});assert.equal(literal(),"Just a sentence.\nAnd another one.");assert.equal(events.length,eventCount);
+    // Ctrl+Shift+V is a one-shot plain-text escape that also skips HTML; the next paste detects again.
+    dom.selectDocument();chord("keydown","V");clipboard(window,dom.surface,"paste",{"text/html":"<b>ignored</b>","text/plain":markdownText});chord("keyup","V");
+    assert.equal(literal(),markdownText);assert.equal(events.length,eventCount);
+    dom.selectDocument();clipboard(window,dom.surface,"paste",{"text/plain":markdownText});assert.equal(types()[0],"breditor/heading");assert.equal(events.length,eventCount+1);
+    // Any later publication makes the offered Undo stale.
+    const last=events.at(-1);dom.pasteText("x");assert.equal(last.undoToPlainText(),false);assert.deepEqual(errors,[]);
+    markdownPasteCases++;
    }finally{dom.dispose();container.remove();}
   }
   for(const shared of [false,true])for(const document of [false,true])for(const natural of [false,true]){
@@ -193,7 +233,7 @@ export async function probeBrowserInterchange(localDirectory,sharedDirectory){
    }finally{await act(async()=>root.unmount());for(let i=0;i<500&&locks.held.size;i++)await act(async()=>{await new Promise(setImmediate);});assert.equal(locks.held.size,0);container.remove();}
   }
  }finally{lp?.dispose();sp?.free();window.close();for(const [name,descriptor]of saved){if(descriptor)Object.defineProperty(globalThis,name,descriptor);else delete globalThis[name];}}
- assert.equal(pastes,44);assert.equal(restores,44);assert.equal(future,176);assert.equal(retentionRefusals,32);assert.equal(priorityCases,24);assert.equal(cutCases,8);assert.equal(readOnlyCases,8);assert.equal(staleRefusals,8);assert.equal(queuedReports,8);assert.equal(failedConversions,16);assert.equal(reactOwners,8);assert.equal(durableResumes,22);assert.equal(assetCases,8);assert.equal(locks.held.size,0);
- return{format:"breditor/browser-interchange-functional-probe",formatVersion:1,localWasmSha256:hash(localBytes),sharedWasmSha256:hash(sharedBytes),passed:true,pastes,exactRestores:restores,exactFutureCheckpoints:future,durableSharedResumes:durableResumes,retentionRefusals,priorityCases,cutCases,readOnlyCases,staleRefusals,queuedReportCases:queuedReports,failedConversions,hostOwnedImageCases:assetCases,xmlExports,documentXmlExports,actualReactOwners:reactOwners,scope:"Compiled managed local/shared original/document SDKs and all four React wrappers; real paired release Wasm and opt-in converter; synthetic clipboard, jsdom, IndexedDB and locks. Not OS clipboard, captured Office applications, installed-consumer, cross-browser, IME, accessibility or release qualification."};
+ assert.equal(pastes,44);assert.equal(restores,44);assert.equal(future,176);assert.equal(retentionRefusals,32);assert.equal(priorityCases,24);assert.equal(cutCases,8);assert.equal(readOnlyCases,8);assert.equal(staleRefusals,8);assert.equal(queuedReports,8);assert.equal(failedConversions,16);assert.equal(reactOwners,8);assert.equal(durableResumes,22);assert.equal(assetCases,8);assert.equal(markdownPasteCases,2);assert.equal(locks.held.size,0);
+ return{format:"breditor/browser-interchange-functional-probe",formatVersion:1,localWasmSha256:hash(localBytes),sharedWasmSha256:hash(sharedBytes),passed:true,pastes,exactRestores:restores,exactFutureCheckpoints:future,durableSharedResumes:durableResumes,retentionRefusals,priorityCases,cutCases,readOnlyCases,staleRefusals,queuedReportCases:queuedReports,failedConversions,hostOwnedImageCases:assetCases,xmlExports,documentXmlExports,markdownPasteCases,actualReactOwners:reactOwners,scope:"Compiled managed local/shared original/document SDKs and all four React wrappers; real paired release Wasm and opt-in converter; synthetic clipboard, jsdom, IndexedDB and locks. Not OS clipboard, captured Office applications, installed-consumer, cross-browser, IME, accessibility or release qualification."};
 }
 if(process.argv[1]&&realpathSync(process.argv[1])===fileURLToPath(import.meta.url)){const args=process.argv.slice(2);if(args.length!==2)throw Error("Expected paired local/shared release Wasm directories");try{console.log(JSON.stringify(await probeBrowserInterchange(...args),null,2));}catch(error){console.error(error.stack?.split("\n").filter(line=>line.startsWith("    at ")).join("\n"));console.error(error instanceof assert.AssertionError?`${error.operator}: ${typeof error.actual==="string"?error.actual.slice(0,100):JSON.stringify(error.actual)} !== ${typeof error.expected==="string"?error.expected.slice(0,100):JSON.stringify(error.expected)}`:error.message);process.exitCode=1;}}
