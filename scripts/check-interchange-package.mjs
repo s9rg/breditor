@@ -41,7 +41,7 @@ for(const filename of ["LICENSE-MIT","LICENSE-APACHE"]){
 const standaloneDocx=join(temporary,"docx"),docxPackages=["@breditor/interchange"];
 const standaloneArchives=selectedArchives.filter(archive=>docxPackages.includes(archive.name));
 mkdirSync(standaloneDocx);
-for(const file of ["docx-runtime.mjs","docx-types.mts","pixel.mjs"]){cpSync(join(consumer,file),join(standaloneDocx,file));}
+for(const file of ["docx-runtime.mjs","docx-types.mts","epub-runtime.mjs","pixel.mjs"]){cpSync(join(consumer,file),join(standaloneDocx,file));}
 for(const file of ["interchange-source-boundary.mjs","interchange-source-boundary.json","source-boundary.mjs"]){cpSync(join(consumer,file),join(standaloneDocx,file));}
 cpSync(join(root,"crates/breditor-core/tests/fixtures/rich-v4-frozen-checkpoint.json"),join(standaloneDocx,"native-v4-checkpoint.json"));
 install(standaloneDocx,{},installedConsumerLock(producer,standaloneArchives,{name:"breditor-docx-installed-proof",external:{}}));
@@ -50,6 +50,8 @@ assert.equal(realpathSync(join(standaloneDocx,"node_modules/@breditor/interchang
 run(process.execPath,[join(root,"node_modules/typescript/bin/tsc"),"--noEmit","--strict","--exactOptionalPropertyTypes","--target","ES2022","--module","NodeNext","--lib","ES2022,DOM","docx-types.mts"],standaloneDocx);
 const docxStandalone=JSON.parse(execFileSync(process.execPath,["docx-runtime.mjs"],{cwd:standaloneDocx,encoding:"utf8"}));
 assert.deepEqual([docxStandalone.passed,docxStandalone.standalone,docxStandalone.matchedHostReceivers],[true,true,2]);
+const epubStandalone=JSON.parse(execFileSync(process.execPath,["epub-runtime.mjs"],{cwd:standaloneDocx,encoding:"utf8"}));
+assert.deepEqual([epubStandalone.passed,epubStandalone.standalone,epubStandalone.matchedHostReceivers],[true,true,2]);
 const compiler=join(root,"node_modules/typescript/bin/tsc");
 const sourceBoundary=Object.fromEntries([["withRichPeer",consumer,[]],["withoutRichPeer",standaloneDocx,["--without-rich-peer"]]].map(([scope,directory,options])=>[
  scope,JSON.parse(execFileSync(process.execPath,["interchange-source-boundary.mjs",compiler,...options],{cwd:directory,encoding:"utf8"})),
@@ -78,7 +80,7 @@ const result=JSON.parse(execFileSync(process.execPath,["probe.mjs",join(consumer
 assert.equal(historicalRichReaders.wasmSha256,result.localWasmSha256);
 assert.equal(historicalSharedReader.wasmSha256,result.sharedWasmSha256);
 const modules={};
-for(const [name,entry] of [["default","default-entry.ts"],["interchange","interchange-entry.ts"],["docx","docx-entry.ts"],["xml","xml-entry.ts"]]){
+for(const [name,entry] of [["default","default-entry.ts"],["interchange","interchange-entry.ts"],["docx","docx-entry.ts"],["epub","epub-entry.ts"],["xml","xml-entry.ts"]]){
  const bundle=await build({configFile:false,root:consumer,logLevel:"error",build:{target:"es2022",write:false,minify:false,lib:{entry:join(consumer,entry),formats:["es"],fileName:name}}});
  const outputs=(Array.isArray(bundle)?bundle:[bundle]).flatMap(b=>b.output);
  modules[name]=outputs.filter(o=>o.type==="chunk").flatMap(o=>Object.keys(o.modules));
@@ -87,6 +89,8 @@ for(const [name,entry] of [["default","default-entry.ts"],["interchange","interc
 const foreign=id=>/node_modules\/(?:parse5|markdown-it|css-tree)\//.test(id);assert.ok(!modules.default.some(foreign),"Default editor must not import the foreign parser graph");for(const name of ["parse5","markdown-it","css-tree"])assert.ok(modules.interchange.some(id=>id.includes(`/node_modules/${name}/`)),`Explicit adapter bundle must include ${name}`);
 const docxForeignParserModules=modules.docx.filter(foreign).length;
 assert.equal(docxForeignParserModules,0,"The installed DOCX entry must not import the HTML or Markdown parser graph");
+const epubForeignParserModules=modules.epub.filter(foreign).length;
+assert.equal(epubForeignParserModules,0,"The installed EPUB entry must not import the HTML or Markdown parser graph");
 const xmlForeignParserModules=modules.xml.filter(foreign).length;
 assert.equal(xmlForeignParserModules,0,"The installed XML entry must not import the HTML or Markdown parser graph");
 assert.equal(result.xmlExports,2,"Expected XML export from cold-restored native local and shared editors");
@@ -96,6 +100,6 @@ assert.deepEqual(interchangeConsumerLockEvidence(root,consumer,selectedArchives)
 assert.deepEqual(interchangeConsumerLockEvidence(root,standaloneDocx,standaloneArchives,docxPackages),standaloneLockEvidence,
  "Installed DOCX lock changed during qualification");
 assert.deepEqual(sourceEvidence(root),source,"Source files changed during the installed probe");
-const report={format:"breditor/interchange-installed-consumer",formatVersion:1,passed:true,source,consumer,archives:selectedArchives,...lockEvidence,installedInterchangeLicenses:true,strictConsumerTypes:true,sourceBoundary,workspaceLinks:false,defaultForeignParserModules:modules.default.filter(foreign).length,optInForeignParserModules:modules.interchange.filter(foreign).length,docxForeignParserModules,xmlForeignParserModules,installedDocxExport:true,docxStandalone:{...docxStandalone,consumer:standaloneDocx,strictTypes:true,...standaloneLockEvidence},historicalRichReaders,historicalSharedReader,functionalProbe:{...result,scope:"Installed archives with bare package imports and bundled paired Wasm; compiled managed SDK/React synthetic DOM/clipboard/IDB/locks. Not OS clipboard, captured Office applications, cross-browser, IME, accessibility or release qualification."}};
+const report={format:"breditor/interchange-installed-consumer",formatVersion:1,passed:true,source,consumer,archives:selectedArchives,...lockEvidence,installedInterchangeLicenses:true,strictConsumerTypes:true,sourceBoundary,workspaceLinks:false,defaultForeignParserModules:modules.default.filter(foreign).length,optInForeignParserModules:modules.interchange.filter(foreign).length,docxForeignParserModules,epubForeignParserModules,xmlForeignParserModules,installedDocxExport:true,installedEpubExport:true,docxStandalone:{...docxStandalone,consumer:standaloneDocx,strictTypes:true,...standaloneLockEvidence},epubStandalone:{...epubStandalone,consumer:standaloneDocx},historicalRichReaders,historicalSharedReader,functionalProbe:{...result,scope:"Installed archives with bare package imports and bundled paired Wasm; compiled managed SDK/React synthetic DOM/clipboard/IDB/locks. Not OS clipboard, captured Office applications, cross-browser, IME, accessibility or release qualification."}};
 mkdirSync(join(root,"target"),{recursive:true});
 writeFileSync(join(root,"target/interchange-installed-consumer.json"),JSON.stringify(report,null,2)+"\n");console.log(JSON.stringify(report,null,2));

@@ -542,6 +542,31 @@ if (result.ok) download(new Blob([result.value], {type: docxContentType}));
 See [docs/DOCUMENT_CONVERSION.md](../../docs/DOCUMENT_CONVERSION.md) for the
 fidelity map, loss codes, bounds, licensing and non-goals.
 
+## EPUB 3 export (`@breditor/interchange/epub`)
+
+A second separate entry point writes the same native document as a
+deterministic EPUB 3 publication. The content documents use the semantic HTML
+export above, serialized as XHTML. A table of contents is built from the
+headings, and the content is split at heading 1 and/or page breaks. Metadata
+(title, language, identifier, optional author and the `modified` timestamp)
+comes from the caller and is validated first; the writer never reads a clock.
+Images come from the host by native asset binding, as for DOCX.
+
+```ts
+import {exportEpubWithImages,epubContentType} from "@breditor/interchange/epub";
+
+const result = await exportEpubWithImages(editor.view().documentJson, {
+  title: "Quarterly report", language: "en-US", identifier: "urn:uuid:…",
+  modified: "2026-11-27T12:00:00Z", split: "heading-1",
+  loadImage: binding => assetStore.blob(binding.asset),
+});
+if (result.ok) download(new Blob([result.value], {type: epubContentType}));
+// result.losses reports every feature the publication cannot represent.
+```
+
+EPUBCheck has not been run against the output yet; see
+[docs/DOCUMENT_CONVERSION.md](../../docs/DOCUMENT_CONVERSION.md#epub-3-export).
+
 ### Prepare a portable Base64 HTML import
 
 The browser subpath `@breditor/interchange/portable-html-import` prepares

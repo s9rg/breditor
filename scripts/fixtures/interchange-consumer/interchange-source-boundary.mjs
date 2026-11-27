@@ -8,7 +8,7 @@ const name = "@breditor/interchange";
 const peer = "@breditor/experimental-rich-content";
 const portableRoutes = ["./portable-html", "./portable-html-import"];
 const portableSpecifiers = portableRoutes.map(route => name + route.slice(1));
-const hidden = [`${name}/dist/index.js`, `${name}/dist/docx.js`];
+const hidden = [`${name}/dist/index.js`, `${name}/dist/docx.js`, `${name}/dist/epub.js`];
 const [compiler, mode] = process.argv.slice(2);
 assert.ok(compiler && isAbsolute(compiler) && process.argv.length <= 4 &&
   (mode === undefined || mode === "--print" || mode === "--without-rich-peer"),
