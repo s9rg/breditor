@@ -331,7 +331,7 @@ export class SharedDomEditor<P extends SharedSelectionPolicy="original"> {
  }
  #input(event:InputEvent):void{if(this.#model.view.readOnly===true){event.preventDefault();return;}if(this.#composition||event.isComposing)return;event.preventDefault();this.#attempt(()=>{const markdown=this.#captureMarkdownInput(event);this.#sync();if(markdown){this.#typeMarkdown(markdown,event.data!);return;}const kind=event.inputType;
   if(kind!=="insertText"&&!kind.startsWith("delete"))this.#boundary();
-  const action=({formatBold:"bold",formatItalic:"italic",formatUnderline:"underline",formatStrikeThrough:"strike",formatSubscript:"subscript",formatSuperscript:"superscript"} as Record<string,string>)[kind],control=this.#controls.find(item=>item.control.id===action);if(control){control.view.activate();return;}
+  const action=({formatBold:"bold",formatItalic:"italic",formatUnderline:"underline",formatStrikeThrough:"strike",formatSubscript:"subscript",formatSuperscript:"superscript",formatRemove:"clear-inline"} as Record<string,string>)[kind],control=this.#controls.find(item=>item.control.id===action);if(control){control.view.activate();return;}
   if(this.#selectionFormat(action))return;
   let paragraph:RichInputRuleOutcome|undefined;
   this.#perform(c=>{if(kind==="historyUndo"){c.core.undo(c.revision);return;}if(kind==="historyRedo"){c.core.redo(c.revision);return;}if(kind==="formatBold"){bold(c);return;}

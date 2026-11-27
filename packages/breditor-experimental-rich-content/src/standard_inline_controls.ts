@@ -8,20 +8,61 @@ import type {RichToolbarField,RichToolbarReading} from "./toolbar_control_view.j
 export type StandardInlineChange={kind:"set";format:FormatLiteral}|{kind:"remove";format:string}|{kind:"patch";format:FormatLiteral;properties:readonly string[]};
 export interface StandardInlineReader {inlineFormatState(kind:string):RichInlineFormatStateRead;caretFormats?():readonly FormatLiteral[];supportsStandardInlineControls?():boolean;supportsInlinePropertyPatches?():boolean}
 export interface StandardSelectionInlineReader extends Omit<StandardInlineReader,"inlineFormatState"> {supportsSelectionFormatting?():boolean;selectionFormatState?(kind:string):RichSelectionFormatStateRead}
+/** One host-configured highlight choice, `#rrggbb`. */
+export interface StandardHighlightColor {readonly label:string;readonly color:string}
+/**
+ * Optional highlight policy of the stock controls (docs/CLEAR_INLINE_FORMATTING.md, "Highlight").
+ * Highlight is the existing RGB24 `breditor-inline/background-color` format: the schema still admits every
+ * RGB24 value, so this shapes only what the toolbar offers. `color` is what the one-click Highlight button and
+ * Mod+Shift+H apply (default `#ffff00`, the colour HTML `<mark>` imports as). `colors` turns the Background
+ * color field into a choice of exactly these entries; the first is the default when `color` is omitted.
+ */
+export interface StandardHighlightOptions {readonly color?:string;readonly colors?:readonly StandardHighlightColor[]}
+export interface StandardInlineControlOptions {readonly highlight?:StandardHighlightOptions}
+/** The default highlight: the same yellow an imported HTML `<mark>` carries. */
+export const standardDefaultHighlightColor="#ffff00";
+const hex=/^#[0-9a-fA-F]{6}$/;
+const plain=(value:unknown):value is Record<string,unknown>=>!!value&&typeof value==="object"&&!Array.isArray(value)&&[Object.prototype,null].includes(Object.getPrototypeOf(value));
+/** Snapshot and validate the options before any control exists; unknown keys and bad colours are TypeErrors. */
+function resolveHighlight(options:unknown):{readonly rgb:number;readonly colors:readonly StandardHighlightColor[]|null}{
+ if(!plain(options))throw new TypeError("Expected plain standard inline control options");
+ for(const key of Object.keys(options))if(key!=="highlight")throw new TypeError(`Unknown standard inline control option ${JSON.stringify(key)}`);
+ const value=options["highlight"];if(value===undefined)return {rgb:Number.parseInt(standardDefaultHighlightColor.slice(1),16),colors:null};
+ if(!plain(value))throw new TypeError("Expected a plain highlight option");
+ for(const key of Object.keys(value))if(key!=="color"&&key!=="colors")throw new TypeError(`Unknown highlight option ${JSON.stringify(key)}`);
+ const list=value["colors"];let colors:StandardHighlightColor[]|null=null;
+ if(list!==undefined){
+  if(!Array.isArray(list)||list.length<1||list.length>32)throw new TypeError("Highlight colors must list 1 through 32 entries");
+  colors=list.map(entry=>{
+   if(!plain(entry)||Object.keys(entry).some(key=>key!=="label"&&key!=="color"))throw new TypeError("Expected {label,color} highlight entries");
+   const {label,color}=entry;
+   if(typeof label!=="string"||!label.trim()||label.length>64)throw new TypeError("A highlight label must be 1 through 64 characters");
+   if(typeof color!=="string"||!hex.test(color))throw new TypeError("A highlight color must be #RRGGBB");
+   return Object.freeze({label,color:color.toLowerCase()});
+  });
+  if(new Set(colors.map(c=>c.color)).size!==colors.length)throw new TypeError("Highlight colors must be distinct");
+ }
+ const chosen=value["color"];
+ if(chosen!==undefined&&(typeof chosen!=="string"||!hex.test(chosen)))throw new TypeError("The default highlight color must be #RRGGBB");
+ const color=(typeof chosen==="string"?chosen:colors?.[0]?.color??standardDefaultHighlightColor).toLowerCase();
+ if(colors&&!colors.some(c=>c.color===color))throw new TypeError("The default highlight color must be one of the configured colors");
+ return {rgb:Number.parseInt(color.slice(1),16),colors:colors&&Object.freeze(colors)};
+}
 export interface StandardInlineControl {
  readonly id:string;readonly label:string;readonly shortcut?:string;readonly fields?:readonly RichToolbarField[];readonly mixedHint?:string;
  read():RichToolbarReading;changes(values:Readonly<Record<string,string>>):readonly StandardInlineChange[];
 }
-export function standardInlineControls(core:StandardInlineReader,presentation:RichInlinePresentation):readonly StandardInlineControl[]{
- return compileControls(core,presentation,"breditor/rich-inline-format-state");
+export function standardInlineControls(core:StandardInlineReader,presentation:RichInlinePresentation,options:StandardInlineControlOptions={}):readonly StandardInlineControl[]{
+ return compileControls(core,presentation,"breditor/rich-inline-format-state",options);
 }
 /** Explicit native selection-state controls; never widen the original read-family contract. */
-export function standardSelectionInlineControls(core:StandardSelectionInlineReader,presentation:RichInlinePresentation):readonly StandardInlineControl[]{
+export function standardSelectionInlineControls(core:StandardSelectionInlineReader,presentation:RichInlinePresentation,options:StandardInlineControlOptions={}):readonly StandardInlineControl[]{
  if(core.supportsSelectionFormatting?.()!==true||!core.selectionFormatState)throw Error("Use a matching native selection-formatting owner");
  const read=core.selectionFormatState.bind(core);
- return compileControls({inlineFormatState:read,supportsStandardInlineControls:()=>core.supportsStandardInlineControls?.()===true,caretFormats:()=>{if(!core.caretFormats)throw Error("Caret format capability is unavailable");return core.caretFormats();},supportsInlinePropertyPatches:()=>true},presentation,"breditor/rich-selection-format-state");
+ return compileControls({inlineFormatState:read,supportsStandardInlineControls:()=>core.supportsStandardInlineControls?.()===true,caretFormats:()=>{if(!core.caretFormats)throw Error("Caret format capability is unavailable");return core.caretFormats();},supportsInlinePropertyPatches:()=>true},presentation,"breditor/rich-selection-format-state",options);
 }
-function compileControls(core:Omit<StandardInlineReader,"inlineFormatState">&{inlineFormatState(kind:string):RichInlineFormatStateRead|RichSelectionFormatStateRead},presentation:RichInlinePresentation,expected:RichInlineFormatStateRead["format"]|RichSelectionFormatStateRead["format"]):readonly StandardInlineControl[]{
+function compileControls(core:Omit<StandardInlineReader,"inlineFormatState">&{inlineFormatState(kind:string):RichInlineFormatStateRead|RichSelectionFormatStateRead},presentation:RichInlinePresentation,expected:RichInlineFormatStateRead["format"]|RichSelectionFormatStateRead["format"],options:StandardInlineControlOptions):readonly StandardInlineControl[]{
+ const highlight=resolveHighlight(options);
  if(core.supportsStandardInlineControls?.()!==true||!core.caretFormats)throw Error("Use a matching Rust owner with standard inline-control capabilities");
  requireRichInlinePresentation(presentation,presentation.schema);
  const names=new Set<string>(Object.values(k)),all=presentation.recipesOuterToInner.map(recipe=>richInlineFormatDescriptor(presentation,recipe.formatKind)!).sort((a,b)=>a.kind<b.kind?-1:1),extra=presentation.recipesOuterToInner.filter(recipe=>!names.has(recipe.formatKind)&&recipe.formatKind!==richTextLanguageFormat);
@@ -36,8 +77,13 @@ function compileControls(core:Omit<StandardInlineReader,"inlineFormatState">&{in
  const reading=(kind:string,value:(format:FormatLiteral)=>Readonly<Record<string,string>>):RichToolbarReading=>{const s=state(kind);return {kind:s.kind,values:s.kind==="uniform"?value(s.format):{}};};
  const free:readonly [string,string,string,string?][]=[["bold","Bold",k.strong,"b"],["italic","Italic",k.italic,"i"],["underline","Underline",k.underline,"u"],["strike","Strike",k.strike,"shift+x"],["code","Inline code",k.code],["subscript","Subscript",k.subscript],["superscript","Superscript",k.superscript]];
  const controls:StandardInlineControl[]=free.map(([id,label,kind,shortcut])=>({id,label,...(shortcut?{shortcut}:{}),read(){const s=state(kind);return {kind:s.kind,pressed:s.kind==="mixed"&&!s.presentEverywhere?"mixed":active(s)};},changes(){if(active(state(kind)))return [remove(kind)];const opposite=kind===k.subscript?k.superscript:kind===k.superscript?k.subscript:null;return [...(opposite?removals(opposite):[]),set(literal(kind))];}}));
+ // One-click highlight: a toggle over the typed background colour. Any present highlight colour counts as on,
+ // so pressing it on a uniformly highlighted range removes the highlight; a partial range is "mixed" and applies.
+ controls.push({id:"highlight",label:"Highlight",shortcut:"shift+h",read(){const s=state(k.backgroundColor);return {kind:s.kind,pressed:s.kind==="mixed"&&!s.presentEverywhere?"mixed":active(s)};},changes(){return active(state(k.backgroundColor))?[remove(k.backgroundColor)]:[set(literal(k.backgroundColor,{[p.rgb24]:highlight.rgb}))];}});
  const color=(id:string,label:string,kind:string):void=>{controls.push({id,label,fields:[{id:"value",label:`${label} (#RRGGBB)`,type:"text",maxLength:7,placeholder:"#RRGGBB"}],read:()=>reading(kind,f=>({value:`#${Number(f.properties[p.rgb24]).toString(16).padStart(6,"0")}`})),changes(v){if(!/^#[0-9a-fA-F]{6}$/.test(v["value"]??""))throw Error("Enter a six-digit #RRGGBB color");return [set(literal(kind,{[p.rgb24]:Number.parseInt(v["value"]!.slice(1),16)}))];}});};
- color("text-color","Text color",k.textColor);color("background-color","Background color",k.backgroundColor);
+ color("text-color","Text color",k.textColor);
+ if(highlight.colors){const palette=highlight.colors;controls.push({id:"background-color",label:"Background color",fields:[{id:"value",label:"Highlight color",type:"select",options:palette.map(c=>({value:c.color,label:c.label}))}],read:()=>reading(k.backgroundColor,f=>({value:`#${Number(f.properties[p.rgb24]).toString(16).padStart(6,"0")}`})),changes(v){const value=(v["value"]??"").toLowerCase();if(!palette.some(c=>c.color===value))throw Error("Choose a configured highlight color");return [set(literal(k.backgroundColor,{[p.rgb24]:Number.parseInt(value.slice(1),16)}))];}});}
+ else color("background-color","Background color",k.backgroundColor);
  controls.push({id:"text-size",label:"Text size",fields:[{id:"value",label:"Text size (px)",type:"number",min:8,max:96}],read:()=>reading(k.textSize,f=>({value:String(f.properties[p.pixels])})),changes(v){const input=v["value"]??"",n=Number(input);if(!/^\d+$/.test(input)||!Number.isInteger(n)||n<8||n>96)throw Error("Text size must be an integer from 8 through 96");return [set(literal(k.textSize,{[p.pixels]:n}))];}});
  controls.push({id:"font-family",label:"Font family",fields:[{id:"value",label:"Font family",type:"select",options:[{value:"1",label:"System"},{value:"2",label:"Sans serif"},{value:"3",label:"Serif"},{value:"4",label:"Monospace"}]}],read:()=>reading(k.fontFamily,f=>({value:String(f.properties[p.family])})),changes(v){if(!/^[1-4]$/.test(v["value"]??""))throw Error("Choose a font-family preset");return [set(literal(k.fontFamily,{[p.family]:Number(v["value"])}))];}});
  controls.push({id:"link",label:"Link",shortcut:"k",mixedHint:"Mixed links: leave a field blank to keep each existing value. Every selected character must already be linked.",fields:[{id:"href",label:"Link URL",type:"text",maxLength:2048,placeholder:"https://…"},{id:"target",label:"Link opens in",type:"select",options:[{value:"same",label:"Same window"},{value:"new",label:"New window"}]}],read(){const r=reading(k.link,f=>({href:String(f.properties[p.href]),target:f.properties[p.newWindow]?"new":"same"}));return r.kind==="unset"?{...r,values:{href:"",target:"same"}}:r;},changes(v){

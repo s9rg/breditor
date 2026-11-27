@@ -5,7 +5,7 @@ export {readNative,readTarget,restoreNative,restoreDocumentNative,nativeSelectsD
 export {standardInlineStylesV1} from "./dist/browser/standard_inline_v1.js";
 export {richPageBreakStyles} from "./dist/browser/page_break.js";
 export {mountToolbarControl,toolbarControlStyles} from "./dist/browser/toolbar_control_view.js";
-export {standardInlineControls,standardSelectionInlineControls,selectionFormatChanges,pendingStandardFormats,standardRemovalLiteral} from "./dist/browser/standard_inline_controls.js";
+export {standardInlineControls,standardSelectionInlineControls,selectionFormatChanges,pendingStandardFormats,standardRemovalLiteral,standardDefaultHighlightColor} from "./dist/browser/standard_inline_controls.js";
 export {taskContext} from "./dist/browser/task_actions_v2.js";
 export {nearestStructuralV2,replaceableFlowV2,structuralIntervalV2} from "./dist/browser/structural_context_v2.js";
 export {flowEdgeEligible,selectedFlowAtom} from "./dist/browser/flow_controls.js";

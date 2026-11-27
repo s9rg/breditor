@@ -2,12 +2,12 @@ import type {RichCoreEditor,RichCommand,RichSelectionPolicy} from "./core.js";
 import {defaultToolbarFor,type ToolbarControl} from "./actions.js";
 import {textTargets} from "./model.js";
 import type {RichInlinePresentation} from "./inline_presentation.js";
-import {standardInlineControls,pendingStandardFormats} from "./standard_inline_controls.js";
+import {standardInlineControls,pendingStandardFormats,type StandardInlineControlOptions} from "./standard_inline_controls.js";
 import {createSelectionRichToolbarV1} from "./selection_toolbar.js";
-/** Complete opt-in inline controls plus the existing structural controls; freely filter/reorder. */
-export function createStandardRichToolbarV1<P extends RichSelectionPolicy="original">(core:RichCoreEditor<P>,presentation:RichInlinePresentation):readonly ToolbarControl<P>[]{
- if(core.selectionPolicy?.()==="document-v1")return createSelectionRichToolbarV1(core,presentation);
- const inline=standardInlineControls(core,presentation).map(spec=>({id:spec.id,label:spec.label,owner:core,...(spec.fields?{fields:spec.fields}:{}),...(spec.shortcut?{shortcut:spec.shortcut}:{}),...(spec.mixedHint?{mixedHint:spec.mixedHint}:{}),read:()=>spec.read(),enabled:()=>spec.read().kind!=="unavailable",command(context,_value,fields={}){
+/** Complete opt-in inline controls plus the existing structural controls; freely filter/reorder. `options` configures Highlight. */
+export function createStandardRichToolbarV1<P extends RichSelectionPolicy="original">(core:RichCoreEditor<P>,presentation:RichInlinePresentation,options:StandardInlineControlOptions={}):readonly ToolbarControl<P>[]{
+ if(core.selectionPolicy?.()==="document-v1")return createSelectionRichToolbarV1(core,presentation,options);
+ const inline=standardInlineControls(core,presentation,options).map(spec=>({id:spec.id,label:spec.label,owner:core,...(spec.fields?{fields:spec.fields}:{}),...(spec.shortcut?{shortcut:spec.shortcut}:{}),...(spec.mixedHint?{mixedHint:spec.mixedHint}:{}),read:()=>spec.read(),enabled:()=>spec.read().kind!=="unavailable",command(context,_value,fields={}){
   const s=context.model.view.selection;if(s?.kind!=="text")return null;const changes=spec.changes(fields);if(!changes.length)return null;
   if(s.anchor.block===s.focus.block&&s.anchor.offset===s.focus.offset)return {kind:"setPendingFormats",formats:pendingStandardFormats(core,changes)};
   const targets=textTargets(context.model);if(!targets.length)return null;
