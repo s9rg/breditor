@@ -3,6 +3,7 @@
 // move dispatched through the owner's queue, so the block ID moves (never copy/delete), Rust
 // validates the complete group, and one dispatch is one native Undo step. Rejected or stale
 // targets publish nothing.
+import {createRichStyleElement} from "./style_element.js";
 import {id,presentationModel,type ElementNode,type RichPresentationModel} from "./model.js";
 import {registerRichPresentationShortcut} from "./shortcut_registry.js";
 import {defaultRichUi,type RichUiLocale,type RichUiStringKey} from "./ui_locale.js";
@@ -72,7 +73,7 @@ export function mountRichBlockDragPort(port:RichBlockDragPort,options:RichBlockD
  const policy=options.policy??"sibling-v1";if(policy!=="sibling-v1"&&policy!=="flow-v1")throw new TypeError("Expected block move policy sibling-v1 or flow-v1");
  const surface=port.surface,d=surface.ownerDocument,win=d.defaultView!,abort=new AbortController(),signal=abort.signal;
  const ui=port.uiLocale?.()??defaultRichUi,layer=d.createElement("div");layer.className="breditor-block-drag";ui.applyChrome(layer);
- const style=d.createElement("style");style.textContent=richBlockDragStyles;
+ const style=createRichStyleElement(d,richBlockDragStyles);
  const handle=d.createElement("button");handle.type="button";handle.className="breditor-block-drag-handle";handle.textContent="⋮⋮";handle.hidden=true;handle.draggable=false;
  handle.setAttribute("aria-label",options.label??ui.text("blockDragLabel"));handle.setAttribute("aria-pressed","false");
  const help=d.createElement("span");help.className="breditor-block-drag-live";help.id=`breditor-block-drag-help-${Math.random().toString(36).slice(2)}`;

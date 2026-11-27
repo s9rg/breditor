@@ -772,6 +772,7 @@
         "profileBootstrapJsonV4",
         "readRichAssetBackup",
         "renderStaticDocument",
+        "renderStaticDocumentTrustedContents",
         "renderStaticDocumentWithReport",
         "resolveUiLocale",
         "richSpecialCharacterCategories",
@@ -787,6 +788,7 @@
         "staticCodeHighlightingStyles",
         "staticImageUrl",
         "staticSafeHref",
+        "staticTrustedTypesPolicyName",
         "structuralProfileBootstrapJsonV2",
         "uiNoticeCodes",
         "uiStringsEn"
@@ -959,6 +961,7 @@
         "StaticRenderReport",
         "StaticRenderResult",
         "StaticTableOfContentsOptions",
+        "StaticTrustedHtml",
         "ToolbarControl",
         "UiControlStrings",
         "UiDirection",

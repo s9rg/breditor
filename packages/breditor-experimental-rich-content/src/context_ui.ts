@@ -3,6 +3,7 @@
  * toolbar controls through RichContextUiHost: one widget, one Rust-derived read/enabled state, one command path.
  * Nothing here edits document DOM, copies selection state or publishes; it only positions and focuses widgets.
  */
+import {createRichStyleElement} from "./style_element.js";
 import {defaultRichUi,richChromeIsRtl,type RichUiLocale} from "./ui_locale.js";
 import {registerRichPresentationShortcut} from "./shortcut_registry.js";
 import type {RichContextControlView,RichContextMenu,RichContextMenuOptions,RichContextUiHost,RichContextUiOptions,RichSelectionToolbar,RichSelectionToolbarOptions} from "./context_ui_types.js";
@@ -29,8 +30,8 @@ export function prepare(host:RichContextUiHost,kind:Kind,options:RichContextUiOp
  const root=options.container??surface.closest<HTMLElement>("[data-breditor-rich],[data-breditor-shared]")??surface.parentElement;
  if(!root||root.ownerDocument!==d||root===surface||surface.contains(root))throw Error("Context UI needs a container outside editable content in the editor document");
  const used=leases.get(surface)??new Set<Kind>();if(used.has(kind))throw Error(`This editor already has a ${kind==="menu"?"context menu":kind==="floating-menu"?"block menu":"selection toolbar"}`);
- const abort=new AbortController(),element=d.createElement("div"),style=d.createElement("style"),ui=host.uiLocale?.()??defaultRichUi;
- element.dataset["breditorContextUi"]=kind;ui.applyChrome(element);element.hidden=true;style.textContent=richContextUiStyles;element.append(style);
+ const abort=new AbortController(),element=d.createElement("div"),style=createRichStyleElement(d,richContextUiStyles),ui=host.uiLocale?.()??defaultRichUi;
+ element.dataset["breditorContextUi"]=kind;ui.applyChrome(element);element.hidden=true;element.append(style);
  const report=(error:unknown)=>{try{options.onError?.(error);}catch{/* A host reporter cannot change editor ownership. */}};
  try{const views=ids.map(id=>host.mountContextControl(element,id,abort.signal));used.add(kind);leases.set(surface,used);root.append(element);
   return {ui,d,element,views,ids,abort,report,release:()=>{used.delete(kind);}};

@@ -4,6 +4,7 @@
  * through RichContextUiHost (one widget, one Rust-derived state, one command path). Nothing here edits document DOM,
  * copies selection or format state, or publishes; the shell only shows, positions and focuses presentation.
  */
+import {createRichStyleElement} from "./style_element.js";
 import {defaultRichUi,richChromeIsRtl,type RichUiLocale,type RichUiStringKey} from "./ui_locale.js";
 import {enabledView,itemOf,liveRange,owned,prepare,rove,mountRichSelectionToolbar} from "./context_ui.js";
 import type {RichContextControlView,RichContextUiHost,RichSelectionToolbar} from "./context_ui_types.js";
@@ -95,9 +96,9 @@ export function mountRichMenuBar(host:RichContextUiHost,options:RichMenuBarOptio
  const focusKey=options.focusShortcut===null?null:parseRichShellShortcut(options.focusShortcut??"Alt+F9","menu bar focusShortcut");
  const menus=resolveMenus(options.menus,host.contextControlIds(),ui,!!help);
  const release=lease(surface,"menubar","menu bar"),abort=new AbortController(),signal=abort.signal,report=reporter(options.onError),prefix=`breditor-menubar-${++sequence}`;
- const element=d.createElement("div"),style=d.createElement("style");
+ const element=d.createElement("div"),style=createRichStyleElement(d,richEditorShellStyles);
  element.dataset["breditorMenubar"]="";element.setAttribute("role","menubar");element.setAttribute("aria-label",name);element.setAttribute("aria-orientation","horizontal");ui.applyChrome(element);
- style.textContent=richEditorShellStyles;element.append(style);
+ element.append(style);
  interface Menu {readonly id:string;readonly top:HTMLButtonElement;readonly popup:HTMLElement;readonly views:readonly RichContextControlView[];readonly extra:readonly HTMLButtonElement[]}
  let built:Menu[]=[];
  try{
@@ -204,8 +205,8 @@ export function mountRichShortcutHelp(host:RichContextUiHost,options:RichShortcu
  const openKey:RichShortcutChord|null=options.shortcut===null?null:parseRichShellShortcut(options.shortcut??"Alt+0","shortcut help shortcut");
  const platform:RichShortcutPlatform=options.platform==="apple"||options.platform==="other"?options.platform:detectRichShortcutPlatform(realm);
  const release=lease(surface,"help","shortcut help dialog"),abort=new AbortController(),signal=abort.signal,report=reporter(options.onError),prefix=`breditor-shortcut-help-${++sequence}`;
- const element=d.createElement("div"),style=d.createElement("style"),backdrop=d.createElement("div"),dialog=d.createElement("div"),heading=d.createElement("h2"),intro=d.createElement("p"),body=d.createElement("div"),close=d.createElement("button");
- element.dataset["breditorShortcutHelp"]="";element.hidden=true;ui.applyChrome(element);style.textContent=richEditorShellStyles;backdrop.className="breditor-shortcut-help-backdrop";
+ const element=d.createElement("div"),style=createRichStyleElement(d,richEditorShellStyles),backdrop=d.createElement("div"),dialog=d.createElement("div"),heading=d.createElement("h2"),intro=d.createElement("p"),body=d.createElement("div"),close=d.createElement("button");
+ element.dataset["breditorShortcutHelp"]="";element.hidden=true;ui.applyChrome(element);backdrop.className="breditor-shortcut-help-backdrop";
  dialog.setAttribute("role","dialog");dialog.setAttribute("aria-modal","true");dialog.tabIndex=-1;dialog.setAttribute("aria-labelledby",`${prefix}-title`);dialog.setAttribute("aria-describedby",`${prefix}-intro`);
  heading.id=`${prefix}-title`;heading.textContent=title;intro.id=`${prefix}-intro`;intro.textContent=ui.text("shortcutHelpIntro");
  body.className="breditor-shortcut-help-body";body.tabIndex=0;body.setAttribute("role","group");body.setAttribute("aria-labelledby",heading.id);

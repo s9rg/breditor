@@ -3,6 +3,7 @@
  * scoped plain text; its untrusted answer is shown as text for review and applied on Accept as one ordinary guarded
  * editor command bound to the snapshot's document content. Nothing here performs I/O or logs.
  */
+import {createRichStyleElement} from "./style_element.js";
 import type {RichCommandOutcome} from "./core.js";
 import type {RichClipboardInterchange,RichInterchangeNotice} from "./clipboard_interchange.js";
 import {defaultRichUi,type RichUiLocale,type RichUiStringKey} from "./ui_locale.js";
@@ -94,7 +95,7 @@ class AiTools implements RichAiTools {
   const d=root.ownerDocument,window=d.defaultView;if(!window)throw Error("AI tools require a live document");this.#window=window;
   const realm=window as unknown as {AbortController:typeof AbortController},signal=(this.#abort=new realm.AbortController()).signal,ui=this.#ui,label=options.label??ui.text("aiPanelLabel");
   this.#element=d.createElement("section");this.#element.dataset["breditorAi"]="";this.#element.setAttribute("aria-label",label);ui.applyChrome(this.#element);
-  const style=d.createElement("style");style.textContent=styles;const title=d.createElement("h2");title.textContent=label;this.#element.append(style,title);
+  const style=createRichStyleElement(d,styles);const title=d.createElement("h2");title.textContent=label;this.#element.append(style,title);
   const button=(name:string,key:RichUiStringKey,run:()=>void,parent:HTMLElement)=>{const node=d.createElement("button");node.type="button";node.dataset["aiAction"]=name;node.textContent=ui.text(key);node.addEventListener("click",()=>run(),{signal});parent.append(node);return node;};
   const form=d.createElement("div");form.dataset["aiForm"]="";
   if(options.provider){

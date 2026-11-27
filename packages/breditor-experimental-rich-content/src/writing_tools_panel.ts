@@ -1,4 +1,5 @@
 /** Borrowed counts/outline UI; editable DOM and native ownership remain elsewhere. */
+import {createRichStyleElement} from "./style_element.js";
 import type {RichWritingHeading,RichWritingToolsRead} from "./writing_tools_types.js";
 import type {RichWritingToolsHost} from "./writing_tools_host.js";
 import {defaultRichUi,richUiError,type RichUiLocale} from "./ui_locale.js";
@@ -47,7 +48,7 @@ class WritingPanel implements RichWritingToolsPanel {
   const d=root.ownerDocument,realm=d.defaultView as unknown as {AbortController:typeof AbortController};this.#abort=new realm.AbortController();
   const label=options.label??ui.text(this.#contents?"writingOutlineLabel":"writingLabel");
   this.#element=d.createElement(this.#contents?"nav":"section");this.#element.dataset["breditorWriting"]="";this.#element.toggleAttribute("data-breditor-contents",this.#contents);this.#element.setAttribute("aria-label",label);ui.applyChrome(this.#element);
-  const style=d.createElement("style");style.textContent=styles+(this.#contents?contentsStyles:"");const title=d.createElement("h2");title.textContent=label;
+  const style=createRichStyleElement(d,styles+(this.#contents?contentsStyles:""));const title=d.createElement("h2");title.textContent=label;
   this.#counts=d.createElement("dl");this.#counts.dataset["writingCounts"]="";this.#list=d.createElement("ol");this.#list.dataset["writingOutline"]="";this.#list.setAttribute("aria-label",ui.text("writingOutlineLabel"));
   // Outline order is logical (document order), so Up/Down/Home/End are the same under LTR and RTL chrome.
   this.#list.addEventListener("keydown",event=>this.#rove(event),{signal:this.#abort.signal});

@@ -963,6 +963,20 @@ action-state catalog entry, or unknown/cross-wired toolbar intent/state fails
 before Breditor publishes editor or toolbar DOM. Alpha.8 exercises those cases
 directly rather than treating an eventual render fault as acceptable startup.
 
+## Content Security Policy and Trusted Types
+
+The editor and its Wasm runtimes run under a strict, nonce-based policy:
+`script-src 'self' 'wasm-unsafe-eval'`, `require-trusted-types-for 'script'`, and
+no `'unsafe-inline'` or `'unsafe-eval'`. Editor stylesheets copy the nonce that the
+host publishes with `<meta property="csp-nonce" nonce="…">`. No package code assigns
+HTML strings to the DOM. Clipboard HTML is parsed with `parse5`, not a DOM parser.
+The only Trusted Types policy is `breditor-static-html`, which covers static render
+output. Policy-derived inline `style` attributes (text color and size, page break)
+are the one documented relaxation, `style-src-attr 'unsafe-inline'`.
+[`CONTENT_SECURITY_POLICY.md`](CONTENT_SECURITY_POLICY.md) lists the exact header,
+the requirements of each feature and the Chromium/Firefox/WebKit gate
+(`npm run test:csp`).
+
 ## Honest limitations
 
 The `0.1.0` runtime is deliberately a small local notes/form editor:

@@ -11,6 +11,7 @@
  * The only optional exception is `focus`: it sets one `data-breditor-focused` attribute (no text) on the innermost
  * block holding the selection focus, for host CSS. It is off by default.
  */
+import {createRichStyleElement} from "./style_element.js";
 import {resolveRichUi,type RichUiLocale,type RichUiOptions} from "./ui_locale.js";
 
 export type RichInvisibleKind="space"|"nbsp"|"tab"|"hardBreak"|"blockEnd";
@@ -114,8 +115,8 @@ export function mountRichEditingAids(host:RichEditingAidsHost|HTMLElement,option
  const realm=window as unknown as {AbortController:typeof AbortController;ResizeObserver?:typeof ResizeObserver;MutationObserver?:typeof MutationObserver;Node:typeof Node;NodeFilter:typeof NodeFilter};
  const abort=new realm.AbortController(),signal=abort.signal,listeners=new Set<()=>void>();
  const overlay=document.createElement("div");overlay.dataset["breditorEditingAids"]="";overlay.setAttribute("aria-hidden","true");
- const style=inject?document.createElement("style"):undefined;
- if(style){style.dataset["breditorEditingAidsStyles"]="";if(options.nonce)style.nonce=options.nonce;style.textContent=richEditingAidsStyles;(document.head??document.documentElement).append(style);}
+ const style=inject?createRichStyleElement(document,richEditingAidsStyles,options.nonce):undefined;
+ if(style){style.dataset["breditorEditingAidsStyles"]="";(document.head??document.documentElement).append(style);}
  // Inside an active fullscreen element the layer must live in that element's subtree to stay visible.
  const place=():void=>{const full=document.fullscreenElement;const parent=full&&full!==surface&&full.contains(surface)?full:document.body??document.documentElement;if(overlay.parentNode!==parent)parent.append(overlay);};
  place();mounted.add(surface);

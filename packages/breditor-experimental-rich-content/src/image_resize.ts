@@ -6,6 +6,7 @@
  * resize command on release, so the owner records one Undo step. The keyboard surface is one focusable
  * `role="slider"` per image (the bottom inline-end corner handle); each accepted key commits one command.
  */
+import {createRichStyleElement} from "./style_element.js";
 import {defaultRichUi,type RichUiLocale} from "./ui_locale.js";
 
 /** Admitted Rust display dimension domain (`ImageSize::try_new`, logical pixels, each axis). */
@@ -104,7 +105,7 @@ export function mountRichImageResize(overlay:HTMLElement,host:RichImageResizeHos
  let disposed=false,drag:Drag|undefined,hovered:string|undefined,cache:{revision:string;images:Map<string,ImageEntry>}|undefined;
  const ui=host.uiLocale?.()??defaultRichUi;ui.applyChrome(badge);
  layer.dataset["breditorImageResize"]="";outline.dataset["imageResizeOutline"]="";badge.dataset["imageResizeBadge"]="";outline.setAttribute("aria-hidden","true");badge.setAttribute("aria-hidden","true");outline.hidden=badge.hidden=true;
- const style=d.createElement("style");style.textContent=richImageResizeStyles;layer.append(style,outline,badge);
+ const style=createRichStyleElement(d,richImageResizeStyles);layer.append(style,outline,badge);
  const report=(error:unknown)=>{try{options.onError?.(error);}catch{/* A reporter cannot change document ownership. */}};
  const editable=(state:RichImageResizeHostState)=>!state.closed&&!state.readOnly&&!state.busy&&!state.composing;
  const images=():Map<string,ImageEntry>=>{
