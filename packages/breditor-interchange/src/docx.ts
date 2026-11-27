@@ -8,8 +8,10 @@ import {isCanonicalLanguageTagV1} from "./language_tag.js";
 import {collectImageBindings,documentRoot,docxLimits,DocxWriter,esc,LossLedger,type DocxImageBinding,type DocxLoss} from "./docx/convert.js";
 import {appXml,contentTypes,coreXml,documentRels,documentXml,docxContentType,numberingXml,packageRels,pageMargin,pageSizes,settingsXml,stylesXml} from "./docx/parts.js";
 import {zipStore,type ZipEntry} from "./docx/zip.js";
+import {ContentsCollector,docxContentsLimits,resolveContents,type DocxContentsOptions,type ResolvedContents} from "./docx/contents.js";
 export type {DocxImageBinding,DocxLoss,DocxLossCode} from "./docx/convert.js";
-export {docxLimits,docxContentType};
+export type {DocxContentsOptions} from "./docx/contents.js";
+export {docxLimits,docxContentType,docxContentsLimits};
 /** Contract revision of the DOCX writer's fidelity map (independent of interchange HTML/Markdown). */
 export const docxContractV1=Object.freeze({version:1,format:"ecma-376-transitional-wordprocessingml",zip:"store-only-fixed-timestamp-v1"} as const);
 export type DocxErrorCode="invalid-source"|"resource-limit"|"asset-policy";
@@ -25,6 +27,10 @@ export interface DocxExportOptions {
   readonly language?:string;
   /** Page geometry with 1-inch margins; default `letter`. */
   readonly pageSize?:"letter"|"a4";
+  /** Opt-in table of contents as a Word `TOC` field whose cached result already lists hyperlinked
+   * headings. `true` uses the defaults. Validated before the document is read: any malformed value
+   * fails with `invalid-source`. Omitted or `false` keeps the original output byte for byte. */
+  readonly contents?:boolean|DocxContentsOptions;
 }
 export interface DocxAsyncExportOptions extends Omit<DocxExportOptions,"image"> {
   /** Called once per distinct binding, in document order. Returned bytes are copied before the next lookup. */
@@ -35,9 +41,11 @@ const failure=(error:unknown,losses:readonly DocxLoss[]):DocxResult<never>=>{
   if(error instanceof RangeError)return Object.freeze({ok:false,error:"resource-limit",losses});
   return Object.freeze({ok:false,error:"invalid-source",losses});
 };
-function validatePageOptions(title:unknown,pageSize:unknown):void {
+function validatePageOptions(title:unknown,pageSize:unknown,contents:unknown):ResolvedContents|undefined {
+  const resolved=resolveContents(contents);
   if(title!==undefined&&(typeof title!=="string"||title.length>1024))throw new ConversionFailure("invalid-source");
   if(pageSize!=="letter"&&pageSize!=="a4")throw new ConversionFailure("invalid-source");
+  return resolved;
 }
 /** Distinct image bindings in document order, so a host can preload bytes before `exportDocx`. */
 export function docxImageBindings(documentJson:string):DocxResult<readonly DocxImageBinding[]> {
@@ -53,11 +61,11 @@ export function exportDocx(documentJson:string,options:DocxExportOptions={}):Doc
   let ledger=new LossLedger();
   try{
     const title=options.title,language=options.language,pageSize=options.pageSize??"letter";
-    validatePageOptions(title,pageSize);
+    const resolved=validatePageOptions(title,pageSize,options.contents),contents=resolved&&new ContentsCollector(resolved);
     const image=options.image;
     if(image!==undefined&&typeof image!=="function")return failure(new ConversionFailure("asset-policy"),ledger.list());
     const root=documentRoot(documentJson),page=pageSizes[pageSize];
-    const writer=new DocxWriter({image:image===undefined?undefined:binding=>Reflect.apply(image,options,[binding]),contentWidthTwips:page.width-2*pageMargin});ledger=writer.losses;
+    const writer=new DocxWriter({image:image===undefined?undefined:binding=>Reflect.apply(image,options,[binding]),contentWidthTwips:page.width-2*pageMargin,contents});ledger=writer.losses;
     let lang:string|undefined;
     if(language!==undefined){if(isCanonicalLanguageTagV1(language))lang=language;else ledger.add("unsupported-attribute");}
     const body=writer.body(root);
@@ -70,9 +78,9 @@ export function exportDocx(documentJson:string,options:DocxExportOptions={}):Doc
       xml("docProps/core.xml",coreXml(titleXml,lang)),
       xml("docProps/app.xml",appXml),
       xml("word/document.xml",documentXml(body,page)),
-      xml("word/styles.xml",stylesXml(lang)),
+      xml("word/styles.xml",stylesXml(lang,contents!==undefined)),
       xml("word/numbering.xml",numberingXml(writer.abstracts,writer.nums)),
-      xml("word/settings.xml",settingsXml),
+      xml("word/settings.xml",settingsXml(resolved?.updateFields===true)),
       xml("word/_rels/document.xml.rels",documentRels(writer.rels)),
       ...writer.media.map(m=>({name:`word/media/${m.name}`,data:m.data})),
     ];
@@ -82,7 +90,7 @@ export function exportDocx(documentJson:string,options:DocxExportOptions={}):Doc
 /** Load every distinct image binding through an asynchronous host loader, then `exportDocx`. */
 export async function exportDocxWithImages(documentJson:string,options:DocxAsyncExportOptions={}):Promise<DocxResult<Uint8Array>> {
   const {loadImage,...rest}=options;
-  try{validatePageOptions(rest.title,rest.pageSize??"letter");}catch(error){return failure(error,Object.freeze([]));}
+  try{validatePageOptions(rest.title,rest.pageSize??"letter",rest.contents);}catch(error){return failure(error,Object.freeze([]));}
   const bindings=docxImageBindings(documentJson);if(!bindings.ok)return bindings;
   const loaded=new Map<string,Uint8Array|undefined>();
   if(loadImage!==undefined){

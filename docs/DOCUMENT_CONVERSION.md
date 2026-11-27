@@ -78,6 +78,71 @@ The rich demo (`experiments/rich-browser`, **Export Word (.docx)**) uses
 `exportDocxWithImages` with its canvas data URLs and local asset store, and
 downloads through a `Blob` URL. No document data or bytes leave the page.
 
+### Table of contents (opt-in)
+
+`contents` prepends a real Word table of contents. It is off by default, and
+omitting it (or passing `false`) keeps the previous output byte for byte.
+
+```ts
+exportDocx(documentJson, {
+  contents: {
+    title: "Contents",      // default "Table of contents"; 1–256 characters, no controls
+    minLevel: 1,            // default 1
+    maxLevel: 3,            // default 6 (the same headings as the static HTML contents)
+    position: "start",      // the only placement: before the first body block
+    updateFields: false,    // default; see the trade-off below
+  },
+});
+// `contents: true` uses every default.
+```
+
+The option is validated before the document is read or any image is loaded.
+A malformed value (an unknown key, a level outside 1–6, `minLevel > maxLevel`,
+another `position`, a blank or over-long title, a non-Boolean `updateFields`)
+fails with `invalid-source`.
+
+Output:
+
+- A `TOC Heading` title paragraph (outline level 9, so Word never lists it),
+  then one `TOC \o "min-max" \h \z \u` complex field. Its cached result is
+  already filled with one `toc N` paragraph per listed heading, each a
+  `w:hyperlink w:anchor` to that heading, so the list reads and navigates
+  correctly in Word, LibreOffice and other consumers *before* fields update.
+  The field end sits in its own trailing paragraph, as Word writes it.
+- Every listed heading gets a hidden `_Toc` + 8-hex-digit bookmark derived
+  from its block identity (FNV-1a), not from its label or position, so names
+  stay stable across edits. Native bookmark names must start with a letter,
+  so `_Toc…` names never clash with user bookmarks; a heading with a user
+  bookmark carries both (user bookmark outside), and internal links keep
+  targeting the user bookmark.
+- Heading selection and labels follow the static HTML contents: every heading
+  in document order, including headings inside lists, quotes, flattened
+  sections and table cells (Word's `TOC` field lists those too); one entry
+  per heading block identity; at most 512 entries; labels are the heading's
+  direct text with leading/trailing whitespace trimmed, bounded to 512
+  UTF-16 units (`…` marks a cut), tabs and breaks shown as spaces, and
+  "Untitled heading" for an empty label. A document without listed headings
+  gets no title and no field, like the HTML navigation.
+- `toc 1`–`toc 6` use Word's built-in style names, so Word's own TOC
+  formatting applies after an update. Entries use the heading's level
+  (`toc 3` for a heading 3 even without a preceding heading 2), matching what
+  Word regenerates rather than the HTML list's nesting.
+
+The cached result has **no page numbers**: pagination is Word's. They appear
+when the field is updated (F9, or *Update Table*). `updateFields: true` writes
+`w:updateFields` in `settings.xml`, which makes Word offer to update fields when
+the file opens, adding page numbers. The trade-off: Word then shows a prompt
+("This document contains fields that may refer to other files…") on every open
+until the user saves; the prompt is suppressed in Protected View, and
+LibreOffice, Google Docs and most viewers ignore the setting and show the
+cached list. Leave it off for files that are read more than edited.
+
+`contents-entry` reports each cached entry that differs from what Word would
+regenerate: an empty heading's placeholder label, a truncated label, a
+repeated block identity listed once, or a heading past the 512-entry bound
+(left out of the cached list). A heading with an invalid level is a plain
+paragraph (`unsupported-attribute`) and is not listed by either.
+
 ### Bounds
 
 | Bound | Value | Relation to interchange |
@@ -127,6 +192,7 @@ and pagination are Word's.
 | Image caption | `Caption`-style paragraph after the image | — |
 | Collapsible section (V4 details) | flattened: summary as bold `BreditorSectionSummary` paragraph, body as flow | `block-structure` (open/closed state lost) |
 | Mention (V4) | plain `@label` text | `mention-entity` (entity kind/id lost) |
+| Table of contents (opt-in `contents`) | `TOC Heading` title + `TOC` field with a pre-filled, hyperlinked cached result; `_Toc…` bookmarks on listed headings; optional `w:updateFields` | `contents-entry` |
 | Unknown block element (future schema) | its inline text as a paragraph, or its children as flow | `unsupported-element` |
 | Unknown inline format | text kept | `unsupported-style` |
 | Element in inline content | its text | `block-structure` |
@@ -134,11 +200,13 @@ and pagination are Word's.
 Loss codes reuse the interchange vocabulary (`unsupported-element`,
 `unsupported-attribute`, `unsupported-style`, `style-approximation`,
 `unsafe-link`, `image-reference`, `block-structure`, `table-geometry`,
-`list-numbering`, `removed-content`) and add two DOCX-specific codes:
+`list-numbering`, `removed-content`) and add three DOCX-specific codes:
 
 - `image-format` — host bytes were supplied but are not PNG, JPEG or GIF
   (identified by signature, never by declared MIME type).
 - `mention-entity` — a mention entity became plain text.
+- `contents-entry` — an opt-in table of contents entry's cached text or
+  presence differs from what Word regenerates (see above).
 
 Losses are aggregated `{code, count, effect:"loss"}` records sorted by code; no
 source text, URL or asset identifier is echoed.
@@ -155,6 +223,14 @@ source text, URL or asset identifier is echoed.
   every bound, malformed input, XML escaping and the parser-free module graph,
   and exports documents produced by the HTML importer from Word, Google Docs and
   Excel markup.
+- `packages/breditor-interchange/tests/docx_contents.test.ts` unzips contents
+  exports and asserts the title, field characters and instruction, entry
+  styles and labels, unique `_Toc` bookmarks wrapping exactly the listed
+  headings, coexistence with user bookmarks and internal links, level
+  filtering, `updateFields` placement in `settings.xml`, table-cell headings,
+  determinism and label-independent bookmark names, the entry/label bounds
+  and loss counts, unchanged output without the option, and option
+  validation before the document or images are read.
 - `experiments/rich-browser/docx-export.spec.mjs` exports the live Wasm-owned
   demo document in Chromium, Firefox and WebKit, validates the downloaded
   package structure, parses every part with the engine's own `DOMParser`,
@@ -175,7 +251,8 @@ source text, URL or asset identifier is echoed.
 - **No PDF or ODT.** Hosts can convert the DOCX with a self-hosted tool.
 - **No tracked changes, comments or suggestions export.** Shared review state
   is not part of the document JSON this adapter reads.
-- **No layout engine.** No pagination, headers/footers, fields, footnotes,
-  page numbers or section breaks beyond one default section.
+- **No layout engine.** No pagination, headers/footers, footnotes, page
+  numbers or section breaks beyond one default section. The only field is the
+  opt-in contents `TOC` field, whose cached result carries no page numbers.
 - **No compression.** STORE only (see above); a deterministic deflater could be
   added later without changing the API.

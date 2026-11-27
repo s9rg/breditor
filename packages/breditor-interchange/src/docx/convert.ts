@@ -13,9 +13,11 @@ import {rubyAnnotationOf,rubyFormat} from "../ruby.js";
 import {bookmarkProperty,internalLinkOf,isBookmarkName} from "../bookmark.js";
 import {sniffImage,type SniffedImage} from "./image.js";
 import {relType,type AbstractKind,type NumInstance} from "./parts.js";
+import type {ContentsCollector} from "./contents.js";
 
-/** Reused interchange codes plus two DOCX-specific ones (`image-format`, `mention-entity`). */
-export type DocxLossCode="unsupported-element"|"unsupported-attribute"|"unsupported-style"|"style-approximation"|"unsafe-link"|"image-reference"|"image-format"|"block-structure"|"table-geometry"|"list-numbering"|"mention-entity"|"removed-content";
+/** Reused interchange codes plus DOCX-specific ones (`image-format`, `mention-entity`, and
+ * `contents-entry` when an opt-in contents list's cached entry differs from what Word regenerates). */
+export type DocxLossCode="unsupported-element"|"unsupported-attribute"|"unsupported-style"|"style-approximation"|"unsafe-link"|"image-reference"|"image-format"|"block-structure"|"table-geometry"|"list-numbering"|"mention-entity"|"removed-content"|"contents-entry";
 export interface DocxLoss {readonly code:DocxLossCode;readonly count:number;readonly effect:"loss"}
 export interface DocxImageBinding {readonly asset:string;readonly generation:string}
 export const docxLimits=Object.freeze({
@@ -103,6 +105,8 @@ const alignValue=["","left","center","right","both","left","right"] as const;
 export interface ConvertOptions {
   readonly image:((binding:DocxImageBinding)=>Uint8Array|undefined)|undefined;
   readonly contentWidthTwips:number;
+  /** Opt-in table of contents: headings it lists get a `_Toc` bookmark. */
+  readonly contents?:ContentsCollector|undefined;
 }
 export class DocxWriter {
   readonly losses=new LossLedger();
@@ -117,7 +121,7 @@ export class DocxWriter {
   #links=new Map<string,string>();#images=new Map<string,Media|null>();#imageBytes=0;
   #visited=0;#drawings=0;#chars=0;
   /** V4 bookmark names present in the document, and the next `w:bookmarkStart` id. */
-  #bookmarks=new Set<string>();#bookmarkId=0;
+  #bookmarks=new Set<string>();#bookmarkId=0;#headings=0;
   constructor(readonly options:ConvertOptions){}
 
   #visit():void{if(++this.#visited>docxLimits.nodes)fail("resource-limit");}
@@ -240,7 +244,7 @@ export class DocxWriter {
   }
 
   /** Paragraph properties in CT_PPr order: pStyle, numPr, bidi, spacing, ind, jc. */
-  #paragraph(node:JsonElement|undefined,style:string|undefined,content:string,ctx:Ctx):string {
+  #paragraph(node:JsonElement|undefined,style:string|undefined,content:string,ctx:Ctx,contentsBookmark?:string):string {
     const num=ctx.item?.num??null;if(ctx.item)ctx.item.num=null;
     let indent=0,bidi=false,spacing="",jc="";
     if(node){
@@ -262,6 +266,7 @@ export class DocxWriter {
     if(jc)p+=`<w:jc w:val="${jc}"/>`;
     // V4 bookmark: `w:bookmarkStart`/`w:bookmarkEnd` around the whole paragraph content. Word's
     // own UI limits names to 40 letters, digits and underscores; other admitted names are kept verbatim.
+    if(contentsBookmark!==undefined){const id=this.#bookmarkId++;content=`<w:bookmarkStart w:id="${id}" w:name="${contentsBookmark}"/>${content}<w:bookmarkEnd w:id="${id}"/>`;}
     const name=node?prop(node,"bookmark"):undefined;
     if(name!==undefined){
       if(!isBookmarkName(name))this.losses.add("unsupported-attribute");
@@ -288,7 +293,8 @@ export class DocxWriter {
       case "breditor/paragraph":return this.#paragraph(node,undefined,this.inline(node.children),ctx);
       case "breditor/heading":{
         const level=prop(node,"level");if(!intIn(level,1,6)){this.losses.add("unsupported-attribute");return this.#paragraph(node,undefined,this.inline(node.children),ctx);}
-        return this.#paragraph(node,`Heading${level}`,this.inline(node.children),ctx);
+        const ordinal=this.#headings++,bookmark=this.options.contents?.admit(node,level,ordinal,()=>this.losses.add("contents-entry"));
+        return this.#paragraph(node,`Heading${level}`,this.inline(node.children),ctx,bookmark);
       }
       case "breditor/blockquote":return body({...ctx,quote:ctx.quote+1});
       case "breditor/details":{
@@ -456,7 +462,8 @@ export class DocxWriter {
   body(root:JsonElement):string {
     const collect=(node:JsonNode,depth:number):void=>{if(depth>docxLimits.depth||node.kind!=="element")return;const name=node.properties[bookmarkProperty];if(isBookmarkName(name))this.#bookmarks.add(name);for(const child of node.children)collect(child,depth+1);};
     collect(root,0);
-    const xml=this.blocks(root.children,rootCtx,1);
-    return xml.endsWith("</w:p>")?xml:`${xml}<w:p/>`;
+    const xml=this.blocks(root.children,rootCtx,1),body=xml.endsWith("</w:p>")?xml:`${xml}<w:p/>`;
+    // Placement "start": the contents precede the first body block.
+    return (this.options.contents?this.#emit(this.options.contents.xml()):"")+body;
   }
 }

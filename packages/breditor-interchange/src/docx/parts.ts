@@ -38,9 +38,10 @@ export const appXml=`${xmlDeclaration}<Properties xmlns="http://schemas.openxmlf
 export function coreXml(title:string|undefined,language:string|undefined):string {
   return `${xmlDeclaration}<cp:coreProperties xmlns:cp="http://schemas.openxmlformats.org/package/2006/metadata/core-properties" xmlns:dc="http://purl.org/dc/elements/1.1/" xmlns:dcterms="http://purl.org/dc/terms/" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance">${title!==undefined?`<dc:title>${title}</dc:title>`:""}${language!==undefined?`<dc:language>${language}</dc:language>`:""}</cp:coreProperties>`;
 }
-export const settingsXml=`${xmlDeclaration}<w:settings xmlns:w="${ns.w}"><w:defaultTabStop w:val="720"/><w:characterSpacingControl w:val="doNotCompress"/><w:compat><w:compatSetting w:name="compatibilityMode" w:uri="http://schemas.microsoft.com/office/word" w:val="15"/></w:compat></w:settings>`;
+/** `updateFields` (CT_Settings order: after `characterSpacingControl`, before `compat`) asks Word to refresh fields on open. */
+export const settingsXml=(updateFields=false)=>`${xmlDeclaration}<w:settings xmlns:w="${ns.w}"><w:defaultTabStop w:val="720"/><w:characterSpacingControl w:val="doNotCompress"/>${updateFields?'<w:updateFields w:val="true"/>':""}<w:compat><w:compatSetting w:name="compatibilityMode" w:uri="http://schemas.microsoft.com/office/word" w:val="15"/></w:compat></w:settings>`;
 /** Paragraph/character styles referenced by document.xml. Built-in names map to Word's own styles. */
-export function stylesXml(language:string|undefined):string {
+export function stylesXml(language:string|undefined,contents=false):string {
   const heading=(n:number,size:number)=>`<w:style w:type="paragraph" w:styleId="Heading${n}"><w:name w:val="heading ${n}"/><w:basedOn w:val="Normal"/><w:next w:val="Normal"/><w:uiPriority w:val="9"/><w:qFormat/><w:pPr><w:keepNext/><w:keepLines/><w:spacing w:before="240" w:after="80"/><w:outlineLvl w:val="${n-1}"/></w:pPr><w:rPr><w:b/><w:bCs/><w:sz w:val="${size}"/><w:szCs w:val="${size}"/></w:rPr></w:style>`;
   const mono='<w:rFonts w:ascii="Courier New" w:hAnsi="Courier New" w:cs="Courier New"/>';
   return `${xmlDeclaration}<w:styles xmlns:w="${ns.w}">`
@@ -55,6 +56,9 @@ export function stylesXml(language:string|undefined):string {
     +`<w:style w:type="paragraph" w:customStyle="1" w:styleId="BreditorCodeBlock"><w:name w:val="Breditor Code Block"/><w:basedOn w:val="Normal"/><w:pPr><w:shd w:val="clear" w:color="auto" w:fill="F3F3F3"/><w:spacing w:after="160" w:line="240" w:lineRule="auto"/></w:pPr><w:rPr>${mono}<w:sz w:val="20"/><w:szCs w:val="20"/></w:rPr></w:style>`
     +`<w:style w:type="paragraph" w:customStyle="1" w:styleId="BreditorHorizontalRule"><w:name w:val="Breditor Horizontal Rule"/><w:basedOn w:val="Normal"/><w:pPr><w:pBdr><w:bottom w:val="single" w:sz="6" w:space="1" w:color="auto"/></w:pBdr></w:pPr></w:style>`
     +`<w:style w:type="paragraph" w:customStyle="1" w:styleId="BreditorSectionSummary"><w:name w:val="Breditor Section Summary"/><w:basedOn w:val="Normal"/><w:next w:val="Normal"/><w:pPr><w:keepNext/></w:pPr><w:rPr><w:b/><w:bCs/></w:rPr></w:style>`
+    // Opt-in contents: Word's built-in "TOC Heading" (outline level 9 keeps it out of the list) and "toc 1"–"toc 6".
+    +(contents?`<w:style w:type="paragraph" w:styleId="TOCHeading"><w:name w:val="TOC Heading"/><w:basedOn w:val="Normal"/><w:next w:val="Normal"/><w:uiPriority w:val="39"/><w:unhideWhenUsed/><w:qFormat/><w:pPr><w:keepNext/><w:keepLines/><w:spacing w:before="240" w:after="80"/><w:outlineLvl w:val="9"/></w:pPr><w:rPr><w:b/><w:bCs/><w:sz w:val="32"/><w:szCs w:val="32"/></w:rPr></w:style>`
+      +[1,2,3,4,5,6].map(n=>`<w:style w:type="paragraph" w:styleId="TOC${n}"><w:name w:val="toc ${n}"/><w:basedOn w:val="Normal"/><w:next w:val="Normal"/><w:uiPriority w:val="39"/><w:unhideWhenUsed/><w:pPr><w:spacing w:after="100"/>${n>1?`<w:ind w:left="${220*(n-1)}"/>`:""}</w:pPr></w:style>`).join(""):"")
     +`<w:style w:type="character" w:styleId="Hyperlink"><w:name w:val="Hyperlink"/><w:basedOn w:val="DefaultParagraphFont"/><w:uiPriority w:val="99"/><w:unhideWhenUsed/><w:rPr><w:color w:val="0563C1"/><w:u w:val="single"/></w:rPr></w:style>`
     +`</w:styles>`;
 }
