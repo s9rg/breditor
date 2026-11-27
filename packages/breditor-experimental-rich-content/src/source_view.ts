@@ -2,6 +2,7 @@
  * Borrowed HTML source panel. Source is shown and edited only as plain textarea text; it is never parsed into the
  * live page. Apply requires a reviewed import report and one guarded whole-document paste through the host.
  */
+import {createRichStyleElement} from "./style_element.js";
 import type {RichInterchangeNotice} from "./clipboard_interchange.js";
 import type {RichCommandOutcome} from "./core.js";
 import {sourceBytes,staleSourceMessage} from "./source_view_host.js";
@@ -67,7 +68,7 @@ class SourcePanel implements RichSourceView {
   this.#root=root;this.#host=host;this.#options={...options};
   const d=root.ownerDocument,realm=d.defaultView as unknown as {AbortController:typeof AbortController},signal=(this.#abort=new realm.AbortController()).signal,label=options.label??"HTML source";
   this.#element=d.createElement("section");this.#element.dataset["breditorSource"]="";this.#element.setAttribute("aria-label",label);
-  const style=d.createElement("style");style.textContent=styles;const title=d.createElement("h2");title.textContent=label;
+  const style=createRichStyleElement(d,styles);const title=d.createElement("h2");title.textContent=label;
   const scope=d.createElement("p");scope.dataset["sourceScope"]="";scope.textContent="Semantic HTML only. Scripts, event handlers, page metadata and unsupported markup are removed, and CSS is reduced to supported formatting. Review the report before applying.";
   const button=(name:string,text:string,run:()=>void,parent:HTMLElement)=>{const node=d.createElement("button");node.type="button";node.dataset["sourceAction"]=name;node.textContent=text;node.addEventListener("click",()=>this.#attempt(run),{signal});parent.append(node);return node;};
   this.#toggle=button("open","Edit HTML source",()=>this.open(),this.#element);

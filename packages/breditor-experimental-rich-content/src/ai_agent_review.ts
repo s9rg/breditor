@@ -3,6 +3,7 @@
  * (`tools/list`, `tools/call` JSON shapes only; no server, transport or I/O). Text is always shown with
  * `textContent`; the panel lives outside the editing surface and never touches the editing DOM.
  */
+import {createRichStyleElement} from "./style_element.js";
 import {defaultRichUi,type RichUiLocale,type RichUiStringKey} from "./ui_locale.js";
 import type {RichAgentTools,RichAgentReviewItem,RichAgentToolResult} from "./ai_agent_tools.js";
 
@@ -15,7 +16,7 @@ export function mountRichAgentReview(root:HTMLElement,tools:RichAgentTools,optio
  if(!tools||typeof tools.review!=="function"||typeof tools.subscribe!=="function")throw new TypeError("Expected agent tools");
  const d=root.ownerDocument,ui=options.uiLocale??defaultRichUi,label=options.label??ui.text("agentReviewLabel");
  const section=d.createElement("section");section.dataset["breditorAgentReview"]="";section.setAttribute("aria-label",label);ui.applyChrome(section);
- const style=d.createElement("style");style.textContent=styles;
+ const style=createRichStyleElement(d,styles);
  const title=d.createElement("h2");title.textContent=label;
  const list=d.createElement("ol");list.dataset["agentItems"]="";
  const actions=d.createElement("div");actions.dataset["agentActions"]="";

@@ -1,6 +1,7 @@
 // Opt-in print presentation for rich documents. A mounted preview can read the screen flow.
 // Forced breaks come from V4 page-break blocks. The browser paginates the printed output using
 // the chosen @page settings and break hints. Canonical content remains independent of layout.
+import {createRichStyleElement} from "./style_element.js";
 import {resolveRichUi,type RichUiLocale,type RichUiOptions} from "./ui_locale.js";
 import {richPageBreakClass} from "./page_break.js";
 
@@ -170,8 +171,8 @@ export function mountRichPrintPreview(surface:HTMLElement,options:RichPrintPrevi
  let layout=resolveRichPrintLayout(rest);
  if(surface.hasAttribute("data-breditor-print-preview"))throw Error("A print preview is already mounted on this element");
  const document=surface.ownerDocument;
- const style=document.createElement("style");style.dataset["breditorPrintPreview"]="";
- const pageStyle=print?document.createElement("style"):undefined;
+ const style=createRichStyleElement(document,"");style.dataset["breditorPrintPreview"]="";
+ const pageStyle=print?createRichStyleElement(document,""):undefined;
  const attributes=["aria-description","data-breditor-print-preview","data-breditor-print-size","data-breditor-print-orientation","data-breditor-print-margin"];
  const previous=attributes.map(name=>[name,surface.getAttribute(name)] as const);
  const apply=():void=>{

@@ -4,6 +4,7 @@
  * keyboard list, and a suggestion is applied as one ordinary guarded replace command. Issues whose block text no
  * longer matches are dropped; the only remapping is the exact shift after this tool's own verified replacement.
  */
+import {createRichStyleElement} from "./style_element.js";
 import type {RichCommandOutcome} from "./core.js";
 import {defaultRichUi,type RichUiLocale,type RichUiStringKey} from "./ui_locale.js";
 import {RICH_AI_MAX_BYTES,RICH_AI_MAX_TIMEOUT_MS,RichAiAbortError,RichAiScopeError,admitAiText,boundedOption,plainRecord,readAiDocument,resolveAiTarget,runAiProvider,scalarBoundary,utf8Bytes,type RichAiScope,type RichAiSegment,type RichAiToolsHost,type RichTextSelection} from "./ai_tools_host.js";
@@ -88,7 +89,7 @@ class LanguageCheck implements RichLanguageCheck {
   const d=root.ownerDocument,window=d.defaultView;if(!window)throw Error("Language check requires a live document");this.#window=window;
   const realm=window as unknown as {AbortController:typeof AbortController},signal=(this.#abort=new realm.AbortController()).signal,ui=this.#ui,label=options.label??ui.text("langPanelLabel");
   this.#element=d.createElement("section");this.#element.dataset["breditorLanguage"]="";this.#element.setAttribute("aria-label",label);ui.applyChrome(this.#element);
-  const style=d.createElement("style");style.textContent=styles;const title=d.createElement("h2");title.textContent=label;
+  const style=createRichStyleElement(d,styles);const title=d.createElement("h2");title.textContent=label;
   const controls=d.createElement("div");controls.dataset["languageControls"]="";
   const button=(name:string,key:RichUiStringKey,run:()=>void,parent:HTMLElement)=>{const node=d.createElement("button");node.type="button";node.dataset["languageAction"]=name;node.textContent=ui.text(key);node.addEventListener("click",()=>run(),{signal});parent.append(node);return node;};
   if(options.provider){

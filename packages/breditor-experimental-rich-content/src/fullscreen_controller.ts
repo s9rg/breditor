@@ -1,3 +1,4 @@
+import {createRichStyleElement} from "./style_element.js";
 import type {RichFullscreenController,RichFullscreenHost,RichFullscreenOptions,RichFullscreenState} from "./fullscreen_types.js";
 import {captureFullscreenFocus,restoreFullscreenFocus,type FullscreenFocus} from "./fullscreen_focus.js";
 import {defaultRichUi,richUiError,type RichUiLocale} from "./ui_locale.js";
@@ -26,7 +27,7 @@ class FullscreenController implements RichFullscreenController {
   if(state.closed||!d.defaultView||target.ownerDocument!==d||!target.isConnected||!host.surface.isConnected||!target.contains(host.fullscreenRoot)||!target.contains(host.surface)||target===host.surface||host.surface.contains(target))throw Error("Fullscreen requires an open editor and a connected ancestor outside editable content");
   if(targets.has(target)||flagged(target))throw Error("This fullscreen target is already owned or active");
   if(options.navigationUI!==undefined&&!["auto","show","hide"].includes(options.navigationUI))throw TypeError("Expected fullscreen navigationUI auto, show or hide");
-  this.#host=host;this.#document=d;this.target=target;this.surface=host.surface;this.#options={...options};this.#abort=new d.defaultView.AbortController();this.#marker=crypto.randomUUID();this.#previousMarker=target.getAttribute("data-breditor-fullscreen-target");this.#style=d.createElement("style");
+  this.#host=host;this.#document=d;this.target=target;this.surface=host.surface;this.#options={...options};this.#abort=new d.defaultView.AbortController();this.#marker=crypto.randomUUID();this.#previousMarker=target.getAttribute("data-breditor-fullscreen-target");this.#style=createRichStyleElement(d,"");
   this.#style.textContent=`[data-breditor-fullscreen-target="${this.#marker}"]:fullscreen{box-sizing:border-box;overflow:auto;background:#fff;padding:16px}`;
   this.#unsubscribe=host.subscribeFullscreen(()=>{if(host.fullscreenState().closed)void this.dispose().catch(()=>{/* Cleanup failure stays readable/retryable on this controller. */});else this.#emit();});
   try{targets.set(target,this);target.setAttribute("data-breditor-fullscreen-target",this.#marker);const root=target.getRootNode();("host" in root?root:d.head).appendChild(this.#style);

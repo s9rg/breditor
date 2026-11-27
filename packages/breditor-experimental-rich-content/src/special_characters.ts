@@ -2,6 +2,7 @@
  * Special-character catalog and the accessible picker body. Inserting a character is ordinary native text
  * input (one history group); nothing here touches the document model. See docs/FORMATTING_PRODUCTIVITY.md.
  */
+import {createRichStyleElement} from "./style_element.js";
 import type {RichControlPanelPort} from "./toolbar_control_view.js";
 import type {RichUiLocale} from "./ui_locale.js";
 
@@ -111,7 +112,7 @@ export const richSpecialCharacterStyles=`:is([data-breditor-rich],[data-breditor
  */
 export function mountSpecialCharacterPicker(body:HTMLElement,port:RichControlPanelPort,catalog:RichSpecialCharacterCatalog):void{
  const d=body.ownerDocument,ui=port.ui,wrap=d.createElement("div");wrap.className="breditor-special-characters";
- const style=d.createElement("style");style.textContent=richSpecialCharacterStyles;
+ const style=createRichStyleElement(d,richSpecialCharacterStyles);
  const search=d.createElement("input");search.type="search";search.maxLength=64;search.setAttribute("aria-label",ui.text("specialCharactersSearch"));search.placeholder=ui.text("specialCharactersSearch");search.dataset["specialCharacterSearch"]="";
  const select=d.createElement("select");select.setAttribute("aria-label",ui.text("specialCharactersCategory"));select.dataset["specialCharacterCategory"]="";
  const all=d.createElement("option");all.value="";all.textContent=ui.text("specialCharactersAll");select.append(all);

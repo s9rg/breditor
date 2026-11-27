@@ -172,7 +172,10 @@ inline recipe table equals `createStandardRichInlinePresentationV1(...).recipesO
   explicit opt-in and is always reported. Nothing is passed through raw.
 
 Hosts that insert the string themselves, with `innerHTML` or a template's raw HTML binding,
-should insert only the renderer's own output, unmodified.
+should insert only the renderer's own output, unmodified. Under
+`require-trusted-types-for 'script'`, use `renderStaticDocumentTrustedContents`. It returns
+the same markup as `TrustedHTML` from the `breditor-static-html` policy. See
+[Content Security Policy](CONTENT_SECURITY_POLICY.md).
 
 ## Limits and what is not covered
 

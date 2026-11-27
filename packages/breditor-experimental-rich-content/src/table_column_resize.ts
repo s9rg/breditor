@@ -7,6 +7,7 @@
  * owner records one Undo step. Keyboard steps are focusable `role="separator"`
  * value controls; each accepted key commits one command.
  */
+import {createRichStyleElement} from "./style_element.js";
 import {defaultRichUi} from "./ui_locale.js";
 
 /** Admitted Rust column width domain (`ResizeColumn::capture`, logical pixels). */
@@ -71,7 +72,7 @@ export function mountRichTableColumnResize(overlay:HTMLElement,host:RichTableCol
  const d=overlay.ownerDocument,win=d.defaultView!,abort=new win.AbortController(),layer=d.createElement("div"),guide=d.createElement("div"),badge=d.createElement("div"),handles=new Map<string,HTMLElement>();
  let disposed=false,drag:Drag|undefined;const ui=host.uiLocale?.()??defaultRichUi;ui.applyChrome(badge);
  layer.dataset["breditorColumnResize"]="";guide.dataset["columnResizeGuide"]="";badge.dataset["columnResizeBadge"]="";guide.setAttribute("aria-hidden","true");badge.setAttribute("aria-hidden","true");guide.hidden=badge.hidden=true;
- const style=d.createElement("style");style.textContent=richTableColumnResizeStyles;layer.append(style,guide,badge);
+ const style=createRichStyleElement(d,richTableColumnResizeStyles);layer.append(style,guide,badge);
  const report=(error:unknown)=>{try{options.onError?.(error);}catch{/* A reporter cannot change document ownership. */}};
  const tables=()=>host.view().tables;
  const editable=(state:RichTableColumnResizeHostState)=>!state.closed&&!state.readOnly&&!state.busy&&!state.composing;

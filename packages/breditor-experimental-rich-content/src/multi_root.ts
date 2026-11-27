@@ -7,6 +7,7 @@
  * root's toolbar or keyboard runs in the root that owns the newest global unit, which
  * then takes focus. One shared toolbar slot shows the active root's controls only.
  */
+import {createRichStyleElement} from "./style_element.js";
 import {mountRichEditor,mountDocumentRichEditor,RichDomEditor,type RichEditorOptions} from "./controller.js";
 import type {ToolbarControl} from "./actions.js";
 import type {RichCommand} from "./commands.js";
@@ -82,7 +83,7 @@ interface Mounted {readonly id:string;readonly core:AnyCore;readonly editor:Rich
 export function mountRichMultiRootEditor(container:HTMLElement,options:RichMultiRootEditorOptions):RichMultiRootEditor {
  const {set}=options,document=container.ownerDocument,mounted=new Map<string,Mounted>();
  let disposed=false;
- const style=document.createElement("style");style.textContent=styles;
+ const style=createRichStyleElement(document,styles);
  const toolbar=document.createElement("div");toolbar.className="breditor-rich-multi-root-toolbar";toolbar.dataset["breditorRich"]="";
  const area=document.createElement("div");area.className="breditor-rich-roots";
  container.dataset["breditorMultiRoot"]="";container.replaceChildren(style,toolbar,area);

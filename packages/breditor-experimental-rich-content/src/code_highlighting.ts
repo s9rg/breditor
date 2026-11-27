@@ -1,3 +1,4 @@
+import {createRichStyleElement} from "./style_element.js";
 import {CodeSyntaxBudget,codeSyntaxPalette,type CodeTokenKind} from "./code_syntax.js";
 
 export interface RichCodeHighlightingOptions {
@@ -44,11 +45,9 @@ export function mountRichCodeHighlighting(
 
  const prefix = `breditor-syntax-${instance}-${++mounts}`;
  const names = kinds.map(kind => [kind, `${prefix}-${kind}`] as const);
- const style = document.createElement("style");
- if (options.nonce !== undefined) style.nonce = options.nonce;
- style.textContent = names.map(([kind, name]) =>
+ const style = createRichStyleElement(document, names.map(([kind, name]) =>
   `::highlight(${name}){color:var(--breditor-code-${kind},${codeSyntaxPalette[kind]})}`
- ).join("\n");
+ ).join("\n"), options.nonce);
  const root = surface.getRootNode();
  (root instanceof window.ShadowRoot ? root : document.head).append(style);
 

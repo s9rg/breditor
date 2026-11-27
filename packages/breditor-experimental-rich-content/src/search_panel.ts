@@ -1,4 +1,5 @@
 /** Borrowed native search UI. Only the editor's named, queued intents can select or replace text. */
+import {createRichStyleElement} from "./style_element.js";
 import type {RichSearchQuery,RichSearchReplacement,RichSearchResults} from "./core.js";
 import type {RichSearchHost} from "./search_host.js";
 import {RichSearchOverlay} from "./search_overlay.js";
@@ -26,7 +27,7 @@ class SearchPanel<R extends RichSearchResults> implements RichSearchPanel {
   const delay=options.debounceMs??120;if(!Number.isSafeInteger(delay)||delay<0||delay>1000||options.wrap!==undefined&&typeof options.wrap!=="boolean"||options.decorations!==undefined&&typeof options.decorations!=="boolean")throw new TypeError("Expected a bounded search delay and Boolean presentation options");
   this.#root=root;this.#host=host;this.#options={...options};this.#delay=delay;const ui=this.#ui=host.uiLocale?.()??defaultRichUi;
   const d=root.ownerDocument,realm=d.defaultView as unknown as {AbortController:typeof AbortController};this.#abort=new realm.AbortController();this.#element=d.createElement("div");this.#element.dataset["breditorSearch"]="";this.#element.setAttribute("role","search");this.#element.setAttribute("aria-label",options.label??ui.text("searchLabel"));ui.applyChrome(this.#element);
-  const style=d.createElement("style");style.textContent=styles;this.#element.append(style);
+  const style=createRichStyleElement(d,styles);this.#element.append(style);
   const field=(name:string,label:string,value:string)=>{const wrapper=d.createElement("label"),input=d.createElement("input");wrapper.textContent=label;input.dataset["searchField"]=name;input.type="text";input.value=value;wrapper.append(input);this.#element.append(wrapper);return input;};
   const check=(name:string,label:string,value:boolean)=>{const wrapper=d.createElement("label"),input=d.createElement("input");input.dataset["searchField"]=name;input.type="checkbox";input.checked=value;wrapper.append(input,d.createTextNode(label));this.#element.append(wrapper);return input;};
   this.#pattern=field("pattern",ui.text("searchFind"),query.pattern);this.#regex=check("regex",ui.text("searchRegex"),query.mode==="regex");this.#case=check("case",ui.text("searchMatchCase"),query.caseSensitive);this.#words=check("words",ui.text("searchWholeWords"),query.wholeWords);this.#wrap=check("wrap",ui.text("searchWrap"),options.wrap??true);
