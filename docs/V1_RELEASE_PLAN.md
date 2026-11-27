@@ -23,6 +23,65 @@ For the reviewed RC, record the exact tag target, clean-install results,
 archive hashes, and final gate decision together. Obtain separate approval for
 publication and deployment.
 
+## November 27 status review
+
+**Status: not release ready.** The [capability audit](v1-readiness.json) was
+re-reviewed against main at `1454258` after about 810 commits since November 21.
+It now records 11 implemented slices, 46 partial and 0 missing groups, with
+4 of 12 qualification gates passed and 8 open.
+
+### Approved scope reduction
+
+On November 27 the user removed these requirements from V1:
+
+- The real-application pilot gate. The first-party pilot workspace remains as a
+  demo and its automated checks still run, but no pilot run is required.
+- Qualification by outside people: real screen-reader, physical IME and device
+  testers, and independent collaborators. The accessibility gate now requires
+  automated keyboard, accessibility-tree, composition-event and emulated touch
+  checks on the final artifact.
+- Independent-writer credential recovery in the storage gate, and the
+  independent-consumer wording in the distribution gate.
+
+No catalog capability was excluded.
+
+### Audit corrections
+
+Three rows were downgraded from implemented to partial because their own
+acceptance text is not met: `offline-recovery` (supported history and document
+limits are not qualified; the native shared journal refuses sync at round 109
+of the boundary workload), `presence` (no accessibility or layout
+qualification), and `formatting-productivity` (named styles are not built and
+were never approved as a difference). Many partial rows were rewritten to name
+what remains, and stale text was corrected.
+
+### Open gates
+
+- **compatibility:** historical fixtures now cover ABI 2, 3 and 4 checkpoints,
+  pre-V4 rich languages, the first shared V2 and layout journals and the first
+  raster archive. An approved V1 API surface, shared input-rule reader evidence
+  and shared upgrade and rollback routes remain.
+- **release-ci:** focused profiles, shards, failure retention and hosted
+  artifact checks exist. No successful hosted run covers every stage for one
+  exact candidate.
+- **browser-reliability:** the WebKit initial-projection rejection has no
+  cause, repair or supported-environment policy, and Safari has single manual
+  sessions only.
+- **accessibility-input-mobile:** the automated checks above have not run on a
+  final artifact.
+- **performance-and-size:** measurements exist on one Apple M1 Pro, mostly in
+  Chrome. Supported sizes, a memory budget, long-session results and a second
+  named host remain.
+- **public-relay-hardening:** raster isolation is opt-in and loopback only. TLS,
+  identity and tenant integration, quotas, containment and deployment tests
+  remain.
+- **storage-lifecycle:** history survives rollover and two seals. A supported
+  document lifetime, log rotation, asset retention and restore drills remain.
+- **final-rc:** waits on the gates above.
+
+The dependency review stays passed, but the relay inventory is one crate stale
+(`rlimit` was added on November 24) and must be regenerated at the RC.
+
 ## November 21 parity round
 
 **Status: not release ready.** This round closed the last shared V4 gaps,

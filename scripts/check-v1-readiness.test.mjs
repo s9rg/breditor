@@ -131,8 +131,8 @@ test("reviewed readiness refuses removed or renamed required release gates", () 
   for (const row of audit.gates) row.status = "passed";
   const remaining = audit.gates.filter(row => row.id !== "public-relay-hardening");
   assert.throws(() => summarizeAudit({...audit, gates: remaining}), /missing required release gate public-relay-hardening$/);
-  const renamed = audit.gates.map(row => row.id === "pilot" ? {...row, id: "pilot-draft"} : row);
-  assert.throws(() => summarizeAudit({...audit, gates: renamed}), /missing required release gate pilot$/);
+  const renamed = audit.gates.map(row => row.id === "storage-lifecycle" ? {...row, id: "storage-lifecycle-draft"} : row);
+  assert.throws(() => summarizeAudit({...audit, gates: renamed}), /missing required release gate storage-lifecycle$/);
 });
 
 test("passed gates cannot hide missing feature groups", () => {
