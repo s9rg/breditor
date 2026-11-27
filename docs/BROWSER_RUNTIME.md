@@ -696,6 +696,17 @@ Do not call `dispose()` first. Disposal cancels timers and settles outstanding
 flush waiters as disposed, but IndexedDB work already submitted cannot be
 recalled and its later outcome is ignored by the closed runtime.
 
+### Crash restart (editor SDK)
+
+The local rich SDK editors in `@breditor/editor` take an opt-in
+`crashRecovery` option. When the owner hits a Wasm trap, becomes a poisoned
+owner, or fails the boundary check, the watchdog freezes input. It then checks
+that the last exact checkpoint restores byte for byte, and reopens a fresh owner
+from it in the same host with its Undo/Redo history. A restart budget ends in a
+frozen, read-only failed state. Diagnostics carry no content. See
+[CRASH_RECOVERY.md](CRASH_RECOVERY.md) for the contract and its limits. One
+limit matters here: restarts reuse the page's single Wasm instance.
+
 ## React integration
 
 React owns the surrounding UI and two permanently childless mounts; Breditor

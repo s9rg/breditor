@@ -8,11 +8,13 @@ import {claimHost,awaitInitialization} from "./host.js";
 import {emptyDocumentJson} from "./empty_document.js";
 import {clipboardInterchangeOptions,type ClipboardInterchangeFactory} from "./clipboard_interchange.js";
 import {checkLocalRichLanguage,compileLocalLanguageProfile,localLanguageToolbar,type LocalEditor,type LocalEditorOptions,type LocalInitial} from "./local.js";
+import {checkCrashRecoveryOptions,CrashSupervisor,type CrashRecoveryOptions} from "./crash_recovery.js";
+import {RecoverableDocumentOwner,type RecoverableLocalDocumentEditor,type RecoveryPolicy} from "./crash_recovery_owner.js";
 
 export type LocalDocumentInitial=Extract<LocalInitial,{kind:"empty"|"document"}>
  |{kind:"documentCheckpoint";checkpointJson:string}
  |{kind:"documentTypingCheckpoint";checkpointJson:string};
-export interface LocalDocumentEditorOptions extends Omit<RichDocumentEditorOptions,"core"|"toolbar"|"inlinePresentation"|"inlineTag"|"clipboardInterchange">,Pick<LocalEditorOptions,"host"|"profileBootstrapJson"|"additionalInlinePresentation"|"richLanguage"|"readOnly"|"history"|"runtimeInput"|"signal"> {
+export interface LocalDocumentEditorOptions extends Omit<RichDocumentEditorOptions,"core"|"toolbar"|"inlinePresentation"|"inlineTag"|"clipboardInterchange">,Pick<LocalEditorOptions,"host"|"profileBootstrapJson"|"additionalInlinePresentation"|"richLanguage"|"readOnly"|"history"|"runtimeInput"|"signal"|"crashRecovery"> {
  initial?:LocalDocumentInitial;
  /** Runs against the actual typed native document owner before host mutation. */
  toolbar?:(core:RichDocumentCoreEditor,standard:readonly ToolbarControl<"document-v1">[],presentation:import("@breditor/experimental-rich-content").RichInlinePresentation)=>readonly ToolbarControl<"document-v1">[];
@@ -59,7 +61,10 @@ class DocumentOwner implements LocalDocumentEditor {
  dispose():void{if(this.#disposed)return;this.#disposed=true;try{this.#dom.dispose();}finally{this.#release();}}
 }
 /** One explicit document owner per host; rollback preserves the original nodes on failed/cancelled startup. */
+export function openLocalDocumentEditor(options:LocalDocumentEditorOptions&{crashRecovery:CrashRecoveryOptions}):Promise<RecoverableLocalDocumentEditor>;
+export function openLocalDocumentEditor(options:LocalDocumentEditorOptions):Promise<LocalDocumentEditor>;
 export async function openLocalDocumentEditor(options:LocalDocumentEditorOptions):Promise<LocalDocumentEditor>{
+ if(options.crashRecovery!==undefined)return openRecoverableDocumentEditor(options,checkCrashRecoveryOptions(options.crashRecovery));
  options={...options};
  validateMarkdownInputPolicy(options.inputRules);
  validatePlaceholderOption(options.placeholder);resolveRichUi(options.ui);
@@ -90,4 +95,34 @@ export async function openLocalDocumentEditor(options:LocalDocumentEditorOptions
   claim.assert();dom=mountDocumentRichEditor(options.host,{...domOptions,...interchange,core,...render,toolbar});claim.assert();return new DocumentOwner(dom,claim.release,render);
  }catch(error){try{if(dom)dom.dispose();else core?.dispose();}finally{claim.rollback();}throw error;}
  finally{profile?.dispose();}
+}
+/** The checkpoint family this opening exports: natural typing history or explicit history. */
+function documentTypingFamily(options:LocalDocumentEditorOptions):boolean{return options.history==="typing-v1"||(options.history===undefined&&options.initial?.kind==="documentTypingCheckpoint");}
+/** Restore in a fresh headless document owner of the same profile and require a byte-exact re-export. */
+async function verifyDocumentCheckpoint(options:LocalDocumentEditorOptions,typing:boolean,checkpointJson:string):Promise<boolean>{
+ const profile=compileLocalLanguageProfile(await initializeLocalRuntime(options.runtimeInput),options.richLanguage??1,options.profileBootstrapJson);
+ let core:RichDocumentCoreEditor|undefined;
+ try{
+  const restore=typing?profile.restoreDocumentTypingEditor:profile.restoreDocumentEditor;
+  if(profile.supportsDocumentSelection?.()!==true||!restore)return false;
+  core=restore.call(profile,checkpointJson);
+  return core.checkpointJson()===checkpointJson;
+ }finally{try{core?.dispose();}finally{profile.dispose();}}
+}
+async function openRecoverableDocumentEditor(options:LocalDocumentEditorOptions,recovery:ReturnType<typeof checkCrashRecoveryOptions>):Promise<RecoverableLocalDocumentEditor>{
+ const {crashRecovery:_crashRecovery,signal,onChange,onError,...rest}=options,typing=documentTypingFamily(options);
+ const policy:RecoveryPolicy={readOnly:options.readOnly,restricted:undefined};
+ const supervisor=await CrashSupervisor.open<LocalDocumentEditor>({
+  host:options.host,options:recovery,onChange:onChange as never,onError,
+  verify:checkpointJson=>verifyDocumentCheckpoint(options,typing,checkpointJson),
+  reapply:owner=>{if(policy.restricted)owner.setRestrictedEditing(policy.restricted.policy);},
+  open:(callbacks,restart)=>{
+   if(!restart)return openLocalDocumentEditor({...rest,...callbacks,...(signal?{signal}:{})});
+   const {readOnly:_readOnly,...stable}=rest;
+   return openLocalDocumentEditor({...stable,...callbacks,signal:restart.signal,
+    initial:typing?{kind:"documentTypingCheckpoint",checkpointJson:restart.checkpointJson}:{kind:"documentCheckpoint",checkpointJson:restart.checkpointJson},
+    ...(policy.readOnly!==undefined?{readOnly:policy.readOnly}:{})});
+  },
+ });
+ return new RecoverableDocumentOwner(supervisor,policy);
 }
