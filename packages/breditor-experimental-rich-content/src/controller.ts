@@ -25,6 +25,7 @@ import {encodeBlockLayoutPatch} from "./block_layout_serialization.js";
 import {encodeListNumberingPatch} from "./list_numbering_serialization.js";
 import type {RichClipboardTextProjection} from "./core.js";
 import {requireClipboardInterchange,readClipboardInput,readClipboardText,exportClipboard,writeClipboard,clipboardInterchangeReport,clipboardInterchangeStatus,clipboardProjectionText,type ClipboardInput,type RichTextPasteIntent,type RichClipboardInterchange,type RichClipboardInterchangeReport,type RichInterchangeFormatReport} from "./clipboard_interchange.js";
+import {requireMarkdownPaste,MarkdownPasteSession,type RichMarkdownPasteEvent,type RichMarkdownPasteOption} from "./markdown_paste.js";
 import type {RichSearchQuery,RichSearchReplacement,RichSearchResults} from "./core.js";
 import {RichSearchEvents,type RichSearchHostState,type RichSearchCompletion} from "./search_host.js";
 import {publishRichSearchIntent,type RichSearchIntent} from "./search_intent.js";
@@ -63,6 +64,12 @@ export interface RichEditorOptions<P extends RichSelectionPolicy="original"> ext
  clipboardInterchange?:RichClipboardInterchange;
  /** Delivered only after retained Copy or accepted native Cut/Paste, including queued work. */
  onInterchange?:(report:RichClipboardInterchangeReport)=>void;
+ /** Immutable. `detect` converts a text/plain-only paste that `markdown-paste-detect-v1` accepts; needs `clipboardInterchange`. */
+ markdownPaste?:RichMarkdownPasteOption;
+ /** Show the built-in "Undo to plain text" notice after an automatic conversion. */
+ markdownPasteNotice?:boolean;
+ /** Delivered once per accepted automatic conversion, after `onInterchange`. */
+ onMarkdownPaste?:(event:RichMarkdownPasteEvent)=>void;
  onFiles?:(files:readonly File[],position:FlowPosition)=>void|Promise<void>;
  /** A document-aware asset host must retain this guard and submit one whole-document rich paste. */
  onDocumentFiles?:(files:readonly File[],revision:string)=>void|Promise<void>;
@@ -89,7 +96,7 @@ export class RichDomEditor<P extends RichSelectionPolicy="original"> {
  readonly #borrowed=new Set<BorrowedControl<ToolbarControl<P>,ActionContext<P>>>();
  readonly #selectionPolicy:P;readonly #document:RichDocumentCoreEditor|undefined;
  #general=false;
- readonly #interchange:RichClipboardInterchange|undefined;
+ readonly #interchange:RichClipboardInterchange|undefined;readonly #markdownPaste:MarkdownPasteSession;
  readonly #inputRules:boolean;readonly #inputRuleIds:readonly RichInputRuleId[]|null;readonly #typography:RichTypographyOptions|null;
  readonly #searchEvents=new RichSearchEvents();
  readonly #writingEvents=new RichWritingEvents();readonly #writingReads=new RichWritingReadRegistry();
@@ -100,6 +107,7 @@ export class RichDomEditor<P extends RichSelectionPolicy="original"> {
   if((options.core.selectionPolicy?.()??"original")!==policy)throw Error("DOM selection policy must match its explicitly selected native owner");
   this.#selectionPolicy=policy as P;this.#document=policy==="document-v1"?requireDocumentBrowserCore(options.core):undefined;
   this.#interchange=requireClipboardInterchange(options.clipboardInterchange,options.core);
+  const markdownPaste=requireMarkdownPaste(options.markdownPaste,this.#interchange,options.markdownPasteNotice);
   this.#inputRuleIds=requireInputRules(options.inputRules,options.core);this.#typography=inputRuleTypography(options.inputRules);this.#inputRules=this.#inputRuleIds!==null;
   const placeholder=prepareRichPlaceholder(options.placeholder,options.core);
   if(options.rangeEditing!==undefined&&options.rangeEditing!=="original"&&options.rangeEditing!=="general-v1")throw new TypeError("Expected rangeEditing original or general-v1");
@@ -114,6 +122,7 @@ export class RichDomEditor<P extends RichSelectionPolicy="original"> {
   const document=root.ownerDocument;this.surface=document.createElement("div");this.surface.className="breditor-rich-surface";this.surface.contentEditable="true";this.surface.setAttribute("role","textbox");this.surface.setAttribute("aria-multiline","true");this.surface.setAttribute("aria-label",options.label??ui.text("richEditorLabel"));
   this.toolbar=document.createElement("div");this.toolbar.className="breditor-rich-toolbar";this.toolbar.setAttribute("role","toolbar");this.toolbar.setAttribute("aria-label",ui.text("richToolbarLabel"));ui.applyChrome(this.toolbar);
   this.status=document.createElement("p");this.status.className="breditor-rich-status";this.status.setAttribute("role","status");ui.applyChrome(this.status);
+  this.#markdownPaste=new MarkdownPasteSession(markdownPaste,{ui,anchor:this.status,notice:options.markdownPasteNotice===true,onEvent:event=>this.#options.onMarkdownPaste?.(event),report:error=>this.#report(error),signal:this.#abort.signal});
   this.#placeholder=placeholder?new RichPlaceholderPresentation(this.surface,placeholder.label):undefined;
   const style=document.createElement("style");style.textContent=styles+standardInlineStylesV1+toolbarControlStyles+structuralBlockStylesV2+(options.scrollableTables?richTableScrollStyles:"")+richPageBreakStyles+richBookmarkStyles+richLegalListStyles+(this.#document?documentSelectionStyles:"")+(placeholder?richPlaceholderStyles:"")+(options.inlinePresentation&&richInlinePresentationHasRuby(options.inlinePresentation)?richRubyStyles:"");root.dataset["breditorRich"]="";root.replaceChildren(style,this.toolbar,this.#placeholder?.container??this.surface,this.status);
   const seen=new Set<string>();
@@ -129,6 +138,7 @@ export class RichDomEditor<P extends RichSelectionPolicy="original"> {
   this.surface.addEventListener("beforeinput",event=>this.#input(event as InputEvent),{signal:this.#abort.signal});
   this.surface.addEventListener("input",()=>{if(!this.#composition)this.#reconcile();},{signal:this.#abort.signal});
   this.surface.addEventListener("keydown",event=>this.#key(event),{signal:this.#abort.signal});
+  if(this.#markdownPaste.enabled)this.surface.addEventListener("keyup",event=>{const revision=this.#model.view.revision;this.#markdownPaste.keyup(event,text=>{if(!this.#disposed&&this.#model.view.revision===revision)this.pasteText(text,"literal");});},{signal:this.#abort.signal});
   this.surface.addEventListener("pointerdown",event=>this.#pick(event),{signal:this.#abort.signal});
   this.surface.addEventListener("blur",()=>this.#boundary(),{capture:true,signal:this.#abort.signal});
   this.toolbar.addEventListener("pointerdown",()=>this.#boundary(),{capture:true,signal:this.#abort.signal});
@@ -166,7 +176,7 @@ export class RichDomEditor<P extends RichSelectionPolicy="original"> {
  /** Editor shell port: the chords this coordinator's keydown routing owns, from the same controls and capabilities. */
  contextShortcuts():readonly RichShortcutEntry[]{
   const core=this.#options.core,structural=isStructuralRichLanguage(core.richLanguageVersion?.());
-  return richCoordinatorShortcuts({ui:this.#ui,controls:this.#controls.map(entry=>entry.control),structural,selectionFormatting:core.supportsSelectionFormatting?.()===true&&!!this.#options.inlinePresentation,flowNavigation:core.supportsFlowNavigation?.()===true,blockLayout:core.supportsBlockLayout?.()===true});
+  return richCoordinatorShortcuts({ui:this.#ui,controls:this.#controls.map(entry=>entry.control),structural,selectionFormatting:core.supportsSelectionFormatting?.()===true&&!!this.#options.inlinePresentation,flowNavigation:core.supportsFlowNavigation?.()===true,blockLayout:core.supportsBlockLayout?.()===true,pastePlain:this.#markdownPaste.enabled});
  }
  subscribeContextUi(listener:()=>void):()=>void{this.#live();return this.#writingEvents.subscribe(listener);}
  /** The validated chrome catalog; opt-in tools read their strings and chrome direction from it. */
@@ -285,7 +295,7 @@ export class RichDomEditor<P extends RichSelectionPolicy="original"> {
     else if(work.region)outcome=this.#options.core.navigateRestrictedRegion!(work.region==="next",work.revision);
     else if(work.search)outcome=publishRichSearchIntent(this.#options.core,work.search,work.revision);
     else if(isDocumentIntent(work.command)){if(!this.#document)throw Error("Use the explicit document-selection DOM owner");outcome=publishDocumentIntent(this.#document,work.command,work.revision);}else outcome=this.#options.core.execute(work.command,work.revision);
-    published=true;first??=outcome;this.#model=this.#read();this.#logicalSelection=this.#logical();
+    published=true;first??=outcome;this.#model=this.#read();this.#logicalSelection=this.#logical();this.#markdownPaste.sync(this.#model.view.revision);
     if(outcome==="content"||outcome==="undo"||outcome==="redo")render(this.surface,this.#model,this.#renderOptions());else paintSelection(this.surface,this.#model);
     // An asynchronous focus:false edit must retain an already-owned caret after
     // replacing children, but must not steal focus from an outside host control.
@@ -421,6 +431,8 @@ export class RichDomEditor<P extends RichSelectionPolicy="original"> {
   return true;
  }
  #key(event:KeyboardEvent):void {
+  // A toolbar control that claims Shift+V keeps it; otherwise the chord arms the one-shot plain-text escape.
+  if(!this.#controls.some(item=>item.control.shortcut==="shift+v"))this.#markdownPaste.keydown(event);
   if(this.#composition||event.isComposing)return;
   const mod=event.metaKey||event.ctrlKey;
   if(mod&&!["Backspace","Delete"].includes(event.key)||["ArrowLeft","ArrowRight","ArrowUp","ArrowDown","Home","End","PageUp","PageDown","Tab","Enter","Escape"].includes(event.key))this.#boundary();
@@ -574,15 +586,20 @@ export class RichDomEditor<P extends RichSelectionPolicy="original"> {
   });
  }
  #paste(event:ClipboardEvent):void {
+  const mode=this.#markdownPaste.mode();
   if(this.#model.view.readOnly===true){event.preventDefault();return;}
   if(this.#composition||!event.clipboardData){if(this.#interchange)event.preventDefault();return;}event.preventDefault();
   this.#boundary();
-  this.#attempt(()=>{const data=event.clipboardData!,foreign=this.#interchange&&data.types.some(t=>["application/x-breditor-rich+json","text/html","text/markdown"].includes(t)),files=[...data.files];if(files.length&&!foreign){this.#files(files);return;}
-   this.#pasteInput(grid=>readClipboardInput(data,this.#interchange,grid));
+  this.#attempt(()=>{const data=event.clipboardData!,foreign=mode!=="literal"&&this.#interchange&&data.types.some(t=>["application/x-breditor-rich+json","text/html","text/markdown"].includes(t)),files=[...data.files];if(files.length&&!foreign){this.#files(files);return;}
+   this.#pasteInput(grid=>readClipboardInput(data,this.#interchange,grid,mode));
   });
  }
  #pasteInput(read:(grid:boolean)=>ClipboardInput):void {
-  this.#sync();const model=this.#model,revision=model.view.revision,selection=model.view.selection,context={...this.#context(),model},input=read(selection?.kind==="grid"),clipboard=input.fragment;
+  this.#sync();const model=this.#model,revision=model.view.revision,selection=model.view.selection,context={...this.#context(),model};
+  let input=read(selection?.kind==="grid");
+  // An automatic conversion never flattens into code or a caption: there the literal text is what was copied.
+  if(input.markdownPaste&&selection?.kind==="text"&&(model.nodes.get(selection.focus.block)?.type==="breditor/code-block"||(JSON.parse(input.fragment) as {kind:string}).kind==="flow"&&this.#options.core.supportsClipboardTextPolicy?.()===true&&this.#options.core.projectClipboardText!(selection,input.fragment,revision)!==null))input={fragment:"",plain:input.markdownPaste.plain,formats:[]};
+  const clipboard=input.fragment;
   let projection:RichClipboardTextProjection|undefined,command:RichCommand|DocumentIntent;
   if(selection?.kind==="document"&&this.#document){if(clipboard)command={kind:"pasteDocumentClipboard",clipboardJson:clipboard,prefix:this.#allocate("paste")};else{if(!input.plain)return;command={kind:"replaceDocumentPlainText",paragraph:this.#allocate("p"),text:input.plain};}}
   else if(clipboard){const kind=(JSON.parse(clipboard) as {kind:string}).kind,allocation={prefix:this.#allocate("paste"),replica:"1",counter:String(this.#counter++),lamport:revision};
@@ -594,7 +611,14 @@ export class RichDomEditor<P extends RichSelectionPolicy="original"> {
     else {const right=this.#allocate("p");if(this.#general){if(core.supportsGeneralFlowPaste?.()!==true)throw Error("Use matching native general rich-flow clipboard paste");command={kind:"pasteGeneralFlowClipboard",data:{selection,clipboardJson:clipboard,allocation,prefix:allocation.prefix,right}};}else command={kind:"pasteFlowAtText",data:{clipboardJson:clipboard,allocation,right}};}
    }else command={kind:"pasteFlowClipboard",data:{clipboardJson:clipboard,allocation,position:positionAfter(context)}};
   }else {const plain=input.plain;if(!plain)return;command=this.#general&&selection?.kind==="text"?{kind:"replaceGeneralRangePlainText",data:{selection,text:plain,prefix:this.#allocate("range")}}:isStructuralRichLanguage(this.#options.core.richLanguageVersion?.())&&this.#options.core.supportsAtomEditing?.()===true&&selectedFlowAtom(model)?{kind:"replaceAtomPlainText",data:{paragraph:this.#allocate("p"),text:plain}}:{kind:"insertPlainText",text:plain};}
-  this.#executeIntent(command,true,revision,display=>this.#clipboardComplete("paste",revision,input.formats,projection,display));
+  const detected=input;
+  this.#executeIntent(command,true,revision,display=>{this.#clipboardComplete("paste",revision,detected.formats,projection,display);this.#markdownPaste.accepted(detected,revision,this.#model.view.revision,display,(after,plain)=>this.#undoMarkdownPaste(after,plain));});
+ }
+ /** One native Undo of the accepted conversion, then one literal paste at the restored selection. */
+ #undoMarkdownPaste(revision:string,plain:string):boolean {
+  if(this.#disposed||this.#busy||this.#composition||this.#model.view.readOnly===true||this.#model.view.revision!==revision)return false;
+  if(this.execute({kind:"undo"},true,revision)!=="undo")return false;
+  this.pasteText(plain,"literal");return true;
  }
  #clipboardComplete(operation:RichClipboardInterchangeReport["operation"],revision:string,formats:readonly RichInterchangeFormatReport[],destination?:RichClipboardTextProjection,display=true):void {
   if(this.#disposed)return;

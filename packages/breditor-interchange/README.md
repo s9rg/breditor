@@ -442,8 +442,20 @@ Use the factory in React `initialOptions`; `onInterchange` is also a live React
 prop. Direct DOM mounts take the adapter object. Default editors do not load
 this package or enable foreign paste merely because HTML is available. Opt-in
 priority is private Breditor content, HTML, explicit Markdown MIME, then existing
-file/plain handling. Plain text is not guessed as Markdown, and conversion
-failure does not retry as plain text.
+file/plain handling. By default plain text is not guessed as Markdown, and
+conversion failure does not retry as plain text.
+
+Hosts can opt in to automatic detection on an ordinary text/plain-only paste
+with `markdownPaste: "detect"` (it requires this adapter). The editor runs the
+deterministic `markdown-paste-detect-v1` scorer and, when it accepts the text,
+imports it through `importMarkdown` and one native paste, so it is one Undo
+step. Prose, single lines, paths, code snippets, e-mails and `*` footnotes stay
+literal; an adapter rejection also stays literal. Ctrl/Cmd+Shift+V pastes the
+clipboard literally once. `markdownPasteNotice: true` shows an "Undo to plain
+text" notice, and `onMarkdownPaste` receives a content-free report with an
+`undoToPlainText()` function for a host affordance. See
+[Automatic Markdown paste](../../docs/RICH_INTERCHANGE.md#automatic-markdown-paste)
+for the weights, vetoes and corpus.
 
 Copy/Cut adds HTML and Markdown to private/plain output. Cut requires every
 requested format to be retained before native deletion. Reports follow retained

@@ -87,6 +87,7 @@ mentionLabel:"الإشارات",mentionLoading:"جارٍ تحميل الاقتر
  specialCharactersCountOne:"رمز واحد",specialCharactersCount:"{count} رموز",specialCharactersEmpty:"لا توجد رموز مطابقة",specialCharacterItem:"{name} ({code})",
  formatPainterCopied:"تم نسخ التنسيق. حدّد نصًا لتطبيقه مرة واحدة؛ Escape للإلغاء.",formatPainterSticky:"تم نسخ التنسيق للاستخدام المتكرر. حدّد نصًا لتطبيقه؛ Escape أو الزر للإيقاف.",
  formatPainterApplied:"تم تطبيق التنسيق.",formatPainterCancelled:"تم إيقاف ناسخ التنسيق.",formatPainterNothing:"التحديد يحمل هذا التنسيق بالفعل.",
+ markdownPasteNotice:"نُسّق النص الملصق بوصفه ماركداون.",markdownPasteUndo:"تراجع إلى نص عادي",shortcutPastePlain:"لصق كنص عادي",
 };
 export const arabicUi:RichUiOptions={
  lang:"ar",direction:"rtl",strings:arabicStrings,notices:arabicNotices,refusals:arabicRefusals,

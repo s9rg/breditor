@@ -813,9 +813,16 @@ selection. A recognized conversion that fails is reported through the editor's
 error handler. A successful paste is one native Undo step.
 
 These are explicit host actions on supplied text. Ordinary browser clipboard
-events still choose from the supplied MIME types, and a `text/plain` event stays
-literal. Hosts can wire their own literal and detect actions without inferring
-the intent of an operating system shortcut.
+events still choose from the supplied MIME types, and by default a `text/plain`
+event stays literal. Hosts can wire their own literal and detect actions without
+inferring the intent of an operating system shortcut.
+
+The separate opt-in `markdownPaste: "detect"` (with the interchange adapter)
+runs the deterministic `markdown-paste-detect-v1` scorer (`detectMarkdownPaste`)
+on an ordinary text/plain-only paste event, converts accepted text as one Undo
+step, arms Ctrl/Cmd+Shift+V as a one-shot literal paste, and offers
+`onMarkdownPaste` / `markdownPasteNotice` for "Undo to plain text". See
+[Automatic Markdown paste](../../docs/RICH_INTERCHANGE.md#automatic-markdown-paste).
 
 ## Prepare an HTTPS raster from an explicit host loader
 

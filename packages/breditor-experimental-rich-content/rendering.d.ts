@@ -18,6 +18,7 @@ export * from "./dist/browser/list_numbering_serialization.js";
 export * from "./dist/browser/list_structure.js";
 export * from "./dist/browser/rich_language.js";
 export * from "./dist/browser/clipboard_interchange.js";
+export * from "./dist/browser/markdown_paste.js";
 export {parseRichSearchMetadata} from "./dist/browser/search_metadata.js";
 export {parseRichWritingTools} from "./dist/browser/writing_tools_metadata.js";
 export {headingHierarchy,type HeadingBranch} from "./dist/browser/heading_hierarchy.js";

@@ -18,8 +18,11 @@ export type {RichShellUiStrings} from "./ui_locale_shell.js";
 // Formatting-productivity chrome (special characters, format painter) lives in ui_locale_productivity.ts.
 import {richProductivityUiStringsEn,richProductivityUiParameters,type RichProductivityUiStrings} from "./ui_locale_productivity.js";
 export type {RichProductivityUiStrings} from "./ui_locale_productivity.js";
+// Opt-in automatic Markdown paste chrome (post-paste notice, plain-text escape) lives in ui_locale_paste.ts.
+import {richPasteUiStringsEn,type RichPasteUiStrings} from "./ui_locale_paste.js";
+export type {RichPasteUiStrings} from "./ui_locale_paste.js";
 /** Every built-in chrome string. Templates use `{name}` placeholders only; there are no plural or select forms. */
-export interface RichUiStrings extends RichUiPanelStrings, RichAiUiStrings, RichEditingAidsUiStrings, RichShellUiStrings, RichProductivityUiStrings {
+export interface RichUiStrings extends RichUiPanelStrings, RichAiUiStrings, RichEditingAidsUiStrings, RichShellUiStrings, RichProductivityUiStrings, RichPasteUiStrings {
  readonly richEditorLabel:string;readonly richToolbarLabel:string;
  readonly richStatusReadOnly:string;readonly richStatusEditable:string;readonly richStatusOutcome:string;readonly richStatusReadOnlyOutcome:string;
  readonly richOperationFailed:string;
@@ -91,6 +94,8 @@ export const richUiStringsEn:Readonly<RichUiStrings>=Object.freeze({
  ...richShellUiStringsEn,
  // Formatting-productivity tools (separate block).
  ...richProductivityUiStringsEn,
+ // Automatic Markdown paste (separate block).
+ ...richPasteUiStringsEn,
 });
 /** Placeholders each template may use. Anything else in braces is rejected. */
 const parameters:Readonly<Partial<Record<RichUiStringKey,readonly string[]>>>={

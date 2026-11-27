@@ -288,3 +288,12 @@ the characters themselves (1–16 UTF-16 units without control characters, at mo
 picker does not show are inert. The picker searches localized and English names.
 Toolbar labels (`special-characters`, `case-upper`, `case-lower`, `case-title`,
 `format-painter`) use the ordinary `controls` catalog.
+
+## Automatic Markdown paste
+
+Opt-in `markdownPaste: "detect"`
+([Automatic Markdown paste](RICH_INTERCHANGE.md#automatic-markdown-paste)) adds a
+separate string block (`ui_locale_paste.ts`): the post-paste notice
+`markdownPasteNotice`, its button `markdownPasteUndo` and the shortcut-help label
+`shortcutPastePlain`. Their English defaults are new keys; existing keys and
+defaults are unchanged.

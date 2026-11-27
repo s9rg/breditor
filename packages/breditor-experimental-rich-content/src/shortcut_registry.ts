@@ -29,6 +29,8 @@ export interface RichCoordinatorShortcutFacts {
  readonly ui:RichUiLocale;
  readonly controls:readonly {readonly id:string;readonly label:string;readonly shortcut?:string|undefined}[];
  readonly structural:boolean;readonly selectionFormatting:boolean;readonly flowNavigation:boolean;readonly blockLayout:boolean;
+ /** `markdownPaste: "detect"` arms the one-shot paste-as-plain-text escape. */
+ readonly pastePlain?:boolean;
 }
 /**
  * The chords a coordinator's keydown handler owns, in its own precedence order: admitted control shortcuts first
@@ -53,6 +55,7 @@ export function richCoordinatorShortcuts(facts:RichCoordinatorShortcutFacts):rea
   add("strike","formatting",ui.text("shortcutStrike"),[chord("X",{primary:true,shift:true})]);
  }
  add("select-all","navigation",ui.text("shortcutSelectAll"),[chord("A",{primary:true})]);
+ if(facts.pastePlain)add("paste-plain","commands",ui.text("shortcutPastePlain"),[chord("V",{primary:true,shift:true})]);
  add("hard-break","blocks",ui.text("shortcutHardBreak"),[chord("Enter",{shift:true})]);
  if(facts.structural)add("exit-code","blocks",ui.text("shortcutExitCode"),[chord("Enter",{primary:true})]);
  if(facts.blockLayout){
